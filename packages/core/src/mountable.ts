@@ -571,6 +571,23 @@ export type WrapperFn<
   options: WrapperFnOptions<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>,
 ) => TNewInnerProps | Exclude<React.ReactNode, Promise<any>> | undefined
 
+export type QueryFnOptions<
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TInnerProps extends Props,
+  TQueries extends Queries,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+> = Omit<
+  MountableState<any, TClientInputSchema, TInnerProps, [...TQueries, ...Queries], TMapperOutput>,
+  'ErrorComponent' | 'LoadingComponent'
+>
+export type QueryFn<
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TInnerProps extends Props,
+  TQueries extends Queries,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TNewQueries extends UseQueryOrInfiniteQueryResult | UseQueryOrInfiniteQueryResult[],
+> = (options: QueryFnOptions<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>) => TNewQueries
+
 export type HeadFnOptions<
   TStatus extends 'loading' | 'error' | 'success',
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -923,9 +940,7 @@ export type MountAction<
 > = TType extends 'query'
   ? {
       type: 'query'
-      fn: (
-        options: { input: InputParsed; enabled: true } | { input: unknown; enabled: false },
-      ) => UseQueryOrInfiniteQueryResult
+      fn: QueryFn<any, any, any, any, any>
       unstableId: number
     }
   : TType extends 'selfQuery'

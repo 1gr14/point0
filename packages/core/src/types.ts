@@ -608,6 +608,11 @@ export type AssertInputSchemaNotWider<
       ? ShowError<`Provided input schema is not assignable to current point client input schema`>
       : unknown
 
+export type AssertCurrentCtxExtendsPluginCtx<
+  TCurrentCtx extends Ctx,
+  TPluginCtx extends Ctx,
+> = TCurrentCtx extends TPluginCtx ? unknown : ShowError<`Plugin ctx is not assignable to current point ctx`>
+
 export type AssertRouteDefinitionInputExtends<
   TCurrentRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TNewRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
@@ -2001,7 +2006,7 @@ export type MiddlewareFn = (options: MiddlewareFnOptions) => Promise<Response | 
 //       : unknown
 export type AssertNoForbiddenMethodsIfNotSuitableStage<
   TPointType extends PointType,
-  TMethod extends 'ctx' | 'loader' | 'use' | 'clientLoader' | 'input' | 'combinedInput',
+  TMethod extends 'ctx' | 'loader' | 'use' | 'clientLoader' | 'input' | 'combinedInput' | 'clientInput',
 > = TPointType extends 'serverStage'
   ? TMethod extends never // nothing is forbiden
     ? ShowError<`You can not use ${TMethod}() after calling .loader()`>
@@ -2011,7 +2016,7 @@ export type AssertNoForbiddenMethodsIfNotSuitableStage<
       ? ShowError<`You can not use ${TMethod}() after calling .clientStage()`>
       : unknown
     : TPointType extends 'finalStage'
-      ? TMethod extends 'loader' | 'ctx' | 'input' | 'combinedInput' | 'clientLoader'
+      ? TMethod extends 'loader' | 'ctx' | 'input' | 'combinedInput' | 'clientLoader' | 'clientInput'
         ? ShowError<`You can not use ${TMethod}() in final stage, add it somewhere earlier`>
         : unknown
       : unknown
@@ -2178,7 +2183,7 @@ export type NicePluginStagePoint<
   | 'layoutError'
   | 'pageError'
   | 'componentError'
-  | 'query'
+  // | 'query'
   | 'layout'
   | 'error'
   | 'layoutLoading'
@@ -2253,7 +2258,7 @@ export type NiceBaseStagePoint<
   | 'pageError'
   | 'componentError'
   | 'error'
-  | 'query'
+  // | 'query'
   | 'layout'
   | 'layoutLoading'
   | 'pageLoading'
