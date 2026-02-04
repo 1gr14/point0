@@ -516,6 +516,8 @@ export type MountableStateError<
   error: Error0
   loading: false
   status: 'error'
+  LoadingComponent: React.ComponentType
+  ErrorComponent: React.ComponentType<{ error: Error }>
 }
 export type MountableStatePending<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -582,10 +584,6 @@ export type LoadingComponentProps<TType extends DestinationComponentType> = {
 export type LoadingComponentType<TType extends DestinationComponentType> = React.ComponentType<
   LoadingComponentProps<TType>
 >
-type WithErrorAndLoadingComponent = {
-  LoadingComponent: React.ComponentType
-  ErrorComponent: React.ComponentType<{ error: Error }>
-}
 
 export type SuccessComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -597,7 +595,7 @@ export type SuccessComponentProps<
   props: TInnerProps
   queries: QueriesSuccess<TQueries>
   data: MountableSuccessData<TQueries, TMapperOutput>
-} & WithErrorAndLoadingComponent
+}
 export type SuccessComponentType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
@@ -624,30 +622,51 @@ export type MapperFn<
   TNewMapperOutput extends MapperOutput,
 > = (options: MapperFnOptions<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>) => TNewMapperOutput
 
-export type WrapperFnOptions<
+export type WrapperComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableState<any, TClientInputSchema, TInnerProps, TQueries, TMapperOutput> & {
   children: Exclude<React.ReactNode, Promise<any>> | undefined
-} & WithErrorAndLoadingComponent
-export type WrapperFn<
+}
+export type WrapperComponentType<
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TInnerProps extends Props,
+  TQueries extends Queries,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+> = (
+  options: WrapperComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>,
+) => Exclude<React.ReactNode, Promise<any>>
+
+export type WithFnOptions<
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TInnerProps extends Props,
+  TQueries extends Queries,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+> = Omit<
+  MountableState<any, TClientInputSchema, TInnerProps, TQueries, TMapperOutput>,
+  'LoadingComponent' | 'ErrorComponent'
+>
+export type WithFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TNewInnerProps extends Props = TInnerProps,
 > = (
-  options: WrapperFnOptions<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>,
-) => TNewInnerProps | Exclude<React.ReactNode, Promise<any>> | undefined
+  options: WithFnOptions<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>,
+) => Error | 'loading' | TNewInnerProps | undefined
 
 export type QueryFnOptions<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = MountableState<any, TClientInputSchema, TInnerProps, TQueries, TMapperOutput>
+> = Omit<
+  MountableState<any, TClientInputSchema, TInnerProps, TQueries, TMapperOutput>,
+  'LoadingComponent' | 'ErrorComponent'
+>
 export type QueryFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
@@ -662,7 +681,10 @@ export type HeadFnOptions<
   TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = MountableState<TStatus, TClientInputSchema, TInnerProps, TQueries, TMapperOutput>
+> = Omit<
+  MountableState<TStatus, TClientInputSchema, TInnerProps, TQueries, TMapperOutput>,
+  'LoadingComponent' | 'ErrorComponent'
+>
 export type HeadFn<
   TStatus extends 'loading' | 'error' | 'success' = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
@@ -994,14 +1016,27 @@ export type ProviderSelfType<
 >
 
 export type MountAction<
-  TType extends 'query' | 'input' | 'wrapper' | 'mapper' | 'head' | 'selfProps' | 'selfQuery' =
+  TType extends
     | 'query'
     | 'input'
     | 'wrapper'
+    | 'with'
     | 'mapper'
     | 'head'
     | 'selfProps'
-    | 'selfQuery',
+    | 'selfQuery'
+    | 'errorComponent'
+    | 'loadingComponent' =
+    | 'query'
+    | 'input'
+    | 'wrapper'
+    | 'with'
+    | 'mapper'
+    | 'head'
+    | 'selfProps'
+    | 'selfQuery'
+    | 'errorComponent'
+    | 'loadingComponent',
 > = TType extends 'query'
   ? {
       type: 'query'
@@ -1011,18 +1046,22 @@ export type MountAction<
   : TType extends 'selfQuery'
     ? { type: 'selfQuery'; unstableId: number }
     : TType extends 'wrapper'
-      ? { type: 'wrapper'; fn: WrapperFn<any, any, any, any>; unstableId: number }
-      : TType extends 'mapper'
-        ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number }
-        : TType extends 'selfProps'
-          ? { type: 'selfProps'; unstableId: number }
-          : TType extends 'mapper'
-            ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number }
+      ? { type: 'wrapper'; Component: WrapperComponentType<any, any, any, any>; unstableId: number }
+      : TType extends 'with'
+        ? { type: 'with'; fn: WithFn<any, any, any, any>; unstableId: number }
+        : TType extends 'mapper'
+          ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number }
+          : TType extends 'selfProps'
+            ? { type: 'selfProps'; unstableId: number }
             : TType extends 'head'
               ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number }
-              : TType extends 'input'
-                ? { type: 'input'; schema: InputSchema; unstableId: number }
-                : never
+              : TType extends 'errorComponent'
+                ? { type: 'errorComponent'; Component: ErrorComponentType<any>; unstableId: number }
+                : TType extends 'loadingComponent'
+                  ? { type: 'loadingComponent'; Component: LoadingComponentType<any>; unstableId: number }
+                  : TType extends 'input'
+                    ? { type: 'input'; schema: InputSchema; unstableId: number }
+                    : never
 
 export type IsQueryShouldBeFinalized<
   TPointType extends PointType,

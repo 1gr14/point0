@@ -170,7 +170,6 @@ import type {
   PageSelfType,
   ComponentSelfType,
   ProviderSelfType,
-  WrapperFn,
   AppendProps,
   EmptyProps,
   AssertMountableQueryFinalization,
@@ -183,6 +182,9 @@ import type {
   LayoutSelfProps,
   ProviderSelfProps,
   AppendQueries,
+  WrapperComponentType,
+  WithFn,
+  MountableState,
 } from './mountable.js'
 // import stringify from 'safe-stable-stringify'
 
@@ -1500,8 +1502,67 @@ export class Point0<
     }
   }
 
-  wrapper<TNewInnerProps extends Props>(
-    wrapperFn: WrapperFn<
+  wrapper(
+    wrapperComponent: WrapperComponentType<
+      TClientInputSchema,
+      TInnerProps,
+      WithSelfQueryIfShouldBeFinalized<
+        TPointType,
+        TLetsEndPointType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TQueries
+      >,
+      TMapperOutput
+    > &
+      AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
+  ): NiceStagePoint<
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+      ? 'finalStage'
+      : StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+  > {
+    const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
+    const selfQueryAction: MountAction[] = queryShouldBeFinalized
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      : []
+    return this._continue({
+      _mountActions: [
+        ...this._mountActions,
+        ...selfQueryAction,
+        {
+          type: 'wrapper',
+          Component: wrapperComponent,
+          unstableId: Point0._getNextUnstableId(),
+        },
+      ],
+      ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
+      // _wrappers: [
+      //   ...this._wrappers,
+      //   wrapperComponent as never,
+      //   // this._applyComponentDisplayName(wrapperComponent as React.ComponentType<any>, {
+      //   //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Wrapper',
+      //   //   index: this._wrappers.length,
+      //   // }) as never,
+      // ],
+    }) as never
+  }
+
+  with<TNewInnerProps extends Props>(
+    withFn: WithFn<
       TClientInputSchema,
       TInnerProps,
       WithSelfQueryIfShouldBeFinalized<
@@ -1543,8 +1604,8 @@ export class Point0<
         ...this._mountActions,
         ...selfQueryAction,
         {
-          type: 'wrapper',
-          fn: wrapperFn,
+          type: 'with',
+          fn: withFn,
           unstableId: Point0._getNextUnstableId(),
         },
       ],
@@ -5000,13 +5061,14 @@ export class Point0<
           break
         }
         case 'loader': {
-          const result = await clientExecuteAction.fn({
+          const promise = clientExecuteAction.fn({
             data: currentClientData ?? {},
             location,
             response: serverResponse,
             input: currentInputParsed,
             serverData,
           })
+          const result = (await (promise as any)) as Awaited<ReturnType<ClientLoaderResponseFn | ClientLoaderDataFn>>
           if (result instanceof Response) {
             currentClientResponse = result
             currentClientOutput = result
@@ -7568,6 +7630,21 @@ export class Point0<
   }
 
   // mountable components
+
+  private readonly _getMountablePart = ({
+    action,
+    innerProps,
+    statusState,
+  }: {
+    action: MountAction
+    stepState: Pick<
+      MountableState<any, any, any, any, any>,
+      'input' | 'props' | 'queries' | 'data' | 'LoadingComponent' | 'ErrorComponent'
+    >
+    statusState: Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'>
+  }) => {
+    const [x, setX] = React.useState(0)
+  }
 
   // private readonly _getMountable = (props: {
   //   input: InputsRaw<TServerInputSchema, TClientInputSchema>
