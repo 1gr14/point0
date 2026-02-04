@@ -134,6 +134,7 @@ import type {
   UsePointQueryResult,
   UseQueryOptions,
   WithError,
+  InputParseResult,
 } from './types.js'
 import {
   blankDataTransformerExtended,
@@ -7676,7 +7677,7 @@ export class Point0<
 
   // mountable components
 
-  private readonly _getMountablePart = ({
+  private readonly _getMountablePart1 = ({
     action,
     stepState,
     statusState,
@@ -7894,8 +7895,8 @@ export class Point0<
     }
   }
 
-  private readonly _getMountable = (props: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+  private readonly _getMountable1 = (props: {
+    inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
     outerProps: TOuterProps
     mountComponent:
       | LayoutSuccessComponentType<any, any, any, any>
@@ -7904,7 +7905,16 @@ export class Point0<
       | ProviderSuccessComponentType<any, any, any, any>
     extraProps: (mountableState: MountableState<any, any, any, any, any>) => Record<string, any>
   }): React.ReactNode => {
-    const { input: inputRaw, outerProps, mountComponent, extraProps } = props
+    const { inputRaw, outerProps, mountComponent, extraProps } = props
+
+    const inputRawStringified = React.useMemo(() => this._getTransformer().stringify(inputRaw) ?? '{}', [inputRaw])
+    const inputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
+      const result = this.parseClientInputSafe(inputRaw as never)
+      if (!result.success) {
+        return { inputParsed: null, inputParseError: result.error } satisfies InputParseResult<TClientInputSchema>
+      }
+      return { inputParsed: result.data, inputParseError: null } satisfies InputParseResult<TClientInputSchema>
+    }, [inputRawStringified])
 
     const componentVariant = this._getDestinationComponentVariant() ?? 'page'
 
@@ -7952,7 +7962,7 @@ export class Point0<
     const wrappers: Array<WrapperComponentType<any, any, any, any>> = []
 
     for (const action of this._mountActions) {
-      const part = this._getMountablePart({
+      const part = this._getMountablePart1({
         action,
         stepState,
         statusState,
@@ -8060,6 +8070,96 @@ export class Point0<
       })
     }, inner as React.ReactNode)
   }
+
+  private readonly _getMountable = (props: {
+    inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+    outerProps: TOuterProps
+    mountComponent:
+      | LayoutSuccessComponentType<any, any, any, any>
+      | PageSuccessComponentType<any, any, any, any, any>
+      | ComponentSuccessComponentType<any, any, any, any>
+      | ProviderSuccessComponentType<any, any, any, any>
+    extraProps: (mountableState: MountableState<any, any, any, any, any>) => Record<string, any>
+
+    mountActions?: MountAction[]
+    level: number
+
+    // it will be provided only in nested mountable
+    inputParseResult?: InputParseResult<TClientInputSchema>
+    inputRawStringified?: string
+  }): Exclude<React.ReactNode, Promise<any>> => {
+    const { inputRaw, outerProps, mountComponent, extraProps, level = 0, mountActions = this._mountActions } = props
+
+    const inputRawStringified =
+      props.inputRawStringified ?? React.useMemo(() => this._getTransformer().stringify(inputRaw) ?? '{}', [inputRaw])
+    const inputParseResult =
+      props.inputParseResult ??
+      React.useMemo<InputParseResult<TClientInputSchema>>(() => {
+        const result = this.parseClientInputSafe(inputRaw as never)
+        if (!result.success) {
+          return { inputParsed: null, inputParseError: result.error } satisfies InputParseResult<TClientInputSchema>
+        }
+        return { inputParsed: result.data, inputParseError: null } satisfies InputParseResult<TClientInputSchema>
+      }, [inputRawStringified])
+
+    const componentVariant = this._getDestinationComponentVariant() ?? 'page'
+
+    const firstMountActionId = props.mountActions[0]?.unstableId
+
+    const baseLoadingComponent = (this._loadingComponent ??
+      {
+        page: this._pageLoadingComponent,
+        component: this._componentLoadingComponent,
+        layout: this._layoutLoadingComponent,
+      }[componentVariant] ??
+      Point0.DefaultLoadingComponent) as React.ComponentType<any>
+    const baseErrorComponent = (this._errorComponent ??
+      {
+        page: this._pageErrorComponent,
+        component: this._componentErrorComponent,
+        layout: this._layoutErrorComponent,
+      }[componentVariant] ??
+      Point0.DefaultErrorComponent) as React.ComponentType<any>
+
+    const currentMountActions = [...mountActions]
+    for (const action of currentMountActions) {
+      currentMountActions.shift()
+      switch (action.type) {
+        case 'wrapper': {
+          return React.createElement(action.Component, {
+            children: this._getMountable({
+              inputRaw,
+              outerProps,
+              mountComponent,
+              extraProps,
+              level: level + 1,
+              mountActions: currentMountActions,
+            }),
+          })
+        }
+        default: {
+          // throw new Error(`Unknown mount action type: ${action.type}`)
+        }
+      }
+    }
+  }
+
+  // loop or recursion over calling _getMountable action by action
+
+  // 'query' add query to queries array, pass current queries array to next action, do not create new component around, just hooks
+  // 'wrapper' adds component around
+  // 'selfQuery' calling self component query
+
+  // 'input' adds component around, parsing input, if error return current error component
+
+  // 'with' if returns 'loading' show current loading component, if return Error show error component, else if undefined or record returned it is innerProps to extend
+  // 'mapper' updates data in case if all queries passed (do not creates wrapping component)
+  // 'head' call useHead
+  // 'selfProps' adding outerProps to inner props (mountState props)
+  // 'errorComponent' changes current error component to new one (do not creates wrapping component)
+  // 'loadingComponent' changes current loading component to new one (do not creates wrapping component)
+  // so it is not just components recursion, it is clever loop, which breaks to wrapping component only in case if it is needed
+  // we strongly know that count of actions not chacnged in runtime, so we can call hooks etc in this loop safely
 
   // private readonly _getMountable = (props: {
   //   input: InputsRaw<TServerInputSchema, TClientInputSchema>
@@ -8351,7 +8451,7 @@ export class Point0<
     }, [this.name, inputRaw, prevLocation, status])
 
     return this._getMountable({
-      input: inputRaw,
+      inputRaw,
       outerProps: restProps,
       extraProps: () => {
         return { location }
@@ -8645,7 +8745,7 @@ export class Point0<
     }, [props])
 
     return this._getMountable({
-      input: inputRaw,
+      inputRaw,
       outerProps: restProps,
       extraProps: () => {
         return {}
@@ -8931,7 +9031,7 @@ export class Point0<
     }, [props, location])
 
     return this._getMountable({
-      input: inputRaw,
+      inputRaw,
       outerProps: restProps,
       extraProps: (mountableState: MountableState<any, any, any, any, any>) => {
         if (!this._ProviderReactContext) {
@@ -9301,7 +9401,7 @@ export class Point0<
       children) as ProviderSuccessComponentType<any, any, any, any>
 
     return this._getMountable({
-      input: inputRaw,
+      inputRaw,
       outerProps: restProps,
       extraProps: (mountableState: MountableState<any, any, any, any, any>) => {
         if (!this._ProviderReactContext) {
