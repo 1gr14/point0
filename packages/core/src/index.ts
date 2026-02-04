@@ -7713,7 +7713,21 @@ export class Point0<
       | ComponentSuccessComponentType<any, any, any, any>
       | ProviderSuccessComponentType<any, any, any, any>
     extraProps: (mountableState: MountableState<any, any, any, any, any>) => Record<string, any>
-  }): React.ReactNode => {}
+  }): React.ReactNode => {
+    // loop or recursion over calling _getMountable action by action
+    // 'query' add query to queries array, pass current queries array to next action, do not create new component around, just hooks
+    // 'input' adds component around, parsing input, if error return current error component
+    // 'wrapper' adds component around
+    // 'with' if returns 'loading' show current loading component, if return Error show error component, else if undefined or record returned it is innerProps to extend
+    // 'mapper' updates data in case if all queries passed (do not creates wrapping component)
+    // 'head' call useHead
+    // 'selfProps' adding outerProps to inner props (mountState props)
+    // 'selfQuery' calling self component query
+    // 'errorComponent' changes current error component to new one (do not creates wrapping component)
+    // 'loadingComponent' changes current loading component to new one (do not creates wrapping component)
+    // so it is not just components recursion, it is clever loop, which breaks to wrapping component only in case if it is needed
+    // we strongly know that count of actions not chacnged in runtime, so we can call hooks etc in this loop safely
+  }
 
   // private readonly _getMountable = (props: {
   //   input: InputsRaw<TServerInputSchema, TClientInputSchema>
