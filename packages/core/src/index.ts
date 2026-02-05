@@ -134,7 +134,6 @@ import type {
   UsePointQueryResult,
   UseQueryOptions,
   WithError,
-  InputParseResult,
 } from './types.js'
 import {
   blankDataTransformerExtended,
