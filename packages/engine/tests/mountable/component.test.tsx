@@ -116,7 +116,7 @@ describe('component', () => {
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "#page:
-        #error: test error
+        #loading: ...
       "
     `)
   })
@@ -161,15 +161,51 @@ describe('component', () => {
     `)
   })
 
+  it('earlier defined props overrides', async () => {
+    const base = root
+      .lets('base', 'base')
+      .with(() => ({ x: 100, z: 3 }))
+      .base()
+    const component = base.lets<{ x: number; y: number }>('component', 'stats').component(({ props }) => (
+      <div id="component">
+        x={props.x} y={props.y} z={props.z}
+      </div>
+    ))
+    const page = root.lets('page', 'home', '/').page(() => (
+      <div id="page">
+        <component.X x={1} y={2} />
+      </div>
+    ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, base, component, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#component')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/
+          #page:
+            #component: x=1 y=2 z=3
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "#page:
+        #component: x=1 y=2 z=3
+      "
+    `)
+  })
+
   it('wrapper', async () => {
     const component = root
       .lets('component', 'stats')
       .combinedInput<{ id: string }>()
       .loader(({ input }) => ({ x: input.id }))
-      .wrapper(({ children, queries, input }) => (
+      .wrapper(({ children, queries, location }) => (
         <div id="wrapper">
-          <div id="input">{input?.id}</div>
-          <div id="query-status">{queries?.map((q) => q.status).join(', ') || 'undefined'}</div>
+          <div id="query-status">{queries.map((q) => q.status).join(', ') || 'undefined'}</div>
           {children}
         </div>
       ))
@@ -187,13 +223,11 @@ describe('component', () => {
         "/
           #page:
             #wrapper:
-              #input: zxc
               #query-status: pending
               #loading: ...
 
           #page:
             #wrapper:
-              #input: zxc
               #query-status: success
               #component: x=zxc
         "
@@ -206,48 +240,8 @@ describe('component', () => {
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "#page:
         #wrapper:
-          #input: zxc
           #query-status: success
           #component: x=zxc
-      "
-    `)
-  })
-
-  it('outer can block query', async () => {
-    const component = root
-      .lets('component', 'stats')
-      .combinedInput<{ id: string }>()
-      .loader(({ input }) => ({ x: input.id }))
-      .outer(({ children, input }) => {
-        if (!input || input.id.length > 2) {
-          return <div id="outer">you shell not pass</div>
-        }
-        return children
-      })
-      .component(({ data }) => <div id="component">x={data.x}</div>)
-    const page = root.lets('page', 'home', '/').page(() => (
-      <div id="page">
-        <component.X input={{ id: 'zxc' }} />
-      </div>
-    ))
-
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, component, page] })
-    await render(page.route(), async ({ waitContent, tale }) => {
-      await waitContent('#outer')
-      expect(await tale()).toMatchInlineSnapshot(`
-        "/
-          #page:
-            #outer: you shell not pass
-        "
-      `)
-    })
-    expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "
-      "
-    `)
-    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page:
-        #outer: you shell not pass
       "
     `)
   })

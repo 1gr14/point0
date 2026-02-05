@@ -356,6 +356,114 @@ describe('page', () => {
     `)
   })
 
+  it('query with injected query', async () => {
+    const query = root
+      .lets('query', 'test')
+      .input(z.object({ y: z.number() }))
+      .loader(({ input }) => ({ x: input.y * 2 }))
+      .query()
+    const page = root
+      .lets('page', 'home', '/:y')
+      .loader(() => ({ z: 3 }))
+      .query(query, ({ location }) => ({ y: +location.params.y }))
+      // .query(query)
+      .page(({ data, location, queries }) => (
+        <div id="page">
+          x={queries[1].data.x} y={location.params.y} z={data.z}
+        </div>
+      ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+    await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/123
+          #loading: ...
+
+          #page: x=246 y=123 z=3
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "query.test (client) < {"y":123}
+      page.home (client) < {"y":"123"}
+      "
+    `)
+    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+      "#page: x=246 y=123 z=3
+      "
+    `)
+  })
+
+  it('mapper standalone', async () => {
+    const page = root
+      .lets('page', 'home', '/:y')
+      .mapper(({ data }) => {
+        expect(Object.keys(data).length).toBe(0)
+        return { data, x: 1 }
+      })
+      .page(({ data }) => <div id="page">x={data.x}</div>)
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
+    await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/123
+          #page: x=1
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      "
+    `)
+    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+      "#page: x=1
+      "
+    `)
+  })
+
+  it('mapper with qureies', async () => {
+    const query = root
+      .lets('query', 'test')
+      .input(z.object({ y: z.number() }))
+      .loader(({ input }) => ({ x: input.y * 2 }))
+      .query()
+    const page = root
+      .lets('page', 'home', '/:y')
+      .loader(() => ({ z: 3 }))
+      .query(query, ({ location }) => ({ y: +location.params.y }))
+      .mapper(({ data, queries, location }) => {
+        return { x: queries[1].data.x, y: location.params.y, z: data.z }
+      })
+      .page(({ data }) => (
+        <div id="page">
+          x={data.x} y={data.y} z={data.z}
+        </div>
+      ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+    await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/123
+          #loading: ...
+
+          #page: x=246 y=123 z=3
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "query.test (client) < {"y":123}
+      page.home (client) < {"y":"123"}
+      "
+    `)
+    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+      "#page: x=246 y=123 z=3
+      "
+    `)
+  })
+
   it('many wrappers and with', async () => {
     const page = root
       .lets('page', 'home', '/:id')

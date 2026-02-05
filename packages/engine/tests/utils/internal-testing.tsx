@@ -1,6 +1,6 @@
 import type { AnyNiceRequestableEndPoint, AppComponent, EndPoint, PointsDefinition } from '@point0/core'
 import { queryClient as point0QueryClient, QueryClientProvider } from '@point0/core'
-import { Router } from '@point0/wouter'
+import { Router, RouterRoutes } from '@point0/wouter'
 import { Window } from 'happy-dom'
 import assert from 'node:assert'
 import nodePath from 'node:path'
@@ -232,17 +232,31 @@ type FetchSsr = <T extends AnyNiceRequestableEndPoint>(
 
 export const createTestThings = async ({
   points,
-  app = () => (
-    <QueryClientProvider>
-      <Router />
-    </QueryClientProvider>
-  ),
+  wrapper,
+  app: appProvided,
   globals = getFakeBrowserGlobals(),
 }: {
+  wrapper?: React.ComponentType<{ children: React.ReactNode }>
   points: PointsDefinition
   app?: AppComponent
   globals?: Record<string, any>
 }) => {
+  const Wrapper = wrapper ?? undefined
+  const app =
+    appProvided ??
+    (() => (
+      <QueryClientProvider>
+        {Wrapper ? (
+          <Router>
+            <Wrapper>
+              <RouterRoutes />
+            </Wrapper>
+          </Router>
+        ) : (
+          <Router />
+        )}
+      </QueryClientProvider>
+    ))
   const fetchRecorder = FetchRecorder.create({
     limit: 100,
     enabled: true,

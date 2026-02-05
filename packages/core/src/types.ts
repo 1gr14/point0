@@ -2411,6 +2411,7 @@ export type NicePageStagePoint<
   | 'error'
   | 'loading'
   | 'wrapper'
+  | 'layout'
   | 'with'
   // | 'outer'
   | 'input'

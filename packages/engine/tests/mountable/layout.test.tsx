@@ -140,7 +140,7 @@ describe('layout', () => {
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#error: test error
+      "#loading: ...
       "
     `)
   })
@@ -195,11 +195,11 @@ describe('layout', () => {
           {children}
         </div>
       ))
-    const page = layout.lets('page', 'home', '/:sn').page(({ input }) => {
+    const page = layout.lets('page', 'home', '/:sn').page(({ location }) => {
       const value = layout.useValue()
       return (
         <div id="page">
-          x={value.x} sn={input.sn}
+          x={value.x} sn={location.params.sn}
         </div>
       )
     })
@@ -233,10 +233,10 @@ describe('layout', () => {
     const layout = root
       .lets('layout', 'app', '/:id')
       .loader(({ input }) => ({ x: input.id }))
-      .wrapper(({ children, queries, input }) => (
+      .wrapper(({ children, queries, location }) => (
         <div id="wrapper">
-          <div id="input">{input?.id}</div>
-          <div id="query-status">{queries?.map((q) => q.status).join(', ') || 'undefined'}</div>
+          <div id="input">{location.params.id}</div>
+          <div id="query-status">{queries.map((q) => q.status).join(', ') || 'undefined'}</div>
           {children}
         </div>
       ))
@@ -248,7 +248,6 @@ describe('layout', () => {
       ))
     const page = layout.lets('page', 'home', '/page').page(() => <div id="page">x=nothing</div>)
 
-    // TODO:ASAP here is error place, why wrapper in wrapper?
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, layout, page] })
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
@@ -283,39 +282,42 @@ describe('layout', () => {
     `)
   })
 
-  it('outer can block query', async () => {
+  it('defines layout in page', async () => {
     const layout = root
-      .lets('layout', 'app', '/:id')
-      .loader(({ input }) => ({ x: input.id }))
-      .outer(({ children, input }) => {
-        if (!input || input.id.length > 2) {
-          return <div id="outer">you shell not pass</div>
-        }
-        return children
-      })
+      .lets('layout', 'app')
+      .loader(() => ({ x: 1 }))
       .layout(({ data, children }) => (
         <div id="layout">
-          <div id="layout-input">x={data.x}</div>
+          <div id="layout-content">x={data.x}</div>
           {children}
         </div>
       ))
-    const page = layout.lets('page', 'home', '/page').page(() => <div id="page">x=nothing</div>)
+    const page = root
+      .lets('page', 'home')
+      .layout(layout)
+      .page(() => <div id="page">x={layout.getValue().x}</div>)
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, layout, page] })
-    await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
-      await waitContent('#outer')
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/zxc/page
-          #outer: you shell not pass
+        "/home
+          #loading: ...
+
+          #layout:
+            #layout-content: x=1
+            #page: x=1
         "
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "
+      "layout.app (client) < {}
       "
     `)
-    expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
-      "#outer: you shell not pass
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "#layout:
+        #layout-content: x=1
+        #page: x=1
       "
     `)
   })
