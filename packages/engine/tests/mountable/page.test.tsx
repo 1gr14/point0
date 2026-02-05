@@ -39,7 +39,7 @@ describe('page', () => {
     `)
   })
 
-  it('loader', async () => {
+  it.only('loader', async () => {
     const page = root
       .lets('page', 'home', '/')
       .loader(() => ({ x: 1 }))

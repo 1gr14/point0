@@ -8168,81 +8168,16 @@ export class Point0<
       prev,
     } = props
 
-    // const { ErrorComponent, LoadingComponent } = React.useMemo(() => {
-    //   const { errorComponent, loadingComponent } = (() => {
-    //     let errorComponent: ErrorComponentType<any> | undefined = undefined
-    //     let loadingComponent: LoadingComponentType<any> | undefined = undefined
-    //     for (const action of mountActions) {
-    //       if (Point0._isMountActionCausesWrapping(action)) {
-    //         return { errorComponent, loadingComponent }
-    //       }
-    //       if (action.type === 'errorComponent') {
-    //         errorComponent = action.Component
-    //       }
-    //       if (action.type === 'loadingComponent') {
-    //         loadingComponent = action.Component
-    //       }
-    //     }
-    //     return { errorComponent, loadingComponent }
-    //   })()
-    //   return {
-    //     LoadingComponent: loadingComponent
-    //       ? Point0._createBoundLoadingComponent(loadingComponent, variant)
-    //       : (PrevLoadingComponent ?? Point0._createBoundLoadingComponent(this._getLoadingComponent(), variant)),
-    //     ErrorComponent: errorComponent
-    //       ? Point0._createBoundErrorComponent(errorComponent, variant)
-    //       : (PrevErrorComponent ?? Point0._createBoundErrorComponent(this._getErrorComponent(), variant)),
-    //   }
-    // }, [])
-
-    // const [mountState, setMountState] = React.useState<MountableState<any, any, any, any, any>>(() => ({
-    //   location,
-    //   status: 'success',
-    //   error: undefined,
-    //   loading: false,
-    //   input: inputRaw,
-    //   props: outerProps,
-    //   queries: [],
-    //   data: undefined,
-    //   LoadingComponent,
-    //   ErrorComponent,
-    // }))
-
-    // const staticState = {
-    //   location,
-    //   // status: 'success',
-    //   // error: undefined,
-    //   // loading: false,
-    //   input: inputRaw,
-    //   props: prevInnerProps,
-    //   queries: prevQueries,
-    //   data: undefined,
-    //   LoadingComponent:
-    //     PrevLoadingComponent ??
-    //     React.useMemo(() => Point0._createBoundLoadingComponent(this._getLoadingComponent(), variant), [variant]),
-    //   ErrorComponent:
-    //     PrevErrorComponent ??
-    //     React.useMemo(() => Point0._createBoundErrorComponent(this._getErrorComponent(), variant), [variant]),
-    // }
-    // const dynamicState: Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'> = {
-    //   status: 'success',
-    //   error: undefined,
-    //   loading: false,
-    // }
-    // const state = {
-    //   ...staticState,
-    //   ...dynamicState,
-    // } as MountableState<any, any, any, any, any>
-
     const variant = this._getDestinationComponentVariant() ?? 'page'
 
     const isFirstRender = React.useRef(true)
-    const doOnFirstRenderElseUseEffect = (fn: () => void, deps: any[] = []) => {
+    const useEffectOnClientOrCallOnServerOnFirstRender = (fn: () => void, deps: any[] = []) => {
+      React.useEffect(() => {
+        fn()
+      }, deps)
       if (isFirstRender.current) {
         fn()
         isFirstRender.current = false
-      } else {
-        React.useEffect(fn, deps)
       }
     }
 
@@ -8298,6 +8233,14 @@ export class Point0<
         const prevQueries: Queries = []
 
         const allQueriesState = (() => {
+          if (allQueries.length === 0) {
+            return {
+              status: 'success',
+              error: undefined,
+              loading: false,
+              // firstData: undefined,
+            }
+          }
           const error = allQueries.find((query) => query.error)?.error
           const loading = allQueries.some((query) => query.status === 'pending')
           // const firstData = allQueries.at(0)?.data
@@ -8309,7 +8252,8 @@ export class Point0<
               // firstData: undefined,
             }
           }
-          if (loading) {
+          const firstData = allQueries.at(0)?.data
+          if (loading || !firstData) {
             return {
               status: 'loading',
               error: undefined,
@@ -8350,6 +8294,8 @@ export class Point0<
         }
       }
     })()
+
+    console.log('allQueriesState', allQueriesState, allQueries.length)
 
     const mountState = {
       ...allQueriesState,
@@ -8457,7 +8403,7 @@ export class Point0<
           const queryFnResult = action.fn(mountState)
           const queries = Array.isArray(queryFnResult) ? queryFnResult : [queryFnResult]
           // mountState.queries = [...mountState.queries, ...(Array.isArray(queryResult) ? queryResult : [queryResult])]
-          doOnFirstRenderElseUseEffect(() => {
+          useEffectOnClientOrCallOnServerOnFirstRender(() => {
             setQueriesAfterIndexToAllQueries(queries, queryIndex)
           }, queries)
           return React.createElement(React.Fragment, {
@@ -8473,7 +8419,7 @@ export class Point0<
               ? this.useInfiniteQuery(inputRaw as never)
               : this.useQuery(inputRaw as never)
           const queries = [queryResult]
-          doOnFirstRenderElseUseEffect(() => {
+          useEffectOnClientOrCallOnServerOnFirstRender(() => {
             setQueriesAfterIndexToAllQueries(queries, queryIndex)
           }, queries)
           return React.createElement(React.Fragment, {
