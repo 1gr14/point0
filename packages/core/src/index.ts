@@ -8144,28 +8144,30 @@ export class Point0<
     extraProps: (mountableState: MountableState<any, any, any, any, any>) => Record<string, any>
 
     level?: number
-    prevInnerProps?: Props
-    prevQueries?: Queries
-    mountActions?: MountAction[]
-    PrevLoadingComponent?: React.ComponentType<any>
-    PrevErrorComponent?: React.ComponentType<{ error: Error }>
+    queryIndex?: number
     location?: AnyLocation
+    prev?: {
+      mountActions: MountAction[]
+      innerProps: Props
+      queries: Queries
+      allQueries: Queries
+      setQueriesAfterIndexToAllQueries: (queries: UseQueryOrInfiniteQueryResult[], index: number) => void
+      data: Data | undefined
+      allQueriesState: Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'>
+      LoadingComponent: React.ComponentType<any>
+      ErrorComponent: React.ComponentType<{ error: Error }>
+    }
   }): Exclude<React.ReactNode, Promise<any>> => {
     const {
       inputRaw,
       outerProps,
       mountComponent,
       extraProps,
-      level = 0,
-      mountActions = this._mountActions,
-      PrevLoadingComponent,
-      PrevErrorComponent,
       location = useLocation(),
-      prevInnerProps = {},
-      prevQueries = [],
+      level = 0,
+      queryIndex = 0,
+      prev,
     } = props
-
-    const variant = this._getDestinationComponentVariant() ?? 'page'
 
     // const { ErrorComponent, LoadingComponent } = React.useMemo(() => {
     //   const { errorComponent, loadingComponent } = (() => {
@@ -8206,72 +8208,203 @@ export class Point0<
     //   LoadingComponent,
     //   ErrorComponent,
     // }))
-    const staticState = {
+
+    // const staticState = {
+    //   location,
+    //   // status: 'success',
+    //   // error: undefined,
+    //   // loading: false,
+    //   input: inputRaw,
+    //   props: prevInnerProps,
+    //   queries: prevQueries,
+    //   data: undefined,
+    //   LoadingComponent:
+    //     PrevLoadingComponent ??
+    //     React.useMemo(() => Point0._createBoundLoadingComponent(this._getLoadingComponent(), variant), [variant]),
+    //   ErrorComponent:
+    //     PrevErrorComponent ??
+    //     React.useMemo(() => Point0._createBoundErrorComponent(this._getErrorComponent(), variant), [variant]),
+    // }
+    // const dynamicState: Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'> = {
+    //   status: 'success',
+    //   error: undefined,
+    //   loading: false,
+    // }
+    // const state = {
+    //   ...staticState,
+    //   ...dynamicState,
+    // } as MountableState<any, any, any, any, any>
+
+    const variant = this._getDestinationComponentVariant() ?? 'page'
+
+    const isFirstRender = React.useRef(true)
+    const doOnFirstRenderElseUseEffect = (fn: () => void, deps: any[] = []) => {
+      if (isFirstRender.current) {
+        fn()
+        isFirstRender.current = false
+      } else {
+        React.useEffect(fn, deps)
+      }
+    }
+
+    const {
+      allQueries,
+      setQueriesAfterIndexToAllQueries,
+      allQueriesState,
+      prevMountActions,
+      PrevLoadingComponent,
+      PrevErrorComponent,
+      prevInnerProps,
+      prevQueries,
+      prevData,
+    } = (() => {
+      if (!prev) {
+        const [allQueries, setAllQueries] = React.useState<Queries>([])
+        const setQueriesAfterIndexToAllQueries = (queries: UseQueryOrInfiniteQueryResult[], index: number) => {
+          setAllQueries((prevQueries) => {
+            const newQueries = [...prevQueries]
+            for (let i = index; i < queries.length; i++) {
+              newQueries[i + queryIndex] = queries[i]
+            }
+            return newQueries
+          })
+        }
+
+        const _loadingComponent =
+          {
+            page: this._pageLoadingComponent,
+            component: this._componentLoadingComponent,
+            layout: this._layoutLoadingComponent,
+          }[variant] ?? Point0.DefaultLoadingComponent
+        const PrevLoadingComponent = React.useCallback(() => {
+          return React.createElement(_loadingComponent, {
+            type: variant,
+          })
+        }, [])
+        const _errorComponent =
+          {
+            page: this._pageErrorComponent,
+            component: this._componentErrorComponent,
+            layout: this._layoutErrorComponent,
+          }[variant] ?? Point0.DefaultErrorComponent
+        const PrevErrorComponent = React.useCallback(({ error }: { error: Error }) => {
+          return React.createElement(_errorComponent, {
+            type: variant,
+            error: Error0.from(error),
+          })
+        }, [])
+
+        const prevInnerProps = {}
+
+        const prevQueries: Queries = []
+
+        const allQueriesState = (() => {
+          const error = allQueries.find((query) => query.error)?.error
+          const loading = allQueries.some((query) => query.status === 'pending')
+          // const firstData = allQueries.at(0)?.data
+          if (error) {
+            return {
+              status: 'error',
+              error: Error0.from(error),
+              loading: false,
+              // firstData: undefined,
+            }
+          }
+          if (loading) {
+            return {
+              status: 'loading',
+              error: undefined,
+              loading: true,
+              // firstData: undefined,
+            }
+          }
+          return {
+            status: 'success',
+            error: undefined,
+            loading: false,
+            // firstData,
+          }
+        })() as Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'>
+
+        return {
+          allQueries,
+          allQueriesState,
+          setQueriesAfterIndexToAllQueries,
+          prevMountActions: this._mountActions,
+          PrevLoadingComponent,
+          PrevErrorComponent,
+          prevInnerProps,
+          prevQueries,
+          prevData: allQueries.at(0)?.data,
+        }
+      } else {
+        return {
+          allQueries: prev.allQueries,
+          allQueriesState: prev.allQueriesState,
+          setQueriesAfterIndexToAllQueries: prev.setQueriesAfterIndexToAllQueries,
+          prevMountActions: prev.mountActions,
+          PrevLoadingComponent: prev.LoadingComponent,
+          PrevErrorComponent: prev.ErrorComponent,
+          prevInnerProps: prev.innerProps,
+          prevQueries: prev.queries,
+          prevData: prev.data,
+        }
+      }
+    })()
+
+    const mountState = {
+      ...allQueriesState,
       location,
-      // status: 'success',
-      // error: undefined,
-      // loading: false,
       input: inputRaw,
       props: prevInnerProps,
       queries: prevQueries,
-      data: undefined,
-      LoadingComponent:
-        PrevLoadingComponent ??
-        React.useMemo(() => Point0._createBoundLoadingComponent(this._getLoadingComponent(), variant), [variant]),
-      ErrorComponent:
-        PrevErrorComponent ??
-        React.useMemo(() => Point0._createBoundErrorComponent(this._getErrorComponent(), variant), [variant]),
-    }
-    const dynamicState: Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'> = {
-      status: 'success',
-      error: undefined,
-      loading: false,
-    }
-    const state = {
-      ...staticState,
-      ...dynamicState,
+      data: prevData,
+      LoadingComponent: PrevLoadingComponent,
+      ErrorComponent: PrevErrorComponent,
     } as MountableState<any, any, any, any, any>
 
     // use memo loop until breaking action and return thin breaking action, then outside loop operate with it
+    // dynamic state calculates on first level and sending to next levels, queries come to first level also to allQueries
 
-    const currentMountActions = [...mountActions]
+    const currentMountActions = [...prevMountActions]
     for (const action of currentMountActions) {
       currentMountActions.shift()
+
       // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
       switch (action.type) {
         case 'errorComponent': {
-          staticState.ErrorComponent = React.useMemo(
+          mountState.ErrorComponent = React.useMemo(
             () => Point0._createBoundErrorComponent(action.Component, variant),
             [],
           )
           continue
         }
         case 'loadingComponent': {
-          staticState.LoadingComponent = React.useMemo(
+          mountState.LoadingComponent = React.useMemo(
             () => Point0._createBoundLoadingComponent(action.Component, variant),
             [],
           )
           continue
         }
         case 'selfProps': {
-          staticState.props = { ...staticState.props, ...outerProps }
+          mountState.props = { ...mountState.props, ...outerProps }
           continue
         }
         case 'head': {
           if (this.type === 'page' || this.type === 'layout') {
-            const headFnResult = action.fn(state)
+            const headFnResult = action.fn(mountState)
             const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
             useHead(headFnResultResolvable)
           }
           continue
         }
         case 'mapper': {
-          if (dynamicState.status === 'success') {
-            staticState.data = action.fn({
-              location: staticState.location,
-              props: staticState.props,
-              queries: staticState.queries,
-              data: staticState.data,
+          if (mountState.status === 'success') {
+            mountState.data = action.fn({
+              location: mountState.location,
+              props: mountState.props,
+              queries: mountState.queries,
+              data: mountState.data,
             })
           }
           continue
@@ -8280,61 +8413,59 @@ export class Point0<
 
       // below causes wrapping
 
-      const _nextMountableProps = {
+      const _nextMountableProps: Parameters<typeof this._getMountable>[0] = {
         inputRaw,
         outerProps,
         mountComponent,
         extraProps,
         level: level + 1,
-        mountActions: currentMountActions,
+        queryIndex,
         location,
-        PrevErrorComponent: staticState.ErrorComponent,
-        PrevLoadingComponent: staticState.LoadingComponent,
-        prevQueries: staticState.queries,
-        prevInnerProps: staticState.props,
+        prev: {
+          allQueriesState,
+          LoadingComponent: mountState.LoadingComponent,
+          ErrorComponent: mountState.ErrorComponent,
+          mountActions: currentMountActions,
+          innerProps: mountState.props,
+          queries: mountState.queries,
+          allQueries,
+          setQueriesAfterIndexToAllQueries,
+          data: mountState.data,
+        },
       }
-
-      // const WC = React.useCallback(() => {
-      //   return this._getMountable({
-      //     inputRaw,
-      //     outerProps,
-      //     mountComponent,
-      //     extraProps,
-      //     level: level + 1,
-      //     mountActions: currentMountActions,
-      //     location,
-      //     PrevErrorComponent: staticState.ErrorComponent,
-      //     PrevLoadingComponent: staticState.LoadingComponent,
-      //     prevQueries: staticState.queries,
-      //     prevInnerProps: staticState.props,
-      //   })
-      // }, [])
 
       switch (action.type) {
         case 'wrapper': {
           return React.createElement(action.Component, {
-            ...state,
+            ...mountState,
             children: React.createElement(this._getMountable, _nextMountableProps),
           })
         }
         case 'with': {
-          const result = action.fn(state)
+          const result = action.fn(mountState)
           if (result === 'loading') {
-            return React.createElement(staticState.LoadingComponent)
+            return React.createElement(mountState.LoadingComponent)
           } else if (result instanceof Error) {
-            return React.createElement(staticState.ErrorComponent, {
+            return React.createElement(mountState.ErrorComponent, {
               error: result,
             })
           } else {
-            staticState.props = { ...staticState.props, ...(result || {}) }
+            mountState.props = { ...mountState.props, ...(result || {}) }
             return React.createElement(this._getMountable, _nextMountableProps)
           }
         }
         case 'query': {
-          const queryResult = action.fn(state)
-          staticState.queries = [...staticState.queries, ...(Array.isArray(queryResult) ? queryResult : [queryResult])]
+          const queryFnResult = action.fn(mountState)
+          const queries = Array.isArray(queryFnResult) ? queryFnResult : [queryFnResult]
+          // mountState.queries = [...mountState.queries, ...(Array.isArray(queryResult) ? queryResult : [queryResult])]
+          doOnFirstRenderElseUseEffect(() => {
+            setQueriesAfterIndexToAllQueries(queries, queryIndex)
+          }, queries)
           return React.createElement(React.Fragment, {
-            children: React.createElement(this._getMountable, _nextMountableProps),
+            children: React.createElement(this._getMountable, {
+              ..._nextMountableProps,
+              queryIndex: queryIndex + queries.length,
+            }),
           })
         }
         case 'selfQuery': {
@@ -8342,9 +8473,15 @@ export class Point0<
             this._queryResultType === 'infiniteQuery'
               ? this.useInfiniteQuery(inputRaw as never)
               : this.useQuery(inputRaw as never)
-          staticState.queries = [...staticState.queries, queryResult]
+          const queries = [queryResult]
+          doOnFirstRenderElseUseEffect(() => {
+            setQueriesAfterIndexToAllQueries(queries, queryIndex)
+          }, queries)
           return React.createElement(React.Fragment, {
-            children: React.createElement(this._getMountable, _nextMountableProps),
+            children: React.createElement(this._getMountable, {
+              ..._nextMountableProps,
+              queryIndex: queryIndex + 1,
+            }),
           })
         }
       }
@@ -8355,9 +8492,19 @@ export class Point0<
 
     // so we come to the end and can return mount component
 
+    if (mountState.status === 'error') {
+      return React.createElement(mountState.ErrorComponent, {
+        error: mountState.error,
+      })
+    }
+
+    if (mountState.status === 'pending') {
+      return React.createElement(mountState.LoadingComponent)
+    }
+
     return React.createElement(mountComponent as never, {
-      ...state,
-      ...extraProps(state),
+      ...mountState,
+      ...extraProps(mountState),
     })
   }
 
