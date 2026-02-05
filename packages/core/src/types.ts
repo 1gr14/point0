@@ -16,7 +16,7 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import type { Point0 } from './index.js'
-import type { Props, Queries } from './mountable.js'
+import type { Props, QueriesDefinitions } from './mountable.js'
 import type { PointsManager } from './points-manager.js'
 import type { Request0 } from './request0.js'
 import type { ResponseEffects, ResponseEffectsSetHelper } from './response0.js'
@@ -62,6 +62,8 @@ export type UndefinedCtxExposedKeys = undefined
 
 export type QueryResultType = 'query' | 'infiniteQuery'
 export type UndefinedQueryResultType = undefined
+export type QueryResultTypeOrNever<TQueryResultType extends QueryResultType | UndefinedQueryResultType> =
+  TQueryResultType extends QueryResultType ? TQueryResultType : never
 
 // export type QueryKey = readonly [string, ...string[]]
 export type QueryKey = readonly [
@@ -90,7 +92,7 @@ export type Infer<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = {
   PointType: TPointType
   LetsEndPointType: TLetsEndPointType
@@ -115,7 +117,7 @@ export type Infer<
   OuterProps: TOuterProps
   InnerProps: TInnerProps
   QueryResultType: TQueryResultType
-  Queries: TQueries
+  Queries: TQueriesDefinitions
   UseQueryOptions: UsePointQueryOptions<
     TServerInputSchema,
     TClientInputSchema,
@@ -205,7 +207,7 @@ export type AnyPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
-  TQueries extends Queries = any,
+  TQueriesDefinitions extends QueriesDefinitions = any,
 > = Point0<
   TPointType,
   TLetsEndPointType,
@@ -221,7 +223,7 @@ export type AnyPoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueries
+  TQueriesDefinitions
 >
 
 export type RootPoint<
@@ -237,7 +239,7 @@ export type RootPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
-  TQueries extends Queries = any,
+  TQueriesDefinitions extends QueriesDefinitions = any,
 > = AnyPoint<
   'root',
   UndefinedEndPointType,
@@ -253,7 +255,7 @@ export type RootPoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueries
+  TQueriesDefinitions
 >
 
 export type PluginPoint<
@@ -269,7 +271,7 @@ export type PluginPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
-  TQueries extends Queries = any,
+  TQueriesDefinitions extends QueriesDefinitions = any,
 > = AnyPoint<
   'plugin',
   UndefinedEndPointType,
@@ -285,7 +287,7 @@ export type PluginPoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueries
+  TQueriesDefinitions
 >
 
 export type BasePoint<
@@ -301,7 +303,7 @@ export type BasePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
-  TQueries extends Queries = any,
+  TQueriesDefinitions extends QueriesDefinitions = any,
 > = AnyPoint<
   'base',
   UndefinedEndPointType,
@@ -317,7 +319,7 @@ export type BasePoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueries
+  TQueriesDefinitions
 >
 
 export type PagePoint<
@@ -333,7 +335,7 @@ export type PagePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
-  TQueries extends Queries = any,
+  TQueriesDefinitions extends QueriesDefinitions = any,
 > = AnyPoint<
   'page',
   UndefinedEndPointType,
@@ -349,7 +351,7 @@ export type PagePoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueries
+  TQueriesDefinitions
 >
 
 export type LayoutPoint<
@@ -365,7 +367,7 @@ export type LayoutPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
-  TQueries extends Queries = any,
+  TQueriesDefinitions extends QueriesDefinitions = any,
 > = AnyPoint<
   'layout',
   UndefinedEndPointType,
@@ -381,7 +383,7 @@ export type LayoutPoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueries
+  TQueriesDefinitions
 >
 
 export type EndPoint<
@@ -398,7 +400,7 @@ export type EndPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
-  TQueries extends Queries = any,
+  TQueriesDefinitions extends QueriesDefinitions = any,
 > = AnyPoint<
   TPointType,
   UndefinedEndPointType,
@@ -414,7 +416,7 @@ export type EndPoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueries
+  TQueriesDefinitions
 >
 
 // input
@@ -859,6 +861,14 @@ export type FinalLoaderData<
   : TServerLoaderOutput extends Data
     ? TServerLoaderOutput
     : undefined
+export type FinalLoaderDataOrNever<
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+> = TClientLoaderOutput extends Data
+  ? TClientLoaderOutput
+  : TServerLoaderOutput extends Data
+    ? TServerLoaderOutput
+    : never
 export type FinalLoaderOutput<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1259,7 +1269,7 @@ export type UsePointQueryOptions<
 //   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
 //   TOuterProps extends Props,
-//   TQueries extends Queries,
+//   TQueriesDefinitions extends QueriesDefinitions,
 // > = SuccessComponentProps<
 //   TClientInputSchema,
 //   TOuterProps,
@@ -1267,7 +1277,7 @@ export type UsePointQueryOptions<
 //   TServerLoaderOutput,
 //   TClientLoaderOutput,
 //   TMapperOutput,
-//   TQueries
+//   TQueriesDefinitions
 // > & { location: ExactLocation<CurrentRouteDefinition<TRouteDefinition>> }
 // export type PageSuccessComponentType<
 //   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
@@ -1277,7 +1287,7 @@ export type UsePointQueryOptions<
 //   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
 //   TOuterProps extends Props,
-//   TQueries extends Queries,
+//   TQueriesDefinitions extends QueriesDefinitions,
 // > = React.ComponentType<
 //   PageSuccessComponentProps<
 //     TQueryResultType,
@@ -1287,7 +1297,7 @@ export type UsePointQueryOptions<
 //     TRouteDefinition,
 //     TClientInputSchema,
 //     TOuterProps,
-//     TQueries
+//     TQueriesDefinitions
 //   >
 // >
 // export type UndefinedSuccessPageComponent = undefined
@@ -1300,7 +1310,7 @@ export type UsePointQueryOptions<
 //   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
 //   TOuterProps extends Props,
-//   TQueries extends Queries,
+//   TQueriesDefinitions extends QueriesDefinitions,
 // > = SuccessComponentProps<
 //   TClientInputSchema,
 //   TOuterProps,
@@ -1308,7 +1318,7 @@ export type UsePointQueryOptions<
 //   TServerLoaderOutput,
 //   TClientLoaderOutput,
 //   TMapperOutput,
-//   TQueries
+//   TQueriesDefinitions
 // > & {
 //   location:
 //     | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
@@ -1322,7 +1332,7 @@ export type UsePointQueryOptions<
 //   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
 //   TOuterProps extends Props,
-//   TQueries extends Queries,
+//   TQueriesDefinitions extends QueriesDefinitions,
 // > = React.ComponentType<
 //   LayoutSuccessComponentProps<
 //     TQueryResultType,
@@ -1332,7 +1342,7 @@ export type UsePointQueryOptions<
 //     TRouteDefinition,
 //     TClientInputSchema,
 //     TOuterProps,
-//     TQueries
+//     TQueriesDefinitions
 //   >
 // >
 // export type UndefinedLayoutSuccessComponent = undefined
@@ -1344,7 +1354,7 @@ export type UsePointQueryOptions<
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
 //   TOuterProps extends Props,
-//   TQueries extends Queries,
+//   TQueriesDefinitions extends QueriesDefinitions,
 // > = SuccessComponentProps<
 //   TClientInputSchema,
 //   TOuterProps,
@@ -1352,7 +1362,7 @@ export type UsePointQueryOptions<
 //   TServerLoaderOutput,
 //   TClientLoaderOutput,
 //   TMapperOutput,
-//   TQueries
+//   TQueriesDefinitions
 // >
 // export type ComponentSuccessComponentType<
 //   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
@@ -1361,7 +1371,7 @@ export type UsePointQueryOptions<
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 //   TInputSchema extends InputSchema | UndefinedInputSchema,
 //   TOuterProps extends Props,
-//   TQueries extends Queries,
+//   TQueriesDefinitions extends QueriesDefinitions,
 // > = React.ComponentType<
 //   ComponentSuccessComponentProps<
 //     TQueryResultType,
@@ -1370,7 +1380,7 @@ export type UsePointQueryOptions<
 //     TMapperOutput,
 //     TInputSchema,
 //     TOuterProps,
-//     TQueries
+//     TQueriesDefinitions
 //   >
 // >
 // export type UndefinedComponentSuccessComponent = undefined
@@ -2141,7 +2151,7 @@ export type NiceRootStagePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -2158,7 +2168,7 @@ export type NiceRootStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   | 'root'
   | 'use'
@@ -2220,7 +2230,7 @@ export type NicePluginStagePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -2237,7 +2247,7 @@ export type NicePluginStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   | 'plugin'
   | 'use'
@@ -2302,7 +2312,7 @@ export type NiceBaseStagePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -2319,7 +2329,7 @@ export type NiceBaseStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   | 'base'
   | 'use'
@@ -2376,7 +2386,7 @@ export type NicePageStagePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -2393,7 +2403,7 @@ export type NicePageStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   | 'page'
   | 'use'
@@ -2440,7 +2450,7 @@ export type NiceComponentStagePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -2457,7 +2467,7 @@ export type NiceComponentStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   | 'component'
   | 'use'
@@ -2499,7 +2509,7 @@ export type NiceQueryStagePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -2516,7 +2526,7 @@ export type NiceQueryStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   | 'query'
   | 'use'
@@ -2548,7 +2558,7 @@ export type NiceInfiniteQueryStagePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -2565,7 +2575,7 @@ export type NiceInfiniteQueryStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   | 'infiniteQuery'
   | 'use'
@@ -2598,7 +2608,7 @@ export type NiceMutationStagePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -2615,7 +2625,7 @@ export type NiceMutationStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   | 'mutation'
   | 'use'
@@ -2647,7 +2657,7 @@ export type NiceLayoutStagePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -2664,7 +2674,7 @@ export type NiceLayoutStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   | 'layout'
   | 'use'
@@ -2718,7 +2728,7 @@ export type NiceProviderStagePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -2735,7 +2745,7 @@ export type NiceProviderStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   | 'provider'
   | 'use'
@@ -2776,7 +2786,7 @@ export type NiceStagePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = TLetsEndPointType extends 'root'
   ? NiceRootStagePoint<
       TPointType,
@@ -2793,7 +2803,7 @@ export type NiceStagePoint<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueries
+      TQueriesDefinitions
     >
   : TLetsEndPointType extends 'plugin'
     ? NicePluginStagePoint<
@@ -2811,7 +2821,7 @@ export type NiceStagePoint<
         TQueryResultType,
         TOuterProps,
         TInnerProps,
-        TQueries
+        TQueriesDefinitions
       >
     : TLetsEndPointType extends 'base'
       ? NiceBaseStagePoint<
@@ -2829,7 +2839,7 @@ export type NiceStagePoint<
           TQueryResultType,
           TOuterProps,
           TInnerProps,
-          TQueries
+          TQueriesDefinitions
         >
       : TLetsEndPointType extends 'page'
         ? NicePageStagePoint<
@@ -2847,7 +2857,7 @@ export type NiceStagePoint<
             TQueryResultType,
             TOuterProps,
             TInnerProps,
-            TQueries
+            TQueriesDefinitions
           >
         : TLetsEndPointType extends 'component'
           ? NiceComponentStagePoint<
@@ -2865,7 +2875,7 @@ export type NiceStagePoint<
               TQueryResultType,
               TOuterProps,
               TInnerProps,
-              TQueries
+              TQueriesDefinitions
             >
           : TLetsEndPointType extends 'query'
             ? NiceQueryStagePoint<
@@ -2883,7 +2893,7 @@ export type NiceStagePoint<
                 TQueryResultType,
                 TOuterProps,
                 TInnerProps,
-                TQueries
+                TQueriesDefinitions
               >
             : TLetsEndPointType extends 'infiniteQuery'
               ? NiceInfiniteQueryStagePoint<
@@ -2901,7 +2911,7 @@ export type NiceStagePoint<
                   TQueryResultType,
                   TOuterProps,
                   TInnerProps,
-                  TQueries
+                  TQueriesDefinitions
                 >
               : TLetsEndPointType extends 'mutation'
                 ? NiceMutationStagePoint<
@@ -2919,7 +2929,7 @@ export type NiceStagePoint<
                     TQueryResultType,
                     TOuterProps,
                     TInnerProps,
-                    TQueries
+                    TQueriesDefinitions
                   >
                 : TLetsEndPointType extends 'layout'
                   ? NiceLayoutStagePoint<
@@ -2937,7 +2947,7 @@ export type NiceStagePoint<
                       TQueryResultType,
                       TOuterProps,
                       TInnerProps,
-                      TQueries
+                      TQueriesDefinitions
                     >
                   : TLetsEndPointType extends 'provider'
                     ? NiceProviderStagePoint<
@@ -2955,7 +2965,7 @@ export type NiceStagePoint<
                         TQueryResultType,
                         TOuterProps,
                         TInnerProps,
-                        TQueries
+                        TQueriesDefinitions
                       >
                     : never
 
@@ -3010,7 +3020,7 @@ export type NiceRootEndPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -3027,7 +3037,7 @@ export type NiceRootEndPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   'lets' | 'point' | 'type' | 'Infer'
 >
@@ -3047,7 +3057,7 @@ export type NicePluginEndPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -3064,7 +3074,7 @@ export type NicePluginEndPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   'point' | 'type' | 'Infer'
 >
@@ -3084,7 +3094,7 @@ export type NiceBaseEndPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -3101,7 +3111,7 @@ export type NiceBaseEndPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   'lets' | 'point' | 'type' | 'Infer'
 >
@@ -3146,7 +3156,7 @@ export type NicePageEndPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -3163,7 +3173,7 @@ export type NicePageEndPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Page' | 'X' | 'route'>
 >
@@ -3183,7 +3193,7 @@ export type NiceComponentEndPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -3200,7 +3210,7 @@ export type NiceComponentEndPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Component' | 'X'>
 >
@@ -3220,7 +3230,7 @@ export type NiceLayoutEndPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -3237,7 +3247,7 @@ export type NiceLayoutEndPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   WithQueryIfSuitable<
     TServerLoaderOutput,
@@ -3261,7 +3271,7 @@ export type NiceQueryEndPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -3278,7 +3288,7 @@ export type NiceQueryEndPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
 >
@@ -3298,7 +3308,7 @@ export type NiceInfiniteQueryEndPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -3315,7 +3325,7 @@ export type NiceInfiniteQueryEndPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
 >
@@ -3335,7 +3345,7 @@ export type NiceMutationEndPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -3352,7 +3362,7 @@ export type NiceMutationEndPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   WithFetchIfHasServerLoader<
     TServerLoaderOutput,
@@ -3375,7 +3385,7 @@ export type NiceProviderEndPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = Pick<
   Point0<
     TPointType,
@@ -3392,7 +3402,7 @@ export type NiceProviderEndPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >,
   WithQueryIfSuitable<
     TServerLoaderOutput,
@@ -3416,7 +3426,7 @@ export type NiceEndPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = TPointType extends 'root'
   ? NiceRootEndPoint<
       TPointType,
@@ -3433,7 +3443,7 @@ export type NiceEndPoint<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueries
+      TQueriesDefinitions
     >
   : TPointType extends 'plugin'
     ? NicePluginEndPoint<
@@ -3451,7 +3461,7 @@ export type NiceEndPoint<
         TQueryResultType,
         TOuterProps,
         TInnerProps,
-        TQueries
+        TQueriesDefinitions
       >
     : TPointType extends 'base'
       ? NiceBaseEndPoint<
@@ -3469,7 +3479,7 @@ export type NiceEndPoint<
           TQueryResultType,
           TOuterProps,
           TInnerProps,
-          TQueries
+          TQueriesDefinitions
         >
       : TPointType extends 'page'
         ? NicePageEndPoint<
@@ -3487,7 +3497,7 @@ export type NiceEndPoint<
             TQueryResultType,
             TOuterProps,
             TInnerProps,
-            TQueries
+            TQueriesDefinitions
           >
         : TPointType extends 'component'
           ? NiceComponentEndPoint<
@@ -3505,7 +3515,7 @@ export type NiceEndPoint<
               TQueryResultType,
               TOuterProps,
               TInnerProps,
-              TQueries
+              TQueriesDefinitions
             >
           : TPointType extends 'query'
             ? NiceQueryEndPoint<
@@ -3523,7 +3533,7 @@ export type NiceEndPoint<
                 TQueryResultType,
                 TOuterProps,
                 TInnerProps,
-                TQueries
+                TQueriesDefinitions
               >
             : TPointType extends 'infiniteQuery'
               ? NiceInfiniteQueryEndPoint<
@@ -3541,7 +3551,7 @@ export type NiceEndPoint<
                   TQueryResultType,
                   TOuterProps,
                   TInnerProps,
-                  TQueries
+                  TQueriesDefinitions
                 >
               : TPointType extends 'mutation'
                 ? NiceMutationEndPoint<
@@ -3559,7 +3569,7 @@ export type NiceEndPoint<
                     TQueryResultType,
                     TOuterProps,
                     TInnerProps,
-                    TQueries
+                    TQueriesDefinitions
                   >
                 : TPointType extends 'layout'
                   ? NiceLayoutEndPoint<
@@ -3577,7 +3587,7 @@ export type NiceEndPoint<
                       TQueryResultType,
                       TOuterProps,
                       TInnerProps,
-                      TQueries
+                      TQueriesDefinitions
                     >
                   : TPointType extends 'provider'
                     ? NiceProviderEndPoint<
@@ -3595,7 +3605,7 @@ export type NiceEndPoint<
                         TQueryResultType,
                         TOuterProps,
                         TInnerProps,
-                        TQueries
+                        TQueriesDefinitions
                       >
                     : never
 
@@ -3614,7 +3624,7 @@ export type AnyNiceEndPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
-  TQueries extends Queries = any,
+  TQueriesDefinitions extends QueriesDefinitions = any,
 > = NiceEndPoint<
   TPointType,
   TLetsEndPointType,
@@ -3630,7 +3640,7 @@ export type AnyNiceEndPoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueries
+  TQueriesDefinitions
 >
 export type AnyNiceRequestableEndPoint<
   TPointType extends RequestableEndPointType = RequestableEndPointType,
@@ -3647,7 +3657,7 @@ export type AnyNiceRequestableEndPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
-  TQueries extends Queries = any,
+  TQueriesDefinitions extends QueriesDefinitions = any,
 > = NiceEndPoint<
   TPointType,
   TLetsEndPointType,
@@ -3663,7 +3673,7 @@ export type AnyNiceRequestableEndPoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueries
+  TQueriesDefinitions
 >
 
 // export type AnyNiceEndPoint<

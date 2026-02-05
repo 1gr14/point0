@@ -134,6 +134,7 @@ import type {
   UsePointQueryResult,
   UseQueryOptions,
   WithError,
+  FinalLoaderDataOrNever,
 } from './types.js'
 import {
   blankDataTransformerExtended,
@@ -153,7 +154,7 @@ import type {
   ComponentSuccessComponentType,
   DestinationComponentVariant,
   ErrorComponentType,
-  Queries,
+  QueriesDefinitions,
   HeadFn,
   LayoutSuccessComponentType,
   LoadingComponentType,
@@ -173,7 +174,6 @@ import type {
   ProviderSelfType,
   AppendProps,
   EmptyProps,
-  AssertMountableQueryFinalization,
   IsQueryShouldBeFinalized,
   WithSelfQueryIfShouldBeFinalized,
   QueryFnOptions,
@@ -188,6 +188,10 @@ import type {
   MountableState,
   ProviderSuccessComponentType,
   MountableLocation,
+  QueryDefinition,
+  QueryDefinitionByQuery,
+  QueriesDefinitionsByQueries,
+  QueriesResults,
 } from './mountable.js'
 // import stringify from 'safe-stable-stringify'
 
@@ -262,7 +266,7 @@ export class Point0<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > {
   Infer: Infer<
     TPointType,
@@ -279,7 +283,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > = null as never
 
   point: typeof this // this, needed for generator to collect points
@@ -368,7 +372,7 @@ export class Point0<
   get polh() {
     return this._polh ?? false
   }
-  private readonly _ProviderReactContext: Context<MountableSuccessData<TQueries, TMapperOutput>> | undefined
+  private readonly _ProviderReactContext: Context<MountableSuccessData<TQueriesDefinitions, TMapperOutput>> | undefined
   private readonly _errorComponent: ErrorComponentType<DestinationComponentVariant> | undefined
   private static readonly DefaultErrorComponent: ErrorComponentType<any> = ({ error }) => {
     const { stack, ...json } = error.toJSON()
@@ -398,7 +402,7 @@ export class Point0<
         TClientInputSchema,
         TOuterProps,
         TInnerProps,
-        TQueries,
+        TQueriesDefinitions,
         TMapperOutput
       >
     : TPointType extends 'page'
@@ -408,13 +412,27 @@ export class Point0<
           TClientInputSchema,
           TOuterProps,
           TInnerProps,
-          TQueries,
+          TQueriesDefinitions,
           TMapperOutput
         >
       : TPointType extends 'component'
-        ? ComponentSelfType<TServerInputSchema, TClientInputSchema, TOuterProps, TInnerProps, TQueries, TMapperOutput>
+        ? ComponentSelfType<
+            TServerInputSchema,
+            TClientInputSchema,
+            TOuterProps,
+            TInnerProps,
+            TQueriesDefinitions,
+            TMapperOutput
+          >
         : TPointType extends 'provider'
-          ? ProviderSelfType<TServerInputSchema, TClientInputSchema, TOuterProps, TInnerProps, TQueries, TMapperOutput>
+          ? ProviderSelfType<
+              TServerInputSchema,
+              TClientInputSchema,
+              TOuterProps,
+              TInnerProps,
+              TQueriesDefinitions,
+              TMapperOutput
+            >
           : null
 
   private constructor(options: {
@@ -459,17 +477,17 @@ export class Point0<
     _clientExecuteActions?: ClientExecuteAction[]
     _mountActions?: MountAction[]
     // _mapperFns?: MapperFn[]
-    _ProviderReactContext?: Context<MountableSuccessData<TQueries, TMapperOutput>> | undefined
+    _ProviderReactContext?: Context<MountableSuccessData<TQueriesDefinitions, TMapperOutput>> | undefined
     _useValue?: any
     route?: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
     _page?:
-      | PageSuccessComponentType<TRouteDefinition, TInnerProps, TQueries, TMapperOutput>
+      | PageSuccessComponentType<TRouteDefinition, TInnerProps, TQueriesDefinitions, TMapperOutput>
       | UndefinedSuccessPageComponent
     _component?:
-      | ComponentSuccessComponentType<TInnerProps, TQueries, TMapperOutput>
+      | ComponentSuccessComponentType<TInnerProps, TQueriesDefinitions, TMapperOutput>
       | UndefinedComponentSuccessComponent
     _layout?:
-      | LayoutSuccessComponentType<TRouteDefinition, TInnerProps, TQueries, TMapperOutput>
+      | LayoutSuccessComponentType<TRouteDefinition, TInnerProps, TQueriesDefinitions, TMapperOutput>
       | UndefinedLayoutSuccessComponent
     _layouts?: LayoutPoint[]
     name: PointName
@@ -567,7 +585,7 @@ export class Point0<
     TQueryResultType extends QueryResultType | UndefinedQueryResultType,
     TOuterProps extends Props,
     TInnerProps extends Props,
-    TQueries extends Queries,
+    TQueriesDefinitions extends QueriesDefinitions,
   >(overrides: {
     type?: TPointType
     scope?: PointsScope
@@ -610,20 +628,20 @@ export class Point0<
     _clientExecuteActions?: ClientExecuteAction[]
     _mountActions?: MountAction[]
     // _mapperFns?: MapperFn[]
-    _ProviderReactContext?: Context<MountableSuccessData<TQueries, TMapperOutput>> | undefined
+    _ProviderReactContext?: Context<MountableSuccessData<TQueriesDefinitions, TMapperOutput>> | undefined
     _useValue?: any
     route?: IfAnyThenElse<
       TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute,
       AnyRoute
     >
     _page?:
-      | PageSuccessComponentType<TRouteDefinition, TInnerProps, TQueries, TMapperOutput>
+      | PageSuccessComponentType<TRouteDefinition, TInnerProps, TQueriesDefinitions, TMapperOutput>
       | UndefinedSuccessPageComponent
     _component?:
-      | ComponentSuccessComponentType<TInnerProps, TQueries, TMapperOutput>
+      | ComponentSuccessComponentType<TInnerProps, TQueriesDefinitions, TMapperOutput>
       | UndefinedComponentSuccessComponent
     _layout?:
-      | LayoutSuccessComponentType<TRouteDefinition, TInnerProps, TQueries, TMapperOutput>
+      | LayoutSuccessComponentType<TRouteDefinition, TInnerProps, TQueriesDefinitions, TMapperOutput>
       | UndefinedLayoutSuccessComponent
     _layouts?: LayoutPoint[]
     name?: PointName
@@ -658,7 +676,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return new Point0<
       TPointType,
@@ -675,7 +693,7 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueries
+      TQueriesDefinitions
     >({
       scope: overrides.scope ?? this.scope,
       scopes: overrides.scopes ?? this.scopes,
@@ -832,7 +850,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({}) as never
   }
@@ -854,7 +872,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       _serverurl: serverurl,
@@ -878,7 +896,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       _baseurl: baseurl,
@@ -926,7 +944,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       _ssr: ssr,
@@ -950,7 +968,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       _defaultMutationOptions: mutationOptions,
@@ -977,7 +995,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   // finalize query in mountable component
   queryOptions(
@@ -1014,8 +1032,11 @@ export class Point0<
     'query',
     TOuterProps,
     TInnerProps,
-    // [...TQueries, UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput>]
-    AppendQueries<TQueries, UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput>>
+    // [...TQueriesDefinitions, UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput>]
+    AppendQueries<
+      TQueriesDefinitions,
+      QueryDefinition<'query', FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>
+    >
   >
   queryOptions(...args: any[]) {
     const queryOptions = (args[0] || {}) as ExtraUseQueryOptions
@@ -1059,7 +1080,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   // finalize infinite query in mountable point
   infiniteQueryOptions(
@@ -1098,8 +1119,10 @@ export class Point0<
     'infiniteQuery',
     TOuterProps,
     TInnerProps,
-    // [...TQueries, UsePointQueryResult<'infiniteQuery', TServerLoaderOutput, TClientLoaderOutput>]
-    AppendQueries<TQueries, UsePointQueryResult<'infiniteQuery', TServerLoaderOutput, TClientLoaderOutput>>
+    AppendQueries<
+      TQueriesDefinitions,
+      QueryDefinition<'infiniteQuery', FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>
+    >
   >
   infiniteQueryOptions(...args: any[]) {
     const infiniteQueryOptions = (args[0] || {}) as ExtraUseInfiniteQueryOptions<any> | PartialUseInfiniteQueryOptions
@@ -1148,7 +1171,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       _defaultPageQueryOptions: pageQueryOptions,
@@ -1172,7 +1195,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       _defaultComponentQueryOptions: componentQueryOptions,
@@ -1196,7 +1219,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       _defaultProviderQueryOptions: providerQueryOptions,
@@ -1220,7 +1243,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       _defaultLayoutQueryOptions: layoutQueryOptions,
@@ -1244,7 +1267,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     const newFetchOptionsFn: FetchOptionsFn = () => {
       const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
@@ -1260,8 +1283,7 @@ export class Point0<
   // extra components
 
   error(
-    errorComponent: ErrorComponentType<any> &
-      AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
+    errorComponent: ErrorComponentType<any>,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
       ? 'finalStage'
@@ -1279,7 +1301,13 @@ export class Point0<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+    WithSelfQueryIfShouldBeFinalized<
+      TPointType,
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TQueriesDefinitions
+    >
   >
   error(errorComponent: ErrorComponentType<any> | undefined) {
     errorComponent ||= () => null
@@ -1330,7 +1358,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutError for serverNoSsr target
@@ -1358,7 +1386,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageError for serverNoSsr target
     pageErrorComponent ||= () => null
@@ -1387,7 +1415,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentError for serverNoSsr target
@@ -1415,7 +1443,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutLoading for serverNoSsr target
@@ -1443,7 +1471,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageLoading for serverNoSsr target
     pageLoadingComponent ||= () => null
@@ -1472,7 +1500,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentLoading for serverNoSsr target
@@ -1488,8 +1516,7 @@ export class Point0<
   }
 
   loading(
-    loadingComponent: LoadingComponentType<any> &
-      AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
+    loadingComponent: LoadingComponentType<any>,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
       ? 'finalStage'
@@ -1507,7 +1534,13 @@ export class Point0<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+    WithSelfQueryIfShouldBeFinalized<
+      TPointType,
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TQueriesDefinitions
+    >
   >
   loading(loadingComponent: LoadingComponentType<any> | undefined) {
     loadingComponent ||= () => null
@@ -1550,11 +1583,10 @@ export class Point0<
         TLetsEndPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueries
+        TQueriesDefinitions
       >,
       TMapperOutput
-    > &
-      AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
+    >,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
       ? 'finalStage'
@@ -1572,7 +1604,13 @@ export class Point0<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+    WithSelfQueryIfShouldBeFinalized<
+      TPointType,
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TQueriesDefinitions
+    >
   > {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
@@ -1609,12 +1647,11 @@ export class Point0<
         TLetsEndPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueries
+        TQueriesDefinitions
       >,
       TMapperOutput,
       TNewInnerProps
-    > &
-      AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
+    >,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
       ? 'finalStage'
@@ -1632,7 +1669,13 @@ export class Point0<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     AppendProps<TInnerProps, TNewInnerProps>,
-    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+    WithSelfQueryIfShouldBeFinalized<
+      TPointType,
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TQueriesDefinitions
+    >
   > {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
@@ -1677,7 +1720,7 @@ export class Point0<
   //   TQueryResultType,
   //   TProps,
   //   TInnerProps,
-  //   TQueries
+  //   TQueriesDefinitions
   // > {
   //   return this._continue({
   //     _outers: [
@@ -1710,7 +1753,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   scrollPosition(
     selector: string,
@@ -1729,7 +1772,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   scrollPosition(
     getter: ScrollPositionGetter,
@@ -1749,7 +1792,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   scrollPosition(...args: [() => HTMLElement | null] | [string] | [ScrollPositionGetter, ScrollPositionSetter] | []) {
     // [] in case if it was shaked for serverNoSsr
@@ -1789,7 +1832,7 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueries
+      TQueriesDefinitions
     >({
       _scrollPositionGetter: getter,
       _scrollPositionSetter: setter,
@@ -1814,7 +1857,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue<
       TPointType,
@@ -1831,7 +1874,7 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueries
+      TQueriesDefinitions
     >({
       _scrollPositionRestorePolicy: typeof policy === 'function' ? policy : () => policy ?? null,
     }) as never
@@ -1858,7 +1901,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       _middlewares: [...this._middlewares, middlewareFn],
@@ -1883,7 +1926,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue<
       TPointType,
@@ -1900,7 +1943,7 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueries
+      TQueriesDefinitions
     >({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for serverNoSsr
       _prefetchPolicy: policy ?? this._prefetchPolicy,
@@ -1924,7 +1967,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue<
       TPointType,
@@ -1941,7 +1984,7 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueries
+      TQueriesDefinitions
     >({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
       _onPrefetchFns: [...this._onPrefetchFns, fn ?? (() => undefined)],
@@ -1965,7 +2008,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
@@ -1992,7 +2035,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       _transformer: toExtendedTransformer(transformer),
@@ -2020,7 +2063,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   ctx<TAppendCtx extends Ctx>(
     ctx: [TAppendCtx] &
@@ -2041,7 +2084,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
     ctx: [TAppendCtx, ...TAppendCtxExposedKeys[]] &
@@ -2062,7 +2105,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   ctx<TAppendCtx extends Ctx>(
     ctx: TAppendCtx & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
@@ -2081,7 +2124,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   ctx(ctxOrFn: CtxFn | Ctx | [Ctx, ...CtxExposedKeys[]]) {
     const ctxFn =
@@ -2119,7 +2162,7 @@ export class Point0<
     NormalizeQueryResultType<TLetsEndPointType, TQueryResultType, 'query'>,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   // loader(
   //   enableServerLoader: false,
@@ -2138,7 +2181,7 @@ export class Point0<
   //   UndefinedQueryResultType,
   //   TProps,
   //   TInnerProps,
-  //   TQueries
+  //   TQueriesDefinitions
   // >
   // loader(enableServerLoader: true & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>): NiceStagePoint<
   //   StagePointTypeOrNever<TPointType>,
@@ -2155,7 +2198,7 @@ export class Point0<
   //   UndefinedQueryResultType,
   //   TProps,
   //   TInnerProps,
-  //   TQueries
+  //   TQueriesDefinitions
   // >
   loader(loaderFn: LoaderDataFn<any, any, any, any, any> | LoaderResponseFn<any, any, any, any, any> | boolean) {
     // if (loaderFn === false) {
@@ -2222,13 +2265,13 @@ export class Point0<
     NormalizeQueryResultType<TLetsEndPointType, TQueryResultType, 'query'>,
     TOuterProps,
     TInnerProps,
-    TQueries // so here we not try to finalize query, becouse for mutation it is not needed at all, and in mountable can not happen becouse it can not return response
+    TQueriesDefinitions // so here we not try to finalize query, becouse for mutation it is not needed at all, and in mountable can not happen becouse it can not return response
     // WithSelfQueryIfShouldBeFinalized<
     //   TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage',
     //   TLetsEndPointType,
     //   TServerLoaderOutput,
     //   TNewClientLoaderOutput,
-    //   TQueries
+    //   TQueriesDefinitions
     // >
   >
   // clientLoader(
@@ -2254,7 +2297,7 @@ export class Point0<
   //         : UndefinedQueryResultType,
   //   TProps,
   //   TInnerProps,
-  //   TQueries
+  //   TQueriesDefinitions
   // >
   // // client loader true means that we do not want server do ssr here
   // clientLoader(
@@ -2278,7 +2321,7 @@ export class Point0<
   //   TQueryResultType,
   //   TProps,
   //   TInnerProps,
-  //   TQueries
+  //   TQueriesDefinitions
   // >
   clientLoader(
     clientLoaderFn:
@@ -2332,12 +2375,11 @@ export class Point0<
         TLetsEndPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueries
+        TQueriesDefinitions
       >,
       TMapperOutput,
       TNewMapperOutput
-    > &
-      AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
+    >,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
       ? 'finalStage'
@@ -2355,7 +2397,13 @@ export class Point0<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+    WithSelfQueryIfShouldBeFinalized<
+      TPointType,
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TQueriesDefinitions
+    >
   >
   // mapper(
   //   enableMapper: false,
@@ -2374,7 +2422,7 @@ export class Point0<
   //   TQueryResultType,
   //   TOuterProps,
   //   TInnerProps,
-  //   TQueries
+  //   TQueriesDefinitions
   // >
   mapper(mapperFn: MapperFn<any, any, any, any, any> | undefined) {
     // if (mapperFn === false) {
@@ -2465,29 +2513,22 @@ export class Point0<
   // }
 
   head(
-    head: unknown extends AssertMountableQueryFinalization<
-      TPointType,
-      TLetsEndPointType,
-      TServerLoaderOutput,
-      TClientLoaderOutput
-    >
-      ?
-          | HeadFn<
-              'success',
-              MountableLocation<TLetsEndPointType, TRouteDefinition>,
-              TInnerProps,
-              WithSelfQueryIfShouldBeFinalized<
-                TPointType,
-                TLetsEndPointType,
-                TServerLoaderOutput,
-                TClientLoaderOutput,
-                TQueries
-              >,
-              TMapperOutput
-            >
-          | ResolvableHead
-          | string
-      : AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
+    head:
+      | HeadFn<
+          'success',
+          MountableLocation<TLetsEndPointType, TRouteDefinition>,
+          TInnerProps,
+          WithSelfQueryIfShouldBeFinalized<
+            TPointType,
+            TLetsEndPointType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TQueriesDefinitions
+          >,
+          TMapperOutput
+        >
+      | ResolvableHead
+      | string,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
       ? 'finalStage'
@@ -2505,33 +2546,32 @@ export class Point0<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+    WithSelfQueryIfShouldBeFinalized<
+      TPointType,
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TQueriesDefinitions
+    >
   >
   head<TStatus extends 'loading' | 'error' | 'success' | 'universal'>(
     status: TStatus,
-    head: unknown extends AssertMountableQueryFinalization<
-      TPointType,
-      TLetsEndPointType,
-      TServerLoaderOutput,
-      TClientLoaderOutput
-    >
-      ?
-          | HeadFn<
-              TStatus extends 'loading' | 'error' | 'success' ? TStatus : any,
-              MountableLocation<TLetsEndPointType, TRouteDefinition>,
-              TInnerProps,
-              WithSelfQueryIfShouldBeFinalized<
-                TPointType,
-                TLetsEndPointType,
-                TServerLoaderOutput,
-                TClientLoaderOutput,
-                TQueries
-              >,
-              TMapperOutput
-            >
-          | ResolvableHead
-          | string
-      : AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
+    head:
+      | HeadFn<
+          TStatus extends 'loading' | 'error' | 'success' ? TStatus : any,
+          MountableLocation<TLetsEndPointType, TRouteDefinition>,
+          TInnerProps,
+          WithSelfQueryIfShouldBeFinalized<
+            TPointType,
+            TLetsEndPointType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TQueriesDefinitions
+          >,
+          TMapperOutput
+        >
+      | ResolvableHead
+      | string,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
       ? 'finalStage'
@@ -2549,20 +2589,38 @@ export class Point0<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+    WithSelfQueryIfShouldBeFinalized<
+      TPointType,
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TQueriesDefinitions
+    >
   >
   head(..._args: any[]) {
     const args = _args as
       | [
           status: 'loading' | 'error' | 'success',
           head:
-            | HeadFn<any, MountableLocation<TLetsEndPointType, TRouteDefinition>, TInnerProps, TQueries, TMapperOutput>
+            | HeadFn<
+                any,
+                MountableLocation<TLetsEndPointType, TRouteDefinition>,
+                TInnerProps,
+                TQueriesDefinitions,
+                TMapperOutput
+              >
             | ResolvableHead
             | string,
         ]
       | [
           head:
-            | HeadFn<any, MountableLocation<TLetsEndPointType, TRouteDefinition>, TInnerProps, TQueries, TMapperOutput>
+            | HeadFn<
+                any,
+                MountableLocation<TLetsEndPointType, TRouteDefinition>,
+                TInnerProps,
+                TQueriesDefinitions,
+                TMapperOutput
+              >
             | ResolvableHead
             | string,
         ]
@@ -2638,7 +2696,7 @@ export class Point0<
   //   TClientInputSchema,
   //   TQueryResultType,
   //   TNewProps,
-  //   TQueries
+  //   TQueriesDefinitions
   // > {
   //   return this._continue({}) as never
   // }
@@ -2662,7 +2720,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   input<TInputRaw extends InputRaw, TInputParsed extends InputParsed = TInputRaw>(
     ...args: TInputParsed extends InputSchema
@@ -2691,7 +2749,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   input<TValidateFn extends CustomValidationFn<any>>(
     validateFn: TValidateFn &
@@ -2716,7 +2774,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   input<
     TInput extends InputRaw,
@@ -2739,7 +2797,7 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueries
+      TQueriesDefinitions
     >
   >
   input(...args: any[]) {
@@ -2776,7 +2834,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   clientInput<TInputRaw extends InputRaw, TInputParsed extends InputParsed = TInputRaw>(
     validateFn: CustomValidationFn<TInputParsed> &
@@ -2801,7 +2859,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   clientInput<TValidateFn extends CustomValidationFn<any>>(
     validateFn: TValidateFn &
@@ -2826,7 +2884,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   clientInput<
     TInput extends InputRaw,
@@ -2849,7 +2907,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   clientInput(...args: any[]) {
     const inputSchema = args[0] as InputSchema | CustomValidationFn | undefined
@@ -2885,7 +2943,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   combinedInput<TInputRaw extends InputRaw, TInputParsed extends InputParsed = TInputRaw>(
     validateFn: CustomValidationFn<TInputParsed> &
@@ -2910,7 +2968,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   combinedInput<TValidateFn extends CustomValidationFn<any>>(
     validateFn: TValidateFn &
@@ -2935,7 +2993,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   combinedInput<
     TInput extends InputRaw,
@@ -2958,7 +3016,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   combinedInput(...args: any[]) {
     const inputSchema = args[0] as InputSchema | CustomValidationFn | undefined
@@ -3027,7 +3085,7 @@ export class Point0<
   //   TQueryResultType,
   //   TOuterProps,
   //   TInnerProps,
-  //   [...TQueries, TPoint['Infer']['UseQueryResult']]
+  //   [...TQueriesDefinitions, TPoint['Infer']['UseQueryResult']]
   // >
   // withQuery<TUseQueryResult extends UseQueryOrInfiniteQueryResult>(
   //   queryFn: (options: { input: InputParsed<TClientInputSchema> }) => TUseQueryResult,
@@ -3046,7 +3104,7 @@ export class Point0<
   //   TQueryResultType,
   //   TOuterProps,
   //   TInnerProps,
-  //   [...TQueries, TUseQueryResult]
+  //   [...TQueriesDefinitions, TUseQueryResult]
   // >
   // // withQuery(
   // //   drop: false,
@@ -3225,7 +3283,7 @@ export class Point0<
       TPointType extends 'base' ? TQueryResultType : UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'layout' ? EmptyProps : TInnerProps, // if it was layout we drop all wrappers so no inner props, else it was created form base or root so we keep wrappers
-      TPointType extends 'layout' ? [] : TQueries // same here
+      TPointType extends 'layout' ? [] : TQueriesDefinitions // same here
     >
   >
   lets<
@@ -3264,7 +3322,7 @@ export class Point0<
       TPointType extends 'base' ? TQueryResultType : UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'layout' ? EmptyProps : TInnerProps, // if it was layout we drop all wrappers so no inner props, else it was created form base or root so we keep wrappers
-      TPointType extends 'layout' ? [] : TQueries // same here
+      TPointType extends 'layout' ? [] : TQueriesDefinitions // same here
     >
   >
   lets<
@@ -3303,7 +3361,7 @@ export class Point0<
       TPointType extends 'base' ? TQueryResultType : UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'layout' ? EmptyProps : TInnerProps, // if it was layout we drop all wrappers so no inner props, else it was created form base or root so we keep wrappers
-      TPointType extends 'layout' ? [] : TQueries // same here
+      TPointType extends 'layout' ? [] : TQueriesDefinitions // same here
     >
   >
   lets<
@@ -3342,7 +3400,7 @@ export class Point0<
       TPointType extends 'base' ? TQueryResultType : UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'layout' ? EmptyProps : TInnerProps, // if it was layout we drop all wrappers so no inner props, else it was created form base or root so we keep wrappers
-      TPointType extends 'layout' ? [] : TQueries // same here
+      TPointType extends 'layout' ? [] : TQueriesDefinitions // same here
     >
   >
   lets<TNewOuterProps extends Props = EmptyProps>(
@@ -3362,7 +3420,7 @@ export class Point0<
     TPointType extends 'base' ? TQueryResultType : UndefinedQueryResultType,
     TNewOuterProps,
     AppendProps<TInnerProps, TNewOuterProps>,
-    TQueries
+    TQueriesDefinitions
   >
   lets<
     TNewLetsEndPointType extends Exclude<EndPointType, 'page' | 'layout' | 'component'>,
@@ -3386,7 +3444,7 @@ export class Point0<
     TPointType extends 'base' ? TQueryResultType : UndefinedQueryResultType,
     EmptyProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   lets(...args: any[]) {
     const [letsEndPointType, pointName, route] = args as [EndPointType, PointName, AnyRoute | string | undefined]
@@ -3512,7 +3570,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       type: 'root',
@@ -3538,7 +3596,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       type: 'plugin',
@@ -3561,7 +3619,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     return this._continue({
       type: 'base',
@@ -3571,27 +3629,20 @@ export class Point0<
   }
 
   page(
-    ...args: unknown extends AssertMountableQueryFinalization<
-      TPointType,
-      TLetsEndPointType,
-      TServerLoaderOutput,
-      TClientLoaderOutput
-    >
-      ? [
-          page?: PageSuccessComponentType<
-            TRouteDefinition,
-            TInnerProps,
-            WithSelfQueryIfShouldBeFinalized<
-              TPointType,
-              TLetsEndPointType,
-              TServerLoaderOutput,
-              TClientLoaderOutput,
-              TQueries
-            >,
-            TMapperOutput
-          >,
-        ]
-      : [AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>]
+    ...args: [
+      page?: PageSuccessComponentType<
+        TRouteDefinition,
+        TInnerProps,
+        WithSelfQueryIfShouldBeFinalized<
+          TPointType,
+          TLetsEndPointType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TQueriesDefinitions
+        >,
+        TMapperOutput
+      >,
+    ]
   ): NicePageEndPoint<
     'page',
     UndefinedEndPointType,
@@ -3607,7 +3658,13 @@ export class Point0<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+    WithSelfQueryIfShouldBeFinalized<
+      TPointType,
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TQueriesDefinitions
+    >
   >
   page(...args: any[]) {
     const [page = () => null] = args as [PageSuccessComponentType<any, any, any, any> | undefined]
@@ -3633,26 +3690,19 @@ export class Point0<
   }
 
   component(
-    ...args: unknown extends AssertMountableQueryFinalization<
-      TPointType,
-      TLetsEndPointType,
-      TServerLoaderOutput,
-      TClientLoaderOutput
-    >
-      ? [
-          component?: ComponentSuccessComponentType<
-            TInnerProps,
-            WithSelfQueryIfShouldBeFinalized<
-              TPointType,
-              TLetsEndPointType,
-              TServerLoaderOutput,
-              TClientLoaderOutput,
-              TQueries
-            >,
-            TMapperOutput
-          >,
-        ]
-      : [AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>]
+    ...args: [
+      component?: ComponentSuccessComponentType<
+        TInnerProps,
+        WithSelfQueryIfShouldBeFinalized<
+          TPointType,
+          TLetsEndPointType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TQueriesDefinitions
+        >,
+        TMapperOutput
+      >,
+    ]
   ): NiceComponentEndPoint<
     'component',
     UndefinedEndPointType,
@@ -3668,7 +3718,13 @@ export class Point0<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+    WithSelfQueryIfShouldBeFinalized<
+      TPointType,
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TQueriesDefinitions
+    >
   > {
     const [component = () => null] = args as [ComponentSuccessComponentType<any, any, any> | undefined]
     // this._applyComponentDisplayName(component, { suffix: 'Inner' })
@@ -3693,27 +3749,20 @@ export class Point0<
   }
 
   layout(
-    ...args: unknown extends AssertMountableQueryFinalization<
-      TPointType,
-      TLetsEndPointType,
-      TServerLoaderOutput,
-      TClientLoaderOutput
-    >
-      ? [
-          layout?: LayoutSuccessComponentType<
-            TRouteDefinition,
-            TInnerProps,
-            WithSelfQueryIfShouldBeFinalized<
-              TPointType,
-              TLetsEndPointType,
-              TServerLoaderOutput,
-              TClientLoaderOutput,
-              TQueries
-            >,
-            TMapperOutput
-          >,
-        ]
-      : [AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>]
+    ...args: [
+      layout?: LayoutSuccessComponentType<
+        TRouteDefinition,
+        TInnerProps,
+        WithSelfQueryIfShouldBeFinalized<
+          TPointType,
+          TLetsEndPointType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TQueriesDefinitions
+        >,
+        TMapperOutput
+      >,
+    ]
   ): NiceLayoutEndPoint<
     'layout',
     UndefinedEndPointType,
@@ -3729,7 +3778,13 @@ export class Point0<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+    WithSelfQueryIfShouldBeFinalized<
+      TPointType,
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TQueriesDefinitions
+    >
   > {
     const [layout = ({ children }: { children: Exclude<React.ReactNode, Promise<any>> }) => children] = args as [
       LayoutSuccessComponentType<any, any, any, any> | undefined,
@@ -3759,7 +3814,9 @@ export class Point0<
 
   private _getProviderLikeProps() {
     return {
-      _ProviderReactContext: createContext<MountableSuccessData<TQueries, TMapperOutput>>(null as never) as never,
+      _ProviderReactContext: createContext<MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
+        null as never,
+      ) as never,
       _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
         if (!point._ProviderReactContext) {
           throw new Error('ProviderReactContext not found on point: ' + point.name)
@@ -3801,33 +3858,26 @@ export class Point0<
         TLetsEndPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueries
+        TQueriesDefinitions
       >,
       TMapperOutput
     >,
   >(
-    ...args: unknown extends AssertMountableQueryFinalization<
-      TPointType,
-      TLetsEndPointType,
-      TServerLoaderOutput,
-      TClientLoaderOutput
-    >
-      ? [
-          mapper?: MapperFn<
-            MountableLocation<TLetsEndPointType, TRouteDefinition>,
-            TInnerProps,
-            WithSelfQueryIfShouldBeFinalized<
-              TPointType,
-              TLetsEndPointType,
-              TServerLoaderOutput,
-              TClientLoaderOutput,
-              TQueries
-            >,
-            TMapperOutput,
-            TNewMapperOutput
-          >,
-        ]
-      : [AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>]
+    ...args: [
+      mapper?: MapperFn<
+        MountableLocation<TLetsEndPointType, TRouteDefinition>,
+        TInnerProps,
+        WithSelfQueryIfShouldBeFinalized<
+          TPointType,
+          TLetsEndPointType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TQueriesDefinitions
+        >,
+        TMapperOutput,
+        TNewMapperOutput
+      >,
+    ]
   ): NiceProviderEndPoint<
     'provider',
     UndefinedEndPointType,
@@ -3843,7 +3893,13 @@ export class Point0<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+    WithSelfQueryIfShouldBeFinalized<
+      TPointType,
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TQueriesDefinitions
+    >
   >
   provider(_mapperFn?: any) {
     const mapperFn = _mapperFn as MapperFn<any, any, any, any, any> | undefined
@@ -3964,8 +4020,7 @@ export class Point0<
       AssertInputSchemaNotWider<T['Infer']['ServerInputSchema'], TServerInputSchema, TClientInputSchema> &
       AssertInputSchemaNotWider<T['Infer']['ClientInputSchema'], TServerInputSchema, TClientInputSchema> &
       AssertCurrentCtxExtendsPluginRequiredCtx<TCtx, T['Infer']['RequiredCtx']> &
-      AssertCurrentInnerPropsExtendsPluginOuterProps<TOuterProps, T['Infer']['OuterProps']> &
-      AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
+      AssertCurrentInnerPropsExtendsPluginOuterProps<TOuterProps, T['Infer']['OuterProps']>,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
       ? 'finalStage'
@@ -3983,7 +4038,13 @@ export class Point0<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+    WithSelfQueryIfShouldBeFinalized<
+      TPointType,
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TQueriesDefinitions
+    >
   >
   // use<
   //   T extends
@@ -4270,7 +4331,7 @@ export class Point0<
     'query',
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   >
   // mountable component query injection
   // query(
@@ -4300,7 +4361,7 @@ export class Point0<
   //   'query',
   //   TOuterProps,
   //   TInnerProps,
-  //   TQueries
+  //   TQueriesDefinitions
   // >
   query<
     TPoint extends NiceEndPoint<
@@ -4335,7 +4396,7 @@ export class Point0<
                     TLetsEndPointType,
                     TServerLoaderOutput,
                     TClientLoaderOutput,
-                    TQueries
+                    TQueriesDefinitions
                   >,
                   TMapperOutput
                 >,
@@ -4366,9 +4427,12 @@ export class Point0<
         TLetsEndPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueries
+        TQueriesDefinitions
       >,
-      TPoint['Infer']['UseQueryResult'],
+      {
+        type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
+        data: TPoint['Infer']['QueriedData']
+      },
     ]
   >
   query<
@@ -4416,9 +4480,12 @@ export class Point0<
         TLetsEndPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueries
+        TQueriesDefinitions
       >,
-      TPoint['Infer']['UseQueryResult'],
+      {
+        type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
+        data: TPoint['Infer']['QueriedData']
+      },
     ]
   >
   query<TNewQueries extends UseQueryOrInfiniteQueryResult | UseQueryOrInfiniteQueryResult[]>(
@@ -4432,7 +4499,7 @@ export class Point0<
               TLetsEndPointType,
               TServerLoaderOutput,
               TClientLoaderOutput,
-              TQueries
+              TQueriesDefinitions
             >,
             TMapperOutput,
             TNewQueries
@@ -4462,12 +4529,12 @@ export class Point0<
         TLetsEndPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueries
+        TQueriesDefinitions
       >,
       ...(TNewQueries extends UseQueryOrInfiniteQueryResult
-        ? [TNewQueries]
+        ? [QueryDefinitionByQuery<TNewQueries>]
         : TNewQueries extends UseQueryOrInfiniteQueryResult[]
-          ? TNewQueries
+          ? QueriesDefinitionsByQueries<TNewQueries>
           : never),
     ]
   >
@@ -4556,7 +4623,7 @@ export class Point0<
         'infiniteQuery',
         TOuterProps,
         TInnerProps,
-        TQueries
+        TQueriesDefinitions
       >
     : NiceStagePoint<
         StagePointTypeOrNever<TPointType>,
@@ -4573,7 +4640,7 @@ export class Point0<
         'infiniteQuery',
         TOuterProps,
         TInnerProps,
-        TQueries
+        TQueriesDefinitions
       > {
     const [infiniteQueryOptions = {}] = args
     if (this._letsEndPointType === 'infiniteQuery') {
@@ -4630,7 +4697,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    TQueriesDefinitions
   > {
     const [mutationOptions = {}] = args
     const point = this._continue({
@@ -5281,7 +5348,7 @@ export class Point0<
   //     TClientLoaderOutput,
   //     TMapperOutput,
   //     TClientInputSchema,
-  //     TQueries
+  //     TQueriesDefinitions
   //   >,
   //   props: FinalProps<TProps>,
   // ): ResolvableHead[] {
@@ -5302,7 +5369,7 @@ export class Point0<
   //     TClientLoaderOutput,
   //     TMapperOutput,
   //     TClientInputSchema,
-  //     TQueries
+  //     TQueriesDefinitions
   //   >,
   //   props: FinalProps<TProps>,
   // ): void {
@@ -5632,7 +5699,7 @@ export class Point0<
   //   TClientLoaderOutput,
   //   TMapperOutput,
   //   TClientInputSchema,
-  //   TQueries
+  //   TQueriesDefinitions
   // > {
   //   const [inputRaw = {}, queryOptions, fetchOptions, globallyEnabled = true] = args
   //   const inputRawString = stringify(this._getTransformer().stringify(inputRaw))
@@ -7747,7 +7814,7 @@ export class Point0<
   //   stepState: {
   //     input: InputParsed<TClientInputSchema>
   //     props: TInnerProps
-  //     queries: TQueries
+  //     queries: TQueriesDefinitions
   //     data: any
   //     LoadingComponent: React.ComponentType<any>
   //     ErrorComponent: React.ComponentType<any>
@@ -7767,7 +7834,7 @@ export class Point0<
   //   nextStepState: {
   //     input: InputParsed<TClientInputSchema>
   //     props: TInnerProps
-  //     queries: TQueries
+  //     queries: TQueriesDefinitions
   //     data: any
   //     LoadingComponent: React.ComponentType<any>
   //     ErrorComponent: React.ComponentType<any>
@@ -7848,7 +7915,7 @@ export class Point0<
   //         queries: [
   //           ...(nextStepState.queries as unknown as UseQueryOrInfiniteQueryResult[]),
   //           ...nextQueries,
-  //         ] as unknown as TQueries,
+  //         ] as unknown as TQueriesDefinitions,
   //       }
   //       updateStatusFromQueries()
   //       break
@@ -7864,7 +7931,7 @@ export class Point0<
   //         queries: [
   //           ...(nextStepState.queries as unknown as UseQueryOrInfiniteQueryResult[]),
   //           query,
-  //         ] as unknown as TQueries,
+  //         ] as unknown as TQueriesDefinitions,
   //       }
   //       updateStatusFromQueries()
   //       break
@@ -7992,14 +8059,14 @@ export class Point0<
   //   let stepState: {
   //     input: InputParsed<TClientInputSchema>
   //     props: TInnerProps
-  //     queries: TQueries
+  //     queries: TQueriesDefinitions
   //     data: any
   //     LoadingComponent: React.ComponentType<any>
   //     ErrorComponent: React.ComponentType<any>
   //   } = {
   //     input: {} as InputParsed<TClientInputSchema>,
   //     props: hasSelfProps ? ({} as TInnerProps) : (outerProps as unknown as TInnerProps),
-  //     queries: [] as unknown as TQueries,
+  //     queries: [] as unknown as TQueriesDefinitions,
   //     data: undefined,
   //     LoadingComponent: baseLoadingComponent,
   //     ErrorComponent: baseErrorComponent,
@@ -8168,7 +8235,7 @@ export class Point0<
     prev?: {
       mountActions: MountAction[]
       innerProps: Props
-      queries: Queries
+      queries: QueriesResults
       // allQueries: Queries
       // setQueriesAfterIndexToAllQueries: (queries: UseQueryOrInfiniteQueryResult[], index: number) => void
       // allQueriesState: Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'>
@@ -8245,7 +8312,7 @@ export class Point0<
 
         const prevInnerProps = {}
 
-        const prevQueries: Queries = []
+        const prevQueries: QueriesResults = []
 
         // const allQueriesState = (() => {
         //   if (allQueries.length === 0) {
@@ -8579,7 +8646,7 @@ export class Point0<
   //       TClientLoaderOutput,
   //       TMapperOutput,
   //       TClientInputSchema,
-  //       TQueries
+  //       TQueriesDefinitions
   //     >
   //     this._useHead(result, restProps)
   //     return React.createElement(loadingComponent, {
@@ -8605,7 +8672,7 @@ export class Point0<
   //         TClientLoaderOutput,
   //         TMapperOutput,
   //         TClientInputSchema,
-  //         TQueries
+  //         TQueriesDefinitions
   //       >
   //       this._useHead(result, restProps)
   //       return React.createElement(errorComponent, {
@@ -8698,7 +8765,7 @@ export class Point0<
   //         TClientLoaderOutput,
   //         TMapperOutput,
   //         TClientInputSchema,
-  //         TQueries
+  //         TQueriesDefinitions
   //       >
   //       this._useHead(result, restProps)
   //       return withWrappers(
@@ -8757,7 +8824,7 @@ export class Point0<
       TClientInputSchema,
       TOuterProps,
       TInnerProps,
-      TQueries,
+      TQueriesDefinitions,
       TMapperOutput
     >,
   ): React.ReactNode => {
@@ -9098,7 +9165,7 @@ export class Point0<
       TClientInputSchema,
       TOuterProps,
       TInnerProps,
-      TQueries,
+      TQueriesDefinitions,
       TMapperOutput
     >,
   ): React.ReactNode => {
@@ -9391,7 +9458,7 @@ export class Point0<
       TClientInputSchema,
       TOuterProps,
       TInnerProps,
-      TQueries,
+      TQueriesDefinitions,
       TMapperOutput
     >,
   ): React.ReactNode => {
@@ -9731,8 +9798,8 @@ export class Point0<
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
       : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
-  ): MountableSuccessData<TQueries, TMapperOutput> {
-    const value = superstore.getValue<MountableSuccessData<TQueries, TMapperOutput>>(
+  ): MountableSuccessData<TQueriesDefinitions, TMapperOutput> {
+    const value = superstore.getValue<MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
       this.getSsProviderValueKey(...args),
       'clientServerIsolated',
     )
@@ -9748,8 +9815,8 @@ export class Point0<
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
       : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
-  ): MountableSuccessData<TQueries, TMapperOutput> | undefined {
-    const value = superstore.getValueWeak<MountableSuccessData<TQueries, TMapperOutput>>(
+  ): MountableSuccessData<TQueriesDefinitions, TMapperOutput> | undefined {
+    const value = superstore.getValueWeak<MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
       this.getSsProviderValueKey(...args),
       'clientServerIsolated',
     )
@@ -9757,7 +9824,14 @@ export class Point0<
   }
 
   Provider = (
-    props: ProviderSelfProps<TServerInputSchema, TClientInputSchema, TOuterProps, TInnerProps, TQueries, TMapperOutput>,
+    props: ProviderSelfProps<
+      TServerInputSchema,
+      TClientInputSchema,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TMapperOutput
+    >,
   ): React.ReactNode => {
     // const loadingComponent = this._getLoadingComponent({ type: 'page' })
     // const errorComponent = this._getErrorComponent({ type: 'page' })
@@ -9853,17 +9927,17 @@ export class Point0<
     // })
   }
 
-  useValue<K extends keyof MountableSuccessData<TQueries, TMapperOutput>>(
+  useValue<K extends keyof MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
     key: K,
-  ): MountableSuccessData<TQueries, TMapperOutput>[K]
-  useValue<K extends keyof MountableSuccessData<TQueries, TMapperOutput>>(
+  ): MountableSuccessData<TQueriesDefinitions, TMapperOutput>[K]
+  useValue<K extends keyof MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
     keys: K[],
-  ): Pick<MountableSuccessData<TQueries, TMapperOutput>, K>
-  useValue(): MountableSuccessData<TQueries, TMapperOutput>
+  ): Pick<MountableSuccessData<TQueriesDefinitions, TMapperOutput>, K>
+  useValue(): MountableSuccessData<TQueriesDefinitions, TMapperOutput>
   useValue(
     keys?:
-      | keyof MountableSuccessData<TQueries, TMapperOutput>
-      | Array<keyof MountableSuccessData<TQueries, TMapperOutput>>,
+      | keyof MountableSuccessData<TQueriesDefinitions, TMapperOutput>
+      | Array<keyof MountableSuccessData<TQueriesDefinitions, TMapperOutput>>,
   ) {
     if (!this._useValue) {
       throw new Error('useValue not found on point: ' + this.name)

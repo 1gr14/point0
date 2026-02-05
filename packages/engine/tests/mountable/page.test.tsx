@@ -1,8 +1,7 @@
-import type { EndPoint } from '@point0/core'
 import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
-import { createTestThings } from '../utils/internal-testing.js'
 import { z } from 'zod'
+import { createTestThings } from '../utils/internal-testing.js'
 
 describe('page', () => {
   const root = Point0.lets('root', 'root')
@@ -197,7 +196,7 @@ describe('page', () => {
           {children}
         </div>
       ))
-      .page(({ data }) => <div id="page">x={data.x}</div>)
+      .page(({ data, queries }) => <div id="page">x={data.x}</div>)
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {

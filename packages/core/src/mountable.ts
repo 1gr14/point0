@@ -1,6 +1,11 @@
 import type { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, ExactLocation, WeakChildrenLocation } from '@devp0nt/route0'
-import type { InfiniteData, UseInfiniteQueryResult, UseQueryResult } from '@tanstack/react-query'
+import type {
+  InfiniteQueryObserverSuccessResult,
+  QueryObserverSuccessResult,
+  UseInfiniteQueryResult,
+  UseQueryResult,
+} from '@tanstack/react-query'
 import type * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type {
@@ -8,9 +13,8 @@ import type {
   Data,
   EmptyData,
   EndPointType,
-  FinalLoaderOutput,
+  FinalLoaderDataOrNever,
   IfAnyThenElse,
-  // IfAnyThenElse,
   InputSchema,
   InputsRaw,
   IsInputsOptional,
@@ -18,18 +22,15 @@ import type {
   IsNever,
   LoaderOutput,
   MapperOutput,
-  MountablePointType,
   PointType,
   QueryableEndPointType,
   QueryResultType,
   RouteDefinition,
-  ShowError,
   UndefinedEndPointType,
   UndefinedInputSchema,
   UndefinedLoaderOutput,
   UndefinedMapperOutput,
   UndefinedRouteDefinition,
-  UsePointQueryResult,
 } from './types.js'
 
 export type Props = Record<string, any>
@@ -44,26 +45,36 @@ export type AppendProps<TPrevProps extends Props, TAppendProps extends Props> = 
 
 export type UseQueryOrInfiniteQueryResult = UseInfiniteQueryResult | UseQueryResult
 export type QueriesResults = UseQueryOrInfiniteQueryResult[]
-export type QueryDefinition<TQueryResultType extends QueryResultType, TData extends Data> = {
+export type QueryDefinition<TQueryResultType extends QueryResultType, TQueriedData extends Data> = {
   type: TQueryResultType
-  data: TData
+  data: TQueriedData // it is infinite data in infinite data case
 }
 export type QueriesDefinitions = Array<QueryDefinition<any, any>>
 export type QueryByDefinition<TQueryDefinition extends QueryDefinition<any, any>> = TQueryDefinition extends {
   type: infer TQueryResultType
-  data: infer TData
+  data: infer TQueriedData
 }
   ? TQueryResultType extends 'query'
-    ? UseQueryResult<TData, Error0>
+    ? UseQueryResult<TQueriedData, Error0>
     : TQueryResultType extends 'infiniteQuery'
-      ? UseInfiniteQueryResult<InfiniteData<TData>, Error0>
+      ? UseInfiniteQueryResult<TQueriedData, Error0>
       : never
   : never
-export type QueryDefinitionByQuery<TQuery extends UseQueryOrInfiniteQueryResult> =
-  TQuery extends UseInfiniteQueryResult<any, any>
-    ? QueryDefinition<'infiniteQuery', QueryData<TQuery>>
-    : TQuery extends UseQueryResult<any, any>
-      ? QueryDefinition<'query', QueryData<TQuery>>
+export type SuccessQueryByDefinition<TQueryDefinition extends QueryDefinition<any, any>> = TQueryDefinition extends {
+  type: infer TQueryResultType
+  data: infer TQueriedData
+}
+  ? TQueryResultType extends 'query'
+    ? QueryObserverSuccessResult<TQueriedData, Error0>
+    : TQueryResultType extends 'infiniteQuery'
+      ? InfiniteQueryObserverSuccessResult<TQueriedData, Error0>
+      : never
+  : never
+export type QueryDefinitionByQuery<TQueryResult extends UseQueryOrInfiniteQueryResult> =
+  TQueryResult extends UseInfiniteQueryResult<any, any>
+    ? QueryDefinition<'infiniteQuery', QueryDataByResult<TQueryResult>>
+    : TQueryResult extends UseQueryResult<any, any>
+      ? QueryDefinition<'query', QueryDataByResult<TQueryResult>>
       : never
 export type QueriesDefinitionsByQueries<TQueries extends UseQueryOrInfiniteQueryResult[]> = IfAnyThenElse<
   TQueries,
@@ -72,6 +83,26 @@ export type QueriesDefinitionsByQueries<TQueries extends UseQueryOrInfiniteQuery
     ? [
         QueryDefinitionByQuery<Q1 extends UseQueryOrInfiniteQueryResult ? Q1 : never>,
         ...QueriesDefinitionsByQueries<Extract<Rest, UseQueryOrInfiniteQueryResult[]>>,
+      ]
+    : []
+>
+export type QueriesByDefinitions<TQueriesDefinitions extends QueriesDefinitions> = IfAnyThenElse<
+  TQueriesDefinitions,
+  any,
+  TQueriesDefinitions extends [infer Q1, ...infer Rest]
+    ? [
+        QueryByDefinition<Q1 extends QueryDefinition<any, any> ? Q1 : never>,
+        ...QueriesByDefinitions<Extract<Rest, QueriesDefinitions>>,
+      ]
+    : []
+>
+export type SuccessQueriesDefinitions<TQueriesDefinitions extends QueriesDefinitions> = IfAnyThenElse<
+  TQueriesDefinitions,
+  any,
+  TQueriesDefinitions extends [infer Q1, ...infer Rest]
+    ? [
+        SuccessQueryByDefinition<Q1 extends QueryDefinition<any, any> ? Q1 : never>,
+        ...SuccessQueriesDefinitions<Extract<Rest, QueriesDefinitions>>,
       ]
     : []
 >
@@ -112,15 +143,22 @@ type CleanQueryData<TData> =
         ? never
         : TClean
     : never
-export type QueryData<TQuery extends UseQueryOrInfiniteQueryResult> = IfAnyThenElse<
-  TQuery,
+export type QueryDataByResult<TQueryResult extends UseQueryOrInfiniteQueryResult> = IfAnyThenElse<
+  TQueryResult,
   any,
-  TQuery extends UseQueryResult<infer TData, any>
+  TQueryResult extends UseInfiniteQueryResult<infer TData, any>
     ? CleanQueryData<TData>
-    : TQuery extends UseInfiniteQueryResult<infer TData, any>
+    : TQueryResult extends UseQueryResult<infer TData, any>
       ? CleanQueryData<TData>
       : Data
 >
+export type QueryDataByDefinition<TQueryDefinition extends QueryDefinition<any, any>> = TQueryDefinition extends {
+  data: infer TData
+}
+  ? TData extends Data
+    ? TData
+    : never
+  : never
 
 //   export type QueriesSuccess<TQueries extends UseQueryOrInfiniteQueryResult[]> = IfAnyThenElse<
 //   TQueries,
@@ -157,176 +195,29 @@ export type QueryData<TQuery extends UseQueryOrInfiniteQueryResult> = IfAnyThenE
 // >
 
 export type MountableSuccessData<
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = IfAnyThenElse<
-  TQueries | TMapperOutput,
+  TQueriesDefinitions | TMapperOutput,
   any,
   TMapperOutput extends MapperOutput
     ? TMapperOutput
-    : TQueries extends [infer Q1, ...any[]]
-      ? Q1 extends UseQueryOrInfiniteQueryResult
-        ? QueryData<Q1>
+    : TQueriesDefinitions extends [infer Q1, ...any[]]
+      ? Q1 extends QueryDefinition<any, any>
+        ? QueryDataByDefinition<Q1>
         : EmptyData
       : EmptyData
 >
 
-//     export type MountableSuccessData<
-//   TQueries extends Queries,
-//   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-// > = IfAnyThenElse<
-//   TQueries,
-//   Data,
-//   TMapperOutput extends MapperOutput
-//     ? TMapperOutput
-//     : TQueries extends [infer Q1, ...any[]]
-//       ? Q1 extends UseQueryOrInfiniteQueryResult
-//         ? QueryData<Q1>
-//         : EmptyData
-//       : EmptyData
-// >
-
-// export type QueryDataOrUndefined<TQuery extends UseQueryOrInfiniteQueryResult | undefined = undefined> =
-//   TQuery extends UseQueryOrInfiniteQueryResult ? TQuery['data'] : undefined
-
-// export type MapperFnOptions<
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TQuery extends UseQueryOrInfiniteQueryResult | undefined = undefined,
-//   TQueries extends UseQueryOrInfiniteQueryResult[] | undefined = undefined,
-// > = {
-//   input: InputParsed<TClientInputSchema>
-//   data: QueryDataOrUndefined<TQuery>
-//   queries: QueryWithQueries<TQuery, TQueries>
-// }
-// export type MapperFn<
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TQuery extends UseQueryOrInfiniteQueryResult | undefined = undefined,
-//   TQueriesIntents extends UseQueryIntent[] | undefined = undefined,
-//   TMapperOutput = QueryDataOrUndefined<TQuery>,
-// > = (options: MapperFnOptions<TClientInputSchema, TQuery, TQueries>) => TMapperOutput
-
-// export type UseMountableResultSuccess<
-//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TQueries extends Queries,
-// > = {
-//   input: InputParsed<TClientInputSchema>
-//   queries: QueriesSuccess<WithQueries<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TQueries>>
-//   data: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput>
-//   loading: false
-//   error: null
-//   status: 'success'
-// }
-// export type UseMountableResultPending<
-//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-//   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TQueries extends Queries,
-// > = {
-//   input: InputParsed<TClientInputSchema> | undefined
-//   queries: WithQueries<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
-//   data: undefined
-//   loading: true
-//   error: undefined
-//   status: 'pending'
-// }
-// export type UseMountableResultError<
-//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TQueries extends Queries,
-// > = {
-//   input: InputParsed<TClientInputSchema> | undefined
-//   queries: undefined | WithQueries<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
-//   data:
-//     | undefined
-//     | FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput>
-//   loading: false
-//   error: Error0
-//   status: 'error'
-// }
-// export type UseMountableResult<
-//   TStatus extends 'pending' | 'error' | 'success',
-//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TQueries extends Queries,
-// > = IfAnyThenElse<
-//   TStatus,
-//   | UseMountableResultSuccess<
-//       TQueryResultType,
-//       TServerLoaderOutput,
-//       TClientLoaderOutput,
-//       TMapperOutput,
-//       TClientInputSchema,
-//       TQueries
-//     >
-//   | UseMountableResultPending<
-//       TQueryResultType,
-//       TServerLoaderOutput,
-//       TClientLoaderOutput,
-//       TMapperOutput,
-//       TClientInputSchema,
-//       TQueries
-//     >
-//   | UseMountableResultError<
-//       TQueryResultType,
-//       TServerLoaderOutput,
-//       TClientLoaderOutput,
-//       TMapperOutput,
-//       TClientInputSchema,
-//       TQueries
-//     >,
-//   TStatus extends 'success'
-//     ? UseMountableResultSuccess<
-//         TQueryResultType,
-//         TServerLoaderOutput,
-//         TClientLoaderOutput,
-//         TMapperOutput,
-//         TClientInputSchema,
-//         TQueries
-//       >
-//     : TStatus extends 'pending'
-//       ? UseMountableResultPending<
-//           TQueryResultType,
-//           TServerLoaderOutput,
-//           TClientLoaderOutput,
-//           TMapperOutput,
-//           TClientInputSchema,
-//           TQueries
-//         >
-//       : TStatus extends 'error'
-//         ? UseMountableResultError<
-//             TQueryResultType,
-//             TServerLoaderOutput,
-//             TClientLoaderOutput,
-//             TMapperOutput,
-//             TClientInputSchema,
-//             TQueries
-//           >
-//         : never
-// >
-
-type WithLocationIfDefined<TLocation extends AnyLocation> = TLocation extends Location
-  ? { location: TLocation }
-  : // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    {}
-
-export type MountableStateError<TLocation extends AnyLocation, TInnerProps extends Props, TQueries extends Queries> = {
+export type MountableStateError<
+  TLocation extends AnyLocation,
+  TInnerProps extends Props,
+  TQueriesDefinitions extends QueriesDefinitions,
+> = {
   location: TLocation
   props: TInnerProps
   // queries: QueriesUnknownStatus<TQueries>
-  queries: TQueries
+  queries: QueriesByDefinitions<TQueriesDefinitions>
   data: undefined
   error: Error0
   loading: false
@@ -337,12 +228,12 @@ export type MountableStateError<TLocation extends AnyLocation, TInnerProps exten
 export type MountableStateLoading<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = {
   location: TLocation
   props: TInnerProps
   // queries: QueriesUnknownStatus<TQueries>
-  queries: TQueries
+  queries: QueriesByDefinitions<TQueriesDefinitions>
   data: undefined
   error: undefined
   loading: true
@@ -353,36 +244,36 @@ export type MountableStateLoading<
 export type MountableStateSuccess<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = {
   location: TLocation
   props: TInnerProps
-  queries: QueriesSuccess<TQueries>
-  data: MountableSuccessData<TQueries, TMapperOutput>
+  queries: SuccessQueriesDefinitions<TQueriesDefinitions>
+  data: MountableSuccessData<TQueriesDefinitions, TMapperOutput>
   error: undefined
   loading: false
   status: 'success'
   LoadingComponent: React.ComponentType
   ErrorComponent: React.ComponentType<{ error: Error }>
-} & WithLocationIfDefined<TLocation>
+}
 export type MountableState<
   TStatus extends 'loading' | 'error' | 'success',
   TLocation extends AnyLocation,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = IfAnyThenElse<
   TStatus,
-  | MountableStateSuccess<TLocation, TInnerProps, TQueries, TMapperOutput>
-  | MountableStateLoading<TLocation, TInnerProps, TQueries>
-  | MountableStateError<TLocation, TInnerProps, TQueries>,
+  | MountableStateSuccess<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
+  | MountableStateLoading<TLocation, TInnerProps, TQueriesDefinitions>
+  | MountableStateError<TLocation, TInnerProps, TQueriesDefinitions>,
   TStatus extends 'success'
-    ? MountableStateSuccess<TLocation, TInnerProps, TQueries, TMapperOutput>
+    ? MountableStateSuccess<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
     : TStatus extends 'loading'
-      ? MountableStateLoading<TLocation, TInnerProps, TQueries>
+      ? MountableStateLoading<TLocation, TInnerProps, TQueriesDefinitions>
       : TStatus extends 'error'
-        ? MountableStateError<TLocation, TInnerProps, TQueries>
+        ? MountableStateError<TLocation, TInnerProps, TQueriesDefinitions>
         : never
 >
 
@@ -404,104 +295,112 @@ export type LoadingComponentType<TDestinationComponentVariant extends Destinatio
 export type SuccessComponentProps<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = {
   location: TLocation
   props: TInnerProps
-  queries: QueriesSuccess<TQueries>
-  data: MountableSuccessData<TQueries, TMapperOutput>
+  queries: SuccessQueriesDefinitions<TQueriesDefinitions>
+  data: MountableSuccessData<TQueriesDefinitions, TMapperOutput>
 }
 export type SuccessComponentType<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = React.ComponentType<SuccessComponentProps<TLocation, TInnerProps, TQueries, TMapperOutput>>
+> = React.ComponentType<SuccessComponentProps<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>>
 
 export type MapperFnOptions<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = {
   location: TLocation
   props: TInnerProps
-  queries: QueriesSuccess<TQueries>
-  data: MountableSuccessData<TQueries, TMapperOutput>
+  queries: SuccessQueriesDefinitions<TQueriesDefinitions>
+  data: MountableSuccessData<TQueriesDefinitions, TMapperOutput>
 }
 export type MapperFn<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TNewMapperOutput extends MapperOutput,
-> = (options: MapperFnOptions<TLocation, TInnerProps, TQueries, TMapperOutput>) => TNewMapperOutput
+> = (options: MapperFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>) => TNewMapperOutput
 
 export type WrapperComponentProps<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = MountableState<any, TLocation, TInnerProps, TQueries, TMapperOutput> & {
+> = MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput> & {
   children: Exclude<React.ReactNode, Promise<any>> | undefined
 }
 export type WrapperComponentType<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = (
-  options: WrapperComponentProps<TLocation, TInnerProps, TQueries, TMapperOutput>,
+  options: WrapperComponentProps<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
 ) => Exclude<React.ReactNode, Promise<any>>
 
 export type WithFnOptions<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = Omit<MountableState<any, TLocation, TInnerProps, TQueries, TMapperOutput>, 'LoadingComponent' | 'ErrorComponent'>
+> = Omit<
+  MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
+  'LoadingComponent' | 'ErrorComponent'
+>
 export type WithFn<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TNewInnerProps extends Props = TInnerProps,
 > = (
-  options: WithFnOptions<TLocation, TInnerProps, TQueries, TMapperOutput>,
+  options: WithFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
 ) => Error | 'loading' | TNewInnerProps | undefined
 
 export type QueryFnOptions<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = Omit<MountableState<any, TLocation, TInnerProps, TQueries, TMapperOutput>, 'LoadingComponent' | 'ErrorComponent'>
+> = Omit<
+  MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
+  'LoadingComponent' | 'ErrorComponent'
+>
 export type QueryFn<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TNewQueries extends UseQueryOrInfiniteQueryResult | UseQueryOrInfiniteQueryResult[],
-> = (options: QueryFnOptions<TLocation, TInnerProps, TQueries, TMapperOutput>) => TNewQueries
+> = (options: QueryFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>) => TNewQueries
 
 export type HeadFnOptions<
   TStatus extends 'loading' | 'error' | 'success',
   TLocation extends AnyLocation,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = Omit<
-  MountableState<TStatus, TLocation, TInnerProps, TQueries, TMapperOutput>,
+  MountableState<TStatus, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
   'LoadingComponent' | 'ErrorComponent'
 >
 export type HeadFn<
   TStatus extends 'loading' | 'error' | 'success' = any,
   TLocation extends AnyLocation = any,
   TInnerProps extends Props = any,
-  TQueries extends Queries = any,
+  TQueriesDefinitions extends QueriesDefinitions = any,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
-> = (options: HeadFnOptions<TStatus, TLocation, TInnerProps, TQueries, TMapperOutput>) => ResolvableHead | string
+> = (
+  options: HeadFnOptions<TStatus, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
+) => ResolvableHead | string
 
 // export type MountableWrapperComponentProps<
 //   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
@@ -568,15 +467,15 @@ export type PageLocation<TRouteDefinition extends RouteDefinition | UndefinedRou
 export type PageSuccessComponentProps<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = SuccessComponentProps<PageLocation<TRouteDefinition>, TInnerProps, TQueries, TMapperOutput>
+> = SuccessComponentProps<PageLocation<TRouteDefinition>, TInnerProps, TQueriesDefinitions, TMapperOutput>
 export type PageSuccessComponentType<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = React.ComponentType<PageSuccessComponentProps<TRouteDefinition, TInnerProps, TQueries, TMapperOutput>>
+> = React.ComponentType<PageSuccessComponentProps<TRouteDefinition, TInnerProps, TQueriesDefinitions, TMapperOutput>>
 export type UndefinedSuccessPageComponent = undefined
 
 export type LayoutExtraInnerProps = {
@@ -588,16 +487,16 @@ export type LayoutLocation<TRouteDefinition extends RouteDefinition | UndefinedR
 export type LayoutSuccessComponentProps<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = SuccessComponentProps<LayoutLocation<TRouteDefinition>, TInnerProps, TQueries, TMapperOutput> &
+> = SuccessComponentProps<LayoutLocation<TRouteDefinition>, TInnerProps, TQueriesDefinitions, TMapperOutput> &
   LayoutExtraInnerProps
 export type LayoutSuccessComponentType<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = React.ComponentType<LayoutSuccessComponentProps<TRouteDefinition, TInnerProps, TQueries, TMapperOutput>>
+> = React.ComponentType<LayoutSuccessComponentProps<TRouteDefinition, TInnerProps, TQueriesDefinitions, TMapperOutput>>
 export type UndefinedLayoutSuccessComponent = undefined
 
 export type MountableLocation<
@@ -619,14 +518,14 @@ export type ProviderExtraInnerProps = {
 export type ProviderLocation = AnyLocation
 export type ProviderSuccessComponentProps<
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = SuccessComponentProps<ProviderLocation, TInnerProps, TQueries, TMapperOutput> & ProviderExtraInnerProps
+> = SuccessComponentProps<ProviderLocation, TInnerProps, TQueriesDefinitions, TMapperOutput> & ProviderExtraInnerProps
 export type ProviderSuccessComponentType<
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = React.ComponentType<ProviderSuccessComponentProps<TInnerProps, TQueries, TMapperOutput>>
+> = React.ComponentType<ProviderSuccessComponentProps<TInnerProps, TQueriesDefinitions, TMapperOutput>>
 export type UndefinedProviderSuccessComponent = undefined
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -634,24 +533,24 @@ export type ComponentExtraInnerProps = {}
 export type ComponentLocation = AnyLocation
 export type ComponentSuccessComponentProps<
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = SuccessComponentProps<ComponentLocation, TInnerProps, TQueries, TMapperOutput> & ComponentExtraInnerProps
+> = SuccessComponentProps<ComponentLocation, TInnerProps, TQueriesDefinitions, TMapperOutput> & ComponentExtraInnerProps
 export type ComponentSuccessComponentType<
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = React.ComponentType<ComponentSuccessComponentProps<TInnerProps, TQueries, TMapperOutput>>
+> = React.ComponentType<ComponentSuccessComponentProps<TInnerProps, TQueriesDefinitions, TMapperOutput>>
 export type UndefinedComponentSuccessComponent = undefined
 
 export type MountableSelfChildrenFn<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
   TExtraInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = (
-  options: SuccessComponentProps<TLocation, TInnerProps, TQueries, TMapperOutput> & TExtraInnerProps,
+  options: SuccessComponentProps<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput> & TExtraInnerProps,
 ) => Exclude<React.ReactNode, Promise<any>>
 
 export type MountableSelfProps<
@@ -661,7 +560,7 @@ export type MountableSelfProps<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TExtraInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TWithChildren extends boolean | null,
 > = (IsInputsSchemasDefined<TServerInputSchema, TClientInputSchema> extends true
@@ -673,13 +572,13 @@ export type MountableSelfProps<
     ? {
         children:
           | React.ReactNode
-          | MountableSelfChildrenFn<TLocation, TInnerProps, TExtraInnerProps, TQueries, TMapperOutput>
+          | MountableSelfChildrenFn<TLocation, TInnerProps, TExtraInnerProps, TQueriesDefinitions, TMapperOutput>
       }
     : TWithChildren extends null
       ? {
           children?:
             | React.ReactNode
-            | MountableSelfChildrenFn<TLocation, TInnerProps, TExtraInnerProps, TQueries, TMapperOutput>
+            | MountableSelfChildrenFn<TLocation, TInnerProps, TExtraInnerProps, TQueriesDefinitions, TMapperOutput>
         }
       : Record<never, never>)
 export type MountableSelfType<
@@ -689,7 +588,7 @@ export type MountableSelfType<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TExtraInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TWithChildren extends boolean | null,
 > = React.ComponentType<
@@ -700,7 +599,7 @@ export type MountableSelfType<
     TOuterProps,
     TInnerProps,
     TExtraInnerProps,
-    TQueries,
+    TQueriesDefinitions,
     TMapperOutput,
     TWithChildren
   >
@@ -721,7 +620,7 @@ export type LayoutSelfProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   LayoutLocation<TRouteDefinition>,
@@ -730,7 +629,7 @@ export type LayoutSelfProps<
   TOuterProps,
   TInnerProps,
   LayoutExtraInnerProps,
-  TQueries,
+  TQueriesDefinitions,
   TMapperOutput,
   true
 >
@@ -740,7 +639,7 @@ export type LayoutSelfType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
   LayoutSelfProps<
@@ -749,7 +648,7 @@ export type LayoutSelfType<
     TClientInputSchema,
     TOuterProps,
     TInnerProps,
-    TQueries,
+    TQueriesDefinitions,
     TMapperOutput
   >
 >
@@ -760,7 +659,7 @@ export type PageSelfProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   PageLocation<TRouteDefinition>,
@@ -769,7 +668,7 @@ export type PageSelfProps<
   TOuterProps,
   TInnerProps,
   PageExtraInnerProps,
-  TQueries,
+  TQueriesDefinitions,
   TMapperOutput,
   false
 >
@@ -779,7 +678,7 @@ export type PageSelfType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
   PageSelfProps<
@@ -788,7 +687,7 @@ export type PageSelfType<
     TClientInputSchema,
     TOuterProps,
     TInnerProps,
-    TQueries,
+    TQueriesDefinitions,
     TMapperOutput
   >
 >
@@ -798,7 +697,7 @@ export type ComponentSelfProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   ComponentLocation,
@@ -807,7 +706,7 @@ export type ComponentSelfProps<
   TOuterProps,
   TInnerProps,
   ComponentExtraInnerProps,
-  TQueries,
+  TQueriesDefinitions,
   TMapperOutput,
   false
 >
@@ -816,10 +715,17 @@ export type ComponentSelfType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
-  ComponentSelfProps<TServerInputSchema, TClientInputSchema, TOuterProps, TInnerProps, TQueries, TMapperOutput>
+  ComponentSelfProps<
+    TServerInputSchema,
+    TClientInputSchema,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions,
+    TMapperOutput
+  >
 >
 
 export type ProviderSelfProps<
@@ -827,7 +733,7 @@ export type ProviderSelfProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   ProviderLocation,
@@ -836,7 +742,7 @@ export type ProviderSelfProps<
   TOuterProps,
   TInnerProps,
   ProviderExtraInnerProps,
-  TQueries,
+  TQueriesDefinitions,
   TMapperOutput,
   null
 >
@@ -845,10 +751,17 @@ export type ProviderSelfType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
-  ProviderSelfProps<TServerInputSchema, TClientInputSchema, TOuterProps, TInnerProps, TQueries, TMapperOutput>
+  ProviderSelfProps<
+    TServerInputSchema,
+    TClientInputSchema,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions,
+    TMapperOutput
+  >
 >
 
 export type MountAction<
@@ -919,35 +832,40 @@ export type WithSelfQueryIfShouldBeFinalized<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TQueries extends Queries,
+  TQueriesDefinitions extends QueriesDefinitions,
 > = IfAnyThenElse<
-  TQueries | TPointType | TServerLoaderOutput | TClientLoaderOutput | TPointType,
+  TQueriesDefinitions | TPointType | TServerLoaderOutput | TClientLoaderOutput | TPointType,
   any,
   IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
-    ? [...TQueries, UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput>]
-    : TQueries
+    ? [
+        ...TQueriesDefinitions,
+        // if it should be finalized, then it was not finalize with infinteQuery, so always just 'query'
+        QueryDefinition<'query', FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>,
+      ]
+    : TQueriesDefinitions
 >
-export type MergeQueries<TQueries extends Queries, TNewQueries extends Queries> = IfAnyThenElse<
-  TQueries | TNewQueries,
+export type MergeQueries<
+  TQueriesDefinitions extends QueriesDefinitions,
+  TNewQueriesDefinitions extends QueriesDefinitions,
+> = IfAnyThenElse<
+  TQueriesDefinitions | TNewQueriesDefinitions,
   any,
-  [...TQueries, ...TNewQueries]
+  [...TQueriesDefinitions, ...TNewQueriesDefinitions]
 >
-export type AppendQueries<TQueries extends Queries, TNewQuery extends UseQueryOrInfiniteQueryResult> = IfAnyThenElse<
-  TQueries | TNewQuery,
-  any,
-  [...TQueries, TNewQuery]
->
+export type AppendQueries<
+  TQueriesDefinitions extends QueriesDefinitions,
+  TNewQueryDefinition extends QueryDefinition<any, any>,
+> = IfAnyThenElse<TQueriesDefinitions | TNewQueryDefinition, any, [...TQueriesDefinitions, TNewQueryDefinition]>
 
-// TODO:ASAP cancel it, in mountable we have no response loaders
-export type AssertMountableQueryFinalization<
-  TPointType extends PointType,
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-> = TLetsEndPointType extends MountablePointType
-  ? TPointType extends 'serverStage' | 'clientStage'
-    ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
-      ? ShowError<`Check this point last loader. It should return plain object data, not response. You see this message, becouse current method will finalize your query, so you should fix your loader before it`>
-      : unknown
-    : unknown
-  : unknown
+// export type AssertMountableQueryFinalization<
+//   TPointType extends PointType,
+//   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+// > = TLetsEndPointType extends MountablePointType
+//   ? TPointType extends 'serverStage' | 'clientStage'
+//     ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+//       ? ShowError<`Check this point last loader. It should return plain object data, not response. You see this message, becouse current method will finalize your query, so you should fix your loader before it`>
+//       : unknown
+//     : unknown
+//   : unknown
