@@ -7713,398 +7713,398 @@ export class Point0<
 
   // mountable components
 
-  private readonly _getMountablePart1 = ({
-    action,
-    stepState,
-    statusState,
-    inputRaw,
-    outerProps,
-    componentVariant,
-    inputHasError,
-    errorVariant,
-    loadingVariant,
-  }: {
-    action: MountAction
-    stepState: {
-      input: InputParsed<TClientInputSchema>
-      props: TInnerProps
-      queries: TQueries
-      data: any
-      LoadingComponent: React.ComponentType<any>
-      ErrorComponent: React.ComponentType<any>
-    }
-    statusState: {
-      status: 'success' | 'pending' | 'error'
-      error: Error0 | undefined
-      loading: boolean
-    }
-    inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
-    outerProps: TOuterProps
-    componentVariant: DestinationComponentVariant
-    inputHasError: boolean
-    errorVariant: DestinationComponentVariant
-    loadingVariant: DestinationComponentVariant
-  }): {
-    nextStepState: {
-      input: InputParsed<TClientInputSchema>
-      props: TInnerProps
-      queries: TQueries
-      data: any
-      LoadingComponent: React.ComponentType<any>
-      ErrorComponent: React.ComponentType<any>
-    }
-    nextStatusState: {
-      status: 'success' | 'pending' | 'error'
-      error: Error0 | undefined
-      loading: boolean
-    }
-    forcedStatus: 'error' | 'pending' | null
-    forcedError: Error0 | undefined
-    addedWrappers: Array<WrapperComponentType<any, any, any, any>>
-    errorVariant: DestinationComponentVariant
-    loadingVariant: DestinationComponentVariant
-  } => {
-    let nextStepState = { ...stepState }
-    let nextStatusState = { ...statusState }
-    let forcedStatus: 'error' | 'pending' | null = null
-    let forcedError: Error0 | undefined = undefined
-    const addedWrappers: Array<WrapperComponentType<any, any, any, any>> = []
-    let nextErrorVariant = errorVariant
-    let nextLoadingVariant = loadingVariant
+  // private readonly _getMountablePart1 = ({
+  //   action,
+  //   stepState,
+  //   statusState,
+  //   inputRaw,
+  //   outerProps,
+  //   componentVariant,
+  //   inputHasError,
+  //   errorVariant,
+  //   loadingVariant,
+  // }: {
+  //   action: MountAction
+  //   stepState: {
+  //     input: InputParsed<TClientInputSchema>
+  //     props: TInnerProps
+  //     queries: TQueries
+  //     data: any
+  //     LoadingComponent: React.ComponentType<any>
+  //     ErrorComponent: React.ComponentType<any>
+  //   }
+  //   statusState: {
+  //     status: 'success' | 'pending' | 'error'
+  //     error: Error0 | undefined
+  //     loading: boolean
+  //   }
+  //   inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+  //   outerProps: TOuterProps
+  //   componentVariant: DestinationComponentVariant
+  //   inputHasError: boolean
+  //   errorVariant: DestinationComponentVariant
+  //   loadingVariant: DestinationComponentVariant
+  // }): {
+  //   nextStepState: {
+  //     input: InputParsed<TClientInputSchema>
+  //     props: TInnerProps
+  //     queries: TQueries
+  //     data: any
+  //     LoadingComponent: React.ComponentType<any>
+  //     ErrorComponent: React.ComponentType<any>
+  //   }
+  //   nextStatusState: {
+  //     status: 'success' | 'pending' | 'error'
+  //     error: Error0 | undefined
+  //     loading: boolean
+  //   }
+  //   forcedStatus: 'error' | 'pending' | null
+  //   forcedError: Error0 | undefined
+  //   addedWrappers: Array<WrapperComponentType<any, any, any, any>>
+  //   errorVariant: DestinationComponentVariant
+  //   loadingVariant: DestinationComponentVariant
+  // } => {
+  //   let nextStepState = { ...stepState }
+  //   let nextStatusState = { ...statusState }
+  //   let forcedStatus: 'error' | 'pending' | null = null
+  //   let forcedError: Error0 | undefined = undefined
+  //   const addedWrappers: Array<WrapperComponentType<any, any, any, any>> = []
+  //   let nextErrorVariant = errorVariant
+  //   let nextLoadingVariant = loadingVariant
 
-    const updateStatusFromQueries = () => {
-      const queries = nextStepState.queries as UseQueryOrInfiniteQueryResult[]
-      const anyError = queries.find((query) => query.error)?.error
-      const error = anyError ? Error0.from(anyError) : undefined
-      const loading = queries.some((query) => query.status === 'pending')
-      const status = error ? 'error' : loading ? 'pending' : 'success'
-      nextStatusState = { status, error, loading }
-      nextStepState = {
-        ...nextStepState,
-        data: status === 'success' ? queries.find((query) => query.data)?.data : undefined,
-      }
-    }
+  //   const updateStatusFromQueries = () => {
+  //     const queries = nextStepState.queries as UseQueryOrInfiniteQueryResult[]
+  //     const anyError = queries.find((query) => query.error)?.error
+  //     const error = anyError ? Error0.from(anyError) : undefined
+  //     const loading = queries.some((query) => query.status === 'pending')
+  //     const status = error ? 'error' : loading ? 'pending' : 'success'
+  //     nextStatusState = { status, error, loading }
+  //     nextStepState = {
+  //       ...nextStepState,
+  //       data: status === 'success' ? queries.find((query) => query.data)?.data : undefined,
+  //     }
+  //   }
 
-    switch (action.type) {
-      case 'input': {
-        const result = Point0.parseInputSafeSync(action.schema, inputRaw)
-        if (result.error) {
-          forcedStatus = 'error'
-          forcedError = result.error
-        } else {
-          nextStepState = {
-            ...nextStepState,
-            input: {
-              ...nextStepState.input,
-              ...result.data,
-            },
-          }
-        }
-        break
-      }
-      case 'selfProps': {
-        nextStepState = {
-          ...nextStepState,
-          props: {
-            ...nextStepState.props,
-            ...(outerProps as unknown as TInnerProps),
-          },
-        }
-        break
-      }
-      case 'query': {
-        const queryResult = action.fn({
-          input: nextStepState.input,
-          props: nextStepState.props,
-          queries: nextStepState.queries,
-          data: nextStepState.data,
-          error: nextStatusState.error,
-          loading: nextStatusState.loading,
-          status: nextStatusState.status,
-          ...(inputHasError ? { enabled: false } : {}),
-        } as never)
-        const nextQueries = Array.isArray(queryResult) ? queryResult : [queryResult]
-        nextStepState = {
-          ...nextStepState,
-          queries: [
-            ...(nextStepState.queries as unknown as UseQueryOrInfiniteQueryResult[]),
-            ...nextQueries,
-          ] as unknown as TQueries,
-        }
-        updateStatusFromQueries()
-        break
-      }
-      case 'selfQuery': {
-        const options = inputHasError ? { enabled: false } : {}
-        const query =
-          this._queryResultType === 'infiniteQuery'
-            ? this.useInfiniteQuery(inputRaw as never, options as never)
-            : this.useQuery(inputRaw as never, options as never)
-        nextStepState = {
-          ...nextStepState,
-          queries: [
-            ...(nextStepState.queries as unknown as UseQueryOrInfiniteQueryResult[]),
-            query,
-          ] as unknown as TQueries,
-        }
-        updateStatusFromQueries()
-        break
-      }
-      case 'wrapper': {
-        addedWrappers.push(action.Component)
-        break
-      }
-      case 'with': {
-        const result = action.fn({
-          input: nextStepState.input,
-          props: nextStepState.props,
-          queries: nextStepState.queries,
-          data: nextStepState.data,
-          error: nextStatusState.error,
-          loading: nextStatusState.loading,
-          status: nextStatusState.status,
-        } as never)
-        if (result === 'loading') {
-          forcedStatus = 'pending'
-          forcedError = undefined
-        } else if (result instanceof Error) {
-          forcedStatus = 'error'
-          forcedError = Error0.from(result)
-        } else if (result && typeof result === 'object') {
-          nextStepState = {
-            ...nextStepState,
-            props: { ...nextStepState.props, ...(result as TInnerProps) },
-          }
-        }
-        break
-      }
-      case 'mapper': {
-        if (nextStatusState.status === 'success') {
-          nextStepState = {
-            ...nextStepState,
-            data: action.fn({
-              input: nextStepState.input,
-              props: nextStepState.props,
-              queries: nextStepState.queries as never,
-              data: nextStepState.data as never,
-            } as never),
-          }
-        }
-        break
-      }
-      case 'head': {
-        if (this.type === 'page' || this._letsEndPointType === 'page') {
-          const headResult = action.fn({
-            input: nextStepState.input,
-            props: nextStepState.props,
-            queries: nextStepState.queries as never,
-            data: nextStepState.data,
-            error: nextStatusState.error,
-            loading: nextStatusState.loading,
-            status: nextStatusState.status,
-          } as never)
-          const resolvable = typeof headResult === 'string' ? { title: headResult } : headResult
-          useHead(resolvable)
-        }
-        break
-      }
-      case 'errorComponent': {
-        nextStepState = { ...nextStepState, ErrorComponent: action.Component }
-        nextErrorVariant = action.variant ?? componentVariant
-        break
-      }
-      case 'loadingComponent': {
-        nextStepState = { ...nextStepState, LoadingComponent: action.Component }
-        nextLoadingVariant = action.variant ?? componentVariant
-        break
-      }
-    }
+  //   switch (action.type) {
+  //     case 'input': {
+  //       const result = Point0.parseInputSafeSync(action.schema, inputRaw)
+  //       if (result.error) {
+  //         forcedStatus = 'error'
+  //         forcedError = result.error
+  //       } else {
+  //         nextStepState = {
+  //           ...nextStepState,
+  //           input: {
+  //             ...nextStepState.input,
+  //             ...result.data,
+  //           },
+  //         }
+  //       }
+  //       break
+  //     }
+  //     case 'selfProps': {
+  //       nextStepState = {
+  //         ...nextStepState,
+  //         props: {
+  //           ...nextStepState.props,
+  //           ...(outerProps as unknown as TInnerProps),
+  //         },
+  //       }
+  //       break
+  //     }
+  //     case 'query': {
+  //       const queryResult = action.fn({
+  //         input: nextStepState.input,
+  //         props: nextStepState.props,
+  //         queries: nextStepState.queries,
+  //         data: nextStepState.data,
+  //         error: nextStatusState.error,
+  //         loading: nextStatusState.loading,
+  //         status: nextStatusState.status,
+  //         ...(inputHasError ? { enabled: false } : {}),
+  //       } as never)
+  //       const nextQueries = Array.isArray(queryResult) ? queryResult : [queryResult]
+  //       nextStepState = {
+  //         ...nextStepState,
+  //         queries: [
+  //           ...(nextStepState.queries as unknown as UseQueryOrInfiniteQueryResult[]),
+  //           ...nextQueries,
+  //         ] as unknown as TQueries,
+  //       }
+  //       updateStatusFromQueries()
+  //       break
+  //     }
+  //     case 'selfQuery': {
+  //       const options = inputHasError ? { enabled: false } : {}
+  //       const query =
+  //         this._queryResultType === 'infiniteQuery'
+  //           ? this.useInfiniteQuery(inputRaw as never, options as never)
+  //           : this.useQuery(inputRaw as never, options as never)
+  //       nextStepState = {
+  //         ...nextStepState,
+  //         queries: [
+  //           ...(nextStepState.queries as unknown as UseQueryOrInfiniteQueryResult[]),
+  //           query,
+  //         ] as unknown as TQueries,
+  //       }
+  //       updateStatusFromQueries()
+  //       break
+  //     }
+  //     case 'wrapper': {
+  //       addedWrappers.push(action.Component)
+  //       break
+  //     }
+  //     case 'with': {
+  //       const result = action.fn({
+  //         input: nextStepState.input,
+  //         props: nextStepState.props,
+  //         queries: nextStepState.queries,
+  //         data: nextStepState.data,
+  //         error: nextStatusState.error,
+  //         loading: nextStatusState.loading,
+  //         status: nextStatusState.status,
+  //       } as never)
+  //       if (result === 'loading') {
+  //         forcedStatus = 'pending'
+  //         forcedError = undefined
+  //       } else if (result instanceof Error) {
+  //         forcedStatus = 'error'
+  //         forcedError = Error0.from(result)
+  //       } else if (result && typeof result === 'object') {
+  //         nextStepState = {
+  //           ...nextStepState,
+  //           props: { ...nextStepState.props, ...(result as TInnerProps) },
+  //         }
+  //       }
+  //       break
+  //     }
+  //     case 'mapper': {
+  //       if (nextStatusState.status === 'success') {
+  //         nextStepState = {
+  //           ...nextStepState,
+  //           data: action.fn({
+  //             input: nextStepState.input,
+  //             props: nextStepState.props,
+  //             queries: nextStepState.queries as never,
+  //             data: nextStepState.data as never,
+  //           } as never),
+  //         }
+  //       }
+  //       break
+  //     }
+  //     case 'head': {
+  //       if (this.type === 'page' || this._letsEndPointType === 'page') {
+  //         const headResult = action.fn({
+  //           input: nextStepState.input,
+  //           props: nextStepState.props,
+  //           queries: nextStepState.queries as never,
+  //           data: nextStepState.data,
+  //           error: nextStatusState.error,
+  //           loading: nextStatusState.loading,
+  //           status: nextStatusState.status,
+  //         } as never)
+  //         const resolvable = typeof headResult === 'string' ? { title: headResult } : headResult
+  //         useHead(resolvable)
+  //       }
+  //       break
+  //     }
+  //     case 'errorComponent': {
+  //       nextStepState = { ...nextStepState, ErrorComponent: action.Component }
+  //       nextErrorVariant = action.variant ?? componentVariant
+  //       break
+  //     }
+  //     case 'loadingComponent': {
+  //       nextStepState = { ...nextStepState, LoadingComponent: action.Component }
+  //       nextLoadingVariant = action.variant ?? componentVariant
+  //       break
+  //     }
+  //   }
 
-    return {
-      nextStepState,
-      nextStatusState,
-      forcedStatus,
-      forcedError,
-      addedWrappers,
-      errorVariant: nextErrorVariant,
-      loadingVariant: nextLoadingVariant,
-    }
-  }
+  //   return {
+  //     nextStepState,
+  //     nextStatusState,
+  //     forcedStatus,
+  //     forcedError,
+  //     addedWrappers,
+  //     errorVariant: nextErrorVariant,
+  //     loadingVariant: nextLoadingVariant,
+  //   }
+  // }
 
-  private readonly _getMountable1 = (props: {
-    inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
-    outerProps: TOuterProps
-    mountComponent:
-      | LayoutSuccessComponentType<any, any, any, any>
-      | PageSuccessComponentType<any, any, any, any>
-      | ComponentSuccessComponentType<any, any, any>
-      | ProviderSuccessComponentType<any, any, any>
-    extraProps: (mountableState: MountableState<any, any, any, any, any>) => Record<string, any>
-  }): React.ReactNode => {
-    const { inputRaw, outerProps, mountComponent, extraProps } = props
+  // private readonly _getMountable1 = (props: {
+  //   inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+  //   outerProps: TOuterProps
+  //   mountComponent:
+  //     | LayoutSuccessComponentType<any, any, any, any>
+  //     | PageSuccessComponentType<any, any, any, any>
+  //     | ComponentSuccessComponentType<any, any, any>
+  //     | ProviderSuccessComponentType<any, any, any>
+  //   extraProps: (mountableState: MountableState<any, any, any, any, any>) => Record<string, any>
+  // }): React.ReactNode => {
+  //   const { inputRaw, outerProps, mountComponent, extraProps } = props
 
-    const inputRawStringified = React.useMemo(() => this._getTransformer().stringify(inputRaw) ?? '{}', [inputRaw])
-    const inputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
-      const result = this.parseClientInputSafe(inputRaw as never)
-      if (!result.success) {
-        return { inputParsed: null, inputParseError: result.error } satisfies InputParseResult<TClientInputSchema>
-      }
-      return { inputParsed: result.data, inputParseError: null } satisfies InputParseResult<TClientInputSchema>
-    }, [inputRawStringified])
+  //   const inputRawStringified = React.useMemo(() => this._getTransformer().stringify(inputRaw) ?? '{}', [inputRaw])
+  //   const inputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
+  //     const result = this.parseClientInputSafe(inputRaw as never)
+  //     if (!result.success) {
+  //       return { inputParsed: null, inputParseError: result.error } satisfies InputParseResult<TClientInputSchema>
+  //     }
+  //     return { inputParsed: result.data, inputParseError: null } satisfies InputParseResult<TClientInputSchema>
+  //   }, [inputRawStringified])
 
-    const componentVariant = this._getDestinationComponentVariant() ?? 'page'
+  //   const componentVariant = this._getDestinationComponentVariant() ?? 'page'
 
-    const baseLoadingComponent = (this._loadingComponent ??
-      {
-        page: this._pageLoadingComponent,
-        component: this._componentLoadingComponent,
-        layout: this._layoutLoadingComponent,
-      }[componentVariant] ??
-      Point0.DefaultLoadingComponent) as React.ComponentType<any>
-    const baseErrorComponent = (this._errorComponent ??
-      {
-        page: this._pageErrorComponent,
-        component: this._componentErrorComponent,
-        layout: this._layoutErrorComponent,
-      }[componentVariant] ??
-      Point0.DefaultErrorComponent) as React.ComponentType<any>
+  //   const baseLoadingComponent = (this._loadingComponent ??
+  //     {
+  //       page: this._pageLoadingComponent,
+  //       component: this._componentLoadingComponent,
+  //       layout: this._layoutLoadingComponent,
+  //     }[componentVariant] ??
+  //     Point0.DefaultLoadingComponent) as React.ComponentType<any>
+  //   const baseErrorComponent = (this._errorComponent ??
+  //     {
+  //       page: this._pageErrorComponent,
+  //       component: this._componentErrorComponent,
+  //       layout: this._layoutErrorComponent,
+  //     }[componentVariant] ??
+  //     Point0.DefaultErrorComponent) as React.ComponentType<any>
 
-    const hasSelfProps = this._mountActions.some((action) => action.type === 'selfProps')
-    let stepState: {
-      input: InputParsed<TClientInputSchema>
-      props: TInnerProps
-      queries: TQueries
-      data: any
-      LoadingComponent: React.ComponentType<any>
-      ErrorComponent: React.ComponentType<any>
-    } = {
-      input: {} as InputParsed<TClientInputSchema>,
-      props: hasSelfProps ? ({} as TInnerProps) : (outerProps as unknown as TInnerProps),
-      queries: [] as unknown as TQueries,
-      data: undefined,
-      LoadingComponent: baseLoadingComponent,
-      ErrorComponent: baseErrorComponent,
-    }
-    let statusState: { status: 'success' | 'pending' | 'error'; error: Error0 | undefined; loading: boolean } = {
-      status: 'success',
-      error: undefined,
-      loading: false,
-    }
-    let forcedStatus: 'error' | 'pending' | null = null
-    let forcedError: Error0 | undefined = undefined
-    let inputHasError = false
-    let errorVariant = componentVariant
-    let loadingVariant = componentVariant
-    const wrappers: Array<WrapperComponentType<any, any, any, any>> = []
+  //   const hasSelfProps = this._mountActions.some((action) => action.type === 'selfProps')
+  //   let stepState: {
+  //     input: InputParsed<TClientInputSchema>
+  //     props: TInnerProps
+  //     queries: TQueries
+  //     data: any
+  //     LoadingComponent: React.ComponentType<any>
+  //     ErrorComponent: React.ComponentType<any>
+  //   } = {
+  //     input: {} as InputParsed<TClientInputSchema>,
+  //     props: hasSelfProps ? ({} as TInnerProps) : (outerProps as unknown as TInnerProps),
+  //     queries: [] as unknown as TQueries,
+  //     data: undefined,
+  //     LoadingComponent: baseLoadingComponent,
+  //     ErrorComponent: baseErrorComponent,
+  //   }
+  //   let statusState: { status: 'success' | 'pending' | 'error'; error: Error0 | undefined; loading: boolean } = {
+  //     status: 'success',
+  //     error: undefined,
+  //     loading: false,
+  //   }
+  //   let forcedStatus: 'error' | 'pending' | null = null
+  //   let forcedError: Error0 | undefined = undefined
+  //   let inputHasError = false
+  //   let errorVariant = componentVariant
+  //   let loadingVariant = componentVariant
+  //   const wrappers: Array<WrapperComponentType<any, any, any, any>> = []
 
-    for (const action of this._mountActions) {
-      const part = this._getMountablePart1({
-        action,
-        stepState,
-        statusState,
-        inputRaw,
-        outerProps,
-        componentVariant,
-        inputHasError,
-        errorVariant,
-        loadingVariant,
-      })
-      stepState = part.nextStepState
-      statusState = part.nextStatusState
-      if (part.forcedStatus) {
-        forcedStatus = part.forcedStatus
-        forcedError = part.forcedError
-        statusState = {
-          status: forcedStatus,
-          error: forcedError,
-          loading: forcedStatus === 'pending',
-        }
-        if (forcedStatus === 'error') {
-          inputHasError = true
-        }
-      } else if (forcedStatus) {
-        statusState = {
-          status: forcedStatus,
-          error: forcedError,
-          loading: forcedStatus === 'pending',
-        }
-      }
-      if (part.addedWrappers.length) {
-        wrappers.push(...part.addedWrappers)
-      }
-      errorVariant = part.errorVariant
-      loadingVariant = part.loadingVariant
-    }
+  //   for (const action of this._mountActions) {
+  //     const part = this._getMountablePart1({
+  //       action,
+  //       stepState,
+  //       statusState,
+  //       inputRaw,
+  //       outerProps,
+  //       componentVariant,
+  //       inputHasError,
+  //       errorVariant,
+  //       loadingVariant,
+  //     })
+  //     stepState = part.nextStepState
+  //     statusState = part.nextStatusState
+  //     if (part.forcedStatus) {
+  //       forcedStatus = part.forcedStatus
+  //       forcedError = part.forcedError
+  //       statusState = {
+  //         status: forcedStatus,
+  //         error: forcedError,
+  //         loading: forcedStatus === 'pending',
+  //       }
+  //       if (forcedStatus === 'error') {
+  //         inputHasError = true
+  //       }
+  //     } else if (forcedStatus) {
+  //       statusState = {
+  //         status: forcedStatus,
+  //         error: forcedError,
+  //         loading: forcedStatus === 'pending',
+  //       }
+  //     }
+  //     if (part.addedWrappers.length) {
+  //       wrappers.push(...part.addedWrappers)
+  //     }
+  //     errorVariant = part.errorVariant
+  //     loadingVariant = part.loadingVariant
+  //   }
 
-    if (forcedStatus) {
-      statusState = {
-        status: forcedStatus,
-        error: forcedError,
-        loading: forcedStatus === 'pending',
-      }
-    }
+  //   if (forcedStatus) {
+  //     statusState = {
+  //       status: forcedStatus,
+  //       error: forcedError,
+  //       loading: forcedStatus === 'pending',
+  //     }
+  //   }
 
-    if (statusState.status !== 'success') {
-      stepState = { ...stepState, data: undefined }
-    }
+  //   if (statusState.status !== 'success') {
+  //     stepState = { ...stepState, data: undefined }
+  //   }
 
-    if (!mountComponent && statusState.status === 'success') {
-      statusState = {
-        status: 'error',
-        error: new Error0('No success component'),
-        loading: false,
-      }
-    }
+  //   if (!mountComponent && statusState.status === 'success') {
+  //     statusState = {
+  //       status: 'error',
+  //       error: new Error0('No success component'),
+  //       loading: false,
+  //     }
+  //   }
 
-    const LoadingComponent = React.useCallback(() => {
-      return React.createElement(stepState.LoadingComponent, {
-        type: loadingVariant,
-      })
-    }, [stepState.LoadingComponent, loadingVariant])
-    const ErrorComponent = React.useCallback(
-      ({ error }: { error: Error }) => {
-        return React.createElement(stepState.ErrorComponent, {
-          type: errorVariant,
-          error: Error0.from(error),
-        })
-      },
-      [stepState.ErrorComponent, errorVariant],
-    )
+  //   const LoadingComponent = React.useCallback(() => {
+  //     return React.createElement(stepState.LoadingComponent, {
+  //       type: loadingVariant,
+  //     })
+  //   }, [stepState.LoadingComponent, loadingVariant])
+  //   const ErrorComponent = React.useCallback(
+  //     ({ error }: { error: Error }) => {
+  //       return React.createElement(stepState.ErrorComponent, {
+  //         type: errorVariant,
+  //         error: Error0.from(error),
+  //       })
+  //     },
+  //     [stepState.ErrorComponent, errorVariant],
+  //   )
 
-    const mountableState = {
-      ...(stepState as Record<string, unknown>),
-      status: statusState.status,
-      error: statusState.error as never,
-      loading: statusState.loading,
-      LoadingComponent,
-      ErrorComponent,
-    } as unknown as MountableState<any, any, any, any, any>
+  //   const mountableState = {
+  //     ...(stepState as Record<string, unknown>),
+  //     status: statusState.status,
+  //     error: statusState.error as never,
+  //     loading: statusState.loading,
+  //     LoadingComponent,
+  //     ErrorComponent,
+  //   } as unknown as MountableState<any, any, any, any, any>
 
-    const inner = (() => {
-      if (statusState.status === 'error') {
-        return React.createElement(ErrorComponent, {
-          error: statusState.error ?? new Error('Unknown error'),
-        })
-      }
-      if (statusState.status === 'pending') {
-        return React.createElement(LoadingComponent, null)
-      }
-      return React.createElement(mountComponent as never, {
-        input: stepState.input,
-        props: stepState.props,
-        queries: stepState.queries,
-        data: stepState.data,
-        ...extraProps(mountableState),
-      })
-    })()
+  //   const inner = (() => {
+  //     if (statusState.status === 'error') {
+  //       return React.createElement(ErrorComponent, {
+  //         error: statusState.error ?? new Error('Unknown error'),
+  //       })
+  //     }
+  //     if (statusState.status === 'pending') {
+  //       return React.createElement(LoadingComponent, null)
+  //     }
+  //     return React.createElement(mountComponent as never, {
+  //       input: stepState.input,
+  //       props: stepState.props,
+  //       queries: stepState.queries,
+  //       data: stepState.data,
+  //       ...extraProps(mountableState),
+  //     })
+  //   })()
 
-    return wrappers.reduceRight<React.ReactNode>((acc, Wrapper) => {
-      return React.createElement(Wrapper as React.ComponentType<any>, {
-        ...(mountableState as Record<string, unknown>),
-        children: acc,
-      })
-    }, inner as React.ReactNode)
-  }
+  //   return wrappers.reduceRight<React.ReactNode>((acc, Wrapper) => {
+  //     return React.createElement(Wrapper as React.ComponentType<any>, {
+  //       ...(mountableState as Record<string, unknown>),
+  //       children: acc,
+  //     })
+  //   }, inner as React.ReactNode)
+  // }
 
   private static readonly _createBoundLoadingComponent = (
     loadingComponent: LoadingComponentType<any>,
@@ -8129,9 +8129,9 @@ export class Point0<
     }
   }
 
-  private static readonly _isMountActionCausesWrapping = (action: MountAction) => {
-    return action.type === 'wrapper' || action.type === 'query' || action.type === 'selfQuery' || action.type === 'with'
-  }
+  // private static readonly _isMountActionCausesWrapping = (action: MountAction) => {
+  //   return action.type === 'wrapper' || action.type === 'query' || action.type === 'selfQuery' || action.type === 'with'
+  // }
 
   private readonly _getMountable = (props: {
     inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
@@ -8143,8 +8143,9 @@ export class Point0<
       | ProviderSuccessComponentType<any, any, any>
     extraProps: (mountableState: MountableState<any, any, any, any, any>) => Record<string, any>
 
-    level: number
+    level?: number
     prevInnerProps?: Props
+    prevQueries?: Queries
     mountActions?: MountAction[]
     PrevLoadingComponent?: React.ComponentType<any>
     PrevErrorComponent?: React.ComponentType<{ error: Error }>
@@ -8160,78 +8161,204 @@ export class Point0<
       PrevLoadingComponent,
       PrevErrorComponent,
       location = useLocation(),
-      innerProps = {},
+      prevInnerProps = {},
+      prevQueries = [],
     } = props
 
     const variant = this._getDestinationComponentVariant() ?? 'page'
 
-    const { ErrorComponent, LoadingComponent } = React.useMemo(() => {
-      const { errorComponent, loadingComponent } = (() => {
-        let errorComponent: ErrorComponentType<any> | undefined = undefined
-        let loadingComponent: LoadingComponentType<any> | undefined = undefined
-        for (const action of mountActions) {
-          if (Point0._isMountActionCausesWrapping(action)) {
-            return { errorComponent, loadingComponent }
-          }
-          if (action.type === 'errorComponent') {
-            errorComponent = action.Component
-          }
-          if (action.type === 'loadingComponent') {
-            loadingComponent = action.Component
-          }
-        }
-        return { errorComponent, loadingComponent }
-      })()
-      return {
-        LoadingComponent: loadingComponent
-          ? Point0._createBoundLoadingComponent(loadingComponent, variant)
-          : (PrevLoadingComponent ?? Point0._createBoundLoadingComponent(this._getLoadingComponent(), variant)),
-        ErrorComponent: errorComponent
-          ? Point0._createBoundErrorComponent(errorComponent, variant)
-          : (PrevErrorComponent ?? Point0._createBoundErrorComponent(this._getErrorComponent(), variant)),
-      }
-    }, [])
+    // const { ErrorComponent, LoadingComponent } = React.useMemo(() => {
+    //   const { errorComponent, loadingComponent } = (() => {
+    //     let errorComponent: ErrorComponentType<any> | undefined = undefined
+    //     let loadingComponent: LoadingComponentType<any> | undefined = undefined
+    //     for (const action of mountActions) {
+    //       if (Point0._isMountActionCausesWrapping(action)) {
+    //         return { errorComponent, loadingComponent }
+    //       }
+    //       if (action.type === 'errorComponent') {
+    //         errorComponent = action.Component
+    //       }
+    //       if (action.type === 'loadingComponent') {
+    //         loadingComponent = action.Component
+    //       }
+    //     }
+    //     return { errorComponent, loadingComponent }
+    //   })()
+    //   return {
+    //     LoadingComponent: loadingComponent
+    //       ? Point0._createBoundLoadingComponent(loadingComponent, variant)
+    //       : (PrevLoadingComponent ?? Point0._createBoundLoadingComponent(this._getLoadingComponent(), variant)),
+    //     ErrorComponent: errorComponent
+    //       ? Point0._createBoundErrorComponent(errorComponent, variant)
+    //       : (PrevErrorComponent ?? Point0._createBoundErrorComponent(this._getErrorComponent(), variant)),
+    //   }
+    // }, [])
 
-    const [mountState, setMountState] = React.useState<MountableState<any, any, any, any, any>>(() => ({
+    // const [mountState, setMountState] = React.useState<MountableState<any, any, any, any, any>>(() => ({
+    //   location,
+    //   status: 'success',
+    //   error: undefined,
+    //   loading: false,
+    //   input: inputRaw,
+    //   props: outerProps,
+    //   queries: [],
+    //   data: undefined,
+    //   LoadingComponent,
+    //   ErrorComponent,
+    // }))
+    const staticState = {
       location,
+      // status: 'success',
+      // error: undefined,
+      // loading: false,
+      input: inputRaw,
+      props: prevInnerProps,
+      queries: prevQueries,
+      data: undefined,
+      LoadingComponent:
+        PrevLoadingComponent ??
+        React.useMemo(() => Point0._createBoundLoadingComponent(this._getLoadingComponent(), variant), [variant]),
+      ErrorComponent:
+        PrevErrorComponent ??
+        React.useMemo(() => Point0._createBoundErrorComponent(this._getErrorComponent(), variant), [variant]),
+    }
+    const dynamicState: Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'> = {
       status: 'success',
       error: undefined,
       loading: false,
-      input: inputRaw,
-      props: outerProps,
-      queries: [],
-      data: undefined,
-      LoadingComponent,
-      ErrorComponent,
-    }))
+    }
+    const state = {
+      ...staticState,
+      ...dynamicState,
+    } as MountableState<any, any, any, any, any>
 
     // use memo loop until breaking action and return thin breaking action, then outside loop operate with it
 
     const currentMountActions = [...mountActions]
     for (const action of currentMountActions) {
       currentMountActions.shift()
+      // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+      switch (action.type) {
+        case 'errorComponent': {
+          staticState.ErrorComponent = React.useMemo(
+            () => Point0._createBoundErrorComponent(action.Component, variant),
+            [],
+          )
+          continue
+        }
+        case 'loadingComponent': {
+          staticState.LoadingComponent = React.useMemo(
+            () => Point0._createBoundLoadingComponent(action.Component, variant),
+            [],
+          )
+          continue
+        }
+        case 'selfProps': {
+          staticState.props = { ...staticState.props, ...outerProps }
+          continue
+        }
+        case 'head': {
+          if (this.type === 'page' || this.type === 'layout') {
+            const headFnResult = action.fn(state)
+            const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
+            useHead(headFnResultResolvable)
+          }
+          continue
+        }
+        case 'mapper': {
+          if (dynamicState.status === 'success') {
+            staticState.data = action.fn({
+              location: staticState.location,
+              props: staticState.props,
+              queries: staticState.queries,
+              data: staticState.data,
+            })
+          }
+          continue
+        }
+      }
+
+      // below causes wrapping
+
+      const _nextMountableProps = {
+        inputRaw,
+        outerProps,
+        mountComponent,
+        extraProps,
+        level: level + 1,
+        mountActions: currentMountActions,
+        location,
+        PrevErrorComponent: staticState.ErrorComponent,
+        PrevLoadingComponent: staticState.LoadingComponent,
+        prevQueries: staticState.queries,
+        prevInnerProps: staticState.props,
+      }
+
+      // const WC = React.useCallback(() => {
+      //   return this._getMountable({
+      //     inputRaw,
+      //     outerProps,
+      //     mountComponent,
+      //     extraProps,
+      //     level: level + 1,
+      //     mountActions: currentMountActions,
+      //     location,
+      //     PrevErrorComponent: staticState.ErrorComponent,
+      //     PrevLoadingComponent: staticState.LoadingComponent,
+      //     prevQueries: staticState.queries,
+      //     prevInnerProps: staticState.props,
+      //   })
+      // }, [])
+
       switch (action.type) {
         case 'wrapper': {
           return React.createElement(action.Component, {
-            ...mountState,
-            children: this._getMountable({
-              inputRaw,
-              outerProps,
-              mountComponent,
-              extraProps,
-              level: level + 1,
-              mountActions: currentMountActions,
-              location,
-              PrevErrorComponent: mountState.ErrorComponent,
-              PrevLoadingComponent: mountState.LoadingComponent,
-            }),
+            ...state,
+            children: React.createElement(this._getMountable, _nextMountableProps),
           })
         }
-        default: {
-          // throw new Error(`Unknown mount action type: ${action.type}`)
+        case 'with': {
+          const result = action.fn(state)
+          if (result === 'loading') {
+            return React.createElement(staticState.LoadingComponent)
+          } else if (result instanceof Error) {
+            return React.createElement(staticState.ErrorComponent, {
+              error: result,
+            })
+          } else {
+            staticState.props = { ...staticState.props, ...(result || {}) }
+            return React.createElement(this._getMountable, _nextMountableProps)
+          }
+        }
+        case 'query': {
+          const queryResult = action.fn(state)
+          staticState.queries = [...staticState.queries, ...(Array.isArray(queryResult) ? queryResult : [queryResult])]
+          return React.createElement(React.Fragment, {
+            children: React.createElement(this._getMountable, _nextMountableProps),
+          })
+        }
+        case 'selfQuery': {
+          const queryResult =
+            this._queryResultType === 'infiniteQuery'
+              ? this.useInfiniteQuery(inputRaw as never)
+              : this.useQuery(inputRaw as never)
+          staticState.queries = [...staticState.queries, queryResult]
+          return React.createElement(React.Fragment, {
+            children: React.createElement(this._getMountable, _nextMountableProps),
+          })
         }
       }
+
+      // @ts-expect-error -- we know that this is not possible, but to not forget add case for new action type
+      throw new Error(`Unknown mount action type: ${action.type}`)
     }
+
+    // so we come to the end and can return mount component
+
+    return React.createElement(mountComponent as never, {
+      ...state,
+      ...extraProps(state),
+    })
   }
 
   // loop or recursion over calling _getMountable action by action
@@ -8239,10 +8366,10 @@ export class Point0<
   // 'query' add query to queries array, pass current queries array to next action, do not create new component around, just hooks
   // 'wrapper' adds component around
   // 'selfQuery' calling self component query
+  // 'with' if returns 'loading' show current loading component, if return Error show error component, else if undefined or record returned it is innerProps to extend
 
   // 'input' adds component around, parsing input, if error return current error component
 
-  // 'with' if returns 'loading' show current loading component, if return Error show error component, else if undefined or record returned it is innerProps to extend
   // 'mapper' updates data in case if all queries passed (do not creates wrapping component)
   // 'head' call useHead
   // 'selfProps' adding outerProps to inner props (mountState props)
@@ -8470,13 +8597,13 @@ export class Point0<
 
   Page = (
     props: PageSelfProps<
+      TRouteDefinition,
       TServerInputSchema,
       TClientInputSchema,
       TOuterProps,
       TInnerProps,
       TQueries,
-      TMapperOutput,
-      TRouteDefinition
+      TMapperOutput
     >,
   ): React.ReactNode => {
     // const loadingComponent = this._getLoadingComponent({ type: 'page' })
@@ -9103,7 +9230,15 @@ export class Point0<
   // }
 
   Layout = (
-    props: LayoutSelfProps<TServerInputSchema, TClientInputSchema, TOuterProps, TInnerProps, TQueries, TMapperOutput>,
+    props: LayoutSelfProps<
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TOuterProps,
+      TInnerProps,
+      TQueries,
+      TMapperOutput
+    >,
   ): React.ReactNode => {
     // const loadingComponent = this._getLoadingComponent({ type: 'layout' })
     // const errorComponent = this._getErrorComponent({ type: 'layout' })
@@ -9141,7 +9276,6 @@ export class Point0<
             value: mountableState.data,
             children,
           }),
-          location,
         }
       },
       mountComponent: this._layout as never,
@@ -9488,7 +9622,7 @@ export class Point0<
     }, [props])
 
     const providerComponent = (({ children }: { children: Exclude<React.ReactNode, Promise<any>> }) =>
-      children) as ProviderSuccessComponentType<any, any, any, any>
+      children) as ProviderSuccessComponentType<any, any, any>
 
     return this._getMountable({
       inputRaw,
