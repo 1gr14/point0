@@ -2098,7 +2098,7 @@ export type AssertNoForbiddenMethodsIfNotSuitableStage<
     : unknown
   : TPointType extends 'clientStage'
     ? TMethod extends 'loader' | 'ctx' | 'input' | 'combinedInput'
-      ? ShowError<`You can not use ${TMethod}() after calling .clientStage()`>
+      ? ShowError<`You can not use ${TMethod}() in client loaders stage`>
       : unknown
     : TPointType extends 'finalStage'
       ? TMethod extends 'loader' | 'ctx' | 'input' | 'combinedInput' | 'clientLoader' | 'clientInput'
