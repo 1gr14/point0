@@ -941,7 +941,7 @@ export type RichFetchFn = (input: string | URL | Request, init?: RequestInit) =>
 
 export type ShowError<Message extends string> = {
   readonly __error__: Message
-}
+} & Record<Message, Message>
 export type WithError<TError, T> = unknown extends TError ? T : TError
 // export type ShowError<Message extends string> =
 //   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -2194,6 +2194,7 @@ export type NiceRootStagePoint<
   // | 'mapper'
   | 'head'
   | 'wrapper'
+  | 'with'
   | 'scrollPosition'
   | 'scrollRestore'
   | 'prefetchPolicy'
@@ -2274,6 +2275,7 @@ export type NicePluginStagePoint<
   // | 'mapper'
   | 'head'
   | 'wrapper'
+  | 'with'
   // | 'outer'
   | 'scrollPosition'
   | 'scrollRestore'
@@ -2339,6 +2341,8 @@ export type NiceBaseStagePoint<
   | 'pageLoading'
   | 'componentLoading'
   | 'loading'
+  | 'wrapper'
+  | 'with'
   | 'input'
   | 'clientInput'
   | 'combinedInput'
@@ -2397,6 +2401,7 @@ export type NicePageStagePoint<
   | 'error'
   | 'loading'
   | 'wrapper'
+  | 'with'
   // | 'outer'
   | 'input'
   | 'clientInput'
@@ -2460,6 +2465,7 @@ export type NiceComponentStagePoint<
   | 'error'
   | 'loading'
   | 'wrapper'
+  | 'with'
   // | 'outer'
   | 'input'
   | 'clientInput'
@@ -2671,6 +2677,7 @@ export type NiceLayoutStagePoint<
   | 'pageLoading'
   | 'layoutLoading'
   | 'wrapper'
+  | 'with'
   // | 'outer'
   | 'input'
   | 'clientInput'
@@ -2751,6 +2758,7 @@ export type NiceProviderStagePoint<
   | 'error'
   | 'loading'
   | 'wrapper'
+  | 'with'
 >
 
 export type NiceStagePoint<

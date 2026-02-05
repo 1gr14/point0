@@ -348,15 +348,9 @@ export class Point0<
   // private readonly _mapperFns: Array<MapperFn<any, any, any, any, any>>
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
   readonly route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
-  private readonly _page:
-    | PageSuccessComponentType<any, any, any, any>
-    | UndefinedSuccessPageComponent
-  private readonly _component:
-    | ComponentSuccessComponentType<any, any, any>
-    | UndefinedComponentSuccessComponent
-  private readonly _layout:
-    | LayoutSuccessComponentType<any, any, any, any>
-    | UndefinedLayoutSuccessComponent
+  private readonly _page: PageSuccessComponentType<any, any, any, any> | UndefinedSuccessPageComponent
+  private readonly _component: ComponentSuccessComponentType<any, any, any> | UndefinedComponentSuccessComponent
+  private readonly _layout: LayoutSuccessComponentType<any, any, any, any> | UndefinedLayoutSuccessComponent
   readonly _layouts: LayoutPoint[]
   readonly name: PointName
   private readonly _unstableId: number
@@ -1637,7 +1631,7 @@ export class Point0<
     TClientInputSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
-    TNewInnerProps,
+    AppendProps<TInnerProps, TNewInnerProps>,
     WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
   > {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
@@ -4329,48 +4323,75 @@ export class Point0<
   >(
     ...args: TLetsEndPointType extends MountablePointType
       ? [
-          point: TPoint &
-            AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
-          ...rest: IsInputOptional<TPoint['Infer']['InputRaw']> extends true
-            ? [
-                input?:
-                  | TPoint['Infer']['InputRaw']
-                  | ((
-                      options: QueryFnOptions<
-                        MountableLocation<TLetsEndPointType, TRouteDefinition>,
-                        TInnerProps,
-                        WithSelfQueryIfShouldBeFinalized<
-                          TPointType,
-                          TLetsEndPointType,
-                          TServerLoaderOutput,
-                          TClientLoaderOutput,
-                          TQueries
-                        >,
-                        TMapperOutput
-                      >,
-                    ) => TPoint['Infer']['InputRaw']),
-                queryOptions?: TPoint['Infer']['UseQueryOptions'],
-              ]
-            : [
-                input:
-                  | TPoint['Infer']['InputRaw']
-                  | ((
-                      options: QueryFnOptions<
-                        MountableLocation<TLetsEndPointType, TRouteDefinition>,
-                        TInnerProps,
-                        WithSelfQueryIfShouldBeFinalized<
-                          TPointType,
-                          TLetsEndPointType,
-                          TServerLoaderOutput,
-                          TClientLoaderOutput,
-                          TQueries
-                        >,
-                        TMapperOutput
-                      >,
-                    ) => TPoint['Infer']['InputRaw']),
-                queryOptions?: TPoint['Infer']['UseQueryOptions'],
-              ],
+          point: TPoint,
+          input:
+            | TPoint['Infer']['InputRaw']
+            | ((
+                options: QueryFnOptions<
+                  MountableLocation<TLetsEndPointType, TRouteDefinition>,
+                  TInnerProps,
+                  WithSelfQueryIfShouldBeFinalized<
+                    TPointType,
+                    TLetsEndPointType,
+                    TServerLoaderOutput,
+                    TClientLoaderOutput,
+                    TQueries
+                  >,
+                  TMapperOutput
+                >,
+              ) => TPoint['Infer']['InputRaw']),
+          queryOptions?: TPoint['Infer']['UseQueryOptions'],
         ]
+      : never
+  ): NiceStagePoint<
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+      ? 'finalStage'
+      : StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    [
+      ...WithSelfQueryIfShouldBeFinalized<
+        TPointType,
+        TLetsEndPointType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TQueries
+      >,
+      TPoint['Infer']['UseQueryResult'],
+    ]
+  >
+  query<
+    TPoint extends NiceEndPoint<
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      'infiniteQuery' | 'query',
+      any,
+      any,
+      any
+    >,
+  >(
+    ...args: TLetsEndPointType extends MountablePointType
+      ? [point: TPoint & (TPoint['Infer']['InputOptional'] extends true ? unknown : ShowError<`Input is required`>)]
       : never
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
@@ -4415,8 +4436,7 @@ export class Point0<
             >,
             TMapperOutput,
             TNewQueries
-          > &
-            AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
+          >,
         ]
       : never
   ): NiceStagePoint<
@@ -8290,8 +8310,6 @@ export class Point0<
       }
     })()
 
-    // console.log('allQueriesState', allQueriesState, allQueries.length)
-
     const queriesState = (() => {
       if (prevQueries.length === 0) {
         return {
@@ -8345,7 +8363,7 @@ export class Point0<
     // dynamic state calculates on first level and sending to next levels, queries come to first level also to allQueries
 
     const currentMountActions = [...prevMountActions]
-    for (const action of currentMountActions) {
+    for (const action of prevMountActions) {
       currentMountActions.shift()
 
       // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check

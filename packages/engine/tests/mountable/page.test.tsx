@@ -2,6 +2,7 @@ import type { EndPoint } from '@point0/core'
 import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
 import { createTestThings } from '../utils/internal-testing.js'
+import { z } from 'zod'
 
 describe('page', () => {
   const root = Point0.lets('root', 'root')
@@ -185,7 +186,7 @@ describe('page', () => {
     `)
   })
 
-  it.only('wrapper', async () => {
+  it('wrapper', async () => {
     const page = root
       .lets('page', 'home', '/:id')
       .loader(({ input }) => ({ x: input.id }))
@@ -204,12 +205,12 @@ describe('page', () => {
       expect(await tale()).toMatchInlineSnapshot(`
         "/zxc
           #wrapper:
-            #input: zxc
+            #params: zxc
             #query-status: pending
             #loading: ...
 
           #wrapper:
-            #input: zxc
+            #params: zxc
             #query-status: success
             #page: x=zxc
         "
@@ -221,7 +222,7 @@ describe('page', () => {
     `)
     expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
       "#wrapper:
-        #input: zxc
+        #params: zxc
         #query-status: success
         #page: x=zxc
       "
@@ -231,13 +232,13 @@ describe('page', () => {
   it('wrapper can block query', async () => {
     const page = root
       .lets('page', 'home', '/:id')
-      .loader(({ input }) => ({ x: input.id }))
       .wrapper(({ children, location }) => {
         if (location.params.id.length > 2) {
           return <div id="wrapper">you shell not pass</div>
         }
         return children
       })
+      .loader(({ input }) => ({ x: input.id }))
       .page(({ data }) => <div id="page">x={data.x}</div>)
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
@@ -245,7 +246,7 @@ describe('page', () => {
       await waitContent('#wrapper')
       expect(await tale()).toMatchInlineSnapshot(`
         "/zxc
-          #outer: you shell not pass
+          #wrapper: you shell not pass
         "
       `)
     })
@@ -254,53 +255,164 @@ describe('page', () => {
       "
     `)
     expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
-      "#outer: you shell not pass
+      "#wrapper: you shell not pass
       "
     `)
   })
 
-  it('many wrappers and outer', async () => {
+  it('with', async () => {
+    const page = root
+      .lets('page', 'home', '/:y')
+      .with(() => ({ x: 1 }))
+      .page(({ props, location }) => (
+        <div id="page">
+          x={props.x} y={location.params.y}
+        </div>
+      ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
+    await render(page.route({ y: 'zxc' }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/zxc
+          #page: x=1 y=zxc
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      "
+    `)
+    expect(await fetchPreview(page, { y: 'zxc' })).toMatchInlineSnapshot(`
+      "#page: x=1 y=zxc
+      "
+    `)
+  })
+
+  it('query', async () => {
+    const query = root
+      .lets('query', 'test')
+      .loader(() => ({ x: 1 }))
+      .query()
+    const page = root
+      .lets('page', 'home')
+      .query(query)
+      .page(({ data, location }) => <div id="page">x={data.x}</div>)
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/home
+          #loading: ...
+
+          #page: x=1
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "query.test (client) < {}
+      "
+    `)
+    expect(await fetchPreview(page, { y: 'zxc' })).toMatchInlineSnapshot(`
+      "#page: x=1
+      "
+    `)
+  })
+
+  it('query with input', async () => {
+    const query = root
+      .lets('query', 'test')
+      .input(z.object({ y: z.number() }))
+      .loader(({ input }) => ({ x: input.y * 2 }))
+      .query()
+    const page = root
+      .lets('page', 'home', '/:y')
+      .query(query, ({ location }) => ({ y: +location.params.y }))
+      // .query(query)
+      .page(({ data, location }) => (
+        <div id="page">
+          x={data.x} y={location.params.y}
+        </div>
+      ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+    await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/123
+          #loading: ...
+
+          #page: x=246 y=123
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "query.test (client) < {"y":123}
+      "
+    `)
+    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+      "#page: x=246 y=123
+      "
+    `)
+  })
+
+  it('many wrappers and with', async () => {
     const page = root
       .lets('page', 'home', '/:id')
-      .loader(({ input }) => ({ x: input.id }))
-      .outer(({ children, input }) => {
-        if (!input || input.id.length < 2) {
-          return <div id="outer">you shell not pass</div>
+      .wrapper(({ children, location }) => {
+        if (location.params.id.length < 2) {
+          return <div id="wrapper">you shell not pass</div>
         }
-        return <div id="outer">{children}</div>
+        return <div id="wrapper">{children}</div>
       })
-      .wrapper(({ children, queries }) => (
+      .with(() => ({ y: 1 }))
+      .loader(({ input }) => ({ x: input.id }))
+      .wrapper(({ children, queries, props }) => (
         <div id="wrapper1">
-          <div id="query-status">{queries?.map((q) => q.status).join(', ') || 'undefined'}</div>
+          <div id="props">y={props.y}</div>
+          <div id="query-status">{queries.map((q) => q.status).join(', ') || 'undefined'}</div>
           {children}
         </div>
       ))
-      .wrapper(({ children, queries }) => (
+      .with(() => ({ z: 1 }))
+      .wrapper(({ children, queries, props }) => (
         <div id="wrapper2">
-          <div id="query-status">{queries?.map((q) => q.status).join(', ') || 'undefined'}</div>
+          <div id="props">
+            y={props.y} z={props.z}
+          </div>
+          <div id="query-status">{queries.map((q) => q.status).join(', ') || 'undefined'}</div>
           {children}
         </div>
       ))
-      .page(({ data }) => <div id="page">x={data.x}</div>)
+      .page(({ data, props }) => (
+        <div id="page">
+          x={data.x} y={props.y} z={props.z}
+        </div>
+      ))
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
         "/zxc
-          #outer:
+          #wrapper:
             #wrapper1:
+              #props: y=1
               #query-status: pending
               #wrapper2:
+                #props: y=1 z=1
                 #query-status: pending
                 #loading: ...
 
-          #outer:
+          #wrapper:
             #wrapper1:
+              #props: y=1
               #query-status: success
               #wrapper2:
+                #props: y=1 z=1
                 #query-status: success
-                #page: x=zxc
+                #page: x=zxc y=1 z=1
         "
       `)
     })
@@ -309,12 +421,14 @@ describe('page', () => {
       "
     `)
     expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
-      "#outer:
+      "#wrapper:
         #wrapper1:
+          #props: y=1
           #query-status: success
           #wrapper2:
+            #props: y=1 z=1
             #query-status: success
-            #page: x=zxc
+            #page: x=zxc y=1 z=1
       "
     `)
   })
