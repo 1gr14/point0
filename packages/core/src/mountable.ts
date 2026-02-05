@@ -1,121 +1,6 @@
-// export const useLoader = (
-//   ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-//     ? [
-//         input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
-//         queryOptions?:
-//           | ExtraUseQueryOptions
-//           | ExtraUseInfiniteQueryOptions<
-//               InputsRaw<TServerInputSchema, TClientInputSchema>,
-//               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-//               Error0,
-//               InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-//               QueryKey,
-//               unknown
-//             >
-//           | undefined,
-//         fetchOptions?: FetchOptions | undefined,
-//         _clientInputParseResult?: InputParseResult<TClientInputSchema>,
-//       ]
-//     : [
-//         input: InputsRaw<TServerInputSchema, TClientInputSchema>,
-//         queryOptions?:
-//           | ExtraUseQueryOptions
-//           | ExtraUseInfiniteQueryOptions<
-//               InputsRaw<TServerInputSchema, TClientInputSchema>,
-//               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-//               Error0,
-//               InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-//               QueryKey,
-//               unknown
-//             >
-//           | undefined,
-//         fetchOptions?: FetchOptions | undefined,
-//         _clientInputParseResult?: InputParseResult<TClientInputSchema>,
-//       ]
-// ): AnyUseLoaderResult<
-//   any,
-//   TQueryResultType,
-//   TServerLoaderOutput,
-//   TClientLoaderOutput,
-//   TMapperOutput,
-//   TClientInputSchema,
-//   AnyLocation
-// > & { dataOrLastInfiteData: FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> } => {
-//   const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
-//   const [inputRaw = {}, queryOptions, fetchOptions, _clientInputParseResult] = args
-
-//   const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
-//     if (_clientInputParseResult) {
-//       return _clientInputParseResult
-//     }
-//     const result = this.parseClientInputSafe(inputRaw as never)
-//     if (!result.success) {
-//       return { inputParsed: null, inputParseError: result.error } as InputParseResult<TClientInputSchema>
-//     }
-//     return { inputParsed: result.data, inputParseError: null } as InputParseResult<TClientInputSchema>
-//   }, [this._getTransformer().stringify(inputRaw), _clientInputParseResult])
-
-//   if (!this._hasServerLoader() && !this._hasClientLoader()) {
-//     const result = React.useMemo(() => {
-//       // const data = (
-//       //   clientInputParseResult.inputParsed
-//       //     ? this._mapperFns.reduce(
-//       //         (data, mapperFn) => mapperFn({ data, input: clientInputParseResult.inputParsed }),
-//       //         undefined as never,
-//       //       )
-//       //     : undefined
-//       // ) as never
-//       const data = undefined as never
-//       return {
-//         data,
-//         loading: false as const,
-//         error: (clientInputParseResult.inputParseError ?? null) as never,
-//         query: null,
-//         location,
-//         input: clientInputParseResult.inputParsed,
-//         dataOrLastInfiteData: data,
-//       }
-//     }, [clientInputParseResult, inputRaw, location])
-//     return result
-//   }
-//   const query =
-//     this._queryResultType === 'infiniteQuery'
-//       ? this.useInfiniteQuery(inputRaw as never, queryOptions as never, fetchOptions as never)
-//       : this.useQuery(inputRaw as never, queryOptions as never, fetchOptions as never)
-//   const mappedData = useMemo(() => {
-//     if (!query.data) {
-//       return undefined
-//     }
-//     if (!this._mapperFns.length) {
-//       return query.data
-//     }
-//     if (!clientInputParseResult.inputParsed) {
-//       return undefined
-//     }
-//     return this._mapperFns.reduce(
-//       (data, mapperFn) => mapperFn({ data, input: clientInputParseResult.inputParsed }),
-//       query.data,
-//     )
-//   }, [query.data])
-//   const result = React.useMemo(() => {
-//     const dataOrLastInfiteData =
-//       this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(-1) : query.data
-//     return {
-//       data: mappedData as never,
-//       loading: query.isLoading as never,
-//       error: (query.error ? Error0.from(query.error) : null) as never,
-//       query: query as never,
-//       location,
-//       input: clientInputParseResult.inputParsed,
-//       dataOrLastInfiteData,
-//     }
-//   }, [query, query.data, query.error, query.isLoading, clientInputParseResult, location, mappedData])
-//   return result
-// }
-
 import type { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, ExactLocation, WeakChildrenLocation } from '@devp0nt/route0'
-import type { UseInfiniteQueryResult, UseQueryResult } from '@tanstack/react-query'
+import type { InfiniteData, UseInfiniteQueryResult, UseQueryResult } from '@tanstack/react-query'
 import type * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type {
@@ -136,6 +21,7 @@ import type {
   MountablePointType,
   PointType,
   QueryableEndPointType,
+  QueryResultType,
   RouteDefinition,
   ShowError,
   UndefinedEndPointType,
@@ -146,130 +32,59 @@ import type {
   UsePointQueryResult,
 } from './types.js'
 
-// type NormalizeQueries<
-//   TQueryOption,
-//   TQueriesOptions extends readonly unknown[] | undefined,
-// > = TQueryOption extends undefined
-//   ? TQueriesOptions extends readonly unknown[]
-//     ? [...TQueriesOptions]
-//     : []
-//   : [TQueryOption, ...(TQueriesOptions extends readonly unknown[] ? [...TQueriesOptions] : [])]
-
-// type QueryResults<TQueryOption, TQueriesOptions extends readonly unknown[] | undefined> = QueriesResults<
-//   NormalizeQueries<TQueryOption, TQueriesOptions>
-// >
-
-// type FirstQueryResult<TQueryOption, TQueriesOptions extends readonly unknown[] | undefined> =
-//   QueryResults<TQueryOption, TQueriesOptions> extends [infer Head, ...unknown[]] ? Head : undefined
-
-// type FirstQueryData<TQueryOption, TQueriesOptions extends readonly unknown[] | undefined> =
-//   FirstQueryResult<TQueryOption, TQueriesOptions> extends { data?: infer TData } ? TData : undefined
-// type QueryDataByOptions<TQueryOption> =
-
-// type Mapper<TQueryOption, TQueriesOptions extends readonly unknown[], TMapperOutput> = (options: {
-//   data: FirstQueryData<TQueryOption, TQueriesOptions>
-//   queries: QueryResults<TQueryOption, TQueriesOptions>
-// }) => TMapperOutput
-
 export type Props = Record<string, any>
 export type UndefinedProps = undefined
 export type EmptyProps = Record<never, never>
-// export type IsPropsOptional<TOuterProps extends Props = Props> = TOuterProps extends undefined
-//   ? true
-//   : keyof TOuterProps extends never // no keys at all
-//     ? true
-//     : // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-//       {} extends TOuterProps // all keys optional
-//       ? true
-//       : false
+
 export type AppendProps<TPrevProps extends Props, TAppendProps extends Props> = TPrevProps extends Props
   ? IsNever<keyof TPrevProps> extends true
     ? TAppendProps
     : Omit<TPrevProps, keyof TAppendProps> & TAppendProps
   : TAppendProps
 
-// export type WithQueries<
-//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TQueries extends Queries,
-// > =
-//   FinalLoaderUnmappedOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
-//     ? TQueries extends Queries
-//       ? [UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>, ...TQueries]
-//       : [UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>]
-//     : TQueries extends Queries
-//       ? TQueries
-//       : []
-
 export type UseQueryOrInfiniteQueryResult = UseInfiniteQueryResult | UseQueryResult
-export type Queries = UseQueryOrInfiniteQueryResult[]
-
-// export type AppendQueries<
-//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TQueries extends Queries,
-// > =
-//   FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
-//     ? TQueryResultType extends QueryResultType
-//       ? [...TQueries, UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>]
-//       : TQueries
-//     : TQueries
-
-// export type RemoveLastQuery<TQueries extends Queries> = TQueries extends [...infer Rest, any]
-//   ? Extract<Rest, Queries>
-//   : []
-// export type ReplaceLastQuery<
-//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TQueries extends Queries,
-// > = TServerLoaderOutput extends UndefinedLoaderOutput
-//   ? TClientLoaderOutput extends UndefinedLoaderOutput
-//     ? RemoveLastQuery<TQueries>
-//     : TQueries extends [...infer Rest, any]
-//       ? [
-//           ...Extract<Rest, Queries>,
-//           UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>,
-//         ]
-//       : [UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>]
-//   : TQueries extends [...infer Rest, any]
-//     ? [...Extract<Rest, Queries>, UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>]
-//     : [UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>]
-// export type AppendQueries<
-//   TQueries extends Queries,
-//   TQueries extends Queries,
-// > = TQueries extends [infer Q1, ...infer Rest]
-//   ? [Q1 extends UseQueryOrInfiniteQueryResult ? Q1 : never, ...AppendQueries<Extract<Rest, Queries>, TQueries>]
-//   : TQueries extends Queries
-//     ? TQueries
-//     : TQueries extends undefined
-//       ? TQueries extends undefined
-//         ? undefined
-//         : []
-//       : []
-
-// export type QueryWithQueries<
-//   TQuery extends UseQueryOrInfiniteQueryResult | undefined = undefined,
-//   TQueries extends UseQueryOrInfiniteQueryResult[] | undefined = undefined,
-// > = TQuery extends UseQueryOrInfiniteQueryResult
-//   ? TQueries extends UseQueryOrInfiniteQueryResult[]
-//     ? [TQuery, ...TQueries]
-//     : [TQuery]
-//   : TQuery extends UseQueryOrInfiniteQueryResult[]
-//     ? TQueries
-//     : []
+export type QueriesResults = UseQueryOrInfiniteQueryResult[]
+export type QueryDefinition<TQueryResultType extends QueryResultType, TData extends Data> = {
+  type: TQueryResultType
+  data: TData
+}
+export type QueriesDefinitions = Array<QueryDefinition<any, any>>
+export type QueryByDefinition<TQueryDefinition extends QueryDefinition<any, any>> = TQueryDefinition extends {
+  type: infer TQueryResultType
+  data: infer TData
+}
+  ? TQueryResultType extends 'query'
+    ? UseQueryResult<TData, Error0>
+    : TQueryResultType extends 'infiniteQuery'
+      ? UseInfiniteQueryResult<InfiniteData<TData>, Error0>
+      : never
+  : never
+export type QueryDefinitionByQuery<TQuery extends UseQueryOrInfiniteQueryResult> =
+  TQuery extends UseInfiniteQueryResult<any, any>
+    ? QueryDefinition<'infiniteQuery', QueryData<TQuery>>
+    : TQuery extends UseQueryResult<any, any>
+      ? QueryDefinition<'query', QueryData<TQuery>>
+      : never
+export type QueriesDefinitionsByQueries<TQueries extends UseQueryOrInfiniteQueryResult[]> = IfAnyThenElse<
+  TQueries,
+  any,
+  TQueries extends [infer Q1, ...infer Rest]
+    ? [
+        QueryDefinitionByQuery<Q1 extends UseQueryOrInfiniteQueryResult ? Q1 : never>,
+        ...QueriesDefinitionsByQueries<Extract<Rest, UseQueryOrInfiniteQueryResult[]>>,
+      ]
+    : []
+>
 
 export type QuerySuccess<TQuery extends UseQueryOrInfiniteQueryResult> = Extract<TQuery, { status: 'success' }>
 export type QueryError<TQuery extends UseQueryOrInfiniteQueryResult> = Extract<TQuery, { status: 'error' }>
 export type QueryPending<TQuery extends UseQueryOrInfiniteQueryResult> = Extract<TQuery, { status: 'pending' }>
-export type QueryUnknownStatus<TQuery extends UseQueryOrInfiniteQueryResult> =
-  TQuery extends UseQueryResult<infer TData, infer TError>
-    ? UseQueryResult<TData, TError>
-    : TQuery extends UseInfiniteQueryResult<infer TData, infer TError>
-      ? UseInfiniteQueryResult<TData, TError>
-      : never
+// export type QueryUnknownStatus<TQuery extends UseQueryOrInfiniteQueryResult> =
+//   TQuery extends UseQueryResult<infer TData, infer TError>
+//     ? UseQueryResult<TData, TError>
+//     : TQuery extends UseInfiniteQueryResult<infer TData, infer TError>
+//       ? UseInfiniteQueryResult<TData, TError>
+//       : never
 export type QueriesSuccess<TQueries extends UseQueryOrInfiniteQueryResult[]> = IfAnyThenElse<
   TQueries,
   any,
