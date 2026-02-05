@@ -28,23 +28,21 @@ export const empty = client
       ideasCountX3: 27,
     }
   })
-  .page(
-    ({ data }) => `${data.ideasCountX3} ideas`,
-    ({ data }) => {
-      const qr = sharedQuery.useQuery()
-      return (
-        <div>
-          Empty
-          <br />X server: {data.xserver}
-          <br />X client: {data.xclient}
-          <br />
-          Ideas Count X3: {data.ideasCountX3}
-          <br />
-          Shared Query: {qr.data?.shared1}|{qr.data?.shared2}
-        </div>
-      )
-    },
-  )
+  .head(({ data }) => `${data.ideasCountX3} ideas`)
+  .page(({ data }) => {
+    const qr = sharedQuery.useQuery()
+    return (
+      <div>
+        Empty
+        <br />X server: {data.xserver}
+        <br />X client: {data.xclient}
+        <br />
+        Ideas Count X3: {data.ideasCountX3}
+        <br />
+        Shared Query: {qr.data?.shared1}|{qr.data?.shared2}
+      </div>
+    )
+  })
 
 export const sharedEmptyPage = client.lets('page', 'sharedEmpty', Route0.create('/sharedEmpty2')).page(({ data }) => {
   return (

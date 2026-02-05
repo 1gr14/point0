@@ -30,7 +30,7 @@ export const BestIdeaComponent = client
     bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
     y: input.x * 2,
   }))
-  .outer(({ children }) => {
+  .wrapper(({ children }) => {
     return children
   })
   .component(function Z({ data, props }) {

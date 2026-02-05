@@ -2,15 +2,9 @@ import { ideaLayout } from '../layouts/idea.js'
 
 export const ideasNewsPage = ideaLayout
   .lets('page', 'ideaNews', 'news')
-  .mapper(({ input }) => {
-    return {
-      idea: ideaLayout.getValue({ id: input.id }).idea,
-    }
-  })
-  .head(({ data, queries }) => {
-    return `${data.idea.news.length} news for idea "${data.idea.title}"`
-  })
-  .page(({ data: { idea } }) => {
+  .with(() => ({ idea: ideaLayout.useValue('idea') }))
+  .head(({ props }) => `${props.idea.news.length} news for idea "${props.idea.title}"`)
+  .page(({ props: { idea } }) => {
     return (
       <div>
         <h3>News</h3>

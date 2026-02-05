@@ -23,35 +23,32 @@ export const ideaPage = ideaLayout
     return { idea }
   })
   // .Infer
-  .page(
-    ({ data: { idea } }) => ({
-      title: idea.title,
-    }),
-    ({ data: { idea }, location }) => {
-      // any hook or whatever here, it is just client code
-      const [state, setState] = useState(() => 0)
-      return (
-        <div
-          onClick={() => {
-            setState(state + 1)
-          }}
-        >
-          <p>
-            <b>
-              {state}: {idea.description}
-            </b>
-          </p>
-          <p>
-            <b>location: {JSON.stringify(location)}</b>
-          </p>
-          <p>{idea.content}</p>
-          <nav>
-            <Link to="/ideas">← Back to Ideas</Link>
-            <Link to="/">← Back to Home</Link>
-          </nav>
-        </div>
-      )
-    },
-  )
+  .with(() => ({ idea: ideaLayout.useValue('idea') }))
+  .head(({ props }) => props.idea.title)
+  .page(({ props: { idea }, location }) => {
+    // any hook or whatever here, it is just client code
+    const [state, setState] = useState(() => 0)
+    return (
+      <div
+        onClick={() => {
+          setState(state + 1)
+        }}
+      >
+        <p>
+          <b>
+            {state}: {idea.description}
+          </b>
+        </p>
+        <p>
+          <b>location: {JSON.stringify(location)}</b>
+        </p>
+        <p>{idea.content}</p>
+        <nav>
+          <Link to="/ideas">← Back to Ideas</Link>
+          <Link to="/">← Back to Home</Link>
+        </nav>
+      </div>
+    )
+  })
 
 export default ideaPage

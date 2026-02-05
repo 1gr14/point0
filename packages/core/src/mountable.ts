@@ -209,6 +209,10 @@ export type MountableSuccessData<
       : EmptyData
 >
 
+export type WithErrorAndLoadingComponents = {
+  LoadingComponent: React.ComponentType
+  ErrorComponent: React.ComponentType<{ error: Error }>
+}
 export type MountableStateError<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
@@ -222,8 +226,6 @@ export type MountableStateError<
   error: Error0
   loading: false
   status: 'error'
-  LoadingComponent: React.ComponentType
-  ErrorComponent: React.ComponentType<{ error: Error }>
 }
 export type MountableStateLoading<
   TLocation extends AnyLocation,
@@ -238,8 +240,6 @@ export type MountableStateLoading<
   error: undefined
   loading: true
   status: 'loading'
-  LoadingComponent: React.ComponentType
-  ErrorComponent: React.ComponentType<{ error: Error }>
 }
 export type MountableStateSuccess<
   TLocation extends AnyLocation,
@@ -254,8 +254,6 @@ export type MountableStateSuccess<
   error: undefined
   loading: false
   status: 'success'
-  LoadingComponent: React.ComponentType
-  ErrorComponent: React.ComponentType<{ error: Error }>
 }
 export type MountableState<
   TStatus extends 'loading' | 'error' | 'success',
@@ -302,7 +300,7 @@ export type SuccessComponentProps<
   props: TInnerProps
   queries: SuccessQueriesDefinitions<TQueriesDefinitions>
   data: MountableSuccessData<TQueriesDefinitions, TMapperOutput>
-}
+} & WithErrorAndLoadingComponents
 export type SuccessComponentType<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
@@ -336,7 +334,7 @@ export type WrapperComponentProps<
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput> & {
   children: Exclude<React.ReactNode, Promise<any>> | undefined
-}
+} & WithErrorAndLoadingComponents
 export type WrapperComponentType<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
@@ -351,10 +349,7 @@ export type WithFnOptions<
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = Omit<
-  MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
-  'LoadingComponent' | 'ErrorComponent'
->
+> = MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
 export type WithFn<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
@@ -370,10 +365,7 @@ export type QueryFnOptions<
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = Omit<
-  MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
-  'LoadingComponent' | 'ErrorComponent'
->
+> = MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
 export type QueryFn<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
@@ -388,10 +380,7 @@ export type HeadFnOptions<
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = Omit<
-  MountableState<TStatus, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
-  'LoadingComponent' | 'ErrorComponent'
->
+> = MountableState<TStatus, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
 export type HeadFn<
   TStatus extends 'loading' | 'error' | 'success' = any,
   TLocation extends AnyLocation = any,

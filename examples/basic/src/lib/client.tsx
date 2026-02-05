@@ -27,7 +27,7 @@ export const client = Point0.lets('root', 'client')
     refetchIntervalInBackground: false,
   })
   // .prefetchPolicy('everything')
-  .head(({ loading, error }) => ({
+  .head('universal', ({ loading, error }) => ({
     ...(loading ? { title: 'Loading...' } : {}),
     ...(error ? { title: error.message } : {}),
     titleTemplate: '%s | IdeaNick',

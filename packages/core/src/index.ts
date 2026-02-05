@@ -192,6 +192,7 @@ import type {
   QueryDefinitionByQuery,
   QueriesDefinitionsByQueries,
   QueriesResults,
+  WithErrorAndLoadingComponents,
 } from './mountable.js'
 // import stringify from 'safe-stable-stringify'
 
@@ -1121,7 +1122,7 @@ export class Point0<
     TInnerProps,
     AppendQueries<
       TQueriesDefinitions,
-      QueryDefinition<'infiniteQuery', FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>
+      QueryDefinition<'infiniteQuery', InfiniteData<FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>>
     >
   >
   infiniteQueryOptions(...args: any[]) {
@@ -8006,7 +8007,7 @@ export class Point0<
       queries: prevQueries,
       LoadingComponent: PrevLoadingComponent,
       ErrorComponent: PrevErrorComponent,
-    } as MountableState<any, any, any, any, any>
+    } as MountableState<any, any, any, any, any> & WithErrorAndLoadingComponents
     let nextMappedData = prevMappedData
 
     // use memo loop until breaking action and return thin breaking action, then outside loop operate with it

@@ -28,7 +28,7 @@ export const ideaPage = ideaLayout
       zxc: 333,
     }
   })
-  .clientLoader(false)
+  .with(() => ({ idea: ideaLayout.useValue('idea') }))
   // .outer(({ children, ErrorComponent, LoadingComponent, input, props, location, inputRaw }) => {
   //   const [loading, setLoading] = useState(true)
   //   useEffect(() => {
@@ -41,41 +41,37 @@ export const ideaPage = ideaLayout
   //   }
   //   return children
   // })
-  .page(
-    ({ data: { idea } }) => ({
-      title: idea.title,
-    }),
-    ({ data: { idea }, location }) => {
-      // const x = useNavigate()
-      // useEffect(() => {
-      //   setTimeout(() => {
-      //     x('home')
-      //   }, 1000)
-      // }, [])
-      // any hook or whatever here, it is just client code
-      const [state, setState] = useState(() => 0)
-      return (
-        <div
-          onClick={() => {
-            setState(state + 1)
-          }}
-        >
-          <p>
-            <b>
-              <Link to="#zxc">zxc</Link>-<Link to="#zxv">xcv</Link>
-              {state}: {idea.description}
-            </b>
-          </p>
-          <p>
-            <b>location: {JSON.stringify(location)}</b>
-          </p>
-          <p>{idea.content}</p>
-          <nav>
-            <Link route="ideas">← Back to Ideas</Link>
-          </nav>
-        </div>
-      )
-    },
-  )
+  .head(({ props }) => props.idea.title)
+  .page(({ props: { idea }, location }) => {
+    // const x = useNavigate()
+    // useEffect(() => {
+    //   setTimeout(() => {
+    //     x('home')
+    //   }, 1000)
+    // }, [])
+    // any hook or whatever here, it is just client code
+    const [state, setState] = useState(() => 0)
+    return (
+      <div
+        onClick={() => {
+          setState(state + 1)
+        }}
+      >
+        <p>
+          <b>
+            <Link to="#zxc">zxc</Link>-<Link to="#zxv">xcv</Link>
+            {state}: {idea.description}
+          </b>
+        </p>
+        <p>
+          <b>location: {JSON.stringify(location)}</b>
+        </p>
+        <p>{idea.content}</p>
+        <nav>
+          <Link route="ideas">← Back to Ideas</Link>
+        </nav>
+      </div>
+    )
+  })
 
 export default ideaPage

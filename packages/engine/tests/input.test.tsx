@@ -6,11 +6,11 @@ import { z } from 'zod'
 import { createTestThings, ymlify } from './utils/internal-testing.js'
 
 describe('input', () => {
-  it('empty and available in page component by route definition', async () => {
+  it('empty and available in page component by location params', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     let result: InputParsed | undefined
-    const page = root.lets('page', 'test', '/test').page(({ input }) => {
-      result = input
+    const page = root.lets('page', 'test', '/test').page(({ location }) => {
+      result = location.params
       return <div />
     })
     const { fetchSsr } = await createTestThings({ points: [root, page] })
@@ -18,11 +18,11 @@ describe('input', () => {
     expect(result).toMatchInlineSnapshot(`{}`)
   })
 
-  it('available in page component by route definition', async () => {
+  it('available in page component by location params', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     let result: InputParsed | undefined
-    const page = root.lets('page', 'test', '/test/:id').page(({ input }) => {
-      result = input
+    const page = root.lets('page', 'test', '/test/:id').page(({ location }) => {
+      result = location.params
       return <div />
     })
     const { fetchSsr } = await createTestThings({ points: [root, page] })
@@ -49,8 +49,8 @@ describe('input', () => {
         clientLoaderResult = input
         return { y: 2 }
       })
-      .page(({ input }) => {
-        pageResult = input
+      .page(({ location }) => {
+        pageResult = location.params
         return <div id="page" />
       })
     const { render } = await createTestThings({ points: [root, page] })

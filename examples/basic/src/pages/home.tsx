@@ -57,10 +57,10 @@ export const BestIdeaComponent = client
   .wrapper(({ children }) => {
     return <div style={{ padding: '10px', border: '1px solid #f0f' }}>{children}</div>
   })
-  .loading(({ input, props }) => {
+  .loading(() => {
     return <div>Loading...</div>
   })
-  .wrapper(({ children, ErrorComponent, LoadingComponent, input, props }) => {
+  .wrapper(({ children }) => {
     return children
   })
   // .component(X)
