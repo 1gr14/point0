@@ -1,3 +1,4 @@
+import type { EndPoint } from '@point0/core'
 import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
 import { createTestThings } from '../utils/internal-testing.js'
@@ -39,7 +40,7 @@ describe('page', () => {
     `)
   })
 
-  it.only('loader', async () => {
+  it('loader', async () => {
     const page = root
       .lets('page', 'home', '/')
       .loader(() => ({ x: 1 }))
@@ -152,7 +153,7 @@ describe('page', () => {
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#error: test error
+      "#loading: ...
       "
     `)
   })
@@ -184,14 +185,14 @@ describe('page', () => {
     `)
   })
 
-  it('wrapper', async () => {
+  it.only('wrapper', async () => {
     const page = root
       .lets('page', 'home', '/:id')
       .loader(({ input }) => ({ x: input.id }))
-      .wrapper(({ children, queries, input }) => (
+      .wrapper(({ children, queries, location }) => (
         <div id="wrapper">
-          <div id="input">{input?.id}</div>
-          <div id="query-status">{queries?.map((q) => q.status).join(', ') || 'undefined'}</div>
+          <div id="params">{location.params.id}</div>
+          <div id="query-status">{queries.map((q) => q.status).join(', ') || 'undefined'}</div>
           {children}
         </div>
       ))
@@ -227,13 +228,13 @@ describe('page', () => {
     `)
   })
 
-  it('outer can block query', async () => {
+  it('wrapper can block query', async () => {
     const page = root
       .lets('page', 'home', '/:id')
       .loader(({ input }) => ({ x: input.id }))
-      .outer(({ children, input }) => {
-        if (!input || input.id.length > 2) {
-          return <div id="outer">you shell not pass</div>
+      .wrapper(({ children, location }) => {
+        if (location.params.id.length > 2) {
+          return <div id="wrapper">you shell not pass</div>
         }
         return children
       })
@@ -241,7 +242,7 @@ describe('page', () => {
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
-      await waitContent('#outer')
+      await waitContent('#wrapper')
       expect(await tale()).toMatchInlineSnapshot(`
         "/zxc
           #outer: you shell not pass

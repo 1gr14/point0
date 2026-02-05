@@ -28,7 +28,7 @@
       "name": "@point0/example-basic",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/route0": "^1.0.0-next.53",
+        "@devp0nt/route0": "^1.0.0-next.54",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/engine": "workspace:*",
@@ -56,7 +56,7 @@
       "name": "@point0/example-elysia",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/route0": "^1.0.0-next.53",
+        "@devp0nt/route0": "^1.0.0-next.54",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/elysia": "workspace:*",
@@ -86,7 +86,7 @@
       "name": "@point0/example-vite",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/route0": "^1.0.0-next.53",
+        "@devp0nt/route0": "^1.0.0-next.54",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/engine": "workspace:*",
@@ -241,7 +241,7 @@
       "name": "@point0/test-project-name",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/route0": "^1.0.0-next.53",
+        "@devp0nt/route0": "^1.0.0-next.54",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/engine": "workspace:*",
@@ -305,7 +305,7 @@
   },
   "catalog": {
     "@devp0nt/error0": "^1.0.0-next.38",
-    "@devp0nt/route0": "^1.0.0-next.53",
+    "@devp0nt/route0": "^1.0.0-next.54",
     "@tanstack/react-query": "^5.0.0",
     "@unhead/react": "^2.1.2",
     "react": "^19.0.0",
@@ -397,7 +397,7 @@
 
     "@devp0nt/meta0": ["@devp0nt/meta0@1.0.0-next.34", "", { "dependencies": { "@devp0nt/deepmap0": "^1.0.0-next.23" } }, "sha512-+TGxn2PIxxmqTiYOknC3b1SUETCz5elAeFI9csgosPbHyqiJ2Aw6zMqHNnISxMXpja7DWa9hL9+FdLD7EL73yw=="],
 
-    "@devp0nt/route0": ["@devp0nt/route0@1.0.0-next.53", "", { "dependencies": { "serialize-error": "^12.0.0" } }, "sha512-Y6abbX2tx5dNSFd6BjyeO0mmmkMZfNtk3o6wmV4FTLwb0XVwdBbgtkpvHgw8Puj16binR53Q96qoZVmIxwytIw=="],
+    "@devp0nt/route0": ["@devp0nt/route0@1.0.0-next.54", "", { "dependencies": { "serialize-error": "^12.0.0" } }, "sha512-TTIcHNJT4HmXNjanOl5qNXa3GyxUOz01vdMywyAAfFf9c2JL+sRdxK2e7mwYfHYLei148fdDn9ElEQ5jQWrLpA=="],
 
     "@epic-web/invariant": ["@epic-web/invariant@1.0.0", "", {}, "sha512-lrTPqgvfFQtR/eY/qkIzp98OGdNJu0m5ji3q/nJI8v3SXkRKEnWiOxMmbvcSoAIzv/cGiuvRy57k4suKQSAdwA=="],
 

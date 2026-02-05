@@ -519,7 +519,7 @@ export type MountableStateError<TLocation extends AnyLocation, TInnerProps exten
   LoadingComponent: React.ComponentType
   ErrorComponent: React.ComponentType<{ error: Error }>
 }
-export type MountableStatePending<
+export type MountableStateLoading<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
   TQueries extends Queries,
@@ -531,7 +531,7 @@ export type MountableStatePending<
   data: undefined
   error: undefined
   loading: true
-  status: 'pending'
+  status: 'loading'
   LoadingComponent: React.ComponentType
   ErrorComponent: React.ComponentType<{ error: Error }>
 }
@@ -560,12 +560,12 @@ export type MountableState<
 > = IfAnyThenElse<
   TStatus,
   | MountableStateSuccess<TLocation, TInnerProps, TQueries, TMapperOutput>
-  | MountableStatePending<TLocation, TInnerProps, TQueries>
+  | MountableStateLoading<TLocation, TInnerProps, TQueries>
   | MountableStateError<TLocation, TInnerProps, TQueries>,
   TStatus extends 'success'
     ? MountableStateSuccess<TLocation, TInnerProps, TQueries, TMapperOutput>
     : TStatus extends 'loading'
-      ? MountableStatePending<TLocation, TInnerProps, TQueries>
+      ? MountableStateLoading<TLocation, TInnerProps, TQueries>
       : TStatus extends 'error'
         ? MountableStateError<TLocation, TInnerProps, TQueries>
         : never

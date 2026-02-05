@@ -349,13 +349,13 @@ export class Point0<
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
   readonly route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
   private readonly _page:
-    | PageSuccessComponentType<TRouteDefinition, TInnerProps, TQueries, TMapperOutput>
+    | PageSuccessComponentType<any, any, any, any>
     | UndefinedSuccessPageComponent
   private readonly _component:
-    | ComponentSuccessComponentType<TInnerProps, TQueries, TMapperOutput>
+    | ComponentSuccessComponentType<any, any, any>
     | UndefinedComponentSuccessComponent
   private readonly _layout:
-    | LayoutSuccessComponentType<TRouteDefinition, TInnerProps, TQueries, TMapperOutput>
+    | LayoutSuccessComponentType<any, any, any, any>
     | UndefinedLayoutSuccessComponent
   readonly _layouts: LayoutPoint[]
   readonly name: PointName
@@ -8149,10 +8149,10 @@ export class Point0<
       mountActions: MountAction[]
       innerProps: Props
       queries: Queries
-      allQueries: Queries
-      setQueriesAfterIndexToAllQueries: (queries: UseQueryOrInfiniteQueryResult[], index: number) => void
-      data: Data | undefined
-      allQueriesState: Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'>
+      // allQueries: Queries
+      // setQueriesAfterIndexToAllQueries: (queries: UseQueryOrInfiniteQueryResult[], index: number) => void
+      // allQueriesState: Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'>
+      mappedData: Data | undefined
       LoadingComponent: React.ComponentType<any>
       ErrorComponent: React.ComponentType<{ error: Error }>
     }
@@ -8170,39 +8170,34 @@ export class Point0<
 
     const variant = this._getDestinationComponentVariant() ?? 'page'
 
-    const isFirstRender = React.useRef(true)
-    const useEffectOnClientOrCallOnServerOnFirstRender = (fn: () => void, deps: any[] = []) => {
-      React.useEffect(() => {
-        fn()
-      }, deps)
-      if (isFirstRender.current) {
-        fn()
-        isFirstRender.current = false
-      }
-    }
+    // const useEffectOnClientOrCallOnServerOnFirstRender = (fn: () => void, deps: any[] = []) => {
+    //   React.useEffect(() => {
+    //     fn()
+    //   }, deps)
+    // }
 
     const {
-      allQueries,
-      setQueriesAfterIndexToAllQueries,
-      allQueriesState,
+      // allQueries,
+      // setQueriesAfterIndexToAllQueries,
+      // allQueriesState,
       prevMountActions,
       PrevLoadingComponent,
       PrevErrorComponent,
       prevInnerProps,
       prevQueries,
-      prevData,
+      prevMappedData,
     } = (() => {
       if (!prev) {
-        const [allQueries, setAllQueries] = React.useState<Queries>([])
-        const setQueriesAfterIndexToAllQueries = (queries: UseQueryOrInfiniteQueryResult[], index: number) => {
-          setAllQueries((prevQueries) => {
-            const newQueries = [...prevQueries]
-            for (let i = index; i < queries.length; i++) {
-              newQueries[i + queryIndex] = queries[i]
-            }
-            return newQueries
-          })
-        }
+        // const [allQueries, setAllQueries] = React.useState<Queries>([])
+        // const setQueriesAfterIndexToAllQueries = (queries: UseQueryOrInfiniteQueryResult[], index: number) => {
+        //   setAllQueries((prevQueries) => {
+        //     const newQueries = [...prevQueries]
+        //     for (let i = index; i < queries.length; i++) {
+        //       newQueries[i + queryIndex] = queries[i]
+        //     }
+        //     return newQueries
+        //   })
+        // }
 
         const _loadingComponent =
           {
@@ -8232,81 +8227,119 @@ export class Point0<
 
         const prevQueries: Queries = []
 
-        const allQueriesState = (() => {
-          if (allQueries.length === 0) {
-            return {
-              status: 'success',
-              error: undefined,
-              loading: false,
-              // firstData: undefined,
-            }
-          }
-          const error = allQueries.find((query) => query.error)?.error
-          const loading = allQueries.some((query) => query.status === 'pending')
-          // const firstData = allQueries.at(0)?.data
-          if (error) {
-            return {
-              status: 'error',
-              error: Error0.from(error),
-              loading: false,
-              // firstData: undefined,
-            }
-          }
-          const firstData = allQueries.at(0)?.data
-          if (loading || !firstData) {
-            return {
-              status: 'loading',
-              error: undefined,
-              loading: true,
-              // firstData: undefined,
-            }
-          }
-          return {
-            status: 'success',
-            error: undefined,
-            loading: false,
-            // firstData,
-          }
-        })() as Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'>
+        // const allQueriesState = (() => {
+        //   if (allQueries.length === 0) {
+        //     return {
+        //       status: 'success',
+        //       error: undefined,
+        //       loading: false,
+        //       // firstData: undefined,
+        //     }
+        //   }
+        //   const error = allQueries.find((query) => query.error)?.error
+        //   const loading = allQueries.some((query) => query.status === 'pending')
+        //   // const firstData = allQueries.at(0)?.data
+        //   if (error) {
+        //     return {
+        //       status: 'error',
+        //       error: Error0.from(error),
+        //       loading: false,
+        //       // firstData: undefined,
+        //     }
+        //   }
+        //   const firstData = allQueries.at(0)?.data
+        //   if (loading || !firstData) {
+        //     return {
+        //       status: 'loading',
+        //       error: undefined,
+        //       loading: true,
+        //       // firstData: undefined,
+        //     }
+        //   }
+        //   return {
+        //     status: 'success',
+        //     error: undefined,
+        //     loading: false,
+        //     // firstData,
+        //   }
+        // })() as Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'>
 
         return {
-          allQueries,
-          allQueriesState,
-          setQueriesAfterIndexToAllQueries,
+          // allQueries,
+          // allQueriesState,
+          // setQueriesAfterIndexToAllQueries,
           prevMountActions: this._mountActions,
           PrevLoadingComponent,
           PrevErrorComponent,
           prevInnerProps,
           prevQueries,
-          prevData: allQueries.at(0)?.data,
+          prevMappedData: undefined,
         }
       } else {
         return {
-          allQueries: prev.allQueries,
-          allQueriesState: prev.allQueriesState,
-          setQueriesAfterIndexToAllQueries: prev.setQueriesAfterIndexToAllQueries,
+          // allQueries: prev.allQueries,
+          // allQueriesState: prev.allQueriesState,
+          // setQueriesAfterIndexToAllQueries: prev.setQueriesAfterIndexToAllQueries,
           prevMountActions: prev.mountActions,
           PrevLoadingComponent: prev.LoadingComponent,
           PrevErrorComponent: prev.ErrorComponent,
           prevInnerProps: prev.innerProps,
           prevQueries: prev.queries,
-          prevData: prev.data,
+          prevMappedData: prev.mappedData,
         }
       }
     })()
 
-    console.log('allQueriesState', allQueriesState, allQueries.length)
+    // console.log('allQueriesState', allQueriesState, allQueries.length)
+
+    const queriesState = (() => {
+      if (prevQueries.length === 0) {
+        return {
+          status: 'success',
+          error: undefined,
+          loading: false,
+          data: prevMappedData ?? {},
+        }
+      }
+      const error = prevQueries.find((query) => query.error)?.error
+      const loading = prevQueries.some((query) => query.status === 'pending')
+      // const firstData = allQueries.at(0)?.data
+      if (error) {
+        return {
+          status: 'error',
+          error: Error0.from(error),
+          loading: false,
+          data: undefined,
+        }
+      }
+      // const firstData = prevQueries.at(0)?.data
+      // if (loading || !firstData) {
+      if (loading) {
+        return {
+          status: 'loading',
+          error: undefined,
+          loading: true,
+          data: undefined,
+        }
+      }
+      return {
+        status: 'success',
+        error: undefined,
+        loading: false,
+        data: prevMappedData ?? prevQueries.at(0)?.data,
+      }
+    })() as Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading' | 'data'>
 
     const mountState = {
-      ...allQueriesState,
+      ...queriesState,
       location,
       input: inputRaw,
       props: prevInnerProps,
       queries: prevQueries,
-      data: prevData,
       LoadingComponent: PrevLoadingComponent,
       ErrorComponent: PrevErrorComponent,
     } as MountableState<any, any, any, any, any>
+    let nextMappedData = prevMappedData
 
     // use memo loop until breaking action and return thin breaking action, then outside loop operate with it
     // dynamic state calculates on first level and sending to next levels, queries come to first level also to allQueries
@@ -8345,12 +8378,13 @@ export class Point0<
         }
         case 'mapper': {
           if (mountState.status === 'success') {
-            mountState.data = action.fn({
+            nextMappedData = action.fn({
               location: mountState.location,
               props: mountState.props,
               queries: mountState.queries,
-              data: mountState.data,
+              data: nextMappedData,
             })
+            mountState.data = nextMappedData
           }
           continue
         }
@@ -8358,7 +8392,7 @@ export class Point0<
 
       // below causes wrapping
 
-      const _nextMountableProps: Parameters<typeof this._getMountable>[0] = {
+      const _nextMountableProps = {
         inputRaw,
         outerProps,
         mountComponent,
@@ -8367,17 +8401,17 @@ export class Point0<
         queryIndex,
         location,
         prev: {
-          allQueriesState,
+          // allQueriesState,
+          // allQueries,
+          // setQueriesAfterIndexToAllQueries,
           LoadingComponent: mountState.LoadingComponent,
           ErrorComponent: mountState.ErrorComponent,
           mountActions: currentMountActions,
           innerProps: mountState.props,
           queries: mountState.queries,
-          allQueries,
-          setQueriesAfterIndexToAllQueries,
-          data: mountState.data,
+          mappedData: nextMappedData,
         },
-      }
+      } satisfies Parameters<typeof this._getMountable>[0]
 
       switch (action.type) {
         case 'wrapper': {
@@ -8395,22 +8429,31 @@ export class Point0<
               error: result,
             })
           } else {
-            mountState.props = { ...mountState.props, ...(result || {}) }
-            return React.createElement(this._getMountable, _nextMountableProps)
+            // mountState.props = { ...mountState.props, ...(result || {}) }
+            return React.createElement(this._getMountable, {
+              ..._nextMountableProps,
+              prev: {
+                ..._nextMountableProps.prev,
+                innerProps: { ..._nextMountableProps.prev.innerProps, ...(result || {}) },
+              },
+            })
           }
         }
         case 'query': {
           const queryFnResult = action.fn(mountState)
           const queries = Array.isArray(queryFnResult) ? queryFnResult : [queryFnResult]
+          // const data = prevData
           // mountState.queries = [...mountState.queries, ...(Array.isArray(queryResult) ? queryResult : [queryResult])]
-          useEffectOnClientOrCallOnServerOnFirstRender(() => {
-            setQueriesAfterIndexToAllQueries(queries, queryIndex)
-          }, queries)
-          return React.createElement(React.Fragment, {
-            children: React.createElement(this._getMountable, {
-              ..._nextMountableProps,
-              queryIndex: queryIndex + queries.length,
-            }),
+          // useEffectOnClientOrCallOnServerOnFirstRender(() => {
+          //   setQueriesAfterIndexToAllQueries(queries, queryIndex)
+          // }, queries)
+          return React.createElement(this._getMountable, {
+            ..._nextMountableProps,
+            queryIndex: queryIndex + queries.length,
+            prev: {
+              ..._nextMountableProps.prev,
+              queries: [..._nextMountableProps.prev.queries, ...queries],
+            },
           })
         }
         case 'selfQuery': {
@@ -8419,14 +8462,16 @@ export class Point0<
               ? this.useInfiniteQuery(inputRaw as never)
               : this.useQuery(inputRaw as never)
           const queries = [queryResult]
-          useEffectOnClientOrCallOnServerOnFirstRender(() => {
-            setQueriesAfterIndexToAllQueries(queries, queryIndex)
-          }, queries)
-          return React.createElement(React.Fragment, {
-            children: React.createElement(this._getMountable, {
-              ..._nextMountableProps,
-              queryIndex: queryIndex + 1,
-            }),
+          // useEffectOnClientOrCallOnServerOnFirstRender(() => {
+          //   setQueriesAfterIndexToAllQueries(queries, queryIndex)
+          // }, queries)
+          return React.createElement(this._getMountable, {
+            ..._nextMountableProps,
+            queryIndex: queryIndex + 1,
+            prev: {
+              ..._nextMountableProps.prev,
+              queries: [..._nextMountableProps.prev.queries, ...queries],
+            },
           })
         }
       }
@@ -8443,7 +8488,7 @@ export class Point0<
       })
     }
 
-    if (mountState.status === 'pending') {
+    if (mountState.status === 'loading') {
       return React.createElement(mountState.LoadingComponent)
     }
 
