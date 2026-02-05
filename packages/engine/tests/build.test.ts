@@ -55,7 +55,7 @@ describe('build', () => {
   })
 
   afterAll(async () => {
-    await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
+    void tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
     throwOnBundlersLengthNot2(bundlers)
   })
 

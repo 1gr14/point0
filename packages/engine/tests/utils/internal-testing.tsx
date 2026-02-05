@@ -1,5 +1,5 @@
 import type { AnyNiceRequestableEndPoint, AppComponent, EndPoint, PointsDefinition } from '@point0/core'
-import { queryClient as point0QueryClient, QueryClientProvider } from '@point0/core'
+import { queryClient as point0QueryClient, QueryClientProvider, UnheadProvider } from '@point0/core'
 import { Router, RouterRoutes } from '@point0/wouter'
 import { Window } from 'happy-dom'
 import assert from 'node:assert'
@@ -139,9 +139,9 @@ export const withFakeBrowserGlobals = async <TResult,>(fn: () => Promise<TResult
   }
 }
 
-export const waitReturn = async <T,>(value: T, timeout = 100): Promise<T> => {
+export const waitReturn = async <T = undefined,>(value?: T, timeout = 100): Promise<T> => {
   await new Promise((resolve) => setTimeout(resolve, timeout))
-  return value
+  return value as T
 }
 
 export const ymlify = (result: any) => {
@@ -195,11 +195,16 @@ const createFilteredConsole = () => {
 
 type TestThingsState = {
   body: HTMLElement
+  document: Document
   getHtmlView: () => Promise<HtmlView>
   viewer: ElementViewer
   preview: ElementViewer['preview']
   tale: ElementViewer['tale']
   queryClient: QueryClient
+  titles: string[]
+  titlesTale: () => Promise<string>
+  pruneTitles: () => void
+  titlesInterval: NodeJS.Timeout
   getQueryClientPreview: () => string
   waitContent: ElementViewer['waitContent']
   click: (selector: string) => Promise<void>
@@ -229,6 +234,10 @@ type FetchSsr = <T extends AnyNiceRequestableEndPoint>(
   queryClientQueriesState: Record<string, { status: string; data: string | undefined; error: string | undefined }>
   queryClientQueriesPreview: string
 }>
+type FetchTitle = <T extends AnyNiceRequestableEndPoint>(
+  point: T,
+  ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
+) => Promise<string>
 
 export const createTestThings = async ({
   points,
@@ -246,15 +255,17 @@ export const createTestThings = async ({
     appProvided ??
     (() => (
       <QueryClientProvider>
-        {Wrapper ? (
-          <Router>
-            <Wrapper>
-              <RouterRoutes />
-            </Wrapper>
-          </Router>
-        ) : (
-          <Router />
-        )}
+        <UnheadProvider>
+          {Wrapper ? (
+            <Router>
+              <Wrapper>
+                <RouterRoutes />
+              </Wrapper>
+            </Router>
+          ) : (
+            <Router />
+          )}
+        </UnheadProvider>
       </QueryClientProvider>
     ))
   const fetchRecorder = FetchRecorder.create({
@@ -298,6 +309,9 @@ export const createTestThings = async ({
       typeof args[0] === 'string' ? [args[0], args[1]] : [undefined, args[0]]
     const location = new URL(path, 'http://localhost/')
     return await client.run(callback, {
+      onEndInside: async (state) => {
+        clearInterval(state.titlesInterval)
+      },
       onStartInside: async (state) => {
         const window = globals.window as Window
         window.location.href = location.href
@@ -306,8 +320,35 @@ export const createTestThings = async ({
         root.id = 'root'
         document.body.appendChild(root)
 
+        const head = document.createElement('head')
+        document.body.appendChild(head)
+        const title = document.createElement('title')
+        head.appendChild(title)
+
+        state.titles = []
+        // const titleObserver = new MutationObserver(() => {
+        //   state.titles.push(document.title)
+        // })
+        // titleObserver.observe(title, {
+        //   childList: true,
+        // })
+        state.titlesInterval = setInterval(() => {
+          const lastTitle = state.titles[state.titles.length - 1]
+          const currentTitle = document.title
+          if (lastTitle !== currentTitle && currentTitle) {
+            state.titles.push(currentTitle)
+          }
+        }, 5)
+        state.pruneTitles = () => {
+          state.titles.splice(0, state.titles.length)
+        }
+        state.titlesTale = async () => {
+          return '\n' + state.titles.join('\n') + '\n'
+        }
+
         rtl.render(app({ points: client.client.pointsManager }), { container: root })
-        // state.body = body
+        state.body = document.body
+        state.document = document
         state.getHtmlView = async () => {
           return await HtmlView.parse(root.innerHTML)
         }
@@ -510,6 +551,12 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
 
   // TODO: move to fetch recorder
   const fetchesTale = fetchRecorder.tale.bind(fetchRecorder)
+
+  const fetchTitle = (async (point: EndPoint, ...args: [any]) => {
+    const view = await fetchView(point as never, ...args)
+    const title = /<title>(.*?)<\/title>/.exec(view.html)?.[1]
+    return title
+  }) as unknown as FetchTitle
   return {
     engine,
     client,
@@ -523,5 +570,6 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
     fetchPreview,
     fetchRecorder,
     fetchesTale,
+    fetchTitle,
   }
 }

@@ -5,6 +5,7 @@ import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PointsManager } from './points-manager.js'
 import { _ssItems } from './internals.js'
+import type { IfAnyThenElse } from './types.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
 
@@ -25,6 +26,44 @@ export type UseOnNavigateDetailedFn = (options: {
 }) => void
 export type UseIsInitalSsrLocationFn = () => boolean
 
+export type RouterPageStateSuccess = {
+  status: 'success'
+  error: null
+  loading: false
+  initial: false
+}
+export type RouterPageStateLoading = {
+  status: 'loading'
+  error: null
+  loading: true
+  initial: false
+}
+export type RouterPageStateError = {
+  status: 'error'
+  error: Error0
+  loading: false
+  initial: false
+}
+export type RouterPageStateInitial = {
+  status: 'initial'
+  error: undefined
+  loading: undefined
+  initial: true
+}
+export type RouterPageState<TStatus extends 'success' | 'loading' | 'error' | 'initial' = any> = IfAnyThenElse<
+  TStatus,
+  RouterPageStateSuccess | RouterPageStateLoading | RouterPageStateError,
+  TStatus extends 'success'
+    ? RouterPageStateSuccess
+    : TStatus extends 'loading'
+      ? RouterPageStateLoading
+      : TStatus extends 'error'
+        ? RouterPageStateError
+        : TStatus extends 'initial'
+          ? RouterPageStateInitial
+          : never
+>
+
 type RouterContextValue = {
   ssrLocation: AnyLocation | null
   // isSsr: boolean
@@ -35,12 +74,14 @@ type RouterContextValue = {
   error: Error | null
   useAdapterLocation: UseAdapterLocationFn
   addHashToLocation: boolean
+  pageState: RouterPageState
 
   // setters
   setPrevLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
   setNextLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
   setStatus: React.Dispatch<React.SetStateAction<RouterStatus>>
   setError: React.Dispatch<React.SetStateAction<Error | null>>
+  setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
 }
 
 export const RouterContext = React.createContext<RouterContextValue | null>(null)
@@ -64,6 +105,12 @@ export function RouterContextProvider({
   const [prevLocation, setPrevLocation] = useState<AnyLocation | null>(null)
   const [routerStatus, setStatus] = useState<RouterStatus>(status)
   const [error, setError] = useState<Error | null>(null)
+  const [pageState, setPageState] = useState<RouterPageState>({
+    status: 'initial',
+    error: undefined,
+    loading: undefined,
+    initial: true,
+  })
   const currentLocation = useAdapterLocation()
   useEffect(() => {
     _ssItems.__POINT0_CURRENT_LOCATION__.set(currentLocation)
@@ -91,6 +138,8 @@ export function RouterContextProvider({
       useAdapterLocation,
       // isSsr,
       addHashToLocation,
+      pageState,
+      setPageState,
     }),
     [ssrLocation, currentLocation, prevLocation, nextLocation, routerStatus, error, useAdapterLocation],
   )
@@ -183,6 +232,15 @@ export const useRouterContext: UseRouterContextFn = () => {
   const ctx = React.useContext(RouterContext)
   if (!ctx) throw new Error('useRouter must be used within RouterContextProvider')
   return ctx
+}
+
+export const _usePageStateManager = (): {
+  pageState: RouterPageState
+  setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
+} => {
+  const ctx = React.useContext(RouterContext)
+  if (!ctx) throw new Error('useSetPageState must be used within RouterContextProvider')
+  return { pageState: ctx.pageState, setPageState: ctx.setPageState }
 }
 
 export const useOnNavigate = (fn: UseOnNavigateFn) => {

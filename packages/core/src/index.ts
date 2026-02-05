@@ -12,18 +12,63 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useHead } from '@unhead/react'
 import { flatten } from 'flat'
 import * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
-import { useHead } from '@unhead/react'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import { CookiesStore } from './cookies-store.js'
 import { _point0_env } from './env.js'
 import { _ssItems, getFakeClient } from './internals.js'
+import type {
+  AppendProps,
+  AppendQueries,
+  ComponentSelfProps,
+  ComponentSelfType,
+  ComponentSuccessComponentType,
+  DestinationComponentVariant,
+  EmptyProps,
+  ErrorComponentType,
+  GlobalHeadFn,
+  HeadFn,
+  IsQueryShouldBeFinalized,
+  LayoutSelfProps,
+  LayoutSelfType,
+  LayoutSuccessComponentType,
+  LoadingComponentType,
+  MapperFn,
+  MountAction,
+  MountableLocation,
+  MountableSelfType,
+  MountableState,
+  MountableSuccessData,
+  PageSelfProps,
+  PageSelfType,
+  PageSuccessComponentType,
+  Props,
+  ProviderSelfProps,
+  ProviderSelfType,
+  ProviderSuccessComponentType,
+  QueriesDefinitions,
+  QueriesDefinitionsByQueries,
+  QueriesResults,
+  QueryDefinition,
+  QueryDefinitionByQuery,
+  QueryFn,
+  QueryFnOptions,
+  UndefinedComponentSuccessComponent,
+  UndefinedLayoutSuccessComponent,
+  UndefinedSuccessPageComponent,
+  UseQueryOrInfiniteQueryResult,
+  WithFn,
+  WithSelfQueryIfShouldBeFinalized,
+  WrapperComponentType,
+} from './mountable.js'
 import { PointsManager } from './points-manager.js'
 import { Response0 } from './response0.js'
-import { useLocation, useRouterContext } from './router.js'
+import type { RouterPageState } from './router.js'
+import { _usePageStateManager, useLocation, useRouterContext } from './router.js'
 import { superstore } from './super-store.js'
 import type {
   AnyPoint,
@@ -63,6 +108,7 @@ import type {
   FetchOutput,
   FetchOutputType,
   FinalLoaderData,
+  FinalLoaderDataOrNever,
   FinalLoaderOutput,
   IfAnyThenElse,
   Infer,
@@ -77,8 +123,8 @@ import type {
   IsInputsOptional,
   LayoutPoint,
   LoaderDataFn,
-  LoaderResponseFn,
   LoaderOutput,
+  LoaderResponseFn,
   MapperOutput,
   MergeRecordValidationSchemas,
   MiddlewareFn,
@@ -134,7 +180,6 @@ import type {
   UsePointQueryResult,
   UseQueryOptions,
   WithError,
-  FinalLoaderDataOrNever,
 } from './types.js'
 import {
   blankDataTransformerExtended,
@@ -150,50 +195,6 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
-import type {
-  ComponentSuccessComponentType,
-  DestinationComponentVariant,
-  ErrorComponentType,
-  QueriesDefinitions,
-  HeadFn,
-  LayoutSuccessComponentType,
-  LoadingComponentType,
-  MountableSelfType,
-  PageSuccessComponentType,
-  UndefinedComponentSuccessComponent,
-  UndefinedLayoutSuccessComponent,
-  UndefinedSuccessPageComponent,
-  UseQueryOrInfiniteQueryResult,
-  MapperFn,
-  MountAction,
-  Props,
-  MountableSuccessData,
-  LayoutSelfType,
-  PageSelfType,
-  ComponentSelfType,
-  ProviderSelfType,
-  AppendProps,
-  EmptyProps,
-  IsQueryShouldBeFinalized,
-  WithSelfQueryIfShouldBeFinalized,
-  QueryFnOptions,
-  QueryFn,
-  PageSelfProps,
-  ComponentSelfProps,
-  LayoutSelfProps,
-  ProviderSelfProps,
-  AppendQueries,
-  WrapperComponentType,
-  WithFn,
-  MountableState,
-  ProviderSuccessComponentType,
-  MountableLocation,
-  QueryDefinition,
-  QueryDefinitionByQuery,
-  QueriesDefinitionsByQueries,
-  QueriesResults,
-  WithErrorAndLoadingComponents,
-} from './mountable.js'
 // import stringify from 'safe-stable-stringify'
 
 // known stage fns
@@ -2555,24 +2556,26 @@ export class Point0<
       TQueriesDefinitions
     >
   >
-  head<TStatus extends 'loading' | 'error' | 'success' | 'universal'>(
+  head<TStatus extends 'loading' | 'error' | 'success' | 'universal' | 'global'>(
     status: TStatus,
-    head:
-      | HeadFn<
-          TStatus extends 'loading' | 'error' | 'success' ? TStatus : any,
-          MountableLocation<TLetsEndPointType, TRouteDefinition>,
-          TInnerProps,
-          WithSelfQueryIfShouldBeFinalized<
-            TPointType,
-            TLetsEndPointType,
-            TServerLoaderOutput,
-            TClientLoaderOutput,
-            TQueriesDefinitions
-          >,
-          TMapperOutput
-        >
-      | ResolvableHead
-      | string,
+    head: TStatus extends 'global'
+      ? GlobalHeadFn<any, MountableLocation<TLetsEndPointType, TRouteDefinition>>
+      :
+          | HeadFn<
+              TStatus extends 'loading' | 'error' | 'success' ? TStatus : any,
+              MountableLocation<TLetsEndPointType, TRouteDefinition>,
+              TInnerProps,
+              WithSelfQueryIfShouldBeFinalized<
+                TPointType,
+                TLetsEndPointType,
+                TServerLoaderOutput,
+                TClientLoaderOutput,
+                TQueriesDefinitions
+              >,
+              TMapperOutput
+            >
+          | ResolvableHead
+          | string,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
       ? 'finalStage'
@@ -2601,7 +2604,7 @@ export class Point0<
   head(..._args: any[]) {
     const args = _args as
       | [
-          status: 'loading' | 'error' | 'success',
+          status: 'loading' | 'error' | 'success' | 'global' | 'universal',
           head:
             | HeadFn<
                 any,
@@ -2640,7 +2643,7 @@ export class Point0<
     })()
     const headFn = (() => {
       if (typeof providedHead === 'function') {
-        if (providedStatus === 'universal') {
+        if (providedStatus === 'universal' || providedStatus === 'global') {
           return providedHead
         } else {
           return ((options) => {
@@ -2652,7 +2655,7 @@ export class Point0<
           }) as HeadFn<any>
         }
       } else {
-        if (providedStatus === 'universal') {
+        if (providedStatus === 'universal' || providedStatus === 'global') {
           return () => providedHead
         } else {
           return ((options) => {
@@ -2673,7 +2676,15 @@ export class Point0<
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
-        { type: 'head', fn: headFn, unstableId: Point0._getNextUnstableId() },
+        ...(providedStatus === 'global'
+          ? [
+              {
+                type: 'globalHead' as const,
+                fn: headFn as GlobalHeadFn<any, any>,
+                unstableId: Point0._getNextUnstableId(),
+              },
+            ]
+          : [{ type: 'head' as const, fn: headFn, unstableId: Point0._getNextUnstableId() }]),
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
@@ -7848,25 +7859,117 @@ export class Point0<
 
   // mountable components
 
-  private static readonly _createBoundLoadingComponent = (
-    loadingComponent: LoadingComponentType<any>,
-    componentVariant: DestinationComponentVariant,
-  ) => {
-    return () => {
+  private static readonly _usePrevHeadsAndSetPageState = ({
+    pageState,
+    pageStateManager,
+    prevMountActions,
+    // mountState,
+  }: {
+    pageState: RouterPageState
+    pageStateManager: {
+      pageState: RouterPageState
+      setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
+    }
+    prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any> }>
+    // mountState: MountableState<any, any, any, any, any>
+  }) => {
+    React.useEffect(() => {
+      // pageStateManager.setPageState(pageState)
+    }, [pageState.status, pageState.error?.message])
+    for (const { action, state } of prevMountActions) {
+      // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+      switch (action.type) {
+        case 'head': {
+          const headFnResult = action.fn(state)
+          const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
+          useHead(headFnResultResolvable)
+          continue
+        }
+        case 'globalHead': {
+          const headFnResult = action.fn({ ...pageState, location: state.location })
+          const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
+          useHead(headFnResultResolvable)
+          continue
+        }
+      }
+    }
+  }
+
+  private static readonly _createBoundLoadingComponent = ({
+    componentVariant,
+    pageStateManager,
+    prevMountActions,
+    isHeadable,
+    fallbackLoadingComponent,
+  }: {
+    componentVariant: DestinationComponentVariant
+    pageStateManager: {
+      pageState: RouterPageState
+      setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
+    }
+    prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any> }>
+    isHeadable: boolean
+    fallbackLoadingComponent: LoadingComponentType<any>
+  }): React.ComponentType<{ _isHeadable?: boolean }> => {
+    const loadingComponent =
+      prevMountActions.flatMap(({ action }) => (action.type === 'loadingComponent' ? [action.Component] : [])).at(-1) ??
+      fallbackLoadingComponent
+    return ({ _isHeadable = isHeadable }: { _isHeadable?: boolean }) => {
+      if (_isHeadable) {
+        Point0._usePrevHeadsAndSetPageState({
+          pageState: {
+            status: 'loading',
+            error: null,
+            loading: true,
+            initial: false,
+          },
+          pageStateManager,
+          prevMountActions,
+        })
+      }
       return React.createElement(loadingComponent, {
         type: componentVariant,
       })
     }
   }
 
-  private static readonly _createBoundErrorComponent = (
-    errorComponent: ErrorComponentType<any>,
-    componentVariant: DestinationComponentVariant,
-  ) => {
-    return ({ error }: { error: Error }) => {
+  private static readonly _createBoundErrorComponent = ({
+    componentVariant,
+    pageStateManager,
+    prevMountActions,
+    isHeadable,
+    fallbackErrorComponent,
+  }: {
+    componentVariant: DestinationComponentVariant
+    pageStateManager: {
+      pageState: RouterPageState
+      setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
+    }
+    prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any> }>
+    isHeadable: boolean
+    fallbackErrorComponent: ErrorComponentType<any>
+  }): React.ComponentType<{ error: Error; _isHeadable?: boolean }> => {
+    const errorComponent =
+      // [...prevMountActions].reverse().find(({action}) => action.type === 'errorComponent')?.action.Component ??
+      prevMountActions.flatMap(({ action }) => (action.type === 'errorComponent' ? [action.Component] : [])).at(-1) ??
+      fallbackErrorComponent
+    return ({ error, _isHeadable = isHeadable }: { error: Error; _isHeadable?: boolean }) => {
+      const error0 = Error0.from(error)
+      if (_isHeadable) {
+        Point0._usePrevHeadsAndSetPageState({
+          pageState: {
+            status: 'error',
+            error: error0,
+            loading: false,
+            initial: false,
+          },
+          pageStateManager,
+          prevMountActions,
+        })
+      }
       return React.createElement(errorComponent, {
         type: componentVariant,
-        error: Error0.from(error),
+        error: error0,
       })
     }
   }
@@ -7888,16 +7991,21 @@ export class Point0<
     level?: number
     queryIndex?: number
     location?: AnyLocation
+    pageStateManager?: {
+      pageState: RouterPageState
+      setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
+    }
     prev?: {
-      mountActions: MountAction[]
+      prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any> }>
+      nextMountActions: MountAction[]
       innerProps: Props
       queries: QueriesResults
       // allQueries: Queries
       // setQueriesAfterIndexToAllQueries: (queries: UseQueryOrInfiniteQueryResult[], index: number) => void
       // allQueriesState: Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'>
       mappedData: Data | undefined
-      LoadingComponent: React.ComponentType<any>
-      ErrorComponent: React.ComponentType<{ error: Error }>
+      LoadingComponent: React.ComponentType<{ _isHeadable?: boolean }>
+      ErrorComponent: React.ComponentType<{ error: Error; _isHeadable?: boolean }>
     }
   }): Exclude<React.ReactNode, Promise<any>> => {
     const {
@@ -7909,60 +8017,114 @@ export class Point0<
       level = 0,
       queryIndex = 0,
       prev,
+      pageStateManager = _usePageStateManager(),
     } = props
 
-    const variant = this._getDestinationComponentVariant() ?? 'page'
+    const componentVariant = this._getDestinationComponentVariant() ?? 'page'
+    const isHeadable = this.type === 'page' || this.type === 'layout'
+    const fallbackLoadingComponent =
+      {
+        page: this._pageLoadingComponent,
+        component: this._componentLoadingComponent,
+        layout: this._layoutLoadingComponent,
+      }[componentVariant] ?? Point0.DefaultLoadingComponent
+    const fallbackErrorComponent =
+      {
+        page: this._pageErrorComponent,
+        component: this._componentErrorComponent,
+        layout: this._layoutErrorComponent,
+      }[componentVariant] ?? Point0.DefaultErrorComponent
 
-    const { prevMountActions, PrevLoadingComponent, PrevErrorComponent, prevInnerProps, prevQueries, prevMappedData } =
-      (() => {
-        if (!prev) {
-          const _loadingComponent =
-            {
-              page: this._pageLoadingComponent,
-              component: this._componentLoadingComponent,
-              layout: this._layoutLoadingComponent,
-            }[variant] ?? Point0.DefaultLoadingComponent
-          const PrevLoadingComponent = React.useCallback(() => {
-            return React.createElement(_loadingComponent, {
-              type: variant,
-            })
-          }, [])
-          const _errorComponent =
-            {
-              page: this._pageErrorComponent,
-              component: this._componentErrorComponent,
-              layout: this._layoutErrorComponent,
-            }[variant] ?? Point0.DefaultErrorComponent
-          const PrevErrorComponent = React.useCallback(({ error }: { error: Error }) => {
-            return React.createElement(_errorComponent, {
-              type: variant,
-              error: Error0.from(error),
-            })
-          }, [])
+    const {
+      nextMountActions,
+      prevMountActions,
+      PrevLoadingComponent,
+      PrevErrorComponent,
+      prevInnerProps,
+      prevQueries,
+      prevMappedData,
+    } = (() => {
+      if (!prev) {
+        // const loadingComponent =
+        //   {
+        //     page: this._pageLoadingComponent,
+        //     component: this._componentLoadingComponent,
+        //     layout: this._layoutLoadingComponent,
+        //   }[variant] ?? Point0.DefaultLoadingComponent
+        // const PrevLoadingComponent = React.useCallback(() => {
+        //   return React.createElement(_loadingComponent, {
+        //     type: variant,
+        //   })
+        // }, [])
 
-          const prevInnerProps = {}
+        // const PrevLoadingComponent = React.useCallback(() => {
+        //   return Point0._createBoundLoadingComponent({
+        //     fallbackLoadingComponent,
+        //     pageStateManager,
+        //     prevMountActions: [],
+        //     isHeadable,
+        //     mountState,
+        //     componentVariant,
+        //   })
+        // }, [])
 
-          const prevQueries: QueriesResults = []
+        // const _errorComponent =
+        //   {
+        //     page: this._pageErrorComponent,
+        //     component: this._componentErrorComponent,
+        //     layout: this._layoutErrorComponent,
+        //   }[componentVariant] ?? Point0.DefaultErrorComponent
+        // const PrevErrorComponent = React.useCallback(({ error }: { error: Error }) => {
+        //   return React.createElement(_errorComponent, {
+        //     type: variant,
+        //     error: Error0.from(error),
+        //   })
+        // }, [])
 
-          return {
-            prevMountActions: this._mountActions,
-            PrevLoadingComponent,
-            PrevErrorComponent,
-            prevInnerProps,
-            prevQueries,
-            prevMappedData: undefined,
-          }
-        } else {
-          return {
-            prevMountActions: prev.mountActions,
-            PrevLoadingComponent: prev.LoadingComponent,
-            PrevErrorComponent: prev.ErrorComponent,
-            prevInnerProps: prev.innerProps,
-            prevQueries: prev.queries,
-            prevMappedData: prev.mappedData,
-          }
+        // const PrevErrorComponent = React.useMemo(() => {
+        //   return Point0._createBoundErrorComponent({
+        //     componentVariant,
+        //     pageStateManager,
+        //     prevMountActions,
+        //     isHeadable,
+        //     mountState: {
+        //       data: undefined,
+        //       error: undefined,
+        //       loading: false,
+        //       location,
+        //       props: {},
+        //       queries: [],
+        //       status: 'error'
+        //     },
+        //     fallbackErrorComponent,
+        //   })
+        // }, [])
+
+        const prevInnerProps = {}
+
+        const prevQueries: QueriesResults = []
+
+        return {
+          nextMountActions: this._mountActions,
+          prevMountActions: [] as Array<{ action: MountAction; state: MountableState<any, any, any, any, any> }>,
+          PrevLoadingComponent: undefined,
+          PrevErrorComponent: undefined,
+          prevInnerProps,
+          prevQueries,
+          prevMappedData: undefined,
         }
-      })()
+      } else {
+        return {
+          nextMountActions: prev.nextMountActions,
+          prevMountActions: [...prev.prevMountActions],
+          PrevLoadingComponent: prev.LoadingComponent,
+          PrevErrorComponent: prev.ErrorComponent,
+          prevInnerProps: prev.innerProps,
+          prevQueries: prev.queries,
+          prevMappedData: prev.mappedData,
+        }
+      }
+    })()
 
     const queriesState = (() => {
       if (prevQueries.length === 0) {
@@ -7974,7 +8136,6 @@ export class Point0<
         }
       }
       const error = prevQueries.find((query) => query.error)?.error
-      const loading = prevQueries.some((query) => query.status === 'pending')
       if (error) {
         return {
           status: 'error',
@@ -7983,6 +8144,24 @@ export class Point0<
           data: undefined,
         }
       }
+
+      // const success = prevQueries.every((query) => !!query.data)
+      // if (success) {
+      //   return {
+      //     status: 'success',
+      //     error: undefined,
+      //     loading: false,
+      //     data: prevMappedData ?? prevQueries.at(0)?.data ?? {},
+      //   }
+      // }
+      // return {
+      //   status: 'loading',
+      //   error: undefined,
+      //   loading: true,
+      //   data: undefined,
+      // }
+
+      const loading = prevQueries.some((query) => query.status === 'pending')
       if (loading) {
         return {
           status: 'loading',
@@ -8005,30 +8184,75 @@ export class Point0<
       input: inputRaw,
       props: prevInnerProps,
       queries: prevQueries,
-      LoadingComponent: PrevLoadingComponent,
-      ErrorComponent: PrevErrorComponent,
-    } as MountableState<any, any, any, any, any> & WithErrorAndLoadingComponents
+    } as MountableState<any, any, any, any, any>
     let nextMappedData = prevMappedData
+    let ErrorComponent =
+      PrevErrorComponent ??
+      React.useCallback(
+        Point0._createBoundErrorComponent({
+          componentVariant,
+          pageStateManager,
+          prevMountActions,
+          isHeadable,
+          fallbackErrorComponent,
+        }),
+        [],
+      )
+    let LoadingComponent =
+      PrevLoadingComponent ??
+      React.useCallback(
+        Point0._createBoundLoadingComponent({
+          componentVariant,
+          pageStateManager,
+          prevMountActions,
+          isHeadable,
+          fallbackLoadingComponent,
+        }),
+        [],
+      )
 
     // use memo loop until breaking action and return thin breaking action, then outside loop operate with it
     // dynamic state calculates on first level and sending to next levels, queries come to first level also to allQueries
 
-    const currentMountActions = [...prevMountActions]
-    for (const action of prevMountActions) {
+    const currentMountActions = [...nextMountActions]
+    for (const action of nextMountActions) {
+      prevMountActions.push({ action, state: mountState })
       currentMountActions.shift()
 
       // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
       switch (action.type) {
         case 'errorComponent': {
-          mountState.ErrorComponent = React.useMemo(
-            () => Point0._createBoundErrorComponent(action.Component, variant),
+          // mountState.ErrorComponent = React.useMemo(
+          //   () =>
+          //     Point0._createBoundErrorComponent(action.Component, variant, isHeadable ? pageStateManager : undefined),
+          //   [],
+          // )
+          ErrorComponent = React.useCallback(
+            Point0._createBoundErrorComponent({
+              componentVariant,
+              pageStateManager,
+              prevMountActions,
+              isHeadable,
+              fallbackErrorComponent,
+            }),
             [],
           )
           continue
         }
         case 'loadingComponent': {
-          mountState.LoadingComponent = React.useMemo(
-            () => Point0._createBoundLoadingComponent(action.Component, variant),
+          // mountState.LoadingComponent = React.useMemo(
+          //   () =>
+          //     Point0._createBoundLoadingComponent(action.Component, variant, isHeadable ? pageStateManager : undefined),
+          //   [],
+          // )
+          LoadingComponent = React.useCallback(
+            Point0._createBoundLoadingComponent({
+              componentVariant,
+              pageStateManager,
+              prevMountActions,
+              isHeadable,
+              fallbackLoadingComponent,
+            }),
             [],
           )
           continue
@@ -8037,11 +8261,45 @@ export class Point0<
           mountState.props = { ...mountState.props, ...outerProps }
           continue
         }
-        case 'head': {
-          if (this.type === 'page' || this.type === 'layout') {
-            const headFnResult = action.fn(mountState)
-            const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
-            useHead(headFnResultResolvable)
+        // case 'head': {
+        //   if (isHeadable) {
+        //     const headFnResult = action.fn(mountState)
+        //     const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
+        //     useHead(headFnResultResolvable)
+        //   }
+        //   continue
+        // }
+        // case 'globalHead': {
+        //   if (isHeadable) {
+        //     const headFnResult = action.fn({ ...pageStateManager.pageState, location: mountState.location })
+        //     const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
+        //     useHead(headFnResultResolvable)
+        //   }
+        //   continue
+        // }
+        case 'head':
+        case 'globalHead': {
+          if (isHeadable) {
+            ErrorComponent = React.useCallback(
+              Point0._createBoundErrorComponent({
+                componentVariant,
+                pageStateManager,
+                prevMountActions,
+                isHeadable,
+                fallbackErrorComponent,
+              }),
+              [],
+            )
+            LoadingComponent = React.useCallback(
+              Point0._createBoundLoadingComponent({
+                componentVariant,
+                pageStateManager,
+                prevMountActions,
+                isHeadable,
+                fallbackLoadingComponent,
+              }),
+              [],
+            )
           }
           continue
         }
@@ -8069,13 +8327,15 @@ export class Point0<
         level: level + 1,
         queryIndex,
         location,
+        pageStateManager,
         prev: {
           // allQueriesState,
           // allQueries,
           // setQueriesAfterIndexToAllQueries,
-          LoadingComponent: mountState.LoadingComponent,
-          ErrorComponent: mountState.ErrorComponent,
-          mountActions: currentMountActions,
+          LoadingComponent,
+          ErrorComponent,
+          nextMountActions: currentMountActions,
+          prevMountActions,
           innerProps: mountState.props,
           queries: mountState.queries,
           mappedData: nextMappedData,
@@ -8087,14 +8347,16 @@ export class Point0<
           return React.createElement(action.Component, {
             ...mountState,
             children: React.createElement(this._getMountable, _nextMountableProps),
+            LoadingComponent,
+            ErrorComponent,
           })
         }
         case 'with': {
           const result = action.fn(mountState)
           if (result === 'loading') {
-            return React.createElement(mountState.LoadingComponent)
+            return React.createElement(LoadingComponent)
           } else if (result instanceof Error) {
-            return React.createElement(mountState.ErrorComponent, {
+            return React.createElement(ErrorComponent, {
               error: result,
             })
           } else {
@@ -8151,14 +8413,33 @@ export class Point0<
 
     // so we come to the end and can return mount component
 
-    if (mountState.status === 'error') {
-      return React.createElement(mountState.ErrorComponent, {
+    if (isHeadable) {
+      const pageState = {
+        status: mountState.status,
         error: mountState.error,
+        loading: mountState.loading,
+      } as RouterPageState
+      React.useEffect(() => {
+        // pageStateManager.setPageState(pageState)
+      }, [pageState.status, pageState.error, pageState.loading])
+      Point0._usePrevHeadsAndSetPageState({
+        pageState,
+        pageStateManager,
+        prevMountActions,
+      })
+    }
+
+    if (mountState.status === 'error') {
+      return React.createElement(ErrorComponent, {
+        error: mountState.error,
+        _isHeadable: false, // becouse we use heads in prev block
       })
     }
 
     if (mountState.status === 'loading') {
-      return React.createElement(mountState.LoadingComponent)
+      return React.createElement(LoadingComponent, {
+        _isHeadable: false,
+      })
     }
 
     return React.createElement(mountComponent as never, {
@@ -8166,240 +8447,6 @@ export class Point0<
       ...extraProps(mountState),
     })
   }
-
-  // loop or recursion over calling _getMountable action by action
-
-  // 'query' add query to queries array, pass current queries array to next action, do not create new component around, just hooks
-  // 'wrapper' adds component around
-  // 'selfQuery' calling self component query
-  // 'with' if returns 'loading' show current loading component, if return Error show error component, else if undefined or record returned it is innerProps to extend
-
-  // 'input' adds component around, parsing input, if error return current error component
-
-  // 'mapper' updates data in case if all queries passed (do not creates wrapping component)
-  // 'head' call useHead
-  // 'selfProps' adding outerProps to inner props (mountState props)
-  // 'errorComponent' changes current error component to new one (do not creates wrapping component)
-  // 'loadingComponent' changes current loading component to new one (do not creates wrapping component)
-  // so it is not just components recursion, it is clever loop, which breaks to wrapping component only in case if it is needed
-  // we strongly know that count of actions not chacnged in runtime, so we can call hooks etc in this loop safely
-
-  // private readonly _getMountable = (props: {
-  //   input: InputsRaw<TServerInputSchema, TClientInputSchema>
-  //   props: TInnerProps
-  //   mountComponent: SuccessComponentType<any, any, any, any, any, any, any> | undefined
-  //   extraProps: (useMountableResult: UseMountableResult<any, any, any, any, any, any, any>) => Record<string, any>
-  // }): React.ReactNode => {
-  //   const { input, props: restProps, extraProps, mountComponent } = props
-
-  //   const componentType: DestinationComponentVariant =
-  //     this.type === 'page'
-  //       ? 'page'
-  //       : this.type === 'layout'
-  //         ? 'layout'
-  //         : this.type === 'component'
-  //           ? 'component'
-  //           : 'page'
-  //   const loadingComponent = this._getLoadingComponent({
-  //     type: componentType,
-  //   })
-  //   const errorComponent = this._getErrorComponent({ type: componentType })
-
-  //   const [isOuterPassed, setIsOuterPassed] = React.useState(false)
-
-  //   const useMountableResult = this.useX(input, undefined, undefined, isOuterPassed)
-
-  //   // const [actualUseMountableResult, setActualUseMountableResult] = React.useState<UseMountableResult<any, any, any, any, any, any, any>>(useMountableResult)
-
-  //   // if (this.type === 'page') {
-  //   //   this._useHead(actualUseMountableResult, restProps)
-  //   // }
-
-  //   const LoadingComponent = React.useCallback(() => {
-  //     const result = {
-  //       data: undefined,
-  //       error: undefined,
-  //       input: useMountableResult.input,
-  //       loading: true,
-  //       queries: useMountableResult.queries as never,
-  //       status: 'pending',
-  //     } satisfies UseMountableResult<
-  //       'pending',
-  //       TQueryResultType,
-  //       TServerLoaderOutput,
-  //       TClientLoaderOutput,
-  //       TMapperOutput,
-  //       TClientInputSchema,
-  //       TQueriesDefinitions
-  //     >
-  //     this._useHead(result, restProps)
-  //     return React.createElement(loadingComponent, {
-  //       ...result,
-  //       props: restProps as TProps,
-  //       type: componentType,
-  //     })
-  //   }, [componentType, loadingComponent, useMountableResult, restProps])
-
-  //   const ErrorComponent = React.useCallback(
-  //     ({ error }: { error: Error }) => {
-  //       const result = {
-  //         data: undefined,
-  //         error: Error0.from(error),
-  //         input: useMountableResult.input,
-  //         loading: false,
-  //         queries: useMountableResult.queries as never,
-  //         status: 'error',
-  //       } satisfies UseMountableResult<
-  //         'error',
-  //         TQueryResultType,
-  //         TServerLoaderOutput,
-  //         TClientLoaderOutput,
-  //         TMapperOutput,
-  //         TClientInputSchema,
-  //         TQueriesDefinitions
-  //       >
-  //       this._useHead(result, restProps)
-  //       return React.createElement(errorComponent, {
-  //         ...result,
-  //         props: restProps as TProps,
-  //         type: componentType,
-  //       })
-  //     },
-  //     [componentType, errorComponent, useMountableResult, restProps],
-  //   )
-
-  //   const withWrappers = (
-  //     innerChildren: React.ReactNode,
-  //     useMountableResult: UseMountableResult<any, any, any, any, any, any, any>,
-  //   ): Exclude<React.ReactNode, Promise<any>> => {
-  //     if (this._wrappers.length === 0) {
-  //       return innerChildren as Exclude<React.ReactNode, Promise<any>>
-  //     }
-  //     return [...this._wrappers].reverse().reduce((acc, Wrapper) => {
-  //       return React.createElement(Wrapper, {
-  //         children: acc,
-  //         ...useMountableResult,
-  //         props: restProps as TProps,
-  //         LoadingComponent,
-  //         ErrorComponent,
-  //       } as never)
-  //     }, innerChildren) as Exclude<React.ReactNode, Promise<any>>
-  //   }
-
-  //   const withOuters = (innerChildren: React.ReactNode): Exclude<React.ReactNode, Promise<any>> => {
-  //     if (this._outers.length === 0) {
-  //       return innerChildren as Exclude<React.ReactNode, Promise<any>>
-  //     }
-  //     return [...this._outers].reverse().reduce(
-  //       (acc, Outer) => {
-  //         return React.createElement(Outer, {
-  //           children: acc,
-  //           input: useMountableResult.input,
-  //           props: restProps as TProps,
-  //           LoadingComponent,
-  //           ErrorComponent,
-  //         })
-  //       },
-  //       innerChildren as Exclude<React.ReactNode, Promise<any>>,
-  //     )
-  //   }
-
-  //   // const withProvider = (
-  //   //   innerChildren: React.ReactNode,
-  //   //   value: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput>,
-  //   // ): Exclude<React.ReactNode, Promise<any>> => {
-  //   //   if (!withProvider) {
-  //   //     return innerChildren as Exclude<React.ReactNode, Promise<any>>
-  //   //   }
-  //   //   if (!this._ProviderReactContext) {
-  //   //     throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
-  //   //   }
-  //   //   superstore.setValue(
-  //   //     `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._getTransformer().stringify(input)}`,
-  //   //     value,
-  //   //     'clientServerIsolated',
-  //   //   )
-
-  //   //   return React.createElement(this._ProviderReactContext.Provider, {
-  //   //     value,
-  //   //     children: innerChildren,
-  //   //   })
-  //   // }
-
-  //   const MountableInner = React.useCallback((): React.ReactNode => {
-  //     React.useEffect(() => {
-  //       setIsOuterPassed(true)
-  //       return () => {
-  //         setIsOuterPassed(false)
-  //       }
-  //     }, [])
-
-  //     if (!mountComponent) {
-  //       const result = {
-  //         data: undefined,
-  //         error: new Error0(`Mountable component not found`),
-  //         input: useMountableResult.input,
-  //         loading: false,
-  //         queries: undefined,
-  //         status: 'error',
-  //       } satisfies UseMountableResult<
-  //         'error',
-  //         TQueryResultType,
-  //         TServerLoaderOutput,
-  //         TClientLoaderOutput,
-  //         TMapperOutput,
-  //         TClientInputSchema,
-  //         TQueriesDefinitions
-  //       >
-  //       this._useHead(result, restProps)
-  //       return withWrappers(
-  //         React.createElement(errorComponent, {
-  //           ...result,
-  //           props: restProps as TProps,
-  //           type: componentType,
-  //         }),
-  //         result,
-  //       )
-  //     }
-
-  //     this._useHead(useMountableResult, restProps)
-
-  //     if (useMountableResult.status === 'error') {
-  //       return withWrappers(
-  //         React.createElement(errorComponent, {
-  //           ...useMountableResult,
-  //           props: restProps as TProps,
-  //           type: componentType,
-  //         }),
-  //         useMountableResult,
-  //       )
-  //     }
-
-  //     if (useMountableResult.status === 'pending') {
-  //       return withWrappers(
-  //         React.createElement(loadingComponent, {
-  //           ...useMountableResult,
-  //           props: restProps as TProps,
-  //           type: componentType,
-  //         }),
-  //         useMountableResult,
-  //       )
-  //     }
-
-  //     return withWrappers(
-  //       React.createElement(mountComponent as React.ComponentType<any>, {
-  //         ...extraProps(useMountableResult),
-  //         props: restProps as TProps,
-  //         input: useMountableResult.input,
-  //         queries: useMountableResult.queries,
-  //         data: useMountableResult.data,
-  //       }),
-  //       useMountableResult,
-  //     )
-  //   }, [componentType, errorComponent, useMountableResult, restProps, extraProps])
-
-  //   return withOuters(React.createElement(MountableInner))
-  // }
 
   Page = (
     props: PageSelfProps<
@@ -8412,9 +8459,6 @@ export class Point0<
       TMapperOutput
     >,
   ): React.ReactNode => {
-    // const loadingComponent = this._getLoadingComponent({ type: 'page' })
-    // const errorComponent = this._getErrorComponent({ type: 'page' })
-
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
 
     const { inputRaw, restProps } = React.useMemo<{
@@ -8481,267 +8525,7 @@ export class Point0<
       },
       mountComponent: this._page as never,
     })
-
-    // if (clientInputParseResult.inputParseError) {
-    //   const result = {
-    //     data: undefined,
-    //     error: clientInputParseResult.inputParseError,
-    //     input: clientInputParseResult.inputParsed,
-    //     query: null,
-    //     location,
-    //     loading: false,
-    //   } satisfies AnyUseLoaderResult<
-    //     'error',
-    //     TQueryResultType,
-    //     TServerLoaderOutput,
-    //     TClientLoaderOutput,
-    //     TMapperOutput,
-    //     TClientInputSchema,
-    //     AnyLocation
-    //   >
-    //   this._useHead(result)
-    //   return this._withWrappers({
-    //     children: React.createElement(errorComponent, {
-    //       ...result,
-    //       props: restProps,
-    //       type: 'page',
-    //     }),
-    //     useLoaderResult: result,
-    //     props,
-    //   })
-    // }
-
-    // const LoadingComponent = React.useMemo(
-    //   () => () => {
-    //     const result = {
-    //       data: undefined,
-    //       error: null,
-    //       input: clientInputParseResult.inputParsed,
-    //       location,
-    //       loading: true,
-    //       query: null,
-    //     } satisfies AnyUseLoaderResult<
-    //       'pending',
-    //       TQueryResultType,
-    //       TServerLoaderOutput,
-    //       TClientLoaderOutput,
-    //       TMapperOutput,
-    //       TClientInputSchema,
-    //       AnyLocation
-    //     >
-    //     this._useHead(result)
-    //     return this._withWrappers({
-    //       children: React.createElement(loadingComponent, {
-    //         ...result,
-    //         props: restProps,
-    //         type: 'page',
-    //       }),
-    //       useLoaderResult: result,
-    //       props: restProps,
-    //     })
-    //   },
-    //   [loadingComponent, clientInputParseResult],
-    // )
-
-    // const ErrorComponent = React.useMemo(
-    //   () =>
-    //     ({ error }: { error: Error }) => {
-    //       const result = {
-    //         data: undefined,
-    //         error: Error0.from(error),
-    //         input: clientInputParseResult.inputParsed,
-    //         location,
-    //         loading: false,
-    //         query: null,
-    //       } satisfies AnyUseLoaderResult<
-    //         'error',
-    //         TQueryResultType,
-    //         TServerLoaderOutput,
-    //         TClientLoaderOutput,
-    //         TMapperOutput,
-    //         TClientInputSchema,
-    //         AnyLocation
-    //       >
-    //       this._useHead(result)
-    //       return this._withWrappers({
-    //         children: React.createElement(errorComponent, {
-    //           ...result,
-    //           props: restProps,
-    //           type: 'page',
-    //         }),
-    //         props: restProps,
-    //         useLoaderResult: result,
-    //       })
-    //     },
-    //   [errorComponent, clientInputParseResult],
-    // )
-
-    // if (this._hasClientLoader() || this._hasServerLoader() || this._hasMapperFns()) {
-    //   return this._withOuters({
-    //     children: React.createElement(this._PageLoader, {
-    //       location,
-    //       inputRaw,
-    //       clientInputParseResult,
-    //       restProps,
-    //     }),
-    //     input: clientInputParseResult.inputParsed,
-    //     props: restProps,
-    //     location,
-    //     LoadingComponent,
-    //     ErrorComponent,
-    //   })
-    // }
-
-    // if (!this._page) {
-    //   // impossible error
-    //   const result = {
-    //     data: undefined,
-    //     error: new Error0('No page component'),
-    //     input: clientInputParseResult.inputParsed,
-    //     location,
-    //     loading: false,
-    //     query: null,
-    //   } satisfies AnyUseLoaderResult<
-    //     'error',
-    //     TQueryResultType,
-    //     TServerLoaderOutput,
-    //     TClientLoaderOutput,
-    //     TMapperOutput,
-    //     TClientInputSchema,
-    //     AnyLocation
-    //   >
-    //   this._useHead(result)
-    //   return this._withOuters({
-    //     children: this._withWrappers({
-    //       children: React.createElement(errorComponent, {
-    //         ...result,
-    //         props: restProps,
-    //         type: 'page',
-    //       }),
-    //       useLoaderResult: result,
-    //       props: restProps,
-    //     }),
-    //     input: clientInputParseResult.inputParsed,
-    //     props: restProps,
-    //     location,
-    //     LoadingComponent,
-    //     ErrorComponent,
-    //   })
-    // }
-
-    // const result = {
-    //   data: undefined as never,
-    //   error: null,
-    //   input: clientInputParseResult.inputParsed,
-    //   location,
-    //   loading: false,
-    //   query: null as never,
-    // } satisfies AnyUseLoaderResult<
-    //   'success',
-    //   TQueryResultType,
-    //   TServerLoaderOutput,
-    //   TClientLoaderOutput,
-    //   TMapperOutput,
-    //   TClientInputSchema,
-    //   AnyLocation
-    // >
-
-    // this._useHead(result as never)
-
-    // return this._withOuters({
-    //   children: this._withWrappers({
-    //     children: React.createElement(this._page, {
-    //       ...(result as any),
-    //       props: restProps,
-    //     }),
-    //     useLoaderResult: result as never,
-    //     props: restProps,
-    //   }),
-    //   input: clientInputParseResult.inputParsed,
-    //   props: restProps,
-    //   location,
-    //   LoadingComponent,
-    //   ErrorComponent,
-    // })
   }
-
-  // _PageLoader = (props: {
-  //   location: AnyLocation
-  //   inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
-  //   clientInputParseResult: InputParseResult<TClientInputSchema>
-  //   restProps: FinalProps<TProps>
-  // }): React.ReactNode => {
-  //   const loadingComponent = this._getLoadingComponent({ type: 'page' })
-  //   const errorComponent = this._getErrorComponent({ type: 'page' })
-
-  //   const { location, inputRaw, clientInputParseResult, restProps } = props
-
-  //   const result = this.useLoader(inputRaw, undefined, undefined, clientInputParseResult)
-
-  //   if (!this._page) {
-  //     const result = {
-  //       data: undefined,
-  //       error: new Error0('No page component'),
-  //       input: clientInputParseResult.inputParsed,
-  //       location,
-  //       loading: false,
-  //       query: null,
-  //     } satisfies AnyUseLoaderResult<
-  //       'error',
-  //       TQueryResultType,
-  //       TServerLoaderOutput,
-  //       TClientLoaderOutput,
-  //       TMapperOutput,
-  //       TClientInputSchema,
-  //       AnyLocation
-  //     >
-  //     this._useHead(result)
-  //     return this._withWrappers({
-  //       children: React.createElement(errorComponent, {
-  //         ...result,
-  //         props: restProps,
-  //         type: 'page',
-  //       }),
-  //       useLoaderResult: result,
-  //       props: restProps,
-  //     })
-  //   }
-
-  //   this._useHead(result)
-
-  //   if (result.error) {
-  //     return this._withWrappers({
-  //       children: React.createElement(errorComponent, {
-  //         ...result,
-  //         props: restProps,
-  //         type: 'page',
-  //       }),
-  //       useLoaderResult: result,
-  //       props: restProps,
-  //     })
-  //   }
-  //   if (result.loading) {
-  //     return this._withWrappers({
-  //       children: React.createElement(loadingComponent, {
-  //         ...result,
-  //         props: restProps,
-  //         type: 'page',
-  //       }),
-  //       useLoaderResult: result,
-  //       props: restProps,
-  //     })
-  //   }
-
-  //   return this._withWrappers({
-  //     children: React.createElement(this._page, {
-  //       ...result,
-  //       location: result.location as never,
-  //       props: restProps,
-  //     }),
-  //     useLoaderResult: result,
-  //     props: restProps,
-  //   })
-  // }
 
   Component = (
     props: ComponentSelfProps<
@@ -8753,11 +8537,6 @@ export class Point0<
       TMapperOutput
     >,
   ): React.ReactNode => {
-    // const loadingComponent = this._getLoadingComponent({ type: 'component' })
-    // const errorComponent = this._getErrorComponent({ type: 'component' })
-
-    // const location = useLocation()
-
     const { inputRaw, restProps } = React.useMemo<{
       inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
       restProps: TOuterProps
@@ -8775,265 +8554,7 @@ export class Point0<
       },
       mountComponent: this._component as never,
     })
-
-    // const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
-    //   const result = this.parseClientInputSafe(inputRaw as never)
-    //   if (!result.success) {
-    //     return { inputParsed: null, inputParseError: result.error } satisfies InputParseResult<TClientInputSchema>
-    //   }
-    //   return { inputParsed: result.data, inputParseError: null } satisfies InputParseResult<TClientInputSchema>
-    // }, [inputRaw])
-
-    // if (clientInputParseResult.inputParseError) {
-    //   const result = {
-    //     data: undefined,
-    //     error: clientInputParseResult.inputParseError,
-    //     input: clientInputParseResult.inputParsed,
-    //     query: null,
-    //     location,
-    //     loading: false,
-    //   } satisfies AnyUseLoaderResult<
-    //     'error',
-    //     TQueryResultType,
-    //     TServerLoaderOutput,
-    //     TClientLoaderOutput,
-    //     TMapperOutput,
-    //     TClientInputSchema,
-    //     AnyLocation
-    //   >
-    //   return this._withWrappers({
-    //     children: React.createElement(errorComponent, {
-    //       ...result,
-    //       props: restProps,
-    //       type: 'component',
-    //     }),
-    //     useLoaderResult: result,
-    //     props,
-    //   })
-    // }
-
-    // const LoadingComponent = React.useMemo(
-    //   () => () => {
-    //     const result = {
-    //       data: undefined,
-    //       error: null,
-    //       input: clientInputParseResult.inputParsed,
-    //       location,
-    //       loading: true,
-    //       query: null,
-    //     } satisfies AnyUseLoaderResult<
-    //       'pending',
-    //       TQueryResultType,
-    //       TServerLoaderOutput,
-    //       TClientLoaderOutput,
-    //       TMapperOutput,
-    //       TClientInputSchema,
-    //       AnyLocation
-    //     >
-    //     return this._withWrappers({
-    //       children: React.createElement(loadingComponent, {
-    //         ...result,
-    //         props: restProps,
-    //         type: 'component',
-    //       }),
-    //       useLoaderResult: result,
-    //       props: restProps,
-    //     })
-    //   },
-    //   [loadingComponent, clientInputParseResult],
-    // )
-
-    // const ErrorComponent = React.useMemo(
-    //   () =>
-    //     ({ error }: { error: Error }) => {
-    //       const result = {
-    //         data: undefined,
-    //         error: Error0.from(error),
-    //         input: clientInputParseResult.inputParsed,
-    //         location,
-    //         loading: false,
-    //         query: null,
-    //       } satisfies AnyUseLoaderResult<
-    //         'error',
-    //         TQueryResultType,
-    //         TServerLoaderOutput,
-    //         TClientLoaderOutput,
-    //         TMapperOutput,
-    //         TClientInputSchema,
-    //         AnyLocation
-    //       >
-    //       return this._withWrappers({
-    //         children: React.createElement(errorComponent, {
-    //           ...result,
-    //           props: restProps,
-    //           type: 'component',
-    //         }),
-    //         props: restProps,
-    //         useLoaderResult: result,
-    //       })
-    //     },
-    //   [errorComponent, clientInputParseResult],
-    // )
-
-    // if (this._hasClientLoader() || this._hasServerLoader() || this._hasMapperFns()) {
-    //   return this._withOuters({
-    //     children: React.createElement(this._ComponentLoader, {
-    //       location,
-    //       inputRaw,
-    //       clientInputParseResult,
-    //       restProps,
-    //     }),
-    //     input: clientInputParseResult.inputParsed,
-    //     props: restProps,
-    //     location,
-    //     LoadingComponent,
-    //     ErrorComponent,
-    //   })
-    // }
-
-    // if (!this._component) {
-    //   // impossible error
-    //   const result = {
-    //     data: undefined,
-    //     error: new Error0('No component component'),
-    //     input: clientInputParseResult.inputParsed,
-    //     location,
-    //     loading: false,
-    //     query: null,
-    //   } satisfies AnyUseLoaderResult<
-    //     'error',
-    //     TQueryResultType,
-    //     TServerLoaderOutput,
-    //     TClientLoaderOutput,
-    //     TMapperOutput,
-    //     TClientInputSchema,
-    //     AnyLocation
-    //   >
-    //   return this._withOuters({
-    //     children: this._withWrappers({
-    //       children: React.createElement(errorComponent, {
-    //         ...result,
-    //         props: restProps,
-    //         type: 'component',
-    //       }),
-    //       useLoaderResult: result,
-    //       props: restProps,
-    //     }),
-    //     input: clientInputParseResult.inputParsed,
-    //     props: restProps,
-    //     location,
-    //     LoadingComponent,
-    //     ErrorComponent,
-    //   })
-    // }
-
-    // const result = {
-    //   data: undefined as never,
-    //   error: null,
-    //   input: clientInputParseResult.inputParsed,
-    //   location,
-    //   loading: false,
-    //   query: null as never,
-    // } satisfies AnyUseLoaderResult<
-    //   'success',
-    //   TQueryResultType,
-    //   TServerLoaderOutput,
-    //   TClientLoaderOutput,
-    //   TMapperOutput,
-    //   TClientInputSchema,
-    //   AnyLocation
-    // >
-
-    // return this._withOuters({
-    //   children: this._withWrappers({
-    //     children: React.createElement(this._component, {
-    //       ...result,
-    //       props: restProps,
-    //     }),
-    //     useLoaderResult: result,
-    //     props: restProps,
-    //   }),
-    //   input: clientInputParseResult.inputParsed,
-    //   props: restProps,
-    //   location,
-    //   LoadingComponent,
-    //   ErrorComponent,
-    // })
   }
-
-  // _ComponentLoader = (props: {
-  //   location: AnyLocation
-  //   inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
-  //   clientInputParseResult: InputParseResult<TClientInputSchema>
-  //   restProps: FinalProps<TProps>
-  // }): React.ReactNode => {
-  //   const loadingComponent = this._getLoadingComponent({ type: 'component' })
-  //   const errorComponent = this._getErrorComponent({ type: 'component' })
-
-  //   const { location, inputRaw, clientInputParseResult, restProps } = props
-
-  //   const result = this.useLoader(inputRaw, undefined, undefined, clientInputParseResult)
-
-  //   if (!this._component) {
-  //     const result = {
-  //       data: undefined,
-  //       error: new Error0('No component component'),
-  //       input: clientInputParseResult.inputParsed,
-  //       location,
-  //       loading: false,
-  //       query: null,
-  //     } satisfies AnyUseLoaderResult<
-  //       'error',
-  //       TQueryResultType,
-  //       TServerLoaderOutput,
-  //       TClientLoaderOutput,
-  //       TMapperOutput,
-  //       TClientInputSchema,
-  //       AnyLocation
-  //     >
-  //     return this._withWrappers({
-  //       children: React.createElement(errorComponent, {
-  //         ...result,
-  //         props: restProps,
-  //         type: 'component',
-  //       }),
-  //       useLoaderResult: result,
-  //       props: restProps,
-  //     })
-  //   }
-
-  //   if (result.error) {
-  //     return this._withWrappers({
-  //       children: React.createElement(errorComponent, {
-  //         ...result,
-  //         props: restProps,
-  //         type: 'component',
-  //       }),
-  //       useLoaderResult: result,
-  //       props: restProps,
-  //     })
-  //   }
-  //   if (result.loading) {
-  //     return this._withWrappers({
-  //       children: React.createElement(loadingComponent, {
-  //         ...result,
-  //         props: restProps,
-  //         type: 'component',
-  //       }),
-  //       useLoaderResult: result,
-  //       props: restProps,
-  //     })
-  //   }
-
-  //   return this._withWrappers({
-  //     children: React.createElement(this._component, {
-  //       ...(result as any),
-  //       props: restProps as never,
-  //     }),
-  //     useLoaderResult: result,
-  //     props: restProps,
-  //   })
-  // }
 
   Layout = (
     props: LayoutSelfProps<
@@ -9046,9 +8567,6 @@ export class Point0<
       TMapperOutput
     >,
   ): React.ReactNode => {
-    // const loadingComponent = this._getLoadingComponent({ type: 'layout' })
-    // const errorComponent = this._getErrorComponent({ type: 'layout' })
-
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
 
     const { inputRaw, children, restProps } = React.useMemo<{
@@ -9081,292 +8599,7 @@ export class Point0<
       },
       mountComponent: this._layout as never,
     })
-
-    // const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
-    //   const result = this.parseClientInputSafe(inputRaw as never)
-    //   if (!result.success) {
-    //     return { inputParsed: null, inputParseError: result.error } satisfies InputParseResult<TClientInputSchema>
-    //   }
-    //   return { inputParsed: result.data, inputParseError: null } satisfies InputParseResult<TClientInputSchema>
-    // }, [inputRaw])
-
-    // if (clientInputParseResult.inputParseError) {
-    //   const result = {
-    //     data: undefined,
-    //     error: clientInputParseResult.inputParseError,
-    //     input: clientInputParseResult.inputParsed,
-    //     query: null,
-    //     location,
-    //     loading: false,
-    //   } satisfies AnyUseLoaderResult<
-    //     'error',
-    //     TQueryResultType,
-    //     TServerLoaderOutput,
-    //     TClientLoaderOutput,
-    //     TMapperOutput,
-    //     TClientInputSchema,
-    //     AnyLocation
-    //   >
-    //   this._useHead(result)
-    //   return this._withWrappers({
-    //     children: React.createElement(errorComponent, {
-    //       ...result,
-    //       props: restProps,
-    //       type: 'layout',
-    //     }),
-    //     useLoaderResult: result,
-    //     props,
-    //   })
-    // }
-
-    // const LoadingComponent = React.useMemo(
-    //   () => () => {
-    //     const result = {
-    //       data: undefined,
-    //       error: null,
-    //       input: clientInputParseResult.inputParsed,
-    //       location,
-    //       loading: true,
-    //       query: null,
-    //     } satisfies AnyUseLoaderResult<
-    //       'pending',
-    //       TQueryResultType,
-    //       TServerLoaderOutput,
-    //       TClientLoaderOutput,
-    //       TMapperOutput,
-    //       TClientInputSchema,
-    //       AnyLocation
-    //     >
-    //     this._useHead(result)
-    //     return this._withWrappers({
-    //       children: React.createElement(loadingComponent, {
-    //         ...result,
-    //         props: restProps,
-    //         type: 'layout',
-    //       }),
-    //       useLoaderResult: result,
-    //       props: restProps,
-    //     })
-    //   },
-    //   [loadingComponent, clientInputParseResult],
-    // )
-
-    // const ErrorComponent = React.useMemo(
-    //   () =>
-    //     ({ error }: { error: Error }) => {
-    //       const result = {
-    //         data: undefined,
-    //         error: Error0.from(error),
-    //         input: clientInputParseResult.inputParsed,
-    //         location,
-    //         loading: false,
-    //         query: null,
-    //       } satisfies AnyUseLoaderResult<
-    //         'error',
-    //         TQueryResultType,
-    //         TServerLoaderOutput,
-    //         TClientLoaderOutput,
-    //         TMapperOutput,
-    //         TClientInputSchema,
-    //         AnyLocation
-    //       >
-    //       this._useHead(result)
-    //       return this._withWrappers({
-    //         children: React.createElement(errorComponent, {
-    //           ...result,
-    //           props: restProps,
-    //           type: 'layout',
-    //         }),
-    //         props: restProps,
-    //         useLoaderResult: result,
-    //       })
-    //     },
-    //   [errorComponent, clientInputParseResult],
-    // )
-
-    // if (this._hasClientLoader() || this._hasServerLoader() || this._hasMapperFns()) {
-    //   return this._withOuters({
-    //     children: React.createElement(this._LayoutLoader, {
-    //       location,
-    //       inputRaw,
-    //       clientInputParseResult,
-    //       restProps,
-    //       children,
-    //     }),
-    //     input: clientInputParseResult.inputParsed,
-    //     props: restProps,
-    //     location,
-    //     LoadingComponent,
-    //     ErrorComponent,
-    //   })
-    // }
-
-    // if (!this._layout) {
-    //   // impossible error
-    //   const result = {
-    //     data: undefined,
-    //     error: new Error0('No layout component'),
-    //     input: clientInputParseResult.inputParsed,
-    //     location,
-    //     loading: false,
-    //     query: null,
-    //   } satisfies AnyUseLoaderResult<
-    //     'error',
-    //     TQueryResultType,
-    //     TServerLoaderOutput,
-    //     TClientLoaderOutput,
-    //     TMapperOutput,
-    //     TClientInputSchema,
-    //     AnyLocation
-    //   >
-    //   this._useHead(result)
-    //   return this._withOuters({
-    //     children: this._withWrappers({
-    //       children: React.createElement(errorComponent, {
-    //         ...result,
-    //         props: restProps,
-    //         type: 'layout',
-    //       }),
-    //       useLoaderResult: result,
-    //       props: restProps,
-    //     }),
-    //     input: clientInputParseResult.inputParsed,
-    //     props: restProps,
-    //     location,
-    //     LoadingComponent,
-    //     ErrorComponent,
-    //   })
-    // }
-
-    // const result = {
-    //   data: undefined as never,
-    //   error: null,
-    //   input: clientInputParseResult.inputParsed,
-    //   location,
-    //   loading: false,
-    //   query: null as never,
-    // } satisfies AnyUseLoaderResult<
-    //   'success',
-    //   TQueryResultType,
-    //   TServerLoaderOutput,
-    //   TClientLoaderOutput,
-    //   TMapperOutput,
-    //   TClientInputSchema,
-    //   AnyLocation
-    // >
-
-    // return this._withOuters({
-    //   children: this._withWrappers({
-    //     children: React.createElement(this._layout, {
-    //       ...result,
-    //       location: result.location as never,
-    //       children,
-    //       props: restProps,
-    //     }),
-    //     useLoaderResult: result,
-    //     props: restProps,
-    //   }),
-    //   input: clientInputParseResult.inputParsed,
-    //   props: restProps,
-    //   location,
-    //   LoadingComponent,
-    //   ErrorComponent,
-    // })
   }
-
-  // _LayoutLoader = (props: {
-  //   location: AnyLocation
-  //   inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
-  //   clientInputParseResult: InputParseResult<TClientInputSchema>
-  //   restProps: FinalProps<TProps>
-  //   children: React.ReactNode
-  // }): React.ReactNode => {
-  //   const loadingComponent = this._getLoadingComponent({ type: 'layout' })
-  //   const errorComponent = this._getErrorComponent({ type: 'layout' })
-
-  //   if (!this._ProviderReactContext) {
-  //     throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
-  //   }
-
-  //   const { location, inputRaw, clientInputParseResult, restProps, children } = props
-
-  //   const result = this.useLoader(inputRaw, undefined, undefined, clientInputParseResult)
-
-  //   if (!this._layout) {
-  //     const result = {
-  //       data: undefined,
-  //       error: new Error0('No layout component'),
-  //       input: clientInputParseResult.inputParsed,
-  //       location,
-  //       loading: false,
-  //       query: null,
-  //     } satisfies AnyUseLoaderResult<
-  //       'error',
-  //       TQueryResultType,
-  //       TServerLoaderOutput,
-  //       TClientLoaderOutput,
-  //       TMapperOutput,
-  //       TClientInputSchema,
-  //       AnyLocation
-  //     >
-  //     this._useHead(result)
-  //     return this._withWrappers({
-  //       children: React.createElement(errorComponent, {
-  //         ...result,
-  //         props: restProps,
-  //         type: 'layout',
-  //       }),
-  //       useLoaderResult: result,
-  //       props: restProps,
-  //     })
-  //   }
-
-  //   if (result.error) {
-  //     this._useHead(result)
-  //     return this._withWrappers({
-  //       children: React.createElement(errorComponent, {
-  //         ...result,
-  //         props: restProps,
-  //         type: 'layout',
-  //       }),
-  //       useLoaderResult: result,
-  //       props: restProps,
-  //     })
-  //   }
-  //   if (result.loading) {
-  //     this._useHead(result)
-  //     return this._withWrappers({
-  //       children: React.createElement(loadingComponent, {
-  //         ...result,
-  //         props: restProps,
-  //         type: 'layout',
-  //       }),
-  //       useLoaderResult: result,
-  //       props: restProps,
-  //     })
-  //   }
-
-  //   const value = result.data
-  //   superstore.setValue(
-  //     `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._getTransformer().stringify(inputRaw)}`,
-  //     value,
-  //     'clientServerIsolated',
-  //   )
-
-  //   return this._withWrappers({
-  //     children: React.createElement(this._layout, {
-  //       ...result,
-  //       location: result.location as never,
-  //       children: React.createElement(this._ProviderReactContext.Provider, {
-  //         value,
-  //         children,
-  //       }),
-  //       props: restProps,
-  //     }),
-  //     useLoaderResult: result,
-  //     props: restProps,
-  //   })
-  // }
 
   // provider
   private getSsProviderValueKey(input?: InputsRaw<TServerInputSchema, TClientInputSchema>): string {
@@ -9418,13 +8651,6 @@ export class Point0<
       TMapperOutput
     >,
   ): React.ReactNode => {
-    // const loadingComponent = this._getLoadingComponent({ type: 'page' })
-    // const errorComponent = this._getErrorComponent({ type: 'page' })
-
-    // if (!this._ProviderReactContext) {
-    //   throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
-    // }
-
     const { inputRaw, children, restProps } = React.useMemo<{
       inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
       children: React.ReactNode
@@ -9458,53 +8684,6 @@ export class Point0<
       },
       mountComponent: providerComponent,
     })
-
-    // const result = this.useLoader(inputRaw, this._defaultProviderQueryOptions)
-
-    // if (result.error) {
-    //   return this._withWrappers({
-    //     children: React.createElement(errorComponent, {
-    //       ...result,
-    //       props: restProps,
-    //       type: 'page',
-    //     }),
-    //     useLoaderResult: result,
-    //     props,
-    //   })
-    // }
-    // if (result.loading) {
-    //   return this._withWrappers({
-    //     children: React.createElement(loadingComponent, {
-    //       ...result,
-    //       props: restProps,
-    //       type: 'page',
-    //     }),
-    //     useLoaderResult: result,
-    //     props,
-    //   })
-    // }
-
-    // // if (!result.data) {
-    // //   return this._withWrappers({
-    // //     component: React.createElement(errorComponent, {
-    // //       ...(result as any),
-    // //       type: 'page',
-    // //       error: new Error0('No data'),
-    // //     }),
-    // //     useLoaderResult: result,
-    // //     props,
-    // //   })
-    // // }
-    // const value = result.data
-    // superstore.setValue(this.getSsProviderValueKey(inputRaw), value, 'clientServerIsolated')
-    // return this._withWrappers({
-    //   children: React.createElement(this._ProviderReactContext.Provider, {
-    //     value,
-    //     children,
-    //   }),
-    //   useLoaderResult: result,
-    //   props,
-    // })
   }
 
   useValue<K extends keyof MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(

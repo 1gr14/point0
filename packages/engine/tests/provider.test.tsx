@@ -1,6 +1,6 @@
 import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
-import { createTestThings } from '../utils/internal-testing.js'
+import { createTestThings } from './utils/internal-testing.js'
 import { z } from 'zod'
 
 describe('provider', () => {

@@ -1,6 +1,6 @@
 import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
-import { createTestThings } from '../utils/internal-testing.js'
+import { createTestThings } from './utils/internal-testing.js'
 
 describe('component', () => {
   const root = Point0.lets('root', 'root')
@@ -85,7 +85,7 @@ describe('component', () => {
     const component = root
       .lets('component', 'stats')
       .loader(() => {
-        if (Math.random()) {
+        if (Math.random() + 1) {
           throw new Error('test error')
         }
         return { x: 1 }

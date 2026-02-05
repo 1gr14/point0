@@ -32,6 +32,7 @@ import type {
   UndefinedMapperOutput,
   UndefinedRouteDefinition,
 } from './types.js'
+import type { RouterPageState } from './router.js'
 
 export type Props = Record<string, any>
 export type UndefinedProps = undefined
@@ -390,6 +391,15 @@ export type HeadFn<
 > = (
   options: HeadFnOptions<TStatus, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
 ) => ResolvableHead | string
+
+export type GlobalHeadFnOptions<
+  TStatus extends 'loading' | 'error' | 'success' | 'initial',
+  TLocation extends AnyLocation,
+> = RouterPageState<TStatus> & { location: TLocation }
+export type GlobalHeadFn<
+  TStatus extends 'loading' | 'error' | 'success' | 'initial' = any,
+  TLocation extends AnyLocation = any,
+> = (options: GlobalHeadFnOptions<TStatus, TLocation>) => ResolvableHead | string
 
 // export type MountableWrapperComponentProps<
 //   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
@@ -760,6 +770,7 @@ export type MountAction<
     | 'with'
     | 'mapper'
     | 'head'
+    | 'globalHead'
     | 'selfProps'
     | 'selfQuery'
     | 'errorComponent'
@@ -769,6 +780,7 @@ export type MountAction<
     | 'with'
     | 'mapper'
     | 'head'
+    | 'globalHead'
     | 'selfProps'
     | 'selfQuery'
     | 'errorComponent'
@@ -791,21 +803,23 @@ export type MountAction<
             ? { type: 'selfProps'; unstableId: number }
             : TType extends 'head'
               ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number }
-              : TType extends 'errorComponent'
-                ? {
-                    type: 'errorComponent'
-                    Component: ErrorComponentType<any>
-                    variant: DestinationComponentVariant | undefined
-                    unstableId: number
-                  }
-                : TType extends 'loadingComponent'
+              : TType extends 'globalHead'
+                ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number }
+                : TType extends 'errorComponent'
                   ? {
-                      type: 'loadingComponent'
-                      Component: LoadingComponentType<any>
+                      type: 'errorComponent'
+                      Component: ErrorComponentType<any>
                       variant: DestinationComponentVariant | undefined
                       unstableId: number
                     }
-                  : never
+                  : TType extends 'loadingComponent'
+                    ? {
+                        type: 'loadingComponent'
+                        Component: LoadingComponentType<any>
+                        variant: DestinationComponentVariant | undefined
+                        unstableId: number
+                      }
+                    : never
 
 export type IsQueryShouldBeFinalized<
   TPointType extends PointType,

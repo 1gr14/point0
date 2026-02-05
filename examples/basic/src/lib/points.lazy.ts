@@ -57,6 +57,13 @@ export default [
     point: async () => (await import('../pages/idea-news.js')).ideaNewsPage,
   },
   {
+    type: 'page',
+    name: 'sharedEmpty',
+    route: '/sharedEmpty2',
+    polh: true,
+    point: async () => (await import('../pages/empty.js')).sharedEmptyPage,
+  },
+  {
     type: 'layout',
     name: 'generalLayout',
     route: '/',

@@ -27,22 +27,11 @@ export const queryClient = ss.define<QueryClient, DehydratedState>('__POINT0_QUE
   hydrate: (dehydratedState, createQueryClient) => {
     const queryClient = createQueryClient()
     hydrate(queryClient, dehydratedState)
+    const allQueries = queryClient.getQueryCache().getAll()
 
-    const prefetchPageQuery = queryClient
-      .getQueryCache()
-      .getAll()
-      .find(
-        (q: unknown) =>
-          !!q &&
-          typeof q === 'object' &&
-          'state' in q &&
-          q.state &&
-          typeof q.state === 'object' &&
-          'data' in q.state &&
-          typeof q.state.data === 'object' &&
-          q.state.data &&
-          'queryClientDehydratedState' in q.state.data,
-      )
+    const prefetchPageQuery = allQueries.find(
+      (q) => typeof q.state.data === 'object' && q.state.data && 'dehydratedState' in q.state.data,
+    )
 
     if (!prefetchPageQuery) {
       return queryClient
