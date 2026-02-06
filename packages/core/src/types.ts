@@ -2039,56 +2039,7 @@ export type MiddlewareFnOptionsBase = Omit<MiddlewareFnOptions, 'next'>
 export type MiddlewareFn = (options: MiddlewareFnOptions) => Promise<Response | FetcherFetchDetailedResult>
 
 // nice middle point
-// export type AssertNoForbiddenMethodsIfNotSuitableStage<
-//   TPointType extends PointType,
-//   TMethod extends 'ctx' | 'loader' | 'use' | 'clientLoader' | 'mapper' | 'input' | 'clientInput' | 'combinedInput',
-// > = TPointType extends 'clientStage'
-//   ? TMethod extends 'loader'
-//     ? ShowError<`You can not use loader() in client stage. Please, drop client loader via .clientLoader(false) or add your.loader() before last .clientLoader()`>
-//     : TMethod extends 'ctx'
-//       ? ShowError<`You can not use ctx() in client stage. Please, drop client loader via .clientLoader(false) or add your .ctx() before last .clientLoader()`>
-//       : TMethod extends 'input'
-//         ? ShowError<`You can not use input() in client stage. Please, drop client loader via .clientLoader(false) or add your .input() before last .clientLoader()`>
-//         : TMethod extends 'combinedInput'
-//           ? ShowError<`You can not use combinedInput() in client stage. Please, drop client loader via .clientLoader(false) or add your .combinedInput() before last .clientLoader()`>
-//           : TMethod extends 'use'
-//             ? ShowError<`You can not use use() in client stage. Please, drop client loader via .clientLoader(false) or add your.use() before last .clientLoader()`>
-//             : unknown
-//   : TPointType extends 'mapperStage'
-//     ? TMethod extends 'loader'
-//       ? ShowError<`You can not use loader() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your.loader() before last .clientLoader()`>
-//       : TMethod extends 'ctx'
-//         ? ShowError<`You can not use ctx() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your.ctx() before last .clientLoader()`>
-//         : TMethod extends 'input'
-//           ? ShowError<`You can not use input() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your .input() before last .clientLoader()`>
-//           : TMethod extends 'combinedInput'
-//             ? ShowError<`You can not use combinedInput() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your .combinedInput() before last .clientLoader()`>
-//             : TMethod extends 'use'
-//               ? ShowError<`You can not use use() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your.use() before last .clientLoader()`>
-//               : TMethod extends 'clientLoader'
-//                 ? ShowError<`You can not use clientLoader() in mapper stage. Please, drop mappers via .mapper(false) or add your.clientLoader() before last .mapper()`>
-//                 : TMethod extends 'clientInput'
-//                   ? ShowError<`You can not use clientInput() in mapper stage. Please, drop mappers via .mapper(false) or add your.clientLoader() before last .mapper()`>
-//                   : unknown
-//     : TPointType extends 'renderStage'
-//       ? TMethod extends 'loader'
-//         ? ShowError<`You can not use loader() in render stage. Call it before any render methods`>
-//         : TMethod extends 'ctx'
-//           ? ShowError<`You can not use ctx() in render stage. Call it before any render methods`>
-//           : TMethod extends 'input'
-//             ? ShowError<`You can not use input() in render stage. Call it before any render methods`>
-//             : TMethod extends 'combinedInput'
-//               ? ShowError<`You can not use combinedInput() in render stage. Call it before any render methods`>
-//               : TMethod extends 'use'
-//                 ? ShowError<`You can not use use() in render stage. Call it before any render methods`>
-//                 : TMethod extends 'clientLoader'
-//                   ? ShowError<`You can not use clientLoader() in render stage. Call it before any render methods`>
-//                   : TMethod extends 'clientInput'
-//                     ? ShowError<`You can not use clientInput() in render stage. Call it before any render methods`>
-//                     : TMethod extends 'mapper'
-//                       ? ShowError<`You can not use mapper() in render stage. Call it before any render methods`>
-//                       : unknown
-//       : unknown
+
 export type AssertNoForbiddenMethodsIfNotSuitableStage<
   TPointType extends PointType,
   TMethod extends 'ctx' | 'loader' | 'use' | 'clientLoader' | 'input' | 'combinedInput' | 'clientInput',

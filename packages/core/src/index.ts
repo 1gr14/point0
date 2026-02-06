@@ -8421,7 +8421,7 @@ export class Point0<
       } as RouterPageState
       React.useEffect(() => {
         // pageStateManager.setPageState(pageState)
-      }, [pageState.status, pageState.error, pageState.loading])
+      }, [pageState.status, pageState.error?.message, pageState.loading])
       Point0._usePrevHeadsAndSetPageState({
         pageState,
         pageStateManager,
