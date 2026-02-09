@@ -228,7 +228,6 @@ describe('FakeClient', () => {
     const engine = await Engine.init({
       compiler: false,
       file: import.meta.url,
-      fetchRecorder: true,
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
     })

@@ -92,7 +92,6 @@ export type EngineGeneralOptions = {
   clientsOutdir?: string
   pointsGlob?: string | string[]
   buildWatchGlob?: string | string[]
-  fetchRecorder?: boolean | number
   banner?: string
   bunBuildConfig?: BunBuildConfigDefinition
   bunPlugins?: BunPluginsDefinition
@@ -306,7 +305,6 @@ export type EngineGeneralOptionsParsed = {
   clientsOutdir: string | null
   pointsGlob: string[]
   buildWatchGlob: string[]
-  fetchRecorder: boolean | number
   banner: string | null
   compiler: EngineOptionsCompiler | boolean | null
   bunBuildConfig: BunBuildConfigDefinition | null
@@ -545,7 +543,6 @@ const parseEngineGeneralOptions = ({
     cwd,
     autoFixBuiltPaths: generalOptions.autoFixBuiltPaths ?? true,
     banner: generalOptions.banner ?? null,
-    fetchRecorder: generalOptions.fetchRecorder ?? false,
     compiler,
   }
   return {

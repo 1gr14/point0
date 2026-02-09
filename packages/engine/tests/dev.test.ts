@@ -64,7 +64,7 @@ describe('dev', () => {
   describe.each(bundlers)('%s', (bundler) => {
     it(
       'start ssr dev server',
-      wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
+      wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
         if (bundler === 'vite') {
           return
         }
@@ -96,7 +96,7 @@ describe('dev', () => {
       `)
       }),
       {
-        retry: 3,
+        // retry: 3,
       },
     )
 

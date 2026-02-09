@@ -417,6 +417,11 @@ Bun.serve({
       hmrPort: this.hmrPort,
       mode: normalizeAndValidateNodeEnv('development'),
       env: this.env,
+      root: this.indexHtml
+        ? nodePath.dirname(this.indexHtml)
+        : this.engineFile
+          ? nodePath.dirname(this.engineFile)
+          : null,
     })
     this.viteDevServer = viteDevServer
     if (!this.indexHtml) {

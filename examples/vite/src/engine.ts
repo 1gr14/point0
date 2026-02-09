@@ -34,7 +34,7 @@ export const engine = Engine.create({
         },
       ],
       routes: async () => await import('./lib/routes').then((m) => m.routes),
-      indexHtml: '../index.html',
+      indexHtml: './index.html',
       port: 3001,
       env: ['SOURCE_BASE_URL'],
       publicdir: [

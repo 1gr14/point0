@@ -11,10 +11,6 @@ export const engine = Engine.create({
         what: 'points',
         path: './lib/points.server.ts',
       },
-      {
-        what: 'routes',
-        path: './lib/routes.generated.ts',
-      },
     ],
     outdir: '../dist/server',
     // port: server,

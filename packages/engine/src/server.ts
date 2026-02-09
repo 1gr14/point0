@@ -248,6 +248,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       target: 'server',
       hmrPort: this.hmrPort,
       mode: normalizeAndValidateNodeEnv('development'),
+      root: this.engineFile ? nodePath.dirname(this.engineFile) : null,
     })
     this.viteDevServer = viteDevServer
     return viteDevServer

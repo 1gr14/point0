@@ -117,11 +117,21 @@ export class FilesGenerator {
     this.globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g))
     this.globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g.slice(1)))
     this.tempDir = resolveTempDirPath(['generator'])
+
+    //   scope: t.scope,
+    //   routesInstanceGetter: typeof t.routesInstance === 'function' ? t.routesInstance : null,
+    //   routesInstance: typeof t.routesInstance === 'function' ? null : (t.routesInstance ?? null),
+    //   banner: [this.banner, t.banner].filter(Boolean).join('\n') || null,
+    //   outputPointsLazyAbs: t.pointsLazy ? nodePath.resolve(this.cwd, t.pointsLazy) : null,
+    //   outputPointsReadyAbs: t.pointsReady ? nodePath.resolve(this.cwd, t.pointsReady) : null,
+    //   outputRoutesAbs: t.routesFile ? nodePath.resolve(this.cwd, t.routesFile) : null,
+    // }) satisfies FilesGeneratorTarget,
     this.targets = opts.targets.map(
       (t) =>
         ({
           ...t,
           banner: [this.banner, t.banner].filter(Boolean).join('\n') || null,
+          path: nodePath.resolve(this.cwd, t.path),
         }) satisfies FilesGeneratorTarget,
     )
     this.routesSrc = Object.entries(opts.routes).reduce<

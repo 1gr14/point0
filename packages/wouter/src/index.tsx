@@ -343,6 +343,7 @@ export const RouterRoutes = ({
   Page404?: React.ComponentType
   pagesTree?: PagesTree
 }): React.ReactElement => {
+  React.useContext(RouterContext) // do not remove this line
   return <RenderPagesTree pagesTree={pagesTree} Page404={Page404} />
 }
 

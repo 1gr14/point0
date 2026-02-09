@@ -469,7 +469,7 @@ export const extractViteConfig = async ({
           }
           return importedViteConfig
         })()
-      : await viteConfig
+      : viteConfig
 }
 
 export const createViteDevServer = async ({
@@ -479,6 +479,7 @@ export const createViteDevServer = async ({
   mode,
   hmrPort,
   env: envParsed,
+  root,
 }: {
   viteConfig: EngineOptionsViteConfig | null
   scope: PointsScope
@@ -486,6 +487,7 @@ export const createViteDevServer = async ({
   hmrPort: number | false
   env?: EngineOptionsEnvParsed
   mode: NormalNodeEnv
+  root: string | null
 }): Promise<ViteDevServer> => {
   if (env.built) {
     throw new Error('You can not serve by dev client with built engine')
@@ -527,6 +529,7 @@ export const createViteDevServer = async ({
         ws: !hmr ? false : loadedViteConfig.server?.ws,
         hmr,
       },
+      ...(loadedViteConfig.root ? { root: loadedViteConfig.root } : root ? { root } : {}),
       define: {
         ...loadedViteConfig.define,
         ...Object.fromEntries(
