@@ -84,6 +84,7 @@ export class TestProject {
       packageJson: this.resolve('package.json'),
       tsconfigJson: this.resolve('tsconfig.json'),
       dotenv: this.resolve('.env'),
+      dotenvSource: this.resolve('env'),
       viteConfig: this.resolve('vite.config.ts'),
       distServer: this.resolve('dist', 'server'),
       distClient: this.resolve('dist', 'client'),
@@ -104,6 +105,7 @@ export class TestProject {
       packageJson: Bun.file(this.paths.packageJson),
       tsconfigJson: Bun.file(this.paths.tsconfigJson),
       dotenv: Bun.file(this.paths.dotenv),
+      dotenvSource: Bun.file(this.paths.dotenvSource),
       viteConfig: Bun.file(this.paths.viteConfig),
     }
   }
@@ -266,6 +268,7 @@ export class TestProject {
     if (!this.superjson) {
       await this.replace(this.files.root, '.transformer(superjson)', '// .transformer(superjson)')
     }
+    await this.write(this.files.dotenv, await Bun.file(this.paths.dotenvSource).text())
     if (this.vite) {
       await this.replace(this.files.engine, `// viteConfig: '../vite.config.ts',`, `viteConfig: '../vite.config.ts',`)
       await this.replace(this.files.packageJson, './dist/server/index.server.js', './dist/server/main.js')

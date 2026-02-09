@@ -30,7 +30,7 @@ export type FilesGeneratorTaskPoints = {
   what: 'points'
   target: 'client' | 'server'
   banner?: string | null
-  path: string
+  file: string
   lazy?: boolean
 }
 
@@ -38,7 +38,7 @@ export type FilesGeneratorTaskRoutes = {
   scope: string
   what: 'routes'
   banner?: string | null
-  path: string
+  file: string
   baseurl?: string // accept string or 'process.env.SOMETHING' also as string, if ptovides process.env.SOMETHING it will be replaced with it value
 }
 
@@ -46,7 +46,7 @@ export type FilesGeneratorTaskMeta = {
   scopes: string[]
   what: 'meta'
   banner?: string | null
-  path: string
+  file: string
 }
 
 export type FilesGeneratorTask = FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes | FilesGeneratorTaskMeta
@@ -104,7 +104,7 @@ export class FilesGenerator {
       const task = {
         ...t,
         banner: [this.banner, t.banner].filter(Boolean).join('\n') || null,
-        path: nodePath.resolve(this.cwd, t.path),
+        file: nodePath.resolve(this.cwd, t.file),
       } satisfies FilesGeneratorTask
       if (task.what === 'points' && typeof task.lazy === 'undefined') {
         task.lazy = task.target === 'client'
@@ -123,7 +123,7 @@ export class FilesGenerator {
     this.routes = {}
 
     this.watchDir = this.globInclude.length > 0 ? getDirByPaths({ paths: this.globInclude }) : process.cwd()
-    this.watchIgnore = [...this.globExclude, ...this.tasks.map((t) => t.path)].flatMap((p) => p || [])
+    this.watchIgnore = [...this.globExclude, ...this.tasks.map((t) => t.file)].flatMap((p) => p || [])
     this.watchPatterns = [...this.globInclude]
   }
 
@@ -334,21 +334,21 @@ export class FilesGenerator {
     if (task.what === 'points' && task.lazy) {
       tasks.push({
         content: this.emitLazyPointsFile(task),
-        outputAbs: task.path,
+        outputAbs: task.file,
         tempOutputAbs: nodePath.join(this.tempDir, `${task.what}.${generateId()}.lazy.ts`),
       })
     }
     if (task.what === 'points' && !task.lazy) {
       tasks.push({
         content: this.emitReadyPointsFile(task),
-        outputAbs: task.path,
+        outputAbs: task.file,
         tempOutputAbs: nodePath.join(this.tempDir, `${task.what}.${generateId()}.ready.ts`),
       })
     }
     if (task.what === 'routes') {
       tasks.push({
         content: this.emitRoutesPointsFile(task),
-        outputAbs: task.path,
+        outputAbs: task.file,
         tempOutputAbs: nodePath.join(this.tempDir, `${task.scope}.${generateId()}.routes.ts`),
       })
     }
@@ -478,7 +478,7 @@ export class FilesGenerator {
       if (point.exportName === undefined) {
         return []
       }
-      const importPath = FilesGenerator.toRelativeJsImportPath(task.path, point.file.abs)
+      const importPath = FilesGenerator.toRelativeJsImportPath(task.file, point.file.abs)
       const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
       const renamedExportName =
         point.type === 'root'
@@ -648,9 +648,9 @@ export class FilesGenerator {
 
   private emitLazyPointCollectionRecord({
     imported,
-    path,
+    file,
   }: {
-    path: string
+    file: string
     imported: {
       point: CompilerPoint
       index: number
@@ -674,7 +674,7 @@ export class FilesGenerator {
     }
 
     lines.push(
-      `    point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(path, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
+      `    point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(file, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
     )
     lines.push(`  },`)
     return lines
@@ -715,7 +715,7 @@ export class FilesGenerator {
       lines.push(
         ...this.emitLazyPointCollectionRecord({
           imported,
-          path: task.path,
+          file: task.file,
         }),
       )
     }

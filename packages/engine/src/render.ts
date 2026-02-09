@@ -156,15 +156,18 @@ function restoreScripts(
 
 export function addEnvToDocumentHtml({
   html,
-  env,
+  envVars,
+  envConsts,
 }: {
   html: string
-  env?: Record<string, string | number | boolean | undefined>
+  envVars?: Record<string, string | number | boolean | undefined>
+  envConsts?: Record<string, string | number | boolean | undefined>
 }): string {
-  env ??= {}
+  const env = { ...envVars, ...envConsts }
   return prependHeadElement({
     content: `<script id="__POINT0_ENV__" type="text/javascript">
-  const __POINT0_ENV__ = ${escapeForInlineJSON(JSON.stringify({ ...env }))};
+  const __POINT0_ENV__ = ${escapeForInlineJSON(JSON.stringify(env))};
+  window.__POINT0_ENV__ = __POINT0_ENV__;
   window.process = window.process || {};
   window.process.env = { ...(window.process.env || {}), ...__POINT0_ENV__ };
   window.import = window.import || {};
@@ -179,14 +182,16 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   originalIndexHtml,
   content,
   executor,
-  env,
+  envVars,
+  envConsts,
   domRootElementId,
   clientBundlePath,
 }: {
   originalIndexHtml: string
   content?: TContent
   executor: Executor
-  env?: Record<string, string | number | boolean | undefined>
+  envVars?: Record<string, string | number | boolean | undefined>
+  envConsts?: Record<string, string | number | boolean | undefined>
   domRootElementId?: string
   clientBundlePath?: string
 }): Promise<DocumentHtmlResult<TContent>> {
@@ -211,7 +216,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
     html,
     domRootElementId,
   })
-  html = addEnvToDocumentHtml({ html, env })
+  html = addEnvToDocumentHtml({ html, envVars, envConsts })
   html = prependHeadElement({
     content: '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
     html,
@@ -290,7 +295,8 @@ export async function getReadableStreamWithWrapper({
 
 export async function renderReadableStream({
   App,
-  env,
+  envVars,
+  envConsts,
   clientBundlePath,
   renderer = renderToReadableStream,
   originalIndexHtml,
@@ -298,7 +304,8 @@ export async function renderReadableStream({
   executor,
 }: {
   App: AppComponent
-  env?: Record<string, string | number | boolean | undefined>
+  envVars?: Record<string, string | number | boolean | undefined>
+  envConsts?: Record<string, string | number | boolean | undefined>
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
   originalIndexHtml: string
@@ -308,7 +315,8 @@ export async function renderReadableStream({
   const { prefix, suffix } = await overrideDocumentHtml({
     originalIndexHtml,
     executor,
-    env,
+    envVars,
+    envConsts,
     domRootElementId,
   })
   return await getReadableStreamWithWrapper({ App, prefix, suffix, renderer, clientBundlePath, executor })
@@ -327,7 +335,8 @@ export async function renderAppAsReadableStream({
   pagePoint: PagePoint | undefined
   pageLocation: AnyLocation
   input: InputRaw
-  env?: Record<string, string | number | boolean | undefined>
+  envVars?: Record<string, string | number | boolean | undefined>
+  envConsts?: Record<string, string | number | boolean | undefined>
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
   originalIndexHtml: string

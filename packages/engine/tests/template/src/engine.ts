@@ -9,7 +9,7 @@ export const engine = Engine.create({
     generate: [
       {
         what: 'points',
-        path: './lib/points.server.ts',
+        file: './lib/points.server.ts',
       },
     ],
     outdir: '../dist/server',
@@ -26,16 +26,17 @@ export const engine = Engine.create({
       generate: [
         {
           what: 'points',
-          path: './lib/points.client.ts',
+          file: './lib/points.client.ts',
         },
         {
           what: 'routes',
-          path: './lib/routes.ts',
+          file: './lib/routes.ts',
         },
       ],
       indexHtml: './index.html',
       outdir: '../dist/client',
       publicdir: { source: '../public', outdir: '../dist/client' },
+      env: { vars: ['MY_ENV_FILE_VARIABLE'], consts: ['MY_ENV_FILE_CONSTANT'] },
       // port: client,
       // hmrPort: client,
       // viteConfig: '../vite.config.ts',

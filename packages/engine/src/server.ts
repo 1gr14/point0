@@ -10,6 +10,7 @@ import type { EngineClient } from './client.js'
 import type {
   EngineLogger,
   EngineOptionsCompilerParsed,
+  EngineOptionsEnvParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
 } from './config.js'
@@ -55,6 +56,8 @@ export class EngineServer<TInitialized extends boolean = boolean> {
   bunServer: Bun.Server<unknown> | undefined
   viteConfig: EngineOptionsViteConfig | null
   viteDevServer: ViteDevServer | null
+  envConsts: EngineOptionsEnvParsed
+  envVars: EngineOptionsEnvParsed
   hmrPort: number | false
   fetcher: TInitialized extends true ? Fetcher : null
   compiler: EngineOptionsCompilerParsed | false
@@ -71,6 +74,8 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     fallbackScope: PointsScope
     logger: EngineLogger
     clients: EngineClient[]
+    envConsts: EngineOptionsEnvParsed
+    envVars: EngineOptionsEnvParsed
     entry: Record<string, string> | null
     publicdir: Publicdir<false> | null
     outdir: string | null
@@ -93,6 +98,8 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     this.engineFile = input.itWasBuilt
       ? (process.env.POINT0_ENGINE_FILE_AFTER_BUILD ?? input.engineFile)
       : input.engineFile
+    this.envConsts = input.envConsts
+    this.envVars = input.envVars
     this.cwdBeforeBuild = process.env.POINT0_ENGINE_CWD_BEFORE_BUILD ?? input.cwdBeforeBuild
     this.port = input.port
     this.clients = input.clients as TInitialized extends true ? Array<EngineClient<true>> : EngineClient[]
@@ -126,6 +133,8 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       source: PublicdirDefinition
       outdir: string
     } | null
+    envConsts: EngineOptionsEnvParsed
+    envVars: EngineOptionsEnvParsed
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
@@ -252,6 +261,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       target: 'server',
       hmrPort: this.hmrPort,
       mode: normalizeAndValidateNodeEnv('development'),
+      envConsts: this.envConsts,
       root: this.engineFile ? nodePath.dirname(this.engineFile) : null,
     })
     this.viteDevServer = viteDevServer

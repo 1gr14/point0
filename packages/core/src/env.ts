@@ -10,21 +10,26 @@ export const normalNodeEnvs: NormalNodeEnv[] = ['production', 'development', 'te
 
 export const getEnvVars = (): EnvVars => {
   const env = Object.create(null)
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (typeof process !== 'undefined' && process.env) {
-    Object.assign(env, process.env)
+  const processEnvHolder = (() => {
+    if (typeof globalThis !== 'undefined' && (globalThis as any).__POINT0_ENV__) {
+      return (globalThis as any).__POINT0_ENV__
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env
+    }
+    return {}
+  })()
+  if (processEnvHolder) {
+    Object.assign(env, processEnvHolder)
   }
-  try {
-    Object.assign(env, {
-      NODE_ENV: process.env.NODE_ENV,
-      TARGET: process.env.POINT0_TARGET,
-      POINT0_SCOPE: process.env.POINT0_SCOPE,
-      POINT0_BUILT: process.env.POINT0_BUILT,
-      // in case if this vars was dfined by compiler
-    })
-  } catch {
-    // do nothing
-  }
+  Object.assign(env, {
+    NODE_ENV: processEnvHolder?.NODE_ENV,
+    TARGET: processEnvHolder?.POINT0_TARGET,
+    POINT0_SCOPE: processEnvHolder?.POINT0_SCOPE,
+    POINT0_BUILT: processEnvHolder?.POINT0_BUILT,
+    // in case if this vars was dfined by compiler
+  })
   return env as EnvVars
 }
 

@@ -80,20 +80,23 @@ describe('dev', () => {
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
-          export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)`,
+          import { env } from '@point0/core'
+          export const page = root.lets('page', 'home', '/').page(() => <div>Hello, {process.env.MY_ENV_FILE_VARIABLE}, {process.env.MY_ENV_FILE_CONSTANT}, {env.vars.MY_ENV_FILE_VARIABLE}, {env.vars.MY_ENV_FILE_CONSTANT}</div>)`,
         )
         tp.spawn(['bun', 'run', 'dev'])
         await tp.waitStarted()
         const response = await tp.fetchServer('/')
         const html = await response.text()
         expect(html).toContain('__POINT0_ENV__')
-        expect(html).toContain('<div>Hello</div>')
+        expect(html).toContain('<div>Hello')
+        expect(html).toContain('VAR1')
+        expect(html).toContain('CONST1')
         const page = await tp.gotoServer('/')
         expect(page.tale).toMatchInlineSnapshot(`
         "/
-          div: Hello
+          div: Hello, VAR1, CONST1, VAR1, CONST1
           "
-      `)
+        `)
       }),
       {
         // retry: 3,
@@ -110,20 +113,21 @@ describe('dev', () => {
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
-        export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)`,
+          import { env } from '@point0/core'
+        export const page = root.lets('page', 'home', '/').page(() => <div>Hello, {process.env.MY_ENV_FILE_VARIABLE}, {process.env.MY_ENV_FILE_CONSTANT}, {env.vars.MY_ENV_FILE_VARIABLE}, {env.vars.MY_ENV_FILE_CONSTANT}</div>)`,
         )
         tp.spawn(['bun', 'run', 'dev'])
         await tp.waitStarted()
         const html = await tp.fetchServerHtml('/')
         expect(html).toContain('__POINT0_ENV__')
-        expect(html).not.toContain('<div>Hello</div>')
+        expect(html).not.toContain('<div>Hello')
         const page = await tp.gotoServer('/')
         await page.stable
         expect(page.tale).toMatchInlineSnapshot(`
         "/
           (Empty)
           
-          div: Hello
+          div: Hello, VAR1, CONST1, VAR1, CONST1
           "
       `)
       }),

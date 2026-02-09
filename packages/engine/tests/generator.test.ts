@@ -124,7 +124,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
             {
               scope: 'myroot',
               what: 'points',
-              path: pointsFile.path,
+              file: pointsFile.path,
               lazy: true,
               target: 'server',
             },
@@ -176,7 +176,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
             {
               scope: 'myroot',
               what: 'points',
-              path: pointsFile.path,
+              file: pointsFile.path,
               lazy: true,
               target: 'client',
             },
@@ -223,7 +223,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
             {
               scope: 'myroot',
               what: 'points',
-              path: pointsFile.path,
+              file: pointsFile.path,
               lazy: true,
               target: 'server',
             },
@@ -267,7 +267,7 @@ export const page = layout2.lets('page', 'mypage').page(() => <div>Hello</div>)
             {
               scope: 'myroot',
               what: 'points',
-              path: pointsFile.path,
+              file: pointsFile.path,
               lazy: true,
               target: 'server',
             },
@@ -324,7 +324,7 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
             {
               scope: 'myroot',
               what: 'points',
-              path: pointsFile.path,
+              file: pointsFile.path,
               lazy: false,
               target: 'server',
             },
@@ -363,7 +363,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
             {
               scope: 'myroot',
               what: 'routes',
-              path: routesFile.path,
+              file: routesFile.path,
             },
           ],
           logger,
@@ -400,21 +400,21 @@ export const layout = root.lets('layout', 'mylayout', '/layout').layout(() => <d
             {
               scope: 'myroot',
               what: 'points',
-              path: lazyFile.path,
+              file: lazyFile.path,
               lazy: true,
               target: 'server',
             },
             {
               scope: 'myroot',
               what: 'points',
-              path: readyFile.path,
+              file: readyFile.path,
               lazy: false,
               target: 'server',
             },
             {
               scope: 'myroot',
               what: 'routes',
-              path: routesFile.path,
+              file: routesFile.path,
             },
           ],
           logger,
@@ -487,7 +487,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
             {
               scope: 'myroot',
               what: 'points',
-              path: pointsFile0.path,
+              file: pointsFile0.path,
               lazy: true,
               banner: '// Target-specific banner 0',
               target: 'server',
@@ -495,7 +495,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
             {
               scope: 'myroot',
               what: 'points',
-              path: pointsFile1.path,
+              file: pointsFile1.path,
               lazy: false,
               banner: '// Target-specific banner 1',
               target: 'server',
@@ -556,7 +556,7 @@ export const root = Point0.lets('root', 'myroot').root()
             {
               scope: 'myroot',
               what: 'routes',
-              path: routesFile.path,
+              file: routesFile.path,
             },
           ],
           logger,
@@ -597,21 +597,21 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
             {
               scope: 'root0',
               what: 'points',
-              path: lazy0File.path,
+              file: lazy0File.path,
               lazy: true,
               target: 'server',
             },
             {
               scope: 'root1',
               what: 'points',
-              path: lazy1File.path,
+              file: lazy1File.path,
               lazy: true,
               target: 'server',
             },
             {
               scope: 'root2',
               what: 'points',
-              path: lazy2File.path,
+              file: lazy2File.path,
               lazy: true,
               target: 'server',
             },
@@ -692,7 +692,7 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
             {
               scope: 'myroot',
               what: 'points',
-              path: pointsFile.path,
+              file: pointsFile.path,
               lazy: true,
               target: 'server',
             },

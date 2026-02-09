@@ -56,7 +56,8 @@ export class EngineClient<TInitialized extends boolean = boolean> {
   viteConfig: EngineOptionsViteConfig | null
   index: number
   logger: EngineLogger
-  env: EngineOptionsEnvParsed
+  envVars: EngineOptionsEnvParsed
+  envConsts: EngineOptionsEnvParsed
   publicdir: TInitialized extends true ? Publicdir<true> | null : Publicdir<false> | null
   outdir: string | null
   bunBuildConfig: EngineClientBuildConfigDefinition
@@ -93,7 +94,8 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     viteConfig: EngineOptionsViteConfig | null
     index: number
     logger: EngineLogger
-    env: EngineOptionsEnvParsed
+    envVars: EngineOptionsEnvParsed
+    envConsts: EngineOptionsEnvParsed
     publicdir: Publicdir | null
     allPointsManagers: AllPointsManagers
     bunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
@@ -120,7 +122,19 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     this.viteConfig = input.viteConfig
     this.index = input.index
     this.logger = input.logger
-    this.env = { ...input.env, NODE_ENV: process.env.NODE_ENV }
+    const NODE_ENV = normalizeAndValidateNodeEnv('development')
+    this.envVars = {
+      ...input.envVars,
+      NODE_ENV,
+      POINT0_SCOPE: this.scope,
+      POINT0_TARGET: 'client',
+    }
+    this.envConsts = {
+      ...input.envConsts,
+      NODE_ENV,
+      POINT0_SCOPE: this.scope,
+      POINT0_TARGET: 'client',
+    }
     this.publicdir = input.publicdir as TInitialized extends true ? Publicdir<true> | null : Publicdir<false> | null
     this.outdir = input.outdir
     this.bunBuildConfig = input.bunBuildConfig
@@ -159,7 +173,8 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     hmrPort: number | false
     index: number
     logger: EngineLogger
-    env: EngineOptionsEnvParsed
+    envVars: EngineOptionsEnvParsed
+    envConsts: EngineOptionsEnvParsed
     engineFile: string | null
     allPointsManagers: AllPointsManagers
     viteConfig: EngineOptionsViteConfig | null
@@ -422,7 +437,7 @@ Bun.serve({
       target: 'client',
       hmrPort: this.hmrPort,
       mode: normalizeAndValidateNodeEnv('development'),
-      env: this.env,
+      envConsts: this.envConsts,
       root: this.indexHtml
         ? nodePath.dirname(this.indexHtml)
         : this.engineFile
@@ -649,7 +664,7 @@ Bun.serve({
 
   async getOriginalIndexHtmlWithEnvs(url: string): Promise<string> {
     const html = await this.getOriginalIndexHtml(url)
-    const htmlWithEnvs = addEnvToDocumentHtml({ html, env: this.env })
+    const htmlWithEnvs = addEnvToDocumentHtml({ html, envVars: this.envVars, envConsts: this.envConsts })
     return htmlWithEnvs
   }
 
@@ -743,9 +758,16 @@ Bun.serve({
         define: {
           ...thisBunBuildConfig.define,
           ...providedBunBuildConfig.define,
-          'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-          'process.env.Target': JSON.stringify('client'),
-          'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
+          // 'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+          // 'process.env.Target': JSON.stringify('client'),
+          // 'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
+          ...Object.fromEntries(
+            Object.entries(this.envConsts).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+          ),
+          ...Object.fromEntries(
+            Object.entries(this.envConsts).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+          ),
+          'process.env.POINT0_BUILT': JSON.stringify('true'),
         },
       })
       return buildOutput.outputs.map((output) => output.path)
@@ -832,16 +854,40 @@ Bun.serve({
         },
         define: {
           ...loadedViteConfig.define,
+
+          // ...Object.fromEntries(
+          //   Object.entries({ ...this.envVars, ...this.envConsts }).map(([key, value]) => [
+          //     `process.env.${key}`,
+          //     JSON.stringify(value),
+          //   ]),
+          // ),
+          // ...Object.fromEntries(
+          //   Object.entries({ ...this.envVars, ...this.envConsts }).map(([key, value]) => [
+          //     `import.meta.env.${key}`,
+          //     JSON.stringify(value),
+          //   ]),
+          // ),
+
+          // 'process.env': JSON.stringify({ ...this.envVars, ...this.envConsts }),
+
+          // 'process.env': {
+          //   ...Object.fromEntries(
+          //     Object.entries(this.envVars).map(([key, value]) => [key, `globalThis.__POINT0_ENV__['${key}']`]),
+          //   ),
+          //   ...Object.fromEntries(Object.entries(this.envConsts).map(([key, value]) => [key, JSON.stringify(value)])),
+          // },
+
           ...Object.fromEntries(
-            Object.entries(this.env).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+            Object.entries(this.envVars).map(([key, value]) => [
+              `process.env.${key}`,
+              `globalThis.__POINT0_ENV__.${key}`,
+            ]),
           ),
           ...Object.fromEntries(
-            Object.entries(this.env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+            Object.entries(this.envConsts).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
           ),
-          'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-          'process.env.POINT0_BUILT': JSON.stringify('true'),
-          'process.env.Target': JSON.stringify('client'),
-          'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
+
+          // 'process.env.POINT0_BUILT': JSON.stringify('true'),
         },
       }
 
@@ -925,7 +971,8 @@ Bun.serve({
       pagePoint,
       pageLocation,
       input,
-      env: this.env,
+      envVars: this.envVars,
+      envConsts: this.envConsts,
       originalIndexHtml: await this.getOriginalIndexHtml(pageLocation.href ?? pageLocation.hrefRel),
       domRootElementId: this.domRootElementId,
     })

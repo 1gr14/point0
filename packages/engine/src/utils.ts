@@ -478,14 +478,14 @@ export const createViteDevServer = async ({
   target,
   mode,
   hmrPort,
-  env: envParsed,
+  envConsts,
   root,
 }: {
   viteConfig: EngineOptionsViteConfig | null
   scope: PointsScope
   target: 'client' | 'server'
   hmrPort: number | false
-  env?: EngineOptionsEnvParsed
+  envConsts?: EngineOptionsEnvParsed
   mode: NormalNodeEnv
   root: string | null
 }): Promise<ViteDevServer> => {
@@ -533,10 +533,10 @@ export const createViteDevServer = async ({
       define: {
         ...loadedViteConfig.define,
         ...Object.fromEntries(
-          Object.entries(envParsed ?? {}).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+          Object.entries(envConsts ?? {}).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
         ),
         ...Object.fromEntries(
-          Object.entries(envParsed ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+          Object.entries(envConsts ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
         ),
       },
     })

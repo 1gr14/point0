@@ -62,14 +62,15 @@ describe('build', () => {
   describe.each(bundlers)('%s', (bundler) => {
     it(
       'build and start ssr server',
-      wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
+      wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
         if (bundler === 'bun') {
           return
         }
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
-        export const page = root.lets('page', 'home', '/').page(() => <div>My Cool Page</div>)`,
+          import { env } from '@point0/core'
+        export const page = root.lets('page', 'home', '/').page(() => <div>My Cool Page, {process.env.MY_ENV_FILE_VARIABLE}, {process.env.MY_ENV_FILE_CONSTANT}, {env.vars.MY_ENV_FILE_VARIABLE}, {env.vars.MY_ENV_FILE_CONSTANT}</div>)`,
         )
         await tp.generate()
         const bp = tp.spawn(['bun', 'run', 'build'])
@@ -86,28 +87,32 @@ describe('build', () => {
         const response = await tp.fetchServer('/')
         expect(response).toBeDefined()
         const html = await response.text()
-        expect(html).toContain('<div>My Cool Page</div>')
+        expect(html).toContain('<div>My Cool Page')
+        expect(html).toContain('VAR1')
+        expect(html).toContain('CONST1')
         expect(html).toContain('__POINT0_ENV__')
         const page = await tp.gotoServer('/')
         await page.stable
+        tp.logOutput()
         expect(page.tale).toMatchInlineSnapshot(`
         "/
-          div: My Cool Page
+          div: My Cool Page, VAR1, CONST1, VAR1, CONST1
           "
       `)
       }),
       {
-        retry: 3,
+        // retry: 3,
       },
     )
 
-    it.concurrent(
+    it(
       'build and start spa server',
-      wrp({ ssr: false, vite: bundler === 'vite' }, async ({ tp, engine }) => {
+      wrp({ ssr: false, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
-        export const page = root.lets('page', 'home', '/').page(() => <div>My Cool Page</div>)`,
+          import { env } from '@point0/core'
+        export const page = root.lets('page', 'home', '/').page(() => <div>My Cool Page, {process.env.MY_ENV_FILE_VARIABLE}, {process.env.MY_ENV_FILE_CONSTANT}, {env.vars.MY_ENV_FILE_VARIABLE}, {env.vars.MY_ENV_FILE_CONSTANT}</div>)`,
         )
         await tp.generate()
         const bp = tp.spawn(['bun', 'run', 'build'])
@@ -123,14 +128,14 @@ describe('build', () => {
         const response = await tp.fetchServer('/')
         const html = await response.text()
         expect(html).toContain('__POINT0_ENV__')
-        expect(html).not.toContain('<div>My Cool Page</div>')
+        expect(html).not.toContain('<div>My Cool Page')
         const page = await tp.gotoServer('/')
         await page.stable
         expect(page.tale).toMatchInlineSnapshot(`
         "/
           (Empty)
           
-          div: My Cool Page
+          div: My Cool Page, VAR1, CONST1, VAR1, CONST1
           "
       `)
       }),
@@ -139,7 +144,7 @@ describe('build', () => {
       },
     )
 
-    it.concurrent(
+    it(
       'prune client and server',
       wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
         await tp.write(
@@ -205,7 +210,7 @@ describe('build', () => {
     )
   })
 
-  it.concurrent(
+  it(
     'prune vite config from engine',
     wrp({ ssr: true, vite: true }, async ({ tp, engine }) => {
       await tp.write(

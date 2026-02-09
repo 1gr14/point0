@@ -11,7 +11,7 @@ import { appendSlash, prependAndDeappendSlash } from '@point0/core'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { CompilerEnvConsts } from '../../compiler/dist/utils.js'
+import { normalizeEnvConsts, type CompilerEnvConsts } from '../../compiler/dist/utils.js'
 import type { FilesGeneratorTaskMeta, FilesGeneratorTaskPoints, FilesGeneratorTaskRoutes } from './generator.js'
 import type {
   BunBuildConfigDefinition,
@@ -113,6 +113,7 @@ export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
     source: EngineOptionsPublicdir
     outdir: string
   }
+  env?: { vars?: EngineOptionsEnv; consts?: EngineOptionsEnv }
   port?: number | string
   outdir?: string
   entry?: string | Record<string, string>
@@ -141,7 +142,7 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   }
   indexHtml?: string
   domRootElementId?: string
-  env?: EngineOptionsEnv
+  env?: { vars?: EngineOptionsEnv; consts?: EngineOptionsEnv }
   port?: number | string
   hmrPort?: number | string | boolean
   bunBuildConfig?: EngineClientBuildConfigDefinition
@@ -335,7 +336,8 @@ export type EngineClientOptionsParsed = {
   baseurl: string
   indexHtml: string | null
   // indexHtmlDistFile: string | null
-  env: EngineOptionsEnvParsed
+  envVars: EngineOptionsEnvParsed
+  envConsts: EngineOptionsEnvParsed
   domRootElementId: string
   port: number
   hmrPort: number | false
@@ -359,6 +361,8 @@ export type EngineServerOptionsParsed = {
   port: number
   entry: Record<string, string> | null
   outdir: string | null
+  envVars: EngineOptionsEnvParsed
+  envConsts: EngineOptionsEnvParsed
   publicdir: {
     source: PublicdirDefinition
     outdir: string
@@ -760,14 +764,17 @@ export const parseEngineServerOptions = ({
             target: true,
             scope: true,
             mode: true,
-            consts: undefined,
-            filter: undefined,
+            consts: mergedCompilerRecord.consts,
+            filter: mergedCompilerRecord.filter,
           }
         : serverOptions.compiler !== undefined
           ? mergedCompilerRecord
           : generalOptionsParsed.compiler === false
             ? false
             : mergedCompilerRecord
+  if (compiler) {
+    compiler.consts = [...normalizeEnvConsts(compiler.consts), ...normalizeEnvConsts(serverOptions.env?.consts ?? {})]
+  }
   return {
     scope: serverOptions.scope,
     pointsProvided: serverOptions.points,
@@ -783,9 +790,11 @@ export const parseEngineServerOptions = ({
     bunBuildConfig: serverOptions.bunBuildConfig ?? {},
     bunPlugins: serverOptions.bunPlugins ?? [],
     compiler,
+    envVars: parseEnv(serverOptions.env?.vars ?? {}),
+    envConsts: parseEnv(serverOptions.env?.consts ?? {}),
     routesProvided: serverOptions.routes ?? null,
-    generate: (serverOptions.generate ?? []).map((target) => ({
-      ...target,
+    generate: (serverOptions.generate ?? []).map((task) => ({
+      ...task,
       scope: serverOptions.scope,
       target: 'server',
     })),
@@ -870,21 +879,24 @@ const parseEngineClientOptions = ({
             target: true,
             scope: true,
             mode: true,
-            consts: undefined,
-            filter: undefined,
+            consts: mergedCompilerRecord.consts,
+            filter: mergedCompilerRecord.filter,
           }
         : clientOptions.compiler !== undefined
           ? mergedCompilerRecord
           : generalOptionsParsed.compiler === false
             ? false
             : mergedCompilerRecord
+  if (compiler) {
+    compiler.consts = [...normalizeEnvConsts(compiler.consts), ...normalizeEnvConsts(clientOptions.env?.consts ?? {})]
+  }
   return {
     scope: clientOptions.scope,
     compiler,
     pointsProvided: clientOptions.points,
     routesProvided: clientOptions.routes ?? null,
-    generate: (clientOptions.generate ?? []).map((target) => ({
-      ...target,
+    generate: (clientOptions.generate ?? []).map((task) => ({
+      ...task,
       scope: clientOptions.scope,
       target: 'client',
     })),
@@ -915,7 +927,8 @@ const parseEngineClientOptions = ({
     port,
     hmrPort,
     index,
-    env: parseEnv(clientOptions.env ?? {}),
+    envVars: parseEnv(clientOptions.env?.vars ?? {}),
+    envConsts: parseEnv(clientOptions.env?.consts ?? {}),
     viteConfig:
       typeof clientOptions.viteConfig === 'string'
         ? toFinalPath({

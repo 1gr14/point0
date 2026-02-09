@@ -1,7 +1,5 @@
 import { Engine } from '@point0/engine'
 import react from '@vitejs/plugin-react'
-import type { PluginOption } from 'vite'
-import { analyzer } from 'vite-bundle-analyzer'
 import svgr from 'vite-plugin-svgr'
 import tsconfigPaths from 'vite-tsconfig-paths'
 
@@ -26,17 +24,17 @@ export const engine = Engine.create({
       generate: [
         {
           what: 'points',
-          path: './lib/points.ts',
+          file: './lib/points.ts',
         },
         {
           what: 'routes',
-          path: './lib/routes.generated.ts',
+          file: './lib/routes.generated.ts',
         },
       ],
       routes: async () => await import('./lib/routes').then((m) => m.routes),
       indexHtml: './index.html',
       port: 3001,
-      env: ['SOURCE_BASE_URL'],
+      env: { vars: ['SOURCE_BASE_URL'] },
       publicdir: {
         source: [
           '../public',

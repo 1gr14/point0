@@ -20,12 +20,12 @@ export const engine = Engine.create({
       generate: [
         {
           what: 'points',
-          path: './lib/points.ready.ts',
+          file: './lib/points.ready.ts',
           lazy: false,
         },
         {
           what: 'routes',
-          path: './lib/routes.generated.ts',
+          file: './lib/routes.generated.ts',
         },
       ],
       // pointsModuleType: 'ready',
@@ -33,7 +33,7 @@ export const engine = Engine.create({
       routes: async () => await import('./lib/routes'),
       indexHtml: './index.html',
       port: 3001,
-      env: ['SOURCE_BASE_URL'],
+      env: { vars: ['SOURCE_BASE_URL'] },
       outdir: '../dist/client',
       publicdir: {
         source: [
