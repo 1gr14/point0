@@ -12,6 +12,7 @@ import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { CompilerEnvConsts } from '../../compiler/dist/utils.js'
+import type { FilesGeneratorTargetMeta, FilesGeneratorTargetPoints, FilesGeneratorTargetRoutes } from './generator.js'
 import type {
   BunBuildConfigDefinition,
   BunPluginsDefinition,
@@ -82,6 +83,7 @@ export type EngineOptionsCompilerParsed = {
 export type EngineGeneralOptions = {
   file: string
   fallbackScope?: PointsScope
+  generte?: Array<Omit<FilesGeneratorTargetMeta, 'scope'>>
   logger?: EngineLogger
   itWasBuilt?: boolean
   cwdAfterBuild?: string
@@ -101,8 +103,7 @@ export type EngineGeneralOptions = {
 export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   scope: PointsScope
   points: PointsDefinitionSource<TRequiredCtx>
-  generatePointsLazy?: string
-  generatePointsReady?: string
+  generate?: Array<Omit<FilesGeneratorTargetPoints, 'scope'> | Omit<FilesGeneratorTargetRoutes, 'scope'>>
   publicdir?: EngineOptionsPublicdir
   port?: number | string
   outdir?: string
@@ -113,7 +114,6 @@ export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   viteConfig?: EngineOptionsViteConfig
   compiler?: EngineOptionsCompiler | boolean
   routes?: EngineOptionsRoutes
-  generateRoutes?: string
   banner?: string
   hmrPort?: number | string | boolean
 }
@@ -123,8 +123,7 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   // TODO: allow empty points
   // TODO: allow points collection
   points: PointsDefinitionSource<TRequiredCtx>
-  generatePointsLazy?: string
-  generatePointsReady?: string
+  generate?: Array<Omit<FilesGeneratorTargetPoints, 'scope'> | Omit<FilesGeneratorTargetRoutes, 'scope'>>
   app?: EngineOptionsAppComponent
   baseurl?: string
   publicdir?: EngineOptionsPublicdir
@@ -140,7 +139,6 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   outdir?: string
   publicdirOutdir?: string
   routes?: EngineOptionsRoutes
-  generateRoutes?: string
   banner?: string
 }
 export type EngineOptions<
@@ -318,8 +316,9 @@ export type EngineClientOptionsParsed = {
   scope: PointsScope
   engineFile: string
   pointsProvided: PointsDefinitionSource
-  generatePointsLazy: string | null
-  generatePointsReady: string | null
+  banner: string | null
+  generate: Array<FilesGeneratorTargetPoints | FilesGeneratorTargetRoutes>
+  routesProvided: EngineOptionsRoutes | null
   // pointsDistFile: string | null
   appProvided: EngineOptionsAppComponent | null
   // appDistFile: string | null
@@ -338,15 +337,13 @@ export type EngineClientOptionsParsed = {
   viteConfig: EngineOptionsViteConfig | null
   compiler: EngineOptionsCompilerParsed | false
   publicdirOutdir: string | null
-  routesInstance: EngineOptionsRoutes | null
-  routesFile: string | null
-  banner: string | null
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
   pointsProvided: PointsDefinitionSource
-  generatePointsLazy: string | null
-  generatePointsReady: string | null
+  banner: string | null
+  generate: Array<FilesGeneratorTargetPoints | FilesGeneratorTargetRoutes>
+  routesProvided: EngineOptionsRoutes | null
   publicdir: EngineOptionsPublicdirParsed
   port: number
   entry: Record<string, string> | null
@@ -360,15 +357,13 @@ export type EngineServerOptionsParsed = {
   bunPlugins: EngineServerPluginsDefinition
   viteConfig: EngineOptionsViteConfig | null
   compiler: EngineOptionsCompilerParsed | false
-  routesInstance: EngineOptionsRoutes | null
-  routesFile: string | null
-  banner: string | null
   hmrPort: number | false
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
   server: EngineServerOptionsParsed
   clients: EngineClientOptionsParsed[]
+  routes: Record<string, RoutesPretty | EngineOptionsRoutes | null>
 }
 
 const parsePublicdir = (input: EngineOptionsPublicdir, cwd: string): EngineOptionsPublicdirParsed => {
@@ -774,10 +769,11 @@ export const parseEngineServerOptions = ({
     bunBuildConfig: serverOptions.bunBuildConfig ?? {},
     bunPlugins: serverOptions.bunPlugins ?? [],
     compiler,
-    routesInstance: serverOptions.routes ?? null,
-    routesFile: serverOptions.generateRoutes ?? null,
-    generatePointsLazy: serverOptions.generatePointsLazy ?? null,
-    generatePointsReady: serverOptions.generatePointsReady ?? null,
+    routesProvided: serverOptions.routes ?? null,
+    generate: (serverOptions.generate ?? []).map((target) => ({
+      ...target,
+      scope: serverOptions.scope,
+    })),
     banner: serverOptions.banner ?? null,
     viteConfig:
       typeof serverOptions.viteConfig === 'string'
@@ -864,6 +860,12 @@ const parseEngineClientOptions = ({
     scope: clientOptions.scope,
     compiler,
     pointsProvided: clientOptions.points,
+    routesProvided: clientOptions.routes ?? null,
+    generate: (clientOptions.generate ?? []).map((target) => ({
+      ...target,
+      scope: clientOptions.scope,
+    })),
+    banner: clientOptions.banner ?? null,
     // pointsDistFile:
     //   typeof clientOptions.points === 'string'
     //     ? toFinalDistPath({
@@ -922,11 +924,6 @@ const parseEngineClientOptions = ({
     publicdirOutdir,
     bunBuildConfig: clientOptions.bunBuildConfig ?? {},
     bunPlugins: clientOptions.bunPlugins ?? [],
-    routesInstance: clientOptions.routes ?? null,
-    routesFile: clientOptions.generateRoutes ?? null,
-    generatePointsLazy: clientOptions.generatePointsLazy ?? null,
-    generatePointsReady: clientOptions.generatePointsReady ?? null,
-    banner: clientOptions.banner ?? null,
     engineFile: generalOptionsParsed.engineFile,
   }
 }
@@ -986,9 +983,16 @@ export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed 
       generalOptionsParsed,
     }),
   )
+  const routes = {
+    [serverOptionsParsed.scope]: serverOptionsParsed.routesProvided,
+    ...Object.fromEntries(
+      clientsOptionsParsed.map((clientOptions) => [clientOptions.scope, clientOptions.routesProvided]),
+    ),
+  } satisfies Record<string, EngineOptionsRoutes | null>
   return {
     general: generalOptionsParsed,
     server: serverOptionsParsed,
     clients: clientsOptionsParsed,
+    routes,
   }
 }

@@ -6,11 +6,7 @@ import { AllPointsManagers } from './all-points-managers.js'
 import { EngineClient } from './client.js'
 import type { EngineLogger, EngineOptions } from './config.js'
 import { parseEngineOptions } from './config.js'
-import type {
-  FileGeneratorProcessResult,
-  FilesGeneratorPointsFilesChangeWatcher,
-  FilesGeneratorTargetOptions,
-} from './generator.js'
+import type { FileGeneratorProcessResult, FilesGeneratorPointsFilesChangeWatcher } from './generator.js'
 import { FilesGenerator } from './generator.js'
 import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
@@ -85,27 +81,8 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       logger: parsedOptions.general.logger,
       cwd: parsedOptions.general.cwd,
       glob: parsedOptions.general.pointsGlob,
-      targets: [
-        {
-          scope: parsedOptions.server.scope,
-          routesInstance: parsedOptions.server.routesInstance,
-          routesFile: parsedOptions.server.routesFile,
-          pointsLazy: parsedOptions.server.generatePointsLazy,
-          pointsReady: parsedOptions.server.generatePointsReady,
-          banner: parsedOptions.server.banner,
-        },
-        ...parsedOptions.clients.map(
-          (client) =>
-            ({
-              scope: client.scope,
-              routesInstance: client.routesInstance,
-              routesFile: client.routesFile,
-              pointsLazy: client.generatePointsLazy,
-              pointsReady: client.generatePointsReady,
-              banner: client.banner,
-            }) satisfies FilesGeneratorTargetOptions,
-        ),
-      ],
+      routes: parsedOptions.routes,
+      targets: [...parsedOptions.server.generate, ...parsedOptions.clients.flatMap((client) => client.generate)],
     })
 
     const publicdirs = [server.publicdir, ...clients.map((client) => client.publicdir)]

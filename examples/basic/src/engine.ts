@@ -15,8 +15,19 @@ export const engine = Engine.create({
       app: async () => await import('./app'),
       points: async () => await import('./lib/points.ready'),
       // points: async () => points,
-      generatePointsLazy: './lib/points.lazy.ts',
-      generatePointsReady: './lib/points.ready.ts',
+      // generatePointsLazy: './lib/points.lazy.ts',
+      // generatePointsReady: './lib/points.ready.ts',
+      generate: [
+        {
+          what: 'points',
+          path: './lib/points.ready.ts',
+          lazy: false,
+        },
+        {
+          what: 'routes',
+          path: './lib/routes.generated.ts',
+        },
+      ],
       // pointsModuleType: 'ready',
       // points: await import('./lib/points'),
       routes: async () => await import('./lib/routes'),

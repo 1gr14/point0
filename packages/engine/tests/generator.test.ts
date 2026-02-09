@@ -122,10 +122,13 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           targets: [
             {
               scope: 'myroot',
-              pointsLazy: pointsFile.path,
+              what: 'points',
+              path: pointsFile.path,
+              lazy: true,
             },
           ],
           logger,
+          routes: {},
         })
         await generator.sync()
 
@@ -165,10 +168,13 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           targets: [
             {
               scope: 'myroot',
-              pointsLazy: pointsFile.path,
+              what: 'points',
+              path: pointsFile.path,
+              lazy: true,
             },
           ],
           logger,
+          routes: {},
         })
         await generator.sync()
 
@@ -205,10 +211,13 @@ export const page = layout2.lets('page', 'mypage').page(() => <div>Hello</div>)
           targets: [
             {
               scope: 'myroot',
-              pointsLazy: pointsFile.path,
+              what: 'points',
+              path: pointsFile.path,
+              lazy: true,
             },
           ],
           logger,
+          routes: {},
         })
         await generator.sync()
 
@@ -258,10 +267,13 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
           targets: [
             {
               scope: 'myroot',
-              pointsReady: pointsFile.path,
+              what: 'points',
+              path: pointsFile.path,
+              lazy: false,
             },
           ],
           logger,
+          routes: {},
         })
 
         await generator.sync()
@@ -293,10 +305,12 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           targets: [
             {
               scope: 'myroot',
-              routesFile: routesFile.path,
+              what: 'routes',
+              path: routesFile.path,
             },
           ],
           logger,
+          routes: {},
         })
 
         await generator.sync()
@@ -328,12 +342,24 @@ export const layout = root.lets('layout', 'mylayout', '/layout').layout(() => <d
           targets: [
             {
               scope: 'myroot',
-              pointsLazy: lazyFile.path,
-              pointsReady: readyFile.path,
-              routesFile: routesFile.path,
+              what: 'points',
+              path: lazyFile.path,
+              lazy: true,
+            },
+            {
+              scope: 'myroot',
+              what: 'points',
+              path: readyFile.path,
+              lazy: false,
+            },
+            {
+              scope: 'myroot',
+              what: 'routes',
+              path: routesFile.path,
             },
           ],
           logger,
+          routes: {},
         })
 
         await generator.sync()
@@ -401,16 +427,21 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           targets: [
             {
               scope: 'myroot',
-              pointsLazy: pointsFile0.path,
+              what: 'points',
+              path: pointsFile0.path,
+              lazy: true,
               banner: '// Target-specific banner 0',
             },
             {
               scope: 'myroot',
-              pointsReady: pointsFile1.path,
+              what: 'points',
+              path: pointsFile1.path,
+              lazy: false,
               banner: '// Target-specific banner 1',
             },
           ],
           logger,
+          routes: {},
         })
 
         await generator.sync()
@@ -463,10 +494,12 @@ export const root = Point0.lets('root', 'myroot').root()
           targets: [
             {
               scope: 'myroot',
-              routesFile: routesFile.path,
+              what: 'routes',
+              path: routesFile.path,
             },
           ],
           logger,
+          routes: {},
         })
 
         await generator.sync()
@@ -502,18 +535,25 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
           targets: [
             {
               scope: 'root0',
-              pointsLazy: lazy0File.path,
+              what: 'points',
+              path: lazy0File.path,
+              lazy: true,
             },
             {
               scope: 'root1',
-              pointsLazy: lazy1File.path,
+              what: 'points',
+              path: lazy1File.path,
+              lazy: true,
             },
             {
               scope: 'root2',
-              pointsLazy: lazy2File.path,
+              what: 'points',
+              path: lazy2File.path,
+              lazy: true,
             },
           ],
           logger,
+          routes: {},
         })
 
         await generator.sync()
@@ -587,10 +627,13 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
           targets: [
             {
               scope: 'myroot',
-              pointsLazy: pointsFile.path,
+              what: 'points',
+              path: pointsFile.path,
+              lazy: true,
             },
           ],
           logger,
+          routes: {},
         })
 
         expect(getLogs()).toHaveLength(0)

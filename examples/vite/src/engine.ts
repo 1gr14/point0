@@ -18,7 +18,16 @@ export const engine = Engine.create({
       scope: 'client',
       app: async () => await import('./app'),
       points: async () => await import('./lib/points'),
-      generatePointsLazy: './lib/points.ts',
+      generate: [
+        {
+          what: 'points',
+          path: './lib/points.ts',
+        },
+        {
+          what: 'routes',
+          path: './lib/routes.generated.ts',
+        },
+      ],
       routes: async () => await import('./lib/routes').then((m) => m.routes),
       indexHtml: '../index.html',
       port: 3001,

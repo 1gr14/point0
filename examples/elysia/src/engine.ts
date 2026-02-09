@@ -12,14 +12,32 @@ export const engine = Engine.create({
     points: async () => await import('./lib/points.server.js'),
     routes: async () => await import('./lib/routes').then((m) => m.routes),
     outdir: '../dist/server',
-    generatePointsReady: './lib/points.server.ts',
+    generate: [
+      {
+        what: 'points',
+        path: './lib/points.server.ts',
+      },
+      {
+        what: 'routes',
+        path: './lib/routes.generated.ts',
+      },
+    ],
   },
   clients: [
     {
       scope: 'client',
       app: async () => await import('./app.js'),
       points: async () => await import('./lib/points.js'),
-      generatePointsLazy: './lib/points.ts',
+      generate: [
+        {
+          what: 'points',
+          path: './lib/points.client.ts',
+        },
+        {
+          what: 'routes',
+          path: './lib/routes.generated.ts',
+        },
+      ],
       routes: async () => await import('./lib/routes').then((m) => m.routes),
       indexHtml: './index.html',
       port: 3001,

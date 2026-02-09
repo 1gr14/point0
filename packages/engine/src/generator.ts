@@ -1,12 +1,12 @@
 import type { RoutesPretty } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
+import { CompilerPoint, END_POINT_TYPES, Walker } from '@point0/compiler'
 import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { EngineLogger, EngineOptionsRoutes } from './config.js'
 import { generateId, getDirByPaths, resolveTempDirPath } from './utils.js'
-import { END_POINT_TYPES, Walker, CompilerPoint } from '@point0/compiler'
 
 type ChangeCollectedPointsEvent = {
   deleted: CompilerPoint[]
@@ -19,29 +19,55 @@ type ChangeCollectedPointsEvent = {
 export type FilesGeneratorOptions = {
   cwd: string
   glob: string | string[]
-  targets: FilesGeneratorTargetOptions[]
+  targets: FilesGeneratorTarget[]
+  routes: Record<string, RoutesPretty | null | EngineOptionsRoutes>
   banner?: string
   logger?: EngineLogger
 }
 
-export type FilesGeneratorTargetOptions = {
+// export type FilesGeneratorTargetOptions = {
+//   scope: string
+//   routesInstance?: RoutesPretty | null | EngineOptionsRoutes
+//   routesFile?: string | null
+//   pointsLazy?: string | null
+//   pointsReady?: string | null
+//   banner?: string | null
+// }
+
+// type FilesGeneratorTarget = {
+//   scope: string
+//   routesInstanceGetter: EngineOptionsRoutes | null
+//   routesInstance: RoutesPretty | null
+//   banner: string | null
+//   outputPointsLazyAbs: string | null
+//   outputPointsReadyAbs: string | null
+//   outputRoutesAbs: string | null
+// }
+
+export type FilesGeneratorTargetPoints = {
   scope: string
-  routesInstance?: RoutesPretty | null | EngineOptionsRoutes
-  routesFile?: string | null
-  pointsLazy?: string | null
-  pointsReady?: string | null
+  what: 'points'
   banner?: string | null
+  path: string
+  lazy?: boolean
 }
 
-type FilesGeneratorTarget = {
+export type FilesGeneratorTargetRoutes = {
   scope: string
-  routesInstanceGetter: EngineOptionsRoutes | null
-  routesInstance: RoutesPretty | null
-  banner: string | null
-  outputPointsLazyAbs: string | null
-  outputPointsReadyAbs: string | null
-  outputRoutesAbs: string | null
+  what: 'routes'
+  banner?: string | null
+  path: string
+  baseurl?: string // accept string or 'process.env.SOMETHING' also as string, if ptovides process.env.SOMETHING it will be replaced with it value
 }
+
+export type FilesGeneratorTargetMeta = {
+  scopes: string[]
+  what: 'meta'
+  banner?: string | null
+  path: string
+}
+
+export type FilesGeneratorTarget = FilesGeneratorTargetPoints | FilesGeneratorTargetRoutes | FilesGeneratorTargetMeta
 
 export type FilesGeneratorPointsFilesChangeWatcher = (
   fileEvent: 'update' | 'delete',
@@ -59,6 +85,7 @@ export class FilesGenerator {
   readonly tempDir: string
   readonly targets: FilesGeneratorTarget[]
   readonly routes: Record<string, RoutesPretty>
+  readonly routesSrc: Record<string, { instance: RoutesPretty | null; getter: EngineOptionsRoutes | null }>
   private isRoutesInitialized = false
   readonly logger: EngineLogger
 
@@ -93,22 +120,23 @@ export class FilesGenerator {
     this.targets = opts.targets.map(
       (t) =>
         ({
-          scope: t.scope,
-          routesInstanceGetter: typeof t.routesInstance === 'function' ? t.routesInstance : null,
-          routesInstance: typeof t.routesInstance === 'function' ? null : (t.routesInstance ?? null),
+          ...t,
           banner: [this.banner, t.banner].filter(Boolean).join('\n') || null,
-          outputPointsLazyAbs: t.pointsLazy ? nodePath.resolve(this.cwd, t.pointsLazy) : null,
-          outputPointsReadyAbs: t.pointsReady ? nodePath.resolve(this.cwd, t.pointsReady) : null,
-          outputRoutesAbs: t.routesFile ? nodePath.resolve(this.cwd, t.routesFile) : null,
         }) satisfies FilesGeneratorTarget,
     )
+    this.routesSrc = Object.entries(opts.routes).reduce<
+      Record<string, { instance: RoutesPretty | null; getter: EngineOptionsRoutes | null }>
+    >((acc, [scope, routes]) => {
+      acc[scope] = {
+        instance: typeof routes === 'function' ? null : routes,
+        getter: typeof routes === 'function' ? routes : null,
+      }
+      return acc
+    }, {})
     this.routes = {}
 
     this.watchDir = this.globInclude.length > 0 ? getDirByPaths({ paths: this.globInclude }) : process.cwd()
-    this.watchIgnore = [
-      ...this.globExclude,
-      ...this.targets.flatMap((t) => [t.outputPointsLazyAbs, t.outputPointsReadyAbs, t.outputRoutesAbs]),
-    ].flatMap((p) => p || [])
+    this.watchIgnore = [...this.globExclude, ...this.targets.map((t) => t.path)].flatMap((p) => p || [])
     this.watchPatterns = [...this.globInclude]
   }
 
@@ -287,19 +315,21 @@ export class FilesGenerator {
         result._.routes !== null
       )
     }
-    for (const target of this.targets) {
-      if (target.routesInstanceGetter) {
-        const result = await target.routesInstanceGetter()
+    for (const [scope, { getter, instance }] of Object.entries(this.routesSrc)) {
+      if (getter) {
+        const result = await getter()
         if (isRoutesObject(result)) {
-          target.routesInstance = result
+          this.routes[scope] = result
         } else if ('default' in result && isRoutesObject(result.default)) {
-          target.routesInstance = result.default
+          this.routes[scope] = result.default
         } else if ('routes' in result && isRoutesObject(result.routes)) {
-          target.routesInstance = result.routes
+          this.routes[scope] = result.routes
         } else {
-          throw new Error(`Invalid routes instance for target ${target.scope}`)
+          throw new Error(`Invalid routes instance for target ${scope}`)
         }
-        this.routes[target.scope] = target.routesInstance
+      }
+      if (instance) {
+        this.routes[scope] = instance
       }
     }
     this.isRoutesInitialized = true
@@ -314,24 +344,24 @@ export class FilesGenerator {
 
   private async writeTargetOutput(target: FilesGeneratorTarget): Promise<{ written: boolean }> {
     const tasks = []
-    if (target.outputPointsLazyAbs) {
+    if (target.what === 'points' && target.lazy) {
       tasks.push({
         content: this.emitLazyPointsFile(target),
-        outputAbs: target.outputPointsLazyAbs,
-        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.${generateId()}.lazy.ts`),
+        outputAbs: target.path,
+        tempOutputAbs: nodePath.join(this.tempDir, `${target.what}.${generateId()}.lazy.ts`),
       })
     }
-    if (target.outputPointsReadyAbs) {
+    if (target.what === 'points' && !target.lazy) {
       tasks.push({
         content: this.emitReadyPointsFile(target),
-        outputAbs: target.outputPointsReadyAbs,
-        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.${generateId()}.ready.ts`),
+        outputAbs: target.path,
+        tempOutputAbs: nodePath.join(this.tempDir, `${target.what}.${generateId()}.ready.ts`),
       })
     }
-    if (target.outputRoutesAbs) {
+    if (target.what === 'routes') {
       tasks.push({
         content: this.emitRoutesPointsFile(target),
-        outputAbs: target.outputRoutesAbs,
+        outputAbs: target.path,
         tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.${generateId()}.routes.ts`),
       })
     }
@@ -447,7 +477,7 @@ export class FilesGenerator {
   }: {
     points: Array<CompilerPoint<true>>
     outputAbs: string
-    target: FilesGeneratorTarget
+    target: FilesGeneratorTargetPoints
   }): {
     importLines: string[]
     importedPoints: Array<{ point: CompilerPoint; index: number; renamedExportName: string }>
@@ -658,10 +688,7 @@ export class FilesGenerator {
     return lines
   }
 
-  private emitLazyPointsFile(target: FilesGeneratorTarget): string {
-    if (!target.outputPointsLazyAbs) {
-      throw new Error('outputPointsLazyAbs is not set')
-    }
+  private emitLazyPointsFile(target: FilesGeneratorTargetPoints): string {
     const points = this.points.filter(
       (p) => p.scope === target.scope && FilesGenerator.shouldExistsInPointsFile(p),
     ) as Array<CompilerPoint<true>>
@@ -676,7 +703,7 @@ export class FilesGenerator {
     // TODO: lets add .lazy() and calculate by it
     const { importedPoints, rootSingleImportLine } = this.emitNamedImports({
       points,
-      outputAbs: target.outputPointsLazyAbs,
+      outputAbs: target.path,
       target,
     })
     const rootImported = importedPoints.find((p) => p.point.type === 'root')
@@ -697,7 +724,7 @@ export class FilesGenerator {
       lines.push(
         ...this.emitLazyPointCollectionRecord({
           imported,
-          targetAbs: target.outputPointsLazyAbs,
+          targetAbs: target.path,
         }),
       )
     }
@@ -707,11 +734,7 @@ export class FilesGenerator {
     return lines.join('\n')
   }
 
-  private emitReadyPointsFile(target: FilesGeneratorTarget): string {
-    if (!target.outputPointsReadyAbs) {
-      throw new Error('outputReadyAbs is not set')
-    }
-
+  private emitReadyPointsFile(target: FilesGeneratorTargetPoints): string {
     const points = this.points.filter(
       (p) => p.scope === target.scope && FilesGenerator.shouldExistsInPointsFile(p),
     ) as Array<CompilerPoint<true>>
@@ -723,7 +746,7 @@ export class FilesGenerator {
 
     const { importLines, importedPoints } = this.emitNamedImports({
       points,
-      outputAbs: target.outputPointsReadyAbs,
+      outputAbs: target.path,
       target,
     })
     lines.push(`import type { PointsDefinition } from '@point0/core'`)
@@ -861,10 +884,7 @@ export class FilesGenerator {
   //   return lines.join('\n')
   // }
 
-  private emitRoutesPointsFile(target: FilesGeneratorTarget): string {
-    if (!target.outputRoutesAbs) {
-      throw new Error('outputRoutesAbs is not set')
-    }
+  private emitRoutesPointsFile(target: FilesGeneratorTargetRoutes): string {
     const points = this.points.filter((p) => p.scope === target.scope)
     const lines: string[] = []
     if (target.banner) {

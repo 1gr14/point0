@@ -6,7 +6,16 @@ export const engine = Engine.create({
     scope: 'root',
     entry: { main: './index.server.ts' },
     points: async () => await import('./lib/points.server'),
-    generatePointsReady: './lib/points.server.ts',
+    generate: [
+      {
+        what: 'points',
+        path: './lib/points.server.ts',
+      },
+      {
+        what: 'routes',
+        path: './lib/routes.generated.ts',
+      },
+    ],
     outdir: '../dist/server',
     // port: server,
     // hmrPort: server,
@@ -18,8 +27,16 @@ export const engine = Engine.create({
       app: async () => await import('./app'),
       points: async () => await import('./lib/points.client'),
       routes: async () => await import('./lib/routes'),
-      generatePointsLazy: './lib/points.client.ts',
-      generateRoutes: './lib/routes.ts',
+      generate: [
+        {
+          what: 'points',
+          path: './lib/points.client.ts',
+        },
+        {
+          what: 'routes',
+          path: './lib/routes.ts',
+        },
+      ],
       indexHtml: './index.html',
       outdir: '../dist/client',
       publicdir: '../public',
