@@ -22,6 +22,7 @@ import type {
   EngineServerPluginsDefinition,
 } from './utils.js'
 import { toAbsPath, toJsExtension } from './utils.js'
+import type { PublicdirDefinition } from './publicdir.js'
 
 // TODO:ASAP transform to class
 // TODO:ASAP allow predefined config mutable, which can be pased to Engine.create or in EngineOptions
@@ -48,12 +49,15 @@ export type EngineOptionsEnv = string | Record<string, any> | Array<string | Rec
 export type EngineOptionsEnvParsed = Record<string, any>
 
 export type ExtractedViteConfig = import('vite').UserConfig
-export type ExtractViteConfigFn = (options: {
+export type ExtractViteConfigOptions = {
   command: 'serve' | 'build'
   target: 'client' | 'server'
   mode: NormalNodeEnv
   scope: PointsScope
-}) => Promise<ExtractedViteConfig> | ExtractedViteConfig
+}
+export type ExtractViteConfigFn = (
+  options: ExtractViteConfigOptions,
+) => Promise<ExtractedViteConfig> | ExtractedViteConfig
 export type EngineOptionsViteConfig =
   | ExtractViteConfigFn
   | ExtractedViteConfig
@@ -105,11 +109,13 @@ export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   generate?: Array<
     Omit<FilesGeneratorTaskPoints, 'scope' | 'target'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'target'>
   >
-  publicdir?: EngineOptionsPublicdir
+  publicdir?: {
+    source: EngineOptionsPublicdir
+    outdir: string
+  }
   port?: number | string
   outdir?: string
   entry?: string | Record<string, string>
-  publicdirOutdir?: string
   bunBuildConfig?: EngineServerBuildConfigDefinition
   bunPlugins?: EngineServerPluginsDefinition
   viteConfig?: EngineOptionsViteConfig
@@ -129,7 +135,10 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   >
   app?: EngineOptionsAppComponent
   baseurl?: string
-  publicdir?: EngineOptionsPublicdir
+  publicdir?: {
+    source: EngineOptionsPublicdir
+    outdir: string
+  }
   indexHtml?: string
   domRootElementId?: string
   env?: EngineOptionsEnv
@@ -140,7 +149,6 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   viteConfig?: EngineOptionsViteConfig
   compiler?: EngineOptionsCompiler | boolean
   outdir?: string
-  publicdirOutdir?: string
   routes?: EngineOptionsRoutes
   banner?: string
 }
@@ -325,7 +333,6 @@ export type EngineClientOptionsParsed = {
   appProvided: EngineOptionsAppComponent | null
   // appDistFile: string | null
   baseurl: string
-  publicdir: EngineOptionsPublicdirParsed
   indexHtml: string | null
   // indexHtmlDistFile: string | null
   env: EngineOptionsEnvParsed
@@ -338,7 +345,10 @@ export type EngineClientOptionsParsed = {
   bunPlugins: EngineClientPluginsDefinition
   viteConfig: EngineOptionsViteConfig | null
   compiler: EngineOptionsCompilerParsed | false
-  publicdirOutdir: string | null
+  publicdir: {
+    source: PublicdirDefinition
+    outdir: string
+  } | null
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
@@ -346,11 +356,13 @@ export type EngineServerOptionsParsed = {
   banner: string | null
   generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
   routesProvided: EngineOptionsRoutes | null
-  publicdir: EngineOptionsPublicdirParsed
   port: number
   entry: Record<string, string> | null
   outdir: string | null
-  publicdirOutdir: string | null
+  publicdir: {
+    source: PublicdirDefinition
+    outdir: string
+  } | null
   engineFile: string
   cwdBeforeBuild: string
   itWasBuilt: boolean
@@ -698,8 +710,15 @@ export const parseEngineServerOptions = ({
   const publicdirOutdir = toFinalPath({
     ...generalOptionsParsed,
     cwdIfWasBuilt: null,
-    path: serverOptions.publicdirOutdir ?? (outdir && serverOptions.publicdir ? nodePath.join(outdir, 'public') : null),
+    path: serverOptions.publicdir?.outdir,
   })
+  const publicdirSource: PublicdirDefinition =
+    !generalOptionsParsed.autoFixBuiltPaths || !generalOptionsParsed.itWasBuilt
+      ? parsePublicdir(serverOptions.publicdir?.source ?? [], generalOptionsParsed.cwd)
+      : publicdirOutdir && serverOptions.publicdir?.source
+        ? [['/', publicdirOutdir]]
+        : []
+  const publicdir = publicdirOutdir ? { source: publicdirSource, outdir: publicdirOutdir } : null
   const entriesRecord = entriesRecordInput
     ? Object.fromEntries(
         Object.entries(entriesRecordInput).map(([key, value]) => [
@@ -756,13 +775,7 @@ export const parseEngineServerOptions = ({
     hmrPort,
     outdir,
     entry: entriesRecord,
-    publicdir:
-      !generalOptionsParsed.autoFixBuiltPaths || !generalOptionsParsed.itWasBuilt
-        ? parsePublicdir(serverOptions.publicdir ?? [], generalOptionsParsed.cwd)
-        : publicdirOutdir && serverOptions.publicdir
-          ? [['/', publicdirOutdir]]
-          : [],
-    publicdirOutdir,
+    publicdir,
     engineFile: generalOptionsParsed.engineFile,
     cwdBeforeBuild: generalOptionsParsed.cwdBeforeBuild,
     itWasBuilt: generalOptionsParsed.itWasBuilt,
@@ -815,8 +828,15 @@ const parseEngineClientOptions = ({
   const publicdirOutdir = toFinalPath({
     ...generalOptionsParsed,
     cwdIfWasBuilt: null,
-    path: clientOptions.publicdirOutdir ?? (outdir && clientOptions.publicdir ? nodePath.join(outdir, 'public') : null),
+    path: clientOptions.publicdir?.outdir,
   })
+  const publicdirSource: PublicdirDefinition =
+    !generalOptionsParsed.autoFixBuiltPaths || !generalOptionsParsed.itWasBuilt
+      ? parsePublicdir(clientOptions.publicdir?.source ?? [], generalOptionsParsed.cwd)
+      : publicdirOutdir && clientOptions.publicdir?.source
+        ? [['/', publicdirOutdir]]
+        : []
+  const publicdir = publicdirOutdir ? { source: publicdirSource, outdir: publicdirOutdir } : null
   const generalOptionsParsedCompilerRecord =
     typeof generalOptionsParsed.compiler === 'object' && generalOptionsParsed.compiler !== null
       ? generalOptionsParsed.compiler
@@ -918,13 +938,7 @@ const parseEngineClientOptions = ({
     //   relPathAfterBuild: './index.html',
     //   path: clientOptions.indexHtml,
     // }),
-    publicdir:
-      !generalOptionsParsed.autoFixBuiltPaths || !generalOptionsParsed.itWasBuilt
-        ? parsePublicdir(clientOptions.publicdir ?? [], generalOptionsParsed.cwd)
-        : publicdirOutdir && clientOptions.publicdir
-          ? [['/', publicdirOutdir]]
-          : [],
-    publicdirOutdir,
+    publicdir,
     bunBuildConfig: clientOptions.bunBuildConfig ?? {},
     bunPlugins: clientOptions.bunPlugins ?? [],
     engineFile: generalOptionsParsed.engineFile,

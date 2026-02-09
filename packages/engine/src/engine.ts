@@ -85,7 +85,9 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       tasks: [...parsedOptions.server.generate, ...parsedOptions.clients.flatMap((client) => client.generate)],
     })
 
-    const publicdirs = [server.publicdir, ...clients.map((client) => client.publicdir)]
+    const publicdirs = [server.publicdir, ...clients.map((client) => client.publicdir)].flatMap((publicdir) =>
+      publicdir ? [publicdir] : [],
+    )
     server.publicdirs = publicdirs
 
     return new Engine({

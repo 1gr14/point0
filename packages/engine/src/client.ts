@@ -13,11 +13,11 @@ import type {
   EngineOptionsAppComponent,
   EngineOptionsCompilerParsed,
   EngineOptionsEnvParsed,
-  EngineOptionsPublicdirParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
 } from './config.js'
 import type { Executor } from './executor.js'
+import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
 import { addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
 import type { EngineServer } from './server.js'
@@ -57,11 +57,10 @@ export class EngineClient<TInitialized extends boolean = boolean> {
   index: number
   logger: EngineLogger
   env: EngineOptionsEnvParsed
-  publicdir: TInitialized extends true ? Publicdir<true> : Publicdir<false>
+  publicdir: TInitialized extends true ? Publicdir<true> | null : Publicdir<false> | null
   outdir: string | null
   bunBuildConfig: EngineClientBuildConfigDefinition
   bunPlugins: EngineClientPluginsDefinition
-  publicdirOutdir: string | null
   distIndexHtmlContent: string | null
   server: EngineServer
   // clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
@@ -86,7 +85,6 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     outdir: string | null
     bunBuildConfig: EngineClientBuildConfigDefinition
     bunPlugins: EngineClientPluginsDefinition
-    publicdirOutdir: string | null
     distIndexHtmlContent: string | null
     domRootElementId: string
     port: number
@@ -96,7 +94,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     index: number
     logger: EngineLogger
     env: EngineOptionsEnvParsed
-    publicdir: Publicdir
+    publicdir: Publicdir | null
     allPointsManagers: AllPointsManagers
     bunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
     bunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
@@ -123,11 +121,10 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     this.index = input.index
     this.logger = input.logger
     this.env = { ...input.env, NODE_ENV: process.env.NODE_ENV }
-    this.publicdir = input.publicdir as TInitialized extends true ? Publicdir<true> : Publicdir<false>
+    this.publicdir = input.publicdir as TInitialized extends true ? Publicdir<true> | null : Publicdir<false> | null
     this.outdir = input.outdir
     this.bunBuildConfig = input.bunBuildConfig
     this.bunPlugins = input.bunPlugins
-    this.publicdirOutdir = input.publicdirOutdir
     // this.clientBunDevBuilder = input.clientBunDevBuilder
     // this.serverBunDevBuilder = input.serverBunDevBuilder
     this.viteDevServer = input.viteDevServer
@@ -148,11 +145,13 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
     baseurl: string
-    publicdir: EngineOptionsPublicdirParsed
+    publicdir: {
+      source: PublicdirDefinition
+      outdir: string
+    } | null
     outdir: string | null
     bunBuildConfig: EngineClientBuildConfigDefinition
     bunPlugins: EngineClientPluginsDefinition
-    publicdirOutdir: string | null
     indexHtml: string | null
     // indexHtmlDistFile: string | null
     domRootElementId: string
@@ -171,14 +170,16 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     const bunNativeDevServer = null
     const bunViteDevServer = null
 
-    const publicdir = Publicdir.create({
-      hostname: getHostnameOrNull(input.baseurl),
-      definition: input.publicdir,
-      outdir: input.publicdirOutdir,
-      scope: input.scope,
-      server: null,
-      client: null,
-    })
+    const publicdir = input.publicdir
+      ? Publicdir.create({
+          hostname: getHostnameOrNull(input.baseurl),
+          source: input.publicdir.source,
+          outdir: input.publicdir.outdir,
+          scope: input.scope,
+          server: null,
+          client: null,
+        })
+      : null
 
     const distIndexHtmlContent = null
 
@@ -193,7 +194,10 @@ export class EngineClient<TInitialized extends boolean = boolean> {
       // serverBunDevBuilder,
       initialized: false,
     })
-    publicdir.client = client
+
+    if (publicdir) {
+      publicdir.client = client
+    }
 
     return client
   }
@@ -230,7 +234,9 @@ export class EngineClient<TInitialized extends boolean = boolean> {
 
     this.ssr = pointsManager.ssr as TInitialized extends true ? boolean : null
 
-    await this.publicdir.init()
+    if (this.publicdir) {
+      await this.publicdir.init()
+    }
 
     this.distIndexHtmlContent =
       process.env.NODE_ENV === 'production' && this.indexHtml ? await Bun.file(this.indexHtml).text() : null
@@ -869,7 +875,10 @@ Bun.serve({
   }
 
   async clean(): Promise<{ client: boolean; publicdir: boolean }> {
-    const [client, publicdir] = await Promise.all([this.cleanClient(), this.publicdir.clean()])
+    const [client, publicdir] = await Promise.all([
+      this.cleanClient(),
+      this.publicdir ? this.publicdir.clean() : Promise.resolve(false),
+    ])
     return { client, publicdir }
   }
 
@@ -894,7 +903,7 @@ Bun.serve({
     if (clean) {
       await this.clean()
     }
-    const publicdirBuildOutput = !publicdir ? null : await this.publicdir.build() // we do not do it in Promise.all, becouse we want dist files override publicdir files, in case if they are the same directory
+    const publicdirBuildOutput = !publicdir || !this.publicdir ? null : await this.publicdir.build() // we do not do it in Promise.all, becouse we want dist files override publicdir files, in case if they are the same directory
     const client = await this.buildClient({ bunBuildConfig, clean: false }) // we clean already before
     return { client, publicdir: publicdirBuildOutput }
   }

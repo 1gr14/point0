@@ -22,11 +22,15 @@ async function* getAllFiles(dirPath: string): AsyncGenerator<string> {
   }
 }
 
+export type PublicdirDefinition = Array<[string, string | Response | (() => Response | Promise<Response>)]>
+export type PublicdirFileDefinition = string | Response | (() => Response | Promise<Response>)
+export type PublicdirFilesDefinition = Map<string, PublicdirFileDefinition>
+
 export class Publicdir<TInitialized extends boolean = boolean> {
   hostname: string | null
-  definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
+  source: PublicdirDefinition
   // <fileRoutePath, fileAbsPath | fileResponseOrFn>
-  files: Map<string, string | Response | (() => Response | Promise<Response>)>
+  files: PublicdirFilesDefinition
   outdir: string | null
   server: TInitialized extends true ? EngineServer<true> | null : EngineServer<false> | null
   client: TInitialized extends true ? EngineClient<true> | null : EngineClient<false> | null
@@ -37,15 +41,15 @@ export class Publicdir<TInitialized extends boolean = boolean> {
   private constructor(input: {
     initialized: TInitialized
     hostname: string | null
-    definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
+    source: PublicdirDefinition
     scope: PointsScope
     outdir: string | null
     server: TInitialized extends true ? EngineServer<true> | null : EngineServer<false> | null
     client: TInitialized extends true ? EngineClient<true> | null : EngineClient<false> | null
   }) {
     this.hostname = input.hostname
-    this.definition = input.definition
-    this.files = new Map<string, string | Response | (() => Response | Promise<Response>)>()
+    this.source = input.source
+    this.files = new Map<string, PublicdirFileDefinition>()
     this.scope = input.scope
     this.outdir = input.outdir
     this.initialized = input.initialized
@@ -55,7 +59,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
 
   static create(input: {
     hostname: string | null
-    definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
+    source: PublicdirDefinition
     scope: PointsScope
     outdir: string | null
     server: EngineServer<false> | null
@@ -84,7 +88,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
 
   async loadFiles(): Promise<void> {
     await Promise.all(
-      this.definition.map(async ([dirRoutePathOrFilePath, dirAbsPathOrResponseOrFn]) => {
+      this.source.map(async ([dirRoutePathOrFilePath, dirAbsPathOrResponseOrFn]) => {
         if (typeof dirAbsPathOrResponseOrFn === 'string') {
           const dirRoutePath = dirRoutePathOrFilePath
           const dirAbsPath = dirAbsPathOrResponseOrFn
@@ -102,8 +106,8 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     )
   }
 
-  async add(definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>): Promise<void> {
-    this.definition.push(...definition)
+  async add(definition: PublicdirDefinition): Promise<void> {
+    this.source.push(...definition)
     await this.loadFiles()
   }
 
@@ -158,7 +162,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     const fileOperations: Array<Promise<string>> = []
 
     await Promise.all(
-      this.definition.map(async ([dirRoutePathOrFilePath, dirAbsPathOrResponseOrFn]) => {
+      this.source.map(async ([dirRoutePathOrFilePath, dirAbsPathOrResponseOrFn]) => {
         if (typeof dirAbsPathOrResponseOrFn === 'string') {
           const dirRoutePath = dirRoutePathOrFilePath
           const dirAbsPath = dirAbsPathOrResponseOrFn

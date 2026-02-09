@@ -10,12 +10,12 @@ import type { EngineClient } from './client.js'
 import type {
   EngineLogger,
   EngineOptionsCompilerParsed,
-  EngineOptionsPublicdirParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
 } from './config.js'
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
+import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
 import type { EngineServerBuildConfigDefinition, EngineServerPluginsDefinition } from './utils.js'
 import {
@@ -43,12 +43,12 @@ export class EngineServer<TInitialized extends boolean = boolean> {
   clients: TInitialized extends true ? Array<EngineClient<true>> : EngineClient[]
   logger: EngineLogger
   entry: Record<string, string> | null
-  publicdir: TInitialized extends true ? Publicdir<true> : Publicdir<false>
+  publicdir: TInitialized extends true ? Publicdir<true> | null : Publicdir<false> | null
+  // it is collection of server itself public dir and all its clients public dirs
   publicdirs: TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
   outdir: string | null
   bunBuildConfig: EngineServerBuildConfigDefinition
   bunPlugins: EngineServerPluginsDefinition
-  publicdirOutdir: string | null
   fallbackScope: PointsScope
   initialized: TInitialized
   bunPluginsLoaded = false
@@ -72,11 +72,10 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     logger: EngineLogger
     clients: EngineClient[]
     entry: Record<string, string> | null
-    publicdir: Publicdir | null
+    publicdir: Publicdir<false> | null
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
-    publicdirOutdir: string | null
     allPointsManagers: AllPointsManagers
     viteConfig: EngineOptionsViteConfig | null
     viteDevServer: ViteDevServer | null
@@ -99,12 +98,11 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     this.clients = input.clients as TInitialized extends true ? Array<EngineClient<true>> : EngineClient[]
     this.logger = input.logger
     this.entry = input.entry
-    this.publicdir = input.publicdir as TInitialized extends true ? Publicdir<true> : Publicdir<false>
+    this.publicdir = input.publicdir as TInitialized extends true ? Publicdir<true> | null : Publicdir<false> | null
     this.publicdirs = [] as unknown as TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
     this.outdir = input.outdir
     this.bunBuildConfig = input.bunBuildConfig
     this.bunPlugins = input.bunPlugins
-    this.publicdirOutdir = input.publicdirOutdir
     this.fallbackScope = input.fallbackScope
     this.initialized = input.initialized
     this.viteConfig = input.viteConfig
@@ -124,11 +122,13 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     itWasBuilt: boolean
     port: number
     entry: Record<string, string> | null
-    publicdir: EngineOptionsPublicdirParsed
+    publicdir: {
+      source: PublicdirDefinition
+      outdir: string
+    } | null
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
-    publicdirOutdir: string | null
     fallbackScope: PointsScope
     logger: EngineLogger
     clients: EngineClient[]
@@ -136,14 +136,16 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     hmrPort: number | false
     compiler: EngineOptionsCompilerParsed | false
   }): EngineServer<false> {
-    const publicdir = Publicdir.create({
-      hostname: null,
-      definition: input.publicdir,
-      outdir: input.publicdirOutdir,
-      scope: input.scope,
-      server: null,
-      client: null,
-    })
+    const publicdir = input.publicdir
+      ? Publicdir.create({
+          hostname: null,
+          source: input.publicdir.source,
+          outdir: input.publicdir.outdir,
+          scope: input.scope,
+          server: null,
+          client: null,
+        })
+      : null
 
     const viteDevServer = null
 
@@ -153,7 +155,9 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       initialized: false,
       viteDevServer,
     })
-    publicdir.server = server
+    if (publicdir) {
+      publicdir.server = server
+    }
     return server
   }
 
@@ -167,7 +171,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     }
     await Promise.all([
       this.loadBunPlugins({ built: env.built }).then(async () => await this.initPointsManager()),
-      this.publicdir.init(),
+      this.publicdir ? this.publicdir.init() : Promise.resolve(),
     ])
     this.initialized = true as never
     this.fetcher = Fetcher.create({ engine, server: this as EngineServer<true> }) as TInitialized extends true
@@ -514,7 +518,10 @@ export class EngineServer<TInitialized extends boolean = boolean> {
   }
 
   async clean(): Promise<{ server: boolean; publicdir: boolean }> {
-    const [server, publicdir] = await Promise.all([this.cleanServer(), this.publicdir.clean()])
+    const [server, publicdir] = await Promise.all([
+      this.cleanServer(),
+      this.publicdir ? this.publicdir.clean() : Promise.resolve(false),
+    ])
     return { server, publicdir }
   }
 
@@ -784,7 +791,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     }
     const [server, publicdirBuildOutput] = await Promise.all([
       this.buildServer({ bunBuildConfig, clean: false }), // we clean already before
-      !publicdir ? null : this.publicdir.build({ clean: false }), // we clean already before
+      !publicdir || !this.publicdir ? null : this.publicdir.build({ clean: false }), // we clean already before
     ])
     return { server, publicdir: publicdirBuildOutput }
   }
