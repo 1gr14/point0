@@ -9,7 +9,7 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
       ? options
       : Compiler.create({
           ...options,
-          hmrFix: options.hmrFix ?? (process.env.NODE_ENV !== 'production' ? 'function' : false),
+          hmrFix: options.hmrFix ?? (process.env.NODE_ENV !== 'production' ? 'externalFunction' : false),
         })
   return {
     name: 'point0-compiler',

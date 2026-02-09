@@ -1,4 +1,9 @@
 import { Engine } from '@point0/engine'
+import react from '@vitejs/plugin-react'
+import type { PluginOption } from 'vite'
+import { analyzer } from 'vite-bundle-analyzer'
+import svgr from 'vite-plugin-svgr'
+import tsconfigPaths from 'vite-tsconfig-paths'
 
 export const engine = Engine.create({
   file: import.meta.url,
@@ -41,7 +46,15 @@ export const engine = Engine.create({
       ],
       outdir: '../dist/client',
       publicdirOutdir: '../dist/client',
-      viteConfig: '../vite.config.ts',
+      // viteConfig: '../vite.config.ts',
+      viteConfig: (o) => ({
+        plugins: [
+          react(),
+          svgr(),
+          tsconfigPaths(),
+          // options.mode.includes('clientx') ? analyzer() : null,
+        ] as never[],
+      }),
     },
   ],
 })

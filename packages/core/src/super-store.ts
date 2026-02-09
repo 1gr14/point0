@@ -271,10 +271,11 @@ export class SuperStore {
   define<TValue>(key: string, init: () => TValue, policy: SuperStoreItemPolicy): NiceSuperStoreItem<TValue, TValue>
   define(...args: Parameters<typeof this._parseDefineArgs>): any {
     const { name, init, policy, dehydrate, hydrate } = this._parseDefineArgs(...args)
-    const exItem = this.items.get(name)
-    if (exItem) {
-      throw new Error(`Item with name "${name}" already defined`)
-    }
+    // it brokes hmr
+    // const exItem = this.items.get(name)
+    // if (exItem) {
+    //   throw new Error(`Item with name "${name}" already defined`)
+    // }
     const item: SuperStoreItem = new SuperStoreItem({ name, init, dehydrate, hydrate, policy, superstore: this })
     this.items.set(name, item)
     return item

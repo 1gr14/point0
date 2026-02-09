@@ -222,11 +222,11 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
 //   return !!ctx.ssrLocation && ctx.ssrLocation.href === location.href
 // }
 
-export const useIsRouterPrefetching = (): boolean => {
-  const ctx = React.useContext(RouterContext)
-  if (!ctx) throw new Error('useIsRouterPrefetching must be used within RouterContextProvider')
-  return ctx.status === 'prefetching'
-}
+// export const useIsRouterPrefetching = (): boolean => {
+//   const ctx = React.useContext(RouterContext)
+//   if (!ctx) throw new Error('useIsRouterPrefetching must be used within RouterContextProvider')
+//   return ctx.status === 'prefetching'
+// }
 
 export const useRouterContext: UseRouterContextFn = () => {
   const ctx = React.useContext(RouterContext)
@@ -286,49 +286,62 @@ export const useOnNavigate = (fn: UseOnNavigateFn) => {
   }, [ctx.status, isNavigating])
 }
 
-export const useOnNavigateDetailed = (fn: UseOnNavigateDetailedFn) => {
-  const ctx = React.useContext(RouterContext)
-  if (!ctx) throw new Error('useOnNavigate must be used within RouterContextProvider')
-
-  const prevLocationRef = useRef(ctx.currentLocation)
-  const nextLocationRef = useRef(ctx.nextLocation)
+export const useIsNavigating = (): boolean => {
   const [isNavigating, setIsNavigating] = useState(false)
-
-  useEffect(() => {
-    if (!ctx.nextLocation) {
-      return
-    }
-
-    const prevLocation = prevLocationRef.current
-    const nextLocation = ctx.nextLocation
-    if (
-      prevLocation.href && nextLocation.href
-        ? prevLocation.href === nextLocation.href
-        : prevLocation.hrefRel === nextLocation.hrefRel
-    ) {
-      return
-    }
-
-    nextLocationRef.current = nextLocation
+  useOnNavigate(() => {
     setIsNavigating(true)
-  }, [ctx.nextLocation])
-
-  useEffect(() => {
-    if (!isNavigating || !nextLocationRef.current) {
-      return
-    }
-    fn({
-      prevLocation: prevLocationRef.current,
-      nextLocation: nextLocationRef.current,
-      status: ctx.status,
-      error: ctx.error,
-    })
-    if (ctx.status === 'idle') {
-      prevLocationRef.current = nextLocationRef.current
+    return () => {
       setIsNavigating(false)
     }
-  }, [ctx.status, ctx.error, isNavigating])
+  })
+  return isNavigating
 }
+
+// export const useOnNavigateDetailed = (fn: UseOnNavigateDetailedFn) => {
+//   const ctx = React.useContext(RouterContext)
+//   if (!ctx) throw new Error('useOnNavigate must be used within RouterContextProvider')
+
+//   const prevLocationRef = useRef(ctx.currentLocation)
+//   const nextLocationRef = useRef(ctx.nextLocation)
+//   const [isNavigating, setIsNavigating] = useState(false)
+
+//   useEffect(() => {
+//     if (!ctx.nextLocation) {
+//       return
+//     }
+
+//     const prevLocation = prevLocationRef.current
+//     const nextLocation = ctx.nextLocation
+//     console.log('prevLocation', prevLocation)
+//     console.log('nextLocation', nextLocation)
+//     if (
+//       prevLocation.href && nextLocation.href
+//         ? prevLocation.href === nextLocation.href
+//         : prevLocation.hrefRel === nextLocation.hrefRel
+//     ) {
+//       return
+//     }
+
+//     nextLocationRef.current = nextLocation
+//     setIsNavigating(true)
+//   }, [ctx.nextLocation])
+
+//   useEffect(() => {
+//     if (!isNavigating || !nextLocationRef.current) {
+//       return
+//     }
+//     fn({
+//       prevLocation: prevLocationRef.current,
+//       nextLocation: nextLocationRef.current,
+//       status: ctx.status,
+//       error: ctx.error,
+//     })
+//     if (ctx.status === 'idle') {
+//       prevLocationRef.current = nextLocationRef.current
+//       setIsNavigating(false)
+//     }
+//   }, [ctx.status, ctx.error, isNavigating])
+// }
 
 export function _wrapUseNavigate<T extends () => (to: string, ...args: any[]) => any>(
   useAdapterNavigate: T,

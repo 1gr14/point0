@@ -1,12 +1,12 @@
 import { Link } from '@/lib/navigate'
-import { useIsRouterPrefetching } from '@point0/core'
+import { useIsNavigating } from '@point0/core'
 import { client } from '../lib/client'
 import { routes } from '../lib/routes'
 
 export const generalLayout = client.lets('layout', 'generalLayout').layout(({ children }) => {
-  const isRouterPrefetching = useIsRouterPrefetching()
+  const isNavigating = useIsNavigating()
   return (
-    <div style={{ opacity: isRouterPrefetching ? 0.5 : 1, transition: 'opacity 0.3s ease-in-out' }}>
+    <div style={{ opacity: isNavigating ? 0.5 : 1, transition: 'opacity 0.3s ease-in-out' }}>
       <h1>IdeaNick</h1>
       <ul>
         <li>

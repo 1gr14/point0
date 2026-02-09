@@ -28,7 +28,7 @@ export const BestIdeaComponent = client
   .input(z.object({ x: z.coerce.number() }))
   .loader(async ({ ctx, input }) => ({
     bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
-    y: input.x * 2,
+    y: input.x * 5,
   }))
   .wrapper(({ children }) => {
     return children

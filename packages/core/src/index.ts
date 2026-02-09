@@ -7985,7 +7985,8 @@ export class Point0<
       | LayoutSuccessComponentType<any, any, any, any>
       | PageSuccessComponentType<any, any, any, any>
       | ComponentSuccessComponentType<any, any, any>
-      | ProviderSuccessComponentType<any, any, any>
+      // | ProviderSuccessComponentType<any, any, any>
+      | 'children'
     extraProps: (mountableState: MountableState<any, any, any, any, any>) => Record<string, any>
 
     level?: number
@@ -8045,61 +8046,6 @@ export class Point0<
       prevMappedData,
     } = (() => {
       if (!prev) {
-        // const loadingComponent =
-        //   {
-        //     page: this._pageLoadingComponent,
-        //     component: this._componentLoadingComponent,
-        //     layout: this._layoutLoadingComponent,
-        //   }[variant] ?? Point0.DefaultLoadingComponent
-        // const PrevLoadingComponent = React.useCallback(() => {
-        //   return React.createElement(_loadingComponent, {
-        //     type: variant,
-        //   })
-        // }, [])
-
-        // const PrevLoadingComponent = React.useCallback(() => {
-        //   return Point0._createBoundLoadingComponent({
-        //     fallbackLoadingComponent,
-        //     pageStateManager,
-        //     prevMountActions: [],
-        //     isHeadable,
-        //     mountState,
-        //     componentVariant,
-        //   })
-        // }, [])
-
-        // const _errorComponent =
-        //   {
-        //     page: this._pageErrorComponent,
-        //     component: this._componentErrorComponent,
-        //     layout: this._layoutErrorComponent,
-        //   }[componentVariant] ?? Point0.DefaultErrorComponent
-        // const PrevErrorComponent = React.useCallback(({ error }: { error: Error }) => {
-        //   return React.createElement(_errorComponent, {
-        //     type: variant,
-        //     error: Error0.from(error),
-        //   })
-        // }, [])
-
-        // const PrevErrorComponent = React.useMemo(() => {
-        //   return Point0._createBoundErrorComponent({
-        //     componentVariant,
-        //     pageStateManager,
-        //     prevMountActions,
-        //     isHeadable,
-        //     mountState: {
-        //       data: undefined,
-        //       error: undefined,
-        //       loading: false,
-        //       location,
-        //       props: {},
-        //       queries: [],
-        //       status: 'error'
-        //     },
-        //     fallbackErrorComponent,
-        //   })
-        // }, [])
-
         const prevInnerProps = {}
 
         const prevQueries: QueriesResults = []
@@ -8144,22 +8090,6 @@ export class Point0<
           data: undefined,
         }
       }
-
-      // const success = prevQueries.every((query) => !!query.data)
-      // if (success) {
-      //   return {
-      //     status: 'success',
-      //     error: undefined,
-      //     loading: false,
-      //     data: prevMappedData ?? prevQueries.at(0)?.data ?? {},
-      //   }
-      // }
-      // return {
-      //   status: 'loading',
-      //   error: undefined,
-      //   loading: true,
-      //   data: undefined,
-      // }
 
       const loading = prevQueries.some((query) => query.status === 'pending')
       if (loading) {
@@ -8222,11 +8152,6 @@ export class Point0<
       // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
       switch (action.type) {
         case 'errorComponent': {
-          // mountState.ErrorComponent = React.useMemo(
-          //   () =>
-          //     Point0._createBoundErrorComponent(action.Component, variant, isHeadable ? pageStateManager : undefined),
-          //   [],
-          // )
           ErrorComponent = React.useCallback(
             Point0._createBoundErrorComponent({
               componentVariant,
@@ -8240,11 +8165,6 @@ export class Point0<
           continue
         }
         case 'loadingComponent': {
-          // mountState.LoadingComponent = React.useMemo(
-          //   () =>
-          //     Point0._createBoundLoadingComponent(action.Component, variant, isHeadable ? pageStateManager : undefined),
-          //   [],
-          // )
           LoadingComponent = React.useCallback(
             Point0._createBoundLoadingComponent({
               componentVariant,
@@ -8261,22 +8181,6 @@ export class Point0<
           mountState.props = { ...mountState.props, ...outerProps }
           continue
         }
-        // case 'head': {
-        //   if (isHeadable) {
-        //     const headFnResult = action.fn(mountState)
-        //     const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
-        //     useHead(headFnResultResolvable)
-        //   }
-        //   continue
-        // }
-        // case 'globalHead': {
-        //   if (isHeadable) {
-        //     const headFnResult = action.fn({ ...pageStateManager.pageState, location: mountState.location })
-        //     const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
-        //     useHead(headFnResultResolvable)
-        //   }
-        //   continue
-        // }
         case 'head':
         case 'globalHead': {
           if (isHeadable) {
@@ -8373,11 +8277,6 @@ export class Point0<
         case 'query': {
           const queryFnResult = action.fn(mountState)
           const queries = Array.isArray(queryFnResult) ? queryFnResult : [queryFnResult]
-          // const data = prevData
-          // mountState.queries = [...mountState.queries, ...(Array.isArray(queryResult) ? queryResult : [queryResult])]
-          // useEffectOnClientOrCallOnServerOnFirstRender(() => {
-          //   setQueriesAfterIndexToAllQueries(queries, queryIndex)
-          // }, queries)
           return React.createElement(this._getMountable, {
             ..._nextMountableProps,
             queryIndex: queryIndex + queries.length,
@@ -8393,9 +8292,6 @@ export class Point0<
               ? this.useInfiniteQuery(inputRaw as never)
               : this.useQuery(inputRaw as never)
           const queries = [queryResult]
-          // useEffectOnClientOrCallOnServerOnFirstRender(() => {
-          //   setQueriesAfterIndexToAllQueries(queries, queryIndex)
-          // }, queries)
           return React.createElement(this._getMountable, {
             ..._nextMountableProps,
             queryIndex: queryIndex + 1,
@@ -8442,10 +8338,14 @@ export class Point0<
       })
     }
 
-    return React.createElement(mountComponent as never, {
-      ...mountState,
-      ...extraProps(mountState),
-    })
+    if (mountComponent === 'children') {
+      return extraProps(mountState).children
+    } else {
+      return React.createElement(mountComponent as never, {
+        ...mountState,
+        ...extraProps(mountState),
+      })
+    }
   }
 
   Page = (
@@ -8469,14 +8369,6 @@ export class Point0<
       const inputRaw = { ...this._getUnsafeInputRawByLocation(location), ...providedInput }
       return { inputRaw, restProps }
     }, [props, location])
-
-    // const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
-    //   const result = this.parseClientInputSafe(inputRaw as never)
-    //   if (!result.success) {
-    //     return { inputParsed: null, inputParseError: result.error } satisfies InputParseResult<TClientInputSchema>
-    //   }
-    //   return { inputParsed: result.data, inputParseError: null } satisfies InputParseResult<TClientInputSchema>
-    // }, [inputRaw])
 
     const { prevLocation, status } = useRouterContext()
     React.useEffect(() => {
@@ -8661,9 +8553,6 @@ export class Point0<
       return { inputRaw, children, restProps }
     }, [props])
 
-    const providerComponent = (({ children }: { children: Exclude<React.ReactNode, Promise<any>> }) =>
-      children) as ProviderSuccessComponentType<any, any, any>
-
     return this._getMountable({
       inputRaw,
       outerProps: restProps,
@@ -8682,7 +8571,7 @@ export class Point0<
           }),
         }
       },
-      mountComponent: providerComponent,
+      mountComponent: 'children',
     })
   }
 

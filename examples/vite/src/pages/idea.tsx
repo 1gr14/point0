@@ -3,12 +3,12 @@ import { useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
 import type { Ctx } from '../lib/client.js'
 
-export const getIdea = async (ctx: Ctx, id: number) => {
-  const idea = await ctx.prisma.idea.findUniqueOrThrow({
-    where: { id },
-  })
-  return { idea }
-}
+// const getIdea = async (ctx: Ctx, id: number) => {
+//   const idea = await ctx.prisma.idea.findUniqueOrThrow({
+//     where: { id },
+//   })
+//   return { idea }
+// }
 
 // TODO: add getIdeaChain, or getIdeaQuery and use it in layout and for example in updatePage
 

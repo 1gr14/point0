@@ -55,10 +55,10 @@ export type ExtractViteConfigFn = (options: {
   scope: PointsScope
 }) => Promise<ExtractedViteConfig> | ExtractedViteConfig
 export type EngineOptionsViteConfig =
-  | ExtractedViteConfig
-  | ReturnType<typeof import('vite').defineConfig>
-  | string
   | ExtractViteConfigFn
+  | ExtractedViteConfig
+  // | ReturnType<typeof import('vite').defineConfig>
+  | string
 
 export type EngineOptionsAppComponent = (() => Promise<AppComponent | AppComponentModule>) | AppComponent
 export type EngineOptionsRoutes = () =>

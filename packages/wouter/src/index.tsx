@@ -343,7 +343,6 @@ export const RouterRoutes = ({
   Page404?: React.ComponentType
   pagesTree?: PagesTree
 }): React.ReactElement => {
-  const routerCtx = React.useContext(RouterContext)
   return <RenderPagesTree pagesTree={pagesTree} Page404={Page404} />
 }
 
