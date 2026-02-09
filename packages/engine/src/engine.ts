@@ -3,7 +3,7 @@ import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { AllPointsManagers } from './all-points-managers.js'
-import { ClientBun } from './client.js'
+import { EngineClient } from './client.js'
 import type { EngineLogger, EngineOptions } from './config.js'
 import { parseEngineOptions } from './config.js'
 import type {
@@ -13,12 +13,12 @@ import type {
 } from './generator.js'
 import { FilesGenerator } from './generator.js'
 import type { Publicdir } from './publicdir.js'
-import { ServerBun } from './server.js'
+import { EngineServer } from './server.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
 
 export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized extends boolean = boolean> {
-  clients: TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
-  server: TInitialized extends true ? ServerBun<true> : ServerBun<false>
+  clients: TInitialized extends true ? Array<EngineClient<true>> : EngineClient[]
+  server: TInitialized extends true ? EngineServer<true> : EngineServer<false>
   publicdirs: TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
   logger: EngineLogger
   generator: FilesGenerator
@@ -28,16 +28,16 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   private readonly __POINT0_ENGINE__ = true as const
 
   private constructor(input: {
-    clients: ClientBun[]
-    server: ServerBun
+    clients: EngineClient[]
+    server: EngineServer
     logger: EngineLogger
     allPointsManagers: AllPointsManagers
     initialized: TInitialized
     generator: FilesGenerator
     publicdirs: Array<Publicdir<false>>
   }) {
-    this.clients = input.clients as TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
-    this.server = input.server as TInitialized extends true ? ServerBun<true> : ServerBun<false>
+    this.clients = input.clients as TInitialized extends true ? Array<EngineClient<true>> : EngineClient[]
+    this.server = input.server as TInitialized extends true ? EngineServer<true> : EngineServer<false>
     this.logger = input.logger
     this.allPointsManagers = input.allPointsManagers
     this.initialized = input.initialized
@@ -58,7 +58,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     const parsedOptions = parseEngineOptions(options)
     const allPointsManagers = AllPointsManagers.create()
 
-    const server = ServerBun.create({
+    const server = EngineServer.create({
       ...parsedOptions.server,
       allPointsManagers,
       cwd: parsedOptions.general.cwd,
@@ -69,7 +69,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     })
 
     const clients = parsedOptions.clients.map((clientOptions) => {
-      const client = ClientBun.create({
+      const client = EngineClient.create({
         ...clientOptions,
         cwd: parsedOptions.general.cwd,
         logger: parsedOptions.general.logger,

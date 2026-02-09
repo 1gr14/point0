@@ -3,7 +3,7 @@
 // import type { PointsScope, RequiredCtx, EndPointType, InputRawUnknown, PointName } from '@point0/core'
 // import { PointRequest } from '@point0/core'
 // import type { AllPointsManagers, GetSuitableResult } from './all-points-managers.js'
-// import type { ClientBun } from './client.js'
+// import type { EngineClient } from './client.js'
 // import type { EngineLogger } from './config.js'
 // import { toJsonErrorResponse } from './error.js'
 // import { Executor } from './executor.js'
@@ -48,7 +48,7 @@
 //   allPointsManagers,
 // }: {
 //   originalRequest: Request
-//   clients: Array<ClientBun<true>>
+//   clients: Array<EngineClient<true>>
 //   publicdirs: Array<Publicdir<true>>
 //   bunServer?: Bun.Server<unknown>
 //   scope?: PointsScope
@@ -128,7 +128,7 @@
 // }: {
 //   request: PointRequest
 //   bunServer?: Bun.Server<unknown>
-//   clients: Array<ClientBun<true>>
+//   clients: Array<EngineClient<true>>
 // }): Promise<Response | undefined> => {
 //   if (process.env.NODE_ENV === 'production') {
 //     return undefined
@@ -166,7 +166,7 @@
 //   logger,
 // }: {
 //   prepareFetchResult: Extract<PrepareFetchResult, { suitable: GetSuitableResult }>
-//   clients: Array<ClientBun<true>>
+//   clients: Array<EngineClient<true>>
 //   allPointsManagers: AllPointsManagers
 //   scope?: PointsScope
 //   fallbackScope: PointsScope

@@ -23,19 +23,19 @@ import type { Engine } from './engine.js'
 import { toJsonErrorResponse } from './error.js'
 import { Executor } from './executor.js'
 import type { Publicdir } from './publicdir.js'
-import type { ServerBun } from './server.js'
+import type { EngineServer } from './server.js'
 import { generateId } from './utils.js'
 
 export class Fetcher {
   engine: Engine
-  server: ServerBun<true>
+  server: EngineServer<true>
 
-  private constructor({ engine, server }: { engine: Engine; server: ServerBun<true> }) {
+  private constructor({ engine, server }: { engine: Engine; server: EngineServer<true> }) {
     this.engine = engine
     this.server = server
   }
 
-  static create({ engine, server }: { engine: Engine; server: ServerBun<true> }): Fetcher {
+  static create({ engine, server }: { engine: Engine; server: EngineServer<true> }): Fetcher {
     return new Fetcher({ engine, server })
   }
 

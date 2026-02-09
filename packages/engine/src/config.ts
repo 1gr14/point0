@@ -15,10 +15,10 @@ import type { CompilerEnvConsts } from '../../compiler/dist/utils.js'
 import type {
   BunBuildConfigDefinition,
   BunPluginsDefinition,
-  ClientBunBuildConfigDefinition,
-  ClientBunPluginsDefinition,
-  ServerBunBuildConfigDefinition,
-  ServerBunPluginsDefinition,
+  EngineClientBuildConfigDefinition,
+  EngineClientPluginsDefinition,
+  EngineServerBuildConfigDefinition,
+  EngineServerPluginsDefinition,
 } from './utils.js'
 import { toAbsPath, toJsExtension } from './utils.js'
 
@@ -108,8 +108,8 @@ export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   outdir?: string
   entry?: string | Record<string, string>
   publicdirOutdir?: string
-  bunBuildConfig?: ServerBunBuildConfigDefinition
-  bunPlugins?: ServerBunPluginsDefinition
+  bunBuildConfig?: EngineServerBuildConfigDefinition
+  bunPlugins?: EngineServerPluginsDefinition
   viteConfig?: EngineOptionsViteConfig
   compiler?: EngineOptionsCompiler | boolean
   routes?: EngineOptionsRoutes
@@ -133,8 +133,8 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   env?: EngineOptionsEnv
   port?: number | string
   hmrPort?: number | string | boolean
-  bunBuildConfig?: ClientBunBuildConfigDefinition
-  bunPlugins?: ClientBunPluginsDefinition
+  bunBuildConfig?: EngineClientBuildConfigDefinition
+  bunPlugins?: EngineClientPluginsDefinition
   viteConfig?: EngineOptionsViteConfig
   compiler?: EngineOptionsCompiler | boolean
   outdir?: string
@@ -333,8 +333,8 @@ export type EngineClientOptionsParsed = {
   hmrPort: number | false
   index: number
   outdir: string | null
-  bunBuildConfig: ClientBunBuildConfigDefinition
-  bunPlugins: ClientBunPluginsDefinition
+  bunBuildConfig: EngineClientBuildConfigDefinition
+  bunPlugins: EngineClientPluginsDefinition
   viteConfig: EngineOptionsViteConfig | null
   compiler: EngineOptionsCompilerParsed | false
   publicdirOutdir: string | null
@@ -356,8 +356,8 @@ export type EngineServerOptionsParsed = {
   cwdBeforeBuild: string
   itWasBuilt: boolean
   fallbackScope: PointsScope
-  bunBuildConfig: ServerBunBuildConfigDefinition
-  bunPlugins: ServerBunPluginsDefinition
+  bunBuildConfig: EngineServerBuildConfigDefinition
+  bunPlugins: EngineServerPluginsDefinition
   viteConfig: EngineOptionsViteConfig | null
   compiler: EngineOptionsCompilerParsed | false
   routesInstance: EngineOptionsRoutes | null

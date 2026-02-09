@@ -14,13 +14,13 @@ export const hmr = (engine: Engine, options: { enabled?: boolean } = {}) => {
   }
 
   // TODO: somehow allow multiple clients to have hmr enabled
-  const firstClientWithClientBunNativeDevServer = engine.clients.find((client) => client.bunNativeDevServer)
+  const firstClientWithEngineClientNativeDevServer = engine.clients.find((client) => client.bunNativeDevServer)
 
-  if (!firstClientWithClientBunNativeDevServer) {
+  if (!firstClientWithEngineClientNativeDevServer) {
     return plugin
   }
 
-  const clientPort = firstClientWithClientBunNativeDevServer.port
+  const clientPort = firstClientWithEngineClientNativeDevServer.port
 
   function getUpstreamHmrUrl(requestUrl: string) {
     const parsed = parseUrl(requestUrl)

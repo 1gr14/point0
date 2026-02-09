@@ -20,12 +20,12 @@ import type {
 import type { Executor } from './executor.js'
 import { Publicdir } from './publicdir.js'
 import { addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
-import type { ServerBun } from './server.js'
-import type { ClientBunBuildConfigDefinition, ClientBunPluginsDefinition } from './utils.js'
+import type { EngineServer } from './server.js'
+import type { EngineClientBuildConfigDefinition, EngineClientPluginsDefinition } from './utils.js'
 import {
   createViteDevServer,
-  extractClientBunBuildConfig,
-  extractClientBunDevPluginsStrings,
+  extractEngineClientBuildConfig,
+  extractEngineClientDevPluginsStrings,
   extractViteConfig,
   isAsyncFn,
   normalizeAndValidateNodeEnv,
@@ -33,8 +33,7 @@ import {
   withRetries,
 } from './utils.js'
 
-// TODO:ASAP rename to EngineClient
-export class ClientBun<TInitialized extends boolean = boolean> {
+export class EngineClient<TInitialized extends boolean = boolean> {
   cwd: string
   scope: PointsScope
   engineFile: string | null
@@ -60,11 +59,11 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   env: EngineOptionsEnvParsed
   publicdir: TInitialized extends true ? Publicdir<true> : Publicdir<false>
   outdir: string | null
-  bunBuildConfig: ClientBunBuildConfigDefinition
-  bunPlugins: ClientBunPluginsDefinition
+  bunBuildConfig: EngineClientBuildConfigDefinition
+  bunPlugins: EngineClientPluginsDefinition
   publicdirOutdir: string | null
   distIndexHtmlContent: string | null
-  server: ServerBun
+  server: EngineServer
   // clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
   // serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
   viteDevServer: ViteDevServer | true | null
@@ -85,8 +84,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     // indexHtmlDistFile: string | null
     engineFile: string | null
     outdir: string | null
-    bunBuildConfig: ClientBunBuildConfigDefinition
-    bunPlugins: ClientBunPluginsDefinition
+    bunBuildConfig: EngineClientBuildConfigDefinition
+    bunPlugins: EngineClientPluginsDefinition
     publicdirOutdir: string | null
     distIndexHtmlContent: string | null
     domRootElementId: string
@@ -102,7 +101,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     bunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
     bunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
     viteDevServer: ViteDevServer | true | null
-    server: ServerBun
+    server: EngineServer
   }) {
     this.scope = input.scope
     this.cwd = input.cwd
@@ -151,8 +150,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     baseurl: string
     publicdir: EngineOptionsPublicdirParsed
     outdir: string | null
-    bunBuildConfig: ClientBunBuildConfigDefinition
-    bunPlugins: ClientBunPluginsDefinition
+    bunBuildConfig: EngineClientBuildConfigDefinition
+    bunPlugins: EngineClientPluginsDefinition
     publicdirOutdir: string | null
     indexHtml: string | null
     // indexHtmlDistFile: string | null
@@ -166,8 +165,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     allPointsManagers: AllPointsManagers
     viteConfig: EngineOptionsViteConfig | null
     compiler: EngineOptionsCompilerParsed | false
-    server: ServerBun
-  }): ClientBun<false> {
+    server: EngineServer
+  }): EngineClient<false> {
     const viteDevServer = null
     const bunNativeDevServer = null
     const bunViteDevServer = null
@@ -183,7 +182,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
 
     const distIndexHtmlContent = null
 
-    const client = new ClientBun<false>({
+    const client = new EngineClient<false>({
       ...input,
       publicdir,
       distIndexHtmlContent,
@@ -204,9 +203,9 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }: {
     // if we run server entries separately, then we we will run in another processes client dev server once
     preventDevServer?: boolean
-  }): Promise<ClientBun<true>> {
+  }): Promise<EngineClient<true>> {
     if (this.isInitialized()) {
-      return this as ClientBun<true>
+      return this as EngineClient<true>
     }
 
     // const devServersStart = performance.now()
@@ -236,10 +235,10 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.distIndexHtmlContent =
       process.env.NODE_ENV === 'production' && this.indexHtml ? await Bun.file(this.indexHtml).text() : null
     this.initialized = true as never
-    return this as ClientBun<true>
+    return this as EngineClient<true>
   }
 
-  isInitialized(): this is ClientBun<true> {
+  isInitialized(): this is EngineClient<true> {
     return !!this.initialized
   }
 
@@ -294,7 +293,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       throw new Error(`Engine file path is not provided for client "${this.scope}"`)
     }
     const tempDir = resolveTempDirPath(['client-bun-dev-server', `${this.scope}-${this.port}`])
-    const pluginsStrings = await extractClientBunDevPluginsStrings({
+    const pluginsStrings = await extractEngineClientDevPluginsStrings({
       cwd: this.cwd,
       mode: normalizeAndValidateNodeEnv('development'),
       command: 'serve',
@@ -668,7 +667,7 @@ Bun.serve({
   }
 
   async buildByBun(options?: {
-    bunBuildConfig?: ClientBunBuildConfigDefinition
+    bunBuildConfig?: EngineClientBuildConfigDefinition
     clean?: boolean
   }): Promise<string[] | null> {
     if (env.built) {
@@ -690,14 +689,14 @@ Bun.serve({
 
       const NODE_ENV = normalizeAndValidateNodeEnv('production')
 
-      const thisBunBuildConfig = await extractClientBunBuildConfig({
+      const thisBunBuildConfig = await extractEngineClientBuildConfig({
         mode: NODE_ENV,
         bunBuildConfig: this.bunBuildConfig,
         bunPlugins: this.bunPlugins,
         scope: this.scope,
       })
       const providedBunBuildConfig = bunBuildConfig
-        ? await extractClientBunBuildConfig({
+        ? await extractEngineClientBuildConfig({
             mode: NODE_ENV,
             bunBuildConfig,
             bunPlugins: [],
@@ -870,7 +869,7 @@ Bun.serve({
   }
 
   async buildClient(options?: {
-    bunBuildConfig?: ClientBunBuildConfigDefinition
+    bunBuildConfig?: EngineClientBuildConfigDefinition
     clean?: boolean
   }): Promise<string[] | null> {
     const { bunBuildConfig, clean } = options ?? {}
@@ -882,7 +881,7 @@ Bun.serve({
   }
 
   async build(options?: {
-    bunBuildConfig?: ClientBunBuildConfigDefinition
+    bunBuildConfig?: EngineClientBuildConfigDefinition
     clean?: boolean
     publicdir?: boolean
   }): Promise<{ client: string[] | null; publicdir: string[] | null }> {

@@ -193,23 +193,23 @@ export const removeLikeJsExtension = (path: string) => {
 
 // build config
 
-export type ServerBunBuildConfigDefinitionFnOptions = {
+export type EngineServerBuildConfigDefinitionFnOptions = {
   mode: NormalNodeEnv
   target: 'server'
 }
-export type ServerBunBuildConfigDefinitionFn = (
-  options: ServerBunBuildConfigDefinitionFnOptions,
+export type EngineServerBuildConfigDefinitionFn = (
+  options: EngineServerBuildConfigDefinitionFnOptions,
 ) => Partial<BuildConfig> | Promise<Partial<BuildConfig>>
-export type ServerBunBuildConfigDefinition = ServerBunBuildConfigDefinitionFn | Partial<BuildConfig>
+export type EngineServerBuildConfigDefinition = EngineServerBuildConfigDefinitionFn | Partial<BuildConfig>
 
-export type ClientBunBuildConfigDefinitionFnOptions = {
+export type EngineClientBuildConfigDefinitionFnOptions = {
   mode: NormalNodeEnv
   target: 'client'
 }
-export type ClientBunBuildConfigDefinitionFn = (
-  options: ClientBunBuildConfigDefinitionFnOptions,
+export type EngineClientBuildConfigDefinitionFn = (
+  options: EngineClientBuildConfigDefinitionFnOptions,
 ) => Partial<BuildConfig> | Promise<Partial<BuildConfig>>
-export type ClientBunBuildConfigDefinition = ClientBunBuildConfigDefinitionFn | Partial<BuildConfig>
+export type EngineClientBuildConfigDefinition = EngineClientBuildConfigDefinitionFn | Partial<BuildConfig>
 
 export type BunBuildConfigDefinitionFnOptions = {
   mode: NormalNodeEnv
@@ -221,15 +221,15 @@ export type BunBuildConfigDefinitionFn = (
 ) => Partial<BuildConfig> | Promise<Partial<BuildConfig>>
 export type BunBuildConfigDefinition = BunBuildConfigDefinitionFn | Partial<BuildConfig>
 
-export const executeServerBunBuildConfig = async ({
+export const executeEngineServerBuildConfig = async ({
   mode,
   bunBuildConfig,
   bunPlugins,
   scope,
 }: {
   mode: NormalNodeEnv
-  bunBuildConfig: ServerBunBuildConfigDefinition
-  bunPlugins: ServerBunPluginsDefinition
+  bunBuildConfig: EngineServerBuildConfigDefinition
+  bunPlugins: EngineServerPluginsDefinition
   scope: PointsScope
 }): Promise<Partial<BuildConfig>> => {
   return await extractBunBuildConfig({
@@ -241,15 +241,15 @@ export const executeServerBunBuildConfig = async ({
   })
 }
 
-export const extractClientBunBuildConfig = async ({
+export const extractEngineClientBuildConfig = async ({
   mode,
   bunBuildConfig,
   bunPlugins,
   scope,
 }: {
   mode: NormalNodeEnv
-  bunBuildConfig: ClientBunBuildConfigDefinition
-  bunPlugins: ClientBunPluginsDefinition
+  bunBuildConfig: EngineClientBuildConfigDefinition
+  bunPlugins: EngineClientPluginsDefinition
   scope: PointsScope
 }): Promise<Partial<BuildConfig>> => {
   return await extractBunBuildConfig({
@@ -285,25 +285,25 @@ export const extractBunBuildConfig = async ({
 
 // plugins
 
-export type ServerBunPluginsDefinitionFnOptions = {
+export type EngineServerPluginsDefinitionFnOptions = {
   mode: NormalNodeEnv
   command: 'serve' | 'build'
   target: 'server'
 }
-export type ServerBunPluginsDefinitionFn = (
-  options: ServerBunPluginsDefinitionFnOptions,
+export type EngineServerPluginsDefinitionFn = (
+  options: EngineServerPluginsDefinitionFnOptions,
 ) => Array<BunPlugin | string> | Promise<Array<BunPlugin | string>>
-export type ServerBunPluginsDefinition = ServerBunPluginsDefinitionFn | Array<BunPlugin | string>
+export type EngineServerPluginsDefinition = EngineServerPluginsDefinitionFn | Array<BunPlugin | string>
 
-export type ClientBunPluginsDefinitionFnOptions = {
+export type EngineClientPluginsDefinitionFnOptions = {
   mode: NormalNodeEnv
   command: 'serve' | 'build'
   target: 'client'
 }
-export type ClientBunPluginsDefinitionFn = (
-  options: ClientBunPluginsDefinitionFnOptions,
+export type EngineClientPluginsDefinitionFn = (
+  options: EngineClientPluginsDefinitionFnOptions,
 ) => Array<BunPlugin | string> | Promise<Array<BunPlugin | string>>
-export type ClientBunPluginsDefinition = ClientBunPluginsDefinitionFn | Array<BunPlugin | string>
+export type EngineClientPluginsDefinition = EngineClientPluginsDefinitionFn | Array<BunPlugin | string>
 
 export type BunPluginsDefinitionFnOptions = {
   mode: NormalNodeEnv
@@ -316,7 +316,7 @@ export type BunPluginsDefinitionFn = (
 ) => Array<BunPlugin | string> | Promise<Array<BunPlugin | string>>
 export type BunPluginsDefinition = BunPluginsDefinitionFn | Array<BunPlugin | string>
 
-export const extractServerBunPlugins = async ({
+export const extractEngineServerPlugins = async ({
   mode,
   command,
   bunPlugins,
@@ -324,7 +324,7 @@ export const extractServerBunPlugins = async ({
 }: {
   mode: NormalNodeEnv
   command: 'serve' | 'build'
-  bunPlugins: ServerBunPluginsDefinition
+  bunPlugins: EngineServerPluginsDefinition
   scope: PointsScope
 }): Promise<BunPlugin[]> => {
   return await extractBunPlugins({
@@ -336,7 +336,7 @@ export const extractServerBunPlugins = async ({
   })
 }
 
-export const extractClientBunPlugins = async ({
+export const extractEngineClientPlugins = async ({
   mode,
   command,
   bunPlugins,
@@ -344,7 +344,7 @@ export const extractClientBunPlugins = async ({
 }: {
   mode: NormalNodeEnv
   command: 'serve' | 'build'
-  bunPlugins: ClientBunPluginsDefinition
+  bunPlugins: EngineClientPluginsDefinition
   scope: PointsScope
 }): Promise<BunPlugin[]> => {
   return await extractBunPlugins({
@@ -381,7 +381,7 @@ export const extractBunPlugins = async ({
   )
 }
 
-export const extractClientBunDevPluginsStrings = async ({
+export const extractEngineClientDevPluginsStrings = async ({
   cwd,
   mode,
   command,
@@ -391,7 +391,7 @@ export const extractClientBunDevPluginsStrings = async ({
   cwd: string
   mode: NormalNodeEnv
   command: 'serve' | 'build'
-  bunPlugins: ClientBunPluginsDefinition
+  bunPlugins: EngineClientPluginsDefinition
   errorOnNotString: string
 }): Promise<string[]> => {
   const bunPluginsArray =
