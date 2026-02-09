@@ -19,40 +19,22 @@ type ChangeCollectedPointsEvent = {
 export type FilesGeneratorOptions = {
   cwd: string
   glob: string | string[]
-  targets: FilesGeneratorTarget[]
+  tasks: FilesGeneratorTask[]
   routes: Record<string, RoutesPretty | null | EngineOptionsRoutes>
   banner?: string
   logger?: EngineLogger
 }
 
-// export type FilesGeneratorTargetOptions = {
-//   scope: string
-//   routesInstance?: RoutesPretty | null | EngineOptionsRoutes
-//   routesFile?: string | null
-//   pointsLazy?: string | null
-//   pointsReady?: string | null
-//   banner?: string | null
-// }
-
-// type FilesGeneratorTarget = {
-//   scope: string
-//   routesInstanceGetter: EngineOptionsRoutes | null
-//   routesInstance: RoutesPretty | null
-//   banner: string | null
-//   outputPointsLazyAbs: string | null
-//   outputPointsReadyAbs: string | null
-//   outputRoutesAbs: string | null
-// }
-
-export type FilesGeneratorTargetPoints = {
+export type FilesGeneratorTaskPoints = {
   scope: string
   what: 'points'
+  target: 'client' | 'server'
   banner?: string | null
   path: string
   lazy?: boolean
 }
 
-export type FilesGeneratorTargetRoutes = {
+export type FilesGeneratorTaskRoutes = {
   scope: string
   what: 'routes'
   banner?: string | null
@@ -60,14 +42,14 @@ export type FilesGeneratorTargetRoutes = {
   baseurl?: string // accept string or 'process.env.SOMETHING' also as string, if ptovides process.env.SOMETHING it will be replaced with it value
 }
 
-export type FilesGeneratorTargetMeta = {
+export type FilesGeneratorTaskMeta = {
   scopes: string[]
   what: 'meta'
   banner?: string | null
   path: string
 }
 
-export type FilesGeneratorTarget = FilesGeneratorTargetPoints | FilesGeneratorTargetRoutes | FilesGeneratorTargetMeta
+export type FilesGeneratorTask = FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes | FilesGeneratorTaskMeta
 
 export type FilesGeneratorPointsFilesChangeWatcher = (
   fileEvent: 'update' | 'delete',
@@ -83,7 +65,7 @@ export class FilesGenerator {
   readonly globExclude: string[]
   readonly cwd: string
   readonly tempDir: string
-  readonly targets: FilesGeneratorTarget[]
+  readonly tasks: FilesGeneratorTask[]
   readonly routes: Record<string, RoutesPretty>
   readonly routesSrc: Record<string, { instance: RoutesPretty | null; getter: EngineOptionsRoutes | null }>
   private isRoutesInitialized = false
@@ -118,22 +100,17 @@ export class FilesGenerator {
     this.globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g.slice(1)))
     this.tempDir = resolveTempDirPath(['generator'])
 
-    //   scope: t.scope,
-    //   routesInstanceGetter: typeof t.routesInstance === 'function' ? t.routesInstance : null,
-    //   routesInstance: typeof t.routesInstance === 'function' ? null : (t.routesInstance ?? null),
-    //   banner: [this.banner, t.banner].filter(Boolean).join('\n') || null,
-    //   outputPointsLazyAbs: t.pointsLazy ? nodePath.resolve(this.cwd, t.pointsLazy) : null,
-    //   outputPointsReadyAbs: t.pointsReady ? nodePath.resolve(this.cwd, t.pointsReady) : null,
-    //   outputRoutesAbs: t.routesFile ? nodePath.resolve(this.cwd, t.routesFile) : null,
-    // }) satisfies FilesGeneratorTarget,
-    this.targets = opts.targets.map(
-      (t) =>
-        ({
-          ...t,
-          banner: [this.banner, t.banner].filter(Boolean).join('\n') || null,
-          path: nodePath.resolve(this.cwd, t.path),
-        }) satisfies FilesGeneratorTarget,
-    )
+    this.tasks = opts.tasks.map((t) => {
+      const task = {
+        ...t,
+        banner: [this.banner, t.banner].filter(Boolean).join('\n') || null,
+        path: nodePath.resolve(this.cwd, t.path),
+      } satisfies FilesGeneratorTask
+      if (task.what === 'points' && typeof task.lazy === 'undefined') {
+        task.lazy = task.target === 'client'
+      }
+      return task
+    })
     this.routesSrc = Object.entries(opts.routes).reduce<
       Record<string, { instance: RoutesPretty | null; getter: EngineOptionsRoutes | null }>
     >((acc, [scope, routes]) => {
@@ -146,7 +123,7 @@ export class FilesGenerator {
     this.routes = {}
 
     this.watchDir = this.globInclude.length > 0 ? getDirByPaths({ paths: this.globInclude }) : process.cwd()
-    this.watchIgnore = [...this.globExclude, ...this.targets.map((t) => t.path)].flatMap((p) => p || [])
+    this.watchIgnore = [...this.globExclude, ...this.tasks.map((t) => t.path)].flatMap((p) => p || [])
     this.watchPatterns = [...this.globInclude]
   }
 
@@ -335,7 +312,7 @@ export class FilesGenerator {
         } else if ('routes' in result && isRoutesObject(result.routes)) {
           this.routes[scope] = result.routes
         } else {
-          throw new Error(`Invalid routes instance for target ${scope}`)
+          throw new Error(`Invalid routes instance for scope ${scope}`)
         }
       }
       if (instance) {
@@ -346,33 +323,33 @@ export class FilesGenerator {
   }
 
   private async writeOutputs(): Promise<{ written: boolean }> {
-    const written = await Promise.all(this.targets.map(async (target) => await this.writeTargetOutput(target))).then(
+    const written = await Promise.all(this.tasks.map(async (task) => await this.writeTaskOutput(task))).then(
       (results) => results.some((r) => r.written),
     )
     return { written }
   }
 
-  private async writeTargetOutput(target: FilesGeneratorTarget): Promise<{ written: boolean }> {
+  private async writeTaskOutput(task: FilesGeneratorTask): Promise<{ written: boolean }> {
     const tasks = []
-    if (target.what === 'points' && target.lazy) {
+    if (task.what === 'points' && task.lazy) {
       tasks.push({
-        content: this.emitLazyPointsFile(target),
-        outputAbs: target.path,
-        tempOutputAbs: nodePath.join(this.tempDir, `${target.what}.${generateId()}.lazy.ts`),
+        content: this.emitLazyPointsFile(task),
+        outputAbs: task.path,
+        tempOutputAbs: nodePath.join(this.tempDir, `${task.what}.${generateId()}.lazy.ts`),
       })
     }
-    if (target.what === 'points' && !target.lazy) {
+    if (task.what === 'points' && !task.lazy) {
       tasks.push({
-        content: this.emitReadyPointsFile(target),
-        outputAbs: target.path,
-        tempOutputAbs: nodePath.join(this.tempDir, `${target.what}.${generateId()}.ready.ts`),
+        content: this.emitReadyPointsFile(task),
+        outputAbs: task.path,
+        tempOutputAbs: nodePath.join(this.tempDir, `${task.what}.${generateId()}.ready.ts`),
       })
     }
-    if (target.what === 'routes') {
+    if (task.what === 'routes') {
       tasks.push({
-        content: this.emitRoutesPointsFile(target),
-        outputAbs: target.path,
-        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.${generateId()}.routes.ts`),
+        content: this.emitRoutesPointsFile(task),
+        outputAbs: task.path,
+        tempOutputAbs: nodePath.join(this.tempDir, `${task.scope}.${generateId()}.routes.ts`),
       })
     }
     // if (this.outputWouterRoutesAbs) {
@@ -437,35 +414,35 @@ export class FilesGenerator {
   // emit
 
   // async isOutputFilesExists(): Promise<boolean> {
-  //   const results = await Promise.all(this.targets.map(async (target) => await this.isTargetOutputFilesExists(target)))
+  //   const results = await Promise.all(this.tasks.map(async (task) => await this.isTaskOutputFilesExists(task)))
   //   return results.every((r) => r)
   // }
 
-  // async isTargetOutputFilesExists(target: FilesGeneratorTarget): Promise<boolean> {
-  //   if (!target.outputPointsLazyAbs && !target.outputPointsReadyAbs && !target.outputRoutesAbs) {
+  // async isTaskOutputFilesExists(task: FilesGeneratorTask): Promise<boolean> {
+  //   if (!task.outputPointsLazyAbs && !task.outputPointsReadyAbs && !task.outputRoutesAbs) {
   //     return true
   //   }
   //   const promises: Array<Promise<boolean>> = []
-  //   if (target.outputPointsLazyAbs) {
+  //   if (task.outputPointsLazyAbs) {
   //     promises.push(
   //       nodeFs
-  //         .access(target.outputPointsLazyAbs)
+  //         .access(task.outputPointsLazyAbs)
   //         .then(() => true)
   //         .catch(() => false),
   //     )
   //   }
-  //   if (target.outputPointsReadyAbs) {
+  //   if (task.outputPointsReadyAbs) {
   //     promises.push(
   //       nodeFs
-  //         .access(target.outputPointsReadyAbs)
+  //         .access(task.outputPointsReadyAbs)
   //         .then(() => true)
   //         .catch(() => false),
   //     )
   //   }
-  //   if (target.outputRoutesAbs) {
+  //   if (task.outputRoutesAbs) {
   //     promises.push(
   //       nodeFs
-  //         .access(target.outputRoutesAbs)
+  //         .access(task.outputRoutesAbs)
   //         .then(() => true)
   //         .catch(() => false),
   //     )
@@ -480,21 +457,13 @@ export class FilesGenerator {
   //   return lines
   // }
 
-  private emitNamedImports({
-    points,
-    outputAbs,
-    target,
-  }: {
-    points: Array<CompilerPoint<true>>
-    outputAbs: string
-    target: FilesGeneratorTargetPoints
-  }): {
+  private emitNamedImports({ points, task }: { points: Array<CompilerPoint<true>>; task: FilesGeneratorTaskPoints }): {
     importLines: string[]
     importedPoints: Array<{ point: CompilerPoint; index: number; renamedExportName: string }>
     hasNotRootPoints: boolean
     rootSingleImportLine: string | null
   } {
-    points = points.filter((p) => p.scope === target.scope)
+    points = points.filter((p) => p.scope === task.scope)
     let rootSingleImportLine: string | null = null
     const importLines: string[] = []
     // let rootSingleReexportLine: string | undefined
@@ -509,7 +478,7 @@ export class FilesGenerator {
       if (point.exportName === undefined) {
         return []
       }
-      const importPath = FilesGenerator.toRelativeJsImportPath(outputAbs, point.file.abs)
+      const importPath = FilesGenerator.toRelativeJsImportPath(task.path, point.file.abs)
       const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
       const renamedExportName =
         point.type === 'root'
@@ -545,7 +514,7 @@ export class FilesGenerator {
         const rootImportPathAndExportName = importPathAndExportNames.exports.find((e) => e.root)
         if (!rootImportPathAndExportName) {
           throw new Error(
-            `Root import path and export name not found for ${importPathAndExportNames.importPath} for target ${target.scope}`,
+            `Root import path and export name not found for ${importPathAndExportNames.importPath} for scope ${task.scope}`,
           )
         }
         rootSingleImportLine = `import { ${rootImportPathAndExportName.originalExportName} as ${rootImportPathAndExportName.renamedExportName} } from '${importPathAndExportNames.importPath}'`
@@ -555,27 +524,27 @@ export class FilesGenerator {
     return { importLines, importedPoints, rootSingleImportLine, hasNotRootPoints }
   }
 
-  // private emitLazyPointsFile(target: FilesGeneratorTarget): string {
-  //   if (!target.outputPointsLazyAbs) {
+  // private emitLazyPointsFile(task: FilesGeneratorTask): string {
+  //   if (!task.outputPointsLazyAbs) {
   //     throw new Error('outputPointsLazyAbs is not set')
   //   }
-  //   const points = this.points.filter((p) => p.scope === target.scope && p.valid) as Array<CompilerPoint<true>>
+  //   const points = this.points.filter((p) => p.scope === task.scope && p.valid) as Array<CompilerPoint<true>>
   //   const lines: string[] = []
-  //   if (target.banner) {
-  //     lines.push(target.banner)
+  //   if (task.banner) {
+  //     lines.push(task.banner)
   //   }
   //   // lines.push(...this.emitSuperStoreInitialization())
   //   lines.push(`import type { LazyPointsCollectionRecord } from '@point0/core'`)
   //   // lines.push(`import { Point0 } from '@point0/core'`)
 
-  //   if (!points.find((p) => p.type === 'root' && p.scope === target.scope)) {
-  //     throw new Error(`Root point not found for target ${target.scope}`)
+  //   if (!points.find((p) => p.type === 'root' && p.scope === task.scope)) {
+  //     throw new Error(`Root point not found for task ${task.scope}`)
   //   }
 
   //   const { importedPoints, rootSingleImportLine } = this.emitNamedImports({
   //     points,
-  //     outputAbs: target.outputPointsLazyAbs,
-  //     target,
+  //     outputAbs: task.outputPointsLazyAbs,
+  //     task,
   //   })
 
   //   if (rootSingleImportLine) {
@@ -606,7 +575,7 @@ export class FilesGenerator {
   //       }
 
   //       lines.push(
-  //         `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
+  //         `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(task.outputPointsLazyAbs, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
   //       )
   //       lines.push(`} as LazyPointsCollectionRecord`)
   //       lines.push(``)
@@ -617,26 +586,26 @@ export class FilesGenerator {
   //   return lines.join('\n')
   // }
 
-  // private emitReadyPointsFile(target: FilesGeneratorTarget): string {
-  //   if (!target.outputPointsReadyAbs) {
+  // private emitReadyPointsFile(task: FilesGeneratorTask): string {
+  //   if (!task.outputPointsReadyAbs) {
   //     throw new Error('outputReadyAbs is not set')
   //   }
 
-  //   const points = this.points.filter((p) => p.scope === target.scope && p.valid) as Array<CompilerPoint<true>>
+  //   const points = this.points.filter((p) => p.scope === task.scope && p.valid) as Array<CompilerPoint<true>>
 
-  //   if (!points.find((p) => p.type === 'root' && p.scope === target.scope)) {
-  //     throw new Error(`Root point not found for target ${target.scope}`)
+  //   if (!points.find((p) => p.type === 'root' && p.scope === task.scope)) {
+  //     throw new Error(`Root point not found for task ${task.scope}`)
   //   }
 
   //   const lines: string[] = []
-  //   if (target.banner) {
-  //     lines.push(target.banner)
+  //   if (task.banner) {
+  //     lines.push(task.banner)
   //   }
 
   //   const { importLines, importedPoints, hasNotRootPoints } = this.emitNamedImports({
   //     points,
-  //     outputAbs: target.outputPointsReadyAbs,
-  //     target,
+  //     outputAbs: task.outputPointsReadyAbs,
+  //     task,
   //   })
   //   if (hasNotRootPoints) {
   //     lines.push(`import type { RawPointsCollectionRecord } from '@point0/core'`)
@@ -660,15 +629,28 @@ export class FilesGenerator {
   //   return lines.join('\n')
   // }
 
-  private static shouldExistsInPointsFile(point: CompilerPoint): boolean {
-    return point.type !== 'plugin' && point.type !== 'base' && point.exportName !== undefined && point.valid
+  private static shouldExistsInPointsFile({
+    point,
+    target,
+  }: {
+    point: CompilerPoint
+    target: 'client' | 'server'
+  }): boolean {
+    // if (point.type !== 'plugin' && point.type !== 'base' && point.exportName !== undefined && point.valid) {
+    if (point.type === 'plugin' || point.type === 'base' || point.exportName === undefined || !point.valid) {
+      return false
+    }
+    if (target === 'client') {
+      return point.type === 'page' || point.type === 'layout' || point.type === 'root'
+    }
+    return true
   }
 
   private emitLazyPointCollectionRecord({
     imported,
-    targetAbs,
+    path,
   }: {
-    targetAbs: string
+    path: string
     imported: {
       point: CompilerPoint
       index: number
@@ -692,19 +674,19 @@ export class FilesGenerator {
     }
 
     lines.push(
-      `    point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(targetAbs, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
+      `    point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(path, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
     )
     lines.push(`  },`)
     return lines
   }
 
-  private emitLazyPointsFile(target: FilesGeneratorTargetPoints): string {
+  private emitLazyPointsFile(task: FilesGeneratorTaskPoints): string {
     const points = this.points.filter(
-      (p) => p.scope === target.scope && FilesGenerator.shouldExistsInPointsFile(p),
+      (p) => p.scope === task.scope && FilesGenerator.shouldExistsInPointsFile({ point: p, target: task.target }),
     ) as Array<CompilerPoint<true>>
     const lines: string[] = []
-    if (target.banner) {
-      lines.push(target.banner)
+    if (task.banner) {
+      lines.push(task.banner)
     }
     // lines.push(...this.emitSuperStoreInitialization())
     lines.push(`import type { PointsDefinition } from '@point0/core'`)
@@ -713,12 +695,11 @@ export class FilesGenerator {
     // TODO: lets add .lazy() and calculate by it
     const { importedPoints, rootSingleImportLine } = this.emitNamedImports({
       points,
-      outputAbs: target.path,
-      target,
+      task,
     })
     const rootImported = importedPoints.find((p) => p.point.type === 'root')
     if (!rootImported) {
-      throw new Error(`Root point not found for target ${target.scope}`)
+      throw new Error(`Root point not found for scope ${task.scope}`)
     }
     if (rootSingleImportLine) {
       lines.push(rootSingleImportLine)
@@ -734,7 +715,7 @@ export class FilesGenerator {
       lines.push(
         ...this.emitLazyPointCollectionRecord({
           imported,
-          targetAbs: target.path,
+          path: task.path,
         }),
       )
     }
@@ -744,26 +725,25 @@ export class FilesGenerator {
     return lines.join('\n')
   }
 
-  private emitReadyPointsFile(target: FilesGeneratorTargetPoints): string {
+  private emitReadyPointsFile(task: FilesGeneratorTaskPoints): string {
     const points = this.points.filter(
-      (p) => p.scope === target.scope && FilesGenerator.shouldExistsInPointsFile(p),
+      (p) => p.scope === task.scope && FilesGenerator.shouldExistsInPointsFile({ point: p, target: task.target }),
     ) as Array<CompilerPoint<true>>
 
     const lines: string[] = []
-    if (target.banner) {
-      lines.push(target.banner)
+    if (task.banner) {
+      lines.push(task.banner)
     }
 
     const { importLines, importedPoints } = this.emitNamedImports({
       points,
-      outputAbs: target.path,
-      target,
+      task,
     })
     lines.push(`import type { PointsDefinition } from '@point0/core'`)
     lines.push(...importLines)
     const rootImported = importedPoints.find((p) => p.point.type === 'root')
     if (!rootImported) {
-      throw new Error(`Root point not found for target ${target.scope}`)
+      throw new Error(`Root point not found for scope ${task.scope}`)
     }
     lines.push(`export default [`)
     lines.push(`  ${rootImported.renamedExportName},`)
@@ -894,11 +874,11 @@ export class FilesGenerator {
   //   return lines.join('\n')
   // }
 
-  private emitRoutesPointsFile(target: FilesGeneratorTargetRoutes): string {
-    const points = this.points.filter((p) => p.scope === target.scope)
+  private emitRoutesPointsFile(task: FilesGeneratorTaskRoutes): string {
+    const points = this.points.filter((p) => p.scope === task.scope)
     const lines: string[] = []
-    if (target.banner) {
-      lines.push(target.banner)
+    if (task.banner) {
+      lines.push(task.banner)
     }
     lines.push(`import { Routes } from '@devp0nt/route0'`)
     lines.push(``)
@@ -987,16 +967,16 @@ export class FilesGenerator {
         }
         for (const event of events) {
           try {
-            const targetAbs = nodePath.resolve(event.path)
+            const pathAbs = nodePath.resolve(event.path)
 
             // glob match - check if the file matches any of our patterns
             const matched = this.watchPatterns.some((g) => {
               const resolvedPattern = nodePath.resolve(this.watchDir, g)
-              const relativePath = nodePath.relative(this.watchDir, targetAbs)
+              const relativePath = nodePath.relative(this.watchDir, pathAbs)
               const relativePattern = nodePath.relative(this.watchDir, resolvedPattern)
               return (
                 minimatch(relativePath, relativePattern, { dot: true }) ||
-                minimatch(targetAbs, resolvedPattern, { dot: true })
+                minimatch(pathAbs, resolvedPattern, { dot: true })
               )
             })
             if (!matched) continue
@@ -1004,7 +984,7 @@ export class FilesGenerator {
             // Check if file exists
             let exists = false
             try {
-              await nodeFs.access(targetAbs)
+              await nodeFs.access(pathAbs)
               exists = true
             } catch {
               exists = false
@@ -1014,20 +994,20 @@ export class FilesGenerator {
             const isCreateOrUpdate = (event.type === 'create' || event.type === 'update') && exists
 
             const suitable = isDelete
-              ? this.isFileOrDirSuitableToFiles(targetAbs)
+              ? this.isFileOrDirSuitableToFiles(pathAbs)
               : isCreateOrUpdate
-                ? this.isFileSuitableToGlob(targetAbs)
+                ? this.isFileSuitableToGlob(pathAbs)
                 : false
             if (!suitable) {
               return
             }
             if (isDelete) {
-              this.removeDirOrFile(targetAbs)
+              this.removeDirOrFile(pathAbs)
             } else {
-              this.addOrUpdateFile(targetAbs)
+              this.addOrUpdateFile(pathAbs)
             }
             const evt = await this.process()
-            this.notifyCustomWatchers(isDelete ? 'delete' : 'update', targetAbs, evt)
+            this.notifyCustomWatchers(isDelete ? 'delete' : 'update', pathAbs, evt)
             if (evt.changed) {
               if (evt.deleted.length > 0) {
                 const deletedTypesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(' ')

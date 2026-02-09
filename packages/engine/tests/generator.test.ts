@@ -108,23 +108,77 @@ describe('FilesGenerator', () => {
 
   describe('#sync', () => {
     it.concurrent(
-      'generates lazy points file',
+      'generates lazy points file for server',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, logger, getLastLogFirstArg, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
-export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
+export const query = root.lets('query', 'myquery').loader(() => ({hello: 'World'})).query()
+export const page = root.lets('page', 'mypage').query(query).page(({data}) => <div>Hello, {data.hello}</div>)
 export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         `)
 
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
-          targets: [
+          tasks: [
             {
               scope: 'myroot',
               what: 'points',
               path: pointsFile.path,
               lazy: true,
+              target: 'server',
+            },
+          ],
+          logger,
+          routes: {},
+        })
+        await generator.sync()
+
+        const content = fixPaths(await pointsFile.text())
+        expect(content).toMatchInlineSnapshot(`
+          "import type { PointsDefinition } from '@point0/core'
+          import { root as root_0 } from './file0.js'
+          export default [
+            root_0,
+            {
+              type: 'page',
+              name: 'mypage',
+              route: '/mypage',
+              polh: false,
+              point: async () => (await import('./file0.js')).page,
+            },
+            {
+              type: 'query',
+              name: 'myquery',
+              point: async () => (await import('./file0.js')).query,
+            },
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          "
+        `)
+        expect(getLastLogFirstArg()).toBe('4 points processed')
+        expect(getLogs()).toHaveLength(1)
+      }),
+    )
+    it.concurrent(
+      'generates lazy points file for client',
+      helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, logger, getLastLogFirstArg, getLogs }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const query = root.lets('query', 'myquery').loader(() => ({hello: 'World'})).query()
+export const page = root.lets('page', 'mypage').query(query).page(({data}) => <div>Hello, {data.hello}</div>)
+export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [
+            {
+              scope: 'myroot',
+              what: 'points',
+              path: pointsFile.path,
+              lazy: true,
+              target: 'client',
             },
           ],
           logger,
@@ -148,7 +202,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
-        expect(getLastLogFirstArg()).toBe('3 points processed')
+        expect(getLastLogFirstArg()).toBe('4 points processed')
         expect(getLogs()).toHaveLength(1)
       }),
     )
@@ -165,12 +219,13 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
-          targets: [
+          tasks: [
             {
               scope: 'myroot',
               what: 'points',
               path: pointsFile.path,
               lazy: true,
+              target: 'server',
             },
           ],
           logger,
@@ -208,12 +263,13 @@ export const page = layout2.lets('page', 'mypage').page(() => <div>Hello</div>)
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
-          targets: [
+          tasks: [
             {
               scope: 'myroot',
               what: 'points',
               path: pointsFile.path,
               lazy: true,
+              target: 'server',
             },
           ],
           logger,
@@ -264,12 +320,13 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
-          targets: [
+          tasks: [
             {
               scope: 'myroot',
               what: 'points',
               path: pointsFile.path,
               lazy: false,
+              target: 'server',
             },
           ],
           logger,
@@ -302,7 +359,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
-          targets: [
+          tasks: [
             {
               scope: 'myroot',
               what: 'routes',
@@ -339,18 +396,20 @@ export const layout = root.lets('layout', 'mylayout', '/layout').layout(() => <d
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
-          targets: [
+          tasks: [
             {
               scope: 'myroot',
               what: 'points',
               path: lazyFile.path,
               lazy: true,
+              target: 'server',
             },
             {
               scope: 'myroot',
               what: 'points',
               path: readyFile.path,
               lazy: false,
+              target: 'server',
             },
             {
               scope: 'myroot',
@@ -424,13 +483,14 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           cwd: dir,
           glob: '**/*.tsx',
           banner,
-          targets: [
+          tasks: [
             {
               scope: 'myroot',
               what: 'points',
               path: pointsFile0.path,
               lazy: true,
               banner: '// Target-specific banner 0',
+              target: 'server',
             },
             {
               scope: 'myroot',
@@ -438,6 +498,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
               path: pointsFile1.path,
               lazy: false,
               banner: '// Target-specific banner 1',
+              target: 'server',
             },
           ],
           logger,
@@ -491,7 +552,7 @@ export const root = Point0.lets('root', 'myroot').root()
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
-          targets: [
+          tasks: [
             {
               scope: 'myroot',
               what: 'routes',
@@ -532,24 +593,27 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
-          targets: [
+          tasks: [
             {
               scope: 'root0',
               what: 'points',
               path: lazy0File.path,
               lazy: true,
+              target: 'server',
             },
             {
               scope: 'root1',
               what: 'points',
               path: lazy1File.path,
               lazy: true,
+              target: 'server',
             },
             {
               scope: 'root2',
               what: 'points',
               path: lazy2File.path,
               lazy: true,
+              target: 'server',
             },
           ],
           logger,
@@ -624,12 +688,13 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
-          targets: [
+          tasks: [
             {
               scope: 'myroot',
               what: 'points',
               path: pointsFile.path,
               lazy: true,
+              target: 'server',
             },
           ],
           logger,

@@ -231,11 +231,10 @@ types.ts file thet reexport only needed types
 
 ENGINE
 Причесать, какими ключами владеет в энжине сама энжина, сервер, клиент
-auto port getter
+auto port getter -3000
 Даже функцию фетчер метод этот надо переименовать на реплейсФетч это прямое название
 Статик энжин инит это грязь, надо убрать
 При генерации роутов устанавливать в абс домен из настроек generate / baseurl get from root point, and remove from engine config / allow ny stringns and process env
-Вайт конфиг должен считать рутом место нахождения энжин файла
 envVars
 envConsts
 В префетч мод заменить на полиси

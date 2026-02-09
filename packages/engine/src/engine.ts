@@ -82,7 +82,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       cwd: parsedOptions.general.cwd,
       glob: parsedOptions.general.pointsGlob,
       routes: parsedOptions.routes,
-      targets: [...parsedOptions.server.generate, ...parsedOptions.clients.flatMap((client) => client.generate)],
+      tasks: [...parsedOptions.server.generate, ...parsedOptions.clients.flatMap((client) => client.generate)],
     })
 
     const publicdirs = [server.publicdir, ...clients.map((client) => client.publicdir)]

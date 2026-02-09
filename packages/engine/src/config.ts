@@ -12,7 +12,7 @@ import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { CompilerEnvConsts } from '../../compiler/dist/utils.js'
-import type { FilesGeneratorTargetMeta, FilesGeneratorTargetPoints, FilesGeneratorTargetRoutes } from './generator.js'
+import type { FilesGeneratorTaskMeta, FilesGeneratorTaskPoints, FilesGeneratorTaskRoutes } from './generator.js'
 import type {
   BunBuildConfigDefinition,
   BunPluginsDefinition,
@@ -83,7 +83,7 @@ export type EngineOptionsCompilerParsed = {
 export type EngineGeneralOptions = {
   file: string
   fallbackScope?: PointsScope
-  generte?: Array<Omit<FilesGeneratorTargetMeta, 'scope'>>
+  generte?: Array<Omit<FilesGeneratorTaskMeta, 'scopes'>>
   logger?: EngineLogger
   itWasBuilt?: boolean
   cwdAfterBuild?: string
@@ -102,7 +102,9 @@ export type EngineGeneralOptions = {
 export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   scope: PointsScope
   points: PointsDefinitionSource<TRequiredCtx>
-  generate?: Array<Omit<FilesGeneratorTargetPoints, 'scope'> | Omit<FilesGeneratorTargetRoutes, 'scope'>>
+  generate?: Array<
+    Omit<FilesGeneratorTaskPoints, 'scope' | 'target'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'target'>
+  >
   publicdir?: EngineOptionsPublicdir
   port?: number | string
   outdir?: string
@@ -122,7 +124,9 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   // TODO: allow empty points
   // TODO: allow points collection
   points: PointsDefinitionSource<TRequiredCtx>
-  generate?: Array<Omit<FilesGeneratorTargetPoints, 'scope'> | Omit<FilesGeneratorTargetRoutes, 'scope'>>
+  generate?: Array<
+    Omit<FilesGeneratorTaskPoints, 'scope' | 'target'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'target'>
+  >
   app?: EngineOptionsAppComponent
   baseurl?: string
   publicdir?: EngineOptionsPublicdir
@@ -315,7 +319,7 @@ export type EngineClientOptionsParsed = {
   engineFile: string
   pointsProvided: PointsDefinitionSource
   banner: string | null
-  generate: Array<FilesGeneratorTargetPoints | FilesGeneratorTargetRoutes>
+  generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
   routesProvided: EngineOptionsRoutes | null
   // pointsDistFile: string | null
   appProvided: EngineOptionsAppComponent | null
@@ -340,7 +344,7 @@ export type EngineServerOptionsParsed = {
   scope: PointsScope
   pointsProvided: PointsDefinitionSource
   banner: string | null
-  generate: Array<FilesGeneratorTargetPoints | FilesGeneratorTargetRoutes>
+  generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
   routesProvided: EngineOptionsRoutes | null
   publicdir: EngineOptionsPublicdirParsed
   port: number
@@ -770,6 +774,7 @@ export const parseEngineServerOptions = ({
     generate: (serverOptions.generate ?? []).map((target) => ({
       ...target,
       scope: serverOptions.scope,
+      target: 'server',
     })),
     banner: serverOptions.banner ?? null,
     viteConfig:
@@ -861,6 +866,7 @@ const parseEngineClientOptions = ({
     generate: (clientOptions.generate ?? []).map((target) => ({
       ...target,
       scope: clientOptions.scope,
+      target: 'client',
     })),
     banner: clientOptions.banner ?? null,
     // pointsDistFile:
