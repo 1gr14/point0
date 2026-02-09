@@ -707,9 +707,10 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       const fixedExistingRollupOptionsOutput = Array.isArray(existingRollupOptionsOutput)
         ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
         : rollupOptionsOutput
-
       const viteRoot =
-        loadedViteConfig.root || (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) || this.cwd
+        loadedViteConfig.root ||
+        (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) ||
+        (this.engineFile ? nodePath.dirname(this.engineFile) : undefined)
 
       const compilerOptions = this.getCompilerOptions()
       const compilerPlugin = compilerOptions

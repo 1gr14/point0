@@ -6,5 +6,6 @@ import { ExtractViteConfigOptions } from '../../src/config.js'
 export default (options: ExtractViteConfigOptions) => {
   return {
     plugins: [react(), svgr(), tsconfigPaths()],
+    root: 'src',
   }
 }
