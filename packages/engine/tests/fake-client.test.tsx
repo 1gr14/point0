@@ -88,12 +88,12 @@ describe('FakeClient', () => {
       .page(({ data }) => <div>Hello from {data.serverLoaderTargetName}</div>)
     expect(env.target.name).toBe('server')
     const points = [root, page] as const
-    const engine = await Engine.init({
+    const engine = await Engine.create({
       compiler: false,
       file: import.meta.url,
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
-    })
+    }).init()
     expect(env.target.name).toBe('server')
     const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
     await fakeClient.run(async () => {
@@ -124,12 +124,12 @@ describe('FakeClient', () => {
       .mutation()
     expect(env.target.name).toBe('server')
     const points = [root, page, mutation] as const
-    const engine = await Engine.init({
+    const engine = await Engine.create({
       compiler: false,
       file: import.meta.url,
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
-    })
+    }).init()
     const client = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
     await client.run(async () => {
       cooka.set('3')
@@ -167,12 +167,12 @@ describe('FakeClient', () => {
         </div>
       ))
     const points = [root, page] as const
-    const engine = await Engine.init({
+    const engine = await Engine.create({
       compiler: false,
       file: import.meta.url,
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
-    })
+    }).init()
     const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
     expect(env.target.name).toBe('server')
     await fakeClient.run(async () => {
@@ -225,12 +225,12 @@ describe('FakeClient', () => {
         )
       })
     const points = [root, page, mutation] as const
-    const engine = await Engine.init({
+    const engine = await Engine.create({
       compiler: false,
       file: import.meta.url,
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
-    })
+    }).init()
     const client = FakeClient.create<{
       container: HTMLElement
       getButton: () => HTMLButtonElement

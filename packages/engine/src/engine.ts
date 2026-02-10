@@ -100,12 +100,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       publicdirs,
     })
   }
-  static async init<TRequiredCtx extends RequiredCtx = RequiredCtx>(
-    options: EngineOptions<TRequiredCtx>,
-  ): Promise<Engine<TRequiredCtx, true>> {
-    const engine = Engine.create(options as never)
-    return await engine.init()
-  }
 
   // async init(): Promise<Engine<true>> {
   async init(options?: { preventClientDevServers?: boolean }): Promise<Engine<TRequiredCtx, true>> {

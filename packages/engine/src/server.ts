@@ -10,7 +10,7 @@ import type { EngineClient } from './client.js'
 import type {
   EngineLogger,
   EngineOptionsCompilerParsed,
-  EngineOptionsEnvParsed,
+  EngineOptionsEnvServerParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
 } from './config.js'
@@ -56,8 +56,8 @@ export class EngineServer<TInitialized extends boolean = boolean> {
   bunServer: Bun.Server<unknown> | undefined
   viteConfig: EngineOptionsViteConfig | null
   viteDevServer: ViteDevServer | null
-  envConsts: EngineOptionsEnvParsed
-  envVars: EngineOptionsEnvParsed
+  envConsts: EngineOptionsEnvServerParsed
+  envVars: EngineOptionsEnvServerParsed
   hmrPort: number | false
   fetcher: TInitialized extends true ? Fetcher : null
   compiler: EngineOptionsCompilerParsed | false
@@ -74,8 +74,8 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     fallbackScope: PointsScope
     logger: EngineLogger
     clients: EngineClient[]
-    envConsts: EngineOptionsEnvParsed
-    envVars: EngineOptionsEnvParsed
+    envConsts: EngineOptionsEnvServerParsed
+    envVars: EngineOptionsEnvServerParsed
     entry: Record<string, string> | null
     publicdir: Publicdir<false> | null
     outdir: string | null
@@ -133,8 +133,8 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       source: PublicdirDefinition
       outdir: string
     } | null
-    envConsts: EngineOptionsEnvParsed
-    envVars: EngineOptionsEnvParsed
+    envConsts: EngineOptionsEnvServerParsed
+    envVars: EngineOptionsEnvServerParsed
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
@@ -174,10 +174,34 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     return !!this.initialized
   }
 
-  async init({ engine }: { engine: Engine }): Promise<EngineServer<true>> {
+  setEnvVars({
+    extraEnvVars = {},
+    extraEnvConsts = {},
+  }: {
+    extraEnvVars?: Record<string, any>
+    extraEnvConsts?: Record<string, any>
+  } = {}): void {
+    Object.assign(this.envVars, extraEnvVars)
+    Object.assign(this.envConsts, extraEnvConsts)
+    for (const [envVarKey, envVarValue] of Object.entries({ ...this.envVars, ...this.envConsts })) {
+      process.env[envVarKey] = envVarValue
+      import.meta.env[envVarKey] = envVarValue
+    }
+  }
+
+  async init({
+    engine,
+    extraEnvVars = {},
+    extraEnvConsts = {},
+  }: {
+    engine: Engine
+    extraEnvVars?: Record<string, any>
+    extraEnvConsts?: Record<string, any>
+  }): Promise<EngineServer<true>> {
     if (this.isInitialized()) {
       return this as EngineServer<true>
     }
+    this.setEnvVars({ extraEnvVars, extraEnvConsts })
     await Promise.all([
       this.loadBunPlugins({ built: env.built }).then(async () => await this.initPointsManager()),
       this.publicdir ? this.publicdir.init() : Promise.resolve(),
@@ -262,7 +286,12 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       hmrPort: this.hmrPort,
       mode: normalizeAndValidateNodeEnv('development'),
       envConsts: this.envConsts,
-      root: this.engineFile ? nodePath.dirname(this.engineFile) : null,
+      root:
+        typeof this.viteConfig === 'string'
+          ? nodePath.dirname(this.viteConfig)
+          : this.engineFile
+            ? nodePath.dirname(this.engineFile)
+            : undefined,
     })
     this.viteDevServer = viteDevServer
     return viteDevServer

@@ -12,7 +12,7 @@ import type {
   EngineLogger,
   EngineOptionsAppComponent,
   EngineOptionsCompilerParsed,
-  EngineOptionsEnvParsed,
+  EngineOptionsEnvClientParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
 } from './config.js'
@@ -56,8 +56,8 @@ export class EngineClient<TInitialized extends boolean = boolean> {
   viteConfig: EngineOptionsViteConfig | null
   index: number
   logger: EngineLogger
-  envVars: EngineOptionsEnvParsed
-  envConsts: EngineOptionsEnvParsed
+  envVars: EngineOptionsEnvClientParsed
+  envConsts: EngineOptionsEnvClientParsed
   publicdir: TInitialized extends true ? Publicdir<true> | null : Publicdir<false> | null
   outdir: string | null
   bunBuildConfig: EngineClientBuildConfigDefinition
@@ -94,8 +94,8 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     viteConfig: EngineOptionsViteConfig | null
     index: number
     logger: EngineLogger
-    envVars: EngineOptionsEnvParsed
-    envConsts: EngineOptionsEnvParsed
+    envVars: EngineOptionsEnvClientParsed
+    envConsts: EngineOptionsEnvClientParsed
     publicdir: Publicdir | null
     allPointsManagers: AllPointsManagers
     bunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
@@ -173,8 +173,8 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     hmrPort: number | false
     index: number
     logger: EngineLogger
-    envVars: EngineOptionsEnvParsed
-    envConsts: EngineOptionsEnvParsed
+    envVars: EngineOptionsEnvClientParsed
+    envConsts: EngineOptionsEnvClientParsed
     engineFile: string | null
     allPointsManagers: AllPointsManagers
     viteConfig: EngineOptionsViteConfig | null
@@ -438,11 +438,14 @@ Bun.serve({
       hmrPort: this.hmrPort,
       mode: normalizeAndValidateNodeEnv('development'),
       envConsts: this.envConsts,
-      root: this.indexHtml
-        ? nodePath.dirname(this.indexHtml)
-        : this.engineFile
-          ? nodePath.dirname(this.engineFile)
-          : null,
+      root:
+        typeof this.viteConfig === 'string'
+          ? nodePath.dirname(this.viteConfig)
+          : this.engineFile
+            ? nodePath.dirname(this.engineFile)
+            : this.indexHtml
+              ? nodePath.dirname(this.indexHtml)
+              : undefined,
     })
     this.viteDevServer = viteDevServer
     if (!this.indexHtml) {

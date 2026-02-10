@@ -45,8 +45,11 @@ export type EngineOptionsPublicdir =
     >
 export type EngineOptionsPublicdirParsed = Array<[string, string | Response | (() => Response | Promise<Response>)]>
 
-export type EngineOptionsEnv = string | Record<string, any> | Array<string | Record<string, any>>
-export type EngineOptionsEnvParsed = Record<string, any>
+export type EngineOptionsEnvClient = string | Record<string, any> | Array<string | Record<string, any>>
+export type EngineOptionsEnvClientParsed = Record<string, any>
+
+export type EngineOptionsEnvServer = Record<string, any> | Array<Record<string, any>>
+export type EngineOptionsEnvServerParsed = Record<string, any>
 
 export type ExtractedViteConfig = import('vite').UserConfig
 export type ExtractViteConfigOptions = {
@@ -113,7 +116,7 @@ export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
     source: EngineOptionsPublicdir
     outdir: string
   }
-  env?: { vars?: EngineOptionsEnv; consts?: EngineOptionsEnv }
+  env?: { vars?: EngineOptionsEnvServer; consts?: EngineOptionsEnvServer }
   port?: number | string
   outdir?: string
   entry?: string | Record<string, string>
@@ -142,7 +145,7 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   }
   indexHtml?: string
   domRootElementId?: string
-  env?: { vars?: EngineOptionsEnv; consts?: EngineOptionsEnv }
+  env?: { vars?: EngineOptionsEnvClient; consts?: EngineOptionsEnvClient }
   port?: number | string
   hmrPort?: number | string | boolean
   bunBuildConfig?: EngineClientBuildConfigDefinition
@@ -336,8 +339,8 @@ export type EngineClientOptionsParsed = {
   baseurl: string
   indexHtml: string | null
   // indexHtmlDistFile: string | null
-  envVars: EngineOptionsEnvParsed
-  envConsts: EngineOptionsEnvParsed
+  envVars: EngineOptionsEnvClientParsed
+  envConsts: EngineOptionsEnvClientParsed
   domRootElementId: string
   port: number
   hmrPort: number | false
@@ -361,8 +364,8 @@ export type EngineServerOptionsParsed = {
   port: number
   entry: Record<string, string> | null
   outdir: string | null
-  envVars: EngineOptionsEnvParsed
-  envConsts: EngineOptionsEnvParsed
+  envVars: EngineOptionsEnvServerParsed
+  envConsts: EngineOptionsEnvServerParsed
   publicdir: {
     source: PublicdirDefinition
     outdir: string
@@ -409,7 +412,7 @@ const parsePublicdir = (input: EngineOptionsPublicdir, cwd: string): EngineOptio
   return result
 }
 
-const parseEnv = (input: EngineOptionsEnv): EngineOptionsEnvParsed => {
+const parseEnvClient = (input: EngineOptionsEnvClient): EngineOptionsEnvClientParsed => {
   if (typeof input === 'string') {
     if (input.includes('*')) {
       // for (const key of Object.keys(process.env)) {
@@ -425,9 +428,20 @@ const parseEnv = (input: EngineOptionsEnv): EngineOptionsEnvParsed => {
   if (!Array.isArray(input)) {
     return input
   }
-  const result: EngineOptionsEnvParsed = {}
+  const result: EngineOptionsEnvClientParsed = {}
   for (const item of input) {
-    Object.assign(result, parseEnv(item))
+    Object.assign(result, parseEnvClient(item))
+  }
+  return result
+}
+
+const parseEnvServer = (input: EngineOptionsEnvServer): EngineOptionsEnvServerParsed => {
+  if (!Array.isArray(input)) {
+    return input
+  }
+  const result: EngineOptionsEnvServerParsed = {}
+  for (const item of input) {
+    Object.assign(result, parseEnvServer(item))
   }
   return result
 }
@@ -790,8 +804,8 @@ export const parseEngineServerOptions = ({
     bunBuildConfig: serverOptions.bunBuildConfig ?? {},
     bunPlugins: serverOptions.bunPlugins ?? [],
     compiler,
-    envVars: parseEnv(serverOptions.env?.vars ?? {}),
-    envConsts: parseEnv(serverOptions.env?.consts ?? {}),
+    envVars: parseEnvServer(serverOptions.env?.vars ?? {}),
+    envConsts: parseEnvServer(serverOptions.env?.consts ?? {}),
     routesProvided: serverOptions.routes ?? null,
     generate: (serverOptions.generate ?? []).map((task) => ({
       ...task,
@@ -927,8 +941,8 @@ const parseEngineClientOptions = ({
     port,
     hmrPort,
     index,
-    envVars: parseEnv(clientOptions.env?.vars ?? {}),
-    envConsts: parseEnv(clientOptions.env?.consts ?? {}),
+    envVars: parseEnvClient(clientOptions.env?.vars ?? {}),
+    envConsts: parseEnvClient(clientOptions.env?.consts ?? {}),
     viteConfig:
       typeof clientOptions.viteConfig === 'string'
         ? toFinalPath({
