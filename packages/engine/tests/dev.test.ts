@@ -149,7 +149,7 @@ describe('dev', () => {
     )
 
     // Sad, becouse it is main thing and sometimes failed... But in real it works
-    it.only(
+    it(
       'have hmr client updates',
       wrp({ ssr: true, clientHmr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
         await tp.waitPortsFree()

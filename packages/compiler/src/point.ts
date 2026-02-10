@@ -885,9 +885,7 @@ export class CompilerPoint<TValid extends boolean = any> {
     const parentDecl = nodePath.findParent((p) => {
       const n = p.node
       return (
-        n.type === 'VariableDeclaration' ||
-        n.type === 'ExportNamedDeclaration' ||
-        n.type === 'ExportDefaultDeclaration'
+        n.type === 'VariableDeclaration' || n.type === 'ExportNamedDeclaration' || n.type === 'ExportDefaultDeclaration'
       )
     })
 
@@ -942,12 +940,7 @@ export class CompilerPoint<TValid extends boolean = any> {
       return
     }
 
-    // The last method in the array is the final method call (e.g., .mutation(), .query())
-    const lastMethod = methods[methods.length - 1]
-    if (lastMethod.nodePath.node.type !== 'CallExpression') {
-      this._addHmrFix = true
-      return
-    }
+    // first lets externalize helper method copinents to have hmr for it
 
     const extraComponentLikeMethods = new Set([
       'wrapper',
@@ -969,6 +962,15 @@ export class CompilerPoint<TValid extends boolean = any> {
         nodePath: method.nodePath,
         functionNameBase: `${this.type}_${this.name}_${method.name}`,
       })
+    }
+
+    // second lets add hmr fix for the point last method itself, and make any point react like component
+
+    // The last method in the array is the final method call (e.g., .mutation(), .query())
+    const lastMethod = methods[methods.length - 1]
+    if (lastMethod.nodePath.node.type !== 'CallExpression') {
+      this._addHmrFix = true
+      return
     }
 
     // Check if point type is component, layout, or page and has functional component

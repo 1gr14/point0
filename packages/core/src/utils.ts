@@ -193,7 +193,12 @@ export const toCamelCase = (str: string): string => {
 }
 
 export const toPascalCase = (str: string): string => {
-  const name = toCamelCase(str)
+  // Split camelCase/PascalCase boundaries before camelizing,
+  // so names like "componentLoading" become "ComponentLoading".
+  const normalized = str
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+  const name = toCamelCase(normalized)
   const pascal = toCapitalized(name)
   return /^[A-Za-z_$]/.test(pascal) ? pascal : `_${pascal}`
 }

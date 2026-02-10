@@ -1275,10 +1275,13 @@ export const page = root.lets('page', 'page', '/').page()
       )
 
       describe('external function extraction', () => {
-        it.concurrent.only(
+        it.concurrent(
           'extracts wrapper/loading/error and page component arrows to external functions',
           helper(async ({ files: [file], walker }) => {
             await file.write(`import {Point0} from '@point0/core'
+function MySpecialComponent() {
+  return <div>MySpecialComponent</div>
+}
 export const root = Point0.lets('root', 'root')
   .pageLoading(() => <div>Loading</div>)
   .pageError(() => <div>Error</div>)
@@ -1287,6 +1290,7 @@ export const root = Point0.lets('root', 'root')
   .componentLoading(() => <div>Loading</div>)
   .componentError(() => <div>Error</div>)
   .loading(() => <div>Loading</div>)
+  .loading(MySpecialComponent)
   .error(() => <div>Error</div>)
   .page(() => <div>Hello</div>)
   .root()
@@ -1298,21 +1302,54 @@ export const page = root
   .page(() => <div>Hello</div>)
         `)
             const result = walker.collectPointsFromFile({ file: file.path })
-            const point = result.points[1]
-            point.addHmrFix()
-            expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
+            const rootPoint = result.points[0]
+            const pagePoint = result.points[1]
+            pagePoint.addHmrFix()
+            rootPoint.addHmrFix()
+            expect(await pagePoint.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
               "import { Point0 } from '@point0/core'
+              function MySpecialComponent() {
+                return <div>MySpecialComponent</div>
+              }
+              function RootRootPageLoading() {
+                return <div>Loading</div>
+              }
+              function RootRootPageError() {
+                return <div>Error</div>
+              }
+              function RootRootLayoutLoading() {
+                return <div>Loading</div>
+              }
+              function RootRootLayoutError() {
+                return <div>Error</div>
+              }
+              function RootRootComponentLoading() {
+                return <div>Loading</div>
+              }
+              function RootRootComponentError() {
+                return <div>Error</div>
+              }
+              function RootRootLoading() {
+                return <div>Loading</div>
+              }
+              function RootRootError() {
+                return <div>Error</div>
+              }
               export const root = Point0.lets('root', 'root')
-                .pageLoading(() => <div>Loading</div>)
-                .pageError(() => <div>Error</div>)
-                .layoutLoading(() => <div>Loading</div>)
-                .layoutError(() => <div>Error</div>)
-                .componentLoading(() => <div>Loading</div>)
-                .componentError(() => <div>Error</div>)
-                .loading(() => <div>Loading</div>)
-                .error(() => <div>Error</div>)
+                .pageLoading(RootRootPageLoading)
+                .pageError(RootRootPageError)
+                .layoutLoading(RootRootLayoutLoading)
+                .layoutError(RootRootLayoutError)
+                .componentLoading(RootRootComponentLoading)
+                .componentError(RootRootComponentError)
+                .loading(RootRootLoading)
+                .loading(MySpecialComponent)
+                .error(RootRootError)
                 .page(() => <div>Hello</div>)
                 .root()
+                ._tail(() => {
+                  return null
+                })
               function PageHomeWrapper() {
                 return <div>Wrapper</div>
               }
@@ -1333,7 +1370,7 @@ export const page = root
                 .page(PageHome)
               "
             `)
-            expect(point.file.modified).toBe(true)
+            expect(pagePoint.file.modified).toBe(true)
           }),
         )
 
@@ -1419,12 +1456,12 @@ export const component = root.lets('component', 'myComponent', '/').component(()
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
               "import { Point0 } from '@point0/core'
               export const root = Point0.lets('root', 'root').root()
-              function ComponentMycomponent() {
+              function ComponentMyComponent() {
                 return <div>Component</div>
               }
               export const component = root
                 .lets('component', 'myComponent', '/')
-                .component(ComponentMycomponent)
+                .component(ComponentMyComponent)
               "
             `)
             expect(point.file.modified).toBe(true)

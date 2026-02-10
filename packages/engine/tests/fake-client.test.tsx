@@ -397,7 +397,7 @@ describe('FakeClient', () => {
   //     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
   //   })
 
-  //   it.only(
+  //   it(
   //     'should render ssr page with loader and client loader',
   //     wrp({ ssr: true, preserve: false }, async ({ tp }) => {
   //       await tp.write(
