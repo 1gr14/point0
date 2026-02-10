@@ -378,6 +378,17 @@ export class CompilerPoint<TValid extends boolean = any> {
           ) {
             return `import.meta.env.${arg.property.name}`
           }
+          // env.vars.VAR: object is MemberExpression(env, vars), property is Identifier(VAR)
+          if (
+            arg.object.type === 'MemberExpression' &&
+            arg.object.object.type === 'Identifier' &&
+            arg.object.object.name === 'env' &&
+            arg.object.property.type === 'Identifier' &&
+            arg.object.property.name === 'vars' &&
+            arg.property.type === 'Identifier'
+          ) {
+            return `process.env.${arg.property.name}` // becouse we will use it in routes file, where env not imported we use process.env directly
+          }
         }
       }
     }

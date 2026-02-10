@@ -532,7 +532,7 @@ export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() 
       }),
     )
 
-    it.concurrent(
+    it.concurrent.only(
       'point baseurl',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
@@ -546,6 +546,10 @@ export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() 
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').baseurl('http://localhost/').root()
 export const p1 = root.lets('page', 'p1', '/').page(() => <div>Hello</div>)
+export const root2 = root.lets('root', 'root2').baseurl(process.env.BASE_URL).root()
+export const p2 = root2.lets('page', 'p2', '/').page(() => <div>Hello</div>)
+export const root3 = root.lets('root', 'root3').baseurl(env.vars.BASE_URL).root()
+export const p3 = root3.lets('page', 'p3', '/').page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -559,6 +563,26 @@ export const p1 = root.lets('page', 'p1', '/').page(() => <div>Hello</div>)
           valid: true,
           name: 'p1',
           baseurl: 'http://localhost/',
+        })
+        expect(parsed[2]).toMatchObject({
+          valid: true,
+          name: 'root2',
+          baseurl: 'process.env.BASE_URL',
+        })
+        expect(parsed[3]).toMatchObject({
+          valid: true,
+          name: 'p2',
+          baseurl: 'process.env.BASE_URL',
+        })
+        expect(parsed[4]).toMatchObject({
+          valid: true,
+          name: 'root3',
+          baseurl: 'process.env.BASE_URL',
+        })
+        expect(parsed[5]).toMatchObject({
+          valid: true,
+          name: 'p3',
+          baseurl: 'process.env.BASE_URL',
         })
       }),
     )
