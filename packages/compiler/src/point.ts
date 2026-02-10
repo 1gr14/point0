@@ -387,12 +387,69 @@ export class CompilerPoint<TValid extends boolean = any> {
 
   getLayouts(): string[] {
     const layouts: string[] = []
-    for (const point of [...this.parents]) {
-      if (point.type === 'layout') {
+    for (const point of [this, ...this.parents]) {
+      for (const method of point.selfMethods) {
+        if (method.name === 'layout' && point.type !== 'layout') {
+          const layoutNames = this.resolveLayoutsFromLayoutMethod({
+            methodNodePath: method.nodePath,
+            point,
+          })
+          layouts.push(...layoutNames)
+        }
+      }
+      if (point.type === 'layout' && point !== this) {
         layouts.push(point.name)
       }
     }
-    return [...layouts].reverse()
+    return [...new Set(layouts)].reverse()
+  }
+
+  private resolveLayoutsFromLayoutMethod({
+    methodNodePath,
+    point,
+  }: {
+    methodNodePath: NodePath<Node>
+    point: CompilerPoint
+  }): string[] {
+    if (methodNodePath.node.type !== 'CallExpression') {
+      return []
+    }
+    const firstArgNodePath = methodNodePath.get('arguments').at(0)
+    if (firstArgNodePath?.node.type !== 'Identifier') {
+      return []
+    }
+
+    const resolvedBase = this.walker.findBaseLetsNodePathByBaseNodePath({
+      baseNodePath: firstArgNodePath,
+      file: point.file,
+    })
+    if (!resolvedBase.isFound || resolvedBase.baseLetsNodePath.node.type !== 'CallExpression') {
+      return []
+    }
+
+    const firstArg = resolvedBase.baseLetsNodePath.node.arguments.at(0)
+    const secondArg = resolvedBase.baseLetsNodePath.node.arguments.at(1)
+    if (firstArg?.type !== 'StringLiteral' || firstArg.value !== 'layout' || secondArg?.type !== 'StringLiteral') {
+      return []
+    }
+    const layoutName = secondArg.value
+
+    let layoutPoint = resolvedBase.baseFile.getPointFormMemoryByLetsNodePath(resolvedBase.baseLetsNodePath)
+
+    // Avoid re-entering collection for the same file while it is being parsed.
+    if (!layoutPoint && resolvedBase.baseFile.abs !== point.file.abs) {
+      const filePointsResult = this.walker.collectPointsFromFile({ file: resolvedBase.baseFile })
+      if (filePointsResult.ok) {
+        layoutPoint = filePointsResult.points.find((p) => p.letsNodePath === resolvedBase.baseLetsNodePath)
+      }
+    }
+
+    if (layoutPoint?.type !== 'layout' || layoutPoint.name !== layoutName) {
+      return [layoutName]
+    }
+
+    // Keep child->parent order here because getLayouts() reverses the final list.
+    return [layoutPoint.name, ...[...layoutPoint.parse().layouts].reverse()]
   }
 
   simplify(): CompilerPointSimplified {

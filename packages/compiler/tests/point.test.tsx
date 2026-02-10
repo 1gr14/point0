@@ -312,7 +312,7 @@ export const p5 = l6.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
     }
 
     it.concurrent(
-      'page point layouts',
+      'page point layouts chained',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
           routes: {
@@ -354,6 +354,84 @@ export const p3 = l3.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
         expect(parsed[3]).toMatchObject({
           valid: true,
           name: 'p3',
+          layouts: ['l1', 'l2', 'l3'],
+        })
+      }),
+    )
+
+    it.concurrent(
+      'page point layouts cia .layout(layout)',
+      helper(async ({ files: [file] }) => {
+        const walker = new Walker({
+          routes: {
+            myroot: Routes.create({
+              r5: Route0.create('/r5'),
+              r6: Route0.create('/r6'),
+            }),
+          },
+        })
+        await file.write(`import {Point0} from '@point0/core'
+export const myrootvariable = Point0.lets('root', 'myroot').root()
+export const l1 = myrootvariable.lets('layout', 'l1', '/x').layout()
+export const l2 = l1.lets('layout', 'l2').layout()
+export const b2 = l2.lets('base', 'b2').base()
+export const l3 = b2.lets('layout', 'l3').layout()
+export const p0 = myrootvariable.lets('page', 'p0', '/').page(() => <div>Hello</div>)
+export const p1 = myrootvariable.lets('page', 'p1', '/').layout(l1).page(() => <div>Hello</div>)
+export const p2 = myrootvariable.lets('page', 'p2', 'r2').layout(l2).page(() => <div>Hello</div>)
+export const p3 = myrootvariable.lets('page', 'p3', '/r3').layout(l3).page(() => <div>Hello</div>)
+        `)
+        const result = walker.collectPointsFromFile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        const parsed = result.points.filter((p) => p.type === 'page').map((p) => fix2(p.parse()))
+        expect(parsed[0]).toMatchObject({
+          valid: true,
+          name: 'p0',
+          layouts: [],
+        })
+        expect(parsed[1]).toMatchObject({
+          valid: true,
+          name: 'p1',
+          layouts: ['l1'],
+        })
+        expect(parsed[2]).toMatchObject({
+          valid: true,
+          name: 'p2',
+          layouts: ['l1', 'l2'],
+        })
+        expect(parsed[3]).toMatchObject({
+          valid: true,
+          name: 'p3',
+          layouts: ['l1', 'l2', 'l3'],
+        })
+      }),
+    )
+
+    it.concurrent(
+      'page point layouts cia .layout(layout) and chained combined',
+      helper(async ({ files: [file] }) => {
+        const walker = new Walker({
+          routes: {
+            myroot: Routes.create({
+              r5: Route0.create('/r5'),
+              r6: Route0.create('/r6'),
+            }),
+          },
+        })
+        await file.write(`import {Point0} from '@point0/core'
+export const myrootvariable = Point0.lets('root', 'myroot').root()
+export const l1 = myrootvariable.lets('layout', 'l1', '/x').layout()
+export const l2 = l1.lets('layout', 'l2').layout()
+export const b2 = l2.lets('base', 'b2').base()
+export const l3 = b2.lets('layout', 'l3').layout()
+export const p0 = l2.lets('page', 'p0', '/').layout(l3).page(() => <div>Hello</div>)
+        `)
+        const result = walker.collectPointsFromFile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        const parsed = result.points.filter((p) => p.type === 'page').map((p) => fix2(p.parse()))
+        expect(parsed[0]).toMatchObject({
+          valid: true,
+          name: 'p0',
           layouts: ['l1', 'l2', 'l3'],
         })
       }),

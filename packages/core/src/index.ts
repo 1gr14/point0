@@ -49,7 +49,6 @@ import type {
   Props,
   ProviderSelfProps,
   ProviderSelfType,
-  ProviderSuccessComponentType,
   QueriesDefinitions,
   QueriesDefinitionsByQueries,
   QueriesResults,
@@ -150,7 +149,6 @@ import type {
   PointName,
   PointType,
   PointsScope,
-  PrependCtx,
   QueriedData,
   QueryKey,
   QueryMode,
@@ -3872,7 +3870,7 @@ export class Point0<
         NiceLayoutEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
       ]
       return this._continue({
-        _layouts: [...this._layouts, layoutNicePoint.point],
+        _layouts: [...new Set([...this._layouts, layoutNicePoint.point])],
       }) as never
     }
   }
@@ -4239,7 +4237,7 @@ export class Point0<
       // _page: point._page,
       // _component: point._component,
       // _layout: point._layout,
-      _layouts: [...this._layouts, ...point._layouts],
+      _layouts: [...new Set([...this._layouts, ...point._layouts])],
       // name
       _fetchOptions: () => {
         const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
