@@ -2,10 +2,9 @@ import { Point0 } from '@point0/core'
 import superjson from 'superjson'
 import { prisma } from './prisma.js'
 
-export const client = Point0.lets('root', 'client')
+export const client = Point0.lets<{ zxc: number }>('root', 'client')
   .ssr(true)
   .transformer(superjson)
-  .requireCtx<{ zxc: number }>()
   // .Infer.Ctx// .Infer['RequiredCtx']
   .ctx({
     prisma,

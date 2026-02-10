@@ -2127,7 +2127,7 @@ export type NiceRootStagePoint<
   | 'ssr'
   | 'transformer'
   // | 'fetchFn'
-  | 'requireCtx'
+  // | 'requireCtx'
   | 'serverurl'
   | 'baseurl'
   | 'mutationOptions'

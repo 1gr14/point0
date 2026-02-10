@@ -1,0 +1,945 @@
+import type { RoutesPretty } from '@devp0nt/route0'
+import type {
+  AppComponent,
+  AppComponentModule,
+  NormalNodeEnv,
+  PointsDefinitionSource,
+  PointsScope,
+  RequiredCtx,
+} from '@point0/core'
+import { appendSlash, prependAndDeappendSlash } from '@point0/core'
+import { minimatch } from 'minimatch'
+import nodePath from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { normalizeEnvConsts, type CompilerEnvConsts } from '../../compiler/dist/utils.js'
+import type { FilesGeneratorTaskMeta, FilesGeneratorTaskPoints, FilesGeneratorTaskRoutes } from './generator.js'
+import type {
+  BunBuildConfigDefinition,
+  BunPluginsDefinition,
+  EngineClientBuildConfigDefinition,
+  EngineClientPluginsDefinition,
+  EngineServerBuildConfigDefinition,
+  EngineServerPluginsDefinition,
+} from './utils.js'
+import { toAbsPath, toJsExtension } from './utils.js'
+import type { PublicdirDefinition } from './publicdir.js'
+
+export type EngineLogger = {
+  info: (message: string, meta?: Record<string, any>) => any
+  error: (error: unknown, meta?: Record<string, any>) => any
+  warn: (message: string, meta?: Record<string, any>) => any
+  debug: (message: string, meta?: Record<string, any>) => any
+}
+
+export type EngineOptionsPublicdir =
+  | string
+  | Record<string, string | Response | (() => Response | Promise<Response>)>
+  | Array<
+      | string
+      | Record<string, string | Response | (() => Response | Promise<Response>)>
+      | [string, string | Response | (() => Response | Promise<Response>)]
+    >
+export type EngineOptionsPublicdirParsed = Array<[string, string | Response | (() => Response | Promise<Response>)]>
+
+export type EngineOptionsEnvClient = string | Record<string, any> | Array<string | Record<string, any>>
+export type EngineOptionsEnvClientParsed = Record<string, any>
+
+export type EngineOptionsEnvServer = Record<string, any> | Array<Record<string, any>>
+export type EngineOptionsEnvServerParsed = Record<string, any>
+
+export type ExtractedViteConfig = import('vite').UserConfig
+export type ExtractViteConfigOptions = {
+  command: 'serve' | 'build'
+  target: 'client' | 'server'
+  mode: NormalNodeEnv
+  scope: PointsScope
+}
+export type ExtractViteConfigFn = (
+  options: ExtractViteConfigOptions,
+) => Promise<ExtractedViteConfig> | ExtractedViteConfig
+export type EngineOptionsViteConfig =
+  | ExtractViteConfigFn
+  | ExtractedViteConfig
+  // | ReturnType<typeof import('vite').defineConfig>
+  | string
+
+export type EngineOptionsAppComponent = (() => Promise<AppComponent | AppComponentModule>) | AppComponent
+export type EngineOptionsRoutes = () =>
+  | Promise<RoutesPretty<any> | { routes: RoutesPretty<any> } | { default: RoutesPretty<any> }>
+  | RoutesPretty<any>
+
+export type EngineOptionsCompiler = {
+  target?: boolean
+  scope?: boolean
+  mode?: boolean
+  consts?: CompilerEnvConsts
+  filter?: RegExp
+}
+export type EngineOptionsCompilerParsed = {
+  target: boolean
+  scope: boolean
+  consts: CompilerEnvConsts | undefined
+  mode: boolean
+  filter: RegExp | undefined
+}
+
+export type EngineGeneralOptions = {
+  file: string
+  fallbackScope?: PointsScope
+  generte?: Array<Omit<FilesGeneratorTaskMeta, 'scopes'>>
+  logger?: EngineLogger
+  itWasBuilt?: boolean
+  // <scope, path>
+  cwdAfterBuild?: Record<string, string>
+  cwdBeforeBuild?: string
+  autoFixBuiltPaths?: boolean
+  pointsGlob?: string | string[]
+  buildWatchGlob?: string | string[]
+  banner?: string
+  bunBuildConfig?: BunBuildConfigDefinition
+  bunPlugins?: BunPluginsDefinition
+  viteConfig?: EngineOptionsViteConfig
+  compiler?: EngineOptionsCompiler | boolean
+}
+
+export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+  scope: PointsScope
+  points: PointsDefinitionSource<TRequiredCtx>
+  generate?: Array<
+    Omit<FilesGeneratorTaskPoints, 'scope' | 'target'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'target'>
+  >
+  publicdir?: {
+    source: EngineOptionsPublicdir
+    outdir: string
+  }
+  env?: { vars?: EngineOptionsEnvServer; consts?: EngineOptionsEnvServer }
+  port?: number | string
+  outdir?: string
+  entry?: string | Record<string, string>
+  bunBuildConfig?: EngineServerBuildConfigDefinition
+  bunPlugins?: EngineServerPluginsDefinition
+  viteConfig?: EngineOptionsViteConfig
+  compiler?: EngineOptionsCompiler | boolean
+  routes?: EngineOptionsRoutes
+  banner?: string
+  hmrPort?: number | string | boolean
+}
+
+export type EngineClientOptions = {
+  scope: PointsScope
+  // TODO: allow empty points
+  // TODO: allow points collection
+  points: PointsDefinitionSource
+  generate?: Array<
+    Omit<FilesGeneratorTaskPoints, 'scope' | 'target'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'target'>
+  >
+  app?: EngineOptionsAppComponent
+  baseurl?: string
+  publicdir?: {
+    source: EngineOptionsPublicdir
+    outdir: string
+  }
+  indexHtml?: string
+  domRootElementId?: string
+  env?: { vars?: EngineOptionsEnvClient; consts?: EngineOptionsEnvClient }
+  port?: number | string
+  hmrPort?: number | string | boolean
+  bunBuildConfig?: EngineClientBuildConfigDefinition
+  bunPlugins?: EngineClientPluginsDefinition
+  viteConfig?: EngineOptionsViteConfig
+  compiler?: EngineOptionsCompiler | boolean
+  outdir?: string
+  routes?: EngineOptionsRoutes
+  banner?: string
+}
+
+// export type EngineOptions<
+//   TServer1 extends RequiredCtx = RequiredCtx,
+//   TServer2 extends RequiredCtx = RequiredCtx,
+//   TServer3 extends RequiredCtx = RequiredCtx,
+// > = EngineGeneralOptions & {
+//   servers?:
+//     | []
+//     | [EngineServerOptions<TServer1>]
+//     | [EngineServerOptions<TServer1>, EngineServerOptions<TServer2>]
+//     | [EngineServerOptions<TServer1>, EngineServerOptions<TServer2>, EngineServerOptions<TServer3>]
+//   clients?: EngineClientOptions[]
+// }
+export type EngineOptions = EngineGeneralOptions & {
+  servers?: EngineServerOptions[]
+  clients?: EngineClientOptions[]
+}
+
+export type EngineGeneralOptionsParsed = {
+  fallbackScope: PointsScope
+  logger: EngineLogger
+  itWasBuilt: boolean
+  // <scope, path>
+  cwdAfterBuild: Record<string, string>
+  cwdBeforeBuild: string
+  engineFile: string
+  cwd: string
+  autoFixBuiltPaths: boolean
+  pointsGlob: string[]
+  buildWatchGlob: string[]
+  banner: string | null
+  compiler: EngineOptionsCompiler | boolean | null
+  bunBuildConfig: BunBuildConfigDefinition | null
+  bunPlugins: BunPluginsDefinition | null
+}
+export type EngineClientOptionsParsed = {
+  scope: PointsScope
+  engineFile: string
+  pointsProvided: PointsDefinitionSource
+  banner: string | null
+  generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
+  routesProvided: EngineOptionsRoutes | null
+  // pointsDistFile: string | null
+  appProvided: EngineOptionsAppComponent | null
+  // appDistFile: string | null
+  baseurl: string
+  indexHtml: string | null
+  // indexHtmlDistFile: string | null
+  envVars: EngineOptionsEnvClientParsed
+  envConsts: EngineOptionsEnvClientParsed
+  domRootElementId: string
+  port: number
+  hmrPort: number | false
+  index: number
+  outdir: string | null
+  bunBuildConfig: EngineClientBuildConfigDefinition
+  bunPlugins: EngineClientPluginsDefinition
+  viteConfig: EngineOptionsViteConfig | null
+  compiler: EngineOptionsCompilerParsed | false
+  publicdir: {
+    source: PublicdirDefinition
+    outdir: string
+  } | null
+}
+export type EngineServerOptionsParsed = {
+  scope: PointsScope
+  pointsProvided: PointsDefinitionSource
+  banner: string | null
+  generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
+  routesProvided: EngineOptionsRoutes | null
+  port: number
+  entry: Record<string, string> | null
+  outdir: string | null
+  envVars: EngineOptionsEnvServerParsed
+  envConsts: EngineOptionsEnvServerParsed
+  publicdir: {
+    source: PublicdirDefinition
+    outdir: string
+  } | null
+  engineFile: string
+  cwdBeforeBuild: string
+  itWasBuilt: boolean
+  fallbackScope: PointsScope
+  bunBuildConfig: EngineServerBuildConfigDefinition
+  bunPlugins: EngineServerPluginsDefinition
+  viteConfig: EngineOptionsViteConfig | null
+  compiler: EngineOptionsCompilerParsed | false
+  hmrPort: number | false
+}
+export type EngineOptionsParsed = {
+  general: EngineGeneralOptionsParsed
+  server: EngineServerOptionsParsed
+  clients: EngineClientOptionsParsed[]
+  routes: Record<string, RoutesPretty | EngineOptionsRoutes | null>
+}
+
+const parsePublicdir = (input: EngineOptionsPublicdir, cwd: string): EngineOptionsPublicdirParsed => {
+  if (typeof input === 'string') {
+    return [['/', toAbsPath(cwd, input)]]
+  }
+  if (!Array.isArray(input)) {
+    return Object.entries(input).map(([routePath, absPathOrResponseOrFn]) => [
+      prependAndDeappendSlash(routePath),
+      typeof absPathOrResponseOrFn === 'string' ? toAbsPath(cwd, absPathOrResponseOrFn) : absPathOrResponseOrFn,
+    ])
+  }
+  const result: EngineOptionsPublicdirParsed = []
+  for (const item of input) {
+    if (typeof item === 'string') {
+      result.push(...parsePublicdir(item, cwd))
+      continue
+    }
+    if (!Array.isArray(item)) {
+      result.push(...parsePublicdir(item, cwd))
+      continue
+    }
+    result.push([prependAndDeappendSlash(item[0]), typeof item[1] === 'string' ? toAbsPath(cwd, item[1]) : item[1]])
+  }
+  return result
+}
+
+const parseEnvClient = (input: EngineOptionsEnvClient): EngineOptionsEnvClientParsed => {
+  if (typeof input === 'string') {
+    if (input.includes('*')) {
+      // for (const key of Object.keys(process.env)) {
+      //   if (minimatch(key, input)) {
+      //     result[key] = process.env[key]
+      //   }
+      // }
+      return Object.fromEntries(Object.entries(process.env).filter(([key]) => minimatch(key, input)))
+    } else {
+      return { [input]: process.env[input] }
+    }
+  }
+  if (!Array.isArray(input)) {
+    return input
+  }
+  const result: EngineOptionsEnvClientParsed = {}
+  for (const item of input) {
+    Object.assign(result, parseEnvClient(item))
+  }
+  return result
+}
+
+const parseEnvServer = (input: EngineOptionsEnvServer): EngineOptionsEnvServerParsed => {
+  if (!Array.isArray(input)) {
+    return input
+  }
+  const result: EngineOptionsEnvServerParsed = {}
+  for (const item of input) {
+    Object.assign(result, parseEnvServer(item))
+  }
+  return result
+}
+
+const isFileURL = (str: string): boolean => {
+  try {
+    // Check if it starts with a URL scheme (file://, http://, https://, etc.)
+    if (/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(str)) {
+      // Validate it's a proper URL
+      const url = new URL(str)
+      // fileURLToPath specifically works with file:// URLs
+      return url.protocol === 'file:'
+    }
+    return false
+  } catch {
+    return false
+  }
+}
+
+const parseEngineGeneralOptions = ({
+  generalOptions,
+  serversOptions = [],
+  clientsOptions,
+}: {
+  generalOptions: EngineGeneralOptions
+  serversOptions: EngineServerOptions[] | undefined
+  clientsOptions: EngineClientOptions[] | undefined
+}): EngineGeneralOptionsParsed => {
+  if (!generalOptions.file) {
+    throw new Error('You should provide engine file path via file: import.meta.url, it is critical for engine to work')
+  }
+  // Convert file URL to path if needed, since we'll use it with nodePath functions
+  const engineFile = isFileURL(generalOptions.file) ? fileURLToPath(generalOptions.file) : generalOptions.file
+  const itWasBuilt = generalOptions.itWasBuilt ?? process.env.POINT0_ENGINE_WAS_BUILT === 'true'
+  const { cwdAfterBuild, cwdBeforeBuild, cwd } = (() => {
+    generalOptions.itWasBuilt ??= process.env.POINT0_ENGINE_WAS_BUILT === 'true'
+
+    if (!itWasBuilt) {
+      // first
+      // if (engineFile) {
+      //   generalOptions.cwdBeforeBuild ??= nodePath.dirname(engineFile)
+      // }
+
+      // second
+      // generalOptions.cwdBeforeBuild ??= nodePath.dirname(engineFile)
+      // now
+
+      // now
+      generalOptions.cwdBeforeBuild ??= nodePath.dirname(engineFile)
+      for (const serverOptions of serversOptions) {
+        serverOptions.outdir ||= 'dist'
+
+        if (
+          !generalOptions.cwdAfterBuild?.[serverOptions.scope] &&
+          generalOptions.cwdBeforeBuild &&
+          serverOptions.outdir
+        ) {
+          if (!nodePath.isAbsolute(generalOptions.cwdBeforeBuild)) {
+            throw new Error(
+              `cwdBeforeBuild "${generalOptions.cwdBeforeBuild}" is not absolute, but should be, while tryin auto detect cwdAfterBuild`,
+            )
+          }
+          generalOptions.cwdAfterBuild ??= {}
+          generalOptions.cwdAfterBuild[serverOptions.scope] = nodePath.resolve(
+            generalOptions.cwdBeforeBuild,
+            serverOptions.outdir,
+          )
+        }
+      }
+    } else {
+      for (const serverOptions of serversOptions) {
+        if (!generalOptions.cwdBeforeBuild || !generalOptions.cwdAfterBuild?.[serverOptions.scope]) {
+          const POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED = process.env.POINT0_ENGINE_CWD_BEFORE_BUILD ?? null
+          const POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED = process.env.POINT0_ENGINE_CWD_AFTER_BUILD ?? null
+          if (!POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED || !POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED || !engineFile) {
+            throw new Error(
+              `You should provide POINT0_ENGINE_CWD_BEFORE_BUILD and POINT0_ENGINE_CWD_AFTER_BUILD and engineFile if itWasBuilt is true and cwdBeforeBuild and cwdAfterBuild are not provided`,
+            )
+          }
+          const CWD_AFTER_BUILD_CURRENT = nodePath.dirname(engineFile)
+          if (!CWD_AFTER_BUILD_CURRENT.endsWith(POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED)) {
+            throw new Error(
+              `POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED "${POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED}" is not a subdirectory of CWD_AFTER_BUILD_CURRENT "${CWD_AFTER_BUILD_CURRENT}"`,
+            )
+          }
+          const localDir = CWD_AFTER_BUILD_CURRENT.replace(new RegExp(`${POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED}$`), '')
+          generalOptions.cwdBeforeBuild = nodePath.join(localDir, POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED)
+          generalOptions.cwdAfterBuild ??= {}
+          generalOptions.cwdAfterBuild[serverOptions.scope] = nodePath.join(
+            localDir,
+            POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED,
+          )
+        }
+      }
+    }
+
+    if (
+      !generalOptions.cwdBeforeBuild &&
+      (!generalOptions.cwdAfterBuild || Object.keys(generalOptions.cwdAfterBuild).length === 0)
+    ) {
+      return {
+        cwdAfterBuild: Object.fromEntries(serversOptions.map((serverOptions) => [serverOptions.scope, process.cwd()])),
+        cwdBeforeBuild: process.cwd(),
+        cwd: process.cwd(),
+      }
+    }
+    if (
+      !generalOptions.cwdBeforeBuild ||
+      !generalOptions.cwdAfterBuild ||
+      Object.keys(generalOptions.cwdAfterBuild).length === 0
+    ) {
+      throw new Error(`You should provide both cwdAfterBuild and cwdBeforeBuild, or non of them`)
+    }
+    if (itWasBuilt) {
+      for (const [scope, cwdAfterBuildItem] of Object.entries(generalOptions.cwdAfterBuild)) {
+        if (!nodePath.isAbsolute(cwdAfterBuildItem)) {
+          throw new Error(
+            `cwdAfterBuild "${cwdAfterBuildItem}" for scope "${scope}" is not absolute, but should be, when itWasBuilt is true`,
+          )
+        }
+      }
+    }
+    if (!nodePath.isAbsolute(generalOptions.cwdBeforeBuild)) {
+      throw new Error(
+        `cwdBeforeBuild "${generalOptions.cwdBeforeBuild}" is not absolute, but should be, when itWasBuilt is false`,
+      )
+    }
+    const cwdBeforeBuild = generalOptions.cwdBeforeBuild
+    // const cwdAfterBuild = toAbsPath(generalOptions.cwdBeforeBuild, generalOptions.cwdAfterBuild)
+    const cwdAfterBuild = Object.fromEntries(
+      Object.entries(generalOptions.cwdAfterBuild).map(([scope, cwdAfterBuildItem]) => [
+        scope,
+        toAbsPath(generalOptions.cwdBeforeBuild, cwdAfterBuildItem),
+      ]),
+    )
+    const cwd = cwdBeforeBuild
+    return { cwdAfterBuild, cwdBeforeBuild, cwd }
+  })()
+  const compiler =
+    generalOptions.compiler === undefined
+      ? null
+      : generalOptions.compiler === false
+        ? false
+        : generalOptions.compiler === true
+          ? true
+          : {
+              ...(generalOptions.compiler.consts ? { consts: generalOptions.compiler.consts } : {}),
+              ...(generalOptions.compiler.filter ? { filter: generalOptions.compiler.filter } : {}),
+              ...(generalOptions.compiler.scope !== undefined ? { scope: generalOptions.compiler.scope } : {}),
+              ...(generalOptions.compiler.target !== undefined ? { target: generalOptions.compiler.target } : {}),
+            }
+  const result = {
+    fallbackScope:
+      generalOptions.fallbackScope || clientsOptions?.at(0)?.scope || serversOptions.at(0)?.scope || 'unknown',
+    logger: generalOptions.logger || {
+      info: console.info.bind(console),
+      error: console.error.bind(console),
+      warn: console.warn.bind(console),
+      debug: console.debug.bind(console),
+    },
+    itWasBuilt,
+    cwdAfterBuild,
+    cwdBeforeBuild,
+    engineFile,
+    cwd,
+    autoFixBuiltPaths: generalOptions.autoFixBuiltPaths ?? true,
+    banner: generalOptions.banner ?? null,
+    compiler,
+  }
+  return {
+    ...result,
+    bunBuildConfig: generalOptions.bunBuildConfig ?? null,
+    bunPlugins: generalOptions.bunPlugins ?? null,
+    pointsGlob: !generalOptions.pointsGlob
+      ? []
+      : Array.isArray(generalOptions.pointsGlob)
+        ? generalOptions.pointsGlob
+        : [generalOptions.pointsGlob],
+    buildWatchGlob: !generalOptions.buildWatchGlob
+      ? []
+      : Array.isArray(generalOptions.buildWatchGlob)
+        ? generalOptions.buildWatchGlob
+        : [generalOptions.buildWatchGlob],
+  }
+}
+
+const toFinalPath = <T extends string | null | undefined>({
+  autoFixBuiltPaths,
+  itWasBuilt,
+  cwdAfterBuild,
+  cwdBeforeBuild,
+  cwdIfWasBuilt,
+  scopes,
+  path,
+  relPathAfterBuild,
+  omitDirAfterBuild,
+}: {
+  autoFixBuiltPaths: boolean
+  itWasBuilt: boolean
+  scopes: PointsScope[]
+  // <scope, path>
+  cwdAfterBuild: Record<string, string>
+  cwdBeforeBuild: string
+  cwdIfWasBuilt: string | null | undefined
+  path: T
+  relPathAfterBuild?: string | null
+  omitDirAfterBuild?: boolean
+}): T extends null | undefined ? null : T => {
+  if (!path) {
+    return (path ?? null) as T extends null | undefined ? null : T
+  }
+
+  if (!path.startsWith('.')) {
+    return path as T extends null | undefined ? null : T
+  }
+
+  const pathBeforeBuildAbs = nodePath.resolve(cwdBeforeBuild, path)
+
+  if (!itWasBuilt) {
+    return pathBeforeBuildAbs as T extends null | undefined ? null : T
+  }
+  if (!autoFixBuiltPaths) {
+    const cwdAfterBuildItem = Object.entries(cwdAfterBuild).find(([scope]) => scopes.includes(scope))?.[1]
+    return toAbsPath(cwdAfterBuildItem, path) as T extends null | undefined ? null : T
+  }
+
+  if (relPathAfterBuild === null) {
+    return null as T extends null | undefined ? null : T
+  }
+
+  const cwdAfterBuildFinal = cwdIfWasBuilt ? nodePath.resolve(cwdBeforeBuild, cwdIfWasBuilt) : cwdBeforeBuild
+
+  if (relPathAfterBuild) {
+    const fixedPath = nodePath.resolve(cwdAfterBuildFinal, toJsExtension(relPathAfterBuild))
+    return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
+  }
+
+  if (omitDirAfterBuild && !nodePath.isAbsolute(path)) {
+    const fixedPath = toJsExtension(nodePath.basename(path))
+    return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
+  }
+
+  const fixedPath = toJsExtension(path)
+  return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
+}
+
+// const toFinalDistPath = <T extends string | null | undefined>({
+//   autoFixBuiltPaths,
+//   cwdAfterBuild,
+//   cwdBeforeBuild,
+//   cwdIfWasBuilt,
+//   path,
+//   relPathAfterBuild,
+//   omitDirAfterBuild,
+// }: {
+//   autoFixBuiltPaths: boolean
+//   cwdAfterBuild: string
+//   cwdBeforeBuild: string
+//   cwdIfWasBuilt: string | null | undefined
+//   path: T
+//   relPathAfterBuild?: string | null
+//   omitDirAfterBuild?: boolean
+// }): T extends null | undefined ? null : T => {
+//   if (!path) {
+//     return (path ?? null) as T extends null | undefined ? null : T
+//   }
+
+//   if (!autoFixBuiltPaths) {
+//     return toAbsPath(cwdAfterBuild, path) as T extends null | undefined ? null : T
+//   }
+
+//   if (relPathAfterBuild === null) {
+//     return null as T extends null | undefined ? null : T
+//   }
+
+//   const cwdAfterBuildFinal = cwdIfWasBuilt ? nodePath.resolve(cwdBeforeBuild, cwdIfWasBuilt) : cwdBeforeBuild
+
+//   if (relPathAfterBuild) {
+//     const fixedPath = nodePath.resolve(cwdAfterBuildFinal, toJsExtension(relPathAfterBuild))
+//     return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
+//   }
+
+//   if (omitDirAfterBuild && !nodePath.isAbsolute(path)) {
+//     const fixedPath = toJsExtension(nodePath.basename(path))
+//     return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
+//   }
+
+//   const fixedPath = toJsExtension(path)
+//   return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
+// }
+
+export const parseEngineServerOptions = ({
+  serverOptions,
+  clientsOptions,
+  generalOptionsParsed,
+}: {
+  serverOptions: EngineServerOptions
+  clientsOptions: EngineClientOptions[]
+  generalOptionsParsed: EngineGeneralOptionsParsed
+}): EngineServerOptionsParsed => {
+  const port = typeof serverOptions.port !== 'undefined' ? Number(serverOptions.port) : 3000
+  const hmrPort =
+    serverOptions.hmrPort === false
+      ? false
+      : typeof serverOptions.hmrPort !== 'undefined' && serverOptions.hmrPort !== true
+        ? Number(serverOptions.hmrPort)
+        : port + 100
+  const entriesRecordInput =
+    typeof serverOptions.entry === 'string' ? { main: serverOptions.entry } : serverOptions.entry
+  const outdir = toFinalPath({
+    ...generalOptionsParsed,
+    scopes: [serverOptions.scope],
+    cwdIfWasBuilt: null,
+    path: serverOptions.outdir,
+  })
+  const publicdirOutdir = toFinalPath({
+    ...generalOptionsParsed,
+    scopes: [serverOptions.scope],
+    cwdIfWasBuilt: null,
+    path: serverOptions.publicdir?.outdir,
+  })
+  const publicdirSource: PublicdirDefinition =
+    !generalOptionsParsed.autoFixBuiltPaths || !generalOptionsParsed.itWasBuilt
+      ? parsePublicdir(serverOptions.publicdir?.source ?? [], generalOptionsParsed.cwd)
+      : publicdirOutdir && serverOptions.publicdir?.source
+        ? [['/', publicdirOutdir]]
+        : []
+  const publicdir = publicdirOutdir ? { source: publicdirSource, outdir: publicdirOutdir } : null
+  const entriesRecord = entriesRecordInput
+    ? Object.fromEntries(
+        Object.entries(entriesRecordInput).map(([key, value]) => [
+          key,
+          toFinalPath({
+            ...generalOptionsParsed,
+            scopes: [serverOptions.scope],
+            cwdIfWasBuilt: outdir,
+            path: value,
+            omitDirAfterBuild: true,
+          }),
+        ]),
+      )
+    : null
+  const generalOptionsParsedCompilerRecord =
+    typeof generalOptionsParsed.compiler === 'object' && generalOptionsParsed.compiler !== null
+      ? generalOptionsParsed.compiler
+      : {}
+  const serverOptionsCompilerRecord = typeof serverOptions.compiler === 'object' ? serverOptions.compiler : {}
+  const mergedCompilerRecord = {
+    target: true,
+    scope: true,
+    mode: true,
+    filter: undefined,
+    ...generalOptionsParsedCompilerRecord,
+    ...serverOptionsCompilerRecord,
+    consts: [
+      ...(generalOptionsParsedCompilerRecord.consts
+        ? Array.isArray(generalOptionsParsedCompilerRecord.consts)
+          ? generalOptionsParsedCompilerRecord.consts
+          : [generalOptionsParsedCompilerRecord.consts]
+        : []),
+      ...(serverOptionsCompilerRecord.consts
+        ? Array.isArray(serverOptionsCompilerRecord.consts)
+          ? serverOptionsCompilerRecord.consts
+          : [serverOptionsCompilerRecord.consts]
+        : []),
+    ],
+  }
+  const compiler =
+    serverOptions.compiler === false
+      ? false
+      : serverOptions.compiler === true
+        ? {
+            target: true,
+            scope: true,
+            mode: true,
+            consts: mergedCompilerRecord.consts,
+            filter: mergedCompilerRecord.filter,
+          }
+        : serverOptions.compiler !== undefined
+          ? mergedCompilerRecord
+          : generalOptionsParsed.compiler === false
+            ? false
+            : mergedCompilerRecord
+  if (compiler) {
+    compiler.consts = [...normalizeEnvConsts(compiler.consts), ...normalizeEnvConsts(serverOptions.env?.consts ?? {})]
+  }
+  return {
+    scope: serverOptions.scope,
+    pointsProvided: serverOptions.points,
+    port,
+    hmrPort,
+    outdir,
+    entry: entriesRecord,
+    publicdir,
+    engineFile: generalOptionsParsed.engineFile,
+    cwdBeforeBuild: generalOptionsParsed.cwdBeforeBuild,
+    itWasBuilt: generalOptionsParsed.itWasBuilt,
+    fallbackScope: generalOptionsParsed.fallbackScope,
+    bunBuildConfig: serverOptions.bunBuildConfig ?? {},
+    bunPlugins: serverOptions.bunPlugins ?? [],
+    compiler,
+    envVars: parseEnvServer(serverOptions.env?.vars ?? {}),
+    envConsts: parseEnvServer(serverOptions.env?.consts ?? {}),
+    routesProvided: serverOptions.routes ?? null,
+    generate: (serverOptions.generate ?? []).map((task) => ({
+      ...task,
+      scope: serverOptions.scope,
+      target: 'server',
+    })),
+    banner: serverOptions.banner ?? null,
+    viteConfig:
+      typeof serverOptions.viteConfig === 'string'
+        ? toFinalPath({
+            ...generalOptionsParsed,
+            scopes: [serverOptions.scope],
+            relPathAfterBuild: null,
+            cwdIfWasBuilt: null,
+            path: serverOptions.viteConfig,
+          })
+        : (serverOptions.viteConfig ?? null),
+  }
+}
+const parseEngineClientOptions = ({
+  index,
+  clientOptions,
+  serverOptionsParsed,
+  generalOptionsParsed,
+}: {
+  index: number
+  clientOptions: EngineClientOptions
+  serverOptionsParsed: EngineServerOptionsParsed
+  generalOptionsParsed: EngineGeneralOptionsParsed
+}): EngineClientOptionsParsed => {
+  const port =
+    typeof clientOptions.port !== 'undefined' ? Number(clientOptions.port) : serverOptionsParsed.port + index + 1
+  const hmrPort =
+    clientOptions.hmrPort === false
+      ? false
+      : typeof clientOptions.hmrPort !== 'undefined' && clientOptions.hmrPort !== true
+        ? Number(clientOptions.hmrPort)
+        : port + 100
+  const outdir = toFinalPath({
+    ...generalOptionsParsed,
+    scopes: [serverOptionsParsed.scope],
+    cwdIfWasBuilt: null,
+    path: clientOptions.outdir ?? null,
+  })
+  const publicdirOutdir = toFinalPath({
+    ...generalOptionsParsed,
+    cwdIfWasBuilt: null,
+    path: clientOptions.publicdir?.outdir,
+  })
+  const publicdirSource: PublicdirDefinition =
+    !generalOptionsParsed.autoFixBuiltPaths || !generalOptionsParsed.itWasBuilt
+      ? parsePublicdir(clientOptions.publicdir?.source ?? [], generalOptionsParsed.cwd)
+      : publicdirOutdir && clientOptions.publicdir?.source
+        ? [['/', publicdirOutdir]]
+        : []
+  const publicdir = publicdirOutdir ? { source: publicdirSource, outdir: publicdirOutdir } : null
+  const generalOptionsParsedCompilerRecord =
+    typeof generalOptionsParsed.compiler === 'object' && generalOptionsParsed.compiler !== null
+      ? generalOptionsParsed.compiler
+      : {}
+  const clientOptionsCompilerRecord = typeof clientOptions.compiler === 'object' ? clientOptions.compiler : {}
+  const mergedCompilerRecord = {
+    target: true,
+    scope: true,
+    mode: true,
+    filter: undefined,
+    ...generalOptionsParsedCompilerRecord,
+    ...clientOptionsCompilerRecord,
+    consts: [
+      ...(generalOptionsParsedCompilerRecord.consts
+        ? Array.isArray(generalOptionsParsedCompilerRecord.consts)
+          ? generalOptionsParsedCompilerRecord.consts
+          : [generalOptionsParsedCompilerRecord.consts]
+        : []),
+      ...(clientOptionsCompilerRecord.consts
+        ? Array.isArray(clientOptionsCompilerRecord.consts)
+          ? clientOptionsCompilerRecord.consts
+          : [clientOptionsCompilerRecord.consts]
+        : []),
+    ],
+  }
+  const compiler =
+    clientOptions.compiler === false
+      ? false
+      : clientOptions.compiler === true
+        ? {
+            target: true,
+            scope: true,
+            mode: true,
+            consts: mergedCompilerRecord.consts,
+            filter: mergedCompilerRecord.filter,
+          }
+        : clientOptions.compiler !== undefined
+          ? mergedCompilerRecord
+          : generalOptionsParsed.compiler === false
+            ? false
+            : mergedCompilerRecord
+  if (compiler) {
+    compiler.consts = [...normalizeEnvConsts(compiler.consts), ...normalizeEnvConsts(clientOptions.env?.consts ?? {})]
+  }
+  return {
+    scope: clientOptions.scope,
+    compiler,
+    pointsProvided: clientOptions.points,
+    routesProvided: clientOptions.routes ?? null,
+    generate: (clientOptions.generate ?? []).map((task) => ({
+      ...task,
+      scope: clientOptions.scope,
+      target: 'client',
+    })),
+    banner: clientOptions.banner ?? null,
+    // pointsDistFile:
+    //   typeof clientOptions.points === 'string'
+    //     ? toFinalDistPath({
+    //         ...generalOptionsParsed,
+    //         cwdIfWasBuilt: serverOutdir,
+    //         relPathAfterBuild: clientOptions.viteConfig ? './points.js' : undefined,
+    //         path: clientOptions.points,
+    //         omitDirAfterBuild: true,
+    //       })
+    //     : null,
+    appProvided: clientOptions.app ?? null,
+    // appDistFile:
+    //   typeof clientOptions.app === 'string'
+    //     ? toFinalDistPath({
+    //         ...generalOptionsParsed,
+    //         cwdIfWasBuilt: serverOutdir,
+    //         relPathAfterBuild: clientOptions.viteConfig ? './app.js' : undefined,
+    //         path: clientOptions.app,
+    //         omitDirAfterBuild: true,
+    //       })
+    //     : null,
+    baseurl: appendSlash(clientOptions.baseurl) ?? '/',
+    domRootElementId: clientOptions.domRootElementId || 'root',
+    port,
+    hmrPort,
+    index,
+    envVars: parseEnvClient(clientOptions.env?.vars ?? {}),
+    envConsts: parseEnvClient(clientOptions.env?.consts ?? {}),
+    viteConfig:
+      typeof clientOptions.viteConfig === 'string'
+        ? toFinalPath({
+            ...generalOptionsParsed,
+            relPathAfterBuild: null,
+            cwdIfWasBuilt: null,
+            path: clientOptions.viteConfig,
+          })
+        : (clientOptions.viteConfig ?? null),
+    outdir,
+    indexHtml: toFinalPath({
+      ...generalOptionsParsed,
+      cwdIfWasBuilt: outdir,
+      relPathAfterBuild: './index.html',
+      path: clientOptions.indexHtml,
+    }),
+    // indexHtmlDistFile: toFinalDistPath({
+    //   ...generalOptionsParsed,
+    //   cwdIfWasBuilt: outdir,
+    //   relPathAfterBuild: './index.html',
+    //   path: clientOptions.indexHtml,
+    // }),
+    publicdir,
+    bunBuildConfig: clientOptions.bunBuildConfig ?? {},
+    bunPlugins: clientOptions.bunPlugins ?? [],
+    engineFile: generalOptionsParsed.engineFile,
+  }
+}
+
+// const shortEngineOptionsToEngineOptions = (options: EngineShortOptions | EngineOptions): EngineOptions => {
+//   if (Array.isArray(options.server)) {
+//     const module = PointsManager.rawPointsDefinitionToReadyPointsModule(options.server)
+//     const scope = module._root.point.point.scope
+//     options.server = {
+//       scope,
+//       points: async () => module,
+//     }
+//   }
+//   const clients = options.clients?.flatMap((client) => {
+//     if (Array.isArray(client)) {
+//       const module = PointsManager.rawPointsDefinitionToReadyPointsModule(client)
+//       const scope = module._root.point.point.scope
+//       return {
+//         scope,
+//         points: async () => module,
+//       }
+//     }
+//     return client as EngineClientOptions
+//   })
+//   if (!options.server) {
+//     const scope = clients?.at(0)?.scope
+//     if (!scope) {
+//       throw new Error('No scope found in clients and no server points provided')
+//     }
+//     options.server = { scope }
+//   }
+//   return {
+//     ...options,
+//     clients,
+//   } as EngineOptions
+// }
+
+export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {
+  const { servers: serversOptions = [], clients: clientsOptions = [], ...generalOptions } = options
+  const generalOptionsParsed = parseEngineGeneralOptions({
+    generalOptions,
+    serversOptions,
+    clientsOptions,
+  })
+  const serversOptionsParsed = serversOptions.map((serverOptions) =>
+    parseEngineServerOptions({
+      serverOptions,
+      clientsOptions,
+      generalOptionsParsed,
+    }),
+  )
+  const clientsOptionsParsed = clientsOptions.map((clientOptions, index) => {
+    const serverOptionsParsed = serversOptionsParsed.find((serverOptionsParsed) => clientOptions. serverOptionsParsed.scope)
+    return parseEngineClientOptions({
+      index,
+      clientOptions,
+      serverOptionsParsed,
+      generalOptionsParsed,
+    }),
+  })
+  const routes = {
+    [serverOptionsParsed.scope]: serverOptionsParsed.routesProvided,
+    ...Object.fromEntries(
+      clientsOptionsParsed.map((clientOptions) => [clientOptions.scope, clientOptions.routesProvided]),
+    ),
+  } satisfies Record<string, EngineOptionsRoutes | null>
+  return {
+    general: generalOptionsParsed,
+    server: serverOptionsParsed,
+    clients: clientsOptionsParsed,
+    routes,
+  }
+}

@@ -771,13 +771,13 @@ export class Point0<
     })
   }
 
-  static lets(
+  static lets<TRequiredCtx extends RequiredCtx = UndefinedCtx>(
     pointType: 'root',
     pointName: string,
   ): NiceRootStagePoint<
     'coreStage',
     'root',
-    UndefinedCtx,
+    TRequiredCtx,
     EmptyCtx,
     UndefinedCtxExposedKeys,
     UndefinedLoaderOutput,
@@ -837,25 +837,25 @@ export class Point0<
 
   // root settings
 
-  requireCtx<TExtraRequiredCtx extends Ctx>(): NiceRootStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    'root',
-    AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
-    PrependCtx<TCtx, TExtraRequiredCtx>,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
-    return this._continue({}) as never
-  }
+  // requireCtx<TExtraRequiredCtx extends Ctx>(): NiceRootStagePoint<
+  //   StagePointTypeOrNever<TPointType>,
+  //   'root',
+  //   AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
+  //   PrependCtx<TCtx, TExtraRequiredCtx>,
+  //   TCtxExposedKeys,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   TMapperOutput,
+  //   TRouteDefinition,
+  //   TServerInputSchema,
+  //   TClientInputSchema,
+  //   TQueryResultType,
+  //   TOuterProps,
+  //   TInnerProps,
+  //   TQueriesDefinitions
+  // > {
+  //   return this._continue({}) as never
+  // }
 
   serverurl(
     serverurl: string,
