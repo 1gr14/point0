@@ -11,6 +11,7 @@ describe('internal-testing', () => {
   it('works', async () => {
     const root = Point0.lets('root', 'root')
       .ssr(true)
+      .baseurl('http://localhost/')
       .queryOptions({ refetchOnMount: false, staleTime: Infinity })
       .prefetchPolicy('none')
       .loading(() => <div id="loading">...</div>)

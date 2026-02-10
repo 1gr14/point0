@@ -6,6 +6,7 @@ import { createTestThings } from './utils/internal-testing.js'
 describe('page', () => {
   const root = Point0.lets('root', 'root')
     .ssr(true)
+    .baseurl('http://localhost/')
     .loading(() => <div id="loading">...</div>)
     .error(({ error }) => <div id="error">{error.message}</div>)
     .queryOptions({

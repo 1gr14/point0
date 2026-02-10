@@ -174,34 +174,21 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     return !!this.initialized
   }
 
-  setEnvVars({
-    extraEnvVars = {},
-    extraEnvConsts = {},
-  }: {
-    extraEnvVars?: Record<string, any>
-    extraEnvConsts?: Record<string, any>
-  } = {}): void {
-    Object.assign(this.envVars, extraEnvVars)
-    Object.assign(this.envConsts, extraEnvConsts)
+  private setEnvVars(): void {
+    this.envConsts.NODE_ENV = normalizeAndValidateNodeEnv()
+    this.envConsts.POINT0_SCOPE = this.scope
+    this.envConsts.POINT0_TARGET = 'server'
     for (const [envVarKey, envVarValue] of Object.entries({ ...this.envVars, ...this.envConsts })) {
       process.env[envVarKey] = envVarValue
       import.meta.env[envVarKey] = envVarValue
     }
   }
 
-  async init({
-    engine,
-    extraEnvVars = {},
-    extraEnvConsts = {},
-  }: {
-    engine: Engine
-    extraEnvVars?: Record<string, any>
-    extraEnvConsts?: Record<string, any>
-  }): Promise<EngineServer<true>> {
+  async init({ engine }: { engine: Engine }): Promise<EngineServer<true>> {
     if (this.isInitialized()) {
       return this as EngineServer<true>
     }
-    this.setEnvVars({ extraEnvVars, extraEnvConsts })
+    this.setEnvVars()
     await Promise.all([
       this.loadBunPlugins({ built: env.built }).then(async () => await this.initPointsManager()),
       this.publicdir ? this.publicdir.init() : Promise.resolve(),
@@ -244,7 +231,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     extraPlugins?: BunPlugin[]
   }): Promise<BunPlugin[]> {
     const extractedPlugins = await extractEngineServerPlugins({
-      mode: normalizeAndValidateNodeEnv('development'),
+      mode: normalizeAndValidateNodeEnv(),
       command: 'serve',
       bunPlugins: this.bunPlugins,
       scope: this.scope,
@@ -284,7 +271,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       scope: this.scope,
       target: 'server',
       hmrPort: this.hmrPort,
-      mode: normalizeAndValidateNodeEnv('development'),
+      mode: normalizeAndValidateNodeEnv(),
       envConsts: this.envConsts,
       root:
         typeof this.viteConfig === 'string'

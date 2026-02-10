@@ -23,7 +23,7 @@ program
   .option('-W, --no-watch', 'Prevent watch file changes, restrat server, regenrate files')
   .option(
     '-e, --entry <name|path>',
-    'Server entry points, names or paths (-e <entry1>,<entry2>,...) or (-e <entry1> -e <entry2>,...)',
+    'Server entry points, names or paths (-e <entry1>,<entry2>,...) or (-e <entry1> -e <entry2> ...)',
     (value, previous: string[] = []) => {
       previous.push(...value.split(','))
       return previous

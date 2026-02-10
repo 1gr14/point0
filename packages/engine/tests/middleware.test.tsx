@@ -74,7 +74,7 @@ describe('midleware', () => {
   // afterEach(cleanup)
 
   it('without', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()
     const page = root
       .lets('page', 'home', '/')
       .loader(({ request }) => ({ x: 1, y: request.headers.x }))
@@ -106,6 +106,7 @@ describe('midleware', () => {
         return result // ok fine, I just want to check meta, now I want it going forward
       })
       .ssr(true)
+      .baseurl('http://localhost/')
       .root()
     const page = root
       .lets('page', 'home', '/')
@@ -135,6 +136,7 @@ describe('midleware', () => {
         return new Response('custom response')
       })
       .ssr(true)
+      .baseurl('http://localhost/')
       .root()
     const page = root
       .lets('page', 'home', '/')
@@ -159,6 +161,7 @@ describe('midleware', () => {
         throw new Error('custom error')
       })
       .ssr(true)
+      .baseurl('http://localhost/')
       .root()
     const page = root
       .lets('page', 'home', '/')
@@ -189,6 +192,7 @@ describe('midleware', () => {
         return result
       })
       .ssr(true)
+      .baseurl('http://localhost/')
       .root()
     const page = root
       .lets('page', 'home', '/')

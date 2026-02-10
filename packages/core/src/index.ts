@@ -3462,13 +3462,16 @@ export class Point0<
     const [letsEndPointType, pointName, route] = args as [EndPointType, PointName, AnyRoute | string | undefined]
     const prevRoute = this.route
     const newRoute = (() => {
+      const routeConfig = { baseurl: this._baseurl ?? undefined }
       if (letsEndPointType === 'page') {
         if (typeof route === 'string' || !route) {
           const routeOrPointName = route ?? pointName
           if (routeOrPointName === '/') {
-            return prevRoute?.clone() ?? Route0.from('/')
+            return prevRoute?.clone() ?? Route0.create('/', routeConfig)
           }
-          return prevRoute ? prevRoute.extend(routeOrPointName) : Route0.from(dedupeSlashes(`/${routeOrPointName}`))
+          return prevRoute
+            ? prevRoute.extend(routeOrPointName).clone(routeConfig)
+            : Route0.create(dedupeSlashes(`/${routeOrPointName}`), routeConfig)
         }
         return route
       }
@@ -3476,9 +3479,11 @@ export class Point0<
         if (typeof route === 'string' || !route) {
           const routeNormalized = route ?? '/'
           if (routeNormalized === '/') {
-            return prevRoute?.clone() ?? Route0.from('/')
+            return prevRoute?.clone() ?? Route0.create('/', routeConfig)
           }
-          return prevRoute ? prevRoute.extend(routeNormalized) : Route0.from(dedupeSlashes(`/${routeNormalized}`))
+          return prevRoute
+            ? prevRoute.extend(routeNormalized).clone(routeConfig)
+            : Route0.create(dedupeSlashes(`/${routeNormalized}`), routeConfig)
         }
         return route
       }

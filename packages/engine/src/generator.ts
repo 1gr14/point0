@@ -109,6 +109,11 @@ export class FilesGenerator {
       if (task.what === 'points' && typeof task.lazy === 'undefined') {
         task.lazy = task.target === 'client'
       }
+      if (task.what === 'routes') {
+        if (!task.baseurl || task.baseurl === '/') {
+          task.baseurl = undefined
+        }
+      }
       return task
     })
     this.routesSrc = Object.entries(opts.routes).reduce<
@@ -883,6 +888,13 @@ export class FilesGenerator {
     lines.push(`import { Routes } from '@devp0nt/route0'`)
     lines.push(``)
 
+    const baseurlString = !task.baseurl
+      ? undefined
+      : task.baseurl.startsWith('process.env.') || task.baseurl.startsWith('import.meta.env.')
+        ? task.baseurl
+        : `'${task.baseurl}'`
+    const baseurlSuffix = baseurlString ? `, { baseurl: ${baseurlString} }` : ''
+
     const pagePoints = points.flatMap((p) =>
       p.type === 'page' && p.route ? [{ name: p.name, route: p.route.definition }] : [],
     )
@@ -891,9 +903,9 @@ export class FilesGenerator {
       for (const p of pagePoints) {
         lines.push(`  ${p.name}: '${p.route}',`)
       }
-      lines.push(`})`)
+      lines.push(`}${baseurlSuffix})`)
     } else {
-      lines.push(`export const routes = Routes.create({})`)
+      lines.push(`export const routes = Routes.create({}${baseurlSuffix})`)
     }
     lines.push(``)
 

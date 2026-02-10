@@ -122,18 +122,11 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     this.viteConfig = input.viteConfig
     this.index = input.index
     this.logger = input.logger
-    const NODE_ENV = normalizeAndValidateNodeEnv('development')
     this.envVars = {
       ...input.envVars,
-      NODE_ENV,
-      POINT0_SCOPE: this.scope,
-      POINT0_TARGET: 'client',
     }
     this.envConsts = {
       ...input.envConsts,
-      NODE_ENV,
-      POINT0_SCOPE: this.scope,
-      POINT0_TARGET: 'client',
     }
     this.publicdir = input.publicdir as TInitialized extends true ? Publicdir<true> | null : Publicdir<false> | null
     this.outdir = input.outdir
@@ -217,6 +210,12 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     return client
   }
 
+  private setEnvVars(): void {
+    this.envConsts.NODE_ENV = normalizeAndValidateNodeEnv()
+    this.envConsts.POINT0_SCOPE = this.scope
+    this.envConsts.POINT0_TARGET = 'client'
+  }
+
   async init({
     preventDevServer = process.env.POINT0_PREVENT_CLIENT_DEV_SERVER === 'true',
   }: {
@@ -226,6 +225,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     if (this.isInitialized()) {
       return this as EngineClient<true>
     }
+    this.setEnvVars()
 
     // const devServersStart = performance.now()
     const [{ bunViteDevServer, viteDevServer }, bunNativeDevServer] = await Promise.all([
@@ -316,7 +316,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     const tempDir = resolveTempDirPath(['client-bun-dev-server', `${this.scope}-${this.port}`])
     const pluginsStrings = await extractEngineClientDevPluginsStrings({
       cwd: this.cwd,
-      mode: normalizeAndValidateNodeEnv('development'),
+      mode: normalizeAndValidateNodeEnv(),
       command: 'serve',
       bunPlugins: this.bunPlugins,
       errorOnNotString: `Bun dev server plugins for client "${this.scope}" shpuld be strings`,
@@ -436,7 +436,7 @@ Bun.serve({
       scope: this.scope,
       target: 'client',
       hmrPort: this.hmrPort,
-      mode: normalizeAndValidateNodeEnv('development'),
+      mode: normalizeAndValidateNodeEnv(),
       envConsts: this.envConsts,
       root:
         typeof this.viteConfig === 'string'
@@ -716,7 +716,7 @@ Bun.serve({
         await this.cleanClient()
       }
 
-      const NODE_ENV = normalizeAndValidateNodeEnv('production')
+      const NODE_ENV = normalizeAndValidateNodeEnv()
 
       const thisBunBuildConfig = await extractEngineClientBuildConfig({
         mode: NODE_ENV,
@@ -799,7 +799,7 @@ Bun.serve({
         await this.cleanClient()
       }
 
-      const NODE_ENV = normalizeAndValidateNodeEnv('production')
+      const NODE_ENV = normalizeAndValidateNodeEnv()
       const loadedViteConfig = await extractViteConfig({
         viteConfig: this.viteConfig,
         command: 'build',

@@ -338,6 +338,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     server: { server: string[] | null; publicdir: string[] | null }
   }> {
     const { generate = true, scope, clean = true, publicdir } = options ?? {}
+    normalizeAndValidateNodeEnv('production')
 
     if (generate) {
       await this.generator.sync({ logOnNotWritten: false })

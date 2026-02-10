@@ -113,6 +113,7 @@ export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   generate?: Array<
     Omit<FilesGeneratorTaskPoints, 'scope' | 'target'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'target'>
   >
+  baseurl?: string
   publicdir?: {
     source: EngineOptionsPublicdir
     outdir: string
@@ -362,6 +363,7 @@ export type EngineServerOptionsParsed = {
   banner: string | null
   generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
   routesProvided: EngineOptionsRoutes | null
+  baseurl: string
   port: number
   entry: Record<string, string> | null
   outdir: string | null
@@ -779,6 +781,7 @@ export const parseEngineServerOptions = ({
   if (compiler) {
     compiler.consts = [...normalizeEnvConsts(compiler.consts), ...normalizeEnvConsts(serverOptions.env?.consts ?? {})]
   }
+  const baseurl = appendSlash(serverOptions.baseurl) ?? '/'
   return {
     scope: serverOptions.scope,
     pointsProvided: serverOptions.points,
@@ -797,10 +800,12 @@ export const parseEngineServerOptions = ({
     envVars: parseEnv(serverOptions.env?.vars ?? {}),
     envConsts: parseEnv(serverOptions.env?.consts ?? {}),
     routesProvided: serverOptions.routes ?? null,
+    baseurl,
     generate: (serverOptions.generate ?? []).map((task) => ({
       ...task,
       scope: serverOptions.scope,
       target: 'server',
+      baseurl: 'baseurl' in task ? task.baseurl : baseurl,
     })),
     banner: serverOptions.banner ?? null,
     viteConfig:
@@ -894,6 +899,7 @@ const parseEngineClientOptions = ({
   if (compiler) {
     compiler.consts = [...normalizeEnvConsts(compiler.consts), ...normalizeEnvConsts(clientOptions.env?.consts ?? {})]
   }
+  const baseurl = appendSlash(clientOptions.baseurl) ?? '/'
   return {
     scope: clientOptions.scope,
     compiler,
@@ -903,6 +909,7 @@ const parseEngineClientOptions = ({
       ...task,
       scope: clientOptions.scope,
       target: 'client',
+      baseurl: 'baseurl' in task ? task.baseurl : baseurl,
     })),
     banner: clientOptions.banner ?? null,
     // pointsDistFile:
@@ -926,7 +933,7 @@ const parseEngineClientOptions = ({
     //         omitDirAfterBuild: true,
     //       })
     //     : null,
-    baseurl: appendSlash(clientOptions.baseurl) ?? '/',
+    baseurl,
     domRootElementId: clientOptions.domRootElementId || 'root',
     port,
     hmrPort,
