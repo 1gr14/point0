@@ -46,7 +46,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
   App: TInitialized extends true ? AppComponent | null : null
   // appDistFile: string | null
   // TODO: baseurl get from root point, and remove from config
-  baseurl: string
+  baseurl: TInitialized extends true ? string | null : undefined
   indexHtml: string | null
   // indexHtmlDistFile: string | null
   domRootElementId: string
@@ -79,7 +79,6 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     pointsProvided: PointsDefinitionSource
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
-    baseurl: string
     indexHtml: string | null
     // indexHtmlDistFile: string | null
     engineFile: string | null
@@ -111,7 +110,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     this.pointsProvided = input.pointsProvided
     this.appProvided = input.appProvided
     // this.appDistFile = input.appDistFile
-    this.baseurl = input.baseurl
+    this.baseurl = undefined as TInitialized extends true ? string | null : undefined
     this.indexHtml = input.indexHtml
     // this.indexHtmlDistFile = input.indexHtmlDistFile
     this.distIndexHtmlContent = input.distIndexHtmlContent
@@ -151,7 +150,6 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     // pointsDistFile: string | null
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
-    baseurl: string
     publicdir: {
       source: PublicdirDefinition
       outdir: string
@@ -180,7 +178,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
 
     const publicdir = input.publicdir
       ? Publicdir.create({
-          hostname: getHostnameOrNull(input.baseurl),
+          hostname: null,
           source: input.publicdir.source,
           outdir: input.publicdir.outdir,
           scope: input.scope,
@@ -245,11 +243,13 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     this.bunNativeDevServer = bunNativeDevServer
 
     const pointsManager = await this.initPointsManager()
+    this.baseurl = (pointsManager.root._baseurl ?? null) as TInitialized extends true ? string | null : undefined
     await this.initAppComponent()
 
     this.ssr = pointsManager.ssr as TInitialized extends true ? boolean : null
 
     if (this.publicdir) {
+      this.publicdir.hostname = getHostnameOrNull(this.baseurl)
       await this.publicdir.init()
     }
 

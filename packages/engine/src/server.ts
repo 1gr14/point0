@@ -1,5 +1,5 @@
 import type { FetcherFetchDetailedResult, PointsDefinitionSource, PointsScope, RequiredCtx } from '@point0/core'
-import { env, PointsManager, prependAndDeappendSlash } from '@point0/core'
+import { env, getHostnameOrNull, PointsManager, prependAndDeappendSlash } from '@point0/core'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -50,6 +50,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
   outdir: string | null
   bunBuildConfig: EngineServerBuildConfigDefinition
   bunPlugins: EngineServerPluginsDefinition
+  baseurl: TInitialized extends true ? string | null : undefined
   fallbackScope: PointsScope
   initialized: TInitialized
   bunPluginsLoaded = false
@@ -116,6 +117,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     this.viteDevServer = input.viteDevServer
     this.hmrPort = input.hmrPort
     this.compiler = input.compiler
+    this.baseurl = undefined as TInitialized extends true ? string | null : undefined
     this.fetcher = null as TInitialized extends true ? Fetcher : null
   }
 
@@ -189,6 +191,10 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       return this as EngineServer<true>
     }
     this.setEnvVars()
+    this.baseurl = (this.pointsManager?.root._baseurl ?? null) as TInitialized extends true ? string | null : undefined
+    if (this.publicdir) {
+      this.publicdir.hostname = getHostnameOrNull(this.baseurl)
+    }
     await Promise.all([
       this.loadBunPlugins({ built: env.built }).then(async () => await this.initPointsManager()),
       this.publicdir ? this.publicdir.init() : Promise.resolve(),

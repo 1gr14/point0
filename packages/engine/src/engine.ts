@@ -287,44 +287,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     return result.response
   }
 
-  // We need request, so we should fake request, or somehow
-  // async execute<TPoint extends EndPoint>({
-  //   point,
-  //   input,
-  //   requiredCtx,
-  //   withLayouts,
-  // }: {
-  //   point: TPoint
-  //   input: TPoint['Infer']['InputRaw']
-  //   withLayouts?: boolean
-  // } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<
-  //   ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>
-  // > {
-  //   if (!this.isInitialized()) {
-  //     throw new Error('Engine is not initialized. Please call await engine.init() first.')
-  //   }
-  //   if (!point._root) {
-  //     throw new Error('Point root not found')
-  //   }
-  //   const location = point.route ? point.route.flat(input) : Route0.getLocation('/')
-  //   const suitable = this.allPointsManagers.getSuitable({
-  //     pointType: point.type,
-  //     scope: point.scope,
-  //     pointName: point.name,
-  //     input,
-  //     fallbackScope: point.scope,
-  //   })
-  //   const executor = await Executor.create({
-  //     engine: this,
-  //     request: Executor.createRequestByPointAndInput({ point, input }),
-  //     points: suitable.pointsManager,
-  //     pageLocation: suitable.pageLocation,
-  //     currentLocation: location,
-  //     requiredCtx,
-  //   })
-  //   return await executor.execute({ point: suitable.point, input, withLayouts, response0: executor.response0 })
-  // }
-
   async clean(): Promise<void> {
     await Promise.all([...this.clients.map(async (client) => await client.clean()), this.server.clean()])
   }

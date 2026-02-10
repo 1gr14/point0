@@ -8,39 +8,6 @@ import * as nodeFsPath from 'node:path'
 import type { CompilerFile } from './file.js'
 import type { Walker } from './walker.js'
 
-// export type CompilerPointParsedValid = {
-//   scope: PointsScope
-//   scopes: PointsScope[]
-//   type: EndPointType
-//   name: PointName
-//   exportName: string
-//   route: AnyRoute | undefined
-//   polh: boolean | number
-//   layouts: string[]
-//   pos: CompilerPointParsedPos
-//   errors: unknown[]
-//   strpos: string
-//   valid: true
-//   file: CompilerFile<true>
-//   original: CompilerPoint
-// }
-// export type CompilerPointParsedInvalid = {
-//   scope: PointsScope | undefined
-//   scopes: PointsScope[]
-//   type: EndPointType
-//   name: PointName
-//   exportName: string | undefined
-//   route: AnyRoute | undefined
-//   polh: boolean | number | undefined
-//   layouts: string[]
-//   pos: CompilerPointParsedPos
-//   strpos: string | undefined
-//   errors: unknown[]
-//   valid: false
-//   file: CompilerFile<true>
-//   original: CompilerPoint
-// }
-
 export class CompilerPoint<TValid extends boolean = any> {
   readonly walker: Walker
   file: CompilerFile<true>
@@ -65,6 +32,7 @@ export class CompilerPoint<TValid extends boolean = any> {
   errors: unknown[]
   valid: TValid extends true ? true : false
   parsed: boolean
+  baseurl: string | undefined
 
   constructor({
     walker,
@@ -105,6 +73,7 @@ export class CompilerPoint<TValid extends boolean = any> {
     this.parsed = false
     this.selfMethods = []
     this.chainMethods = []
+    this.baseurl = undefined
 
     file.addPointToMemory(this)
   }
@@ -351,54 +320,65 @@ export class CompilerPoint<TValid extends boolean = any> {
   }
 
   getPrefetchOnLinkHover(): boolean | number {
-    // Go through self and parents (from child to parent)
-    // Return the first prefetchOnLinkHover value found, or undefined if none found
-    const points = [this, ...this.parents]
-
-    for (const point of points) {
-      const result = this.findPrefetchOnHoverInChain(point.letsNodePath)
-      if (result !== undefined) {
-        return result
+    // Go through chain methods (from child to parent), return first prefetchOnLinkHover value found.
+    for (const method of [...this.chainMethods].reverse()) {
+      if (method.name === 'prefetchOnLinkHover') {
+        if (method.nodePath.node.type !== 'CallExpression' || method.nodePath.node.arguments.length === 0) {
+          continue
+        }
+        const firstArg = method.nodePath.node.arguments[0]
+        if (firstArg.type === 'BooleanLiteral') {
+          return firstArg.value
+        }
+        if (firstArg.type === 'NumericLiteral') {
+          return firstArg.value
+        }
       }
     }
-
-    // Not found anywhere, return undefined (default)
     return false
   }
 
-  /**
-   * Finds .prefetchOnLinkHover(value) call in the chain starting from letsNodePath.
-   * Traverses up the AST tree to find the call.
-   * Returns the boolean or number value if found, undefined otherwise.
-   */
-  private findPrefetchOnHoverInChain(letsNodePath: NodePath<Node>): boolean | number | undefined {
-    // Traverse UP the AST tree (towards the ast root) to find .prefetchOnLinkHover() calls
-    // Similar to getLastCalledMethodName(), but looking for a specific method
-    let current: NodePath<Node> | null = letsNodePath.parentPath
+  getBaseurl(): string | undefined {
+    // Go through self and parents (from child to parent)
+    // Return the first baseurl value found, or undefined if none found
+    // If string literal → return its value. If process.env.VAR → return 'process.env.VAR'. If import.meta.env.VAR → return 'import.meta.env.VAR'.
 
-    while (current) {
-      // Check if this is a CallExpression with .prefetchOnLinkHover()
-      if (current.node.type === 'CallExpression' && current.node.callee.type === 'MemberExpression') {
-        const callee = current.node.callee
-        if (callee.property.type === 'Identifier' && callee.property.name === 'prefetchOnLinkHover') {
-          // Found .prefetchOnLinkHover() call, extract the argument value
-          const valueArg = current.node.arguments.at(0)
-          if (valueArg?.type === 'BooleanLiteral') {
-            return valueArg.value
-          } else if (valueArg?.type === 'NumericLiteral') {
-            return valueArg.value
-          }
-          // If argument is not boolean or number, continue searching
+    for (const method of [...this.chainMethods].reverse()) {
+      if (method.name === 'baseurl') {
+        const nodePath = method.nodePath
+        if (nodePath.node.type !== 'CallExpression' || nodePath.node.arguments.length === 0) {
+          continue
         }
-      }
-
-      // Continue traversing UP the AST tree (towards the root)
-      // We continue while we're in CallExpressions or MemberExpressions (part of the method chain)
-      if (current.node.type === 'CallExpression' || current.node.type === 'MemberExpression') {
-        current = current.parentPath // parentPath goes UP (child -> parent)
-      } else {
-        // We've reached the end of the chain (e.g., VariableDeclarator, AssignmentExpression, etc.)
-        break
+        const firstArg = nodePath.node.arguments[0]
+        if (firstArg.type === 'StringLiteral') {
+          return firstArg.value
+        }
+        if (firstArg.type === 'MemberExpression') {
+          const arg = firstArg
+          // process.env.VAR: object is MemberExpression(process, env), property is Identifier(VAR)
+          if (
+            arg.object.type === 'MemberExpression' &&
+            arg.object.object.type === 'Identifier' &&
+            arg.object.object.name === 'process' &&
+            arg.object.property.type === 'Identifier' &&
+            arg.object.property.name === 'env' &&
+            arg.property.type === 'Identifier'
+          ) {
+            return `process.env.${arg.property.name}`
+          }
+          // import.meta.env.VAR: object is MemberExpression(MetaProperty(import, meta), env), property is Identifier(VAR)
+          if (
+            arg.object.type === 'MemberExpression' &&
+            arg.object.object.type === 'MetaProperty' &&
+            arg.object.object.meta.name === 'import' &&
+            arg.object.object.property.name === 'meta' &&
+            arg.object.property.type === 'Identifier' &&
+            arg.object.property.name === 'env' &&
+            arg.property.type === 'Identifier'
+          ) {
+            return `import.meta.env.${arg.property.name}`
+          }
+        }
       }
     }
 
@@ -478,8 +458,6 @@ export class CompilerPoint<TValid extends boolean = any> {
         : { route: undefined, errors: [] }
       this.route = route
       this.errors.push(...routeErrors)
-      this.polh = this.getPrefetchOnLinkHover()
-      this.layouts = this.getLayouts()
       this.selfMethods = this.getSelfMethods()
 
       const lastCalledMethodName = this.selfMethods.at(-1)?.name
@@ -499,6 +477,10 @@ export class CompilerPoint<TValid extends boolean = any> {
         )
       }
       this.chainMethods = this.getChainMethods()
+
+      this.polh = this.getPrefetchOnLinkHover()
+      this.baseurl = this.getBaseurl()
+      this.layouts = this.getLayouts()
 
       this.valid = !this.errors.length as TValid extends true ? true : false
       this.parsed = true

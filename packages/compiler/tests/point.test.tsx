@@ -403,6 +403,7 @@ export const l3 = b2.lets('layout', 'l3').layout()
         valid: point.valid,
         name: point.name,
         polh: point.polh,
+        baseurl: point.baseurl,
       }
     }
 
@@ -430,21 +431,56 @@ export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() 
           valid: true,
           name: 'root',
           polh: true,
+          baseurl: undefined,
         })
         expect(parsed[1]).toMatchObject({
           valid: true,
           name: 'p1',
           polh: false,
+          baseurl: undefined,
         })
         expect(parsed[2]).toMatchObject({
           valid: true,
           name: 'p2',
           polh: false,
+          baseurl: undefined,
         })
         expect(parsed[3]).toMatchObject({
           valid: true,
           name: 'p3',
           polh: 100,
+          baseurl: undefined,
+        })
+      }),
+    )
+
+    it.concurrent(
+      'point baseurl',
+      helper(async ({ files: [file] }) => {
+        const walker = new Walker({
+          routes: {
+            myroot: Routes.create({
+              r5: Route0.create('/r5'),
+              r6: Route0.create('/r6'),
+            }),
+          },
+        })
+        await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').baseurl('http://localhost/').root()
+export const p1 = root.lets('page', 'p1', '/').page(() => <div>Hello</div>)
+        `)
+        const result = walker.collectPointsFromFile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        const parsed = result.points.map((p) => fix3(p.parse()))
+        expect(parsed[0]).toMatchObject({
+          valid: true,
+          name: 'root',
+          baseurl: 'http://localhost/',
+        })
+        expect(parsed[1]).toMatchObject({
+          valid: true,
+          name: 'p1',
+          baseurl: 'http://localhost/',
         })
       }),
     )
