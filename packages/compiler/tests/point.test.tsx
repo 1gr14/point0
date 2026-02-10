@@ -532,7 +532,7 @@ export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() 
       }),
     )
 
-    it.concurrent.only(
+    it.concurrent(
       'point baseurl',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({

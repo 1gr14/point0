@@ -97,7 +97,10 @@ describe('build', () => {
         "/
           div: My Cool Page, VAR1, CONST1, VAR1, CONST1
           "
-      `)
+        `)
+        const publicDirResponse = await tp.fetchServer('/hello.txt')
+        const publicDirText = await publicDirResponse.text()
+        expect(publicDirText).toBe('Hi!')
       }),
       {
         // retry: 3,
@@ -136,10 +139,13 @@ describe('build', () => {
           
           div: My Cool Page, VAR1, CONST1, VAR1, CONST1
           "
-      `)
+        `)
+        const publicDirResponse = await tp.fetchServer('/hello.txt')
+        const publicDirText = await publicDirResponse.text()
+        expect(publicDirText).toBe('Hi!')
       }),
       {
-        retry: 3,
+        // retry: 3,
       },
     )
 

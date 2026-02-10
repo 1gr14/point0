@@ -97,6 +97,12 @@ describe('dev', () => {
           div: Hello, VAR1, CONST1, VAR1, CONST1
           "
         `)
+        const publicDirResponse = await tp.fetchServer('/hello.txt')
+        const publicDirText = await publicDirResponse.text()
+        expect(publicDirText).toBe('Hi!')
+        const publicDirResponse1 = await tp.fetchClient('/hello.txt')
+        const publicDirText1 = await publicDirResponse1.text()
+        expect(publicDirText1).toBe('Hi!')
       }),
       {
         // retry: 3,
@@ -129,7 +135,13 @@ describe('dev', () => {
           
           div: Hello, VAR1, CONST1, VAR1, CONST1
           "
-      `)
+        `)
+        const publicDirResponse = await tp.fetchServer('/hello.txt')
+        const publicDirText = await publicDirResponse.text()
+        expect(publicDirText).toBe('Hi!')
+        const publicDirResponse1 = await tp.fetchClient('/hello.txt')
+        const publicDirText1 = await publicDirResponse1.text()
+        expect(publicDirText1).toBe('Hi!')
       }),
       {
         // retry: 3,

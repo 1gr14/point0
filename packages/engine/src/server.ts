@@ -1,4 +1,10 @@
-import type { FetcherFetchDetailedResult, PointsDefinitionSource, PointsScope, RequiredCtx } from '@point0/core'
+import type {
+  FetcherFetchDetailedResult,
+  NormalNodeEnv,
+  PointsDefinitionSource,
+  PointsScope,
+  RequiredCtx,
+} from '@point0/core'
 import { env, getHostnameOrNull, PointsManager, prependAndDeappendSlash } from '@point0/core'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
@@ -176,21 +182,33 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     return !!this.initialized
   }
 
-  private setEnvVars(): void {
-    this.envConsts.NODE_ENV = normalizeAndValidateNodeEnv()
-    this.envConsts.POINT0_SCOPE = this.scope
-    this.envConsts.POINT0_TARGET = 'server'
-    for (const [envVarKey, envVarValue] of Object.entries({ ...this.envVars, ...this.envConsts })) {
-      process.env[envVarKey] = envVarValue
-      import.meta.env[envVarKey] = envVarValue
+  private setEnvVars({
+    nodeEnvFallback,
+    assignToProcessEnv,
+  }: {
+    nodeEnvFallback: NormalNodeEnv | undefined
+    assignToProcessEnv: boolean
+  }): { NODE_ENV: NormalNodeEnv; POINT0_SCOPE: PointsScope; POINT0_TARGET: 'server' } {
+    const NODE_ENV = normalizeAndValidateNodeEnv(nodeEnvFallback)
+    const POINT0_SCOPE = this.scope
+    const POINT0_TARGET = 'server'
+    this.envConsts.NODE_ENV = NODE_ENV
+    this.envConsts.POINT0_SCOPE = POINT0_SCOPE
+    this.envConsts.POINT0_TARGET = POINT0_TARGET
+    if (assignToProcessEnv) {
+      for (const [envVarKey, envVarValue] of Object.entries({ ...this.envVars, ...this.envConsts })) {
+        process.env[envVarKey] = envVarValue
+        import.meta.env[envVarKey] = envVarValue
+      }
     }
+    return { NODE_ENV, POINT0_SCOPE, POINT0_TARGET }
   }
 
   async init({ engine }: { engine: Engine }): Promise<EngineServer<true>> {
     if (this.isInitialized()) {
       return this as EngineServer<true>
     }
-    this.setEnvVars()
+    this.setEnvVars({ assignToProcessEnv: true, nodeEnvFallback: undefined })
     this.baseurl = (this.pointsManager?.root._baseurl ?? null) as TInitialized extends true ? string | null : undefined
     if (this.publicdir) {
       this.publicdir.hostname = getHostnameOrNull(this.baseurl)
@@ -599,6 +617,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       }
     })()
 
+    console.log(34234234, this.envConsts)
     const injectedEnvs = {
       'process.env.POINT0_ENGINE_WAS_BUILT': JSON.stringify('true'),
       ...(POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED
@@ -607,6 +626,12 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       ...(POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED
         ? { 'process.env.POINT0_ENGINE_CWD_AFTER_BUILD': JSON.stringify(POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED) }
         : {}),
+      ...Object.fromEntries(
+        Object.entries(this.envConsts).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+      ),
+      ...Object.fromEntries(
+        Object.entries(this.envConsts).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+      ),
     }
     const injectEnvsScript =
       Object.entries(injectedEnvs)
@@ -619,6 +644,11 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     bunBuildConfig?: EngineServerBuildConfigDefinition
     clean?: boolean
   }): Promise<string[] | null> {
+    this.setEnvVars({ assignToProcessEnv: false, nodeEnvFallback: 'production' })
+    const { NODE_ENV } = this.setEnvVars({
+      assignToProcessEnv: false,
+      nodeEnvFallback: 'production',
+    })
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.entrypointsExists) {
       return null
@@ -631,9 +661,6 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     if (clean) {
       await this.cleanServer()
     }
-
-    const NODE_ENV = normalizeAndValidateNodeEnv('production')
-    this.envConsts.NODE_ENV = NODE_ENV
 
     const thisBunBuildConfig = await executeEngineServerBuildConfig({
       mode: NODE_ENV,
@@ -682,16 +709,6 @@ export class EngineServer<TInitialized extends boolean = boolean> {
         ...thisBunBuildConfig.define,
         ...providedBunBuildConfig.define,
         ...injectedEnvs,
-        // 'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-        // 'process.env.POINT0_BUILT': JSON.stringify('true'),
-        // 'process.env.Target': JSON.stringify('server'),
-        // 'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
-        ...Object.fromEntries(
-          Object.entries(this.envConsts).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
-        ),
-        ...Object.fromEntries(
-          Object.entries(this.envConsts).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
-        ),
       },
     })
     return buildOutput.outputs.map((output) => output.path)
@@ -701,6 +718,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     if (env.built) {
       throw new Error('You can not build by built engine')
     } else {
+      const { NODE_ENV } = this.setEnvVars({ assignToProcessEnv: false, nodeEnvFallback: 'production' })
       if (!this.viteConfig) {
         throw new Error(`viteConfig not provided for server`)
       }
@@ -719,7 +737,6 @@ export class EngineServer<TInitialized extends boolean = boolean> {
         await this.cleanServer()
       }
 
-      const NODE_ENV = normalizeAndValidateNodeEnv('production')
       this.envConsts.NODE_ENV = NODE_ENV
 
       const loadedViteConfig = await extractViteConfig({
@@ -785,16 +802,6 @@ export class EngineServer<TInitialized extends boolean = boolean> {
         define: {
           ...loadedViteConfig.define,
           ...injectedEnvs,
-          // 'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-          // 'process.env.POINT0_BUILT': JSON.stringify('true'),
-          // 'process.env.Target': JSON.stringify('server'),
-          // 'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
-          ...Object.fromEntries(
-            Object.entries(this.envConsts).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
-          ),
-          ...Object.fromEntries(
-            Object.entries(this.envConsts).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
-          ),
         },
       }
       const buildResult = await viteBuild(config)

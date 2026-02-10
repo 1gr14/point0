@@ -1,5 +1,12 @@
 import { Route0, type AnyLocation } from '@devp0nt/route0'
-import type { AppComponent, InputParsed, PagePoint, PointsDefinitionSource, PointsScope } from '@point0/core'
+import type {
+  AppComponent,
+  InputParsed,
+  NormalNodeEnv,
+  PagePoint,
+  PointsDefinitionSource,
+  PointsScope,
+} from '@point0/core'
 import { PointsManager, env, getHostnameOrNull } from '@point0/core'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import * as nodeFs from 'node:fs/promises'
@@ -208,10 +215,18 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     return client
   }
 
-  private setEnvVars(): void {
-    this.envConsts.NODE_ENV = normalizeAndValidateNodeEnv()
-    this.envConsts.POINT0_SCOPE = this.scope
-    this.envConsts.POINT0_TARGET = 'client'
+  private setEnvVars({ nodeEnvFallback }: { nodeEnvFallback: NormalNodeEnv | undefined }): {
+    NODE_ENV: NormalNodeEnv
+    POINT0_SCOPE: PointsScope
+    POINT0_TARGET: 'client'
+  } {
+    const NODE_ENV = normalizeAndValidateNodeEnv(nodeEnvFallback)
+    const POINT0_SCOPE = this.scope
+    const POINT0_TARGET = 'client'
+    this.envConsts.NODE_ENV = NODE_ENV
+    this.envConsts.POINT0_SCOPE = POINT0_SCOPE
+    this.envConsts.POINT0_TARGET = POINT0_TARGET
+    return { NODE_ENV, POINT0_SCOPE, POINT0_TARGET }
   }
 
   async init({
@@ -223,7 +238,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     if (this.isInitialized()) {
       return this as EngineClient<true>
     }
-    this.setEnvVars()
+    this.setEnvVars({ nodeEnvFallback: undefined })
 
     // const devServersStart = performance.now()
     const [{ bunViteDevServer, viteDevServer }, bunNativeDevServer] = await Promise.all([
@@ -702,6 +717,7 @@ Bun.serve({
     if (env.built) {
       throw new Error('You can not build by built engine')
     } else {
+      const { NODE_ENV } = this.setEnvVars({ nodeEnvFallback: 'production' })
       const { bunBuildConfig, clean = false } = options ?? {}
 
       const buildPaths = this.getBuildPaths()
@@ -715,8 +731,6 @@ Bun.serve({
       if (clean) {
         await this.cleanClient()
       }
-
-      const NODE_ENV = normalizeAndValidateNodeEnv()
 
       const thisBunBuildConfig = await extractEngineClientBuildConfig({
         mode: NODE_ENV,
@@ -781,6 +795,7 @@ Bun.serve({
     if (env.built) {
       throw new Error('You can not build by built engine')
     } else {
+      const { NODE_ENV } = this.setEnvVars({ nodeEnvFallback: 'production' })
       if (!this.viteConfig) {
         throw new Error(`viteConfig not provided for client "${this.scope}"`)
       }
@@ -799,7 +814,6 @@ Bun.serve({
         await this.cleanClient()
       }
 
-      const NODE_ENV = normalizeAndValidateNodeEnv()
       const loadedViteConfig = await extractViteConfig({
         viteConfig: this.viteConfig,
         command: 'build',

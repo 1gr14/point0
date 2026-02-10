@@ -22,8 +22,8 @@ program
   .option('-S, --no-server', 'Do not serve server, so serve only clients dev servers')
   .option('-W, --no-watch', 'Prevent watch file changes, restrat server, regenrate files')
   .option(
-    '-e, --entry <name|path>',
-    'Server entry points, names or paths (-e <entry1>,<entry2>,...) or (-e <entry1> -e <entry2> ...)',
+    '--entry <name|path>',
+    'Server entry points, names or paths (--entry <entry1>,<entry2>,...) or (--entry <entry1> --entry <entry2> ...)',
     (value, previous: string[] = []) => {
       previous.push(...value.split(','))
       return previous
@@ -31,8 +31,24 @@ program
     [],
   )
   .option('--engine <path>', dictionary.enginePath)
+  .option(
+    '--env <name_eq_value>',
+    'Environment variables to define, name=value (--env name1=value1 --env name2=value2 ...)',
+    (value, previous: string[] = []) => {
+      previous.push(value)
+      return previous
+    },
+    [],
+  )
   .action(
-    async (options: { engine?: string; entry?: string[]; server?: boolean; generate?: boolean; watch?: boolean }) => {
+    async (options: {
+      engine?: string
+      entry?: string[]
+      env?: string[]
+      server?: boolean
+      generate?: boolean
+      watch?: boolean
+    }) => {
       // const { engine, engineFile } = await Engine.findAndImportSelf(options.engine)
       const cwd = process.cwd()
       const { engine } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd })
@@ -42,6 +58,11 @@ program
       const generateFiles = options.generate !== false
       const watch = options.watch !== false
       const entries = options.entry
+      for (const env of options.env ?? []) {
+        const [name, ...valueParts] = env.split('=')
+        const value = valueParts.join('=')
+        process.env[name] = value
+      }
       await engine.dev({
         // engineFile,
         generateFiles,
@@ -62,9 +83,23 @@ program
   .option('-G, --no-generate', dictionary.noGenerate)
   .option('-C, --no-clean', 'Do not clean build')
   .option('-P, --no-publicdir', 'Do not build publicdir')
+  .option(
+    '--env <name_eq_value>',
+    'Environment variables to define, name=value (--env name1=value1 --env name2=value2 ...)',
+    (value, previous: string[] = []) => {
+      previous.push(value)
+      return previous
+    },
+    [],
+  )
   .action(async (options) => {
     process.env.NODE_ENV ??= 'production'
     const { engine } = await Engine.findAndImportSelf(options.engine)
+    for (const env of options.env ?? []) {
+      const [name, ...valueParts] = env.split('=')
+      const value = valueParts.join('=')
+      process.env[name] = value
+    }
     await engine.build({
       generate: options.generate !== false,
       scope: options.scope as PointsScope,
