@@ -299,7 +299,35 @@ export class CompilerFile<THasContent extends boolean> {
     if (this._mayContainPoints !== undefined) {
       return this._mayContainPoints
     }
-    this._mayContainPoints = this.content.includes('.lets(')
+    const content = this.content
+    const token = '.lets'
+    let mayContainPoints = false
+
+    let i = content.indexOf(token)
+    while (i !== -1) {
+      let j = i + token.length
+      while (j < content.length) {
+        const char = content.charCodeAt(j)
+        // Skip common whitespace: space, tab, newline, carriage return.
+        if (char === 32 || char === 9 || char === 10 || char === 13) {
+          j++
+          continue
+        }
+        // Accept `.lets(` and `.lets<...>` without allocating extra strings.
+        // 40 === '(' and 60 === '<' (charCode values).
+        if (char === 40 || char === 60) {
+          mayContainPoints = true
+        }
+        // Stop at first non-whitespace char after `.lets`.
+        break
+      }
+      if (mayContainPoints) {
+        break
+      }
+      i = content.indexOf(token, i + 1)
+    }
+
+    this._mayContainPoints = mayContainPoints
     return this._mayContainPoints
   }
 
