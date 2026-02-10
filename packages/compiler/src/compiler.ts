@@ -13,7 +13,7 @@ export type CompilerOptions = {
   built?: boolean
   consts?: CompilerEnvConsts
   filter?: RegExp
-  hmrFix?: 'function' | 'arrowFunction' | 'externalFunction' | false
+  hmrFix?: boolean
 }
 
 export class Compiler {
@@ -23,7 +23,7 @@ export class Compiler {
   mode: NormalNodeEnv | false
   target: 'client' | 'server' | false
   consts: CompilerEnvConsts | undefined
-  hmrFix: 'function' | 'arrowFunction' | 'externalFunction' | false
+  hmrFix: boolean
   walker: Walker
   routes: Record<string, RoutesPretty<any>> | undefined
 
@@ -44,7 +44,7 @@ export class Compiler {
     target: 'client' | 'server' | false
     scope: string | false
     consts: CompilerEnvConsts | undefined
-    hmrFix: 'function' | 'arrowFunction' | 'externalFunction' | false
+    hmrFix: boolean
     walker: Walker
     routes: Record<string, RoutesPretty<any>> | undefined
     built: boolean
@@ -71,7 +71,7 @@ export class Compiler {
       target,
       scope,
       consts,
-      hmrFix: hmrFix ?? false,
+      hmrFix: hmrFix ?? true,
       walker: new Walker({ routes }),
       routes,
       built: built ?? false,
@@ -112,7 +112,7 @@ export class Compiler {
         point.shakeMethods({ target })
       }
       if (hmrFix) {
-        point.addHmrFix({ policy: hmrFix })
+        point.addHmrFix()
       }
     }
     cf.shakeForEnv({ target, scope, consts, built, mode })

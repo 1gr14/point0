@@ -399,7 +399,7 @@ describe('FakeClient', () => {
 
   //   it.only(
   //     'should render ssr page with loader and client loader',
-  //     wrp({ ssr: true, preserve: true }, async ({ tp }) => {
+  //     wrp({ ssr: true, preserve: false }, async ({ tp }) => {
   //       await tp.write(
   //         'src/page.tsx',
   //         `import { root } from './lib/root.js'

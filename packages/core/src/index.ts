@@ -4808,8 +4808,7 @@ export class Point0<
   //   return point as never
   // }) as never
 
-  _hmr(component: React.Component): typeof this {
-    // TODO: do not clone here, just assign to existing
+  _tail(component: React.Component): typeof this {
     const point = this._continue({})
     Point0._assignNicePointMethodsToComponent({ component, point, extra: {} })
     return component as never
@@ -4865,7 +4864,7 @@ export class Point0<
       _useValue: point._useValue?.bind(point),
       getValue: point.getValue.bind(point),
       getValueWeak: point.getValueWeak.bind(point),
-      _hmr: point._hmr.bind(point),
+      _tail: point._tail.bind(point),
       route: point.route,
       ...extra,
     })

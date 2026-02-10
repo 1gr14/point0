@@ -617,7 +617,6 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       }
     })()
 
-    console.log(34234234, this.envConsts)
     const injectedEnvs = {
       'process.env.POINT0_ENGINE_WAS_BUILT': JSON.stringify('true'),
       ...(POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED

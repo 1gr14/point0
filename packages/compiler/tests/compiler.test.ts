@@ -48,7 +48,7 @@ export const root = Point0.lets('root', 'root').root()
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(1)
-        expect(result.modified).toBe(false)
+        expect(result.modified).toBe(true)
         expect(result.code).toContain('Point0.lets')
       }),
     )
@@ -98,28 +98,15 @@ export const root = Point0.lets('root', 'root').root()
     )
 
     it.concurrent(
-      'respects hmrFix option - function',
+      'respects hmrFix option - true',
       helper(async ({ files: [file] }) => {
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFix: 'function' })
+        const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFix: true })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.code).toContain('._hmr(function X()')
-      }),
-    )
-
-    it.concurrent(
-      'respects hmrFix option - arrowFunction',
-      helper(async ({ files: [file] }) => {
-        await file.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'root').root()
-        `)
-        const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFix: 'arrowFunction' })
-        const result = compiler.compile({ file: file.path })
-        expect(result.errors).toHaveLength(0)
-        expect(result.code).toContain('._hmr(() =>')
+        expect(result.code).toContain('._tail(() =>')
       }),
     )
 
@@ -132,7 +119,7 @@ export const root = Point0.lets('root', 'root').root()
         const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFix: false })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.code).not.toContain('._hmr')
+        expect(result.code).not.toContain('._tail')
       }),
     )
 

@@ -818,9 +818,9 @@ export class Walker {
     customer: PruneCustomer
   }): Promise<string> {
     // example
-    // ...lets('mutation', 'getNews').page() → ...lets('page', 'news').page()._hmr(Function X {return null})
-    // ...lets('query', 'getNews').query() → ...lets('query', 'news').query()._hmr(Function X {return null})
-    // but if .lets('component' | 'layout' | 'page') then do not add _hmr
+    // ...lets('mutation', 'getNews').page() → ...lets('page', 'news').page()._tail(Function X {return null})
+    // ...lets('query', 'getNews').query() → ...lets('query', 'news').query()._tail(Function X {return null})
+    // but if .lets('component' | 'layout' | 'page') then do not add _tail
 
     let ast: babel.ParseResult<any>
     try {
@@ -908,23 +908,23 @@ export class Walker {
       },
     })
 
-    // Mutate AST: add ._hmr(() => null) to each node
+    // Mutate AST: add ._tail(() => null) to each node
     for (const { path } of nodesToModify) {
       const node = path.node
 
-      // Create MemberExpression: node._hmr
+      // Create MemberExpression: node._tail
       const hmrMemberExpression = {
         type: 'MemberExpression' as const,
         object: node,
         property: {
           type: 'Identifier' as const,
-          name: '_hmr',
+          name: '_tail',
         },
         computed: false,
         optional: false,
       }
 
-      // Create CallExpression: node._hmr(function X() { return null })
+      // Create CallExpression: node._tail(function X() { return null })
       const hmrCallExpression = {
         type: 'CallExpression' as const,
         callee: hmrMemberExpression,

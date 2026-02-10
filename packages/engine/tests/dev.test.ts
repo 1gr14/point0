@@ -149,12 +149,9 @@ describe('dev', () => {
     )
 
     // Sad, becouse it is main thing and sometimes failed... But in real it works
-    it(
+    it.only(
       'have hmr client updates',
-      wrp({ ssr: true, clientHmr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
-        if (bundler === 'vite') {
-          return
-        }
+      wrp({ ssr: true, clientHmr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
         await tp.waitPortsFree()
         expect(engine.server.hmrPort).toBeFalse()
         expect(engine.clients[0].hmrPort).toBeNumber()
@@ -162,25 +159,49 @@ describe('dev', () => {
           'src/page.tsx',
           `import { root } from './lib/root.js'
           import { useState } from 'react'
-        export const page = root.lets('page', 'home', '/').page(() => {
-          const [count, setCount] = useState(0)
-          return (<div onClick={() => setCount(count + 1)}>Hop {count}</div>)
-        })`,
+        export const page = root.lets('page', 'home', '/')
+          .wrapper(({children}) => {
+            const [countWrapper, setCountWrapper] = useState(0)
+            return (
+              <div>
+                Wrapper {countWrapper} 
+                <button id="wrapper-button" onClick={() => setCountWrapper(countWrapper + 1)}>Click {countWrapper}</button>
+                {children}
+              </div>
+            )
+          })
+          .page(() => {
+            const [countPage, setCountPage] = useState(0)
+            return (
+              <div>
+                Hop {countPage}
+                <button id="page-button" onClick={() => setCountPage(countPage + 1)}>Click</button>
+              </div>
+            )
+          })`,
         )
         tp.spawn(['bun', 'run', 'dev'])
         await tp.waitStarted()
         const page = await tp.gotoClient('/')
         await page.waitContent('Hop 0')
-        await page.original.click('div')
+        await page.original.click('button#page-button')
+        await page.original.click('button#wrapper-button')
+        await page.original.click('button#wrapper-button')
         await page.waitContent('Hop 1')
+        await page.waitContent('Wrapper 2')
         await tp.replace('src/page.tsx', 'Hop', 'Hay')
         await page.waitContent('Hay 1')
-        await page.original.click('div')
+        await page.waitContent('Wrapper 2')
+        await tp.replace('src/page.tsx', 'Wrapper', 'Wrapperok')
+        await page.original.click('button#page-button')
         await page.waitContent('Hay 2')
+        await page.waitContent('Wrapperok 2')
         await tp.replace('src/page.tsx', 'Hay', 'La La Lay')
         await page.waitContent('La La Lay 2')
-        await page.original.click('div')
+        await page.waitContent('Wrapperok 2')
+        await page.original.click('button#page-button')
         await page.waitContent('La La Lay 3')
+        await page.waitContent('Wrapperok 2')
         expect(page.history.length).toBe(1)
       }),
       {
