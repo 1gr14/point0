@@ -838,6 +838,97 @@ export class CompilerPoint<TValid extends boolean = any> {
     return candidateName
   }
 
+  private externalizeFirstArrowFunctionArg({
+    nodePath,
+    functionNameBase,
+  }: {
+    nodePath: NodePath<Node>
+    functionNameBase: string
+  }): void {
+    if (nodePath.node.type !== 'CallExpression') {
+      return
+    }
+
+    const firstArg = nodePath.node.arguments.at(0)
+    if (firstArg?.type !== 'ArrowFunctionExpression') {
+      return
+    }
+
+    const arrowFn = firstArg as any
+    const functionName = this.generateUniqueIdentifier(toPascalCase(functionNameBase))
+
+    let body = arrowFn.body
+    if (body.type !== 'BlockStatement') {
+      body = {
+        type: 'BlockStatement' as const,
+        body: [
+          {
+            type: 'ReturnStatement' as const,
+            argument: body,
+          },
+        ],
+      }
+    }
+
+    const functionDeclaration = {
+      type: 'FunctionDeclaration' as const,
+      id: {
+        type: 'Identifier' as const,
+        name: functionName,
+      },
+      generator: false,
+      async: arrowFn.async || false,
+      params: arrowFn.params || [],
+      body,
+    }
+
+    const parentDecl = nodePath.findParent((p) => {
+      const n = p.node
+      return (
+        n.type === 'VariableDeclaration' ||
+        n.type === 'ExportNamedDeclaration' ||
+        n.type === 'ExportDefaultDeclaration'
+      )
+    })
+
+    if (parentDecl) {
+      const parseResult = this.file.parse()
+      if (parseResult.ok) {
+        const program = parseResult.ast.program
+        const parentNode = parentDecl.node
+        let parentIndex = -1
+
+        parentIndex = program.body.findIndex((stmt) => stmt === parentNode)
+
+        if (parentIndex === -1) {
+          parentIndex = program.body.findIndex((stmt) => {
+            if (stmt.type === 'ExportNamedDeclaration' && parentNode.type === 'VariableDeclaration') {
+              return stmt.declaration === parentNode
+            }
+            if (stmt.type === 'ExportDefaultDeclaration' && parentNode.type === 'ExportDefaultDeclaration') {
+              return stmt.declaration === parentNode.declaration
+            }
+            if (stmt.type === 'ExportNamedDeclaration' && parentNode.type === 'ExportNamedDeclaration') {
+              return stmt.declaration === parentNode.declaration
+            }
+            return false
+          })
+        }
+
+        if (parentIndex !== -1) {
+          program.body.splice(parentIndex, 0, functionDeclaration as any)
+          this.file.modified = true
+        }
+      }
+    }
+
+    nodePath.node.arguments[0] = {
+      type: 'Identifier' as const,
+      name: functionName,
+    } as any
+    this.file.modified = true
+  }
+
   private _addHmrFix = false
   addHmrFix(): void {
     if (this._addHmrFix) {
@@ -858,98 +949,38 @@ export class CompilerPoint<TValid extends boolean = any> {
       return
     }
 
+    const extraComponentLikeMethods = new Set([
+      'wrapper',
+      'loading',
+      'pageLoading',
+      'layoutLoading',
+      'componentLoading',
+      'error',
+      'pageError',
+      'layoutError',
+      'componentError',
+    ])
+
+    for (const method of methods) {
+      if (!extraComponentLikeMethods.has(method.name)) {
+        continue
+      }
+      this.externalizeFirstArrowFunctionArg({
+        nodePath: method.nodePath,
+        functionNameBase: `${this.type}_${this.name}_${method.name}`,
+      })
+    }
+
     // Check if point type is component, layout, or page and has functional component
     if (this.type === 'component' || this.type === 'layout' || this.type === 'page') {
       const hasValidEnding = lastMethod.name === this.type
-      const lastMethodCall = lastMethod.nodePath.node
-      const firstArg = lastMethodCall.arguments.at(0)
+      const firstArg = lastMethod.nodePath.node.arguments.at(0)
       const alreadyHasFunctionalComponent = hasValidEnding && !!firstArg
       if (alreadyHasFunctionalComponent) {
-        // externalFunction mode: extract inline arrow components into top-level named functions
-        if (firstArg.type === 'ArrowFunctionExpression') {
-          const arrowFn = firstArg as any
-
-          // Check if name exists and generate unique name if needed.
-          const functionName = this.generateUniqueIdentifier(toPascalCase(this.type + '_' + this.name))
-
-          // Convert arrow function body to function body.
-          let body = arrowFn.body
-          if (body.type !== 'BlockStatement') {
-            body = {
-              type: 'BlockStatement' as const,
-              body: [
-                {
-                  type: 'ReturnStatement' as const,
-                  argument: body,
-                },
-              ],
-            }
-          }
-
-          // Create FunctionDeclaration.
-          const functionDeclaration = {
-            type: 'FunctionDeclaration' as const,
-            id: {
-              type: 'Identifier' as const,
-              name: functionName,
-            },
-            generator: false,
-            async: arrowFn.async || false,
-            params: arrowFn.params || [],
-            body,
-          }
-
-          // Find parent VariableDeclaration, ExportNamedDeclaration, or ExportDefaultDeclaration.
-          // We need to find the statement-level parent (not VariableDeclarator).
-          const parentDecl = lastMethod.nodePath.findParent((p) => {
-            const n = p.node
-            return (
-              n.type === 'VariableDeclaration' ||
-              n.type === 'ExportNamedDeclaration' ||
-              n.type === 'ExportDefaultDeclaration'
-            )
-          })
-
-          if (parentDecl) {
-            const parseResult = this.file.parse()
-            if (parseResult.ok) {
-              const program = parseResult.ast.program
-              const parentNode = parentDecl.node
-              let parentIndex = -1
-
-              // Try direct reference match first.
-              parentIndex = program.body.findIndex((stmt) => stmt === parentNode)
-
-              // If not found, try structural matching.
-              if (parentIndex === -1) {
-                parentIndex = program.body.findIndex((stmt) => {
-                  if (stmt.type === 'ExportNamedDeclaration' && parentNode.type === 'VariableDeclaration') {
-                    return stmt.declaration === parentNode
-                  }
-                  if (stmt.type === 'ExportDefaultDeclaration' && parentNode.type === 'ExportDefaultDeclaration') {
-                    return stmt.declaration === parentNode.declaration
-                  }
-                  if (stmt.type === 'ExportNamedDeclaration' && parentNode.type === 'ExportNamedDeclaration') {
-                    return stmt.declaration === parentNode.declaration
-                  }
-                  return false
-                })
-              }
-
-              if (parentIndex !== -1) {
-                program.body.splice(parentIndex, 0, functionDeclaration as any)
-                this.file.modified = true
-              }
-            }
-          }
-
-          // Replace arrow function with identifier reference.
-          lastMethodCall.arguments[0] = {
-            type: 'Identifier' as const,
-            name: functionName,
-          } as any
-          this.file.modified = true
-        }
+        this.externalizeFirstArrowFunctionArg({
+          nodePath: lastMethod.nodePath,
+          functionNameBase: `${this.type}_${this.name}`,
+        })
         // For page/layout/component points with existing functions, don't add HMR fix
         // Just convert if needed, then return
         this._addHmrFix = true

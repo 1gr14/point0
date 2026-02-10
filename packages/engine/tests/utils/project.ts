@@ -80,7 +80,7 @@ export class TestProject {
       engine: this.resolve('src', 'engine.ts'),
       indexClient: this.resolve('src', 'index.client.ts'),
       indexServer: this.resolve('src', 'index.server.ts'),
-      indexHtml: this.resolve('index.html'),
+      indexHtml: this.resolve('src', 'index.html'),
       packageJson: this.resolve('package.json'),
       tsconfigJson: this.resolve('tsconfig.json'),
       dotenv: this.resolve('.env'),
@@ -272,7 +272,7 @@ export class TestProject {
     if (this.vite) {
       await this.replace(this.files.engine, `// viteConfig: '../vite.config.ts',`, `viteConfig: '../vite.config.ts',`)
       await this.replace(this.files.packageJson, './dist/server/index.server.js', './dist/server/main.js')
-      // await this.replace(this.files.indexHtml, '"./index.client.ts"', '"/index.client.ts"')
+      await this.replace(this.files.indexHtml, '"./index.client.ts"', '"/index.client.ts"')
     }
     return this
   }

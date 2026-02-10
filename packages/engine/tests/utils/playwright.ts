@@ -311,7 +311,7 @@ export class PlaywrightPage {
     const startTime = Date.now()
     while (true) {
       if (Date.now() - startTime > timeout) {
-        throw new Error(`Timeout waiting for content: ${search} within ${timeout}ms`)
+        throw new Error(`Timeout waiting for content: ${search} within ${timeout}ms. Current tale: ${this.tale}`)
       }
       const htmlView = this.getLastHtmlView()
       if (htmlView?.hasContent(search)) {

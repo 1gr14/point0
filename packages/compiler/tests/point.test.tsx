@@ -1275,6 +1275,68 @@ export const page = root.lets('page', 'page', '/').page()
       )
 
       describe('external function extraction', () => {
+        it.concurrent.only(
+          'extracts wrapper/loading/error and page component arrows to external functions',
+          helper(async ({ files: [file], walker }) => {
+            await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root')
+  .pageLoading(() => <div>Loading</div>)
+  .pageError(() => <div>Error</div>)
+  .layoutLoading(() => <div>Loading</div>)
+  .layoutError(() => <div>Error</div>)
+  .componentLoading(() => <div>Loading</div>)
+  .componentError(() => <div>Error</div>)
+  .loading(() => <div>Loading</div>)
+  .error(() => <div>Error</div>)
+  .page(() => <div>Hello</div>)
+  .root()
+export const page = root
+  .lets('page', 'home', '/')
+  .wrapper(() => <div>Wrapper</div>)
+  .loading(() => <div>Loading</div>)
+  .error(() => <div>Error</div>)
+  .page(() => <div>Hello</div>)
+        `)
+            const result = walker.collectPointsFromFile({ file: file.path })
+            const point = result.points[1]
+            point.addHmrFix()
+            expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
+              "import { Point0 } from '@point0/core'
+              export const root = Point0.lets('root', 'root')
+                .pageLoading(() => <div>Loading</div>)
+                .pageError(() => <div>Error</div>)
+                .layoutLoading(() => <div>Loading</div>)
+                .layoutError(() => <div>Error</div>)
+                .componentLoading(() => <div>Loading</div>)
+                .componentError(() => <div>Error</div>)
+                .loading(() => <div>Loading</div>)
+                .error(() => <div>Error</div>)
+                .page(() => <div>Hello</div>)
+                .root()
+              function PageHomeWrapper() {
+                return <div>Wrapper</div>
+              }
+              function PageHomeLoading() {
+                return <div>Loading</div>
+              }
+              function PageHomeError() {
+                return <div>Error</div>
+              }
+              function PageHome() {
+                return <div>Hello</div>
+              }
+              export const page = root
+                .lets('page', 'home', '/')
+                .wrapper(PageHomeWrapper)
+                .loading(PageHomeLoading)
+                .error(PageHomeError)
+                .page(PageHome)
+              "
+            `)
+            expect(point.file.modified).toBe(true)
+          }),
+        )
+
         it.concurrent(
           'extracts arrow function to external function for page point',
           helper(async ({ files: [file], walker }) => {
