@@ -12,7 +12,7 @@ import type {
   EngineLogger,
   EngineOptionsAppComponent,
   EngineOptionsCompilerParsed,
-  EngineOptionsEnvClientParsed,
+  EngineOptionsEnvParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
 } from './config.js'
@@ -56,8 +56,8 @@ export class EngineClient<TInitialized extends boolean = boolean> {
   viteConfig: EngineOptionsViteConfig | null
   index: number
   logger: EngineLogger
-  envVars: EngineOptionsEnvClientParsed
-  envConsts: EngineOptionsEnvClientParsed
+  envVars: EngineOptionsEnvParsed
+  envConsts: EngineOptionsEnvParsed
   publicdir: TInitialized extends true ? Publicdir<true> | null : Publicdir<false> | null
   outdir: string | null
   bunBuildConfig: EngineClientBuildConfigDefinition
@@ -94,8 +94,8 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     viteConfig: EngineOptionsViteConfig | null
     index: number
     logger: EngineLogger
-    envVars: EngineOptionsEnvClientParsed
-    envConsts: EngineOptionsEnvClientParsed
+    envVars: EngineOptionsEnvParsed
+    envConsts: EngineOptionsEnvParsed
     publicdir: Publicdir | null
     allPointsManagers: AllPointsManagers
     bunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
@@ -173,8 +173,8 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     hmrPort: number | false
     index: number
     logger: EngineLogger
-    envVars: EngineOptionsEnvClientParsed
-    envConsts: EngineOptionsEnvClientParsed
+    envVars: EngineOptionsEnvParsed
+    envConsts: EngineOptionsEnvParsed
     engineFile: string | null
     allPointsManagers: AllPointsManagers
     viteConfig: EngineOptionsViteConfig | null

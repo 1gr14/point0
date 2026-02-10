@@ -45,11 +45,12 @@ export type EngineOptionsPublicdir =
     >
 export type EngineOptionsPublicdirParsed = Array<[string, string | Response | (() => Response | Promise<Response>)]>
 
-export type EngineOptionsEnvClient = string | Record<string, any> | Array<string | Record<string, any>>
-export type EngineOptionsEnvClientParsed = Record<string, any>
-
-export type EngineOptionsEnvServer = Record<string, any> | Array<Record<string, any>>
-export type EngineOptionsEnvServerParsed = Record<string, any>
+export type EngineOptionsEnvWide =
+  | string
+  | Record<string, string | undefined>
+  | Array<string | Record<string, string | undefined>>
+export type EngineOptionsEnvStrict = Record<string, string | undefined> | Array<Record<string, string | undefined>>
+export type EngineOptionsEnvParsed = Record<string, string | undefined>
 
 export type ExtractedViteConfig = import('vite').UserConfig
 export type ExtractViteConfigOptions = {
@@ -116,7 +117,7 @@ export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
     source: EngineOptionsPublicdir
     outdir: string
   }
-  env?: { vars?: EngineOptionsEnvServer; consts?: EngineOptionsEnvServer }
+  env?: { vars?: EngineOptionsEnvStrict; consts?: EngineOptionsEnvWide }
   port?: number | string
   outdir?: string
   entry?: string | Record<string, string>
@@ -145,7 +146,7 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   }
   indexHtml?: string
   domRootElementId?: string
-  env?: { vars?: EngineOptionsEnvClient; consts?: EngineOptionsEnvClient }
+  env?: { vars?: EngineOptionsEnvWide; consts?: EngineOptionsEnvWide }
   port?: number | string
   hmrPort?: number | string | boolean
   bunBuildConfig?: EngineClientBuildConfigDefinition
@@ -339,8 +340,8 @@ export type EngineClientOptionsParsed = {
   baseurl: string
   indexHtml: string | null
   // indexHtmlDistFile: string | null
-  envVars: EngineOptionsEnvClientParsed
-  envConsts: EngineOptionsEnvClientParsed
+  envVars: EngineOptionsEnvParsed
+  envConsts: EngineOptionsEnvParsed
   domRootElementId: string
   port: number
   hmrPort: number | false
@@ -364,8 +365,8 @@ export type EngineServerOptionsParsed = {
   port: number
   entry: Record<string, string> | null
   outdir: string | null
-  envVars: EngineOptionsEnvServerParsed
-  envConsts: EngineOptionsEnvServerParsed
+  envVars: EngineOptionsEnvParsed
+  envConsts: EngineOptionsEnvParsed
   publicdir: {
     source: PublicdirDefinition
     outdir: string
@@ -412,7 +413,7 @@ const parsePublicdir = (input: EngineOptionsPublicdir, cwd: string): EngineOptio
   return result
 }
 
-const parseEnvClient = (input: EngineOptionsEnvClient): EngineOptionsEnvClientParsed => {
+const parseEnv = (input: EngineOptionsEnvWide | EngineOptionsEnvStrict): EngineOptionsEnvParsed => {
   if (typeof input === 'string') {
     if (input.includes('*')) {
       // for (const key of Object.keys(process.env)) {
@@ -428,20 +429,9 @@ const parseEnvClient = (input: EngineOptionsEnvClient): EngineOptionsEnvClientPa
   if (!Array.isArray(input)) {
     return input
   }
-  const result: EngineOptionsEnvClientParsed = {}
+  const result: EngineOptionsEnvParsed = {}
   for (const item of input) {
-    Object.assign(result, parseEnvClient(item))
-  }
-  return result
-}
-
-const parseEnvServer = (input: EngineOptionsEnvServer): EngineOptionsEnvServerParsed => {
-  if (!Array.isArray(input)) {
-    return input
-  }
-  const result: EngineOptionsEnvServerParsed = {}
-  for (const item of input) {
-    Object.assign(result, parseEnvServer(item))
+    Object.assign(result, parseEnv(item))
   }
   return result
 }
@@ -804,8 +794,8 @@ export const parseEngineServerOptions = ({
     bunBuildConfig: serverOptions.bunBuildConfig ?? {},
     bunPlugins: serverOptions.bunPlugins ?? [],
     compiler,
-    envVars: parseEnvServer(serverOptions.env?.vars ?? {}),
-    envConsts: parseEnvServer(serverOptions.env?.consts ?? {}),
+    envVars: parseEnv(serverOptions.env?.vars ?? {}),
+    envConsts: parseEnv(serverOptions.env?.consts ?? {}),
     routesProvided: serverOptions.routes ?? null,
     generate: (serverOptions.generate ?? []).map((task) => ({
       ...task,
@@ -941,8 +931,8 @@ const parseEngineClientOptions = ({
     port,
     hmrPort,
     index,
-    envVars: parseEnvClient(clientOptions.env?.vars ?? {}),
-    envConsts: parseEnvClient(clientOptions.env?.consts ?? {}),
+    envVars: parseEnv(clientOptions.env?.vars ?? {}),
+    envConsts: parseEnv(clientOptions.env?.consts ?? {}),
     viteConfig:
       typeof clientOptions.viteConfig === 'string'
         ? toFinalPath({

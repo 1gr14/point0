@@ -6,12 +6,7 @@ import * as nodePath from 'node:path'
 import type { Options as RetryOptions } from 'p-retry'
 import pRetry from 'p-retry'
 import type { ViteDevServer } from 'vite'
-import type {
-  EngineOptionsEnvClientParsed,
-  EngineOptionsEnvServerParsed,
-  EngineOptionsViteConfig,
-  ExtractedViteConfig,
-} from './config.js'
+import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, ExtractedViteConfig } from './config.js'
 import { env } from '@point0/core'
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
@@ -490,7 +485,7 @@ export const createViteDevServer = async ({
   scope: PointsScope
   target: 'client' | 'server'
   hmrPort: number | false
-  envConsts?: EngineOptionsEnvClientParsed | EngineOptionsEnvServerParsed
+  envConsts?: EngineOptionsEnvParsed | EngineOptionsEnvParsed
   mode: NormalNodeEnv
   root: string | undefined
 }): Promise<ViteDevServer> => {

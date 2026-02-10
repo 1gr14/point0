@@ -93,7 +93,6 @@ describe('build', () => {
         expect(html).toContain('__POINT0_ENV__')
         const page = await tp.gotoServer('/')
         await page.stable
-        tp.logOutput()
         expect(page.tale).toMatchInlineSnapshot(`
         "/
           div: My Cool Page, VAR1, CONST1, VAR1, CONST1
@@ -146,7 +145,7 @@ describe('build', () => {
 
     it(
       'prune client and server',
-      wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
+      wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
@@ -156,10 +155,18 @@ describe('build', () => {
           export const page3 = root.lets('page', 'page3', '/3').page(() => (env.target.is.server ? <div>MY_SERVER_ONLY4</div> : <div>MY_CLIENT_ONLY5</div>))
           export const page4 = root.lets('page', 'page4', '/4').page(() => { if (env.target.is.server) { return <div>MY_SERVER_ONLY6</div> } else { return <div>MY_CLIENT_ONLY7</div> } })
           export const page5 = root.lets('page', 'page5', '/5').loader(() => { console.info('MY_SERVER_ONLY8'); return {y:2} }).page(() => <div>MY_CLIENT_SERVER9</div>) // it is ok
+          export const page6 = root.lets('page', 'page6', '/5')
+            .page(() => {
+              const a = process.env.MY_ENV_FILE_VARIABLE === 'VAR1' ? 'MY_MAYBE_1' : 'MY_MAYBE_2'
+              const b = env.vars.MY_ENV_FILE_VARIABLE === 'VAR1' ? 'MY_MAYBE_3' : 'MY_MAYBE_4'
+              const c = process.env.MY_ENV_FILE_CONSTANT === 'CONST1' ? 'MY_ALWAYS_5' : 'MY_NEVER_6'
+              const d = env.vars.MY_ENV_FILE_CONSTANT === 'CONST1' ? 'MY_ALWAYS_7' : 'MY_NEVER_8'
+              return <div>{a}, {b}, {c}, {d}</div>
+            })
         `,
         )
         const generateResult = await tp.generate()
-        expect(generateResult.points.length).toBe(6)
+        expect(generateResult.points.length).toBe(7)
         const bp = tp.spawn(['bun', 'run', 'build'])
         await bp.exited
         const clientFilesContent = await tp.getDistClientFilesContent()
@@ -186,6 +193,24 @@ describe('build', () => {
         expect(serverFilesContent.includes('MY_SERVER_ONLY8')).toBe(true)
         expect(serverFilesContent.includes('MY_SERVER_ONLY6')).toBe(true)
 
+        expect(clientFilesContent.includes('MY_MAYBE_1')).toBe(true)
+        expect(clientFilesContent.includes('MY_MAYBE_2')).toBe(true)
+        expect(clientFilesContent.includes('MY_MAYBE_3')).toBe(true)
+        expect(clientFilesContent.includes('MY_MAYBE_4')).toBe(true)
+        expect(clientFilesContent.includes('MY_ALWAYS_5')).toBe(true)
+        expect(clientFilesContent.includes('MY_NEVER_6')).toBe(false)
+        expect(clientFilesContent.includes('MY_ALWAYS_7')).toBe(true)
+        expect(clientFilesContent.includes('MY_NEVER_8')).toBe(false)
+
+        expect(serverFilesContent.includes('MY_MAYBE_1')).toBe(true)
+        expect(serverFilesContent.includes('MY_MAYBE_2')).toBe(true)
+        expect(serverFilesContent.includes('MY_MAYBE_3')).toBe(true)
+        expect(serverFilesContent.includes('MY_MAYBE_4')).toBe(true)
+        expect(serverFilesContent.includes('MY_ALWAYS_5')).toBe(true)
+        expect(serverFilesContent.includes('MY_NEVER_6')).toBe(false)
+        expect(serverFilesContent.includes('MY_ALWAYS_7')).toBe(true)
+        expect(serverFilesContent.includes('MY_NEVER_8')).toBe(false)
+
         tp.spawn(['bun', 'run', 'start'])
         expect(engine.server.port).toBeNumber()
         expect(engine.clients[0].port).toBeNumber()
@@ -205,7 +230,7 @@ describe('build', () => {
         `)
       }),
       {
-        retry: 3,
+        // retry: 3,
       },
     )
   })

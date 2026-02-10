@@ -10,7 +10,7 @@ import type { EngineClient } from './client.js'
 import type {
   EngineLogger,
   EngineOptionsCompilerParsed,
-  EngineOptionsEnvServerParsed,
+  EngineOptionsEnvParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
 } from './config.js'
@@ -56,8 +56,8 @@ export class EngineServer<TInitialized extends boolean = boolean> {
   bunServer: Bun.Server<unknown> | undefined
   viteConfig: EngineOptionsViteConfig | null
   viteDevServer: ViteDevServer | null
-  envConsts: EngineOptionsEnvServerParsed
-  envVars: EngineOptionsEnvServerParsed
+  envConsts: EngineOptionsEnvParsed
+  envVars: EngineOptionsEnvParsed
   hmrPort: number | false
   fetcher: TInitialized extends true ? Fetcher : null
   compiler: EngineOptionsCompilerParsed | false
@@ -74,8 +74,8 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     fallbackScope: PointsScope
     logger: EngineLogger
     clients: EngineClient[]
-    envConsts: EngineOptionsEnvServerParsed
-    envVars: EngineOptionsEnvServerParsed
+    envConsts: EngineOptionsEnvParsed
+    envVars: EngineOptionsEnvParsed
     entry: Record<string, string> | null
     publicdir: Publicdir<false> | null
     outdir: string | null
@@ -133,8 +133,8 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       source: PublicdirDefinition
       outdir: string
     } | null
-    envConsts: EngineOptionsEnvServerParsed
-    envVars: EngineOptionsEnvServerParsed
+    envConsts: EngineOptionsEnvParsed
+    envVars: EngineOptionsEnvParsed
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
@@ -640,6 +640,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     }
 
     const NODE_ENV = normalizeAndValidateNodeEnv('production')
+    this.envConsts.NODE_ENV = NODE_ENV
 
     const thisBunBuildConfig = await executeEngineServerBuildConfig({
       mode: NODE_ENV,
@@ -688,10 +689,16 @@ export class EngineServer<TInitialized extends boolean = boolean> {
         ...thisBunBuildConfig.define,
         ...providedBunBuildConfig.define,
         ...injectedEnvs,
-        'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-        'process.env.POINT0_BUILT': JSON.stringify('true'),
-        'process.env.Target': JSON.stringify('server'),
-        'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
+        // 'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+        // 'process.env.POINT0_BUILT': JSON.stringify('true'),
+        // 'process.env.Target': JSON.stringify('server'),
+        // 'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
+        ...Object.fromEntries(
+          Object.entries(this.envConsts).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+        ),
+        ...Object.fromEntries(
+          Object.entries(this.envConsts).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+        ),
       },
     })
     return buildOutput.outputs.map((output) => output.path)
@@ -720,6 +727,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       }
 
       const NODE_ENV = normalizeAndValidateNodeEnv('production')
+      this.envConsts.NODE_ENV = NODE_ENV
 
       const loadedViteConfig = await extractViteConfig({
         viteConfig: this.viteConfig,
@@ -784,10 +792,16 @@ export class EngineServer<TInitialized extends boolean = boolean> {
         define: {
           ...loadedViteConfig.define,
           ...injectedEnvs,
-          'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-          'process.env.POINT0_BUILT': JSON.stringify('true'),
-          'process.env.Target': JSON.stringify('server'),
-          'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
+          // 'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+          // 'process.env.POINT0_BUILT': JSON.stringify('true'),
+          // 'process.env.Target': JSON.stringify('server'),
+          // 'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
+          ...Object.fromEntries(
+            Object.entries(this.envConsts).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+          ),
+          ...Object.fromEntries(
+            Object.entries(this.envConsts).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+          ),
         },
       }
       const buildResult = await viteBuild(config)
