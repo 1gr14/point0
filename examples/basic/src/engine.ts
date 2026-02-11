@@ -20,8 +20,7 @@ export const engine = Engine.create({
       generate: [
         {
           what: 'points',
-          file: './lib/points.ready.ts',
-          lazy: false,
+          file: './lib/points.lazy.ts',
         },
         {
           what: 'routes',

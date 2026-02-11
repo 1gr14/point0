@@ -1,3 +1,12 @@
+import type { RequiredCtx } from '@point0/core'
+import { ServerPoints } from './server-points.js'
+
+/**
+ * @deprecated Use ServerPoints instead.
+ */
+export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> extends ServerPoints<TRequiredCtx> {}
+
+export type { GetSuitableResult } from './server-points.js'
 import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation } from '@devp0nt/route0'
 import type {

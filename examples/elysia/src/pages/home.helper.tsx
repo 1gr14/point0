@@ -51,4 +51,4 @@ export const ExternalHelperComponent2 = client.lets('component', 'externalHelper
   )
 })
 
-export const ExternalHelperComponent3 = client.lets('component', 'externalHelper2').component(ExternalHelperComponent)
+export const ExternalHelperComponent3 = client.lets('component', 'externalHelper3').component(ExternalHelperComponent)

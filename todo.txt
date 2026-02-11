@@ -51,9 +51,9 @@ bun watcher, not parcel watcher
 Remove comments, unusde code, unused types (except core/point0.ts and core/types.ts)
 Логгер может принимать как готовый логгер, так и функцию разруливающую логи принимающую левел категорию аргументы
 Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп
+При обнаружении поинта, который при своей инициализации не наблюдает над собой компилера судя по процесс енв, он должен сделать консоль варн что мол компилер забыли включить или импортнули его в энжине незаконно без асунк импорта, это можно отключить
+В поинтах сделать проверку в момент летс или криэйт, либо энжина должна быть инициализирована, либо это должен быть клиент
 --+
-fetch is like usual call of fetchQuery, fetchInfiniteQuery, etc
-point0 also separate file, index jsut reexport everything
 types.ts file thet reexport only needed types
 store each point location to normalize errors messages for example in No route or id provided for this point
 normzliae all errors texts everyhere with point name and path to point where it was defined
@@ -69,6 +69,9 @@ shrink core/index.ts size, by remove code duplicates
 ? Заменить поинт на поинт ИНСТАНС а то путаница какая-то, и в поинте хранить только тайп и нэйм
 find TODO in code
 ---
+??? remove all points manager
+??? Разделить клиент скоуп на фром скоуп и ту скоуп и моунтед скоуп, короче тут надо уточнить как это должно быть
+??? server should get only its own points, and its already should include all points, so we do not need all-points-manager
 ? getFakeClient remove from internals, use from superstore import fakeClient.get() from fake-client.ts
 ? name → _name чтобы не конфликтовать с нэймом реакт компонента
 ? В инфер добавить аргсИнаут где он может быть опшионалом
@@ -90,17 +93,8 @@ find TODO in code
 
 
 === PREPARING ===
-remove all points manager
-fix points so it should not define by itslef __POINT0_CLIENT_SCOPE__ it should be done via superstore in mount
-throw if same name and type in current scope
-Разделить клиент скоуп на фром скоуп и ту скоуп и моунтед скоуп, короче тут надо уточнить как это должно быть
-Поинтскоуп как-то адекватно устанавливать в момент маунта вероятно чрез <PointsManager.Provider points={definition} /> или PointsManager.mount(definition) или points.mount()
-server should get only its own points, and its already should include all points, so we do not need all-points-manager
 
 parallel fake client tests
-
-При обнаружении поинта, который при своей инициализации не наблюдает над собой компилера судя по процесс енв, он должен сделать консоль варн что мол компилер забыли включить или импортнули его в энжине незаконно без асунк импорта, это можно отключить
-В поинтах сделать проверку в момент летс или криэйт, либо энжина должна быть инициализирована, либо это должен быть клиент
 
 ? Квери в общий провайдер
 ? Ввести плинт0 провайдер
@@ -151,6 +145,7 @@ optional params in routes
 
 
 === SSR ===
+При дипшмифетче сверяться а является ли запрошенная кверя дочерней по отношению к нашему серверному скоупу, или это вообще другой сервер
 Test for mount()
 Instead we recommend using a library like Serialize JavaScript or devalue which are both safe against XSS injections out of the box.
 Компонент без сср на сср странице должен сначала отрендерить пустоту, тесты на частичный ssr

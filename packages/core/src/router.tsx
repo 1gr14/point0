@@ -3,7 +3,7 @@ import type { AnyLocation, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/
 import { Route0 } from '@devp0nt/route0'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { PointsManager } from './points-manager.js'
+import { ClientPoints } from './client-points.js'
 import { _ssItems } from './internals.js'
 import type { IfAnyThenElse } from './types.js'
 
@@ -208,11 +208,11 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
     // const hashSuffix = routerCtx.isSsr ? '' : typeof window !== 'undefined' ? window.location.hash : ''
     const hashSuffix = !addHashToLocation ? '' : typeof window !== 'undefined' ? window.location.hash : ''
     if (!route) {
-      return { ...(PointsManager.getPointsManager().routes._.getLocation(location) as AnyLocation), hash: hashSuffix }
+      return { ...(ClientPoints.getInstance().routes._.getLocation(location) as AnyLocation), hash: hashSuffix }
     }
     return { ...(Route0.from(route).getLocation(location) as KnownLocation<TRoute>), hash: hashSuffix }
     // }, [route, location, PointsManager.getPointsManager().routesHash, routerCtx.isSsr])
-  }, [route, location, addHashToLocation ? PointsManager.getPointsManager().routesHash : '', addHashToLocation])
+  }, [route, location, addHashToLocation ? ClientPoints.getInstance().routesHash : '', addHashToLocation])
 }
 
 // export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {
@@ -399,13 +399,13 @@ export function _wrapNavigate<T extends (to: string, ...args: any[]) => any>(
       return args[0]
     })()
     const prevLocation = routerContext.currentLocation
-    const location = PointsManager.getPointsManager().routes._.getLocation(to)
+    const location = ClientPoints.getInstance().routes._.getLocation(to)
     routerContext.setPrevLocation(prevLocation)
     routerContext.setError(null)
     routerContext.setNextLocation(location)
     routerContext.setStatus('prefetching')
     try {
-      await PointsManager.getPointsManager().prefetchSuitablePagePoint({
+      await ClientPoints.getInstance().prefetchPage({
         location,
       })
       routerContext.setStatus('transitioning')

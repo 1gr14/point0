@@ -276,7 +276,7 @@ export class FakeClient<TState extends FakeClientState = any> {
         _getSsItemsWithRestErrors(
           {
             __POINT0_FAKE_CLIENT__: this,
-            __POINT0_CLIENT_SCOPE__: this.scope,
+            __POINT0_CLIENT_POINTS__: this.client.points,
           },
           'Not yet exists in test client run',
         ),

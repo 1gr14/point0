@@ -4374,13 +4374,10 @@ export class Point0<
   ): { url: string; init: RequestInit; request: Request } {
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions?.(), ...options }
-    const fromScope = _ssItems.__POINT0_CLIENT_SCOPE__.getWeak() ?? _getFakeClient()?.scope
-    if (!fromScope || typeof fromScope !== 'string') {
-      throw new Error('Scope is not set. You forget to call PointsManager.create()?')
-    }
+    const fromScope = _ssItems.__POINT0_CLIENT_POINTS__.getWeak()?.manager.scope ?? _getFakeClient()?.scope
     const headers = mergeHeaders(fetchOptions.headers, options?.headers, {
       Accept: 'application/json',
-      'X-Point0-From-Scope': fromScope,
+      ...(fromScope ? { 'X-Point0-From-Scope': fromScope } : {}),
     })
     const serverurl = this.getServerUrl()
     if (!serverurl) {
@@ -6753,8 +6750,4 @@ export class Point0<
   //   })
   //   return null
   // }
-
-  // super store
-
-  static getPointsManager = PointsManager.getPointsManager.bind(PointsManager)
 }

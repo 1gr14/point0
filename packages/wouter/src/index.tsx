@@ -13,8 +13,8 @@ import {
   _ssItems,
   _wrapNavigate,
   _wrapUseNavigate,
+  ClientPoints,
   env,
-  Point0,
   RouterContext,
   RouterContextProvider,
   useLocation,
@@ -177,9 +177,9 @@ export const SimpleLink = (props: LinkProps) => {
     }
     if (finalTo.startsWith('#')) {
       const hashSuffix = !routerCtx.addHashToLocation ? '' : finalTo
-      return Point0.getPointsManager()._getPagePointByHref(location.pathname + hashSuffix)
+      return ClientPoints.getInstance()._getPageByHref(location.pathname + hashSuffix)
     }
-    return Point0.getPointsManager()._getPagePointByHref(finalTo)
+    return ClientPoints.getInstance()._getPageByHref(finalTo)
   }, [finalTo, location, routerCtx.addHashToLocation])
   return (
     <WouterLink
@@ -195,8 +195,8 @@ export const SimpleLink = (props: LinkProps) => {
             prefetchTimeoutRef.current = setTimeout(
               () => {
                 prefetchTimeoutRef.current = null
-                Point0.getPointsManager()
-                  .prefetchSuitablePagePoint({
+                ClientPoints.getInstance()
+                  .prefetchPage({
                     location: pointWithLocation.location,
                   })
                   .catch((e: unknown) => {
@@ -289,7 +289,7 @@ export const createLink0 = <
 export const Router = ({
   ssrLocation = _ssItems.__POINT0_SSR_LOCATION__.get(),
   addHashToLocation,
-  routes = Point0.getPointsManager().routes,
+  routes = ClientPoints.getInstance().routes,
   status,
   children,
   Page404,
@@ -338,7 +338,7 @@ export const Router = ({
 
 export const RouterRoutes = ({
   Page404 = () => <div>Page Not Found</div>,
-  pagesTree = Point0.getPointsManager().pagesTree,
+  pagesTree = ClientPoints.getInstance().pagesTree,
 }: {
   Page404?: React.ComponentType
   pagesTree?: PagesTree
@@ -354,7 +354,7 @@ const combinePagesRoutesToRegexForLayout = (routes: AnyRoute[]) => {
 }
 
 export const RenderPagesTree = ({
-  pagesTree = Point0.getPointsManager().pagesTree,
+  pagesTree = ClientPoints.getInstance().pagesTree,
   Page404 = () => <div>Page Not Found</div>,
   level = 0,
 }: {

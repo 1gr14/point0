@@ -20,6 +20,7 @@ import type { Props, QueriesDefinitions } from './mountable.js'
 import type { PointsManager } from './points-manager.js'
 import type { Request0 } from './request0.js'
 import type { ResponseEffectsValues, ResponseEffectsSetHelper } from './effects.js'
+import type { ClientPoints } from './client-points.js'
 
 // basic
 
@@ -1097,7 +1098,7 @@ export type FetchServerOutputType = 'data' | 'queryClientDehydratedState'
 
 // mountable app
 
-export type AppProps = { points: PointsManager }
+export type AppProps = { points: ClientPoints }
 export type AppComponent = (props: AppProps) => React.ReactElement
 export type AppComponentModule = { default: AppComponent }
 

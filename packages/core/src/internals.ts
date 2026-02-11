@@ -5,6 +5,7 @@ import { queryClient } from './query-client.js'
 import { ss } from './super-store.js'
 import type { FetchFn, PointsScope } from './types.js'
 import type { QueryClient } from '@tanstack/react-query'
+import type { ClientPoints } from './client-points.js'
 
 const initUndefined = () => undefined as never
 
@@ -18,8 +19,8 @@ export const _ssItems = {
   __POINT0_FAKE_CLIENT__: ss.define<LikeFakeClient>('__POINT0_FAKE_CLIENT__', initUndefined, 'serverOnlyStorage'),
   __POINT0_REQUEST0__: ss.define<Request0>('__POINT0_REQUEST0__', initUndefined, 'serverOnlyStorage'),
   __POINT0_EFFECTS__: ss.define<Effects>('__POINT0_EFFECTS__', initUndefined, 'serverOnlyStorage'),
-  __POINT0_CLIENT_SCOPE__: ss.define<PointsScope | undefined>(
-    '__POINT0_CLIENT_SCOPE__',
+  __POINT0_CLIENT_POINTS__: ss.define<ClientPoints | undefined>(
+    '__POINT0_CLIENT_POINTS__',
     initUndefined,
     'clientServerIsolated',
   ),
@@ -47,7 +48,6 @@ export const _ssItems = {
 }
 
 const knownKeys = Object.keys(_ssItems)
-export const _ssProxy = ss.proxy(_ssItems)
 export const _ssRunWithServerStorageState = ss.createTypedRunWithServerStorageState<typeof _ssItems>()
 export type SuperStoreInternalValues = SuperStoreItemsValues<typeof _ssItems>
 export type SuperStoreInternalValuesOrErrors = SuperStoreItemsValuesOrErrors<typeof _ssItems>

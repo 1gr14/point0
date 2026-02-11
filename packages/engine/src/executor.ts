@@ -6,8 +6,6 @@ import type {
   // Ctx,
   Data,
   DataTransformerExtended,
-  ReadyPoint,
-  ReadyPointType,
   InputParsed,
   InputRaw,
   InputSchema,
@@ -16,9 +14,10 @@ import type {
   NiceReadyPoint,
   PagePoint,
   PointName,
-  PointsDefinition,
   PointsScope,
   QueryKey,
+  ReadyPoint,
+  ReadyPointType,
   Request0,
   RequiredCtx,
   SafeParseInputResult,
@@ -32,30 +31,26 @@ import type {
   UnknownCtx,
   UnknownData,
 } from '@point0/core'
-import { _ssItems, _ssRunWithServerStorageState, PointsManager, Effects } from '@point0/core'
+import { _ssItems, _ssRunWithServerStorageState, Effects } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
 import { dehydrate } from '@tanstack/react-query'
 import { createHead } from '@unhead/react/server'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
-import type { Engine } from './engine.js'
 import { stringify } from 'safe-stable-stringify'
+import type { ClientPoints } from '../../core/src/client-points.js'
+import type { Engine } from './engine.js'
 
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   engine: Engine
   request: Request0
   effects: Effects
-  pointsManager: PointsManager<true, TRequiredCtx>
-  // serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
-  pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
   serverStorageState: SuperStoreInternalValues
 
   private constructor({
     engine,
     request,
-    pointsManager,
-    pageLocation,
     requiredCtx,
     // serverExecuteActionsWithOutput,
     serverStorageState,
@@ -63,8 +58,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }: {
     engine: Engine
     request: Request0
-    pointsManager: PointsManager<true, TRequiredCtx>
-    pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
     // serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
     serverStorageState: SuperStoreInternalValues
@@ -73,8 +66,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     this.engine = engine
     this.request = request
     this.effects = effects
-    this.pointsManager = pointsManager
-    this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
     // this.serverExecuteActionsWithOutput = serverExecuteActionsWithOutput
     this.serverStorageState = serverStorageState
@@ -83,42 +74,33 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   static async create<TRequiredCtx extends RequiredCtx = RequiredCtx>({
     engine,
     request,
-    points,
-    pageLocation,
-    currentLocation,
     requiredCtx,
     effects,
     serverStorageState: providedServerStorageState,
   }: {
     engine: Engine
     request: Request0
-    points: PointsManager<boolean, TRequiredCtx> | PointsDefinition
-    currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
-    pageLocation: AnyLocation | undefined
     effects: Effects
     serverStorageState: SuperStoreInternalValuesOrErrors
   }): Promise<Executor<TRequiredCtx>> {
-    const pointsManager = (await PointsManager.create(points).load()) as PointsManager<true, TRequiredCtx>
     const serverStorageState = Object.assign(providedServerStorageState, {
       __POINT0_FAKE_CLIENT__: undefined,
       __POINT0_FETCH_FN__: engine.fetch.bind(engine),
       __POINT0_REQUEST0__: request,
       __POINT0_EFFECTS__: effects,
-      __POINT0_CLIENT_SCOPE__: pointsManager.scope,
+      __POINT0_CLIENT_POINTS__: undefined,
       // in case of recursive server response we want preserve query client to keep state
       __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: undefined,
       __POINT0_QUERY_CLIENT__:
         _ssItems.__POINT0_QUERY_CLIENT_FROM_PARENT_RUN__.getWeak() || _ssItems.__POINT0_QUERY_CLIENT__.config.init(),
       __POINT0_SSR_LOCATION__: undefined,
-      __POINT0_CURRENT_LOCATION__: currentLocation,
+      __POINT0_CURRENT_LOCATION__: new Error('Current location will exists only on ssr phase') as never,
       __POINT0_UNHEAD_HEAD__: createHead(),
     } satisfies SuperStoreInternalValues)
     return new Executor<TRequiredCtx>({
       engine,
       request,
-      pointsManager,
-      pageLocation,
       requiredCtx,
       // serverExecuteActionsWithOutput: [],
       effects,
@@ -129,70 +111,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   async withServerGlobalState<T>(callback: () => Promise<T>): Promise<T> {
     return await _ssRunWithServerStorageState(this.serverStorageState, callback)
   }
-
-  // maybe not needed helpers to execute points
-
-  // static createRequestByPointAndInput<TPoint extends ReadyPoint>({
-  //   point,
-  //   input,
-  // }: {
-  //   point: TPoint
-  //   input: TPoint['Infer']['InputRaw']
-  // }): Request {
-  //   // TODO: generate real request by point and input
-  //   return new Request(`http://localhost:3000/_point0/TODO:FIXME`)
-  // }
-
-  // static createRequestByPointScopeTypeNameInput({
-  //   scope,
-  //   pointType,
-  //   pointName,
-  //   input,
-  // }: {
-  //   scope: PointsScope
-  //   pointType: ReadyPointType
-  //   pointName: PointName
-  //   input: InputRaw
-  // }): Request {
-  //   // TODO: generate real request by point scope type name and input
-  //   return new Request(`http://localhost:3000/_point0/TODO:FIXME`)
-  // }
-
-  // static async execute<TPoint extends ReadyPoint>({
-  //   engine,
-  //   executor,
-  //   point,
-  //   input,
-  //   requiredCtx,
-  //   withLayouts,
-  //   effects,
-  // }: {
-  //   engine: Engine
-  //   point: TPoint
-  //   input: TPoint['Infer']['InputRaw']
-  //   executor?: Executor<TPoint['Infer']['RequiredCtx']> | undefined
-  //   withLayouts?: boolean
-  //   effects?: Effects
-  // } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<
-  //   ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>
-  // > {
-  //   if (!point._root) {
-  //     throw new Error('Point root not found')
-  //   }
-  //   const location = point.route ? point.route.flat(input) : Route0.getLocation('/')
-  //   const layoutsObject = Object.fromEntries(point._layouts.map((layout) => [`layout_${layout.name}`, layout]))
-  //   executor ??= await Executor.create({
-  //     engine,
-  //     request: Executor.createRequestByPointAndInput({ point, input }),
-  //     points: { _root: point._root, point, ...layoutsObject },
-  //     currentLocation: location,
-  //     requiredCtx,
-  //     pageLocation: point.type === 'page' ? location : undefined,
-  //   })
-  //   return await executor.execute({ point, input, withLayouts, effects })
-  // }
-
-  // old execute method
 
   private static async parseInputSafeAsync<TInputSchema extends InputSchema | UndefinedInputSchema>(
     inputSchema: TInputSchema,
@@ -256,18 +174,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
     return { success: true, data: output, error: undefined }
   }
-
-  // parseClientInput(
-  //   ...args: IsInputOptional<TClientInputSchema> extends true
-  //     ? [input?: InputRaw<TClientInputSchema>]
-  //     : [input: InputRaw<TClientInputSchema>]
-  // ): InputParsed<TClientInputSchema> {
-  //   const result = this.parseClientInputSafe(...args)
-  //   if (!result.success) {
-  //     throw result.error
-  //   }
-  //   return result.data
-  // }
 
   async execute<
     TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
@@ -641,6 +547,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   async prefetchAppPagePointDeep({
     App,
+    clientPoints,
     renderToReadableStream,
     pagePoint,
     pageLocation,
@@ -649,6 +556,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     level = 0,
   }: {
     App: AppComponent
+    clientPoints: ClientPoints
     renderToReadableStream: typeof RenderToReadableStream
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
@@ -659,11 +567,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     if (level === 0) {
       this.serverStorageState.__POINT0_CURRENT_LOCATION__ = pageLocation
       this.serverStorageState.__POINT0_SSR_LOCATION__ = pageLocation
+      this.serverStorageState.__POINT0_CLIENT_POINTS__ = clientPoints
     }
     await this.withServerGlobalState(async () => {
       const stream = await renderToReadableStream(
         React.createElement(App, {
-          points: this.pointsManager,
+          points: clientPoints,
         }),
       )
       await stream.allReady
@@ -671,7 +580,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const suitableMarkers = queryClientState.flatMap((query) => {
         const parsedQueryKey = Executor.parseQueryKey({
           queryKey: query.queryKey,
-          transformer: this.pointsManager.transformer,
+          transformer: clientPoints.manager.transformer,
         })
         if (!parsedQueryKey) {
           return []
@@ -697,34 +606,16 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
 
       for (const suitableMarker of suitableMarkers) {
-        const suitable = this.pointsManager.getSuitablePoint({
+        const suitablePoint = this.engine.server.points.find({
           scope: suitableMarker.scope,
-          pointType: suitableMarker.pointType,
-          pointName: suitableMarker.pointName,
-          input: suitableMarker.input,
+          type: suitableMarker.pointType,
+          name: suitableMarker.pointName,
         })
-        if (suitable) {
-          // ...we want fully imitate spa behaviour on server, so we should not just execute, but do full fetch request to keep all middlewares and side effects
-          // await this.execute({
-          //   point: suitable.point,
-          //   input: suitableMarker.input,
-          //   effects: suitable.point === pagePoint ? this.effects : undefined, // if it is loader for desired page, then we want it to be applied to executor effects, else new one will be created
-          // })
-          // ...here underth hood point already use engine.fetch, not native fetch, so no real request to url
-          // const { response } = await suitable.point.fetchDetailed(suitableMarker.input)
-          // if (response) {
-          //   const cookies = Effects.parseCookies(response)
-          //   for (const cookie of cookies) {
-          //     this.effects.set.cookies(cookie)
-          //   }
-          // }
-          // ...I think better use prefetchQuery.
-          // console.log(123123, _ssItems.__POINT0_REQUEST0__.getWeak())
-          // await suitable.point.prefetchQuery(suitableMarker.input)
-          if (suitable.point._queryResultType === 'infiniteQuery') {
-            await suitable.point.prefetchInfiniteQuery(suitableMarker.input, undefined, { force: true, mode: 'server' })
+        if (suitablePoint) {
+          if (suitablePoint._queryResultType === 'infiniteQuery') {
+            await suitablePoint.prefetchInfiniteQuery(suitableMarker.input, undefined, { force: true, mode: 'server' })
           } else {
-            await suitable.point.prefetchQuery(suitableMarker.input, undefined, { force: true, mode: 'server' })
+            await suitablePoint.prefetchQuery(suitableMarker.input, undefined, { force: true, mode: 'server' })
           }
         }
       }
@@ -734,6 +625,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         renderToReadableStream,
         pagePoint,
         pageLocation,
+        clientPoints,
         input,
         seenQueryHashes,
         level: level + 1,
@@ -744,162 +636,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
     })
   }
-
-  // async prefetchAppPagePointDeep({
-  //   App,
-  //   renderToReadableStream,
-  //   pagePoint,
-  //   pageLocation,
-  //   input,
-  //   seenQueryHashes = new Set<string>(),
-  //   level = 0,
-  // }: {
-  //   App: AppComponent
-  //   renderToReadableStream: typeof RenderToReadableStream
-  //   pagePoint: PagePoint | undefined
-  //   pageLocation: AnyLocation
-  //   input: InputRaw
-  //   seenQueryHashes?: Set<string>
-  //   level?: number
-  // }): Promise<void> {
-  //   if (level === 0) {
-  //     this.serverStorageState.__POINT0_CURRENT_LOCATION__ = pageLocation
-  //     this.serverStorageState.__POINT0_SSR_LOCATION__ = pageLocation
-  //   }
-  //   await this.withServerGlobalState(async () => {
-  //     const stream = await renderToReadableStream(
-  //       React.createElement(App, {
-  //         points: this.pointsManager,
-  //       }),
-  //     )
-  //     await stream.allReady
-  //     const queryClientState = _ssItems.__POINT0_QUERY_CLIENT__.get().getQueryCache().findAll()
-  //     const suitableMarkers = queryClientState.flatMap((query) => {
-  //       const hash = query.queryHash
-  //       if (seenQueryHashes.has(hash)) {
-  //         return []
-  //       }
-  //       const parsedQueryKey = Executor.parseQueryKey({
-  //         queryKey: query.queryKey,
-  //         transformer: this.pointsManager.transformer,
-  //       })
-  //       if (!parsedQueryKey) {
-  //         return []
-  //       }
-  //       if (!parsedQueryKey.isServer) {
-  //         return []
-  //       }
-  //       if (parsedQueryKey.outputType !== 'data') {
-  //         return []
-  //       }
-  //       seenQueryHashes.add(hash)
-  //       return parsedQueryKey
-  //     })
-
-  //     if (suitableMarkers.length === 0) {
-  //       if (level === 0 && pagePoint) {
-  //         await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input })
-  //       }
-  //       return
-  //     }
-
-  //     for (const suitableMarker of suitableMarkers) {
-  //       const suitable = this.pointsManager.getSuitablePoint({
-  //         scope: suitableMarker.scope,
-  //         pointType: suitableMarker.pointType,
-  //         pointName: suitableMarker.pointName,
-  //         input: suitableMarker.input,
-  //       })
-  //       if (suitable) {
-  //         await this.execute({
-  //           point: suitable.point,
-  //           input: suitableMarker.input,
-  //           effects: suitable.point === pagePoint ? this.effects : undefined, // if it is loader for desired page, then we want it to be applied to executor effects, else new one will be created
-  //         })
-  //       }
-  //     }
-
-  //     await this.prefetchAppPagePointDeep({
-  //       App,
-  //       renderToReadableStream,
-  //       pagePoint,
-  //       pageLocation,
-  //       input,
-  //       seenQueryHashes,
-  //     })
-
-  //     if (level === 0 && pagePoint) {
-  //       await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input })
-  //     }
-  //   })
-  // }
-
-  // async appendQueryClientCache({
-  //   data,
-  //   input,
-  //   error,
-  //   point,
-  // }: {
-  //   data: Data
-  //   input: InputParsed
-  //   error: unknown
-  //   point: ReadyPoint | undefined
-  // }): Promise<void> {
-  //   await this.withServerGlobalState(async () => {
-  //     if (
-  //       point &&
-  //       (point.type === 'query' ||
-  //         point.type === 'infiniteQuery' ||
-  //         point.type === 'page' ||
-  //         point.type === 'layout' ||
-  //         point.type === 'provider' ||
-  //         point.type === 'component')
-  //     ) {
-  //       const queryKey = point._getServerQueryKey({
-  //         input,
-  //         isInfiniteQuery: point._queryResultType === 'infiniteQuery',
-  //       })
-  //       const query = _ssItems.__POINT0_QUERY_CLIENT__
-  //         .get()
-  //         .getQueryCache()
-  //         .build(_ssItems.__POINT0_QUERY_CLIENT__.get(), { queryKey, queryHash: hashKey(queryKey) })
-  //       if (error) {
-  //         query.setState({
-  //           data: undefined,
-  //           error: { ...Error0.toJSON(error), name: 'Error0' },
-  //           status: 'error',
-  //           fetchStatus: 'idle',
-  //         })
-  //       } else {
-  //         const query = _ssItems.__POINT0_QUERY_CLIENT__
-  //           .get()
-  //           .getQueryCache()
-  //           .build(_ssItems.__POINT0_QUERY_CLIENT__.get(), { queryKey, queryHash: hashKey(queryKey) })
-  //         if (point._queryResultType === 'infiniteQuery') {
-  //           const pageParam =
-  //             (input as any)?.[point._infiniteQueryOptions.pageParamFromInput] ||
-  //             point._infiniteQueryOptions.initialPageParam
-  //           query.setState({
-  //             data: {
-  //               pages: Array.isArray(data) ? data : [data],
-  //               pageParams: [pageParam], // or your actual param if known
-  //             },
-  //             error: null,
-  //             status: 'success',
-  //             fetchStatus: 'idle',
-  //           })
-  //         } else {
-  //           query.setState({
-  //             data,
-  //             error: null,
-  //             status: 'success',
-  //             fetchStatus: 'idle',
-  //           })
-  //         }
-  //       }
-  //     }
-  //   })
-  // }
 
   async getQueryClientReadyDehydratedState(): Promise<DehydratedState> {
     const result = await this.withServerGlobalState(async () => {
@@ -929,8 +665,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       // }
       const prefetchPageQueryOptions = pagePoint._getServerQueryOptions({
         input,
-        // location: this.pageLocation as AnyLocation,
-        // queryClient: _ssItems.__POINT0_QUERY_CLIENT__.get(),
         queryOptions: undefined,
         fetchOptions: undefined,
         outputType: 'queryClientDehydratedState',
@@ -944,23 +678,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       queryClient.setQueryData(prefetchPageQueryOptions.queryKey, {
         dehydratedState: relatedQueriesDehydratedState,
       })
-
-      // // register per-key options (retry, gcTime, etc.)
-      // const tempQueryClient = _ssItems.__POINT0_QUERY_CLIENT__.config.init()
-      // // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      // if (!tempQueryClient) {
-      //   throw new Error('Query client not found')
-      // }
-      // const { queryKey, ...restOptions } = prefetchPageQueryOptions
-      // tempQueryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
-      //   ...(restOptions as any),
-      // })
-      // tempQueryClient.setQueryData(prefetchPageQueryOptions.queryKey, {
-      //   dehydratedState: relatedQueriesDehydratedState,
-      // })
-      // const tempDehydratedState = dehydrate(tempQueryClient)
-      // _ssItems.__POINT0_QUERY_CLIENT__.get().clear()
-      // hydrate(_ssItems.__POINT0_QUERY_CLIENT__.get(), tempDehydratedState)
     })
   }
 }
@@ -975,15 +692,3 @@ export type ExecuteOptions<
   input: TPoint extends ReadyPoint ? TPoint['Infer']['ServerInputRaw'] : InputRaw
   effects?: Effects
 }
-
-// export type ServerExecuteActionWithOutput<TType extends 'ctx' | 'loader'> = TType extends 'ctx'
-//   ? {
-//       output: Ctx | [Ctx, ...string[]]
-//       record: ServerExecuteAction<'ctx'>
-//     }
-//   : TType extends 'loader'
-//     ? {
-//         output: Data | Response | [number, Data | Response]
-//         record: ServerExecuteAction<'loader'>
-//       }
-//     : never

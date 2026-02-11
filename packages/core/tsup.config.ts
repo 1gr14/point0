@@ -11,6 +11,7 @@ const general = {
     'src/mountable.ts',
     'src/point0.ts',
     'src/points-manager.ts',
+    'src/client-points.ts',
     'src/query-client.tsx',
     'src/request0.ts',
     'src/effects.ts',
