@@ -28,7 +28,7 @@ export const _ssItems = {
   __POINT0_SSR_LOCATION__: ss.define<AnyLocation | undefined>(
     '__POINT0_SSR_LOCATION__',
     initUndefined,
-    'clientServerTransferred',
+    'clientServerTransferredSsr',
   ),
   __POINT0_CURRENT_LOCATION__: ss.define<AnyLocation>(
     '__POINT0_CURRENT_LOCATION__',

@@ -45,7 +45,7 @@ describe('SuperStore', () => {
 
     describe('item', () => {
       it('define, get, set, get (ssr)', () => {
-        const item = ss.define('item', () => 'value', 'clientServerTransferred')
+        const item = ss.define('item', () => 'value', 'clientServerTransferredSsr')
         expect(item.get()).toBe('value')
         item.set('value2')
         expect(item.get()).toBe('value2')
@@ -172,8 +172,8 @@ describe('SuperStore', () => {
 
       it('dehydrate, prepare with default', () => {
         ss.define('no-ssr', () => 'value', 'clientOnly')
-        ss.define('string', () => 'value', 'clientServerTransferred')
-        ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferred')
+        ss.define('string', () => 'value', 'clientServerTransferredSsr')
+        ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferredSsr')
         const dehydrated = ss.dehydrate()
         expect(dehydrated).toEqual({
           date: new Date('2017-01-01T00:00:00.000Z'),
@@ -192,7 +192,7 @@ describe('SuperStore', () => {
           dehydrate: (value) => value + '_1',
           hydrate: (dehydratedValue) => dehydratedValue + '_2',
         })
-        ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferred')
+        ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferredSsr')
         const dehydrated = ss.dehydrate()
         expect(dehydrated).toEqual({
           date: new Date('2017-01-01T00:00:00.000Z'),
@@ -204,7 +204,7 @@ describe('SuperStore', () => {
           string: 'value_1',
         })
         ss.reset.clientGlobalState()
-        const value = ss.getValue('string', 'clientServerTransferred')
+        const value = ss.getValue('string', 'clientServerTransferredSsr')
         expect(value).toBe('value_1_2')
         expect(ss.getStates()).toMatchInlineSnapshot(`
           {
@@ -221,16 +221,16 @@ describe('SuperStore', () => {
 
       it('stringify with default transformer', () => {
         ss.define('no-ssr', () => 'value', 'clientOnly')
-        ss.define('string', () => 'value', 'clientServerTransferred')
-        ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferred')
+        ss.define('string', () => 'value', 'clientServerTransferredSsr')
+        ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferredSsr')
         const stringified = ss.stringify()
         expect(stringified).toEqual('{"date":"2017-01-01T00:00:00.000Z","string":"value"}')
       })
 
       it('stringify with custom transformer', () => {
         ss.define('no-ssr', () => 'value', 'clientOnly')
-        ss.define('string', () => 'value', 'clientServerTransferred')
-        ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferred')
+        ss.define('string', () => 'value', 'clientServerTransferredSsr')
+        ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferredSsr')
         ss.setTransformer(superjson)
         const stringified = ss.stringify()
         expect(stringified).toEqual(
@@ -288,7 +288,7 @@ describe('SuperStore', () => {
       it(
         'define, get, set, get (ssr)',
         withFakeClient(() => {
-          const item = ss.define('item', () => 'value', 'clientServerTransferred')
+          const item = ss.define('item', () => 'value', 'clientServerTransferredSsr')
           expect(item.get()).toBe('value')
           item.set('value2')
           expect(item.get()).toBe('value2')
@@ -457,8 +457,8 @@ describe('SuperStore', () => {
         'dehydrate, prepare with default',
         withFakeClient(() => {
           ss.define('no-ssr', () => 'value', 'clientOnly')
-          ss.define('string', () => 'value', 'clientServerTransferred')
-          ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferred')
+          ss.define('string', () => 'value', 'clientServerTransferredSsr')
+          ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferredSsr')
           const dehydrated = ss.dehydrate()
           expect(dehydrated).toEqual({
             date: new Date('2017-01-01T00:00:00.000Z'),
@@ -480,7 +480,7 @@ describe('SuperStore', () => {
             dehydrate: (value) => value + '_1',
             hydrate: (dehydratedValue) => dehydratedValue + '_2',
           })
-          ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferred')
+          ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferredSsr')
           const dehydrated = ss.dehydrate()
           expect(dehydrated).toEqual({
             date: new Date('2017-01-01T00:00:00.000Z'),
@@ -492,7 +492,7 @@ describe('SuperStore', () => {
             string: 'value_1',
           })
           ss.reset.clientGlobalState()
-          const value = ss.getValue('string', 'clientServerTransferred')
+          const value = ss.getValue('string', 'clientServerTransferredSsr')
           expect(value).toBe('value_1_2')
           expect(ss.getStates()).toMatchInlineSnapshot(`
           {
@@ -513,8 +513,8 @@ describe('SuperStore', () => {
         'stringify with default transformer',
         withFakeClient(() => {
           ss.define('no-ssr', () => 'value', 'clientOnly')
-          ss.define('string', () => 'value', 'clientServerTransferred')
-          ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferred')
+          ss.define('string', () => 'value', 'clientServerTransferredSsr')
+          ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferredSsr')
           const stringified = ss.stringify()
           expect(stringified).toEqual('{"date":"2017-01-01T00:00:00.000Z","string":"value"}')
         }),
@@ -524,8 +524,8 @@ describe('SuperStore', () => {
         'stringify with custom transformer',
         withFakeClient(() => {
           ss.define('no-ssr', () => 'value', 'clientOnly')
-          ss.define('string', () => 'value', 'clientServerTransferred')
-          ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferred')
+          ss.define('string', () => 'value', 'clientServerTransferredSsr')
+          ss.define('date', () => new Date('2017-01-01T00:00:00.000Z'), 'clientServerTransferredSsr')
           ss.setTransformer(superjson)
           const stringified = ss.stringify()
           expect(stringified).toEqual(

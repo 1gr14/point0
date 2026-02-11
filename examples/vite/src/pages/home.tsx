@@ -19,9 +19,9 @@ import { ExternalHelperComponent } from './home.helper.js'
 //   }
 // })
 // const someRandom = Point0.define('someRandom', () => Math.random(), true)
-const someDate = superstore.define('someDate', () => new Date(), 'clientServerTransferred')
-const someStable = superstore.define('someStable', () => 123, 'clientServerTransferred')
-const someVar = superstore.define('someVar', () => 0, 'clientServerTransferred')
+const someDate = superstore.define('someDate', () => new Date(), 'clientServerTransferredSsr')
+const someStable = superstore.define('someStable', () => 123, 'clientServerTransferredSsr')
+const someVar = superstore.define('someVar', () => 0, 'clientServerTransferredSsr')
 
 export const BestIdeaComponent = client
   .lets<{ cta: string }>('component', 'bestIdea')

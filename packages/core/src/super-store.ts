@@ -254,7 +254,7 @@ export class SuperStore {
         init: args[1],
         dehydrate: args[2].dehydrate,
         hydrate: args[2].hydrate,
-        policy: 'clientServerTransferred',
+        policy: 'clientServerTransferredSsr',
       }
     }
     throw new Error(`Invalid arguments`)
@@ -360,7 +360,7 @@ export class SuperStore {
           }
           return states.clientState || states.fakeClientState
         }
-        case 'clientServerTransferred': {
+        case 'clientServerTransferredSsr': {
           return states.clientState || states.fakeClientState || states.serverStorageState
         }
         case 'clientServerIsolated': {
@@ -482,7 +482,7 @@ export class SuperStore {
   dehydrate(): Record<string, unknown> {
     const dehydrated: Record<string, unknown> = {}
     for (const item of this.items.values()) {
-      if (item.policy !== 'clientServerTransferred') {
+      if (item.policy !== 'clientServerTransferredSsr') {
         continue
       }
       dehydrated[item.name] = item.dehydrate()
@@ -611,7 +611,7 @@ export const ss = SuperStore.instance
 
 export type SuperStoreItemPolicy =
   | 'clientServerIsolated'
-  | 'clientServerTransferred'
+  | 'clientServerTransferredSsr'
   | 'clientOnly'
   | 'serverOnlyStorage'
   | 'serverOnlyGlobal'

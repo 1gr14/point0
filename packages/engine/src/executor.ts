@@ -380,6 +380,21 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           }
         }
 
+        if (!point._hasServerLoader()) {
+          const error = new Error0(`Point "${point.toString()}" has no server loader`)
+          const status = 500
+          response0.set.status(status)
+          return {
+            ctx: currentCtx,
+            data: currentData,
+            error,
+            status,
+            response: currentResponse,
+            output: currentOutput,
+            effects: response0.effects,
+          }
+        }
+
         for (const serverExecuteAction of point._serverExecuteActions) {
           switch (serverExecuteAction.type) {
             case 'input': {

@@ -44,18 +44,20 @@ launch
 
 
 REFACTOING 3000
+
 query(), layout(), move to separate files and assign by TLetsReadyPoint
-response0 → effects
-name → _name чтобы не конфликтовать с нэймом реакт компонента
+
 getFakeClient remove from internals, use from superstore import fakeClient.get() from fake-client.ts
-clientServerTransferred → ssr (clientServerTransferredSsr)
+response0 → effects
 ? Зачем вообще нужен сет, пусть будет просто эффектс, а в них уже сет
-on request to server for query or mutation which has no serverLoader throw error
+
 bun watcher, not parcel watcher
 ? html transformer not regex hack
+
 remove all points manager
-Разобраться с эррор баундари для фронта
 throw if same name and type in current scope
+Разобраться с эррор баундари для фронта
+
 --+
 Remove comments, unusde code, unsed types
 Логгер может принимать как готовый логгер, так и функцию разруливающую логи принимающую левел категорию аргументы
@@ -78,6 +80,7 @@ shrink core/index.ts size, by remove code duplicates
 ? Заменить поинт на поинт ИНСТАНС а то путаница какая-то, и в поинте хранить только тайп и нэйм
 find TODO in code
 ---
+? name → _name чтобы не конфликтовать с нэймом реакт компонента
 ? В инфер добавить аргсИнаут где он может быть опшионалом
 ? Сср по умолчанию андефайнед и после того как его именно выключили он не может быть включён опять, иначе всё сломается
 ? add point self to loader and to ctx and to loadrCtx options, and everywhere where can be point, add point
