@@ -233,9 +233,9 @@ import {
 
 // head: both, nothing to prune
 // props: both, nothing to prune
-// input: server, prune on client !!!
-// clientInput: client, prune on server !!!
-// combinedInput: both, nothing to prune !!!
+// input: server, prune on client
+// clientInput: client, prune on server
+// combinedInput: both, nothing to prune
 
 // root: both, nothing to prune
 // base: both, nothing to prune
@@ -1607,7 +1607,10 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions
     >
-  > {
+  >
+  with(withFnProvided: WithFn<any, any, any, any, any> | undefined) {
+    // in case if we shake with for server without ssr
+    const withFn = withFnProvided || ((() => ({})) as WithFn<any, any, any, any, any>)
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
@@ -3373,10 +3376,10 @@ export class Point0<
       return layout as never
     } else {
       const [layoutNicePoint] = args as [
-        NiceLayoutReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+        NiceLayoutReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
       ]
       return this._continue({
-        _layouts: [...new Set([...this._layouts, layoutNicePoint.point])],
+        _layouts: layoutNicePoint ? [...new Set([...this._layouts, layoutNicePoint.point])] : this._layouts,
       }) as never
     }
   }

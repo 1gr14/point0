@@ -95,6 +95,7 @@ find TODO in code
 ? Фетч квери даёт возможность также передать сервер дата чтобы мы могли нормально её передать при юз квери в клиентские лоадеры
 ? А суперджейсон тоже должен быть по-молчанию включён и его просто можно переопределить через опции
 
+
 PREPARING
 ? Квери в общий провайдер
 ? Ввести плинт0 провайдер
@@ -106,6 +107,7 @@ parallel fake client tests
 fix points so it should not define by itslef __POINT0_CLIENT_SCOPE__ it should be done via superstore in mount
 При обнаружении поинта, который при своей инициализации не наблюдает над собой компилера судя по процесс енв, он должен сделать консоль варн что мол компилер забыли включить или импортнули его в энжине незаконно без асунк импорта, это можно отключить
 В поинтах сделать проверку в момент летс или криэйт, либо энжина должна быть инициализирована, либо это должен быть клиент
+
 
 REQUESTING
 ServerClient with own fetching like FakClient
@@ -121,12 +123,64 @@ on fetch error maybe no json, then if it is thore, do res.text()
 ? queryClientDehydratedState always should be returned additionally to data if it has more then only what we requests, we hydrate it, but then immediately remove and it not comes to query client cache
 ? between server calls we should have shared queryClientState
 
+
 COOKIES-STORE
 Он клиент фетч и там куки сторвпихнутт, тогда его можно вытащить в отдельный пакет, и вообще брать трансформер по умолчанию из суперстора который там появляется после маунта поинтов
 cookies-stroe as separate plugin
 Кукистор Он фетч проверять только те запросы перед рефрешем хуков, где есть сет куки
 В куки добавить стрикт, чтобы если стрикт тру, то не парсить строку трансформером, а ещё лучше {transform: false,true,'auto'}
 ? В кукистор добавить прокси чтобы там также можно было сделать
+
+
+ROUTING
+Роут стейты, перфетчинг тразититонинг, а также добавить еррор саксес лоадинг который мы и берём и пейдж стейта
+Не нужно при префетче лэйоуты префетчить, лэйоуты и так есть в релейтед поинтсах
+? prefetch mode when have no ssr should be temporary disabled, becouse we can not prefetch queries without rendering
+Tests for prefetch page and on link hover
+wouter add to Link match result, so we can use current, active, aprent, exact, etc (location => className)
+---
+prefetch mode fix for no ssr
+
+
+ROUTES/NOT FOUND
+we already have in router option to provide 404
+allow * in routes so we can define special 404 for specific paths
+optional params in routes
+
+
+SSR
+Test for mount()
+Instead we recommend using a library like Serialize JavaScript or devalue which are both safe against XSS injections out of the box.
+Компонент без сср на сср странице должен сначала отрендерить пустоту, тесты на частичный ssr
+В ССР можно передать строку финалайз, тогда будем прогонять ещё разок с финалайзом в конце 
+__POINT0_GET_SSR_PHASE__
+ssr can be not on root point, but client still can be ssr if it has ssr point, so check ssr by any point has ssr option
+layout pruned .layout() transforms to .layout(() => this._layoutLoading)
+allow .ssr() on any point
+Если не сср поинт, то прунить ещё для сервера и компоненты до первого сср фалс, а значит нужно при компилинге уже всех парентов находить (короче находить родителей по поинту убедиться, что при компилинге только 1 файла, он находит родительский файл)
+? ↓ add ssr to queryKey and if it is false, then do not ssr when meet it (what?)
+? ↓ ССР опцию можно добавлять в квери, чтобы при серверном рендеринге если квери находится, то она все равно не префетчится
+? ↑ На фронте в префетче добавить политику клиентЭндСерверНоСср, чтобы в случае квериклиентДегидрефтедСтейили эвересынг их дофетчить (what?)
+allow ssr different html for ErrorComponent stack
+
+
+ENV
+Из клиент определять по процесс енв таргет
+Для энва скоуп брать из процесс енв, но если там нет, или из фейк клиента если он есть
+В энв добавить скоупес.хэз.такой-то, Энв скоупес хэз, и скоупес массив, эна скруп нэймс
+Ена таргет из фейк клиент дополнительно
+Ена таргет из сервер клиент дополнительно
+Енв сплит, возвращает прокси, если сделать аксессуар к запрещёнке будет сровнуто назвать прокси
+В энв добавить фейк клиент, вероятно добавить просто первоуровневый из и там фейк клиент, клиент, сервер, скоуп
+В енв добавить платформ или энвиронмент, чтобы там показать браузер или например реакт нэйтив
+Енв дефайн тренари, если слева тру, то второе, иначе третье. Ну тренари форс
+Билт воз, билт дефайн бефор, билт дефайн афтер, и не билт а билд (уточнить билт или билд)
+Деф тчк сервер, а в енв деф тоже скорщённо
+В компилер констс можно нод енв установить андефайнед и он не перепишется
+? Енв кол (да просто допишите () в конце и будет вам кол)
+---
+В энв разрешить добавлять свои вилки с любым кастомным условием
+
 
 MOUNTABLES
 Провайдеру написать тесты на реагирование на изменение частей при юзВэлью
@@ -144,29 +198,6 @@ SuccessComponent>children также можно передавать и тогд
 ? propsToInput() / Разрешить в инпут передать массив с ключами, которые надо пикнуть
 ? Вернуть инпут
 
-SSR
-Test for mount()
-Instead we recommend using a library like Serialize JavaScript or devalue which are both safe against XSS injections out of the box.
-Компонент без сср на сср странице должен сначала отрендерить пустоту, тесты на частичный ssr
-В ССР можно передать строку финалайз, тогда будем прогонять ещё разок с финалайзом в конце 
-__POINT0_GET_SSR_PHASE__
-ssr can be not on root point, but client still can be ssr if it has ssr point, so check ssr by any point has ssr option
-layout pruned .layout() transforms to .layout(() => this._layoutLoading)
-allow .ssr() on any point
-Если не сср поинт, то прунить ещё для сервера и компоненты до первого сср фалс, а значит нужно при компилинге уже всех парентов находить (короче находить родителей по поинту убедиться, что при компилинге только 1 файла, он находит родительский файл)
-? ↓ add ssr to queryKey and if it is false, then do not ssr when meet it (what?)
-? ↓ ССР опцию можно добавлять в квери, чтобы при серверном рендеринге если квери находится, то она все равно не префетчится
-? ↑ На фронте в префетче добавить политику клиентЭндСерверНоСср, чтобы в случае квериклиентДегидрефтедСтейили эвересынг их дофетчить (what?)
-allow ssr different html for ErrorComponent stack
-
-ROUTING
-Роут стейты, перфетчинг тразититонинг, а также добавить еррор саксес лоадинг который мы и берём и пейдж стейта
-Не нужно при префетче лэйоуты префетчить, лэйоуты и так есть в релейтед поинтсах
-? prefetch mode when have no ssr should be temporary disabled, becouse we can not prefetch queries without rendering
-Tests for prefetch page and on link hover
-wouter add to Link match result, so we can use current, active, aprent, exact, etc (location => className)
----
-prefetch mode fix for no ssr
 
 TEST
 Дев и билд объединить тесты и запуск там делать в дескрайбе, а дальше в итах тестировать что нужно
@@ -195,27 +226,6 @@ throwOnBundlersLengthNot2 → to eslintplugin
 В проджект тестах рут вручную везде прописывать, и реоганизовать папки
 ? При ините тест прожекта проводить клинап
 
-ENV
-Из клиент определять по процесс енв таргет
-Для энва скоуп брать из процесс енв, но если там нет, или из фейк клиента если он есть
-В энв добавить скоупес.хэз.такой-то, Энв скоупес хэз, и скоупес массив, эна скруп нэймс
-Ена таргет из фейк клиент дополнительно
-Ена таргет из сервер клиент дополнительно
-Енв сплит, возвращает прокси, если сделать аксессуар к запрещёнке будет сровнуто назвать прокси
-В энв добавить фейк клиент, вероятно добавить просто первоуровневый из и там фейк клиент, клиент, сервер, скоуп
-В енв добавить платформ или энвиронмент, чтобы там показать браузер или например реакт нэйтив
-Енв дефайн тренари, если слева тру, то второе, иначе третье. Ну тренари форс
-Билт воз, билт дефайн бефор, билт дефайн афтер, и не билт а билд (уточнить билт или билд)
-Деф тчк сервер, а в енв деф тоже скорщённо
-В компилер констс можно нод енв установить андефайнед и он не перепишется
-? Енв кол (да просто допишите () в конце и будет вам кол)
----
-В энв разрешить добавлять свои вилки с любым кастомным условием
-
-ROUTES/NOT FOUND
-we already have in router option to provide 404
-allow * in routes so we can define special 404 for specific paths
-optional params in routes
 
 SUPERSTORE
 ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||= _isTargetClient() ← это косяк, надо исправлять в суперсторе чтобы вырезалось статически, Нод асунк проверить что в бандл не попадает
@@ -250,6 +260,7 @@ pointsmanager store in superstore
 ??? И сделать прокси суперстора с возможностью просто передавать сразу конфиг итема в каждое поле без указании имени, чтобы имя взялось из ключа
 ??? У суперсторе сделать возможность в инит передать не функцию, а сразу инит значение
 ??? 
+
 
 ENGINE
 cli inspect by filepath how this file and in which place come to files via cli command
@@ -288,11 +299,13 @@ auto port getter -3000
 binary, just throw error if some engine distdirs not inside firstlevel server distdir, else just copy them as dirs when do one-file-executable
 ? В энжину клиенту и серверу можно прописать кастом, это особый объект или функция возвращающая объект, которая добавляет кли команды, переопределяет фетч функции, причём будто логично, что это сервер определяет как его фетчить, а вот и нет, клиент определяет как фетчить сервер…
 
+
 INPUT
 !? input по умолчанию должен быть шаред, и только принудительно serverInput можно указать
 ? Инпут парам в инфинити квери должен быть именно из сервер инпута
 Написать тест на дефолтный инпут функцию где на входе пустота а на выходе что-то
 Проверить расширяемость инпута на юниты
+
 
 AUTH
 better auth plugin
@@ -308,6 +321,7 @@ MIDDLEARE
 (и это позволит прописать мидлваер иф поинт реётрн финал) При дипфетчшметче разрешить через настройку указать, должны ли запросы идти сквозь мидлвары или не должны, тчк мидлвар строка пассСерверРеквест
 Мидлвару можно на любом поинте задать, просто она будет отсекать обращения к другим поинтам
 
+
 PLUGIN
 Убрать мапер из плагина
 В плагин добавить шифтпропс с лузтипом объекта, потому что там реально мы не знаем какие допрокинутся, и проверять что не конфликтуют при применении
@@ -318,9 +332,11 @@ types test for requiredCtx and outerProps (shoud it be TRequiredCtx or hust Ctx?
 Плагин может запровайдить в том числе и рендер штучки, ему ничто не мешает быть внутри функции, которая использует запровайженные штучки (это позволит например целую форму регистрации замутить) (вот по-тому и нужен SuccessComponent, так просто во врапере этот плагин всё замутит)
 В юз можно не только плагин передать, но и то внутри чего есть свойство плагин, так мы туда кукистор загоним
 
+
 CORS
 plugin cors as separate package
 remove auto cors for localhost from engine server, and made it via middleware
+
 
 ACTION
 Кткс всегда имеет инпут спокойно, экшен же всё равно отдельно дёргается
@@ -344,6 +360,7 @@ _slug ← name
 Под опенапи сделать Парсинг каеристринг через ту штуку чтобы массивы и объекты дали
 Опенапи фн а опшинсах имеет селф, который и можно передать в экзекьют, если нужны прежние лоадеры и контекст
 
+
 LISTENER
 Тчк он клиент, тчк он сервер, тч он просто, и там события исходя из этого, и тогда фетчрекордер может и не нужен .on('client', 'fetchStart|fetchFinish')
 .lets('listener', 'mylistener', scopes).client(eventName, {type,set,input,request,point,publicdir}).server(eventName, options).listener()
@@ -351,6 +368,7 @@ all root middlewares call on start
 all point middlewares call only on points
 {onFinish?,onSuccess?,onError?}
 ? .onError, .onClientError (on any point or root) (after middleware and listener, будет понятно как надо правильно это сделать)
+
 
 INIT
 При указании инит на провайдере или чанеле первым аргументом передаётся инпут, вторым зависимости
@@ -373,8 +391,10 @@ and how cool it be to set init points just in usual ctx of points. Incredible co
 В клиенте вероятно нет клиент и сервер, всё разгуливается просто в функции инит через энвиронмент, надо решить проблему того, что если в ините клиента асунк испорты, чтобы после сср не показывало ловлинги. Вероятно надо просто добавить поле сср, в которое можно добавить строку клиент или но например
 Тут короче клиент просто если сунк, то он мапер, а если асунк то уж что поделаешь будет лоадинг на весь сайт
 
+
 DEFINE
 Добавить дефайн, он такой же как инит, но не вызывает, но может объявить что угодно нужен для мсп
+
 
 EXPO
 expo example
@@ -383,10 +403,12 @@ respect null on baseurl for client, so page like requests to server will be not 
 check if there is no client port defined if there is no App and indexhtml, so it should not be served
 ? remove location from mountable components, becouse in expo for example it is very strange property
 
+
 ELECTRON
 Все нукролино и прочие делаются через сетФетч в поинте, чтобы сказать там мол все запросы отправляй в реквест бан айписи, а уже в коде своего бан вызываем при приходе сообщения  engine.fetch() вот этот запрос
 somehow wh we have now in client-server, have same ot main-renderer process, via replace fetch implementation
 Надо сразу чекнуть электрон, вероятно консумХэндлер достаточно добавить, чтобы поинт просто взял и стал чем угодно, но будто бы тут лучше отдельную разработку для электорна делать, это подождёт
+
 
 START0
 start0 without mono0
@@ -397,8 +419,8 @@ refactor Env0: just cool validation helpers
 ? refactor Logger0: just use as is Logger with global Meta0 provided
 unwind and tailwind
 
+
 COMPILER
-Виз в прунер для но сср
 Из энжины для прямо вырезать поинты клиентов для сервера, вдруг там вообще не сср, и тогда зачем это всё
 Компилером вырезать из чужих скоупов вообще всё и лоадеры и компоненты, но родительские не трогать, только полностью инородные
 ---
@@ -422,14 +444,17 @@ walker cache for compiled files by settings and file timestemp
 readLimit, parseLimit
 walker persist on bun plugin and vite plugin during request, so lets refresh read files by timestamp
 
+
 CREATE POINT0 APP
 cli to create app
 Опция криэйт апп поинт0 сразу предлагает купить старт0
+
 
 REDIRECT
 allow redirect by redirect() right inside outer, or via useRedirect()
 redirect (as option in loader and clientLoader for page)
 redirect as point method which will be applied to both client and server
+
 
 MCP
 Метафайл надо статически генерировать и мсп по нему не нужно, оно просто существует и всё мсп через команды терминала
@@ -442,11 +467,13 @@ cli extract point by type and name, so agent can see errors right in terminal
 .doc(string) в любой поинт можно добавить
 В мдкс для мсп пути к файлам указывать через импорт с макросом, который заменяет их на просто строку полного пути, чтобы не сбивались пути при рефакторе
 
+
 MDX
 ! mdx as page point output if meta contains: lets: 'doc' | 'page', route: string, base: import layout or root, loader: ()=>{}, clientLoader: ()=>{}
 Мдкс если видит в своей папке или выше файл тчк роут то он файловый роут
 Мдкс может в бэйзе просто написать скоуп тчк тайп тчк нэйм
 ??? .lets('multiPage', '/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
+
 
 FILEROUTING
 Просто > ставить в строку, чтобы файловый роутинг получить
@@ -454,6 +481,7 @@ FILEROUTING
 '>' → will be rewritten to () => '>currentfilepath'
 '>+zxc' → will be rewritten () => '>currentfilepath+zxc'
 Route0.create('>+zxc') → will be rewritten () => Route0.create('>currentfilepath+zxc')
+
 
 STATIC
 html prefetch mode
@@ -465,6 +493,7 @@ static site generator;
 .static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; 
 or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; 
 also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
+
 
 REALTIME/MESSANGER/RPC/CHANNEL
 Тчк чанел чтобы обернуть компонент или страницу в коннекшен провайдер
@@ -520,16 +549,19 @@ elysia and uWebSocket separate realizations
 Просто нужна функция обёртка над любым дб клиентом. ДайвФайнд и лайвФайндМени, там главное понять что юник Кей, и какие трансформации, вот этот результат и должна отдавать лайв квери с сервера: примари Кей, название таблицы, трансформации
 !!! В лайквери просто есть лайвлоадео и он возвращает синхронно просто объект с селектом и подселектом полей короче опции для файнд Мени, в следующем лоадере уже будут данные, и так при инициализации мы уже поймём что на это надо подписаться, а клиенту также в хедерах будут переданы инструкции на что ему подписаться через мессенджер
 
+
 EXAMPLES
 example refactor
 example auth
 example zustand (usual/persistent)
+
 
 DOCS
 respect /v1/ at start
 Энжин хэз фетч, поинт хэз фетч, ммм
 Consumer–Source Eversion / Client-Server Eversion
 Если какая бяка будет попадать на клиент, надо просто делать импорт дефер
+
 
 LAUNCH
 hide todo.txt
