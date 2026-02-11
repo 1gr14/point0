@@ -1,6 +1,37 @@
 import { _point0_env } from './env.js'
-import type { CookieOptions, CookieOptionsInput } from './cookies-store.js'
 import { _ssItems } from './internals.js'
+
+export type CookieSameSite = 'strict' | 'lax' | 'none'
+
+export type CookieOptions = {
+  name: string
+  value: string
+  domain?: string
+  /** Defaults to '/'. To allow the browser to set the path, use an empty string. */
+  path: string
+  expires?: number | Date | string
+  secure?: boolean
+  /** Defaults to `lax`. */
+  sameSite: CookieSameSite
+  httpOnly?: boolean
+  partitioned?: boolean
+  maxAge?: number
+}
+
+export type CookieOptionsInput = {
+  name: string
+  value: string
+  domain?: string
+  /** Defaults to '/'. To allow the browser to set the path, use an empty string. */
+  path?: string
+  expires?: number | Date | string
+  secure?: boolean
+  /** Defaults to `lax`. */
+  sameSite?: CookieSameSite
+  httpOnly?: boolean
+  partitioned?: boolean
+  maxAge?: number
+}
 
 export type ResponseHeadersValues = Record<string, string | undefined>
 export type ResponseCookiesValues = Record<string, CookieOptions>
@@ -307,10 +338,18 @@ export class Effects {
   static get(): Effects {
     if (!_point0_env.target.is.server) {
       throw new Error(
-        'You can not get respnse0 not in server. Please call Respons0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
+        'You can not get effects not in server. Please call Effects.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
       )
     }
     const effects = _ssItems.__POINT0_EFFECTS__.get()
     return effects
+  }
+
+  static getWeak(): Effects | undefined {
+    try {
+      return _ssItems.__POINT0_EFFECTS__.get()
+    } catch {
+      return undefined
+    }
   }
 }

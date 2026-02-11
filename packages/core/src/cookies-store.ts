@@ -1,40 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Request0 } from './request0.js'
+import type { CookieOptionsInput } from './effects.js'
 import { Effects } from './effects.js'
 import { _point0_env } from './env.js'
+import { Request0 } from './request0.js'
 import type { DataTransformer, DataTransformerExtended } from './types.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
-export type CookieSameSite = 'strict' | 'lax' | 'none'
-
-export type CookieOptions = {
-  name: string
-  value: string
-  domain?: string
-  /** Defaults to '/'. To allow the browser to set the path, use an empty string. */
-  path: string
-  expires?: number | Date | string
-  secure?: boolean
-  /** Defaults to `lax`. */
-  sameSite: CookieSameSite
-  httpOnly?: boolean
-  partitioned?: boolean
-  maxAge?: number
-}
-
-export type CookieOptionsInput = {
-  name: string
-  value: string
-  domain?: string
-  /** Defaults to '/'. To allow the browser to set the path, use an empty string. */
-  path?: string
-  expires?: number | Date | string
-  secure?: boolean
-  /** Defaults to `lax`. */
-  sameSite?: CookieSameSite
-  httpOnly?: boolean
-  partitioned?: boolean
-  maxAge?: number
-}
 
 export type CookieDefineOptions<
   THttpOnly extends boolean = false,
