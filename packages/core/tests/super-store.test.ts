@@ -20,16 +20,19 @@ import { ss } from '../src/super-store.js'
 
 const originalWindow = globalThis.window
 const originalDocument = globalThis.document
+const originalPoint0Target = process.env.POINT0_TARGET
 
 describe('SuperStore', () => {
   describe('client', () => {
     beforeEach(() => {
+      process.env.POINT0_TARGET = 'client'
       ;(globalThis as any).window = {}
       ;(globalThis as any).document = {}
       ss.reset()
     })
 
     afterEach(() => {
+      process.env.POINT0_TARGET = originalPoint0Target
       ;(globalThis as any).window = originalWindow
       ;(globalThis as any).document = originalDocument
     })

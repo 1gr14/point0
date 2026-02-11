@@ -1,12 +1,12 @@
 /* eslint-disable import/first */
 import type { ClientPlatform } from './env.types.js'
-import { _isTargetClient } from './env.utils.js'
 
 // I do not know why, but it is only way to do it to work in bun and vite at the same time
-;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||= _isTargetClient()
-  ? null
-  : // eslint-disable-next-line @typescript-eslint/no-require-imports
-    (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>)
+;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||=
+  process.env.POINT0_TARGET === 'client'
+    ? null
+    : // eslint-disable-next-line @typescript-eslint/no-require-imports
+      (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>)
 ;(globalThis as any).__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ ||= {}
 ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ ||= {}
 
@@ -136,7 +136,7 @@ export class SuperStore {
         serverGlobalState: undefined
       } {
     const fakeClient = this.getFakeClient()
-    if (_isTargetClient() && !fakeClient) {
+    if (process.env.POINT0_TARGET === 'client' && !fakeClient) {
       return {
         variant: 'client',
         clientState: this.clientGlobalState,
