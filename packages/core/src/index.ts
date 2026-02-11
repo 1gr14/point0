@@ -4847,6 +4847,8 @@ export class Point0<
       // execute: point.execute.bind(point),
       // executeDetailed: point.executeDetailed.bind(point),
       fetch: point.fetch.bind(point),
+      getFetchServerOptions: point.getFetchServerOptions.bind(point),
+      fetchServer: point.fetchServer.bind(point),
       fetchQuery: point.fetchQuery.bind(point),
       fetchInfiniteQuery: point.fetchInfiniteQuery.bind(point),
       fetchMutation: point.fetchMutation.bind(point),
@@ -5896,7 +5898,7 @@ export class Point0<
     return undefined
   }
 
-  getFetchOptions(
+  getFetchServerOptions(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
           input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -5989,7 +5991,7 @@ export class Point0<
     return superstore.getFakeClient()?.fetch ?? Point0.nativeFetch
   }
 
-  private modifyFetchRequestForServerIfRequired(fetchOptions: ReturnType<typeof this.getFetchOptions>): Request {
+  private modifyFetchRequestForServerIfRequired(fetchOptions: ReturnType<typeof this.getFetchServerOptions>): Request {
     if (!_point0_env.target.is.server) {
       return fetchOptions.request
     }
@@ -6039,7 +6041,7 @@ export class Point0<
     return updatedRequest
   }
 
-  async fetchDetailed(
+  async fetchServerDetailed(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
           input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -6054,7 +6056,7 @@ export class Point0<
   ): Promise<FetchDetailedOutput<TServerLoaderOutput>> {
     let res: Response | undefined
     try {
-      const fetchOptions = this.getFetchOptions(...args)
+      const fetchOptions = this.getFetchServerOptions(...args)
       const fetchFn = this.getFetchFn()
       const fetchRequest = this.modifyFetchRequestForServerIfRequired(fetchOptions)
 
@@ -6086,7 +6088,7 @@ export class Point0<
     }
   }
 
-  async fetch(
+  async fetchServer(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
           input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -6099,7 +6101,7 @@ export class Point0<
           _outputType?: FetchOutputType,
         ]
   ): Promise<FetchOutput<TServerLoaderOutput>> {
-    const detailedResult = await this.fetchDetailed(...args)
+    const detailedResult = await this.fetchServerDetailed(...args)
     if (detailedResult.error) {
       throw detailedResult.error
     }
@@ -6330,7 +6332,7 @@ export class Point0<
   }): UseQueryOptions<FetchOutput<TServerLoaderOutput>, Error0, FetchOutput<TServerLoaderOutput>, QueryKey> {
     const queryKey = this._getServerQueryKey({ input, outputType, isInfiniteQuery: false })
     const queryFn = async () => {
-      const data = await this.fetch(input as never, fetchOptions, outputType)
+      const data = await this.fetchServer(input as never, fetchOptions, outputType)
       return data
     }
     const mountableDefaultQueryOptions =
@@ -6546,7 +6548,7 @@ export class Point0<
     const queryFn = async ({ pageParam }: { pageParam: unknown }) => {
       try {
         const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
-        const data = await this.fetch(
+        const data = await this.fetchServer(
           { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam } as never,
           fetchOptions,
           outputType,
@@ -7021,7 +7023,7 @@ export class Point0<
         }
         const serverFetchResult = await (async () => {
           if (this._hasServerLoader()) {
-            return await this.fetchDetailed(input as never, fetchOptions, undefined)
+            return await this.fetchServerDetailed(input as never, fetchOptions, undefined)
           }
           return undefined
         })()
@@ -7112,6 +7114,24 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput
     >
+  }
+
+  fetch = async (
+    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+      ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
+      : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
+  ): Promise<
+    TQueryResultType extends 'infiniteQuery'
+      ? InfiniteData<FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>>
+      : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
+  > => {
+    if (this.type === 'mutation') {
+      return this.fetchMutation(...args) as never
+    }
+    if (this._queryResultType === 'infiniteQuery') {
+      return this.fetchInfiniteQuery(...args) as never
+    }
+    return this.fetchQuery(...args) as never
   }
 
   async _callPrefetchFns({ preventPrefetchFns }: { preventPrefetchFns?: boolean | OnPrefetchFn[] }): Promise<void> {

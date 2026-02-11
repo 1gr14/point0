@@ -126,7 +126,7 @@ export type Infer<
     TClientLoaderOutput
   >
   UseQueryResult: UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
-  FetchOutput: TServerLoaderOutput extends LoaderOutput ? TServerLoaderOutput : never
+  FetchServerOutput: TServerLoaderOutput extends LoaderOutput ? TServerLoaderOutput : never
   ServerQueryData: QueriedData<TQueryResultType, TServerLoaderOutput>
   ClientQueryData: QueriedData<TQueryResultType, TClientLoaderOutput>
   QueriedData: FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
@@ -3071,7 +3071,9 @@ export type NiceBaseEndPoint<
 export type WithFetchIfHasServerLoader<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TLiteral extends string,
-> = TServerLoaderOutput extends LoaderOutput ? TLiteral | 'getFetchOptions' | 'fetch' | 'fetchDetailed' : TLiteral
+> = TServerLoaderOutput extends LoaderOutput
+  ? TLiteral | 'getFetchServerOptions' | 'fetchServer' | 'fetchServerDetailed'
+  : TLiteral
 export type WithQueryIfSuitable<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
@@ -3079,7 +3081,7 @@ export type WithQueryIfSuitable<
 > = TQueryResultType extends 'query'
   ? WithFetchIfHasServerLoader<
       TServerLoaderOutput,
-      TLiteral | 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'fetchQuery' | 'prefetchQuery'
+      TLiteral | 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'fetchQuery' | 'prefetchQuery' | 'fetch'
     >
   : TQueryResultType extends 'infiniteQuery'
     ? WithFetchIfHasServerLoader<
@@ -3090,6 +3092,7 @@ export type WithQueryIfSuitable<
         | 'getInfiniteQueryOptions'
         | 'fetchInfiniteQuery'
         | 'prefetchInfiniteQuery'
+        | 'fetch'
       >
     : TLiteral
 
@@ -3318,7 +3321,7 @@ export type NiceMutationEndPoint<
   >,
   WithFetchIfHasServerLoader<
     TServerLoaderOutput,
-    'point' | 'type' | 'getMutationOptions' | 'useMutation' | 'fetchMutation' | 'Infer'
+    'point' | 'type' | 'getMutationOptions' | 'useMutation' | 'fetchMutation' | 'fetch' | 'Infer'
   >
 >
 

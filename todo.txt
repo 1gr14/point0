@@ -7,10 +7,6 @@
 
 
 
-engine refactoring + tests
-preparing refactoring
-mount tests
-
 init
 action
 error0
@@ -48,12 +44,9 @@ launch
 
 
 REFACTOING 3000
-Remove comments, unusde code, unsed types
 query(), layout(), move to separate files and assign by TLetsEndPoint
-fetch → fetchServer (?), fetch is like usual call of fetchQuery, fetchInfiniteQuery, etc (!)
 getFetch options → .getServerFetchOptions() to public methods
 EndPoint → ReadyPoint
-В инфер добавить аргсИнаут где он может быть опшионалом
 InputOptional → IsInputOptional
 response0 → effects
 name → _name чтобы не конфликтовать с нэймом реакт компонента
@@ -68,9 +61,11 @@ remove all points manager
 Разобраться с эррор баундари для фронта
 throw if same name and type in current scope
 --+
+Remove comments, unusde code, unsed types
 Логгер может принимать как готовый логгер, так и функцию разруливающую логи принимающую левел категорию аргументы
 Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп
 --+
+fetch is like usual call of fetchQuery, fetchInfiniteQuery, etc
 point0 also separate file, index jsut reexport everything
 types.ts file thet reexport only needed types
 store each point location to normalize errors messages for example in No route or id provided for this point
@@ -87,6 +82,7 @@ shrink core/index.ts size, by remove code duplicates
 ? Заменить поинт на поинт ИНСТАНС а то путаница какая-то, и в поинте хранить только тайп и нэйм
 find TODO in code
 ---
+? В инфер добавить аргсИнаут где он может быть опшионалом
 ? Сср по умолчанию андефайнед и после того как его именно выключили он не может быть включён опять, иначе всё сломается
 ? add point self to loader and to ctx and to loadrCtx options, and everywhere where can be point, add point
 ? Он саксес квери и прочее дополнительно надо вызывать при Дип шмип фетре
@@ -258,6 +254,7 @@ pointsmanager store in superstore
 ENGINE
 cli inspect by filepath how this file and in which place come to files via cli command
 check bun compiler, and vite compiler creates correct sourcemaps
+Пабликдирам дать кэшированный пул, чтобы отдавать из памяти не читая с диска
 Написать тесты на правильное определение путей после билда в энжине
 ---
 В роут с генерированными роутами добавлять в комментах путь к компоненту, который объявил
@@ -401,6 +398,7 @@ refactor Env0: just cool validation helpers
 unwind and tailwind
 
 COMPILER
+Виз в прунер для но сср
 Из энжины для прямо вырезать поинты клиентов для сервера, вдруг там вообще не сср, и тогда зачем это всё
 Компилером вырезать из чужих скоупов вообще всё и лоадеры и компоненты, но родительские не трогать, только полностью инородные
 ---
