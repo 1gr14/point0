@@ -51,60 +51,56 @@ REFACTOING 3000
 Remove comments, unusde code, unsed types
 query(), layout(), move to separate files and assign by TLetsEndPoint
 fetch → fetchServer (?), fetch is like usual call of fetchQuery, fetchInfiniteQuery, etc (!)
+getFetch options → .getServerFetchOptions() to public methods
 EndPoint → ReadyPoint
 В инфер добавить аргсИнаут где он может быть опшионалом
 InputOptional → IsInputOptional
-route0 при попытке abs без зеданного абс урла сровить ошибку жётско
 response0 → effects
 name → _name чтобы не конфликтовать с нэймом реакт компонента
 getFakeClient remove from internals, use from superstore import fakeClient.get() from fake-client.ts
 clientServerTransferred → ssr (clientServerTransferredSsr)
-rename to EngineClient and EngineServer
 mutation error type should be error0
-? ЗАчем вообще нужен сет, пусть будет просто эффектс, а в них уже сет
----???---
+? Зачем вообще нужен сет, пусть будет просто эффектс, а в них уже сет
 on request to server for query or mutation which has no serverLoader throw error
-Replace all node methods with native bun methods, including watcher
-? Переделать всё на функции, поинт сделать просто типом, и даже lets пусть будет функцией выносимой
-? possibility to subscribe to body chunks read
----???---
-? route0, error0 → point0
-Он саксес квери и прочее дополнительно надо вызывать при Дип шмип фетре
-refactor types names and order and any points, etc any things. Поправляя эни попробовать отказаться от ифэни в пользу стринг экстендс
-try do EmptyData as {} or something better
-remove default generic values it is unsafe, better add AnySomethingType for it
+bun watcher, not parcel watcher
+? html transformer not regex hack
+remove all points manager
 Разобраться с эррор баундари для фронта
-Инпутрау только где юзер вводит, иначе инпутрауанноуе
-? добавить дебаглогеры повсюду, а также на фронт разрешить прокидывать логер, и вообще логгер не часть энжины, а часть поинта
-find TODO in code
----???---
-? Сделать тюзед для скрытия использованных методов
-? add point self to loader and to ctx and to loadrCtx options, and everywhere where can be point, add point
-store each point location to normalize errors messages for example in No route or id provided for this point
-normzliae all errors texts everyhere with point name and path to point where it was defined
-? Роут0 отдаёт уже по схеме нужные сшемы по крайней мере флетстрингонли шема
-try catch evertywhere in engine to show real error in real place
-shrink core/index.ts size, by remove code duplicates
 throw if same name and type in current scope
-getFetch options → .getServerFetchOptions() to public methods
-loader(() => {}, {cache: false | string})
-Все штучки в реквест 0 пусть кальклируются в момент get этих свойств, а не раньше, чтобы быстро было
-? Запретить давать названия скоупам клиент, сервер, браузер
----???---
-Все нулы поменять на фолсы
-В префетч мод заменить на полиси
+--+
 Логгер может принимать как готовый логгер, так и функцию разруливающую логи принимающую левел категорию аргументы
 Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп
+--+
 point0 also separate file, index jsut reexport everything
 types.ts file thet reexport only needed types
+store each point location to normalize errors messages for example in No route or id provided for this point
+normzliae all errors texts everyhere with point name and path to point where it was defined
+try catch evertywhere in engine to show real error in real place
+Replace all node methods with native bun methods
+refactor types names and order and any points, etc any things. Поправляя эни попробовать отказаться от ифэни в пользу стринг экстендс
+remove default generic values it is unsafe, better add AnySomethingType for it
+try do EmptyData as {} or something better
+Инпутрау только где юзер вводит, иначе инпутрауанноуе
+shrink core/index.ts size, by remove code duplicates
+Все нулы поменять на фолсы
+В префетч мод заменить на полиси
 ? Заменить поинт на поинт ИНСТАНС а то путаница какая-то, и в поинте хранить только тайп и нэйм
+find TODO in code
+---
+? Сср по умолчанию андефайнед и после того как его именно выключили он не может быть включён опять, иначе всё сломается
+? add point self to loader and to ctx and to loadrCtx options, and everywhere where can be point, add point
+? Он саксес квери и прочее дополнительно надо вызывать при Дип шмип фетре
+? Переделать всё на функции, поинт сделать просто типом, и даже lets пусть будет функцией выносимой
+? possibility to subscribe to body chunks read
+? route0, error0 → point0
+? Сделать тюзед для скрытия использованных методов
+? добавить дебаглогеры повсюду, а также на фронт разрешить прокидывать логер, и вообще логгер не часть энжины, а часть поинта
+? Роут0 отдаёт уже по схеме нужные сшемы по крайней мере флетстрингонли шема
+? Все штучки в реквест 0 пусть кальклируются в момент get этих свойств, а не раньше, чтобы быстро было
+? Запретить давать названия скоупам клиент, сервер, браузер
 ? Экзекьют на сервере пусть не возвращает статус
 ? Фетч квери даёт возможность также передать сервер дата чтобы мы могли нормально её передать при юз квери в клиентские лоадеры
-Сср по умолчанию андефайнед и после того как его именно выключили он не может быть включён опять, иначе всё сломается
-серверурл всегда обязателен, но он то пусти в барузере прямоиз виндоу и возьмётся
 ? А суперджейсон тоже должен быть по-молчанию включён и его просто можно переопределить через опции
-× Поинтсы получается нужны только на верхнем уровне в энжине? и олпоинтс менеджер не нужен (если он только на верхнем уровне всё равно получается придётся проходиться по всем поинтсам, и как-то их группировать по скоупам, и мы опять получим 2 сущности)
-× Просто пейджес три это отдельный класс и поинтс менеджер хранит сет из этих тришек по скоупу (↑)
 
 PREPARING
 ? Квери в общий провайдер
@@ -260,8 +256,7 @@ pointsmanager store in superstore
 ??? 
 
 ENGINE
-Убедиться что при указании клиентского скопа в энжине сервер не запустится, и запустятся только нужные клиенты, и что они могут обращаться к серверу в другом процессе
---+
+cli inspect by filepath how this file and in which place come to files via cli command
 check bun compiler, and vite compiler creates correct sourcemaps
 Написать тесты на правильное определение путей после билда в энжине
 ---
@@ -405,35 +400,29 @@ refactor Env0: just cool validation helpers
 ? refactor Logger0: just use as is Logger with global Meta0 provided
 unwind and tailwind
 
-REFACTROING 2
-
 COMPILER
-Из энжины прямо вырезать поинты других скоупов, потому что у нас могут быть разные серверы
-Выкидывать ошибку при попытке гидрировать вне сервер стороджа, и препарить вне клиента
+Из энжины для прямо вырезать поинты клиентов для сервера, вдруг там вообще не сср, и тогда зачем это всё
+Компилером вырезать из чужих скоупов вообще всё и лоадеры и компоненты, но родительские не трогать, только полностью инородные
+---
+? Выкидывать ошибку при попытке гидрировать вне сервер стороджа, и препарить вне клиента
 В компилер добавить форбиден импортс
 Декоратор прун для классов
 Декоратор Собака прун и собака кип, а там также таргет скоуп и платформ @prune.target.server() @keep.target.server()
-Компилером вырезать из чужих скоупов вообще всё и лоадеры и компоненты, но родительские не трогать, только полностью инородные
 убрать все еслинт отмазки, и прямо в аргементах имплеементации писать что там может быть всё андефайнед
-Мапер под носсер тоже прунится
-В любом случае выносить при хмр фиксе функцию вниз, и помечать дисплейнеймы, и назвать не хмрфикс, а тейл, и делать это всегда без настроек
-Хмр фикс оставить как есть, но по умолчанию везде экстернал функция
-Компилер настройки, прунЭнжинБандлерКонфигОнБилд, таргет фалс, скоуп фалс, мод фалс
-Таргет нон для компилера, и при нод тест по умолчанию таргет нон
+? Мапер под носсер тоже прунится
+? Таргет нон для компилера, и при нод тест по умолчанию таргет нон
 ! Отрефачит стэйл и прочую ерунду в компилере
 ! При чтении файла также стейлить все файлы которым он является зависимостью, с указанием таймстемпа, когда происходит чтение
-(exprt) => xprt.cnst | xprt.dflt (to valid syntax in places in tests)
+? (exprt) => xprt.cnst | xprt.dflt (to valid syntax in places in tests)
 ? Сср в дефайн энва тоже надо добавить и убедиться, что там невер указав всё не перекроется
 ? Объединить все траверсы в одно месте, чтобы за раз всё проходить
 ? Походу надо отдельно прунить для сервера, клиента, и сср. Вот в чём фишка
-Разрешить компилеру прямо импортировать через себя файлы
 В изначально не паргеный поинт тоже добавить ошибку
 Написать тест на циркулярную зависимость при парсинге поинтов
 Убедиться, что компилер не ломает информацию о выведенных позициях, иделает нормальные соурсмапы
 walker cache for compiled files by settings and file timestemp
 readLimit, parseLimit
 walker persist on bun plugin and vite plugin during request, so lets refresh read files by timestamp
-? Разрешить компилеру прямо импортировать через себя файлы (у нас 2 мода один для вайта друго для бана они работают по разному)
 
 CREATE POINT0 APP
 cli to create app
@@ -478,11 +467,6 @@ static site generator;
 .static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; 
 or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; 
 also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
-
-PRUNER
-check if real third-part packages not rhow on client or server
-serverOnlyPackages, clientOnlyPackages, throw on build and on runtime
-inspect by filepath how this file and in which place come to files via cli command
 
 REALTIME/MESSANGER/RPC/CHANNEL
 Тчк чанел чтобы обернуть компонент или страницу в коннекшен провайдер
