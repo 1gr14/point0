@@ -20,7 +20,7 @@ import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import { CookiesStore } from './cookies-store.js'
 import { _point0_env } from './env.js'
-import { _ssItems, getFakeClient } from './internals.js'
+import { _ssItems, _getFakeClient } from './internals.js'
 import type { MethodQueryForAnyPoint } from './methods/query.js'
 import type {
   AppendProps,
@@ -4374,7 +4374,7 @@ export class Point0<
   ): { url: string; init: RequestInit; request: Request } {
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions?.(), ...options }
-    const fromScope = _ssItems.__POINT0_CLIENT_SCOPE__.getWeak() ?? getFakeClient()?.scope
+    const fromScope = _ssItems.__POINT0_CLIENT_SCOPE__.getWeak() ?? _getFakeClient()?.scope
     if (!fromScope || typeof fromScope !== 'string') {
       throw new Error('Scope is not set. You forget to call PointsManager.create()?')
     }

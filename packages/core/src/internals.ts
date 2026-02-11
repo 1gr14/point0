@@ -9,6 +9,10 @@ import type { QueryClient } from '@tanstack/react-query'
 const initUndefined = () => undefined as never
 
 type LikeFakeClient = { id: string; scope: PointsScope; fetch: FetchFn } | undefined
+export const _getFakeClient = (): LikeFakeClient | undefined => {
+  return ss.serverStorage?.getStore()?.__POINT0_FAKE_CLIENT__ as LikeFakeClient | undefined
+}
+
 export const _ssItems = {
   __POINT0_FETCH_FN__: ss.define<FetchFn>('__POINT0_FETCH_FN__', initUndefined, 'serverOnlyStorage'),
   __POINT0_FAKE_CLIENT__: ss.define<LikeFakeClient>('__POINT0_FAKE_CLIENT__', initUndefined, 'serverOnlyStorage'),
@@ -40,9 +44,6 @@ export const _ssItems = {
     initUndefined,
     'serverOnlyStorage',
   ),
-}
-export const getFakeClient = (): LikeFakeClient | undefined => {
-  return ss.serverStorage?.getStore()?.__POINT0_FAKE_CLIENT__ as LikeFakeClient | undefined
 }
 
 const knownKeys = Object.keys(_ssItems)
