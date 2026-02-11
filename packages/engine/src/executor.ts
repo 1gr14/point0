@@ -273,7 +273,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
   >(
     point: TPoint,
-    ...args: TPoint['Infer']['ServerInputOptional'] extends true
+    ...args: TPoint['Infer']['IsServerInputOptional'] extends true
       ? [input?: TPoint['Infer']['ServerInputRaw'], response0?: Response0]
       : [input: TPoint['Infer']['ServerInputRaw'], response0?: Response0]
   ): Promise<ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>>

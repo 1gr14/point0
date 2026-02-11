@@ -4520,7 +4520,7 @@ export class Point0<
     >,
   >(
     ...args: TLetsReadyPointType extends MountablePointType
-      ? [point: TPoint & (TPoint['Infer']['InputOptional'] extends true ? unknown : ShowError<`Input is required`>)]
+      ? [point: TPoint & (TPoint['Infer']['IsInputOptional'] extends true ? unknown : ShowError<`Input is required`>)]
       : never
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true

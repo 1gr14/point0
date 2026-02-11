@@ -45,13 +45,10 @@ launch
 
 REFACTOING 3000
 query(), layout(), move to separate files and assign by TLetsReadyPoint
-ReadyPoint → ReadyPoint
-InputOptional → IsInputOptional
 response0 → effects
 name → _name чтобы не конфликтовать с нэймом реакт компонента
 getFakeClient remove from internals, use from superstore import fakeClient.get() from fake-client.ts
 clientServerTransferred → ssr (clientServerTransferredSsr)
-mutation error type should be error0
 ? Зачем вообще нужен сет, пусть будет просто эффектс, а в них уже сет
 on request to server for query or mutation which has no serverLoader throw error
 bun watcher, not parcel watcher

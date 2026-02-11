@@ -212,19 +212,27 @@ type TestThingsState = {
 }
 type FetchPoint = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
-  ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
+  ...args: T['Infer']['IsInputOptional'] extends true
+    ? [input?: T['Infer']['InputRaw']]
+    : [input: T['Infer']['InputRaw']]
 ) => ReturnType<T['fetch']>
 type FetchHtmlView = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
-  ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
+  ...args: T['Infer']['IsInputOptional'] extends true
+    ? [input?: T['Infer']['InputRaw']]
+    : [input: T['Infer']['InputRaw']]
 ) => Promise<HtmlView>
 type FetchHtmlPreview = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
-  ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
+  ...args: T['Infer']['IsInputOptional'] extends true
+    ? [input?: T['Infer']['InputRaw']]
+    : [input: T['Infer']['InputRaw']]
 ) => Promise<string>
 type FetchSsr = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
-  ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
+  ...args: T['Infer']['IsInputOptional'] extends true
+    ? [input?: T['Infer']['InputRaw']]
+    : [input: T['Infer']['InputRaw']]
 ) => Promise<{
   html: string
   preview: string
@@ -236,7 +244,9 @@ type FetchSsr = <T extends AnyNiceRequestableReadyPoint>(
 }>
 type FetchTitle = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
-  ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
+  ...args: T['Infer']['IsInputOptional'] extends true
+    ? [input?: T['Infer']['InputRaw']]
+    : [input: T['Infer']['InputRaw']]
 ) => Promise<string>
 
 export const createTestThings = async ({

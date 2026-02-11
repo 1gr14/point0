@@ -106,14 +106,14 @@ export type Infer<
   RouteDefinition: TRouteDefinition
   ServerInputSchema: TServerInputSchema
   ClientInputSchema: TClientInputSchema
-  InputOptional: IsInputsOptional<TServerInputSchema, TClientInputSchema>
+  IsInputOptional: IsInputsOptional<TServerInputSchema, TClientInputSchema>
   InputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
   ClientInputParsed: InputParsed<TClientInputSchema>
   ClientInputRaw: InputRaw<TClientInputSchema>
-  ClientInputOptional: IsInputOptional<TClientInputSchema>
+  IsClientInputOptional: IsInputOptional<TClientInputSchema>
   ServerInputParsed: InputParsed<TServerInputSchema>
   ServerInputRaw: InputRaw<TServerInputSchema>
-  ServerInputOptional: IsInputOptional<TServerInputSchema>
+  IsServerInputOptional: IsInputOptional<TServerInputSchema>
   OuterProps: TOuterProps
   InnerProps: TInnerProps
   QueryResultType: TQueryResultType
@@ -1595,7 +1595,7 @@ export type ServerExecuteFn = <
   TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
 >(
   point: TPoint,
-  ...args: TPoint['Infer']['ServerInputOptional'] extends true
+  ...args: TPoint['Infer']['IsServerInputOptional'] extends true
     ? [input?: TPoint['Infer']['ServerInputRaw']]
     : [input: TPoint['Infer']['ServerInputRaw']]
 ) => Promise<ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>>
