@@ -8,7 +8,7 @@
 // import { createJiti } from 'jiti'
 // import { watch as fsWatch } from 'node:fs'
 // import * as nodePath from 'node:path'
-// import type { EndPointType, PointName } from '../core/types.js'
+// import type { ReadyPointType, PointName } from '../core/types.js'
 
 // const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
 //   ? T
@@ -25,7 +25,7 @@
 
 // type CollectedPoint = {
 //   root: boolean
-//   type: EndPointType
+//   type: ReadyPointType
 //   name: PointName
 //   exportName: string
 //   importPath: string
@@ -43,7 +43,7 @@
 //   errors: unknown[]
 // }
 
-// const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, string> = {
+// const POINT_TYPE_TO_METHOD_MAP: Record<ReadyPointType, string> = {
 //   page: 'page',
 //   layout: 'layout',
 //   component: 'component',
@@ -53,10 +53,10 @@
 //   'client-ctx': 'provider',
 //   base: 'base',
 // }
-// const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fromEntries(
-//   Object.entries(POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as EndPointType]),
+// const POINT_METHOD_TO_TYPE_MAP: Record<string, ReadyPointType> = Object.fromEntries(
+//   Object.entries(POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as ReadyPointType]),
 // )
-// const END_POINT_TYPES: EndPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as EndPointType[]
+// const END_POINT_TYPES: ReadyPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as ReadyPointType[]
 
 // export class FileGenerator {
 //   readonly routes: Routes | undefined
@@ -714,7 +714,7 @@
 //   }
 
 //   private detectPointTypeAndNameFromInit({ fileAbs, node }: { fileAbs: string; node: any }): {
-//     pointType: EndPointType | null
+//     pointType: ReadyPointType | null
 //     pointName: string | null
 //     root: boolean
 //     errors: unknown[]
@@ -773,7 +773,7 @@
 //    * then it's a "base" point and its name is the first string arg of the root call.
 //    */
 //   private detectPoint0RootBaseFromChain({ fileAbs, node }: { fileAbs: string; node: any }): {
-//     pointType: EndPointType | null
+//     pointType: ReadyPointType | null
 //     pointName: string | null
 //     root: boolean
 //     errors: unknown[]
@@ -840,7 +840,7 @@
 //     }
 //   }
 
-//   private findLetsArgsInChain(call: any): { typeArg: EndPointType; nameArg: string } | null {
+//   private findLetsArgsInChain(call: any): { typeArg: ReadyPointType; nameArg: string } | null {
 //     let curr: any = call
 //     while (curr?.type === 'CallExpression' && curr.callee?.type === 'MemberExpression') {
 //       const prop = curr.callee.property
@@ -849,7 +849,7 @@
 //       if (method === 'lets') {
 //         const [typeNode, nameNode] = curr.arguments ?? []
 //         if (typeNode?.type === 'StringLiteral' && nameNode?.type === 'StringLiteral') {
-//           return { typeArg: typeNode.value as EndPointType, nameArg: nameNode.value }
+//           return { typeArg: typeNode.value as ReadyPointType, nameArg: nameNode.value }
 //         }
 //       }
 
@@ -1411,7 +1411,7 @@
 //     return undefined
 //   }
 
-//   private static pointMethodToPointType(method: unknown): EndPointType | null {
+//   private static pointMethodToPointType(method: unknown): ReadyPointType | null {
 //     if (typeof method !== 'string') {
 //       return null
 //     }

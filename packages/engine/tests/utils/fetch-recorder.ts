@@ -1,5 +1,5 @@
 import type {
-  EndPointType,
+  ReadyPointType,
   FetcherFetchDetailedResult,
   FetcherFetchDetailedResultSpecific,
   MiddlewareFn,
@@ -156,7 +156,7 @@ export type FetchRecorderVariant = FetcherFetchDetailedResult['variant']
 export type FetchRecorderFilter<TVariant extends FetchRecorderVariant | undefined = undefined> = {
   variant?: TVariant
   scope?: PointsScope
-  pointType?: EndPointType
+  pointType?: ReadyPointType
 }
 
 export type FetchRecorderRecordStarted = {

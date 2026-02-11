@@ -1,6 +1,6 @@
 // import { Error0 } from '@devp0nt/error0'
 // import { Route0 } from '@devp0nt/route0'
-// import type { PointsScope, RequiredCtx, EndPointType, InputRawUnknown, PointName } from '@point0/core'
+// import type { PointsScope, RequiredCtx, ReadyPointType, InputRawUnknown, PointName } from '@point0/core'
 // import { PointRequest } from '@point0/core'
 // import type { AllPointsManagers, GetSuitableResult } from './all-points-managers.js'
 // import type { EngineClient } from './client.js'
@@ -359,7 +359,7 @@
 //     }
 
 // export type FetchTask = {
-//   pointType: EndPointType
+//   pointType: ReadyPointType
 //   outputType: 'data' | 'queryClientDehydratedState'
 //   scope: PointsScope
 //   pointName: PointName

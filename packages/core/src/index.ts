@@ -93,9 +93,9 @@ import type {
   DataTransformer,
   DataTransformerExtended,
   EmptyCtx,
-  EndPoint,
-  EndPointType,
-  EndPointTypeOrNever,
+  ReadyPoint,
+  ReadyPointType,
+  ReadyPointTypeOrNever,
   ExtendRouteDefinition,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
@@ -128,18 +128,18 @@ import type {
   MergeRecordValidationSchemas,
   MiddlewareFn,
   MountablePointType,
-  NiceBaseEndPoint,
-  NiceComponentEndPoint,
-  NiceEndPoint,
-  NiceInfiniteQueryEndPoint,
-  NiceLayoutEndPoint,
-  NiceMutationEndPoint,
-  NicePageEndPoint,
-  NicePluginEndPoint,
+  NiceBaseReadyPoint,
+  NiceComponentReadyPoint,
+  NiceReadyPoint,
+  NiceInfiniteQueryReadyPoint,
+  NiceLayoutReadyPoint,
+  NiceMutationReadyPoint,
+  NicePageReadyPoint,
+  NicePluginReadyPoint,
   NicePluginStagePoint,
-  NiceProviderEndPoint,
-  NiceQueryEndPoint,
-  NiceRootEndPoint,
+  NiceProviderReadyPoint,
+  NiceQueryReadyPoint,
+  NiceRootReadyPoint,
   NiceRootStagePoint,
   NiceStagePoint,
   NormalizeQueryResultType,
@@ -167,7 +167,7 @@ import type {
   StagePointTypeOrNever,
   UndefinedCtx,
   UndefinedCtxExposedKeys,
-  UndefinedEndPointType,
+  UndefinedReadyPointType,
   UndefinedInputSchema,
   UndefinedLoaderOutput,
   UndefinedMapperOutput,
@@ -253,7 +253,7 @@ import {
 
 export class Point0<
   TPointType extends PointType,
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -270,7 +270,7 @@ export class Point0<
 > {
   Infer: Infer<
     TPointType,
-    TLetsEndPointType,
+    TLetsReadyPointType,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -314,7 +314,7 @@ export class Point0<
   _serverurl: string | undefined
   readonly _baseurl: string | null | undefined
   readonly type: TPointType
-  private readonly _letsEndPointType: TLetsEndPointType
+  private readonly _letsReadyPointType: TLetsReadyPointType
   // TODO:ASAP it is false or undefined
   private readonly _transformer: DataTransformerExtended | undefined
   _getTransformer = () => this._transformer ?? blankDataTransformerExtended
@@ -340,9 +340,9 @@ export class Point0<
     unknown
   >
   readonly _queryResultType: TQueryResultType
-  // readonly _sameQueryPoint: EndPoint | null | undefined
+  // readonly _sameQueryPoint: ReadyPoint | null | undefined
   // readonly _getSameQueryPoint = () => this._sameQueryPoint ?? null
-  // readonly _relatedQueryPoints: EndPoint[]
+  // readonly _relatedQueryPoints: ReadyPoint[]
   // readonly _asFormData: boolean | undefined
   // private readonly _wrappers: MountableWrapperComponentType[]
   // private readonly _outers: MountableOuterComponentType[]
@@ -437,7 +437,7 @@ export class Point0<
 
   private constructor(options: {
     type: TPointType
-    _letsEndPointType: TLetsEndPointType
+    _letsReadyPointType: TLetsReadyPointType
     _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
     _middlewares?: MiddlewareFn[] | undefined
@@ -470,8 +470,8 @@ export class Point0<
         >
       | undefined
     _queryResultType?: TQueryResultType
-    // _sameQueryPoint?: EndPoint | null | undefined
-    // _relatedQueryPoints?: EndPoint[]
+    // _sameQueryPoint?: ReadyPoint | null | undefined
+    // _relatedQueryPoints?: ReadyPoint[]
     // _asFormData?: boolean | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
@@ -520,7 +520,7 @@ export class Point0<
     this._serverurl = options._serverurl ?? undefined
     this._baseurl = options._baseurl ?? undefined
     this.type = options.type
-    this._letsEndPointType = options._letsEndPointType
+    this._letsReadyPointType = options._letsReadyPointType
     // this._wrappers = options._wrappers ?? []
     // this._outers = options._outers ?? []
     // this._headFns = options._headFns ?? []
@@ -572,7 +572,7 @@ export class Point0<
 
   private _continue<
     TPointType extends PointType,
-    TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+    TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
     TRequiredCtx extends RequiredCtx,
     TCtx extends Ctx,
     TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -590,7 +590,7 @@ export class Point0<
     type?: TPointType
     scope?: PointsScope
     scopes?: PointsScope[]
-    _letsEndPointType?: TLetsEndPointType
+    _letsReadyPointType?: TLetsReadyPointType
     _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
     _middlewares?: MiddlewareFn[]
@@ -619,8 +619,8 @@ export class Point0<
         >
       | undefined
     _queryResultType?: TQueryResultType
-    // _sameQueryPoint?: EndPoint | null | undefined
-    // _relatedQueryPoints?: EndPoint[]
+    // _sameQueryPoint?: ReadyPoint | null | undefined
+    // _relatedQueryPoints?: ReadyPoint[]
     // _asFormData?: boolean | undefined
     // _wrappers?: MountableWrapperComponentType[]
     // _outers?: MountableOuterComponentType[]
@@ -663,7 +663,7 @@ export class Point0<
     X?: MountableSelfType<any, any, any, any, any, any, any, any, any> | null
   }): Point0<
     TPointType,
-    TLetsEndPointType,
+    TLetsReadyPointType,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -680,7 +680,7 @@ export class Point0<
   > {
     return new Point0<
       TPointType,
-      TLetsEndPointType,
+      TLetsReadyPointType,
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
@@ -700,7 +700,7 @@ export class Point0<
       _base: overrides._base ?? this._base,
       _root: overrides._root ?? this._root,
       type: (overrides.type ?? this.type) as TPointType,
-      _letsEndPointType: (overrides._letsEndPointType ?? this._letsEndPointType) as TLetsEndPointType,
+      _letsReadyPointType: (overrides._letsReadyPointType ?? this._letsReadyPointType) as TLetsReadyPointType,
       _middlewares: overrides._middlewares ?? this._middlewares,
       _serverurl: overrides._serverurl ?? this._serverurl,
       _baseurl: overrides._baseurl ?? this._baseurl,
@@ -815,7 +815,7 @@ export class Point0<
         type: 'coreStage',
         scope: pointName,
         scopes: [pointName],
-        _letsEndPointType: 'root',
+        _letsReadyPointType: 'root',
         name: pointName,
       }) as never
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -824,7 +824,7 @@ export class Point0<
         type: 'coreStage',
         scope: 'plugin',
         scopes: ['plugin'],
-        _letsEndPointType: 'plugin',
+        _letsReadyPointType: 'plugin',
         name: pointName,
       }) as never
     } else {
@@ -910,7 +910,7 @@ export class Point0<
   //   shouldAddMultipartFormDataHeaderToFetchOptions = true,
   // ): NiceStagePoint<
   //   TPointType,
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TData,
@@ -931,7 +931,7 @@ export class Point0<
     ssr: boolean,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -955,7 +955,7 @@ export class Point0<
     mutationOptions: UseMutationOptions,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -977,12 +977,12 @@ export class Point0<
 
   // setting default query options in not mountable point
   queryOptions(
-    ...args: TLetsEndPointType extends Exclude<PointType, MountablePointType>
+    ...args: TLetsReadyPointType extends Exclude<PointType, MountablePointType>
       ? [queryOptions: ExtraUseQueryOptions]
       : never
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -999,7 +999,7 @@ export class Point0<
   >
   // finalize query in mountable component
   queryOptions(
-    ...args: TLetsEndPointType extends MountablePointType
+    ...args: TLetsReadyPointType extends MountablePointType
       ? TPointType extends 'finalStage'
         ? [ShowError<`You can not use queryOptions() to finalize yout query, becouse it is already finalized`>]
         : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
@@ -1019,7 +1019,7 @@ export class Point0<
       : never
   ): NiceStagePoint<
     'finalStage',
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1040,7 +1040,7 @@ export class Point0<
   >
   queryOptions(...args: any[]) {
     const queryOptions = (args[0] || {}) as ExtraUseQueryOptions
-    if (this._isMountableEndPoint()) {
+    if (this._isMountableReadyPoint()) {
       if (this.type === 'finalStage') {
         throw new Error(
           `You can not use queryOptions() in ${this.toString()} becouse this point query already finalized`,
@@ -1062,12 +1062,12 @@ export class Point0<
   // setting default infinite query options in not mountable point
   infiniteQueryOptions(
     // infiniteQueryOptions: PartialUseInfiniteQueryOptions,
-    ...args: TLetsEndPointType extends Exclude<PointType, MountablePointType>
+    ...args: TLetsReadyPointType extends Exclude<PointType, MountablePointType>
       ? [infiniteQueryOptions: PartialUseInfiniteQueryOptions]
       : never
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1084,7 +1084,7 @@ export class Point0<
   >
   // finalize infinite query in mountable point
   infiniteQueryOptions(
-    ...args: TLetsEndPointType extends MountablePointType
+    ...args: TLetsReadyPointType extends MountablePointType
       ? TPointType extends 'finalStage'
         ? [ShowError<`You can not use infiniteQueryOptions() to finalize yout query, becouse it is already finalized`>]
         : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
@@ -1106,7 +1106,7 @@ export class Point0<
       : never
   ): NiceStagePoint<
     'finalStage',
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1126,7 +1126,7 @@ export class Point0<
   >
   infiniteQueryOptions(...args: any[]) {
     const infiniteQueryOptions = (args[0] || {}) as ExtraUseInfiniteQueryOptions<any> | PartialUseInfiniteQueryOptions
-    if (this._isMountableEndPoint()) {
+    if (this._isMountableReadyPoint()) {
       if (this.type === 'finalStage') {
         throw new Error(
           `You can not use infiniteQueryOptions() in ${this.toString()} becouse this point query already finalized`,
@@ -1158,7 +1158,7 @@ export class Point0<
     pageQueryOptions: UseQueryOptions,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1182,7 +1182,7 @@ export class Point0<
     componentQueryOptions: UseQueryOptions,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1206,7 +1206,7 @@ export class Point0<
     providerQueryOptions: UseQueryOptions,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1230,7 +1230,7 @@ export class Point0<
     layoutQueryOptions: UseQueryOptions,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1254,7 +1254,7 @@ export class Point0<
     fetchOptionsOrFn: FetchOptionsOrFn,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1285,10 +1285,10 @@ export class Point0<
   error(
     errorComponent: ErrorComponentType<any>,
   ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1298,12 +1298,12 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
-      TLetsEndPointType,
+      TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
@@ -1312,7 +1312,7 @@ export class Point0<
   error(errorComponent: ErrorComponentType<any> | undefined) {
     errorComponent ||= () => null
     // this._applyComponentDisplayName(errorComponent, {
-    //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Error',
+    //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'Error',
     // })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
@@ -1329,7 +1329,7 @@ export class Point0<
           unstableId: Point0._getNextUnstableId(),
         },
       ],
-      ...(this._isMountableEndPoint()
+      ...(this._isMountableReadyPoint()
         ? {
             _errorComponent: errorComponent,
           }
@@ -1345,7 +1345,7 @@ export class Point0<
     layoutErrorComponent: ErrorComponentType<any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1364,7 +1364,7 @@ export class Point0<
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutError for serverNoSsr target
       _layoutErrorComponent: (layoutErrorComponent as never) || (() => null),
       // _layoutErrorComponent: this._applyComponentDisplayName(layoutErrorComponent || (() => null), {
-      //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'LayoutError',
+      //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'LayoutError',
       // }),
     }) as never
   }
@@ -1373,7 +1373,7 @@ export class Point0<
     pageErrorComponent: ErrorComponentType<any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1391,7 +1391,7 @@ export class Point0<
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageError for serverNoSsr target
     pageErrorComponent ||= () => null
     // this._applyComponentDisplayName(pageErrorComponent, {
-    //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'PageError',
+    //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'PageError',
     // })
     return this._continue({
       _pageErrorComponent: pageErrorComponent as never,
@@ -1402,7 +1402,7 @@ export class Point0<
     componentErrorComponent: ErrorComponentType<any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1421,7 +1421,7 @@ export class Point0<
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentError for serverNoSsr target
       _componentErrorComponent: (componentErrorComponent as never) || (() => null),
       // _componentErrorComponent: this._applyComponentDisplayName(componentErrorComponent || (() => null), {
-      //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'ComponentError',
+      //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'ComponentError',
       // }),
     }) as never
   }
@@ -1430,7 +1430,7 @@ export class Point0<
     layoutLoadingComponent: LoadingComponentType<any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1449,7 +1449,7 @@ export class Point0<
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutLoading for serverNoSsr target
       _layoutLoadingComponent: (layoutLoadingComponent as never) || (() => null),
       // _layoutLoadingComponent: this._applyComponentDisplayName(layoutLoadingComponent || (() => null), {
-      //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'LayoutLoading',
+      //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'LayoutLoading',
       // }),
     }) as never
   }
@@ -1458,7 +1458,7 @@ export class Point0<
     pageLoadingComponent: LoadingComponentType<any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1476,7 +1476,7 @@ export class Point0<
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageLoading for serverNoSsr target
     pageLoadingComponent ||= () => null
     // this._applyComponentDisplayName(pageLoadingComponent, {
-    //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'PageLoading',
+    //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'PageLoading',
     // })
     return this._continue({
       _pageLoadingComponent: pageLoadingComponent as never,
@@ -1487,7 +1487,7 @@ export class Point0<
     componentLoadingComponent: LoadingComponentType<any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1509,7 +1509,7 @@ export class Point0<
       //   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentLoading for serverNoSsr target
       //   (componentLoadingComponent as never) || (() => null),
       //   {
-      //     suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'ComponentLoading',
+      //     suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'ComponentLoading',
       //   },
       // ),
     }) as never
@@ -1518,10 +1518,10 @@ export class Point0<
   loading(
     loadingComponent: LoadingComponentType<any>,
   ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1531,12 +1531,12 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
-      TLetsEndPointType,
+      TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
@@ -1545,7 +1545,7 @@ export class Point0<
   loading(loadingComponent: LoadingComponentType<any> | undefined) {
     loadingComponent ||= () => null
     // this._applyComponentDisplayName(loadingComponent, {
-    //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Loading',
+    //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'Loading',
     // })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
@@ -1562,7 +1562,7 @@ export class Point0<
           unstableId: Point0._getNextUnstableId(),
         },
       ],
-      ...(this._isMountableEndPoint()
+      ...(this._isMountableReadyPoint()
         ? {
             _loadingComponent: loadingComponent,
           }
@@ -1576,11 +1576,11 @@ export class Point0<
 
   wrapper(
     wrapperComponent: WrapperComponentType<
-      MountableLocation<TLetsEndPointType, TRouteDefinition>,
+      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
       TInnerProps,
       WithSelfQueryIfShouldBeFinalized<
         TPointType,
-        TLetsEndPointType,
+        TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
         TQueriesDefinitions
@@ -1588,10 +1588,10 @@ export class Point0<
       TMapperOutput
     >,
   ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1601,12 +1601,12 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
-      TLetsEndPointType,
+      TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
@@ -1631,7 +1631,7 @@ export class Point0<
       //   ...this._wrappers,
       //   wrapperComponent as never,
       //   // this._applyComponentDisplayName(wrapperComponent as React.ComponentType<any>, {
-      //   //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Wrapper',
+      //   //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'Wrapper',
       //   //   index: this._wrappers.length,
       //   // }) as never,
       // ],
@@ -1640,11 +1640,11 @@ export class Point0<
 
   with<TNewInnerProps extends Props>(
     withFn: WithFn<
-      MountableLocation<TLetsEndPointType, TRouteDefinition>,
+      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
       TInnerProps,
       WithSelfQueryIfShouldBeFinalized<
         TPointType,
-        TLetsEndPointType,
+        TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
         TQueriesDefinitions
@@ -1653,10 +1653,10 @@ export class Point0<
       TNewInnerProps
     >,
   ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1666,12 +1666,12 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     AppendProps<TInnerProps, TNewInnerProps>,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
-      TLetsEndPointType,
+      TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
@@ -1696,7 +1696,7 @@ export class Point0<
       //   ...this._wrappers,
       //   wrapperComponent as never,
       //   // this._applyComponentDisplayName(wrapperComponent as React.ComponentType<any>, {
-      //   //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Wrapper',
+      //   //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'Wrapper',
       //   //   index: this._wrappers.length,
       //   // }) as never,
       // ],
@@ -1707,7 +1707,7 @@ export class Point0<
   //   outerComponent: MountableOuterComponentType<TClientInputSchema, TProps>,
   // ): NiceStagePoint<
   //   'renderStage',
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TCtxExposedKeys,
@@ -1727,7 +1727,7 @@ export class Point0<
   //       ...this._outers,
   //       outerComponent as never,
   //       // this._applyComponentDisplayName(outerComponent, {
-  //       //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Outer',
+  //       //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'Outer',
   //       //   index: this._outers.length,
   //       // }) as never,
   //     ],
@@ -1740,7 +1740,7 @@ export class Point0<
     documentElementGetter: () => HTMLElement | null,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1759,7 +1759,7 @@ export class Point0<
     selector: string,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1779,7 +1779,7 @@ export class Point0<
     setter: ScrollPositionSetter,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1819,7 +1819,7 @@ export class Point0<
     })()
     return this._continue<
       TPointType,
-      EndPointTypeOrNever<TLetsEndPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
@@ -1844,7 +1844,7 @@ export class Point0<
     policy: ScrollPositionRestorePolicy | boolean | null | undefined, // undefined in case if it was shaked for serverNoSsr
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1861,7 +1861,7 @@ export class Point0<
   > {
     return this._continue<
       TPointType,
-      EndPointTypeOrNever<TLetsEndPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
@@ -1888,7 +1888,7 @@ export class Point0<
     middlewareFn: MiddlewareFn,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1913,7 +1913,7 @@ export class Point0<
     policy: PagePrefetchPolicy,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1930,7 +1930,7 @@ export class Point0<
   > {
     return this._continue<
       TPointType,
-      EndPointTypeOrNever<TLetsEndPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
@@ -1954,7 +1954,7 @@ export class Point0<
     fn: OnPrefetchFn,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -1971,7 +1971,7 @@ export class Point0<
   > {
     return this._continue<
       TPointType,
-      EndPointTypeOrNever<TLetsEndPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
@@ -1995,7 +1995,7 @@ export class Point0<
     polh: boolean | number,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2022,7 +2022,7 @@ export class Point0<
     transformer: DataTransformer,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2050,7 +2050,7 @@ export class Point0<
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
     AppendCtxExposedKeys<TCtxExposedKeys, InferCtxFnOutputCtxExposedKeys<TCtxFn>>,
@@ -2071,7 +2071,7 @@ export class Point0<
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     AppendCtx<TCtx, TAppendCtx>,
     AppendCtxExposedKeys<TCtxExposedKeys, Extract<keyof TAppendCtx, string>>,
@@ -2092,7 +2092,7 @@ export class Point0<
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     AppendCtx<TCtx, TAppendCtx>,
     AppendCtxExposedKeys<TCtxExposedKeys, TAppendCtxExposedKeys>,
@@ -2111,7 +2111,7 @@ export class Point0<
     ctx: TAppendCtx & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     AppendCtx<TCtx, TAppendCtx>,
     TCtxExposedKeys,
@@ -2142,14 +2142,14 @@ export class Point0<
   }
 
   loader<TNewServerLoaderOutput extends LoaderOutput = LoaderOutput>(
-    loaderFn: TLetsEndPointType extends 'mutation'
+    loaderFn: TLetsReadyPointType extends 'mutation'
       ? LoaderResponseFn<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema, TNewServerLoaderOutput> &
           AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>
       : LoaderDataFn<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema, TNewServerLoaderOutput> &
           AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>,
   ): NiceStagePoint<
     TNewServerLoaderOutput extends Response ? 'clientStage' : 'serverStage',
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2159,7 +2159,7 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    NormalizeQueryResultType<TLetsEndPointType, TQueryResultType, 'query'>,
+    NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
@@ -2168,7 +2168,7 @@ export class Point0<
   //   enableServerLoader: false,
   // ): NiceStagePoint<
   //   'coreStage',
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TCtxExposedKeys,
@@ -2185,7 +2185,7 @@ export class Point0<
   // >
   // loader(enableServerLoader: true & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>): NiceStagePoint<
   //   StagePointTypeOrNever<TPointType>,
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TCtxExposedKeys,
@@ -2208,9 +2208,9 @@ export class Point0<
     //     _clientExecuteActions: this._clientExecuteActions.filter((fn) => fn.type !== 'loader'),
     //     // _mapperFns: [],
     //     _queryResultType:
-    //       this._letsEndPointType === 'query'
+    //       this._letsReadyPointType === 'query'
     //         ? 'query'
-    //         : this._letsEndPointType === 'infiniteQuery'
+    //         : this._letsReadyPointType === 'infiniteQuery'
     //           ? 'infiniteQuery'
     //           : undefined,
     //   }) as never
@@ -2231,9 +2231,9 @@ export class Point0<
   }
 
   clientLoader<TNewClientLoaderOutput extends LoaderOutput = LoaderOutput>(
-    clientLoaderFn: TLetsEndPointType extends 'mutation'
+    clientLoaderFn: TLetsReadyPointType extends 'mutation'
       ? ClientLoaderResponseFn<
-          TLetsEndPointType,
+          TLetsReadyPointType,
           TRouteDefinition,
           TClientInputSchema,
           TServerLoaderOutput,
@@ -2242,7 +2242,7 @@ export class Point0<
         > &
           AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>
       : ClientLoaderDataFn<
-          TLetsEndPointType,
+          TLetsReadyPointType,
           TRouteDefinition,
           TClientInputSchema,
           TServerLoaderOutput,
@@ -2252,7 +2252,7 @@ export class Point0<
           AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>,
   ): NiceStagePoint<
     TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage', // response can happen only in mutation, so we not care about this happen in mountable
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2262,13 +2262,13 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    NormalizeQueryResultType<TLetsEndPointType, TQueryResultType, 'query'>,
+    NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions // so here we not try to finalize query, becouse for mutation it is not needed at all, and in mountable can not happen becouse it can not return response
     // WithSelfQueryIfShouldBeFinalized<
     //   TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage',
-    //   TLetsEndPointType,
+    //   TLetsReadyPointType,
     //   TServerLoaderOutput,
     //   TNewClientLoaderOutput,
     //   TQueriesDefinitions
@@ -2278,7 +2278,7 @@ export class Point0<
   //   enableClientLoader: false,
   // ): NiceStagePoint<
   //   'coreStage',
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TCtxExposedKeys,
@@ -2290,9 +2290,9 @@ export class Point0<
   //   TClientInputSchema,
   //   TServerLoaderOutput extends LoaderOutput
   //     ? TQueryResultType
-  //     : TLetsEndPointType extends 'query'
+  //     : TLetsReadyPointType extends 'query'
   //       ? 'query'
-  //       : TLetsEndPointType extends 'infiniteQuery'
+  //       : TLetsReadyPointType extends 'infiniteQuery'
   //         ? 'infiniteQuery'
   //         : UndefinedQueryResultType,
   //   TProps,
@@ -2304,7 +2304,7 @@ export class Point0<
   //   enableClientLoader: true & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>,
   // ): NiceStagePoint<
   //   'clientStage',
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TCtxExposedKeys,
@@ -2336,9 +2336,9 @@ export class Point0<
     //     // _mapperFns: [],
     //     _queryResultType: this._hasServerLoader()
     //       ? this._queryResultType
-    //       : this._letsEndPointType === 'query'
+    //       : this._letsReadyPointType === 'query'
     //         ? 'query'
-    //         : this._letsEndPointType === 'infiniteQuery'
+    //         : this._letsReadyPointType === 'infiniteQuery'
     //           ? 'infiniteQuery'
     //           : undefined,
     //   }) as never
@@ -2368,11 +2368,11 @@ export class Point0<
 
   mapper<TNewMapperOutput extends MapperOutput = MapperOutput>(
     mapperFn: MapperFn<
-      MountableLocation<TLetsEndPointType, TRouteDefinition>,
+      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
       TInnerProps,
       WithSelfQueryIfShouldBeFinalized<
         TPointType,
-        TLetsEndPointType,
+        TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
         TQueriesDefinitions
@@ -2381,10 +2381,10 @@ export class Point0<
       TNewMapperOutput
     >,
   ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2394,12 +2394,12 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
-      TLetsEndPointType,
+      TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
@@ -2409,7 +2409,7 @@ export class Point0<
   //   enableMapper: false,
   // ): NiceStagePoint<
   //   TClientLoaderOutput extends LoaderOutput ? 'clientStage' : 'coreStage',
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TCtxExposedKeys,
@@ -2462,7 +2462,7 @@ export class Point0<
   //   dataKey: TDataKey,
   // ): NiceStagePoint<
   //   TPointType,
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TCtxExposedKeys,
@@ -2516,11 +2516,11 @@ export class Point0<
     head:
       | HeadFn<
           'success',
-          MountableLocation<TLetsEndPointType, TRouteDefinition>,
+          MountableLocation<TLetsReadyPointType, TRouteDefinition>,
           TInnerProps,
           WithSelfQueryIfShouldBeFinalized<
             TPointType,
-            TLetsEndPointType,
+            TLetsReadyPointType,
             TServerLoaderOutput,
             TClientLoaderOutput,
             TQueriesDefinitions
@@ -2530,10 +2530,10 @@ export class Point0<
       | ResolvableHead
       | string,
   ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2543,12 +2543,12 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
-      TLetsEndPointType,
+      TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
@@ -2557,15 +2557,15 @@ export class Point0<
   head<TStatus extends 'loading' | 'error' | 'success' | 'universal' | 'global'>(
     status: TStatus,
     head: TStatus extends 'global'
-      ? GlobalHeadFn<any, MountableLocation<TLetsEndPointType, TRouteDefinition>>
+      ? GlobalHeadFn<any, MountableLocation<TLetsReadyPointType, TRouteDefinition>>
       :
           | HeadFn<
               TStatus extends 'loading' | 'error' | 'success' ? TStatus : any,
-              MountableLocation<TLetsEndPointType, TRouteDefinition>,
+              MountableLocation<TLetsReadyPointType, TRouteDefinition>,
               TInnerProps,
               WithSelfQueryIfShouldBeFinalized<
                 TPointType,
-                TLetsEndPointType,
+                TLetsReadyPointType,
                 TServerLoaderOutput,
                 TClientLoaderOutput,
                 TQueriesDefinitions
@@ -2575,10 +2575,10 @@ export class Point0<
           | ResolvableHead
           | string,
   ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2588,12 +2588,12 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
-      TLetsEndPointType,
+      TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
@@ -2606,7 +2606,7 @@ export class Point0<
           head:
             | HeadFn<
                 any,
-                MountableLocation<TLetsEndPointType, TRouteDefinition>,
+                MountableLocation<TLetsReadyPointType, TRouteDefinition>,
                 TInnerProps,
                 TQueriesDefinitions,
                 TMapperOutput
@@ -2618,7 +2618,7 @@ export class Point0<
           head:
             | HeadFn<
                 any,
-                MountableLocation<TLetsEndPointType, TRouteDefinition>,
+                MountableLocation<TLetsReadyPointType, TRouteDefinition>,
                 TInnerProps,
                 TQueriesDefinitions,
                 TMapperOutput
@@ -2694,7 +2694,7 @@ export class Point0<
   //     : never[]
   // ): NiceStagePoint<
   //   StagePointTypeOrNever<TPointType>,
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TCtxExposedKeys,
@@ -2717,7 +2717,7 @@ export class Point0<
       AssertInputSchemaNotWider<TNextServerInputSchema, TServerInputSchema, TClientInputSchema>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2746,7 +2746,7 @@ export class Point0<
         ]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2771,7 +2771,7 @@ export class Point0<
       >,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2794,7 +2794,7 @@ export class Point0<
     TError,
     NiceStagePoint<
       StagePointTypeOrNever<TPointType>,
-      EndPointTypeOrNever<TLetsEndPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
@@ -2831,7 +2831,7 @@ export class Point0<
       AssertInputSchemaNotWider<TNextClientInputSchema, TServerInputSchema, TClientInputSchema>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2856,7 +2856,7 @@ export class Point0<
       >,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2881,7 +2881,7 @@ export class Point0<
       >,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2904,7 +2904,7 @@ export class Point0<
     ...args: unknown extends TError ? [] : [TError]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2940,7 +2940,7 @@ export class Point0<
       AssertInputSchemaNotWider<TNextInputSchema, TServerInputSchema, TClientInputSchema>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2965,7 +2965,7 @@ export class Point0<
       >,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -2990,7 +2990,7 @@ export class Point0<
       >,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -3013,7 +3013,7 @@ export class Point0<
     ...args: unknown extends TError ? [] : [TError]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -3048,7 +3048,7 @@ export class Point0<
   }
 
   // withQuery<
-  //   TPoint extends NiceEndPoint<
+  //   TPoint extends NiceReadyPoint<
   //     any,
   //     any,
   //     any,
@@ -3082,7 +3082,7 @@ export class Point0<
   //       ]
   // ): NiceStagePoint<
   //   StagePointTypeOrNever<TPointType>,
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TCtxExposedKeys,
@@ -3101,7 +3101,7 @@ export class Point0<
   //   queryFn: (options: { input: InputParsed<TClientInputSchema> }) => TUseQueryResult,
   // ): NiceStagePoint<
   //   StagePointTypeOrNever<TPointType>,
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TCtxExposedKeys,
@@ -3120,7 +3120,7 @@ export class Point0<
   // //   drop: false,
   // // ): NiceStagePoint<
   // //   StagePointTypeOrNever<TPointType>,
-  // //   EndPointTypeOrNever<TLetsEndPointType>,
+  // //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   // //   TRequiredCtx,
   // //   TCtx,
   // //   TCtxExposedKeys,
@@ -3175,7 +3175,7 @@ export class Point0<
   //     : ShowError<`Route ${TNewRoute['definition']} is not assignable to previous input schema`> & TNewRoute,
   // ): NiceStagePoint<
   //   TPointType,
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TData,
@@ -3191,7 +3191,7 @@ export class Point0<
   //   routeDefinition: TNewRouteDefinition,
   // ): NiceStagePoint<
   //   TPointType,
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TData,
@@ -3207,7 +3207,7 @@ export class Point0<
   //   relativeRouteDefinition: TNewRouteDefinition,
   // ): NiceStagePoint<
   //   TPointType,
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TData,
@@ -3223,7 +3223,7 @@ export class Point0<
   // >
   // route(): NiceStagePoint<
   //   TPointType,
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TData,
@@ -3268,7 +3268,7 @@ export class Point0<
       AssertRouteDefinitionInputExtends<TRouteDefinition, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
   >(
     ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsEndPointType: 'page', pointName: TPointName, route?: TProvidedRoute]
+      ? [letsReadyPointType: 'page', pointName: TPointName, route?: TProvidedRoute]
       : never[]
   ): WithError<
     TError,
@@ -3307,7 +3307,7 @@ export class Point0<
       AssertRouteDefinitionInputExtends<TRouteDefinition, TProvidedRoute['definition']>,
   >(
     ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsEndPointType: 'page', pointName: TPointName, route: TProvidedRoute]
+      ? [letsReadyPointType: 'page', pointName: TPointName, route: TProvidedRoute]
       : never[]
   ): WithError<
     TError,
@@ -3346,7 +3346,7 @@ export class Point0<
       AssertRouteDefinitionInputExtends<TRouteDefinition, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
   >(
     ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsEndPointType: 'layout', pointName: TPointName, route?: TProvidedRoute]
+      ? [letsReadyPointType: 'layout', pointName: TPointName, route?: TProvidedRoute]
       : never[]
   ): WithError<
     TError,
@@ -3385,7 +3385,7 @@ export class Point0<
       AssertRouteDefinitionInputExtends<TRouteDefinition, TProvidedRoute['definition']>,
   >(
     ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsEndPointType: 'layout', pointName: TPointName, route: TProvidedRoute]
+      ? [letsReadyPointType: 'layout', pointName: TPointName, route: TProvidedRoute]
       : never[]
   ): WithError<
     TError,
@@ -3414,7 +3414,7 @@ export class Point0<
     >
   >
   lets<TNewOuterProps extends Props = EmptyProps>(
-    ...args: TPointType extends 'root' | 'base' ? [letsEndPointType: 'component', pointName: string] : never[]
+    ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'component', pointName: string] : never[]
   ): NiceStagePoint<
     'coreStage',
     'component',
@@ -3433,15 +3433,15 @@ export class Point0<
     TQueriesDefinitions
   >
   lets<
-    TNewLetsEndPointType extends Exclude<EndPointType, 'page' | 'layout' | 'component'>,
+    TNewLetsReadyPointType extends Exclude<ReadyPointType, 'page' | 'layout' | 'component'>,
     TPointName extends PointName,
   >(
     ...args: TPointType extends 'root' | 'base'
-      ? [letsEndPointType: TNewLetsEndPointType, pointName: TPointName]
+      ? [letsReadyPointType: TNewLetsReadyPointType, pointName: TPointName]
       : never[]
   ): NiceStagePoint<
     'coreStage',
-    TNewLetsEndPointType,
+    TNewLetsReadyPointType,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -3457,11 +3457,11 @@ export class Point0<
     TQueriesDefinitions
   >
   lets(...args: any[]) {
-    const [letsEndPointType, pointName, route] = args as [EndPointType, PointName, AnyRoute | string | undefined]
+    const [letsReadyPointType, pointName, route] = args as [ReadyPointType, PointName, AnyRoute | string | undefined]
     const prevRoute = this.route
     const newRoute = (() => {
       const routeConfig = { baseurl: this._baseurl ?? undefined }
-      if (letsEndPointType === 'page') {
+      if (letsReadyPointType === 'page') {
         if (typeof route === 'string' || !route) {
           const routeOrPointName = route ?? pointName
           if (routeOrPointName === '/') {
@@ -3473,7 +3473,7 @@ export class Point0<
         }
         return route
       }
-      if (letsEndPointType === 'layout') {
+      if (letsReadyPointType === 'layout') {
         if (typeof route === 'string' || !route) {
           const routeNormalized = route ?? '/'
           if (routeNormalized === '/') {
@@ -3487,8 +3487,8 @@ export class Point0<
       }
       return prevRoute
     })()
-    const scopes = letsEndPointType === 'root' ? [pointName, ...this.scopes] : this.scopes
-    const scope = letsEndPointType === 'root' ? pointName : this.scope
+    const scopes = letsReadyPointType === 'root' ? [pointName, ...this.scopes] : this.scopes
+    const scope = letsReadyPointType === 'root' ? pointName : this.scope
     const newInputExecuteAction =
       prevRoute === newRoute || !newRoute
         ? []
@@ -3514,7 +3514,7 @@ export class Point0<
 
     const mountActionsAll = [...this._mountActions]
     const mountActionsSuitable = this.type !== 'base' && this.type !== 'root' ? [] : mountActionsAll
-    if (letsEndPointType === 'component') {
+    if (letsReadyPointType === 'component') {
       mountActionsSuitable.push({ type: 'selfProps', unstableId: Point0._getNextUnstableId() })
     }
 
@@ -3525,7 +3525,7 @@ export class Point0<
       _clientExecuteActions: clientExecuteActionsSuitable,
       _mountActions: mountActionsSuitable,
       type: 'coreStage',
-      _letsEndPointType: letsEndPointType,
+      _letsReadyPointType: letsReadyPointType,
       name: pointName,
       route: newRoute as never,
       _page: undefined,
@@ -3547,7 +3547,7 @@ export class Point0<
       _defaultLayoutQueryOptions: this._base?._defaultLayoutQueryOptions,
       _queryOptions: {},
       // _sameQueryPoint:
-      //   this._hasClientLoader() || this._hasServerLoader() ? this._sameQueryPoint || (this as EndPoint) : null,
+      //   this._hasClientLoader() || this._hasServerLoader() ? this._sameQueryPoint || (this as ReadyPoint) : null,
       _infiniteQueryOptions: {} as never,
       _fetchOptions: this._base?._fetchOptions,
       _scrollPositionGetter: this._base?._scrollPositionGetter,
@@ -3570,9 +3570,9 @@ export class Point0<
     }) as never
   }
 
-  root(): NiceRootEndPoint<
+  root(): NiceRootReadyPoint<
     'root',
-    UndefinedEndPointType,
+    UndefinedReadyPointType,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -3592,13 +3592,13 @@ export class Point0<
       _base: this as never as BasePoint,
       _root: this as never as RootPoint,
       name: this.scope,
-      _letsEndPointType: undefined,
+      _letsReadyPointType: undefined,
     })
   }
 
-  plugin(): NicePluginEndPoint<
+  plugin(): NicePluginReadyPoint<
     'plugin',
-    UndefinedEndPointType,
+    UndefinedReadyPointType,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -3615,13 +3615,13 @@ export class Point0<
   > {
     return this._continue({
       type: 'plugin',
-      _letsEndPointType: undefined,
+      _letsReadyPointType: undefined,
     }) as never
   }
 
-  base(): NiceBaseEndPoint<
+  base(): NiceBaseReadyPoint<
     'base',
-    UndefinedEndPointType,
+    UndefinedReadyPointType,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -3639,7 +3639,7 @@ export class Point0<
     return this._continue({
       type: 'base',
       _base: this as never as BasePoint,
-      _letsEndPointType: undefined,
+      _letsReadyPointType: undefined,
     }) as never
   }
 
@@ -3650,7 +3650,7 @@ export class Point0<
         TInnerProps,
         WithSelfQueryIfShouldBeFinalized<
           TPointType,
-          TLetsEndPointType,
+          TLetsReadyPointType,
           TServerLoaderOutput,
           TClientLoaderOutput,
           TQueriesDefinitions
@@ -3658,9 +3658,9 @@ export class Point0<
         TMapperOutput
       >,
     ]
-  ): NicePageEndPoint<
+  ): NicePageReadyPoint<
     'page',
-    UndefinedEndPointType,
+    UndefinedReadyPointType,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -3670,12 +3670,12 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
-      TLetsEndPointType,
+      TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
@@ -3691,7 +3691,7 @@ export class Point0<
     const point = this._continue({
       type: 'page',
       _page: page,
-      _letsEndPointType: undefined,
+      _letsReadyPointType: undefined,
       _mountActions: [...this._mountActions, ...selfQueryAction],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query' } : {}),
     })
@@ -3710,7 +3710,7 @@ export class Point0<
         TInnerProps,
         WithSelfQueryIfShouldBeFinalized<
           TPointType,
-          TLetsEndPointType,
+          TLetsReadyPointType,
           TServerLoaderOutput,
           TClientLoaderOutput,
           TQueriesDefinitions
@@ -3718,9 +3718,9 @@ export class Point0<
         TMapperOutput
       >,
     ]
-  ): NiceComponentEndPoint<
+  ): NiceComponentReadyPoint<
     'component',
-    UndefinedEndPointType,
+    UndefinedReadyPointType,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -3730,12 +3730,12 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
-      TLetsEndPointType,
+      TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
@@ -3750,7 +3750,7 @@ export class Point0<
     const point = this._continue({
       type: 'component',
       _component: component,
-      _letsEndPointType: undefined,
+      _letsReadyPointType: undefined,
       _mountActions: [...this._mountActions, ...selfQueryAction],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query' } : {}),
     })
@@ -3764,14 +3764,14 @@ export class Point0<
   }
 
   layout(
-    ...args: TLetsEndPointType extends 'layout'
+    ...args: TLetsReadyPointType extends 'layout'
       ? [
           layout?: LayoutSuccessComponentType<
             TRouteDefinition,
             TInnerProps,
             WithSelfQueryIfShouldBeFinalized<
               TPointType,
-              TLetsEndPointType,
+              TLetsReadyPointType,
               TServerLoaderOutput,
               TClientLoaderOutput,
               TQueriesDefinitions
@@ -3780,9 +3780,9 @@ export class Point0<
           >,
         ]
       : never
-  ): NiceLayoutEndPoint<
+  ): NiceLayoutReadyPoint<
     'layout',
-    UndefinedEndPointType,
+    UndefinedReadyPointType,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -3792,19 +3792,21 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
-      TLetsEndPointType,
+      TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
     >
   >
-  layout<TPoint extends NiceLayoutEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>>(
-    ...args: TLetsEndPointType extends 'page'
+  layout<
+    TPoint extends NiceLayoutReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  >(
+    ...args: TLetsReadyPointType extends 'page'
       ? [
           layout: TPoint,
           ...error: InputsRaw<TServerInputSchema, TClientInputSchema> extends TPoint['Infer']['InputRaw']
@@ -3813,10 +3815,10 @@ export class Point0<
         ]
       : never
   ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -3826,13 +3828,13 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     [
       ...WithSelfQueryIfShouldBeFinalized<
         TPointType,
-        TLetsEndPointType,
+        TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
         TQueriesDefinitions
@@ -3844,7 +3846,7 @@ export class Point0<
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
-    if (this._letsEndPointType === 'layout') {
+    if (this._letsReadyPointType === 'layout') {
       const [layout = ({ children }: { children: Exclude<React.ReactNode, Promise<any>> }) => children] = args as [
         LayoutSuccessComponentType<any, any, any, any> | undefined,
       ]
@@ -3852,7 +3854,7 @@ export class Point0<
       const point = this._continue({
         type: 'layout',
         _layout: layout as never,
-        _letsEndPointType: undefined,
+        _letsReadyPointType: undefined,
         _base: this as never as BasePoint,
         ...this._getProviderLikeProps(),
         _mountActions: [...this._mountActions, ...selfQueryAction],
@@ -3867,7 +3869,7 @@ export class Point0<
       return layout as never
     } else {
       const [layoutNicePoint] = args as [
-        NiceLayoutEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+        NiceLayoutReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
       ]
       return this._continue({
         _layouts: [...new Set([...this._layouts, layoutNicePoint.point])],
@@ -3918,7 +3920,7 @@ export class Point0<
     TNewMapperOutput extends MapperOutput = MountableSuccessData<
       WithSelfQueryIfShouldBeFinalized<
         TPointType,
-        TLetsEndPointType,
+        TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
         TQueriesDefinitions
@@ -3928,11 +3930,11 @@ export class Point0<
   >(
     ...args: [
       mapper?: MapperFn<
-        MountableLocation<TLetsEndPointType, TRouteDefinition>,
+        MountableLocation<TLetsReadyPointType, TRouteDefinition>,
         TInnerProps,
         WithSelfQueryIfShouldBeFinalized<
           TPointType,
-          TLetsEndPointType,
+          TLetsReadyPointType,
           TServerLoaderOutput,
           TClientLoaderOutput,
           TQueriesDefinitions
@@ -3941,9 +3943,9 @@ export class Point0<
         TNewMapperOutput
       >,
     ]
-  ): NiceProviderEndPoint<
+  ): NiceProviderReadyPoint<
     'provider',
-    UndefinedEndPointType,
+    UndefinedReadyPointType,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -3953,12 +3955,12 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
-      TLetsEndPointType,
+      TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
@@ -3972,7 +3974,7 @@ export class Point0<
       : []
     const point = this._continue({
       type: 'provider',
-      _letsEndPointType: undefined,
+      _letsReadyPointType: undefined,
       // _mapperFns: mapperFn ? [...this._mapperFns, mapperFn as never] : this._mapperFns,
       _mountActions: [
         ...this._mountActions,
@@ -4009,7 +4011,7 @@ export class Point0<
   //       : [
   //           ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .provider()`>,
   //         ]
-  // ): NiceProviderEndPoint<
+  // ): NiceProviderReadyPoint<
   //   'provider',
   //   undefined,
   //   TRequiredCtx,
@@ -4027,10 +4029,10 @@ export class Point0<
   //   TLastClientOutput
   // > {
   //   return this._continue({
-  //     // type: this._letsEndPointType === 'query' ? 'query' : this.type,
-  //     // _letsEndPointType: (this._letsEndPointType === 'query'
+  //     // type: this._letsReadyPointType === 'query' ? 'query' : this.type,
+  //     // _letsReadyPointType: (this._letsReadyPointType === 'query'
   //     //   ? undefined
-  //     //   : this._letsEndPointType) as TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
+  //     //   : this._letsReadyPointType) as TLetsReadyPointType extends 'query' ? undefined : TLetsReadyPointType,
   //     // _queryResultType: 'query',
   //     // _queryOptions: queryOptions as ExtraUseQueryOptions<
   //     //   FinalClientData<TLastServerOutput, TLastClientOutput>,
@@ -4039,7 +4041,7 @@ export class Point0<
   //     //   QueryKey
   //     // >,
   //     type: 'provider',
-  //     _letsEndPointType: undefined,
+  //     _letsReadyPointType: undefined,
   //     _ProviderReactContext: createContext<FinalClientData<TLastServerOutput, TLastClientOutput>>(
   //       null as never,
   //     ) as never,
@@ -4077,7 +4079,7 @@ export class Point0<
   //   }) as never
   // }
 
-  use<T extends NicePluginEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>>(
+  use<T extends NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>>(
     plugin: T &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'use'> &
       AssertInputSchemaNotWider<T['Infer']['ServerInputSchema'], TServerInputSchema, TClientInputSchema> &
@@ -4085,10 +4087,10 @@ export class Point0<
       AssertCurrentCtxExtendsPluginRequiredCtx<TCtx, T['Infer']['RequiredCtx']> &
       AssertCurrentInnerPropsExtendsPluginOuterProps<TOuterProps, T['Infer']['OuterProps']>,
   ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     AppendCtx<TCtx, T['Infer']['Ctx']>,
     AppendCtxExposedKeys<TCtxExposedKeys, T['Infer']['CtxExposedKeys']>,
@@ -4098,12 +4100,12 @@ export class Point0<
     TRouteDefinition,
     MergeRecordValidationSchemas<TServerInputSchema, T['Infer']['ServerInputSchema']>,
     MergeRecordValidationSchemas<TClientInputSchema, T['Infer']['ClientInputSchema']>,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
-      TLetsEndPointType,
+      TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
@@ -4111,9 +4113,9 @@ export class Point0<
   >
   // use<
   //   T extends
-  //     | NiceQueryEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
-  //     | NiceInfiniteQueryEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
-  //     | NiceLayoutEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  //     | NiceQueryReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
+  //     | NiceInfiniteQueryReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
+  //     | NiceLayoutReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>,
   // >(
   //   point: T &
   //     AssertUseNoLoaderMapperConflict<
@@ -4139,7 +4141,7 @@ export class Point0<
   //     : T['Infer']['ClientLoaderOutput'] extends LoaderOutput
   //       ? 'clientStage'
   //       : 'coreStage',
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TCtxExposedKeys,
@@ -4152,7 +4154,7 @@ export class Point0<
   //   T['Infer']['QueryResultType'] extends undefined ? TQueryResultType : T['Infer']['QueryResultType'],
   //   TProps
   // >
-  use(plugin: NicePluginEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>) {
+  use(plugin: NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>) {
     const point = plugin.point
     // myplugin.input(1).loader(2).mapper(3).head(4).ctx(5)
     // mypoint.use(myplugin);
@@ -4202,7 +4204,7 @@ export class Point0<
       // type
       // scope
       // scopes
-      // _letsEndPointType
+      // _letsReadyPointType
       // _base
       // _root
       _middlewares: [...this._middlewares, ...point._middlewares],
@@ -4365,7 +4367,7 @@ export class Point0<
 
   // usual query finish
   query(
-    ...args: TLetsEndPointType extends 'query'
+    ...args: TLetsReadyPointType extends 'query'
       ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
         ? [
             queryOptions?: ExtraUseQueryOptions<
@@ -4379,7 +4381,7 @@ export class Point0<
           ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
           : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .query()`>]
       : never
-  ): NiceQueryEndPoint<
+  ): NiceQueryReadyPoint<
     'query',
     undefined,
     TRequiredCtx,
@@ -4398,7 +4400,7 @@ export class Point0<
   >
   // mountable component query injection
   // query(
-  //   ...args: TLetsEndPointType extends 'query'
+  //   ...args: TLetsReadyPointType extends 'query'
   //     ? never
   //     : [
   //         // TODO:ASAP it is withQuery not options
@@ -4411,7 +4413,7 @@ export class Point0<
   //       ]
   // ): NiceStagePoint<
   //   StagePointTypeOrNever<TPointType>,
-  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TCtxExposedKeys,
@@ -4427,7 +4429,7 @@ export class Point0<
   //   TQueriesDefinitions
   // >
   query<
-    TPoint extends NiceEndPoint<
+    TPoint extends NiceReadyPoint<
       any,
       any,
       any,
@@ -4445,18 +4447,18 @@ export class Point0<
       any
     >,
   >(
-    ...args: TLetsEndPointType extends MountablePointType
+    ...args: TLetsReadyPointType extends MountablePointType
       ? [
           point: TPoint,
           input:
             | TPoint['Infer']['InputRaw']
             | ((
                 options: QueryFnOptions<
-                  MountableLocation<TLetsEndPointType, TRouteDefinition>,
+                  MountableLocation<TLetsReadyPointType, TRouteDefinition>,
                   TInnerProps,
                   WithSelfQueryIfShouldBeFinalized<
                     TPointType,
-                    TLetsEndPointType,
+                    TLetsReadyPointType,
                     TServerLoaderOutput,
                     TClientLoaderOutput,
                     TQueriesDefinitions
@@ -4468,10 +4470,10 @@ export class Point0<
         ]
       : never
   ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -4481,13 +4483,13 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     [
       ...WithSelfQueryIfShouldBeFinalized<
         TPointType,
-        TLetsEndPointType,
+        TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
         TQueriesDefinitions
@@ -4499,7 +4501,7 @@ export class Point0<
     ]
   >
   query<
-    TPoint extends NiceEndPoint<
+    TPoint extends NiceReadyPoint<
       any,
       any,
       any,
@@ -4517,14 +4519,14 @@ export class Point0<
       any
     >,
   >(
-    ...args: TLetsEndPointType extends MountablePointType
+    ...args: TLetsReadyPointType extends MountablePointType
       ? [point: TPoint & (TPoint['Infer']['InputOptional'] extends true ? unknown : ShowError<`Input is required`>)]
       : never
   ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -4534,13 +4536,13 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     [
       ...WithSelfQueryIfShouldBeFinalized<
         TPointType,
-        TLetsEndPointType,
+        TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
         TQueriesDefinitions
@@ -4552,14 +4554,14 @@ export class Point0<
     ]
   >
   query<TNewQueries extends UseQueryOrInfiniteQueryResult | UseQueryOrInfiniteQueryResult[]>(
-    ...args: TLetsEndPointType extends MountablePointType
+    ...args: TLetsReadyPointType extends MountablePointType
       ? [
           queryFn: QueryFn<
-            MountableLocation<TLetsEndPointType, TRouteDefinition>,
+            MountableLocation<TLetsReadyPointType, TRouteDefinition>,
             TInnerProps,
             WithSelfQueryIfShouldBeFinalized<
               TPointType,
-              TLetsEndPointType,
+              TLetsReadyPointType,
               TServerLoaderOutput,
               TClientLoaderOutput,
               TQueriesDefinitions
@@ -4570,10 +4572,10 @@ export class Point0<
         ]
       : never
   ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -4583,13 +4585,13 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
     [
       ...WithSelfQueryIfShouldBeFinalized<
         TPointType,
-        TLetsEndPointType,
+        TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
         TQueriesDefinitions
@@ -4602,12 +4604,12 @@ export class Point0<
     ]
   >
   query(...args: any) {
-    if (this._letsEndPointType === 'query') {
+    if (this._letsReadyPointType === 'query') {
       // usual query final
       const [queryOptions = {}] = args as [ExtraUseQueryOptions | undefined]
       return this._continue({
         type: 'query',
-        _letsEndPointType: undefined,
+        _letsReadyPointType: undefined,
         _queryResultType: 'query',
         _queryOptions: queryOptions,
       }) as never
@@ -4670,8 +4672,8 @@ export class Point0<
             ShowError<`InfiniteQuery can not return response. Last loader should provide plain object data, not response.`>,
           ]
         : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery()`>]
-  ): TLetsEndPointType extends 'infiniteQuery'
-    ? NiceInfiniteQueryEndPoint<
+  ): TLetsReadyPointType extends 'infiniteQuery'
+    ? NiceInfiniteQueryReadyPoint<
         'infiniteQuery',
         undefined,
         TRequiredCtx,
@@ -4690,7 +4692,7 @@ export class Point0<
       >
     : NiceStagePoint<
         StagePointTypeOrNever<TPointType>,
-        EndPointTypeOrNever<TLetsEndPointType>,
+        ReadyPointTypeOrNever<TLetsReadyPointType>,
         TRequiredCtx,
         TCtx,
         TCtxExposedKeys,
@@ -4706,10 +4708,10 @@ export class Point0<
         TQueriesDefinitions
       > {
     const [infiniteQueryOptions = {}] = args
-    if (this._letsEndPointType === 'infiniteQuery') {
+    if (this._letsReadyPointType === 'infiniteQuery') {
       return this._continue({
         type: 'infiniteQuery',
-        _letsEndPointType: undefined,
+        _letsReadyPointType: undefined,
         _queryResultType: 'infiniteQuery',
         _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<
           InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -4745,9 +4747,9 @@ export class Point0<
           >,
         ]
       : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .mutation()`>]
-  ): NiceMutationEndPoint<
+  ): NiceMutationReadyPoint<
     'mutation',
-    UndefinedEndPointType,
+    UndefinedReadyPointType,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -4766,7 +4768,7 @@ export class Point0<
     const point = this._continue({
       type: 'mutation',
       _mutationOptions: mutationOptions as UseMutationOptions,
-      _letsEndPointType: undefined,
+      _letsReadyPointType: undefined,
     })
     return point as never
   }
@@ -4783,9 +4785,9 @@ export class Point0<
   //         Error0,
   //         InputsRawMaybeOptional<TServerInputSchema, TClientInputSchema>
   //       >,
-  //     ) => NiceMutationEndPoint<
+  //     ) => NiceMutationReadyPoint<
   //       'mutation',
-  //       UndefinedEndPointType,
+  //       UndefinedReadyPointType,
   //       TRequiredCtx,
   //       TCtx,
   //       TCtxExposedKeys,
@@ -4803,7 +4805,7 @@ export class Point0<
   //   const point = this._continue({
   //     type: 'mutation',
   //     _mutationOptions: mutationOptions as UseMutationOptions,
-  //     _letsEndPointType: undefined,
+  //     _letsReadyPointType: undefined,
   //   })
   //   return point as never
   // }) as never
@@ -4872,7 +4874,7 @@ export class Point0<
     })
   }
 
-  private static _isEndPointType(pointType: PointType): boolean {
+  private static _isReadyPointType(pointType: PointType): boolean {
     return (
       pointType === 'root' ||
       pointType === 'base' ||
@@ -4886,10 +4888,10 @@ export class Point0<
       pointType === 'provider'
     )
   }
-  private _isEndPoint(): boolean {
-    return Point0._isEndPointType(this.type)
+  private _isReadyPoint(): boolean {
+    return Point0._isReadyPointType(this.type)
   }
-  private static _isQueryableEndPointType(pointType: PointType): boolean {
+  private static _isQueryableReadyPointType(pointType: PointType): boolean {
     return (
       pointType === 'query' ||
       pointType === 'infiniteQuery' ||
@@ -4899,20 +4901,20 @@ export class Point0<
       pointType === 'provider'
     )
   }
-  private _isQueryableEndPoint(): boolean {
-    return Point0._isQueryableEndPointType(this._letsEndPointType || this.type)
+  private _isQueryableReadyPoint(): boolean {
+    return Point0._isQueryableReadyPointType(this._letsReadyPointType || this.type)
   }
   private _normalizeQueryResultType(newQueryResultType: QueryResultType): QueryResultType | UndefinedQueryResultType {
-    return this._isQueryableEndPoint() ? (this._queryResultType ?? newQueryResultType) : this._queryResultType
+    return this._isQueryableReadyPoint() ? (this._queryResultType ?? newQueryResultType) : this._queryResultType
   }
-  private static _isMountableEndPointType(pointType: PointType): boolean {
+  private static _isMountableReadyPointType(pointType: PointType): boolean {
     return pointType === 'page' || pointType === 'layout' || pointType === 'component' || pointType === 'provider'
   }
-  private _isMountableEndPoint(): boolean {
-    return Point0._isMountableEndPointType(this._letsEndPointType || this.type)
+  private _isMountableReadyPoint(): boolean {
+    return Point0._isMountableReadyPointType(this._letsReadyPointType || this.type)
   }
   private _isMountableQueryShouldBeFinalized(): boolean {
-    return this._isMountableEndPoint() && (this.type === 'serverStage' || this.type === 'clientStage')
+    return this._isMountableReadyPoint() && (this.type === 'serverStage' || this.type === 'clientStage')
   }
 
   _isRoot(): boolean {
@@ -7777,10 +7779,10 @@ export class Point0<
       return
     }
 
-    // const allRelatedPoints = [this as EndPoint, ...this._layouts, ...this._relatedQueryPoints].map(
+    // const allRelatedPoints = [this as ReadyPoint, ...this._layouts, ...this._relatedQueryPoints].map(
     //   (p) => p._getSameQueryPoint() ?? p,
     // )
-    const allRelatedPoints = [this as never as EndPoint, ...this._layouts]
+    const allRelatedPoints = [this as never as ReadyPoint, ...this._layouts]
     const uniqRelatedPoints = [...new Set<AnyPoint>(allRelatedPoints)]
     const uniqPrefetchFns = [...new Set<OnPrefetchFn>([...uniqRelatedPoints.flatMap((p) => p._onPrefetchFns)])]
 
@@ -7838,7 +7840,7 @@ export class Point0<
         if (policy === 'clientQuery' && !p._hasClientLoader()) {
           return []
         }
-        const inputHere = p === (this as never as EndPoint) ? input : p._getUnsafeInputRawByLocation(location)
+        const inputHere = p === (this as never as ReadyPoint) ? input : p._getUnsafeInputRawByLocation(location)
         const mode =
           policy === 'everything'
             ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step

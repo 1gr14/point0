@@ -1,11 +1,11 @@
 // import { Route0 } from '@devp0nt/route0'
 // import type {
 //   EmptyCtx,
-//   NiceRootEndPoint,
+//   NiceRootReadyPoint,
 //   NiceRootStagePoint,
 //   UndefinedCtx,
 //   UndefinedCtxExposedKeys,
-//   UndefinedEndPointType,
+//   UndefinedReadyPointType,
 //   UndefinedInputSchema,
 //   UndefinedLoaderOutput,
 //   UndefinedMapperOutput,
@@ -36,9 +36,9 @@
 //     const server = Point0.lets('root', 'server').root()
 //     expect(server).toBeInstanceOf(Point0)
 //     expectTypeOf(server).toEqualTypeOf<
-//       NiceRootEndPoint<
+//       NiceRootReadyPoint<
 //         'root',
-//         UndefinedEndPointType,
+//         UndefinedReadyPointType,
 //         UndefinedCtx,
 //         EmptyCtx,
 //         UndefinedCtxExposedKeys,
@@ -143,7 +143,7 @@
 //   //   expect(server1).toBeInstanceOf(Point0)
 
 //   //   expectTypeOf(server1).toEqualTypeOf<
-//   //     NiceRootEndPoint<
+//   //     NiceRootReadyPoint<
 //   //       'root',
 //   //       undefined,
 //   //       undefined,
@@ -174,7 +174,7 @@
 
 //   //   // TODO: fix types for unknown ctxes
 //   //   // expectTypeOf(server2).toEqualTypeOf<
-//   //   //   NiceRootEndPoint<
+//   //   //   NiceRootReadyPoint<
 //   //   //     'root',
 //   //   //     undefined,
 //   //   //     undefined,
@@ -245,7 +245,7 @@
 //   //     .root()
 //   //   expect(server1).toBeInstanceOf(Point0)
 //   //   expectTypeOf(server1).toEqualTypeOf<
-//   //     NiceRootEndPoint<
+//   //     NiceRootReadyPoint<
 //   //       'root',
 //   //       undefined,
 //   //       undefined,

@@ -6,8 +6,8 @@ import { _point0_env } from './env.js'
 import { _ssItems, getFakeClient } from './internals.js'
 import type {
   DataTransformerExtended,
-  EndPoint,
-  EndPointType,
+  ReadyPoint,
+  ReadyPointType,
   InputRawUnknown,
   LayoutPoint,
   PagePoint,
@@ -93,7 +93,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   // ): PointsManager<true, TReadyPointsModule['_root']['point']['point']['Infer']['RequiredCtx']> => {
   //   const { absPath, readFn } = options ?? {}
   //   const { _root, ...rest } = readyPoints
-  //   const rawPoints: EndPoint[] = Object.values(rest).map((p) => p.point.point)
+  //   const rawPoints: ReadyPoint[] = Object.values(rest).map((p) => p.point.point)
   //   const collection = this.rawPointsCollectionToReadyPointsCollection(rawPoints)
   //   const routes = PointsManager.toRoutes({ points: collection })
   //   const pagesTreeSource = PointsManager.toPagesTreeSource({ points: collection })
@@ -413,7 +413,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   //   })
   // }
 
-  private static rawPointsCollectionToReadyPointsCollection(points: EndPoint[]): ReadyPointsCollection {
+  private static rawPointsCollectionToReadyPointsCollection(points: ReadyPoint[]): ReadyPointsCollection {
     return points.map((point) => {
       return {
         ready: true,
@@ -492,7 +492,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     points,
   }: {
     points:
-      | Array<{ type: EndPointType; name: PointName; route?: string | undefined | AnyRoute; layouts?: string[] }>
+      | Array<{ type: ReadyPointType; name: PointName; route?: string | undefined | AnyRoute; layouts?: string[] }>
       | ReadyPointsCollection
       | NormalizedLazyPointsCollection
   }): PagesTreeSource => {
@@ -642,14 +642,14 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     if (!suitable) {
       return undefined
     }
-    const page: EndPoint = typeof suitable.point === 'function' ? await suitable.point() : suitable.point
+    const page: ReadyPoint = typeof suitable.point === 'function' ? await suitable.point() : suitable.point
 
     // Prefetch the (possibly lazy) page component
     if (suitable.FC) {
       await PointsManager.prefetchLazyComponent(suitable.FC)
     }
 
-    const layouts: EndPoint[] = await Promise.all(
+    const layouts: ReadyPoint[] = await Promise.all(
       this.collection
         .filter((p) => p.type === 'layout' && suitable.layouts?.includes(p.name))
         .map(async (layout) => {
@@ -738,12 +738,12 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   }: {
     pageLocation?: AnyLocation | undefined
     input?: InputRawUnknown | undefined
-    pointType?: EndPointType | undefined
+    pointType?: ReadyPointType | undefined
     pointName?: PointName | undefined
     scope?: PointsScope | undefined
   }):
     | {
-        point: TReady extends true ? EndPoint : (() => Promise<EndPoint>) | EndPoint
+        point: TReady extends true ? ReadyPoint : (() => Promise<ReadyPoint>) | ReadyPoint
         name: PointName
         type: PointType
         FC: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>> | undefined
@@ -769,9 +769,9 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
           if (type !== 'page') {
             return {
               // point: point as TReady extends true
-              //   ? { point: EndPoint }
-              //   : (() => Promise<{ point: EndPoint }>) | { point: EndPoint },
-              point: (typeof point === 'function' ? async () => (await point()).point : point.point) as EndPoint,
+              //   ? { point: ReadyPoint }
+              //   : (() => Promise<{ point: ReadyPoint }>) | { point: ReadyPoint },
+              point: (typeof point === 'function' ? async () => (await point()).point : point.point) as ReadyPoint,
               name,
               type,
               pageLocation: undefined,
@@ -782,9 +782,9 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
           if (!route || !input) {
             return {
               // point: point as TReady extends true
-              //   ? { point: EndPoint }
-              //   : (() => Promise<{ point: EndPoint }>) | { point: EndPoint },
-              point: (typeof point === 'function' ? async () => (await point()).point : point.point) as EndPoint,
+              //   ? { point: ReadyPoint }
+              //   : (() => Promise<{ point: ReadyPoint }>) | { point: ReadyPoint },
+              point: (typeof point === 'function' ? async () => (await point()).point : point.point) as ReadyPoint,
               name,
               type,
               pageLocation: undefined,
@@ -795,8 +795,8 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
           // TODO: add helper for htis in route0, like route.getSelfLocation(input): ExactLocation
           const match = route.getLocation(route.get(input))
           return {
-            // point: point as TReady extends true ? { point: EndPoint } : () => Promise<{ point: EndPoint }>,
-            point: (typeof point === 'function' ? async () => (await point()).point : point.point) as EndPoint,
+            // point: point as TReady extends true ? { point: ReadyPoint } : () => Promise<{ point: ReadyPoint }>,
+            point: (typeof point === 'function' ? async () => (await point()).point : point.point) as ReadyPoint,
             name,
             type,
             pageLocation: match.exact ? match : undefined,
@@ -815,9 +815,9 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
       if (match?.exact) {
         return {
           // point: point as TReady extends true
-          //   ? { point: EndPoint }
-          //   : (() => Promise<{ point: EndPoint }>) | { point: EndPoint },
-          point: (typeof point === 'function' ? async () => (await point()).point : point.point) as EndPoint,
+          //   ? { point: ReadyPoint }
+          //   : (() => Promise<{ point: ReadyPoint }>) | { point: ReadyPoint },
+          point: (typeof point === 'function' ? async () => (await point()).point : point.point) as ReadyPoint,
           name,
           type,
           pageLocation: match,
@@ -882,37 +882,37 @@ export type PointsReadFn = (absPath: string) => Promise<PointsDefinitionModule>
 
 export type ReadyPointsCollectionRecord = {
   ready: true
-  type: EndPointType
+  type: ReadyPointType
   name: PointName
   route: AnyRoute | undefined
   polh: boolean | number
-  point: EndPoint
+  point: ReadyPoint
   FC: React.ComponentType | undefined
   layouts?: string[]
 }
 export type ReadyPointsCollection = ReadyPointsCollectionRecord[]
 
 export type LazyPointsCollectionRecord = {
-  type: EndPointType
+  type: ReadyPointType
   name: PointName
   route?: string | undefined
   polh?: boolean | number
-  point: (() => Promise<{ point: EndPoint }>) | { point: EndPoint }
+  point: (() => Promise<{ point: ReadyPoint }>) | { point: ReadyPoint }
   layouts?: string[]
 }
 export type LazyPointsCollection = LazyPointsCollectionRecord[]
 export type NormalizedLazyPointsCollectionRecord = {
-  type: EndPointType
+  type: ReadyPointType
   name: PointName
   route: AnyRoute | UndefinedRoute
-  point: (() => Promise<{ point: EndPoint }>) | { point: EndPoint }
+  point: (() => Promise<{ point: ReadyPoint }>) | { point: ReadyPoint }
   polh: boolean | number
   FC: React.LazyExoticComponent<React.ComponentType> | React.ComponentType | undefined
   layouts: string[]
 }
 export type NormalizedLazyPointsCollection = NormalizedLazyPointsCollectionRecord[]
 
-export type RawPointsCollectionRecord = { point: EndPoint }
+export type RawPointsCollectionRecord = { point: ReadyPoint }
 
 export type MixedPointsCollectionRecord =
   | ReadyPointsCollectionRecord

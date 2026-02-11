@@ -6,14 +6,14 @@ import type {
   // Ctx,
   Data,
   DataTransformerExtended,
-  EndPoint,
-  EndPointType,
+  ReadyPoint,
+  ReadyPointType,
   InputParsed,
   InputRaw,
   InputSchema,
   IsInputOptional,
   LoaderOutput,
-  NiceEndPoint,
+  NiceReadyPoint,
   PagePoint,
   PointName,
   PointsDefinition,
@@ -132,7 +132,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   // maybe not needed helpers to execute points
 
-  // static createRequestByPointAndInput<TPoint extends EndPoint>({
+  // static createRequestByPointAndInput<TPoint extends ReadyPoint>({
   //   point,
   //   input,
   // }: {
@@ -150,7 +150,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   input,
   // }: {
   //   scope: PointsScope
-  //   pointType: EndPointType
+  //   pointType: ReadyPointType
   //   pointName: PointName
   //   input: InputRaw
   // }): Request {
@@ -158,7 +158,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   return new Request(`http://localhost:3000/_point0/TODO:FIXME`)
   // }
 
-  // static async execute<TPoint extends EndPoint>({
+  // static async execute<TPoint extends ReadyPoint>({
   //   engine,
   //   executor,
   //   point,
@@ -269,7 +269,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   return result.data
   // }
 
-  async execute<TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>>(
+  async execute<
+    TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  >(
     point: TPoint,
     ...args: TPoint['Infer']['ServerInputOptional'] extends true
       ? [input?: TPoint['Infer']['ServerInputRaw'], response0?: Response0]
@@ -277,8 +279,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   ): Promise<ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>>
   async execute<
     TPoint extends
-      | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
-      | EndPoint
+      | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+      | ReadyPoint
       | undefined,
   >({
     point,
@@ -286,10 +288,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     response0,
   }: ExecuteOptions<TPoint>): Promise<
     ServerExecuteResult<
-      TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+      TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
         ? TPoint['Infer']['Ctx']
         : UnknownCtx,
-      TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+      TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
         ? TPoint['Infer']['ServerLoaderOutput']
         : UnknownData
     >
@@ -299,8 +301,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       | [options: ExecuteOptions<any>]
       | [
           point:
-            | EndPoint
-            | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+            | ReadyPoint
+            | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
             | undefined,
           input?: InputRaw,
           response0?: Response0,
@@ -311,15 +313,15 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       input = {},
       response0 = Response0.create(),
     } = ((): {
-      point: EndPoint | undefined
+      point: ReadyPoint | undefined
       input: InputRaw
       response0?: Response0
     } => {
       if (args[0] === undefined || 'Infer' in args[0]) {
-        // so it is NiceEndPoint provided like first argument
+        // so it is NiceReadyPoint provided like first argument
         return { point: args[0]?.point, input: args[1] as InputRaw, response0: args[2] }
       }
-      // so it is EndPoint provided in object
+      // so it is ReadyPoint provided in object
       return {
         point: args[0].point,
         input: args[0].input,
@@ -572,7 +574,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         isClient: boolean
         isCombined: boolean
         scope: PointsScope
-        pointType: EndPointType
+        pointType: ReadyPointType
         pointName: PointName
         outputType: string
         isInfiniteQuery: boolean
@@ -613,7 +615,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       isClient,
       isCombined,
       scope,
-      pointType: pointType as EndPointType,
+      pointType: pointType as ReadyPointType,
       pointName,
       outputType,
       isInfiniteQuery,
@@ -826,7 +828,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   data: Data
   //   input: InputParsed
   //   error: unknown
-  //   point: EndPoint | undefined
+  //   point: ReadyPoint | undefined
   // }): Promise<void> {
   //   await this.withServerGlobalState(async () => {
   //     if (
@@ -902,7 +904,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pagePoint,
     input,
   }: {
-    pagePoint: EndPoint
+    pagePoint: ReadyPoint
     input: InputRaw
   }): Promise<void> {
     await this.withServerGlobalState(async () => {
@@ -950,12 +952,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
 export type ExecuteOptions<
   TPoint extends
-    | EndPoint
-    | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+    | ReadyPoint
+    | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
     | undefined,
 > = {
   point?: TPoint | undefined
-  input: TPoint extends EndPoint ? TPoint['Infer']['ServerInputRaw'] : InputRaw
+  input: TPoint extends ReadyPoint ? TPoint['Infer']['ServerInputRaw'] : InputRaw
   response0?: Response0
 }
 

@@ -1,4 +1,4 @@
-import type { EndPointType, PointName, PointsScope } from '@point0/core'
+import type { ReadyPointType, PointName, PointsScope } from '@point0/core'
 
 export type MetaItemPoint = {
   what: 'point'
@@ -7,7 +7,7 @@ export type MetaItemPoint = {
   column: number
   target: 'client' | 'server'
   scope: PointsScope
-  type: EndPointType
+  type: ReadyPointType
   name: PointName
   routeName: string | undefined
   routePath: string | undefined

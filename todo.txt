@@ -44,9 +44,8 @@ launch
 
 
 REFACTOING 3000
-query(), layout(), move to separate files and assign by TLetsEndPoint
-getFetch options → .getServerFetchOptions() to public methods
-EndPoint → ReadyPoint
+query(), layout(), move to separate files and assign by TLetsReadyPoint
+ReadyPoint → ReadyPoint
 InputOptional → IsInputOptional
 response0 → effects
 name → _name чтобы не конфликтовать с нэймом реакт компонента

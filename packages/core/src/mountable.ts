@@ -12,7 +12,7 @@ import type {
   CurrentRouteDefinition,
   Data,
   EmptyData,
-  EndPointType,
+  ReadyPointType,
   FinalLoaderDataOrNever,
   IfAnyThenElse,
   InputSchema,
@@ -23,10 +23,10 @@ import type {
   LoaderOutput,
   MapperOutput,
   PointType,
-  QueryableEndPointType,
+  QueryableReadyPointType,
   QueryResultType,
   RouteDefinition,
-  UndefinedEndPointType,
+  UndefinedReadyPointType,
   UndefinedInputSchema,
   UndefinedLoaderOutput,
   UndefinedMapperOutput,
@@ -823,23 +823,23 @@ export type MountAction<
 
 export type IsQueryShouldBeFinalized<
   TPointType extends PointType,
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
 > = TPointType extends 'serverStage' | 'clientStage'
-  ? TLetsEndPointType extends QueryableEndPointType
+  ? TLetsReadyPointType extends QueryableReadyPointType
     ? true
     : false
   : false
 
 export type WithSelfQueryIfShouldBeFinalized<
   TPointType extends PointType,
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TQueriesDefinitions extends QueriesDefinitions,
 > = IfAnyThenElse<
   TQueriesDefinitions | TPointType | TServerLoaderOutput | TClientLoaderOutput | TPointType,
   any,
-  IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+  IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
     ? [
         ...TQueriesDefinitions,
         // if it should be finalized, then it was not finalize with infinteQuery, so always just 'query'
@@ -862,10 +862,10 @@ export type AppendQueries<
 
 // export type AssertMountableQueryFinalization<
 //   TPointType extends PointType,
-//   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+//   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
 //   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-// > = TLetsEndPointType extends MountablePointType
+// > = TLetsReadyPointType extends MountablePointType
 //   ? TPointType extends 'serverStage' | 'clientStage'
 //     ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
 //       ? ShowError<`Check this point last loader. It should return plain object data, not response. You see this message, becouse current method will finalize your query, so you should fix your loader before it`>

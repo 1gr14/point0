@@ -3,7 +3,7 @@ import type { NodePath } from '@babel/traverse'
 import traverseModule from '@babel/traverse'
 import type { Node } from '@babel/types'
 import type { AnyRoute, RoutesPretty } from '@devp0nt/route0'
-import type { EndPointType } from '@point0/core'
+import type { ReadyPointType } from '@point0/core'
 import { CompilerFile } from './file.js'
 import { CompilerPoint } from './point.js'
 import { FileResolver } from './resolver.js'
@@ -258,9 +258,9 @@ export class Walker {
       const secondLetsArgNodePath = letsArgs.length > 1 ? letsNodePath.get('arguments')[1] : undefined
       // Extract the point type and name from the lets() call
       // Example: root.lets('page', 'mypage') → pointType = 'page', pointName = 'mypage'
-      const pointType: EndPointType | undefined =
+      const pointType: ReadyPointType | undefined =
         firstLetsArgNodePath?.node.type === 'StringLiteral'
-          ? (firstLetsArgNodePath.node.value as EndPointType)
+          ? (firstLetsArgNodePath.node.value as ReadyPointType)
           : undefined
       const pointName =
         secondLetsArgNodePath?.node.type === 'StringLiteral' ? secondLetsArgNodePath.node.value : undefined
@@ -969,7 +969,7 @@ export class Walker {
   }
 }
 
-export const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, EndPointType> = {
+export const POINT_TYPE_TO_METHOD_MAP: Record<ReadyPointType, ReadyPointType> = {
   plugin: 'plugin',
   page: 'page',
   layout: 'layout',
@@ -981,7 +981,7 @@ export const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, EndPointType> = {
   base: 'base',
   root: 'root',
 }
-export const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fromEntries(
-  Object.entries(POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as EndPointType]),
+export const POINT_METHOD_TO_TYPE_MAP: Record<string, ReadyPointType> = Object.fromEntries(
+  Object.entries(POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as ReadyPointType]),
 )
-export const END_POINT_TYPES: EndPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as EndPointType[]
+export const END_POINT_TYPES: ReadyPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as ReadyPointType[]

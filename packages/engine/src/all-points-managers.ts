@@ -1,17 +1,15 @@
 import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation } from '@devp0nt/route0'
 import type {
-  EndPoint,
-  EndPointType,
+  DataTransformerExtended,
   InputRawUnknown,
   PointName,
   PointsManager,
   PointsScope,
+  ReadyPoint,
+  ReadyPointType,
   RequiredCtx,
-  DataTransformerExtended,
-  FetchFn,
 } from '@point0/core'
-
 export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   pointsManagers: Array<PointsManager<true>>
 
@@ -62,7 +60,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     scope?: PointsScope
     fallbackScope: PointsScope
     pageLocation?: AnyLocation | undefined
-    pointType?: EndPointType | undefined
+    pointType?: ReadyPointType | undefined
     pointName?: PointName | undefined
     // TODO: InputRaw here
     input?: InputRawUnknown | undefined
@@ -309,7 +307,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   })
   // }
 
-  // async prepareExecutorByPointAndInput<TPoint extends EndPoint>({
+  // async prepareExecutorByPointAndInput<TPoint extends ReadyPoint>({
   //   point,
   //   input,
   //   requiredCtx,
@@ -344,7 +342,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   }
   // }
 
-  // async prepareExecutorByPointScopeTypeNameInput<TPoint extends EndPoint>({
+  // async prepareExecutorByPointScopeTypeNameInput<TPoint extends ReadyPoint>({
   //   scope,
   //   pointType,
   //   pointName,
@@ -352,7 +350,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   requiredCtx,
   // }: {
   //   scope: PointsScope
-  //   pointType: EndPointType
+  //   pointType: ReadyPointType
   //   pointName: PointName
   //   input: TPoint['Infer']['InputRaw']
   // } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<{
@@ -383,7 +381,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 }
 
 export type GetSuitableResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
-  point: EndPoint | undefined
+  point: ReadyPoint | undefined
   pageLocation: AnyLocation | undefined
   pointsManager: PointsManager<true, TRequiredCtx>
 }

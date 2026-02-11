@@ -13,7 +13,7 @@ import type {
 } from '@babel/types'
 import type { AnyRoute, RoutesPretty } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import type { EndPointType, PointName, PointsScope } from '@point0/core'
+import type { ReadyPointType, PointName, PointsScope } from '@point0/core'
 import { dedupeSlashes } from '@point0/core'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -954,7 +954,7 @@ export class Walker {
     fileAbs: string
     node: Expression | Declaration | null | undefined
   }): {
-    pointType: EndPointType | null
+    pointType: ReadyPointType | null
     pointName: string | null
     errors: unknown[]
   } {
@@ -1008,7 +1008,7 @@ export class Walker {
    * then it's a "base" point and its name is the first string arg of the root call.
    */
   private detectPoint0RootFromChain({ fileAbs, node }: { fileAbs: string; node: CallExpression }): {
-    pointType: EndPointType | null
+    pointType: ReadyPointType | null
     pointName: string | null
     errors: unknown[]
   } {
@@ -1073,7 +1073,7 @@ export class Walker {
     }
   }
 
-  private findLetsArgsInChain(call: CallExpression): { typeArg: EndPointType; nameArg: string } | null {
+  private findLetsArgsInChain(call: CallExpression): { typeArg: ReadyPointType; nameArg: string } | null {
     let curr: any = call
     while (curr?.type === 'CallExpression' && curr.callee?.type === 'MemberExpression') {
       const prop = curr.callee.property
@@ -1082,7 +1082,7 @@ export class Walker {
       if (method === 'lets') {
         const [typeNode, nameNode] = curr.arguments ?? []
         if (typeNode?.type === 'StringLiteral' && nameNode?.type === 'StringLiteral') {
-          return { typeArg: typeNode.value as EndPointType, nameArg: nameNode.value }
+          return { typeArg: typeNode.value as ReadyPointType, nameArg: nameNode.value }
         }
       }
 
@@ -1114,7 +1114,7 @@ export class Walker {
     ast: babel.ParseResult<any>
     baseIdentifier: string
     scope: string
-    pointType: EndPointType
+    pointType: ReadyPointType
     pointName: string
   }): { routeSegment?: string; routeFull?: AnyRoute; errors: unknown[] } {
     let routeSegment: string | undefined
@@ -1141,7 +1141,7 @@ export class Walker {
             const routeArg = p.node.arguments.at(2)
             foundPointType = (() => {
               if (pointTypeArg?.type === 'StringLiteral') {
-                return pointTypeArg.value as EndPointType
+                return pointTypeArg.value as ReadyPointType
               }
               return undefined
             })()
@@ -1569,7 +1569,7 @@ export class Walker {
       fileAbs: string
       baseIdentifier: string
       scope: string
-      pointType: EndPointType
+      pointType: ReadyPointType
       pointName: string
     },
     _seen = new Set<string>(),
@@ -2375,7 +2375,7 @@ export class Walker {
     return undefined
   }
 
-  private static pointMethodToPointType(method: unknown): EndPointType | null {
+  private static pointMethodToPointType(method: unknown): ReadyPointType | null {
     if (typeof method !== 'string') {
       return null
     }
@@ -2407,7 +2407,7 @@ export class Walker {
 export type CollectedPoint = {
   scope: PointsScope
   attachedTo: PointsScope[]
-  type: EndPointType
+  type: ReadyPointType
   name: PointName
   exportName: string
   route: AnyRoute | undefined
@@ -2416,7 +2416,7 @@ export type CollectedPoint = {
   fileAbs: string
 }
 
-export const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, EndPointType> = {
+export const POINT_TYPE_TO_METHOD_MAP: Record<ReadyPointType, ReadyPointType> = {
   page: 'page',
   layout: 'layout',
   component: 'component',
@@ -2427,10 +2427,10 @@ export const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, EndPointType> = {
   base: 'base',
   root: 'root',
 }
-export const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fromEntries(
-  Object.entries(POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as EndPointType]),
+export const POINT_METHOD_TO_TYPE_MAP: Record<string, ReadyPointType> = Object.fromEntries(
+  Object.entries(POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as ReadyPointType]),
 )
-export const END_POINT_TYPES: EndPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as EndPointType[]
+export const END_POINT_TYPES: ReadyPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as ReadyPointType[]
 
 export type PruneCustomerFlat = 'client' | 'server' | 'none'
 export type PruneCustomerByScope = Record<PointsScope, PruneCustomerFlat>

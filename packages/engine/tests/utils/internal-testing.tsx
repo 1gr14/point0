@@ -1,4 +1,4 @@
-import type { AnyNiceRequestableEndPoint, AppComponent, EndPoint, PointsDefinition } from '@point0/core'
+import type { AnyNiceRequestableReadyPoint, AppComponent, ReadyPoint, PointsDefinition } from '@point0/core'
 import { queryClient as point0QueryClient, QueryClientProvider, UnheadProvider } from '@point0/core'
 import { Router, RouterRoutes } from '@point0/wouter'
 import { Window } from 'happy-dom'
@@ -210,19 +210,19 @@ type TestThingsState = {
   click: (selector: string) => Promise<void>
   _locationCleanup: () => void
 }
-type FetchPoint = <T extends AnyNiceRequestableEndPoint>(
+type FetchPoint = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
 ) => ReturnType<T['fetch']>
-type FetchHtmlView = <T extends AnyNiceRequestableEndPoint>(
+type FetchHtmlView = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
 ) => Promise<HtmlView>
-type FetchHtmlPreview = <T extends AnyNiceRequestableEndPoint>(
+type FetchHtmlPreview = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
 ) => Promise<string>
-type FetchSsr = <T extends AnyNiceRequestableEndPoint>(
+type FetchSsr = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
 ) => Promise<{
@@ -234,7 +234,7 @@ type FetchSsr = <T extends AnyNiceRequestableEndPoint>(
   queryClientQueriesState: Record<string, { status: string; data: string | undefined; error: string | undefined }>
   queryClientQueriesPreview: string
 }>
-type FetchTitle = <T extends AnyNiceRequestableEndPoint>(
+type FetchTitle = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
 ) => Promise<string>
@@ -445,7 +445,7 @@ export const createTestThings = async ({
       return await client.fetch(input, init)
     })
   }
-  const loadPoint = (async (point: EndPoint, ...args: [any]) => {
+  const loadPoint = (async (point: ReadyPoint, ...args: [any]) => {
     return await client.run(async () => {
       if (point.type === 'infiniteQuery') {
         return await point.fetchInfiniteQuery(...args)
@@ -456,23 +456,23 @@ export const createTestThings = async ({
       return await point.fetchQuery(...args)
     })
   }) as unknown as FetchPoint
-  const loadPointYml = (async (point: EndPoint, ...args: [any]) => {
+  const loadPointYml = (async (point: ReadyPoint, ...args: [any]) => {
     const result = await loadPoint(point as any, ...args)
     return ymlify(result)
   }) as unknown as FetchPoint
-  const fetchView = (async (point: EndPoint, ...args: [any]) => {
+  const fetchView = (async (point: ReadyPoint, ...args: [any]) => {
     return await client.run(async () => {
       const response = await client.fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
       return await HtmlView.parse(await response.text())
     })
   }) as unknown as FetchHtmlView
-  const fetchPreview = (async (point: EndPoint, ...args: [any]) => {
+  const fetchPreview = (async (point: ReadyPoint, ...args: [any]) => {
     return await client.run(async () => {
       const response = await client.fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
       return (await HtmlView.parse(await response.text())).preview
     })
   }) as unknown as FetchHtmlPreview
-  const fetchSsr = (async (point: EndPoint, ...args: [any]) => {
+  const fetchSsr = (async (point: ReadyPoint, ...args: [any]) => {
     return await client.run(async () => {
       const response = await client.fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
       const view = await HtmlView.parse(await response.text())
@@ -552,7 +552,7 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
   // TODO: move to fetch recorder
   const fetchesTale = fetchRecorder.tale.bind(fetchRecorder)
 
-  const fetchTitle = (async (point: EndPoint, ...args: [any]) => {
+  const fetchTitle = (async (point: ReadyPoint, ...args: [any]) => {
     const view = await fetchView(point as never, ...args)
     const title = /<title>(.*?)<\/title>/.exec(view.html)?.[1]
     return title

@@ -2,7 +2,7 @@ import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
 import type {
   Data,
-  EndPoint,
+  ReadyPoint,
   FetcherFetchDetailedResult,
   FetcherFetchDetailedResultGeneral,
   FetcherFetchDetailedResultNoMiddleware,
@@ -777,12 +777,12 @@ export type PrepareFetchResult =
 // }
 // export type FetcherFetchDetailedResultPage = FetcherFetchDetailedResultGeneral & {
 //   variant: 'page'
-//   point: EndPoint | undefined
+//   point: ReadyPoint | undefined
 //   input: InputRawUnknown | undefined
 // }
 // export type FetcherFetchDetailedResultPoint = FetcherFetchDetailedResultGeneral & {
 //   variant: 'point'
-//   point: EndPoint | undefined
+//   point: ReadyPoint | undefined
 //   task: FetchTask
 //   data: Data | undefined
 //   responseFormat: 'json' | 'html' | 'headers'
@@ -826,7 +826,7 @@ export type PrepareFetchResult =
 
 // // TODO:ASAP simplify names
 // export type FetchTask = {
-//   pointType: EndPointType
+//   pointType: ReadyPointType
 //   outputType: 'data' | 'queryClientDehydratedState'
 //   scope: PointsScope
 //   pointName: PointName
@@ -835,7 +835,7 @@ export type PrepareFetchResult =
 
 export type FetcherFetchPointResult = Omit<FetcherFetchDetailedResultGeneral, 'response'> & {
   response: Response
-  point: EndPoint | undefined
+  point: ReadyPoint | undefined
   scope: PointsScope
   task: FetchTask | undefined
   data: Data | undefined

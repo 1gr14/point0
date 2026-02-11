@@ -2,7 +2,7 @@ import type { NodePath } from '@babel/traverse'
 import type { Node } from '@babel/types'
 import type { AnyRoute } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import type { EndPointType, PointName, PointsScope } from '@point0/core'
+import type { ReadyPointType, PointName, PointsScope } from '@point0/core'
 import { dedupeSlashes, toPascalCase } from '@point0/core'
 import * as nodeFsPath from 'node:path'
 import type { CompilerFile } from './file.js'
@@ -24,7 +24,7 @@ export class CompilerPoint<TValid extends boolean = any> {
 
   scope: TValid extends true ? PointsScope : PointsScope | undefined
   scopes: PointsScope[]
-  type: EndPointType
+  type: ReadyPointType
   name: PointName
   route: AnyRoute | undefined
   polh: TValid extends true ? boolean | number : boolean | number | undefined
@@ -46,7 +46,7 @@ export class CompilerPoint<TValid extends boolean = any> {
   }: {
     walker: Walker
     file: CompilerFile<true>
-    type: EndPointType
+    type: ReadyPointType
     name: PointName
     exportName: string | undefined
     baseNodePath: NodePath<Node>
@@ -246,7 +246,7 @@ export class CompilerPoint<TValid extends boolean = any> {
     scope,
   }: {
     letsNodePath: NodePath<Node>
-    pointType: EndPointType
+    pointType: ReadyPointType
     pointName: PointName
     scope: string
   }): { routeSegment?: string; routeFull?: AnyRoute; errors: unknown[] } {
@@ -1032,7 +1032,7 @@ export type CompilerPointSimplified = {
   file: string
   route: string | undefined
   valid: boolean
-  type: EndPointType
+  type: ReadyPointType
   name: PointName
   scopes: PointsScope[]
   scope: PointsScope | undefined
