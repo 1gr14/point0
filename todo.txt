@@ -46,7 +46,6 @@ launch
 REFACTOING 3000
 
 getFakeClient remove from internals, use from superstore import fakeClient.get() from fake-client.ts
-response0 → effects
 ? Зачем вообще нужен сет, пусть будет просто эффектс, а в них уже сет
 
 remove all points manager
@@ -307,10 +306,6 @@ INPUT
 Проверить расширяемость инпута на юниты
 
 
-AUTH
-better auth plugin
-Куки босс знает все куки и может сериалайзить и десериалайзиться разберёмся на беттер аус
-
 MIDDLEARE
 .mdlwr(() => {}) для установки перед самым фетчем
 .mdlwr('connect', () => {}) для интеграции с эуспресс плагинами
@@ -331,6 +326,16 @@ types test for requiredCtx and outerProps (shoud it be TRequiredCtx or hust Ctx?
 Разрешить первым генерирком передать тайп оф поинт, чтобы всё то же самое как летс от этого поинта
 Плагин может запровайдить в том числе и рендер штучки, ему ничто не мешает быть внутри функции, которая использует запровайженные штучки (это позволит например целую форму регистрации замутить) (вот по-тому и нужен SuccessComponent, так просто во врапере этот плагин всё замутит)
 В юз можно не только плагин передать, но и то внутри чего есть свойство плагин, так мы туда кукистор загоним
+
+
+NPM
+privaye publish
+protected github branches next and amin
+
+
+AUTH
+better auth plugin
+Куки босс знает все куки и может сериалайзить и десериалайзиться разберёмся на беттер аус
 
 
 CORS

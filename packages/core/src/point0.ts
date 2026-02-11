@@ -62,7 +62,7 @@ import type {
   WrapperComponentType,
 } from './mountable.js'
 import { PointsManager } from './points-manager.js'
-import { Response0 } from './response0.js'
+import { Effects } from './effects.js'
 import type { RouterPageState } from './router.js'
 import { _usePageStateManager, useLocation, useRouterContext } from './router.js'
 import { superstore } from './super-store.js'
@@ -4466,11 +4466,11 @@ export class Point0<
       }
     })
 
-    const currentResponse0 = _ssItems.__POINT0_RESPONSE0__.getWeak()
-    if (currentResponse0) {
-      const cookies = Object.values(currentResponse0.cookies)
+    const currentEffects = _ssItems.__POINT0_EFFECTS__.getWeak()
+    if (currentEffects) {
+      const cookies = Object.values(currentEffects.cookies)
       for (const cookie of cookies) {
-        const serializedCookie = Response0.serializeCookie(cookie)
+        const serializedCookie = Effects.serializeCookie(cookie)
         if (updatedHeaders.has('cookie')) {
           updatedHeaders.set('cookie', `${updatedHeaders.get('cookie')}; ${serializedCookie}`)
         } else {

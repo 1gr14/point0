@@ -1,6 +1,6 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { ResolvableHead, Unhead } from 'unhead/types'
-import type { Request0, Response0, SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './index.js'
+import type { Request0, Effects, SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './index.js'
 import { queryClient } from './query-client.js'
 import { ss } from './super-store.js'
 import type { FetchFn, PointsScope } from './types.js'
@@ -13,7 +13,7 @@ export const _ssItems = {
   __POINT0_FETCH_FN__: ss.define<FetchFn>('__POINT0_FETCH_FN__', initUndefined, 'serverOnlyStorage'),
   __POINT0_FAKE_CLIENT__: ss.define<LikeFakeClient>('__POINT0_FAKE_CLIENT__', initUndefined, 'serverOnlyStorage'),
   __POINT0_REQUEST0__: ss.define<Request0>('__POINT0_REQUEST0__', initUndefined, 'serverOnlyStorage'),
-  __POINT0_RESPONSE0__: ss.define<Response0>('__POINT0_RESPONSE0__', initUndefined, 'serverOnlyStorage'),
+  __POINT0_EFFECTS__: ss.define<Effects>('__POINT0_EFFECTS__', initUndefined, 'serverOnlyStorage'),
   __POINT0_CLIENT_SCOPE__: ss.define<PointsScope | undefined>(
     '__POINT0_CLIENT_SCOPE__',
     initUndefined,

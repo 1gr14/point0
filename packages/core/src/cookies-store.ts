@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Request0 } from './request0.js'
-import { Response0 } from './response0.js'
+import { Effects } from './effects.js'
 import { _point0_env } from './env.js'
 import type { DataTransformer, DataTransformerExtended } from './types.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
@@ -171,8 +171,8 @@ export class CookiesStore {
     return request0.cookies[name]
   }
   static readonly serverCookieSetter: CookiesStoreSetter = (cookieOptionsInput) => {
-    const response0 = Response0.get()
-    response0.set.cookies(cookieOptionsInput)
+    const effects = Effects.get()
+    effects.set.cookies(cookieOptionsInput)
   }
 
   static set: CookiesStoreSetter = (cookieOptionsInput) => {

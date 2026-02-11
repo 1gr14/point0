@@ -2,8 +2,8 @@ import { _point0_env } from './env.js'
 import type { CookieOptions, CookieOptionsInput } from './cookies-store.js'
 import { _ssItems } from './internals.js'
 
-export type ResponseHeaders = Record<string, string | undefined>
-export type ResponseCookies = Record<string, CookieOptions>
+export type ResponseHeadersValues = Record<string, string | undefined>
+export type ResponseCookiesValues = Record<string, CookieOptions>
 export type ResponseStatus = number
 
 export type SetResponseHeaderFn = {
@@ -20,9 +20,9 @@ export type SetResponseCookieFn = {
 
 export type SetResponseStatusFn = (status: number) => void
 
-export type ResponseEffects = {
-  headers: ResponseHeaders
-  cookies: ResponseCookies
+export type ResponseEffectsValues = {
+  headers: ResponseHeadersValues
+  cookies: ResponseCookiesValues
   status: ResponseStatus | undefined
 }
 
@@ -30,13 +30,13 @@ export type ResponseEffectsSetHelper = {
   headers: SetResponseHeaderFn
   cookies: SetResponseCookieFn
   status: SetResponseStatusFn
-  inspect: ResponseEffects
+  inspect: ResponseEffectsValues
   apply: (response: Response) => Response
 }
 
-export class Response0 {
-  headers: ResponseHeaders
-  cookies: ResponseCookies
+export class Effects {
+  headers: ResponseHeadersValues
+  cookies: ResponseCookiesValues
   status: ResponseStatus | undefined
   set: ResponseEffectsSetHelper
 
@@ -55,13 +55,13 @@ export class Response0 {
     // Use defineProperty to create a getter that returns a snapshot of current state
     // This ensures inspect always reflects the current state and doesn't share references
     Object.defineProperty(this.set, 'inspect', {
-      get: () => this.effects,
+      get: () => this.values,
       enumerable: true,
       configurable: true,
     })
   }
 
-  get effects(): ResponseEffects {
+  get values(): ResponseEffectsValues {
     return {
       headers: { ...this.headers },
       cookies: { ...this.cookies },
@@ -123,8 +123,8 @@ export class Response0 {
     this.status = status
   }
 
-  static create(): Response0 {
-    return new Response0()
+  static create(): Effects {
+    return new Effects()
   }
 
   static serializeCookie(cookie: CookieOptions): string {
@@ -176,16 +176,16 @@ export class Response0 {
     return match ? match[1].trim() : ''
   }
 
-  private static _addCookiesToResponseIfNotExists(response: Response, cookies: ResponseCookies): string[] {
+  private static _addCookiesToResponseIfNotExists(response: Response, cookies: ResponseCookiesValues): string[] {
     const responseSetCookies = response.headers.getAll('set-cookie')
-    const responseCookieNames = new Set(responseSetCookies.map((cookie) => Response0._extractCookieName(cookie)))
+    const responseCookieNames = new Set(responseSetCookies.map((cookie) => Effects._extractCookieName(cookie)))
 
     // Response cookies first (higher priority)
     const merged: string[] = [...responseSetCookies]
 
     // Add effects cookies that don't conflict with response cookies
     for (const cookie of Object.values(cookies)) {
-      const cookieString = Response0.serializeCookie(cookie)
+      const cookieString = Effects.serializeCookie(cookie)
       if (!responseCookieNames.has(cookie.name)) {
         merged.push(cookieString)
       }
@@ -194,7 +194,7 @@ export class Response0 {
     return merged
   }
 
-  static apply(response: Response, effects: ResponseEffects): Response {
+  static apply(response: Response, effects: ResponseEffectsValues): Response {
     const newHeaders = new Headers()
     const setCookieHeaderName = 'set-cookie'
 
@@ -217,7 +217,7 @@ export class Response0 {
     })
 
     // Merge and apply cookies
-    const mergedCookies = Response0._addCookiesToResponseIfNotExists(response, effects.cookies)
+    const mergedCookies = Effects._addCookiesToResponseIfNotExists(response, effects.cookies)
     for (const cookieString of mergedCookies) {
       newHeaders.append('Set-Cookie', cookieString)
     }
@@ -233,7 +233,7 @@ export class Response0 {
   }
 
   apply(response: Response): Response {
-    return Response0.apply(response, this.effects)
+    return Effects.apply(response, this.values)
   }
 
   static parseCookies(response: Response): CookieOptions[] {
@@ -304,13 +304,13 @@ export class Response0 {
     return cookies
   }
 
-  static get(): Response0 {
+  static get(): Effects {
     if (!_point0_env.target.is.server) {
       throw new Error(
         'You can not get respnse0 not in server. Please call Respons0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
       )
     }
-    const response0 = _ssItems.__POINT0_RESPONSE0__.get()
-    return response0
+    const effects = _ssItems.__POINT0_EFFECTS__.get()
+    return effects
   }
 }

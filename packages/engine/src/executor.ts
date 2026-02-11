@@ -32,7 +32,7 @@ import type {
   UnknownCtx,
   UnknownData,
 } from '@point0/core'
-import { _ssItems, _ssRunWithServerStorageState, PointsManager, Response0 } from '@point0/core'
+import { _ssItems, _ssRunWithServerStorageState, PointsManager, Effects } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
 import { dehydrate } from '@tanstack/react-query'
 import { createHead } from '@unhead/react/server'
@@ -44,7 +44,7 @@ import { stringify } from 'safe-stable-stringify'
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   engine: Engine
   request: Request0
-  response0: Response0
+  effects: Effects
   pointsManager: PointsManager<true, TRequiredCtx>
   // serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
   pageLocation: AnyLocation | undefined
@@ -59,7 +59,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     requiredCtx,
     // serverExecuteActionsWithOutput,
     serverStorageState,
-    response0,
+    effects,
   }: {
     engine: Engine
     request: Request0
@@ -68,11 +68,11 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     requiredCtx: TRequiredCtx
     // serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
     serverStorageState: SuperStoreInternalValues
-    response0: Response0
+    effects: Effects
   }) {
     this.engine = engine
     this.request = request
-    this.response0 = response0
+    this.effects = effects
     this.pointsManager = pointsManager
     this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
@@ -87,7 +87,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation,
     currentLocation,
     requiredCtx,
-    response0,
+    effects,
     serverStorageState: providedServerStorageState,
   }: {
     engine: Engine
@@ -96,7 +96,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
     pageLocation: AnyLocation | undefined
-    response0: Response0
+    effects: Effects
     serverStorageState: SuperStoreInternalValuesOrErrors
   }): Promise<Executor<TRequiredCtx>> {
     const pointsManager = (await PointsManager.create(points).load()) as PointsManager<true, TRequiredCtx>
@@ -104,7 +104,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       __POINT0_FAKE_CLIENT__: undefined,
       __POINT0_FETCH_FN__: engine.fetch.bind(engine),
       __POINT0_REQUEST0__: request,
-      __POINT0_RESPONSE0__: response0,
+      __POINT0_EFFECTS__: effects,
       __POINT0_CLIENT_SCOPE__: pointsManager.scope,
       // in case of recursive server response we want preserve query client to keep state
       __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: undefined,
@@ -121,7 +121,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       pageLocation,
       requiredCtx,
       // serverExecuteActionsWithOutput: [],
-      response0,
+      effects,
       serverStorageState,
     })
   }
@@ -165,14 +165,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   input,
   //   requiredCtx,
   //   withLayouts,
-  //   response0,
+  //   effects,
   // }: {
   //   engine: Engine
   //   point: TPoint
   //   input: TPoint['Infer']['InputRaw']
   //   executor?: Executor<TPoint['Infer']['RequiredCtx']> | undefined
   //   withLayouts?: boolean
-  //   response0?: Response0
+  //   effects?: Effects
   // } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<
   //   ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>
   // > {
@@ -189,7 +189,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //     requiredCtx,
   //     pageLocation: point.type === 'page' ? location : undefined,
   //   })
-  //   return await executor.execute({ point, input, withLayouts, response0 })
+  //   return await executor.execute({ point, input, withLayouts, effects })
   // }
 
   // old execute method
@@ -274,8 +274,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   >(
     point: TPoint,
     ...args: TPoint['Infer']['IsServerInputOptional'] extends true
-      ? [input?: TPoint['Infer']['ServerInputRaw'], response0?: Response0]
-      : [input: TPoint['Infer']['ServerInputRaw'], response0?: Response0]
+      ? [input?: TPoint['Infer']['ServerInputRaw'], effects?: Effects]
+      : [input: TPoint['Infer']['ServerInputRaw'], effects?: Effects]
   ): Promise<ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>>
   async execute<
     TPoint extends
@@ -285,7 +285,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   >({
     point,
     input,
-    response0,
+    effects,
   }: ExecuteOptions<TPoint>): Promise<
     ServerExecuteResult<
       TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
@@ -305,27 +305,27 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
             | undefined,
           input?: InputRaw,
-          response0?: Response0,
+          effects?: Effects,
         ]
   ): Promise<ServerExecuteResult<any, any>> {
     const {
       point,
       input = {},
-      response0 = Response0.create(),
+      effects = Effects.create(),
     } = ((): {
       point: ReadyPoint | undefined
       input: InputRaw
-      response0?: Response0
+      effects?: Effects
     } => {
       if (args[0] === undefined || 'Infer' in args[0]) {
         // so it is NiceReadyPoint provided like first argument
-        return { point: args[0]?.point, input: args[1] as InputRaw, response0: args[2] }
+        return { point: args[0]?.point, input: args[1] as InputRaw, effects: args[2] }
       }
       // so it is ReadyPoint provided in object
       return {
         point: args[0].point,
         input: args[0].input,
-        response0: args[0].response0,
+        effects: args[0].effects,
       }
     })()
 
@@ -344,7 +344,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       })()
       if (inputError) {
         const status = 422
-        response0.set.status(status)
+        effects.set.status(status)
         return {
           ctx: this.requiredCtx ?? {},
           data: {},
@@ -352,7 +352,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           status,
           response: undefined,
           output: {},
-          effects: response0.effects,
+          effects: effects.values,
         }
       }
 
@@ -368,7 +368,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         if (!point) {
           const error = new Error0(`Point Not Found`)
           const status = 404
-          response0.set.status(status)
+          effects.set.status(status)
           return {
             ctx: currentCtx,
             data: currentData,
@@ -376,14 +376,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             status,
             response: currentResponse,
             output: currentOutput,
-            effects: response0.effects,
+            effects: effects.values,
           }
         }
 
         if (!point._hasServerLoader()) {
           const error = new Error0(`Point "${point.toString()}" has no server loader`)
           const status = 500
-          response0.set.status(status)
+          effects.set.status(status)
           return {
             ctx: currentCtx,
             data: currentData,
@@ -391,7 +391,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             status,
             response: currentResponse,
             output: currentOutput,
-            effects: response0.effects,
+            effects: effects.values,
           }
         }
 
@@ -401,7 +401,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               const safeParseResult = await Executor.parseInputSafeAsync(serverExecuteAction.schema, input)
               if (safeParseResult.error) {
                 const status = 422
-                response0.set.status(status)
+                effects.set.status(status)
                 return {
                   ctx: this.requiredCtx ?? {},
                   data: currentData,
@@ -409,7 +409,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   status,
                   response: currentResponse,
                   output: currentOutput,
-                  effects: response0.effects,
+                  effects: effects.values,
                 }
               }
               currentInputParsed = {
@@ -442,7 +442,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 input: currentInputParsed,
                 execute: this.execute.bind(this),
                 request: this.request,
-                set: response0.set,
+                set: effects.set,
                 point,
               })
               if (Array.isArray(result)) {
@@ -469,7 +469,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               // ) as ServerExecuteActionWithOutput<'loader'> | undefined
               // if (ex) {
               //   if (Array.isArray(ex.output)) {
-              //     this.response0.set.status(ex.output[0])
+              //     this.effects.set.status(ex.output[0])
               //     if (ex.output[1] instanceof Response) {
               //       currentResponse = ex.output[1]
               //       currentOutput = ex.output[1]
@@ -494,12 +494,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 input: currentInputParsed,
                 execute: this.execute.bind(this),
                 request: this.request as never,
-                set: response0.set,
+                set: effects.set,
                 point,
               })
               const result = (await (promise as any)) as [number, Data | Response] | Data | Response
               if (Array.isArray(result)) {
-                response0.set.status(result[0])
+                effects.set.status(result[0])
                 if (result[1] instanceof Response) {
                   currentResponse = result[1]
                   currentOutput = result[1]
@@ -534,8 +534,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           currentData = undefined
         }
 
-        const status = response0.status ?? 200
-        response0.set.status(status)
+        const status = effects.status ?? 200
+        effects.set.status(status)
         return {
           ctx: currentCtx,
           data: currentData,
@@ -543,13 +543,13 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           error: null,
           status,
           output: currentOutput,
-          effects: response0.effects,
+          effects: effects.values,
         }
       } catch (error) {
         try {
           const error0 = Error0.from(error)
           const status = error0.httpStatus ?? 500
-          response0.set.status(status)
+          effects.set.status(status)
           return {
             ctx: currentCtx,
             data: currentData,
@@ -557,12 +557,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             status,
             response: currentResponse,
             output: currentOutput,
-            effects: response0.effects,
+            effects: effects.values,
           }
         } catch (error2) {
           const error0 = Error0.from(error)
           const status = error0.httpStatus ?? 500
-          response0.set.status(status)
+          effects.set.status(status)
           return {
             ctx: currentCtx,
             data: currentData,
@@ -570,7 +570,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             status,
             response: currentResponse,
             output: currentOutput,
-            effects: response0.effects,
+            effects: effects.values,
           }
         }
       }
@@ -708,14 +708,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           // await this.execute({
           //   point: suitable.point,
           //   input: suitableMarker.input,
-          //   response0: suitable.point === pagePoint ? this.response0 : undefined, // if it is loader for desired page, then we want it to be applied to executor response0, else new one will be created
+          //   effects: suitable.point === pagePoint ? this.effects : undefined, // if it is loader for desired page, then we want it to be applied to executor effects, else new one will be created
           // })
           // ...here underth hood point already use engine.fetch, not native fetch, so no real request to url
           // const { response } = await suitable.point.fetchDetailed(suitableMarker.input)
           // if (response) {
-          //   const cookies = Response0.parseCookies(response)
+          //   const cookies = Effects.parseCookies(response)
           //   for (const cookie of cookies) {
-          //     this.response0.set.cookies(cookie)
+          //     this.effects.set.cookies(cookie)
           //   }
           // }
           // ...I think better use prefetchQuery.
@@ -814,7 +814,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //         await this.execute({
   //           point: suitable.point,
   //           input: suitableMarker.input,
-  //           response0: suitable.point === pagePoint ? this.response0 : undefined, // if it is loader for desired page, then we want it to be applied to executor response0, else new one will be created
+  //           effects: suitable.point === pagePoint ? this.effects : undefined, // if it is loader for desired page, then we want it to be applied to executor effects, else new one will be created
   //         })
   //       }
   //     }
@@ -973,7 +973,7 @@ export type ExecuteOptions<
 > = {
   point?: TPoint | undefined
   input: TPoint extends ReadyPoint ? TPoint['Infer']['ServerInputRaw'] : InputRaw
-  response0?: Response0
+  effects?: Effects
 }
 
 // export type ServerExecuteActionWithOutput<TType extends 'ctx' | 'loader'> = TType extends 'ctx'

@@ -14,7 +14,7 @@ const general = {
     'src/points-manager.ts',
     'src/query-client.tsx',
     'src/request0.ts',
-    'src/response0.ts',
+    'src/effects.ts',
     'src/router.tsx',
     'src/super-store.ts',
     'src/types.ts',

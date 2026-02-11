@@ -19,7 +19,7 @@ import type { Point0 } from './point0.js'
 import type { Props, QueriesDefinitions } from './mountable.js'
 import type { PointsManager } from './points-manager.js'
 import type { Request0 } from './request0.js'
-import type { ResponseEffects, ResponseEffectsSetHelper } from './response0.js'
+import type { ResponseEffectsValues, ResponseEffectsSetHelper } from './effects.js'
 
 // basic
 
@@ -850,7 +850,7 @@ export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends Lo
       ctx: TCtx
       data: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
       response: TServerLoaderOutput extends Response ? TServerLoaderOutput : undefined
-      effects: ResponseEffects
+      effects: ResponseEffectsValues
       error: null
       status: number
       output: TServerLoaderOutput
@@ -859,7 +859,7 @@ export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends Lo
       ctx: Ctx
       data: Data | UndefinedData
       response: Response | UndefinedResponse
-      effects: ResponseEffects
+      effects: ResponseEffectsValues
       error: Error0
       status: number
       output: LoaderOutput | UndefinedLoaderOutput

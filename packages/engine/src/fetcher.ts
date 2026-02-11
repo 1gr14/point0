@@ -16,7 +16,7 @@ import type {
   RequiredCtx,
   SuperStoreInternalValuesOrErrors,
 } from '@point0/core'
-import { _getSsItemsWithRestErrors, _ssItems, _ssRunWithServerStorageState, Request0, Response0 } from '@point0/core'
+import { _getSsItemsWithRestErrors, _ssItems, _ssRunWithServerStorageState, Request0, Effects } from '@point0/core'
 import { unflatten } from 'flat'
 import type { GetSuitableResult } from './all-points-managers.js'
 import type { Engine } from './engine.js'
@@ -215,7 +215,7 @@ export class Fetcher {
     scope?: PointsScope
     bunServer?: Bun.Server<unknown>
   }): Promise<PrepareFetchResult> => {
-    const response0 = Response0.create()
+    const effects = Effects.create()
     const isFromServer =
       '__POINT0_IS_SERVER_REQUEST__' in originalRequest && originalRequest.__POINT0_IS_SERVER_REQUEST__ === true
     const request = Request0.create(originalRequest, {
@@ -231,7 +231,7 @@ export class Fetcher {
         return {
           scope,
           request,
-          response0,
+          effects,
           publicdirResult: { publicdir, response: staticResponse },
           pointResult: undefined,
           // middlewares: publicdir.getPointsManager()?.root._middlewares ?? [],
@@ -239,7 +239,7 @@ export class Fetcher {
             ._middlewares,
           middlewareOptions: {
             request,
-            set: response0.set,
+            set: effects.set,
             point: undefined,
             scope,
             variant: 'publicdir',
@@ -256,13 +256,13 @@ export class Fetcher {
         return {
           scope: this.engine.server.scope,
           request,
-          response0,
+          effects,
           publicdirResult: { publicdir: undefined, response: responseFromAbsFilePath },
           pointResult: undefined,
           middlewares: [],
           middlewareOptions: {
             request,
-            set: response0.set,
+            set: effects.set,
             point: undefined,
             scope: this.engine.server.scope,
             variant: '' as never, // it is dev only thing, lets forget about it
@@ -293,13 +293,13 @@ export class Fetcher {
     return {
       scope: suitable.pointsManager.scope,
       request,
-      response0,
+      effects,
       publicdirResult: undefined,
       pointResult: { suitable, task },
       middlewares: suitable.point?._middlewares ?? suitable.pointsManager.root._middlewares,
       middlewareOptions: {
         request,
-        set: response0.set,
+        set: effects.set,
         point: suitable.point,
         scope: suitable.pointsManager.scope,
         variant,
@@ -349,14 +349,14 @@ export class Fetcher {
     task,
     request,
     requiredCtx,
-    response0,
+    effects,
     serverStorageState,
   }: {
     suitable: GetSuitableResult
     task: FetchTask | undefined
     request: Request0
     requiredCtx: RequiredCtx
-    response0: Response0
+    effects: Effects
     serverStorageState: SuperStoreInternalValuesOrErrors
   }): Promise<FetcherFetchPointResult> => {
     const meta: Record<string, any> = {
@@ -396,7 +396,7 @@ export class Fetcher {
         pageLocation: suitable.pageLocation,
         currentLocation: suitable.pageLocation ?? Route0.toRelLocation(request.location),
         requiredCtx,
-        response0,
+        effects,
         serverStorageState,
       })
       meta.scope = suitable.pointsManager.scope
@@ -493,7 +493,7 @@ export class Fetcher {
         point: suitable.point,
         // TODO: wehn openapi will be ready, do not send here parsed input for this type of points
         input: await this.getPointInput({ suitable, task, request }),
-        response0: executor.response0, // here we pass executor response0, becouse we want to apply status and effects to it
+        effects: executor.effects, // here we pass executor effects, becouse we want to apply status and effects to it
       })
       if (executeResult.error) {
         this.server.logger.error(executeResult.error, meta)
@@ -650,7 +650,7 @@ export class Fetcher {
       suitable: prepareFetchResult.pointResult.suitable,
       task: prepareFetchResult.pointResult.task,
       requiredCtx,
-      response0: prepareFetchResult.response0,
+      effects: prepareFetchResult.effects,
       serverStorageState,
     })
 
@@ -700,7 +700,7 @@ export class Fetcher {
     const serverStorageState = _getSsItemsWithRestErrors(
       {
         __POINT0_REQUEST0__: prepareFetchResult.request,
-        __POINT0_RESPONSE0__: prepareFetchResult.response0,
+        __POINT0_EFFECTS__: prepareFetchResult.effects,
         // in case of recursive server response we want preserve query client to keep state
         __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: _ssItems.__POINT0_QUERY_CLIENT__.getWeak(),
       },
@@ -721,7 +721,7 @@ export class Fetcher {
           }),
         baseOptions: middlewareOptions,
       })
-      const response = prepareFetchResult.response0.apply(result.response)
+      const response = prepareFetchResult.effects.apply(result.response)
       const finalResult = {
         ...result,
         response,
@@ -751,7 +751,7 @@ export type PrepareFetchResult =
       scope: PointsScope
       publicdirResult: { publicdir: Publicdir<true> | undefined; response: Response } // in case if it is bun dev server try to fetch abs path
       request: Request0
-      response0: Response0
+      effects: Effects
       pointResult: undefined
       middlewares: MiddlewareFn[]
       middlewareOptions: MiddlewareFnOptionsBase
@@ -760,7 +760,7 @@ export type PrepareFetchResult =
       scope: PointsScope
       publicdirResult: undefined
       request: Request0
-      response0: Response0
+      effects: Effects
       pointResult: { suitable: GetSuitableResult; task: FetchTask | undefined }
       middlewares: MiddlewareFn[]
       middlewareOptions: MiddlewareFnOptionsBase
