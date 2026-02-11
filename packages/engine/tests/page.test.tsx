@@ -329,7 +329,6 @@ describe('page', () => {
     const page = root
       .lets('page', 'home', '/:y')
       .query(query, ({ location }) => ({ y: +location.params.y }))
-      // .query(query)
       .page(({ data, location }) => (
         <div id="page">
           x={data.x} y={location.params.y}

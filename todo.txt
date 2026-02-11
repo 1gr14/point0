@@ -45,7 +45,7 @@ launch
 
 REFACTOING 3000
 
-query(), layout(), move to separate files and assign by TLetsReadyPoint
+Remove comments, unusde code, unsed types
 
 getFakeClient remove from internals, use from superstore import fakeClient.get() from fake-client.ts
 response0 → effects
@@ -59,7 +59,6 @@ throw if same name and type in current scope
 Разобраться с эррор баундари для фронта
 
 --+
-Remove comments, unusde code, unsed types
 Логгер может принимать как готовый логгер, так и функцию разруливающую логи принимающую левел категорию аргументы
 Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп
 --+
@@ -164,8 +163,11 @@ allow ssr different html for ErrorComponent stack
 ROUTING
 Роут стейты, перфетчинг тразититонинг, а также добавить еррор саксес лоадинг который мы и берём и пейдж стейта
 Не нужно при префетче лэйоуты префетчить, лэйоуты и так есть в релейтед поинтсах
+? prefetch mode when have no ssr should be temporary disabled, becouse we can not prefetch queries without rendering
 Tests for prefetch page and on link hover
 wouter add to Link match result, so we can use current, active, aprent, exact, etc (location => className)
+---
+prefetch mode fix for no ssr
 
 TEST
 Дев и билд объединить тесты и запуск там делать в дескрайбе, а дальше в итах тестировать что нужно

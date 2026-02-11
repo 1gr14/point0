@@ -21,6 +21,7 @@ import { createContext, useContextSelector } from 'use-context-selector'
 import { CookiesStore } from './cookies-store.js'
 import { _point0_env } from './env.js'
 import { _ssItems, getFakeClient } from './internals.js'
+import type { MethodQueryForAnyPoint } from './methods/query.js'
 import type {
   AppendProps,
   AppendQueries,
@@ -50,16 +51,12 @@ import type {
   ProviderSelfProps,
   ProviderSelfType,
   QueriesDefinitions,
-  QueriesDefinitionsByQueries,
   QueriesResults,
   QueryDefinition,
-  QueryDefinitionByQuery,
   QueryFn,
-  QueryFnOptions,
   UndefinedComponentSuccessComponent,
   UndefinedLayoutSuccessComponent,
   UndefinedSuccessPageComponent,
-  UseQueryOrInfiniteQueryResult,
   WithFn,
   WithSelfQueryIfShouldBeFinalized,
   WrapperComponentType,
@@ -93,9 +90,6 @@ import type {
   DataTransformer,
   DataTransformerExtended,
   EmptyCtx,
-  ReadyPoint,
-  ReadyPointType,
-  ReadyPointTypeOrNever,
   ExtendRouteDefinition,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
@@ -130,7 +124,6 @@ import type {
   MountablePointType,
   NiceBaseReadyPoint,
   NiceComponentReadyPoint,
-  NiceReadyPoint,
   NiceInfiniteQueryReadyPoint,
   NiceLayoutReadyPoint,
   NiceMutationReadyPoint,
@@ -138,7 +131,6 @@ import type {
   NicePluginReadyPoint,
   NicePluginStagePoint,
   NiceProviderReadyPoint,
-  NiceQueryReadyPoint,
   NiceRootReadyPoint,
   NiceRootStagePoint,
   NiceStagePoint,
@@ -153,6 +145,9 @@ import type {
   QueryKey,
   QueryMode,
   QueryResultType,
+  ReadyPoint,
+  ReadyPointType,
+  ReadyPointTypeOrNever,
   RecordValidationSchema,
   RequiredCtx,
   RootPoint,
@@ -167,11 +162,11 @@ import type {
   StagePointTypeOrNever,
   UndefinedCtx,
   UndefinedCtxExposedKeys,
-  UndefinedReadyPointType,
   UndefinedInputSchema,
   UndefinedLoaderOutput,
   UndefinedMapperOutput,
   UndefinedQueryResultType,
+  UndefinedReadyPointType,
   UndefinedRoute,
   UndefinedRouteDefinition,
   UseInfiniteQueryOptions,
@@ -219,7 +214,7 @@ import {
 // componentLoading: both, prune on nossr-server
 // loading: both, prune on nossr-server
 // wrapper: both, prune on nossr-server
-// outer: both, prune on nossr-server
+// with: both, prune on nossr-server !!!
 
 // scrollPosition: client, prune on server
 // scrollRestore: client, prune on server
@@ -234,11 +229,13 @@ import {
 
 // clientLoader: client, prune on server
 
-// mapper: both, nothing to prune
+// mapper: both, nothing to prune !!! prune on nossr-server
 
 // head: both, nothing to prune
 // props: both, nothing to prune
-// input: both, nothing to prune
+// input: server, prune on client !!!
+// clientInput: client, prune on server !!!
+// combinedInput: both, nothing to prune !!!
 
 // root: both, nothing to prune
 // base: both, nothing to prune
@@ -315,13 +312,11 @@ export class Point0<
   readonly _baseurl: string | null | undefined
   readonly type: TPointType
   private readonly _letsReadyPointType: TLetsReadyPointType
-  // TODO:ASAP it is false or undefined
   private readonly _transformer: DataTransformerExtended | undefined
   _getTransformer = () => this._transformer ?? blankDataTransformerExtended
   readonly _ssr: boolean
   readonly scope: PointsScope
   readonly scopes: PointsScope[]
-  // private readonly _headFns: HeadFn[]
   private readonly _defaultMutationOptions: UseMutationOptions | undefined
   private readonly _mutationOptions: UseMutationOptions | undefined
   private readonly _defaultQueryOptions: ExtraUseQueryOptions | undefined
@@ -340,16 +335,9 @@ export class Point0<
     unknown
   >
   readonly _queryResultType: TQueryResultType
-  // readonly _sameQueryPoint: ReadyPoint | null | undefined
-  // readonly _getSameQueryPoint = () => this._sameQueryPoint ?? null
-  // readonly _relatedQueryPoints: ReadyPoint[]
-  // readonly _asFormData: boolean | undefined
-  // private readonly _wrappers: MountableWrapperComponentType[]
-  // private readonly _outers: MountableOuterComponentType[]
   readonly _serverExecuteActions: ServerExecuteAction[]
   private readonly _clientExecuteActions: ClientExecuteAction[]
   private readonly _mountActions: MountAction[]
-  // private readonly _mapperFns: Array<MapperFn<any, any, any, any, any>>
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
   readonly route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
   private readonly _page: PageSuccessComponentType<any, any, any, any> | UndefinedSuccessPageComponent
@@ -376,7 +364,6 @@ export class Point0<
   private readonly _errorComponent: ErrorComponentType<DestinationComponentVariant> | undefined
   private static readonly DefaultErrorComponent: ErrorComponentType<any> = ({ error }) => {
     const { stack, ...json } = error.toJSON()
-    // TODO: move console.error to .onClientError
     return React.createElement(
       React.Fragment,
       null,
@@ -447,9 +434,6 @@ export class Point0<
     _ssr?: boolean
     scope: PointsScope
     scopes: PointsScope[]
-    // _wrappers?: MountableWrapperComponentType[]
-    // _outers?: MountableOuterComponentType[]
-    // _headFns?: HeadFn[]
     _defaultMutationOptions?: UseMutationOptions
     _mutationOptions?: UseMutationOptions
     _defaultInfiniteQueryOptions?: PartialUseInfiniteQueryOptions
@@ -470,13 +454,10 @@ export class Point0<
         >
       | undefined
     _queryResultType?: TQueryResultType
-    // _sameQueryPoint?: ReadyPoint | null | undefined
-    // _relatedQueryPoints?: ReadyPoint[]
     // _asFormData?: boolean | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
     _mountActions?: MountAction[]
-    // _mapperFns?: MapperFn[]
     _ProviderReactContext?: Context<MountableSuccessData<TQueriesDefinitions, TMapperOutput>> | undefined
     _useValue?: any
     route?: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
@@ -521,9 +502,6 @@ export class Point0<
     this._baseurl = options._baseurl ?? undefined
     this.type = options.type
     this._letsReadyPointType = options._letsReadyPointType
-    // this._wrappers = options._wrappers ?? []
-    // this._outers = options._outers ?? []
-    // this._headFns = options._headFns ?? []
     this._defaultMutationOptions = options._defaultMutationOptions ?? {}
     this._mutationOptions = options._mutationOptions ?? {}
     this._defaultQueryOptions = options._defaultQueryOptions ?? {}
@@ -535,13 +513,10 @@ export class Point0<
     this._queryOptions = options._queryOptions ?? {}
     this._infiniteQueryOptions = options._infiniteQueryOptions ?? ({} as never)
     this._queryResultType = (options._queryResultType ?? undefined) as TQueryResultType
-    // this._sameQueryPoint = options._sameQueryPoint ?? undefined
-    // this._relatedQueryPoints = options._relatedQueryPoints ?? []
     // this._asFormData = options._asFormData
     this._serverExecuteActions = options._serverExecuteActions ?? []
     this._clientExecuteActions = options._clientExecuteActions ?? []
     this._mountActions = options._mountActions ?? []
-    // this._mapperFns = options._mapperFns ?? []
     this._ProviderReactContext = options._ProviderReactContext ?? undefined
     this._useValue = options._useValue ? options._useValue.bind(this) : undefined
     this.route =
@@ -598,7 +573,6 @@ export class Point0<
     _baseurl?: string | null | undefined
     _transformer?: DataTransformerExtended | null
     _ssr?: boolean
-    // _headFns?: HeadFn[]
     _defaultMutationOptions?: UseMutationOptions | undefined
     _mutationOptions?: UseMutationOptions | undefined
     _defaultInfiniteQueryOptions?: PartialUseInfiniteQueryOptions | undefined
@@ -619,15 +593,10 @@ export class Point0<
         >
       | undefined
     _queryResultType?: TQueryResultType
-    // _sameQueryPoint?: ReadyPoint | null | undefined
-    // _relatedQueryPoints?: ReadyPoint[]
     // _asFormData?: boolean | undefined
-    // _wrappers?: MountableWrapperComponentType[]
-    // _outers?: MountableOuterComponentType[]
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
     _mountActions?: MountAction[]
-    // _mapperFns?: MapperFn[]
     _ProviderReactContext?: Context<MountableSuccessData<TQueriesDefinitions, TMapperOutput>> | undefined
     _useValue?: any
     route?: IfAnyThenElse<
@@ -706,9 +675,6 @@ export class Point0<
       _baseurl: overrides._baseurl ?? this._baseurl,
       _transformer: overrides._transformer ?? this._transformer,
       _ssr: overrides._ssr ?? this._ssr,
-      // _wrappers: overrides._wrappers ?? this._wrappers,
-      // _outers: overrides._outers ?? this._outers,
-      // _headFns: overrides._headFns ?? this._headFns,
       _defaultMutationOptions: overrides._defaultMutationOptions ?? { ...this._defaultMutationOptions },
       _mutationOptions: overrides._mutationOptions ?? { ...this._mutationOptions },
       _defaultQueryOptions: overrides._defaultQueryOptions ?? { ...this._defaultQueryOptions },
@@ -733,15 +699,10 @@ export class Point0<
         unknown
       >,
       _queryResultType: (overrides._queryResultType ?? this._queryResultType) as TQueryResultType,
-      // _sameQueryPoint: (typeof overrides._sameQueryPoint === 'undefined'
-      //   ? this._sameQueryPoint
-      //   : overrides._sameQueryPoint) as never,
-      // _relatedQueryPoints: (overrides._relatedQueryPoints ?? this._relatedQueryPoints) as never,
       // _asFormData: overrides._asFormData ?? this._asFormData,
       _serverExecuteActions: overrides._serverExecuteActions ?? this._serverExecuteActions,
       _clientExecuteActions: overrides._clientExecuteActions ?? this._clientExecuteActions,
       _mountActions: overrides._mountActions ?? this._mountActions,
-      // _mapperFns: overrides._mapperFns ?? this._mapperFns,
       _ProviderReactContext: (overrides._ProviderReactContext ?? this._ProviderReactContext) as never,
       _useValue: overrides._useValue ?? this._useValue,
       route: (overrides.route ?? this.route) as never,
@@ -835,26 +796,6 @@ export class Point0<
 
   // root settings
 
-  // requireCtx<TExtraRequiredCtx extends Ctx>(): NiceRootStagePoint<
-  //   StagePointTypeOrNever<TPointType>,
-  //   'root',
-  //   AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
-  //   PrependCtx<TCtx, TExtraRequiredCtx>,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   TQueryResultType,
-  //   TOuterProps,
-  //   TInnerProps,
-  //   TQueriesDefinitions
-  // > {
-  //   return this._continue({}) as never
-  // }
-
   serverurl(
     serverurl: string,
   ): NiceRootStagePoint<
@@ -905,7 +846,6 @@ export class Point0<
 
   // general settings
 
-  // not needed, we check File or Blob in input, and then use FormData instead of JSON
   // asFormData(
   //   shouldAddMultipartFormDataHeaderToFetchOptions = true,
   // ): NiceStagePoint<
@@ -1061,7 +1001,6 @@ export class Point0<
 
   // setting default infinite query options in not mountable point
   infiniteQueryOptions(
-    // infiniteQueryOptions: PartialUseInfiniteQueryOptions,
     ...args: TLetsReadyPointType extends Exclude<PointType, MountablePointType>
       ? [infiniteQueryOptions: PartialUseInfiniteQueryOptions]
       : never
@@ -1627,14 +1566,6 @@ export class Point0<
         },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
-      // _wrappers: [
-      //   ...this._wrappers,
-      //   wrapperComponent as never,
-      //   // this._applyComponentDisplayName(wrapperComponent as React.ComponentType<any>, {
-      //   //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'Wrapper',
-      //   //   index: this._wrappers.length,
-      //   // }) as never,
-      // ],
     }) as never
   }
 
@@ -1692,47 +1623,8 @@ export class Point0<
         },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
-      // _wrappers: [
-      //   ...this._wrappers,
-      //   wrapperComponent as never,
-      //   // this._applyComponentDisplayName(wrapperComponent as React.ComponentType<any>, {
-      //   //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'Wrapper',
-      //   //   index: this._wrappers.length,
-      //   // }) as never,
-      // ],
     }) as never
   }
-
-  // outer(
-  //   outerComponent: MountableOuterComponentType<TClientInputSchema, TProps>,
-  // ): NiceStagePoint<
-  //   'renderStage',
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   TQueryResultType,
-  //   TProps,
-  //   TInnerProps,
-  //   TQueriesDefinitions
-  // > {
-  //   return this._continue({
-  //     _outers: [
-  //       ...this._outers,
-  //       outerComponent as never,
-  //       // this._applyComponentDisplayName(outerComponent, {
-  //       //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'Outer',
-  //       //   index: this._outers.length,
-  //       // }) as never,
-  //     ],
-  //   }) as never
-  // }
 
   // scroll restoration
 
@@ -2164,63 +2056,8 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  // loader(
-  //   enableServerLoader: false,
-  // ): NiceStagePoint<
-  //   'coreStage',
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   UndefinedLoaderOutput,
-  //   UndefinedLoaderOutput,
-  //   UndefinedMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   UndefinedQueryResultType,
-  //   TProps,
-  //   TInnerProps,
-  //   TQueriesDefinitions
-  // >
-  // loader(enableServerLoader: true & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>): NiceStagePoint<
-  //   StagePointTypeOrNever<TPointType>,
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput extends LoaderOutput ? TServerLoaderOutput : EmptyData, // if response or data exists in server, now it is server output, else empty data
-  //   TClientLoaderOutput,
-  //   TMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   UndefinedQueryResultType,
-  //   TProps,
-  //   TInnerProps,
-  //   TQueriesDefinitions
-  // >
   loader(loaderFn: LoaderDataFn<any, any, any, any, any> | LoaderResponseFn<any, any, any, any, any> | boolean) {
-    // if (loaderFn === false) {
-    //   return this._continue({
-    //     // _sameQueryPoint: null,
-    //     _serverExecuteActions: this._serverExecuteActions.filter((fn) => fn.type !== 'loader'),
-    //     _clientExecuteActions: this._clientExecuteActions.filter((fn) => fn.type !== 'loader'),
-    //     // _mapperFns: [],
-    //     _queryResultType:
-    //       this._letsReadyPointType === 'query'
-    //         ? 'query'
-    //         : this._letsReadyPointType === 'infiniteQuery'
-    //           ? 'infiniteQuery'
-    //           : undefined,
-    //   }) as never
-    // }
-    // if (loaderFn === true) {
-    //   loaderFn = (o) => o.data
-    // }
     return this._continue({
-      // _sameQueryPoint: null,
-      // _queryResultType: this._queryResultType ?? 'query',
       type: 'serverStage', // it should be clientStage if loader returns response, but we know it only by types, we do not know it in runtime, bu it is ok to have here for runtime serverStage. Not good, but ok.
       _queryResultType: this._normalizeQueryResultType('query'),
       _serverExecuteActions: [
@@ -2274,85 +2111,18 @@ export class Point0<
     //   TQueriesDefinitions
     // >
   >
-  // clientLoader(
-  //   enableClientLoader: false,
-  // ): NiceStagePoint<
-  //   'coreStage',
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   UndefinedData,
-  //   UndefinedMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   TServerLoaderOutput extends LoaderOutput
-  //     ? TQueryResultType
-  //     : TLetsReadyPointType extends 'query'
-  //       ? 'query'
-  //       : TLetsReadyPointType extends 'infiniteQuery'
-  //         ? 'infiniteQuery'
-  //         : UndefinedQueryResultType,
-  //   TProps,
-  //   TInnerProps,
-  //   TQueriesDefinitions
-  // >
-  // // client loader true means that we do not want server do ssr here
-  // clientLoader(
-  //   enableClientLoader: true & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>,
-  // ): NiceStagePoint<
-  //   'clientStage',
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput extends LoaderOutput
-  //     ? TClientLoaderOutput
-  //     : TServerLoaderOutput extends UndefinedLoaderOutput
-  //       ? EmptyData
-  //       : TServerLoaderOutput, // if response or data exists in server, now it is client output, else empty data
-  //   TMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   TQueryResultType,
-  //   TProps,
-  //   TInnerProps,
-  //   TQueriesDefinitions
-  // >
   clientLoader(
     clientLoaderFn:
       | ClientLoaderDataFn<any, any, any, any, any, any>
       | ClientLoaderResponseFn<any, any, any, any, any, any>
       | undefined,
   ) {
-    // if (clientLoaderFn === false) {
-    //   return this._continue({
-    //     // _sameQueryPoint: null,
-    //     _clientExecuteActions: this._clientExecuteActions.filter((fn) => fn.type !== 'loader'),
-    //     // _mapperFns: [],
-    //     _queryResultType: this._hasServerLoader()
-    //       ? this._queryResultType
-    //       : this._letsReadyPointType === 'query'
-    //         ? 'query'
-    //         : this._letsReadyPointType === 'infiniteQuery'
-    //           ? 'infiniteQuery'
-    //           : undefined,
-    //   }) as never
-    // }
-    // if (clientLoaderFn === true) {
-    //   clientLoaderFn = (o) => o.data
-    // }
     clientLoaderFn ||= (o: any) => o.data
     return this._continue({
       // it should be finalStage if loader returns response, but we know it only by types,
       // we do not know it in runtime, bu it is ok to have here for runtime serverStage. Not good, but ok.
       // it will be really finalized in runtime in one of next methods
       type: 'clientStage',
-      // _sameQueryPoint: null,
       _queryResultType: this._normalizeQueryResultType('query'),
       _clientExecuteActions: [
         ...this._clientExecuteActions,
@@ -2405,32 +2175,7 @@ export class Point0<
       TQueriesDefinitions
     >
   >
-  // mapper(
-  //   enableMapper: false,
-  // ): NiceStagePoint<
-  //   TClientLoaderOutput extends LoaderOutput ? 'clientStage' : 'coreStage',
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   UndefinedMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   TQueryResultType,
-  //   TOuterProps,
-  //   TInnerProps,
-  //   TQueriesDefinitions
-  // >
   mapper(mapperFn: MapperFn<any, any, any, any, any> | undefined) {
-    // if (mapperFn === false) {
-    //   return this._continue({
-    //     // _sameQueryPoint: null,
-    //     _mapperFns: [],
-    //   }) as never
-    // }
     // in case if we shake mapper for server without ssr target
     mapperFn ||= ((o) => o.data) as MapperFn<any, any, any, any, any>
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
@@ -2626,9 +2371,6 @@ export class Point0<
             | ResolvableHead
             | string,
         ]
-    // const [providedStatus, providedHead] =
-    //
-    //   args.length === 2 ? args : args.length === 1 ? [undefined, args[0]] : [undefined, () => ({})]
     const [providedStatus, providedHead] = (() => {
       if (args.length === 2) {
         return args
@@ -2687,29 +2429,6 @@ export class Point0<
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
   }
-
-  // props<TNewProps extends Props>(
-  //   ...agrs: TPointType extends 'renderStage'
-  //     ? [AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'props'>]
-  //     : never[]
-  // ): NiceStagePoint<
-  //   StagePointTypeOrNever<TPointType>,
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   TQueryResultType,
-  //   TNewProps,
-  //   TQueriesDefinitions
-  // > {
-  //   return this._continue({}) as never
-  // }
 
   input<TNextServerInputSchema extends InputSchema>(
     inputSchema: TNextServerInputSchema &
@@ -3047,216 +2766,6 @@ export class Point0<
     }) as never
   }
 
-  // withQuery<
-  //   TPoint extends NiceReadyPoint<
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     'infiniteQuery' | 'query',
-  //     any,
-  //     any,
-  //     any
-  //   >,
-  // >(
-  //   point: TPoint,
-  //   ...args: IsInputOptional<TPoint['Infer']['InputRaw']> extends true
-  //     ? [
-  //         input?:
-  //           | TPoint['Infer']['InputRaw']
-  //           | ((options: { input: InputParsed<TClientInputSchema> }) => TPoint['Infer']['InputRaw']),
-  //         queryOptions?: TPoint['Infer']['UseQueryOptions'],
-  //       ]
-  //     : [
-  //         input:
-  //           | TPoint['Infer']['InputRaw']
-  //           | ((options: { input: InputParsed<TClientInputSchema> }) => TPoint['Infer']['InputRaw']),
-  //         queryOptions?: TPoint['Infer']['UseQueryOptions'],
-  //       ]
-  // ): NiceStagePoint<
-  //   StagePointTypeOrNever<TPointType>,
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   TQueryResultType,
-  //   TOuterProps,
-  //   TInnerProps,
-  //   [...TQueriesDefinitions, TPoint['Infer']['UseQueryResult']]
-  // >
-  // withQuery<TUseQueryResult extends UseQueryOrInfiniteQueryResult>(
-  //   queryFn: (options: { input: InputParsed<TClientInputSchema> }) => TUseQueryResult,
-  // ): NiceStagePoint<
-  //   StagePointTypeOrNever<TPointType>,
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   TQueryResultType,
-  //   TOuterProps,
-  //   TInnerProps,
-  //   [...TQueriesDefinitions, TUseQueryResult]
-  // >
-  // // withQuery(
-  // //   drop: false,
-  // // ): NiceStagePoint<
-  // //   StagePointTypeOrNever<TPointType>,
-  // //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  // //   TRequiredCtx,
-  // //   TCtx,
-  // //   TCtxExposedKeys,
-  // //   TServerLoaderOutput,
-  // //   TClientLoaderOutput,
-  // //   TMapperOutput,
-  // //   TRouteDefinition,
-  // //   TServerInputSchema,
-  // //   TClientInputSchema,
-  // //   TQueryResultType,
-  // //   TProps,
-  // //   TInnerProps,
-  // //   []
-  // // >
-  // withQuery(...args: any[]) {
-  //   if (args.length === 0) {
-  //     return this._continue({
-  //       // in case if we prune it for server with no ssr
-  //       // _mountActions: this._mountActions.filter((action) => action.type !== 'query'),
-  //     }) as never
-  //   }
-  //   const extraQueryFn = (() => {
-  //     if ('point' in args[0]) {
-  //       const point = args[0].point as AnyPoint
-  //       const getInputFn =
-  //         typeof args[1] === 'function' ? args[1] : typeof args[1] === 'object' ? () => args[1] : () => ({})
-  //       const queryOptions = typeof args[2] === 'object' ? args[2] : {}
-  //       return (options: { input: InputParsed<TClientInputSchema> }) => {
-  //         const input = getInputFn(options)
-  //         return point.withQuery(input, queryOptions)
-  //       }
-  //     } else if (typeof args[0] === 'function') {
-  //       return args[0]
-  //     } else {
-  //       throw new Error('Invalid arguments')
-  //     }
-  //   })()
-  //   return this._continue({
-  //     _mountActions: [
-  //       ...this._mountActions,
-  //       { type: 'query', fn: extraQueryFn, unstableId: Point0._getNextUnstableId() },
-  //     ],
-  //   }) as never
-  // }
-
-  // end points
-
-  // TODO: remove it when you be mentally ready to remove it
-  // route<TNewRoute extends AnyRoute>(
-  //   route: FlatInputStringOnly<TNewRoute> extends InputRaw<TRouteDefinition, TInputSchema>
-  //     ? TNewRoute
-  //     : ShowError<`Route ${TNewRoute['definition']} is not assignable to previous input schema`> & TNewRoute,
-  // ): NiceStagePoint<
-  //   TPointType,
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TData,
-  //   TClientData,
-  //   TNewRoute['definition'],
-  //   TPrevRouteDefinition,
-  //   TInputSchema,
-  //   TResponse,
-  //   TQueryResultType,
-  //   TProps
-  // >
-  // route<TNewRouteDefinition extends `/${string}`>(
-  //   routeDefinition: TNewRouteDefinition,
-  // ): NiceStagePoint<
-  //   TPointType,
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TData,
-  //   TClientData,
-  //   Route0<TNewRouteDefinition>['definition'],
-  //   TPrevRouteDefinition,
-  //   TInputSchema,
-  //   TResponse,
-  //   TQueryResultType,
-  //   TProps
-  // >
-  // route<TNewRouteDefinition extends string>(
-  //   relativeRouteDefinition: TNewRouteDefinition,
-  // ): NiceStagePoint<
-  //   TPointType,
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TData,
-  //   TClientData,
-  //   TPrevRouteDefinition extends RouteDefinition
-  //     ? Extended<TPrevRouteDefinition, TNewRouteDefinition>['definition']
-  //     : Route0<DedupeSlashes<`/${TNewRouteDefinition}`>>['definition'],
-  //   TPrevRouteDefinition,
-  //   TInputSchema,
-  //   TResponse,
-  //   TQueryResultType,
-  //   TProps
-  // >
-  // route(): NiceStagePoint<
-  //   TPointType,
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TData,
-  //   TClientData,
-  //   TPrevRouteDefinition extends RouteDefinition ? TPrevRouteDefinition : never,
-  //   TPrevRouteDefinition,
-  //   TInputSchema,
-  //   TResponse,
-  //   TQueryResultType,
-  //   TProps
-  // >
-  // route(route?: CallableRoute | RouteDefinition | ShowError<string>) {
-  //   const prevRoute = this._prevRoute
-  //   const newRoute = (() => {
-  //     if (typeof route === 'undefined') {
-  //       if (!prevRoute) {
-  //         throw new Error('Parent of this point have no route, so you cannot use .() without argument')
-  //       }
-  //       return prevRoute.clone()
-  //     }
-  //     if (typeof route === 'string') {
-  //       if (route.startsWith('/')) {
-  //         return Route0.from(route)
-  //       }
-  //       return prevRoute ? prevRoute.extend(route) : Route0.from(dedupeSlashes(`/${route}`))
-  //     }
-  //     return route
-  //   })()
-  //   return this._continue({
-  //     _route: newRoute as CallableRoute,
-  //   }) as never
-  // }
-
   lets<
     TPointName extends PointName,
     TProvidedRoute extends RouteDefinition = TPointName,
@@ -3536,7 +3045,6 @@ export class Point0<
       _layouts: this.type === 'layout' ? [...this._layouts, this as unknown as LayoutPoint] : [...this._layouts],
       _serverurl: this._base?._serverurl,
       _baseurl: this._base?._baseurl,
-      // _headFns: this._base?._headFns,
       _defaultMutationOptions: this._base?._defaultMutationOptions,
       _mutationOptions: {},
       _defaultQueryOptions: this._base?._defaultQueryOptions,
@@ -3546,8 +3054,6 @@ export class Point0<
       _defaultProviderQueryOptions: this._base?._defaultProviderQueryOptions,
       _defaultLayoutQueryOptions: this._base?._defaultLayoutQueryOptions,
       _queryOptions: {},
-      // _sameQueryPoint:
-      //   this._hasClientLoader() || this._hasServerLoader() ? this._sameQueryPoint || (this as ReadyPoint) : null,
       _infiniteQueryOptions: {} as never,
       _fetchOptions: this._base?._fetchOptions,
       _scrollPositionGetter: this._base?._scrollPositionGetter,
@@ -3556,8 +3062,6 @@ export class Point0<
       _prefetchPolicy: this._base?._prefetchPolicy,
       _onPrefetchFns: this._base?._onPrefetchFns,
       _polh: this._base?._polh,
-      // _wrappers: this.type === 'base' ? this._wrappers : [],
-      // _outers: this.type === 'base' ? this._outers : [],
       _errorComponent: undefined,
       _layoutErrorComponent: this._base?._layoutErrorComponent as never,
       _pageErrorComponent: this._base?._pageErrorComponent as never,
@@ -3975,7 +3479,6 @@ export class Point0<
     const point = this._continue({
       type: 'provider',
       _letsReadyPointType: undefined,
-      // _mapperFns: mapperFn ? [...this._mapperFns, mapperFn as never] : this._mapperFns,
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
@@ -3998,86 +3501,6 @@ export class Point0<
     point.X = point.Provider
     return point as never
   }
-
-  // You may think that we can have just clientLoader to provide provider value.
-  // We can, but then it will be always loads on client, and we will always have loader after ssr.
-  // So we have special providerValueSetter function, which is always sync, and it provides final value
-  // So we have no loading state after ssr, and also we can modify infinite query data in this providerValueSetter function
-  // provider(
-  //   ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Data
-  //     ? []
-  //     : FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
-  //       ? [ShowError<`Provider can not return response. Last loader should provide plain object data, not response.`>]
-  //       : [
-  //           ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .provider()`>,
-  //         ]
-  // ): NiceProviderReadyPoint<
-  //   'provider',
-  //   undefined,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TData,
-  //   TClientData,
-  //   TRouteDefinition,
-  //   TPrevRouteDefinition,
-  //   TInputSchema,
-  //   TResponse,
-  //   TClientResponse,
-  //   TQueryResultType,
-  //   TProps,
-  //   TLastServerOutput,
-  //   TLastClientOutput
-  // > {
-  //   return this._continue({
-  //     // type: this._letsReadyPointType === 'query' ? 'query' : this.type,
-  //     // _letsReadyPointType: (this._letsReadyPointType === 'query'
-  //     //   ? undefined
-  //     //   : this._letsReadyPointType) as TLetsReadyPointType extends 'query' ? undefined : TLetsReadyPointType,
-  //     // _queryResultType: 'query',
-  //     // _queryOptions: queryOptions as ExtraUseQueryOptions<
-  //     //   FinalClientData<TLastServerOutput, TLastClientOutput>,
-  //     //   Error0,
-  //     //   FinalClientData<TLastServerOutput, TLastClientOutput>,
-  //     //   QueryKey
-  //     // >,
-  //     type: 'provider',
-  //     _letsReadyPointType: undefined,
-  //     _ProviderReactContext: createContext<FinalClientData<TLastServerOutput, TLastClientOutput>>(
-  //       null as never,
-  //     ) as never,
-  //     _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
-  //       if (!point._ProviderReactContext) {
-  //         throw new Error('ProviderReactContext 2 not found on point: ' + point.name)
-  //       }
-
-  //       if (keys == null) {
-  //         // no keys — return full context
-  //         return useContextSelector(point._ProviderReactContext, (ctx) => {
-  //           if (!ctx) throw new Error('useValue must be used within a Provider.')
-  //           return ctx
-  //         })
-  //       }
-
-  //       if (Array.isArray(keys)) {
-  //         // multiple keys — build a memoized object
-  //         return useContextSelector(point._ProviderReactContext, (ctx) => {
-  //           if (!ctx) throw new Error('useValue must be used within a Provider.')
-  //           const picked = {} as any
-  //           for (const key of keys) {
-  //             picked[key] = ctx[key]
-  //           }
-  //           return picked
-  //         })
-  //       }
-
-  //       // single key
-  //       return useContextSelector(point._ProviderReactContext, (ctx) => {
-  //         if (!ctx) throw new Error('useValue must be used within a Provider.')
-  //         return ctx[keys]
-  //       })
-  //     },
-  //   }) as never
-  // }
 
   use<T extends NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>>(
     plugin: T &
@@ -4111,85 +3534,8 @@ export class Point0<
       TQueriesDefinitions
     >
   >
-  // use<
-  //   T extends
-  //     | NiceQueryReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
-  //     | NiceInfiniteQueryReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
-  //     | NiceLayoutReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>,
-  // >(
-  //   point: T &
-  //     AssertUseNoLoaderMapperConflict<
-  //       TClientLoaderOutput,
-  //       TMapperOutput,
-  //       T['Infer']['ServerLoaderOutput'],
-  //       T['Infer']['ClientLoaderOutput'],
-  //       T['Infer']['MapperOutput']
-  //     > &
-  //     AssertInputSchemaAssignable<
-  //       TServerInputSchema,
-  //       T['Infer']['ServerInputSchema'],
-  //       `Used point server input schema is not compatible with current point input schema`
-  //     > &
-  //     AssertInputSchemaAssignable<
-  //       TClientInputSchema,
-  //       T['Infer']['ClientInputSchema'],
-  //       `Used point client input schema is not compatible with current point input schema`
-  //     >,
-  // ): NiceStagePoint<
-  //   T['Infer']['MapperOutput'] extends MapperOutput
-  //     ? 'mapperStage'
-  //     : T['Infer']['ClientLoaderOutput'] extends LoaderOutput
-  //       ? 'clientStage'
-  //       : 'coreStage',
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   AppendLoaderOutput<TServerLoaderOutput, T['Infer']['ServerLoaderOutput']>,
-  //   AppendLoaderOutput<TClientLoaderOutput, T['Infer']['ClientLoaderOutput']>,
-  //   AppendMapperOutput<TMapperOutput, T['Infer']['MapperOutput']>,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   T['Infer']['QueryResultType'] extends undefined ? TQueryResultType : T['Infer']['QueryResultType'],
-  //   TProps
-  // >
   use(plugin: NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>) {
     const point = plugin.point
-    // myplugin.input(1).loader(2).mapper(3).head(4).ctx(5)
-    // mypoint.use(myplugin);
-    // same as mypoint.input(1).loader(2).mapper(3).head(4).ctx(5)
-    // if (
-    //   point.type !== 'query' &&
-    //   point.type !== 'infiniteQuery' &&
-    //   point.type !== 'layout' &&
-    //   point.type !== 'plugin'
-    // ) {
-    //   throw new Error(`Point type ${point.type} is not supported in use method`)
-    // }
-
-    // if (
-    //   (this._hasMapperFns() || this._hasClientLoader()) &&
-    //   (point._hasClientLoader() || point._hasServerLoader() || point._hasMapperFns())
-    // ) {
-    //   throw new Error(
-    //     `Point ${this.toString()} has mapper or clientLoader functions. You can not use on it something with loader, clientLoader or mapper`,
-    //   )
-    // }
-
-    // const c: Parameters<typeof this._continue>[0] = {}
-
-    // const mergeArraysUnique = <T>(a: T[] | undefined, b: T[] | undefined): T[] => {
-    //   return [...new Set([...(a ?? []), ...(b ?? [])])]
-    // }
-
-    // if (point.type === 'plugin') {
-    // in this case plugin works like just injecting all it called methods to current point
-    // const mergedFetchOptionsFn: FetchOptionsFn = () => {
-    //   const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
-    //   const newFetchOptions: FetchOptions = point._fetchOptions?.() || {}
-    //   return { ...prevFetchOptions, ...newFetchOptions }
-    // }
 
     if (this._ssr !== point._ssr) {
       throw new Error(`Point ${this.toString()} and ${point.toString()} have different ssr settings`)
@@ -4212,7 +3558,6 @@ export class Point0<
       _baseurl: point._baseurl,
       _transformer: point._transformer,
       // _ssr
-      // _headFns: [...this._headFns, ...point._headFns],
       _defaultMutationOptions: { ...this._defaultMutationOptions, ...point._defaultMutationOptions },
       _mutationOptions: { ...this._mutationOptions, ...point._mutationOptions },
       _defaultInfiniteQueryOptions: { ...this._defaultInfiniteQueryOptions, ...point._defaultInfiniteQueryOptions },
@@ -4223,16 +3568,11 @@ export class Point0<
       _defaultProviderQueryOptions: { ...this._defaultProviderQueryOptions, ...point._defaultProviderQueryOptions },
       // _queryOptions: { ...this._queryOptions, ...point._queryOptions },
       // _infiniteQueryOptions: { ...this._infiniteQueryOptions, ...point._infiniteQueryOptions },
-      // _sameQueryPoint: point._sameQueryPoint,
-      // _relatedQueryPoints: [...this._relatedQueryPoints, ...point._relatedQueryPoints],
       // _asFormData: this._asFormData,
-      // _wrappers: [...this._wrappers, ...point._wrappers],
-      // _outers: [...this._outers, ...point._outers],
       _serverExecuteActions: [...this._serverExecuteActions, ...point._serverExecuteActions],
       _clientExecuteActions: [...this._clientExecuteActions, ...point._clientExecuteActions],
       _mountActions: [...this._mountActions, ...selfQueryAction, ...point._mountActions],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
-      // _mapperFns: [...this._mapperFns, ...point._mapperFns],
       // _ProviderReactContext: point._ProviderReactContext,
       // _useValue: point._useValue,
       // route: point.route,
@@ -4262,348 +3602,9 @@ export class Point0<
       _componentLoadingComponent: point._componentLoadingComponent,
       // X
     }) as never
-    // c._middlewares = [...this._middlewares, ...point._middlewares]
-    // c._serverExecuteActions = [...this._serverExecuteActions, ...point._serverExecuteActions]
-    // c._clientExecuteActions = [...this._clientExecuteActions, ...point._clientExecuteActions]
-    // c._mapperFns = [...this._mapperFns, ...point._mapperFns]
-    // c._headFns = [...this._headFns, ...point._headFns]
-    // c._wrappers = [...this._wrappers, ...point._wrappers]
-    // c._outers = [...this._outers, ...point._outers]
-    // c._onPrefetchFns = [...this._onPrefetchFns, ...point._onPrefetchFns]
-    // c._defaultMutationOptions = { ...this._defaultMutationOptions, ...point._defaultMutationOptions }
-    // c._mutationOptions = { ...this._mutationOptions, ...point._mutationOptions }
-    // c._defaultQueryOptions = { ...this._defaultQueryOptions, ...point._defaultQueryOptions }
-    // c._defaultInfiniteQueryOptions = { ...this._defaultInfiniteQueryOptions, ...point._defaultInfiniteQueryOptions }
-    // c._defaultPageQueryOptions = { ...this._defaultPageQueryOptions, ...point._defaultPageQueryOptions }
-    // c._defaultComponentQueryOptions = {
-    //   ...this._defaultComponentQueryOptions,
-    //   ...point._defaultComponentQueryOptions,
-    // }
-    // c._defaultLayoutQueryOptions = { ...this._defaultLayoutQueryOptions, ...point._defaultLayoutQueryOptions }
-    // c._defaultProviderQueryOptions = { ...this._defaultProviderQueryOptions, ...point._defaultProviderQueryOptions }
-    // c._queryOptions = { ...this._queryOptions, ...point._queryOptions }
-    // c._infiniteQueryOptions = { ...this._infiniteQueryOptions, ...point._infiniteQueryOptions } as never
-    // c._fetchOptions = mergedFetchOptionsFn
-    // c._scrollPositionGetter = point._scrollPositionGetter ?? this._scrollPositionGetter
-    // c._scrollPositionSetter = point._scrollPositionSetter ?? this._scrollPositionSetter
-    // c._scrollPositionRestorePolicy = point._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy
-    // c._prefetchPolicy = point._prefetchPolicy ?? this._prefetchPolicy
-    // c._polh = point._polh ?? this._polh
-    // c._transformer = point._transformer ?? this._transformer
-    // c._serverurl = point._serverurl ?? this._serverurl
-    // c._baseurl = point._baseurl ?? this._baseurl
-    // c._layouts = mergeArraysUnique(this._layouts, point._layouts)
-    // c._errorComponent = point._errorComponent ?? (this._errorComponent as never)
-    // c._layoutErrorComponent = point._layoutErrorComponent ?? (this._layoutErrorComponent as never)
-    // c._pageErrorComponent = point._pageErrorComponent ?? (this._pageErrorComponent as never)
-    // c._componentErrorComponent = point._componentErrorComponent ?? (this._componentErrorComponent as never)
-    // c._loadingComponent = point._loadingComponent ?? (this._loadingComponent as never)
-    // c._layoutLoadingComponent = point._layoutLoadingComponent ?? (this._layoutLoadingComponent as never)
-    // c._pageLoadingComponent = point._pageLoadingComponent ?? (this._pageLoadingComponent as never)
-    // c._componentLoadingComponent = point._componentLoadingComponent ?? (this._componentLoadingComponent as never)
-
-    // }
-
-    // c._queryResultType = point._queryResultType ?? this._queryResultType
-
-    // if (point.type === 'query' || point.type === 'infiniteQuery' || point.type === 'layout') {
-    //   // if it is query or infiniteQuery we get from there queryKey, and to execute actions we add special type pointExecution, so we need respect it in executor to store in queryClient state
-    //   if (point._hasServerLoader() || point._hasClientLoader()) {
-    //     const newRelatedQueryPoint = point._getSameQueryPoint() ?? point
-    //     c._relatedQueryPoints = mergeArraysUnique(this._relatedQueryPoints, [newRelatedQueryPoint])
-    //     if (!this._hasServerLoader() && !this._hasClientLoader()) {
-    //       c._sameQueryPoint = newRelatedQueryPoint
-    //     } else {
-    //       if (this._getSameQueryPoint() !== newRelatedQueryPoint) {
-    //         c._sameQueryPoint = null
-    //       }
-    //     }
-    //     if (point._hasServerLoader()) {
-    //       c._serverExecuteActions = [
-    //         ...this._serverExecuteActions,
-    //         {
-    //           type: 'loader',
-    //           fn: async ({ data, input }) => {
-    //             const prevData = data instanceof Response ? {} : data
-    //             const newData =
-    //               point.type === 'infiniteQuery' ? await point.fetchInfiniteQuery(input) : await point.fetchQuery(input)
-    //             return {
-    //               ...prevData,
-    //               ...newData,
-    //             }
-    //           },
-    //           unstableId: Point0._getNextUnstableId(),
-    //         },
-    //       ]
-    //     }
-    //     if (point._hasClientLoader()) {
-    //       c._clientExecuteActions = [
-    //         ...this._clientExecuteActions,
-    //         {
-    //           type: 'loader',
-    //           fn: async ({ data, input, response, location, serverData }) => ({
-    //             ...(data instanceof Response ? {} : data),
-    //             ...(await point._executeClientAsync({
-    //               serverData,
-    //               serverResponse: response,
-    //               input,
-    //               skipMapperFns: false,
-    //               location,
-    //             })),
-    //           }),
-    //           unstableId: Point0._getNextUnstableId(),
-    //         },
-    //       ]
-    //     }
-    //     c._mapperFns = [...this._mapperFns, ...point._mapperFns]
-    //   }
-    // }
-    // if (point.type === 'layout') {
-    //   // if it is layout we need to add it to layouts
-    //   c._layouts = mergeArraysUnique(this._layouts, [...point._layouts, point as LayoutPoint])
-    // }
-    // return this._continue(c) as never
   }
 
-  // usual query finish
-  query(
-    ...args: TLetsReadyPointType extends 'query'
-      ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
-        ? [
-            queryOptions?: ExtraUseQueryOptions<
-              FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-              Error0,
-              FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-              QueryKey
-            >,
-          ]
-        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
-          ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
-          : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .query()`>]
-      : never
-  ): NiceQueryReadyPoint<
-    'query',
-    undefined,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    'query',
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  // mountable component query injection
-  // query(
-  //   ...args: TLetsReadyPointType extends 'query'
-  //     ? never
-  //     : [
-  //         // TODO:ASAP it is withQuery not options
-  //         queryOptions?: ExtraUseQueryOptions<
-  //           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-  //           Error0,
-  //           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-  //           QueryKey
-  //         >,
-  //       ]
-  // ): NiceStagePoint<
-  //   StagePointTypeOrNever<TPointType>,
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   'query',
-  //   TOuterProps,
-  //   TInnerProps,
-  //   TQueriesDefinitions
-  // >
-  query<
-    TPoint extends NiceReadyPoint<
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      'infiniteQuery' | 'query',
-      any,
-      any,
-      any
-    >,
-  >(
-    ...args: TLetsReadyPointType extends MountablePointType
-      ? [
-          point: TPoint,
-          input:
-            | TPoint['Infer']['InputRaw']
-            | ((
-                options: QueryFnOptions<
-                  MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-                  TInnerProps,
-                  WithSelfQueryIfShouldBeFinalized<
-                    TPointType,
-                    TLetsReadyPointType,
-                    TServerLoaderOutput,
-                    TClientLoaderOutput,
-                    TQueriesDefinitions
-                  >,
-                  TMapperOutput
-                >,
-              ) => TPoint['Infer']['InputRaw']),
-          queryOptions?: TPoint['Infer']['UseQueryOptions'],
-        ]
-      : never
-  ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
-      ? 'finalStage'
-      : StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    [
-      ...WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions
-      >,
-      {
-        type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
-        data: TPoint['Infer']['QueriedData']
-      },
-    ]
-  >
-  query<
-    TPoint extends NiceReadyPoint<
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      'infiniteQuery' | 'query',
-      any,
-      any,
-      any
-    >,
-  >(
-    ...args: TLetsReadyPointType extends MountablePointType
-      ? [point: TPoint & (TPoint['Infer']['IsInputOptional'] extends true ? unknown : ShowError<`Input is required`>)]
-      : never
-  ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
-      ? 'finalStage'
-      : StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    [
-      ...WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions
-      >,
-      {
-        type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
-        data: TPoint['Infer']['QueriedData']
-      },
-    ]
-  >
-  query<TNewQueries extends UseQueryOrInfiniteQueryResult | UseQueryOrInfiniteQueryResult[]>(
-    ...args: TLetsReadyPointType extends MountablePointType
-      ? [
-          queryFn: QueryFn<
-            MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-            TInnerProps,
-            WithSelfQueryIfShouldBeFinalized<
-              TPointType,
-              TLetsReadyPointType,
-              TServerLoaderOutput,
-              TClientLoaderOutput,
-              TQueriesDefinitions
-            >,
-            TMapperOutput,
-            TNewQueries
-          >,
-        ]
-      : never
-  ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
-      ? 'finalStage'
-      : StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    [
-      ...WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions
-      >,
-      ...(TNewQueries extends UseQueryOrInfiniteQueryResult
-        ? [QueryDefinitionByQuery<TNewQueries>]
-        : TNewQueries extends UseQueryOrInfiniteQueryResult[]
-          ? QueriesDefinitionsByQueries<TNewQueries>
-          : never),
-    ]
-  >
-  query(...args: any) {
+  query = ((...args: any) => {
     if (this._letsReadyPointType === 'query') {
       // usual query final
       const [queryOptions = {}] = args as [ExtraUseQueryOptions | undefined]
@@ -4653,7 +3654,23 @@ export class Point0<
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
-  }
+  }) as MethodQueryForAnyPoint<
+    TPointType,
+    TLetsReadyPointType,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
 
   infiniteQuery(
     ...args: FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
@@ -4773,43 +3790,6 @@ export class Point0<
     return point as never
   }
 
-  // readonly mutation: FinalLoaderMappedOutput<
-  //   TQueryResultType,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TMapperOutput
-  // > extends LoaderOutput
-  //   ? (
-  //       mutationOptions?: UseMutationOptions<
-  //         FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput>,
-  //         Error0,
-  //         InputsRawMaybeOptional<TServerInputSchema, TClientInputSchema>
-  //       >,
-  //     ) => NiceMutationReadyPoint<
-  //       'mutation',
-  //       UndefinedReadyPointType,
-  //       TRequiredCtx,
-  //       TCtx,
-  //       TCtxExposedKeys,
-  //       TServerLoaderOutput,
-  //       TClientLoaderOutput,
-  //       TMapperOutput,
-  //       TRouteDefinition,
-  //       TServerInputSchema,
-  //       TClientInputSchema,
-  //       TQueryResultType,
-  //       TProps
-  //     >
-  //   : ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .mutation()`>  = ((...args: any) => {
-  //   const [mutationOptions = {}] = args
-  //   const point = this._continue({
-  //     type: 'mutation',
-  //     _mutationOptions: mutationOptions as UseMutationOptions,
-  //     _letsReadyPointType: undefined,
-  //   })
-  //   return point as never
-  // }) as never
-
   _tail(component: React.Component): typeof this {
     const point = this._continue({})
     Point0._assignNicePointMethodsToComponent({ component, point, extra: {} })
@@ -4846,8 +3826,6 @@ export class Point0<
       prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
       getMutationOptions: point.getMutationOptions.bind(point),
       useMutation: point.useMutation.bind(point),
-      // execute: point.execute.bind(point),
-      // executeDetailed: point.executeDetailed.bind(point),
       fetch: point.fetch.bind(point),
       getFetchServerOptions: point.getFetchServerOptions.bind(point),
       fetchServer: point.fetchServer.bind(point),
@@ -4921,34 +3899,6 @@ export class Point0<
     return this.name === this.scope && this.type === 'root'
   }
 
-  // private _getErrorComponent<TDestinationComponentVariant extends DestinationComponentVariant>({
-  //   type,
-  // }: {
-  //   type: TDestinationComponentVariant
-  // }): ErrorComponentType<TDestinationComponentVariant> {
-  //   return (this._errorComponent ??
-  //     {
-  //       page: this._pageErrorComponent,
-  //       component: this._componentErrorComponent,
-  //       layout: this._layoutErrorComponent,
-  //     }[type] ??
-  //     Point0.DefaultErrorComponent) as never
-  // }
-
-  // private _getLoadingComponent<TDestinationComponentVariant extends DestinationComponentVariant>({
-  //   type,
-  // }: {
-  //   type: TDestinationComponentVariant
-  // }): LoadingComponentType<TDestinationComponentVariant> {
-  //   return (this._loadingComponent ??
-  //     {
-  //       page: this._pageLoadingComponent,
-  //       component: this._componentLoadingComponent,
-  //       layout: this._layoutLoadingComponent,
-  //     }[type] ??
-  //     Point0.DefaultLoadingComponent) as never
-  // }
-
   private _getDestinationComponentVariant(): DestinationComponentVariant | undefined {
     return {
       page: 'page' as const,
@@ -4984,68 +3934,6 @@ export class Point0<
     )
   }
 
-  // private _withWrappers({
-  //   children,
-  //   useLoaderResult,
-  //   props,
-  // }: {
-  //   props: FinalProps<TProps>
-  //   children: React.ReactNode
-  //   useLoaderResult: AnyUseLoaderResult<
-  //     any,
-  //     TQueryResultType,
-  //     TServerLoaderOutput,
-  //     TClientLoaderOutput,
-  //     TMapperOutput,
-  //     TClientInputSchema,
-  //     AnyLocation
-  //   >
-  // }): Exclude<React.ReactNode, Promise<any>> {
-  //   if (this._wrappers.length === 0) {
-  //     return children as Exclude<React.ReactNode, Promise<any>>
-  //   }
-  //   return [...this._wrappers].reverse().reduce((acc, Wrapper, index) => {
-  //     return React.createElement(Wrapper, {
-  //       children: acc,
-  //       ...useLoaderResult,
-  //       props,
-  //     } as never)
-  //   }, children) as Exclude<React.ReactNode, Promise<any>>
-  // }
-
-  // private _withOuters({
-  //   children,
-  //   input,
-  //   props,
-  //   location,
-  //   LoadingComponent,
-  //   ErrorComponent,
-  // }: {
-  //   children: React.ReactNode
-  //   input: InputParsed<TClientInputSchema>
-  //   props: FinalProps<TProps>
-  //   location: AnyLocation
-  //   LoadingComponent: React.ComponentType
-  //   ErrorComponent: React.ComponentType<{ error: Error }>
-  // }): Exclude<React.ReactNode, Promise<any>> {
-  //   if (this._outers.length === 0) {
-  //     return children as Exclude<React.ReactNode, Promise<any>>
-  //   }
-  //   return [...this._outers].reverse().reduce(
-  //     (acc, Outer, index) => {
-  //       return React.createElement(Outer, {
-  //         children: acc,
-  //         input,
-  //         props,
-  //         location,
-  //         LoadingComponent,
-  //         ErrorComponent,
-  //       })
-  //     },
-  //     children as Exclude<React.ReactNode, Promise<any>>,
-  //   )
-  // }
-
   _hasServerLoader(): boolean {
     return this._serverExecuteActions.length > 0 && this._serverExecuteActions.some((fn) => fn.type === 'loader')
   }
@@ -5053,10 +3941,6 @@ export class Point0<
   _hasClientLoader(): boolean {
     return this._clientExecuteActions.length > 0 && this._clientExecuteActions.some((fn) => fn.type === 'loader')
   }
-
-  // _hasMapperFns(): boolean {
-  //   return this._mapperFns.length > 0
-  // }
 
   private _hasClientAsyncLoader(): boolean {
     return (
@@ -5113,29 +3997,6 @@ export class Point0<
   //   //   displayName: this._generateComponentDisplayName({ index, prefix, suffix }),
   //   // })
   //   // return component
-  // }
-
-  // static parseInput<TInputSchema extends InputSchema | UndefinedInputSchema>(
-  //   inputSchema: TInputSchema,
-  //   input: InputRaw<TInputSchema>,
-  // ): InputParsed<TInputSchema> {
-  //   const schema = inputSchema as unknown
-  //   const result = () => {
-  //     if (typeof schema !== 'object' || schema === null) {
-  //       throw new Error('Input schema is not an object')
-  //     }
-  //     if ('parse' in schema && typeof schema.parse === 'function') {
-  //       return schema.parse(input)
-  //     }
-  //     if ('validateSync' in schema && typeof schema.validateSync === 'function') {
-  //       return schema.validateSync(input)
-  //     }
-  //     if ('validate' in schema && typeof schema.validate === 'function') {
-  //       return schema.validate(input)
-  //     }
-  //     throw new Error('Unknown input schema type')
-  //   }
-  //   if ('')
   // }
 
   private static customValidationFnToInputSchema<TValidateFn extends CustomValidationFn>(
@@ -5327,126 +4188,6 @@ export class Point0<
     }
   }
 
-  // TODO: maybe remove it?
-  // private _executeClientSync({
-  //   data,
-  //   response,
-  //   location,
-  //   input,
-  // }: {
-  //   data: Data | undefined
-  //   response: Response | undefined
-  //   location?: AnyLocation
-  //   input: InputRaw<TRouteDefinition, TInputSchema>
-  // }): {
-  //   clientData: Data | undefined
-  //   clientResponse: Response | undefined
-  //   clientOutput: Data | Response | undefined
-  // } {
-  //   let currentClientData: Data | undefined = data
-  //   let currentClientResponse: Response | undefined = undefined
-  //   let currentClientOutput: Data | Response | undefined = response ?? data
-  //   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
-  //   const { parsedInput, inputError } = (() => {
-  //     const result = this.parseInputSafe(input)
-  //     if (!result.success) {
-  //       return { parsedInput: {}, inputError: result.error }
-  //     }
-  //     return { parsedInput: result.data, inputError: undefined }
-  //   })()
-  //   if (inputError) {
-  //     throw new Error(`Input error: ${inputError.message}`)
-  //   }
-  //   let currentInputParsed: InputParsed = this._route ? this._route.parseFlatInput(input) : {}
-  //   let currentInputSchema: InputSchema | undefined = this._serverInputSchema
-  //   location ??=
-  //     this.type === 'page' || this.type === 'layout'
-  //       ? this._getSelfLocationByAnotherLocationOrInput(location, input)
-  //       : _ssItems.currentLocation.get()
-  //   for (const clientExecuteAction of this._clientExecuteActions) {
-  //     switch (clientExecuteAction.type) {
-  //       case 'input': {
-  //         currentInputSchema = currentInputSchema
-  //           ? currentInputSchema.extend(clientExecuteAction.schema.shape)
-  //           : clientExecuteAction.schema
-  //         const safeParseResult = currentInputSchema.safeParse(input)
-  //         if (safeParseResult.error) {
-  //           throw new Error(`Input error: ${safeParseResult.error.message}`)
-  //         }
-  //         currentInputParsed = safeParseResult.data
-  //         break
-  //       }
-  //       case 'loader': {
-  //         const result = clientExecuteAction.fn({
-  //           data: currentClientData ?? {},
-  //           location,
-  //           input: currentInputParsed,
-  //           inputRaw: input,
-  //           response: currentClientResponse,
-  //         })
-  //         if (result instanceof Response) {
-  //           currentClientResponse = result
-  //           currentClientOutput = result
-  //         } else {
-  //           currentClientData = result as Data
-  //           currentClientOutput = result as Data | Response
-  //         }
-  //         break
-  //       }
-  //       // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
-  //       default: {
-  //         throw new Error(`Unknown client extend fn type: ${(clientExecuteAction as any).type}`)
-  //       }
-  //     }
-  //   }
-  //   return {
-  //     clientData: currentClientData,
-  //     clientResponse: currentClientResponse,
-  //     clientOutput: currentClientOutput,
-  //   }
-  // }
-
-  // private _executeHead(
-  //   useMountableResult: UseMountableResult<
-  //     any,
-  //     TQueryResultType,
-  //     TServerLoaderOutput,
-  //     TClientLoaderOutput,
-  //     TMapperOutput,
-  //     TClientInputSchema,
-  //     TQueriesDefinitions
-  //   >,
-  //   props: FinalProps<TProps>,
-  // ): ResolvableHead[] {
-  //   const head: ResolvableHead[] = []
-  //   for (const headFn of this._headFns) {
-  //     const headFnResult = headFn({ ...useMountableResult, props })
-  //     const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
-  //     head.push(headFnResultResolvable)
-  //   }
-  //   return head
-  // }
-
-  // private _useHead(
-  //   useMountableResult: UseMountableResult<
-  //     any,
-  //     TQueryResultType,
-  //     TServerLoaderOutput,
-  //     TClientLoaderOutput,
-  //     TMapperOutput,
-  //     TClientInputSchema,
-  //     TQueriesDefinitions
-  //   >,
-  //   props: FinalProps<TProps>,
-  // ): void {
-  //   if (this.type !== 'page') {
-  //     return
-  //   }
-  //   for (const headItem of this._executeHead(useMountableResult, props)) {
-  //     useHead(headItem)
-  //   }
-  // }
-
   private _getSelfLocationByAnotherLocation(location: AnyLocation): AnyLocation {
     const route = this.route
     if (!route) {
@@ -5506,10 +4247,6 @@ export class Point0<
     }
 
     if (serverQueryEnabled && !clientQueryEnabled) {
-      // const isInitalSsrLocation = useIsInitalSsrLocation()
-      // const useQueryCacheMethod = isServerInfiniteQuery ? this.useInfiniteQueryCache : this.useQueryCache
-      // const { queryCache } = useQueryCacheMethod(input as never)
-      // const { queryCache } = this.useQueryCache(input as never, 'data')
       const query = this._useServerQuery({
         input: input as never,
         queryOptions,
@@ -5579,10 +4316,6 @@ export class Point0<
     }
 
     if (serverQueryEnabled && !clientQueryEnabled) {
-      // const isInitalSsrLocation = useIsInitalSsrLocation()
-      // const useQueryCacheMethod = isServerInfiniteQuery ? this.useInfiniteQueryCache : this.useQueryCache
-      // const { queryCache } = useQueryCacheMethod(input as never)
-      // const { queryCache } = this.useQueryCache(input as never, 'data')
       const query = this._useServerInfiniteQuery({
         input: input as never,
         infiniteQueryOptions,
@@ -5608,283 +4341,6 @@ export class Point0<
     })
     return query as never
   }
-
-  // useLoader(
-  //   ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-  //     ? [
-  //         input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
-  //         queryOptions?:
-  //           | ExtraUseQueryOptions
-  //           | ExtraUseInfiniteQueryOptions<
-  //               InputsRaw<TServerInputSchema, TClientInputSchema>,
-  //               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-  //               Error0,
-  //               InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-  //               QueryKey,
-  //               unknown
-  //             >
-  //           | undefined,
-  //         fetchOptions?: FetchOptions | undefined,
-  //         _clientInputParseResult?: InputParseResult<TClientInputSchema>,
-  //       ]
-  //     : [
-  //         input: InputsRaw<TServerInputSchema, TClientInputSchema>,
-  //         queryOptions?:
-  //           | ExtraUseQueryOptions
-  //           | ExtraUseInfiniteQueryOptions<
-  //               InputsRaw<TServerInputSchema, TClientInputSchema>,
-  //               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-  //               Error0,
-  //               InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-  //               QueryKey,
-  //               unknown
-  //             >
-  //           | undefined,
-  //         fetchOptions?: FetchOptions | undefined,
-  //         _clientInputParseResult?: InputParseResult<TClientInputSchema>,
-  //       ]
-  // ): AnyUseLoaderResult<
-  //   any,
-  //   TQueryResultType,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TMapperOutput,
-  //   TClientInputSchema,
-  //   AnyLocation
-  // > & { dataOrLastInfiteData: FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> } {
-  //   const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
-  //   const [inputRaw = {}, queryOptions, fetchOptions, _clientInputParseResult] = args
-
-  //   const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
-  //     if (_clientInputParseResult) {
-  //       return _clientInputParseResult
-  //     }
-  //     const result = this.parseClientInputSafe(inputRaw as never)
-  //     if (!result.success) {
-  //       return { inputParsed: null, inputParseError: result.error } as InputParseResult<TClientInputSchema>
-  //     }
-  //     return { inputParsed: result.data, inputParseError: null } as InputParseResult<TClientInputSchema>
-  //   }, [this._getTransformer().stringify(inputRaw), _clientInputParseResult])
-
-  //   if (!this._hasServerLoader() && !this._hasClientLoader()) {
-  //     const result = React.useMemo(() => {
-  //       // const data = (
-  //       //   clientInputParseResult.inputParsed
-  //       //     ? this._mapperFns.reduce(
-  //       //         (data, mapperFn) => mapperFn({ data, input: clientInputParseResult.inputParsed }),
-  //       //         undefined as never,
-  //       //       )
-  //       //     : undefined
-  //       // ) as never
-  //       const data = undefined as never
-  //       return {
-  //         data,
-  //         loading: false as const,
-  //         error: (clientInputParseResult.inputParseError ?? null) as never,
-  //         query: null,
-  //         location,
-  //         input: clientInputParseResult.inputParsed,
-  //         dataOrLastInfiteData: data,
-  //       }
-  //     }, [clientInputParseResult, inputRaw, location])
-  //     return result
-  //   }
-  //   const query =
-  //     this._queryResultType === 'infiniteQuery'
-  //       ? this.useInfiniteQuery(inputRaw as never, queryOptions as never, fetchOptions as never)
-  //       : this.useQuery(inputRaw as never, queryOptions as never, fetchOptions as never)
-  //   const mappedData = useMemo(() => {
-  //     if (!query.data) {
-  //       return undefined
-  //     }
-  //     if (!this._mapperFns.length) {
-  //       return query.data
-  //     }
-  //     if (!clientInputParseResult.inputParsed) {
-  //       return undefined
-  //     }
-  //     return this._mapperFns.reduce(
-  //       (data, mapperFn) => mapperFn({ data, input: clientInputParseResult.inputParsed }),
-  //       query.data,
-  //     )
-  //   }, [query.data])
-  //   const result = React.useMemo(() => {
-  //     const dataOrLastInfiteData =
-  //       this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(-1) : query.data
-  //     return {
-  //       data: mappedData as never,
-  //       loading: query.isLoading as never,
-  //       error: (query.error ? Error0.from(query.error) : null) as never,
-  //       query: query as never,
-  //       location,
-  //       input: clientInputParseResult.inputParsed,
-  //       dataOrLastInfiteData,
-  //     }
-  //   }, [query, query.data, query.error, query.isLoading, clientInputParseResult, location, mappedData])
-  //   return result
-  // }
-
-  // useX(
-  //   ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-  //     ? [
-  //         input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
-  //         queryOptions?:
-  //           | ExtraUseQueryOptions
-  //           | ExtraUseInfiniteQueryOptions<
-  //               InputsRaw<TServerInputSchema, TClientInputSchema>,
-  //               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-  //               Error0,
-  //               InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-  //               QueryKey,
-  //               unknown
-  //             >
-  //           | undefined,
-  //         fetchOptions?: FetchOptions | undefined,
-  //         enabled?: boolean | undefined,
-  //       ]
-  //     : [
-  //         input: InputsRaw<TServerInputSchema, TClientInputSchema>,
-  //         queryOptions?:
-  //           | ExtraUseQueryOptions
-  //           | ExtraUseInfiniteQueryOptions<
-  //               InputsRaw<TServerInputSchema, TClientInputSchema>,
-  //               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-  //               Error0,
-  //               InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-  //               QueryKey,
-  //               unknown
-  //             >
-  //           | undefined,
-  //         fetchOptions?: FetchOptions | undefined,
-  //         enabled?: boolean | undefined,
-  //       ]
-  // ): UseMountableResult<
-  //   any,
-  //   TQueryResultType,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TMapperOutput,
-  //   TClientInputSchema,
-  //   TQueriesDefinitions
-  // > {
-  //   const [inputRaw = {}, queryOptions, fetchOptions, globallyEnabled = true] = args
-  //   const inputRawString = stringify(this._getTransformer().stringify(inputRaw))
-
-  //   const prepare = React.useMemo<
-  //     | {
-  //         error: undefined
-  //         input: InputParsed
-  //         queriesFns: Array<(enabled: false | undefined) => UseQueryOrInfiniteQueryResult>
-  //       }
-  //     | {
-  //         error: Error0
-  //         input: undefined
-  //         queriesFns: Array<(enabled: false | undefined) => UseQueryOrInfiniteQueryResult>
-  //       }
-  //   >(() => {
-  //     let currentInputParsed: InputParsed = {}
-  //     let error: Error0 | undefined = undefined
-  //     const queriesFns: Array<(enabled: false | undefined) => UseQueryOrInfiniteQueryResult> = []
-  //     if (this._hasServerLoader() || this._hasClientLoader()) {
-  //       queriesFns.push((enabled: false | undefined) => {
-  //         return this._queryResultType === 'infiniteQuery'
-  //           ? this.useInfiniteQuery(
-  //               inputRaw as never,
-  //               { ...queryOptions, enabled: enabled ?? globallyEnabled } as never,
-  //               fetchOptions as never,
-  //             )
-  //           : this.useQuery(
-  //               inputRaw as never,
-  //               { ...queryOptions, enabled: enabled ?? globallyEnabled } as never,
-  //               fetchOptions as never,
-  //             )
-  //       })
-  //     }
-  //     for (const action of this._mountActions) {
-  //       if (action.type === 'input') {
-  //         const result = Point0.parseInputSafeSync(action.schema, inputRaw)
-  //         if (result.error) {
-  //           error = result.error
-  //           break
-  //         }
-  //         currentInputParsed = {
-  //           ...currentInputParsed,
-  //           ...result.data,
-  //         }
-  //       } else if (action.type === 'query') {
-  //         // eslint-disable-next-line @typescript-eslint/no-loop-func
-  //         queriesFns.push((enabled: false | undefined) =>
-  //           action.fn({ input: { ...currentInputParsed }, enabled: enabled ?? globallyEnabled }),
-  //         )
-  //       } else {
-  //         throw new Error(`Unknown client mount action type: ${(action as any).type}`)
-  //       }
-  //     }
-  //     if (error) {
-  //       const skippedQueryFns: Array<() => UseQueryOrInfiniteQueryResult> = []
-  //       if (this._hasServerLoader() && !this._hasClientLoader()) {
-  //         skippedQueryFns.push(() => {
-  //           return this._queryResultType === 'infiniteQuery'
-  //             ? this.useInfiniteQuery(
-  //                 inputRaw as never,
-  //                 { ...queryOptions, enabled: false } as never,
-  //                 fetchOptions as never,
-  //               )
-  //             : this.useQuery(inputRaw as never, { ...queryOptions, enabled: false } as never, fetchOptions as never)
-  //         })
-  //       }
-  //       return {
-  //         error,
-  //         input: undefined,
-  //         queriesFns: this._mountActions.flatMap((action) => {
-  //           if (action.type === 'query') {
-  //             return [() => action.fn({ input: undefined, enabled: false })]
-  //           }
-  //           return []
-  //         }),
-  //       }
-  //     }
-  //     return {
-  //       error: undefined,
-  //       input: currentInputParsed,
-  //       queriesFns,
-  //     }
-  //   }, [inputRawString, globallyEnabled])
-
-  //   const queries = prepare.queriesFns.map((fn) => fn(globallyEnabled ? undefined : false))
-
-  //   if (prepare.error) {
-  //     return {
-  //       data: undefined,
-  //       error: prepare.error,
-  //       loading: false,
-  //       queries: queries as never,
-  //       input: undefined,
-  //       status: 'error',
-  //     } satisfies UseMountableResult<any, any, any, any, any, any, any>
-  //   }
-  //   const anyOriginalError = queries.find((query) => query.error)?.error
-  //   const error = anyOriginalError ? Error0.from(anyOriginalError) : undefined
-  //   const loading = queries.some((query) => query.status === 'pending')
-  //   const firstData = queries.find((query) => query.data)?.data
-  //   const status = error ? 'error' : loading ? 'pending' : 'success'
-  //   const mappedData =
-  //     status === 'success'
-  //       ? this._mapperFns.reduce(
-  //           (data, mapperFn) => mapperFn({ data: data as never, input: prepare.input, queries }),
-  //           firstData as never,
-  //         )
-  //       : undefined
-  //   return {
-  //     data: mappedData,
-  //     loading,
-  //     error,
-  //     input: prepare.input,
-  //     queries,
-  //     status,
-  //   } as UseMountableResult<any, any, any, any, any, any, any>
-  //   // }, [prepare, queries]) as never
-  // }
 
   private getServerUrl(): string | undefined {
     if (this._serverurl) {
@@ -5919,13 +4375,9 @@ export class Point0<
     if (!fromScope || typeof fromScope !== 'string') {
       throw new Error('Scope is not set. You forget to call PointsManager.create()?')
     }
-    // const sameQueryPoint = this._getSameQueryPoint()
     const headers = mergeHeaders(fetchOptions.headers, options?.headers, {
       Accept: 'application/json',
       'X-Point0-From-Scope': fromScope,
-      // 'X-Point0-Same-Point': sameQueryPoint
-      //   ? `${sameQueryPoint.scope}.${sameQueryPoint.type}.${sameQueryPoint.name}`
-      //   : '',
     })
     const serverurl = this.getServerUrl()
     if (!serverurl) {
@@ -6110,113 +4562,6 @@ export class Point0<
     return detailedResult.output as FetchOutput<TServerLoaderOutput>
   }
 
-  // async executeDetailed(
-  //   ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-  //     ? TServerLoaderOutput extends LoaderOutput
-  //       ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
-  //       : [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
-  //     : TServerLoaderOutput extends LoaderOutput
-  //       ? [input: InputsRaw<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
-  //       : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
-  // ): Promise<
-  //   ClientExecuteDetailedResult<
-  //     TQueryResultType,
-  //     TClientInputSchema,
-  //     TServerLoaderOutput,
-  //     TClientLoaderOutput,
-  //     TMapperOutput
-  //   >
-  // > {
-  //   if (_point0_env.target.is.server) {
-  //     // throw new Error0(
-  //     //   'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
-  //     // )
-  //     // lets not throw to be able fullstack tests
-  //   }
-  //   const [input = {}, fetchOptions] = args
-  //   const { serverData, serverResponse, serverOutput } = await (async () => {
-  //     if (this._hasServerLoader()) {
-  //       const serverDataOrResponse = await this.fetch(input as never, fetchOptions)
-  //       if (serverDataOrResponse instanceof Response) {
-  //         return { serverData: undefined, serverResponse: serverDataOrResponse, serverOutput: serverDataOrResponse }
-  //       }
-  //       return { serverData: serverDataOrResponse, serverResponse: undefined, serverOutput: serverDataOrResponse }
-  //     }
-  //     return { serverData: undefined, serverResponse: undefined, serverOutput: undefined }
-  //   })()
-  //   // if (this._hasClientLoader()) {
-  //   //   if (this._hasClientAsyncLoader()) {
-  //   const { clientOutput, clientData, clientResponse, clientInput } = await this._executeClientAsync({
-  //     serverData,
-  //     serverResponse,
-  //     input: input as never,
-  //     skipMapperFns: false,
-  //   })
-  //   return {
-  //     serverData,
-  //     serverResponse,
-  //     serverOutput,
-  //     clientData,
-  //     clientResponse,
-  //     clientOutput,
-  //     clientInput,
-  //     output: clientOutput ?? serverOutput,
-  //   } as ClientExecuteDetailedResult<
-  //     TQueryResultType,
-  //     TClientInputSchema,
-  //     TServerLoaderOutput,
-  //     TClientLoaderOutput,
-  //     TMapperOutput
-  //   >
-  //   //   } else {
-  //   //     const { clientOutput, clientData, clientResponse } = this._executeClientSync({
-  //   //       data: serverData || {},
-  //   //       response: serverResponse,
-  //   //       input: input as never,
-  //   //     })
-  //   //     return {
-  //   //       serverData,
-  //   //       serverResponse,
-  //   //       serverOutput,
-  //   //       clientData,
-  //   //       clientResponse,
-  //   //       clientOutput,
-  //   //       output: clientOutput ?? serverOutput,
-  //   //     } as ClientExecuteDetailedResult<
-  //   //       TData,
-  //   //       TResponse,
-  //   //       TClientData,
-  //   //       TClientResponse,
-  //   //       TLastServerOutput,
-  //   //       TLastClientOutput
-  //   //     >
-  //   //   }
-  //   // }
-  //   // return {
-  //   //   serverData,
-  //   //   serverResponse,
-  //   //   serverOutput,
-  //   //   clientData: undefined,
-  //   //   clientResponse: undefined,
-  //   //   clientOutput: undefined,
-  //   //   clientInput: undefined,
-  //   //   output: serverOutput,
-  //   // } as ClientExecuteDetailedResult<TQueryResultType, TClientInputSchema, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput>
-  // }
-
-  // async execute(
-  //   ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-  //     ? TServerLoaderOutput extends LoaderOutput
-  //       ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
-  //       : [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
-  //     : TServerLoaderOutput extends LoaderOutput
-  //       ? [input: InputsRaw<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
-  //       : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
-  // ): Promise<FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput>> {
-  //   const detailedResult = await this.executeDetailed(...args)
-  //   return detailedResult.output
-  // }
-
   _getServerQueryKey({
     input = {} as never,
     outputType = 'data',
@@ -6226,12 +4571,8 @@ export class Point0<
     outputType?: FetchOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
-    // const sameQueryPoint = this._getSameQueryPoint() || this
     return [
       'point0',
-      // sameQueryPoint.scope,
-      // sameQueryPoint.type,
-      // sameQueryPoint.name,
       this.scope,
       this.type,
       this.name,
@@ -6249,12 +4590,8 @@ export class Point0<
     input: InputsRaw<TServerInputSchema, TClientInputSchema>
     isInfiniteQuery: boolean
   }): QueryKey {
-    // const sameQueryPoint = this._getSameQueryPoint() || this
     return [
       'point0',
-      // sameQueryPoint.scope,
-      // sameQueryPoint.type,
-      // sameQueryPoint.name,
       this.scope,
       this.type,
       this.name,
@@ -6274,12 +4611,8 @@ export class Point0<
     outputType?: FetchOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
-    // const sameQueryPoint = this._getSameQueryPoint() || this
     return [
       'point0',
-      // sameQueryPoint.scope,
-      // sameQueryPoint.type,
-      // sameQueryPoint.name,
       this.scope,
       this.type,
       this.name,
@@ -6372,21 +4705,15 @@ export class Point0<
     QueryKey
   > {
     const queryKey = this._getClientQueryKey({ input, isInfiniteQuery: false })
-    const queryFn =
-      // this._hasClientAsyncLoader() ?
-      async () => {
-        const { clientData } = await this._executeClientAsync({
-          serverData,
-          location,
-          input: input as InputRaw<TClientInputSchema>,
-          serverResponse: undefined,
-        })
-        return clientData
-      }
-    // : () => {
-    //     const { clientData } = this._executeClientSync({ data: data || {}, location, input, response: undefined })
-    //     return clientData
-    //   }
+    const queryFn = async () => {
+      const { clientData } = await this._executeClientAsync({
+        serverData,
+        location,
+        input: input as InputRaw<TClientInputSchema>,
+        serverResponse: undefined,
+      })
+      return clientData
+    }
     const mountableDefaultQueryOptions =
       {
         page: this._defaultPageQueryOptions,
@@ -6599,39 +4926,23 @@ export class Point0<
     QueryKey
   > {
     const queryKey = this._getClientQueryKey({ input, isInfiniteQuery: true })
-    const queryFn =
-      // this._hasClientAsyncLoader() ?
-      async ({ pageParam }: { pageParam: unknown }) => {
-        try {
-          const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
-          const { clientData } = await this._executeClientAsync({
-            serverData,
-            location,
-            serverResponse: undefined,
-            input: {
-              ...input,
-              [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam,
-            } as InputRaw<TClientInputSchema>,
-          })
-          return clientData
-        } catch (error) {
-          throw Error0.from(error)
-        }
+    const queryFn = async ({ pageParam }: { pageParam: unknown }) => {
+      try {
+        const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
+        const { clientData } = await this._executeClientAsync({
+          serverData,
+          location,
+          serverResponse: undefined,
+          input: {
+            ...input,
+            [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam,
+          } as InputRaw<TClientInputSchema>,
+        })
+        return clientData
+      } catch (error) {
+        throw Error0.from(error)
       }
-    // : ({ pageParam }: { pageParam: unknown }) => {
-    //     try {
-    //       const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
-    //       const { clientData } = this._executeClientSync({
-    //         data: data || {},
-    //         location,
-    //         response: undefined,
-    //         input: { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam },
-    //       })
-    //       return clientData
-    //     } catch (error) {
-    //       throw Error0.from(error)
-    //     }
-    //   }
+    }
     return {
       ...this._defaultQueryOptions,
       ...this._defaultInfiniteQueryOptions,
@@ -6815,58 +5126,6 @@ export class Point0<
     throw new Error('No loader found')
   }
 
-  // private _usePresetCacheQuery({
-  //   queryClient,
-  //   queryOptions,
-  //   input,
-  // }: {
-  //   queryClient?: QueryClient
-  //   queryOptions: UseQueryOptions<any, any, any, any>
-  //   input: InputRaw<TRouteDefinition, TInputSchema>
-  // }): void {
-  //   const queryFn = queryOptions.queryFn
-  //   if (typeof queryFn !== 'function') {
-  //     return
-  //   }
-  //   const isAsyncQueryFn = queryFn.constructor.name === 'AsyncFunction'
-  //   if (isAsyncQueryFn) {
-  //     return
-  //   }
-  //   queryClient ??= _ssItems.queryClient.get()
-  //   const cache = queryClient.getQueryCache()
-  //   const exQuery = cache.find({ queryKey: queryOptions.queryKey as never, stale: false })
-  //   if (exQuery) {
-  //     return
-  //   }
-  //   const query = cache.build(queryClient, {
-  //     queryKey: queryOptions.queryKey,
-  //     queryHash: hashKey(queryOptions.queryKey),
-  //   })
-  //   try {
-  //     const data = (queryFn as any)()
-  //     const fixedData =
-  //       this._queryResultType === 'infiniteQuery'
-  //         ? {
-  //             pages: [data],
-  //             pageParams: [undefined],
-  //           }
-  //         : data
-  //     query.setState({
-  //       data,
-  //       error: null,
-  //       status: 'success',
-  //       fetchStatus: 'idle',
-  //     })
-  //   } catch (error) {
-  //     query.setState({
-  //       data: undefined,
-  //       error: { ...Error0.toJSON(error), name: 'Error0' },
-  //       status: 'error',
-  //       fetchStatus: 'idle',
-  //     })
-  //   }
-  // }
-
   private _useServerQuery({
     input,
     queryOptions,
@@ -7032,29 +5291,6 @@ export class Point0<
         if (serverFetchResult?.error) {
           throw serverFetchResult.error
         }
-        // if (this._hasClientLoader()) {
-        // if (this._hasClientAsyncLoader()) {
-        // const { clientOutput, clientInput } = await this._executeClientAsync({
-        //   serverData: serverFetchResult?.data,
-        //   serverResponse: serverFetchResult?.response,
-        //   input: input as never,
-        // })
-        // return clientOutput
-        //   } else {
-        //     const { clientOutput } = this._executeClientSync({
-        //       data: serverDataOrResponse instanceof Response ? {} : (serverDataOrResponse ?? {}),
-        //       response: serverDataOrResponse instanceof Response ? serverDataOrResponse : undefined,
-        //       input: input as never,
-        //     })
-        //     return clientOutput
-        //   }
-        // }
-        // if (this._hasMapperFns()) {
-        //   return this._mapperFns.reduce(
-        //     (data, mapperFn) => mapperFn({ data: clientOutput, input: clientInput }),
-        //     serverFetchResult?.output,
-        //   ) as FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput>
-        // }
         if (this._hasClientLoader()) {
           const { clientOutput } = await this._executeClientAsync({
             serverData: serverFetchResult?.data,
@@ -7281,71 +5517,6 @@ export class Point0<
     return (await queryClient.fetchQuery(queryOptions)) as never
   }
 
-  // static async _prefetchRelatedQueryPoints({
-  //   input,
-  //   relatedQueryPoints,
-  //   queryClient,
-  //   fetchOptions,
-  //   mode,
-  //   preventPrefetchFns,
-  //   preventPrefetchRelatedQueryPoints,
-  // }: {
-  //   input: InputsRaw<any, any>
-  //   relatedQueryPoints: AnyPoint[]
-  //   queryClient?: QueryClient
-  //   fetchOptions?: FetchOptions
-  //   mode: QueryMode
-  //   preventPrefetchFns?: boolean | OnPrefetchFn[]
-  //   preventPrefetchRelatedQueryPoints?: boolean
-  // }): Promise<void> {
-  //   await Promise.all(
-  //     relatedQueryPoints.map(async (point) =>
-  //       point._queryResultType === 'infiniteQuery'
-  //         ? await point.prefetchInfiniteQuery(input, undefined, {
-  //             queryClient,
-  //             fetchOptions,
-  //             mode,
-  //             preventPrefetchFns,
-  //             preventPrefetchRelatedQueryPoints,
-  //           })
-  //         : await point.prefetchQuery(input, undefined, {
-  //             queryClient,
-  //             fetchOptions,
-  //             mode,
-  //             preventPrefetchFns,
-  //             preventPrefetchRelatedQueryPoints,
-  //           }),
-  //     ),
-  //   )
-  // }
-
-  // async _prefetchRelatedQueryPoints({
-  //   input,
-  //   queryClient,
-  //   fetchOptions,
-  //   mode,
-  //   preventPrefetchRelatedQueryPoints = false,
-  //   preventPrefetchFns = false,
-  // }: {
-  //   input: InputsRaw<any, any>
-  //   queryClient?: QueryClient
-  //   fetchOptions?: FetchOptions
-  //   mode: QueryMode
-  //   preventPrefetchRelatedQueryPoints?: boolean
-  //   preventPrefetchFns?: boolean | OnPrefetchFn[]
-  // }): Promise<void> {
-  //   const relatedQueryPoints = this._relatedQueryPoints.filter((point) => point !== this._sameQueryPoint)
-  //   await Point0._prefetchRelatedQueryPoints({
-  //     input,
-  //     relatedQueryPoints,
-  //     queryClient,
-  //     fetchOptions,
-  //     mode,
-  //     preventPrefetchFns,
-  //     preventPrefetchRelatedQueryPoints,
-  //   })
-  // }
-
   async prefetchQuery(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
@@ -7359,7 +5530,6 @@ export class Point0<
             mode?: QueryMode
             outputType?: FetchOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
-            // preventPrefetchRelatedQueryPoints?: boolean
           },
         ]
       : [
@@ -7373,7 +5543,6 @@ export class Point0<
             mode?: QueryMode
             outputType?: FetchOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
-            // preventPrefetchRelatedQueryPoints?: boolean
           },
         ]
   ): Promise<void> {
@@ -7386,7 +5555,6 @@ export class Point0<
       force,
       mode = 'serverAndClient',
       preventPrefetchFns = false,
-      // preventPrefetchRelatedQueryPoints = false,
     } = options
     const preparedFetch = this._prepareFetchQuery({
       input,
@@ -7404,19 +5572,7 @@ export class Point0<
     if (cacheData && !force) {
       return
     }
-    await Promise.all([
-      this._callPrefetchFns({ preventPrefetchFns }),
-      queryClient.prefetchQuery(queryOptions as never),
-      // preventPrefetchRelatedQueryPoints
-      //   ? this._prefetchRelatedQueryPoints({
-      //       input,
-      //       queryClient,
-      //       fetchOptions,
-      //       mode,
-      //       preventPrefetchRelatedQueryPoints: true, // if we prefetch it, then we already prefetch all related query points
-      //     })
-      //   : undefined,
-    ])
+    await Promise.all([this._callPrefetchFns({ preventPrefetchFns }), queryClient.prefetchQuery(queryOptions as never)])
   }
 
   private _prepareFetchInfiniteQuery({
@@ -7587,7 +5743,6 @@ export class Point0<
             mode?: QueryMode
             outputType?: FetchOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
-            // preventPrefetchRelatedQueryPoints?: boolean
           },
         ]
       : [
@@ -7610,7 +5765,6 @@ export class Point0<
             mode?: QueryMode
             outputType?: FetchOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
-            // preventPrefetchRelatedQueryPoints?: boolean
           },
         ]
   ): Promise<void> {
@@ -7623,7 +5777,6 @@ export class Point0<
       force,
       mode = 'serverAndClient',
       preventPrefetchFns = false,
-      // preventPrefetchRelatedQueryPoints = false,
     } = options
     const preparedFetch = this._prepareFetchInfiniteQuery({
       input,
@@ -7644,15 +5797,6 @@ export class Point0<
     await Promise.all([
       this._callPrefetchFns({ preventPrefetchFns }),
       queryClient.prefetchInfiniteQuery(infiniteQueryOptions as never),
-      // preventPrefetchRelatedQueryPoints
-      //   ? this._prefetchRelatedQueryPoints({
-      //       input,
-      //       queryClient,
-      //       fetchOptions,
-      //       mode,
-      //       preventPrefetchRelatedQueryPoints: true, // if we prefetch it, then we already prefetch all related query points
-      //     })
-      //   : undefined,
     ])
   }
 
@@ -7779,49 +5923,9 @@ export class Point0<
       return
     }
 
-    // const allRelatedPoints = [this as ReadyPoint, ...this._layouts, ...this._relatedQueryPoints].map(
-    //   (p) => p._getSameQueryPoint() ?? p,
-    // )
     const allRelatedPoints = [this as never as ReadyPoint, ...this._layouts]
     const uniqRelatedPoints = [...new Set<AnyPoint>(allRelatedPoints)]
     const uniqPrefetchFns = [...new Set<OnPrefetchFn>([...uniqRelatedPoints.flatMap((p) => p._onPrefetchFns)])]
-
-    // const pageWithLayouts = [this, ...this._layouts]
-
-    // const uniqueRelatedQueryPoints = [...new Set<AnyPoint>(pageWithLayouts.flatMap((p) => p._relatedQueryPoints))]
-
-    // const uniqPrefetchFns = [
-    //   ...new Set<OnPrefetchFn>([
-    //     ...pageWithLayouts.flatMap((p) => p._onPrefetchFns),
-    //     ...uniqueRelatedQueryPoints.flatMap((p) => p._onPrefetchFns),
-    //   ]),
-    // ]
-
-    // const prefetchRelatedQueryPointsMode =
-    //   policy === 'onPrefetchOnly'
-    //     ? false
-    //     : policy === 'everything'
-    //       ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step
-    //         queryClientDehydratedStateWasPrefetched
-    //         ? 'client'
-    //         : 'serverAndClient'
-    //       : {
-    //           serverQuery: 'server' as const,
-    //           clientQuery: 'client' as const,
-    //           serverClientQuery: 'serverAndClient' as const,
-    //         }[policy]
-
-    // const relatedQueryPointsSelfPrefetchPromise = prefetchRelatedQueryPointsMode
-    //   ? Point0._prefetchRelatedQueryPoints({
-    //       input,
-    //       relatedQueryPoints: uniqueRelatedQueryPoints,
-    //       queryClient,
-    //       fetchOptions,
-    //       mode: prefetchRelatedQueryPointsMode,
-    //       preventPrefetchFns: true,
-    //       preventPrefetchRelatedQueryPoints: true,
-    //     })
-    //   : undefined
 
     const onPrefetchFnsPromise = Promise.all(
       uniqPrefetchFns.map(async (fn) => {
@@ -7860,7 +5964,6 @@ export class Point0<
             force,
             mode,
             preventPrefetchFns: true,
-            // preventPrefetchRelatedQueryPoints: true,
           })
         } else {
           return await p.prefetchQuery(inputHere as never, queryOptions, {
@@ -7870,15 +5973,12 @@ export class Point0<
             force,
             mode,
             preventPrefetchFns: true,
-            // preventPrefetchRelatedQueryPoints: true,
           })
         }
       }),
     )
 
     await Promise.all([queriesPrefetching, onPrefetchFnsPromise])
-
-    // await Promise.all([queriesPrefetching, onPrefetchFnsPromise, relatedQueryPointsSelfPrefetchPromise])
   }
 
   // mountable components
@@ -7887,7 +5987,6 @@ export class Point0<
     pageState,
     pageStateManager,
     prevMountActions,
-    // mountState,
   }: {
     pageState: RouterPageState
     pageStateManager: {
@@ -7895,7 +5994,6 @@ export class Point0<
       setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
     }
     prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any> }>
-    // mountState: MountableState<any, any, any, any, any>
   }) => {
     React.useEffect(() => {
       // pageStateManager.setPageState(pageState)
@@ -7974,7 +6072,6 @@ export class Point0<
     fallbackErrorComponent: ErrorComponentType<any>
   }): React.ComponentType<{ error: Error; _isHeadable?: boolean }> => {
     const errorComponent =
-      // [...prevMountActions].reverse().find(({action}) => action.type === 'errorComponent')?.action.Component ??
       prevMountActions.flatMap(({ action }) => (action.type === 'errorComponent' ? [action.Component] : [])).at(-1) ??
       fallbackErrorComponent
     return ({ error, _isHeadable = isHeadable }: { error: Error; _isHeadable?: boolean }) => {
@@ -7998,10 +6095,6 @@ export class Point0<
     }
   }
 
-  // private static readonly _isMountActionCausesWrapping = (action: MountAction) => {
-  //   return action.type === 'wrapper' || action.type === 'query' || action.type === 'selfQuery' || action.type === 'with'
-  // }
-
   private readonly _getMountable = (props: {
     inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
     outerProps: TOuterProps
@@ -8009,7 +6102,6 @@ export class Point0<
       | LayoutSuccessComponentType<any, any, any, any>
       | PageSuccessComponentType<any, any, any, any>
       | ComponentSuccessComponentType<any, any, any>
-      // | ProviderSuccessComponentType<any, any, any>
       | 'children'
     extraProps: (mountableState: MountableState<any, any, any, any, any>) => Record<string, any>
 
@@ -8025,9 +6117,6 @@ export class Point0<
       nextMountActions: MountAction[]
       innerProps: Props
       queries: QueriesResults
-      // allQueries: Queries
-      // setQueriesAfterIndexToAllQueries: (queries: UseQueryOrInfiniteQueryResult[], index: number) => void
-      // allQueriesState: Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'>
       mappedData: Data | undefined
       LoadingComponent: React.ComponentType<{ _isHeadable?: boolean }>
       ErrorComponent: React.ComponentType<{ error: Error; _isHeadable?: boolean }>
@@ -8257,9 +6346,6 @@ export class Point0<
         location,
         pageStateManager,
         prev: {
-          // allQueriesState,
-          // allQueries,
-          // setQueriesAfterIndexToAllQueries,
           LoadingComponent,
           ErrorComponent,
           nextMountActions: currentMountActions,
@@ -8288,7 +6374,6 @@ export class Point0<
               error: result,
             })
           } else {
-            // mountState.props = { ...mountState.props, ...(result || {}) }
             return React.createElement(this._getMountable, {
               ..._nextMountableProps,
               prev: {
@@ -8339,9 +6424,6 @@ export class Point0<
         error: mountState.error,
         loading: mountState.loading,
       } as RouterPageState
-      React.useEffect(() => {
-        // pageStateManager.setPageState(pageState)
-      }, [pageState.status, pageState.error?.message, pageState.loading])
       Point0._usePrevHeadsAndSetPageState({
         pageState,
         pageStateManager,
