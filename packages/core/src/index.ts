@@ -93,13 +93,13 @@ import type {
   ExtendRouteDefinition,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
-  FetchDetailedOutput,
+  FetchServerDetailedOutput,
   FetchFn,
   FetchOptions,
   FetchOptionsFn,
   FetchOptionsOrFn,
-  FetchOutput,
-  FetchOutputType,
+  FetchServerOutput,
+  FetchServerOutputType,
   FinalLoaderData,
   FinalLoaderDataOrNever,
   FinalLoaderOutput,
@@ -4361,12 +4361,12 @@ export class Point0<
       ? [
           input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
           fetchOptions?: FetchOptions,
-          _outputType?: FetchOutputType,
+          _outputType?: FetchServerOutputType,
         ]
       : [
           input: InputsRaw<TServerInputSchema, TClientInputSchema>,
           fetchOptions?: FetchOptions,
-          _outputType?: FetchOutputType,
+          _outputType?: FetchServerOutputType,
         ]
   ): { url: string; init: RequestInit; request: Request } {
     const [input = {}, options] = args
@@ -4500,14 +4500,14 @@ export class Point0<
       ? [
           input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
           fetchOptions?: FetchOptions,
-          _outputType?: FetchOutputType,
+          _outputType?: FetchServerOutputType,
         ]
       : [
           input: InputsRaw<TServerInputSchema, TClientInputSchema>,
           fetchOptions?: FetchOptions,
-          _outputType?: FetchOutputType,
+          _outputType?: FetchServerOutputType,
         ]
-  ): Promise<FetchDetailedOutput<TServerLoaderOutput>> {
+  ): Promise<FetchServerDetailedOutput<TServerLoaderOutput>> {
     let res: Response | undefined
     try {
       const fetchOptions = this.getFetchServerOptions(...args)
@@ -4517,12 +4517,17 @@ export class Point0<
       res = await fetchFn(fetchRequest)
       CookiesStore.refresh()
       if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
-        return { response: res, data: undefined, error: null, output: res } as FetchDetailedOutput<TServerLoaderOutput>
+        return {
+          response: res,
+          data: undefined,
+          error: null,
+          output: res,
+        } as FetchServerDetailedOutput<TServerLoaderOutput>
       }
       const json = await res.json()
       const data = this._getTransformer().deserialize(json)
       if (res.ok) {
-        return { response: res, data, error: null, output: data } as FetchDetailedOutput<TServerLoaderOutput>
+        return { response: res, data, error: null, output: data } as FetchServerDetailedOutput<TServerLoaderOutput>
       }
       return {
         response: res,
@@ -4538,7 +4543,7 @@ export class Point0<
         data: undefined,
         error: Error0.from(error),
         output: undefined,
-      } as FetchDetailedOutput<TServerLoaderOutput>
+      } as FetchServerDetailedOutput<TServerLoaderOutput>
     }
   }
 
@@ -4547,19 +4552,19 @@ export class Point0<
       ? [
           input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
           fetchOptions?: FetchOptions,
-          _outputType?: FetchOutputType,
+          _outputType?: FetchServerOutputType,
         ]
       : [
           input: InputsRaw<TServerInputSchema, TClientInputSchema>,
           fetchOptions?: FetchOptions,
-          _outputType?: FetchOutputType,
+          _outputType?: FetchServerOutputType,
         ]
-  ): Promise<FetchOutput<TServerLoaderOutput>> {
+  ): Promise<FetchServerOutput<TServerLoaderOutput>> {
     const detailedResult = await this.fetchServerDetailed(...args)
     if (detailedResult.error) {
       throw detailedResult.error
     }
-    return detailedResult.output as FetchOutput<TServerLoaderOutput>
+    return detailedResult.output as FetchServerOutput<TServerLoaderOutput>
   }
 
   _getServerQueryKey({
@@ -4568,7 +4573,7 @@ export class Point0<
     isInfiniteQuery,
   }: {
     input: InputsRaw<TServerInputSchema, TClientInputSchema>
-    outputType?: FetchOutputType
+    outputType?: FetchServerOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
     return [
@@ -4608,7 +4613,7 @@ export class Point0<
     isInfiniteQuery,
   }: {
     input: InputsRaw<TServerInputSchema, TClientInputSchema>
-    outputType?: FetchOutputType
+    outputType?: FetchServerOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
     return [
@@ -4625,8 +4630,8 @@ export class Point0<
 
   getQueryKey(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-      ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>, _outputType?: FetchOutputType]
-      : [input: InputsRaw<TServerInputSchema, TClientInputSchema>, _outputType?: FetchOutputType]
+      ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>, _outputType?: FetchServerOutputType]
+      : [input: InputsRaw<TServerInputSchema, TClientInputSchema>, _outputType?: FetchServerOutputType]
   ): QueryKey {
     const [input, outputType] = args
     const hasClientLoader = this._hasClientLoader()
@@ -4663,8 +4668,13 @@ export class Point0<
     input: InputsRaw<TServerInputSchema, TClientInputSchema>
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
-    outputType?: FetchOutputType
-  }): UseQueryOptions<FetchOutput<TServerLoaderOutput>, Error0, FetchOutput<TServerLoaderOutput>, QueryKey> {
+    outputType?: FetchServerOutputType
+  }): UseQueryOptions<
+    FetchServerOutput<TServerLoaderOutput>,
+    Error0,
+    FetchServerOutput<TServerLoaderOutput>,
+    QueryKey
+  > {
     const queryKey = this._getServerQueryKey({ input, outputType, isInfiniteQuery: false })
     const queryFn = async () => {
       const data = await this.fetchServer(input as never, fetchOptions, outputType)
@@ -4796,7 +4806,7 @@ export class Point0<
             location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
-            outputType?: FetchOutputType
+            outputType?: FetchServerOutputType
             mode?: QueryMode
           },
         ]
@@ -4807,7 +4817,7 @@ export class Point0<
             location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
-            outputType?: FetchOutputType
+            outputType?: FetchServerOutputType
             mode?: QueryMode
           },
         ]
@@ -4866,11 +4876,11 @@ export class Point0<
         >
       | undefined
     fetchOptions?: FetchOptions | undefined
-    outputType?: FetchOutputType
+    outputType?: FetchServerOutputType
   }): UseInfiniteQueryOptions<
-    InfiniteData<FetchOutput<TServerLoaderOutput>>,
+    InfiniteData<FetchServerOutput<TServerLoaderOutput>>,
     Error0,
-    FetchOutput<TServerLoaderOutput>,
+    FetchServerOutput<TServerLoaderOutput>,
     QueryKey
   > {
     const queryKey = this._getServerQueryKey({ input: input as never, outputType, isInfiniteQuery: true })
@@ -5064,7 +5074,7 @@ export class Point0<
             location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
-            outputType?: FetchOutputType
+            outputType?: FetchServerOutputType
             mode?: QueryMode
           },
         ]
@@ -5084,7 +5094,7 @@ export class Point0<
             location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
-            outputType?: FetchOutputType
+            outputType?: FetchServerOutputType
             mode?: QueryMode
           },
         ]
@@ -5135,8 +5145,8 @@ export class Point0<
     input: InputsRaw<TServerInputSchema, TClientInputSchema>
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
-    outputType?: FetchOutputType
-  }): UseQueryResult<FetchOutput<TServerLoaderOutput>, Error0> {
+    outputType?: FetchServerOutputType
+  }): UseQueryResult<FetchServerOutput<TServerLoaderOutput>, Error0> {
     return useQuery(this._getServerQueryOptions({ input, queryOptions, fetchOptions, outputType }))
   }
 
@@ -5199,8 +5209,8 @@ export class Point0<
         >
       | undefined
     fetchOptions?: FetchOptions | undefined
-    outputType?: FetchOutputType
-  }): UseInfiniteQueryResult<InfiniteData<FetchOutput<TServerLoaderOutput>>, Error0> {
+    outputType?: FetchServerOutputType
+  }): UseInfiniteQueryResult<InfiniteData<FetchServerOutput<TServerLoaderOutput>>, Error0> {
     const infiniteQueryOptions = this._getServerInfiniteQueryOptions({
       input,
       infiniteQueryOptions: providedInfiniteQueryOptions,
@@ -5403,7 +5413,7 @@ export class Point0<
     queryClient?: QueryClient
     queryOptions?: ExtraUseQueryOptions
     fetchOptions?: FetchOptions
-    outputType?: FetchOutputType
+    outputType?: FetchServerOutputType
     location?: AnyLocation
   }):
     | false
@@ -5450,7 +5460,7 @@ export class Point0<
             force?: boolean
             cacheOnly?: TCacheOnly
             mode?: TMode
-            outputType?: FetchOutputType
+            outputType?: FetchServerOutputType
           },
         ]
       : [
@@ -5463,7 +5473,7 @@ export class Point0<
             force?: boolean
             cacheOnly?: boolean
             mode?: TMode
-            outputType?: FetchOutputType
+            outputType?: FetchServerOutputType
           },
         ]
   ): Promise<
@@ -5528,7 +5538,7 @@ export class Point0<
             fetchOptions?: FetchOptions
             force?: boolean
             mode?: QueryMode
-            outputType?: FetchOutputType
+            outputType?: FetchServerOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
           },
         ]
@@ -5541,7 +5551,7 @@ export class Point0<
             fetchOptions?: FetchOptions
             force?: boolean
             mode?: QueryMode
-            outputType?: FetchOutputType
+            outputType?: FetchServerOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
           },
         ]
@@ -5589,7 +5599,7 @@ export class Point0<
     queryClient?: QueryClient
     infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<any, any, any, any, any, any>
     fetchOptions?: FetchOptions
-    outputType?: FetchOutputType
+    outputType?: FetchServerOutputType
     location?: AnyLocation
   }):
     | false
@@ -5645,7 +5655,7 @@ export class Point0<
             force?: boolean
             cacheOnly?: TCacheOnly
             mode?: TMode
-            outputType?: FetchOutputType
+            outputType?: FetchServerOutputType
           },
         ]
       : [
@@ -5667,7 +5677,7 @@ export class Point0<
             force?: boolean
             cacheOnly?: TCacheOnly
             mode?: TMode
-            outputType?: FetchOutputType
+            outputType?: FetchServerOutputType
           },
         ]
   ): Promise<
@@ -5741,7 +5751,7 @@ export class Point0<
             fetchOptions?: FetchOptions
             force?: boolean
             mode?: QueryMode
-            outputType?: FetchOutputType
+            outputType?: FetchServerOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
           },
         ]
@@ -5763,7 +5773,7 @@ export class Point0<
             fetchOptions?: FetchOptions
             force?: boolean
             mode?: QueryMode
-            outputType?: FetchOutputType
+            outputType?: FetchServerOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
           },
         ]
