@@ -15,7 +15,7 @@ import type {
   UseInfiniteQueryResult,
   UseQueryResult,
 } from '@tanstack/react-query'
-import type { Point0 } from './index.js'
+import type { Point0 } from './point0.js'
 import type { Props, QueriesDefinitions } from './mountable.js'
 import type { PointsManager } from './points-manager.js'
 import type { Request0 } from './request0.js'

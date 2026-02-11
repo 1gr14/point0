@@ -49,12 +49,12 @@ getFakeClient remove from internals, use from superstore import fakeClient.get()
 response0 → effects
 ? Зачем вообще нужен сет, пусть будет просто эффектс, а в них уже сет
 
-bun watcher, not parcel watcher
-? html transformer not regex hack
-
 remove all points manager
 throw if same name and type in current scope
 Разобраться с эррор баундари для фронта
+
+bun watcher, not parcel watcher
+? html transformer not regex hack
 
 --+
 Remove comments, unusde code, unused types (except core/point0.ts and core/types.ts)

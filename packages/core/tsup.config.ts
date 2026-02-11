@@ -10,6 +10,7 @@ const general = {
     'src/index.ts',
     'src/internals.ts',
     'src/mountable.ts',
+    'src/point0.ts',
     'src/points-manager.ts',
     'src/query-client.tsx',
     'src/request0.ts',
