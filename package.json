@@ -24,7 +24,7 @@
   "scripts": {
     "dev": "bun run build:watch",
     "build": "bun --filter '@point0/core' build && bun --filter '@point0/compiler' build && bun --filter '@point0/engine' build && bun --filter '@point0/react-dom' build && bun --filter '@point0/wouter' build && bun --filter '@point0/cookies-store' build",
-    "build:watch": "bun run build && concurrently -k \"bun --filter '@point0/core' build:watch\" \"bun --filter '@point0/compiler' build:watch\" \"bun --filter '@point0/engine' build:watch\" \"bun --filter '@point0/react-dom' build:watch\" \"bun --filter '@point0/wouter' build:watch\" \"bun --filter '@point0/cookies-store' build:watch\"",
+    "build:watch": "bun run build && bun run --parallel --if-present --filter '@point0/*' build:watch",
     "testa": "bun run scripts/test-parallel.ts",
     "tests": "cross-env SLOW_TESTS_ONLY=1 bun run scripts/test-parallel.ts",
     "testf": "cross-env NO_TEST_UTILS_TESTS=1 NO_SLOW_TESTS=1 bun run scripts/test-parallel.ts",
@@ -51,7 +51,6 @@
     "@semantic-release/github": "^11.0.6",
     "@semantic-release/npm": "^12.0.2",
     "@typescript/native-preview": "^7.0.0-dev.20260212.1",
-    "concurrently": "^9.2.1",
     "eslint": "^9.36.0",
     "eslint-config-love": "^130.0.0",
     "eslint-config-prettier": "^10.1.8",
