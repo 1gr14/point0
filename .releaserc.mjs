@@ -47,7 +47,19 @@ export default {
     [
       '@semantic-release/npm',
       {
-        pkgRoot: 'packages/elysia',
+        pkgRoot: 'packages/cookies-store',
+      },
+    ],
+    [
+      '@semantic-release/npm',
+      {
+        pkgRoot: 'packages/react-dom',
+      },
+    ],
+    [
+      '@semantic-release/npm',
+      {
+        pkgRoot: 'packages/compiler',
       },
     ],
     '@semantic-release/github',

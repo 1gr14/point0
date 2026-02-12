@@ -1,5 +1,5 @@
 import { Point0, queryClient } from '@point0/core'
-import { createTestThings } from '@point0/engine/tests/utils'
+import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
 import { describe, expect, it } from 'bun:test'
 import * as z from 'zod'
 import { CookiesStore } from '../src/index.js'
