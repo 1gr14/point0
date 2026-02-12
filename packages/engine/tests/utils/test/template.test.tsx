@@ -4,7 +4,7 @@ import { TestProjectFactory } from '../project.js'
 import type { Engine } from '../../../src/engine.js'
 
 const tpf = TestProjectFactory.create({
-  namespace: 'dev',
+  namespace: 'template',
   portsRange: [0, Infinity], // will not run anything there
 })
 
@@ -48,7 +48,7 @@ describe('template', () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: false, browser: false })
   })
 
-  it.concurrent(
+  it(
     'copy template to temp dir',
     wrp(async ({ tp }) => {
       expect(await tp.files.packageJson.text()).toContain(tp.name)
@@ -64,7 +64,7 @@ describe('template', () => {
     }),
   )
 
-  it.concurrent(
+  it(
     'set server and client ports',
     wrp(async ({ tp }) => {
       await tp.init()

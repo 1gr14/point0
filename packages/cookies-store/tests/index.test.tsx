@@ -5,6 +5,102 @@ import * as z from 'zod'
 import { CookiesStore } from '../src/index.js'
 
 describe('cookies-store', () => {
+  describe('client document cookie helpers', () => {
+    it('serialize cookie once with encoded values and sanitized attributes', () => {
+      let writtenCookie = ''
+      const originalDocumentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document')
+      const mockDocument = {
+        get cookie() {
+          return ''
+        },
+        set cookie(value: string) {
+          writtenCookie = value
+        },
+      }
+      Object.defineProperty(globalThis, 'document', {
+        value: mockDocument,
+        configurable: true,
+      })
+
+      try {
+        CookiesStore.clientDocumentCookieSetter({
+          name: 'user name',
+          value: 'hello world',
+          path: '/app;bad=true',
+          domain: 'example.com;bad=true',
+          sameSite: 'lax',
+          maxAge: 10.9,
+        })
+
+        expect(writtenCookie).toContain('user%20name=hello%20world')
+        expect(writtenCookie).toContain('Path=/app')
+        expect(writtenCookie).toContain('Domain=example.com')
+        expect(writtenCookie).toContain('SameSite=lax')
+        expect(writtenCookie).toContain('Max-Age=10')
+        expect(writtenCookie).not.toContain('bad=true')
+      } finally {
+        if (originalDocumentDescriptor) {
+          Object.defineProperty(globalThis, 'document', originalDocumentDescriptor)
+        } else {
+          delete (globalThis as any).document
+        }
+      }
+    })
+
+    it('normalize invalid sameSite to lax in document setter', () => {
+      let writtenCookie = ''
+      const originalDocumentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document')
+      const mockDocument = {
+        get cookie() {
+          return ''
+        },
+        set cookie(value: string) {
+          writtenCookie = value
+        },
+      }
+      Object.defineProperty(globalThis, 'document', {
+        value: mockDocument,
+        configurable: true,
+      })
+
+      try {
+        CookiesStore.clientDocumentCookieSetter({
+          name: 'x',
+          value: '1',
+          sameSite: 'weird' as never,
+        })
+        expect(writtenCookie).toContain('SameSite=lax')
+      } finally {
+        if (originalDocumentDescriptor) {
+          Object.defineProperty(globalThis, 'document', originalDocumentDescriptor)
+        } else {
+          delete (globalThis as any).document
+        }
+      }
+    })
+
+    it('read decoded value for encoded cookie name', () => {
+      const originalDocumentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document')
+      const mockDocument = {
+        cookie: 'user%20name=hello%20world; plain=value',
+      }
+      Object.defineProperty(globalThis, 'document', {
+        value: mockDocument,
+        configurable: true,
+      })
+
+      try {
+        expect(CookiesStore.clientDocumentCookieGetter('user name')).toBe('hello world')
+      } finally {
+        if (originalDocumentDescriptor) {
+          Object.defineProperty(globalThis, 'document', originalDocumentDescriptor)
+        } else {
+          delete (globalThis as any).document
+        }
+      }
+    })
+  })
+
   it('without', async () => {
     const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()
     const login = root

@@ -206,6 +206,23 @@ describe('Effects', () => {
       expect(cookies[0].expires).toBeInstanceOf(Date)
     })
 
+    it('parse cookie attributes case-insensitively', () => {
+      const response = new Response('body')
+      response.headers.append(
+        'Set-Cookie',
+        'token=xyz789; path=/api; domain=example.com; max-age=3600; expires=Wed, 21 Oct 2025 07:28:00 GMT; secure; httponly; samesite=none; partitioned',
+      )
+      const cookies = Effects.parseCookies(response)
+      expect(cookies).toHaveLength(1)
+      expect(cookies[0].path).toBe('/api')
+      expect(cookies[0].domain).toBe('example.com')
+      expect(cookies[0].maxAge).toBe(3600)
+      expect(cookies[0].secure).toBe(true)
+      expect(cookies[0].httpOnly).toBe(true)
+      expect(cookies[0].sameSite).toBe('none')
+      expect(cookies[0].partitioned).toBe(true)
+    })
+
     it('parse multiple cookies', () => {
       const response = new Response('body')
       response.headers.append('Set-Cookie', 'cookie1=value1; Path=/')
@@ -214,6 +231,57 @@ describe('Effects', () => {
       expect(cookies).toHaveLength(2)
       expect(cookies[0].name).toBe('cookie1')
       expect(cookies[1].name).toBe('cookie2')
+    })
+
+    it('parse percent-encoded name and value', () => {
+      const response = new Response('body')
+      response.headers.append('Set-Cookie', 'user%20name=hello%20world')
+      const cookies = Effects.parseCookies(response)
+      expect(cookies).toHaveLength(1)
+      expect(cookies[0]).toEqual({
+        name: 'user name',
+        value: 'hello world',
+        path: '/',
+        sameSite: 'lax',
+      })
+    })
+  })
+
+  describe('serializeCookie', () => {
+    it('serialize cookie pair for request cookie header', () => {
+      const serialized = Effects.serializeCookiePair({
+        name: 'user name',
+        value: 'hello world',
+      })
+      expect(serialized).toBe('user%20name=hello%20world')
+    })
+
+    it('sanitize and encode cookie parts', () => {
+      const serialized = Effects.serializeCookie({
+        name: 'user name',
+        value: 'hello world',
+        path: '/app;malicious=true',
+        domain: 'example.com;malicious=true',
+        sameSite: 'lax',
+        maxAge: 10.9,
+      })
+
+      expect(serialized).toContain('user%20name=hello%20world')
+      expect(serialized).toContain('Path=/app')
+      expect(serialized).toContain('Domain=example.com')
+      expect(serialized).toContain('SameSite=lax')
+      expect(serialized).toContain('Max-Age=10')
+      expect(serialized).not.toContain('malicious=true')
+    })
+
+    it('normalize invalid sameSite to lax', () => {
+      const serialized = Effects.serializeCookie({
+        name: 'n',
+        value: 'v',
+        path: '/',
+        sameSite: 'invalid' as never,
+      })
+      expect(serialized).toContain('SameSite=lax')
     })
   })
 

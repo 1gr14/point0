@@ -1,6 +1,40 @@
 import { _point0_env } from './env.js'
 import { _ssItems } from './internals.js'
 
+const encodeCookieName = (name: string): string => {
+  return encodeURIComponent(name)
+    .replace(/%(2[346B]|5E|60|7C)/g, decodeURIComponent)
+    .replace(/[()]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)
+}
+
+const encodeCookieValue = (value: string): string => {
+  return encodeURIComponent(value).replace(
+    /%(2[346BF]|3[AC-F]|40|5[BDE]|60|7[BCD])/g,
+    decodeURIComponent,
+  )
+}
+
+const decodeCookieValue = (value: string): string => {
+  const unquoted = value.startsWith('"') ? value.slice(1, -1) : value
+  try {
+    return unquoted.replace(/(%[\dA-F]{2})+/gi, decodeURIComponent)
+  } catch {
+    return unquoted
+  }
+}
+
+const sanitizeCookieAttributeValue = (value: unknown): string => {
+  return String(value).split(';')[0]
+}
+
+const normalizeSameSite = (value: unknown): CookieSameSite => {
+  const normalized = String(value).trim().toLowerCase()
+  if (normalized === 'strict' || normalized === 'lax' || normalized === 'none') {
+    return normalized
+  }
+  return 'lax'
+}
+
 export type CookieSameSite = 'strict' | 'lax' | 'none'
 
 export type CookieOptions = {
@@ -164,15 +198,19 @@ export class Effects {
     return new Effects()
   }
 
+  static serializeCookiePair(cookie: Pick<CookieOptions, 'name' | 'value'>): string {
+    return `${encodeCookieName(cookie.name)}=${encodeCookieValue(cookie.value)}`
+  }
+
   static serializeCookie(cookie: CookieOptions): string {
-    const parts: string[] = [`${cookie.name}=${cookie.value}`]
+    const parts: string[] = [Effects.serializeCookiePair(cookie)]
 
     if (cookie.path) {
-      parts.push(`Path=${cookie.path}`)
+      parts.push(`Path=${sanitizeCookieAttributeValue(cookie.path)}`)
     }
 
     if (cookie.domain) {
-      parts.push(`Domain=${cookie.domain}`)
+      parts.push(`Domain=${sanitizeCookieAttributeValue(cookie.domain)}`)
     }
 
     if (cookie.expires !== undefined) {
@@ -185,8 +223,8 @@ export class Effects {
       parts.push(`Expires=${expiresDate.toUTCString()}`)
     }
 
-    if (cookie.maxAge !== undefined) {
-      parts.push(`Max-Age=${cookie.maxAge}`)
+    if (typeof cookie.maxAge === 'number' && Number.isFinite(cookie.maxAge)) {
+      parts.push(`Max-Age=${Math.floor(cookie.maxAge)}`)
     }
 
     if (cookie.secure) {
@@ -198,7 +236,7 @@ export class Effects {
     }
 
     // sameSite is required, so always include it
-    parts.push(`SameSite=${cookie.sameSite}`)
+    parts.push(`SameSite=${normalizeSameSite(cookie.sameSite)}`)
 
     if (cookie.partitioned) {
       parts.push('Partitioned')
@@ -295,8 +333,8 @@ export class Effects {
       const value = nameValueMatch[2].trim()
 
       const cookie: CookieOptions = {
-        name,
-        value,
+        name: decodeCookieValue(name),
+        value: decodeCookieValue(value),
         path: '/', // Default
         sameSite: 'lax', // Default
       }
@@ -312,22 +350,22 @@ export class Effects {
           cookie.httpOnly = true
         } else if (lowerPart === 'partitioned') {
           cookie.partitioned = true
-        } else if (part.startsWith('Path=')) {
+        } else if (lowerPart.startsWith('path=')) {
           cookie.path = part.substring(5).trim()
-        } else if (part.startsWith('Domain=')) {
+        } else if (lowerPart.startsWith('domain=')) {
           cookie.domain = part.substring(7).trim()
-        } else if (part.startsWith('Max-Age=')) {
+        } else if (lowerPart.startsWith('max-age=')) {
           const maxAge = parseInt(part.substring(8).trim(), 10)
           if (!isNaN(maxAge)) {
             cookie.maxAge = maxAge
           }
-        } else if (part.startsWith('Expires=')) {
+        } else if (lowerPart.startsWith('expires=')) {
           const expiresStr = part.substring(8).trim()
           const expiresDate = new Date(expiresStr)
           if (!isNaN(expiresDate.getTime())) {
             cookie.expires = expiresDate
           }
-        } else if (part.startsWith('SameSite=')) {
+        } else if (lowerPart.startsWith('samesite=')) {
           const sameSiteValue = part.substring(9).trim().toLowerCase()
           if (sameSiteValue === 'strict' || sameSiteValue === 'lax' || sameSiteValue === 'none') {
             cookie.sameSite = sameSiteValue

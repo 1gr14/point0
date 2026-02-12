@@ -4465,7 +4465,7 @@ export class Point0<
     if (currentEffects) {
       const cookies = Object.values(currentEffects.cookies)
       for (const cookie of cookies) {
-        const serializedCookie = Effects.serializeCookie(cookie)
+        const serializedCookie = Effects.serializeCookiePair(cookie)
         if (updatedHeaders.has('cookie')) {
           updatedHeaders.set('cookie', `${updatedHeaders.get('cookie')}; ${serializedCookie}`)
         } else {

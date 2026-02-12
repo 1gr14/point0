@@ -4,6 +4,40 @@ import type { CookieOptionsInput } from '@point0/core/effects'
 import { Effects } from '@point0/core/effects'
 import { useEffect, useRef, useState } from 'react'
 
+const encodeCookieName = (name: string): string => {
+  return encodeURIComponent(name)
+    .replace(/%(2[346B]|5E|60|7C)/g, decodeURIComponent)
+    .replace(/[()]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)
+}
+
+const encodeCookieValue = (value: string): string => {
+  return encodeURIComponent(value).replace(
+    /%(2[346BF]|3[AC-F]|40|5[BDE]|60|7[BCD])/g,
+    decodeURIComponent,
+  )
+}
+
+const decodeCookieValue = (value: string): string => {
+  const unquoted = value.startsWith('"') ? value.slice(1, -1) : value
+  try {
+    return unquoted.replace(/(%[\dA-F]{2})+/gi, decodeURIComponent)
+  } catch {
+    return unquoted
+  }
+}
+
+const sanitizeCookieAttributeValue = (value: unknown): string => {
+  return String(value).split(';')[0]
+}
+
+const normalizeSameSite = (value: unknown): 'strict' | 'lax' | 'none' => {
+  const normalized = String(value).trim().toLowerCase()
+  if (normalized === 'strict' || normalized === 'lax' || normalized === 'none') {
+    return normalized
+  }
+  return 'lax'
+}
+
 export type CookieDefineOptions<
   THttpOnly extends boolean = false,
   TTransformer extends DataTransformer | 'auto' | boolean = 'auto',
@@ -17,31 +51,70 @@ export type CookieDefineOptions<
 export class CookiesStore {
   static clientDocumentCookieGetter: CookiesStoreGetter = (name) => {
     if (typeof document !== 'undefined') {
-      return document.cookie
-        .split('; ')
-        .find((row) => row.startsWith(`${name}=`))
-        ?.split('=')[1]
+      const cookies = document.cookie ? document.cookie.split('; ') : []
+      for (const cookie of cookies) {
+        const separatorIndex = cookie.indexOf('=')
+        if (separatorIndex < 0) {
+          continue
+        }
+        const rawName = cookie.slice(0, separatorIndex)
+        const rawValue = cookie.slice(separatorIndex + 1)
+        try {
+          const decodedName = decodeURIComponent(rawName)
+          if (decodedName === name) {
+            return decodeCookieValue(rawValue)
+          }
+        } catch {
+          // Ignore malformed cookie name/value pairs.
+        }
+      }
     }
     return undefined
   }
 
   static clientDocumentCookieSetter: CookiesStoreSetter = (options) => {
     if (typeof document !== 'undefined') {
-      document.cookie = `${options.name}=${options.value}`
-      document.cookie += `; Path=${options.path ?? '/'}`
-      document.cookie += `; SameSite=${options.sameSite ?? 'lax'}`
-      if (options.domain) {
-        document.cookie += `; Domain=${options.domain}`
+      const attributes: Record<string, string | number | boolean | Date | undefined> = {
+        path: options.path ?? '/',
+        sameSite: normalizeSameSite(options.sameSite ?? 'lax'),
+        domain: options.domain,
+        expires: options.expires,
+        secure: options.secure,
+        partitioned: options.partitioned,
+        maxAge: options.maxAge,
       }
-      if (options.expires) {
+      if (typeof attributes.expires === 'number') {
+        attributes.expires = new Date(Date.now() + attributes.expires * 864e5)
+      }
+      const parts = [`${encodeCookieName(options.name)}=${encodeCookieValue(options.value)}`]
+
+      if (attributes.path) {
+        parts.push(`Path=${sanitizeCookieAttributeValue(attributes.path)}`)
+      }
+      if (attributes.sameSite) {
+        parts.push(`SameSite=${normalizeSameSite(attributes.sameSite)}`)
+      }
+      if (attributes.domain) {
+        parts.push(`Domain=${sanitizeCookieAttributeValue(attributes.domain)}`)
+      }
+      if (attributes.expires) {
         const expiresDate =
-          typeof options.expires === 'string'
-            ? new Date(options.expires)
-            : options.expires instanceof Date
-              ? options.expires
-              : new Date(options.expires)
-        document.cookie += `; Expires=${expiresDate.toUTCString()}`
+          attributes.expires instanceof Date ? attributes.expires : new Date(String(attributes.expires))
+        if (!isNaN(expiresDate.getTime())) {
+          parts.push(`Expires=${expiresDate.toUTCString()}`)
+        }
       }
+      if (typeof attributes.maxAge === 'number' && Number.isFinite(attributes.maxAge)) {
+        parts.push(`Max-Age=${Math.floor(attributes.maxAge)}`)
+      }
+      if (attributes.secure) {
+        parts.push('Secure')
+      }
+      if (attributes.partitioned) {
+        parts.push('Partitioned')
+      }
+
+      document.cookie = parts.join('; ')
     }
   }
 
