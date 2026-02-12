@@ -31,7 +31,7 @@ const general = {
   bundle: false,
   esbuildPlugins: [fixImportsPlugin()],
   platform: 'node',
-  tsconfig: './tsconfig.json',
+  tsconfig: './tsconfig.build.json',
 } satisfies Options
 
 export default defineConfig({

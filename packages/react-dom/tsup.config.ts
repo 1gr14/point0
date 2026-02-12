@@ -12,7 +12,7 @@ const general = {
   treeshake: false,
   bundle: false,
   platform: 'node',
-  tsconfig: './tsconfig.json',
+  tsconfig: './tsconfig.build.json',
 } satisfies Options
 
 export default defineConfig({
