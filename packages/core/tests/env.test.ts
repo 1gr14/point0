@@ -37,9 +37,13 @@ describe('env', () => {
     // Reset environment
     process.env = { ...originalEnv }
     // Clear global objects that might affect target detection
-    delete (globalThis as any).window
-    delete (globalThis as any).document
-    delete (globalThis as any).navigator
+    try {
+      delete (globalThis as any).window
+      delete (globalThis as any).document
+      delete (globalThis as any).navigator
+    } catch (error) {
+      console.error(error)
+    }
   })
 
   afterEach(() => {

@@ -669,6 +669,23 @@ export class CompilerPoint<TValid extends boolean = any> {
     this.file.modified = true
   }
 
+  private removeLastMethodArg({ nodePath }: { nodePath: NodePath<Node> }): void {
+    if (nodePath.node.type !== 'CallExpression') {
+      return
+    }
+    if (nodePath.node.callee.type !== 'MemberExpression') {
+      return
+    }
+    if (nodePath.node.callee.property.type !== 'Identifier') {
+      return
+    }
+    if (nodePath.node.arguments.length === 0) {
+      return
+    }
+    nodePath.node.arguments.pop()
+    this.file.modified = true
+  }
+
   private removeArgsIfNotBooleanLiteral({ nodePath }: { nodePath: NodePath<Node> }): void {
     if (nodePath.node.type !== 'CallExpression') {
       return
@@ -755,6 +772,9 @@ export class CompilerPoint<TValid extends boolean = any> {
       if (method.name === 'input') {
         this.replaceAllArgsWithArrowFnReturnEmptyObject({ nodePath: method.nodePath })
       }
+      if (method.name === 'serverOn') {
+        this.removeLastMethodArg({ nodePath: method.nodePath })
+      }
     }
   }
 
@@ -767,6 +787,9 @@ export class CompilerPoint<TValid extends boolean = any> {
       }
       if (method.name === 'clientInput') {
         this.replaceAllArgsWithArrowFnReturnEmptyObject({ nodePath: method.nodePath })
+      }
+      if (method.name === 'clientOn') {
+        this.removeLastMethodArg({ nodePath: method.nodePath })
       }
       if (['scrollPosition', 'scrollRestore', 'onPrefetch', 'prefetchOnLinkHover'].includes(method.name)) {
         this.removeMethodArgs({ nodePath: method.nodePath })

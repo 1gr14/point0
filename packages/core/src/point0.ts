@@ -20,6 +20,15 @@ import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import { Effects } from './effects.js'
 import { _point0_env } from './env.js'
+import type {
+  AnyEventerEvent,
+  AnyEventerSubscriptionCallback,
+  ClientEventerEvent,
+  ClientEventerSubscriptionCallback,
+  EventerSubscription,
+  ServerEventerEvent,
+  ServerEventerSubscriptionCallback,
+} from './eventer.js'
 import { _getFakeClient, _ssItems } from './internals.js'
 import type { MethodQueryForAnyPoint } from './methods/query.js'
 import type {
@@ -186,15 +195,6 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
-import type {
-  AnyEventerEvent,
-  AnyEventerSubscriptionCallback,
-  ClientEventerEvent,
-  ClientEventerSubscriptionCallback,
-  EventerSubscription,
-  ServerEventerEvent,
-  ServerEventerSubscriptionCallback,
-} from './eventer.js'
 // import stringify from 'safe-stable-stringify'
 
 // known stage fns
@@ -4802,9 +4802,35 @@ export class Point0<
     QueryKey
   > {
     const queryKey = this._getServerQueryKey({ input, outputType, isInfiniteQuery: false })
+    const _eventData = {
+      point: this as never as AnyPoint,
+      input,
+      queryKey,
+      mode: 'server' as const,
+      error: undefined,
+      data: undefined,
+    }
     const queryFn = async ({ signal }: { signal: AbortSignal }) => {
-      const data = await this.fetchServer(input as never, { ...fetchOptions, signal }, outputType)
-      return data
+      this._emit('pointInfiniteQueryStart', _eventData)
+      try {
+        const data = await this.fetchServer(input as never, { ...fetchOptions, signal }, outputType)
+        const eventData = {
+          ..._eventData,
+          data: data as Data,
+        }
+        this._emit('pointInfiniteQuerySettled', eventData)
+        this._emit('pointInfiniteQuerySuccess', eventData)
+        return data
+      } catch (error) {
+        const error0 = Error0.from(error)
+        const eventData = {
+          ..._eventData,
+          error: error0,
+        }
+        this._emit('pointInfiniteQuerySettled', eventData)
+        this._emit('pointInfiniteQueryError', eventData)
+        throw error0
+      }
     }
     const mountableDefaultQueryOptions =
       {
@@ -4841,14 +4867,40 @@ export class Point0<
     QueryKey
   > {
     const queryKey = this._getClientQueryKey({ input, isInfiniteQuery: false })
+    const _eventData = {
+      point: this as never as AnyPoint,
+      input,
+      queryKey,
+      mode: 'client' as const,
+      error: undefined,
+      data: undefined,
+    }
     const queryFn = async () => {
-      const { clientData } = await this._executeClientAsync({
-        serverData,
-        location,
-        input: input as InputRaw<TClientInputSchema>,
-        serverResponse: undefined,
-      })
-      return clientData
+      this._emit('pointQueryStart', _eventData)
+      try {
+        const { clientData } = await this._executeClientAsync({
+          serverData,
+          location,
+          input: input as InputRaw<TClientInputSchema>,
+          serverResponse: undefined,
+        })
+        const eventData = {
+          ..._eventData,
+          data: clientData as Data,
+        }
+        this._emit('pointQuerySettled', eventData)
+        this._emit('pointQuerySuccess', eventData)
+        return clientData
+      } catch (error) {
+        const error0 = Error0.from(error)
+        const eventData = {
+          ..._eventData,
+          error: error0,
+        }
+        this._emit('pointQuerySettled', eventData)
+        this._emit('pointQueryError', eventData)
+        throw error0
+      }
     }
     const mountableDefaultQueryOptions =
       {
@@ -4886,24 +4938,51 @@ export class Point0<
     QueryKey
   > {
     const queryKey = this._getCombinedQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
+    const _eventData = {
+      point: this as never as AnyPoint,
+      input,
+      queryKey,
+      mode: 'combined' as const,
+      error: undefined,
+      data: undefined,
+    }
     const queryFn = async () => {
-      const serverData = await (async () => {
-        const serverKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
-        const cachedServerData = queryClient.getQueryData(serverKey)
-        if (cachedServerData) {
-          return cachedServerData
-        }
-        const serverOpts = this._getServerQueryOptions({ input, queryOptions, fetchOptions, outputType: 'data' })
-        return await queryClient.fetchQuery(serverOpts as any)
-      })()
+      this._emit('pointQueryStart', _eventData)
+      try {
+        const serverData = await (async () => {
+          const serverKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
+          const cachedServerData = queryClient.getQueryData(serverKey)
+          if (cachedServerData) {
+            return cachedServerData
+          }
+          const serverOpts = this._getServerQueryOptions({ input, queryOptions, fetchOptions, outputType: 'data' })
+          return await queryClient.fetchQuery(serverOpts as any)
+        })()
 
-      const clientOpts = this._getClientQueryOptions({
-        input: input as never,
-        queryOptions,
-        location,
-        serverData: serverData as never,
-      })
-      return await queryClient.fetchQuery(clientOpts as any)
+        const clientOpts = this._getClientQueryOptions({
+          input: input as never,
+          queryOptions,
+          location,
+          serverData: serverData as never,
+        })
+        const data = await queryClient.fetchQuery(clientOpts as any)
+        const eventData = {
+          ..._eventData,
+          data: data as Data,
+        }
+        this._emit('pointQuerySettled', eventData)
+        this._emit('pointQuerySuccess', eventData)
+        return data
+      } catch (error) {
+        const error0 = Error0.from(error)
+        const eventData = {
+          ..._eventData,
+          error: error0,
+        }
+        this._emit('pointQuerySettled', eventData)
+        this._emit('pointQueryError', eventData)
+        throw error0
+      }
     }
     const mountableDefaultQueryOptions =
       {
@@ -5010,17 +5089,39 @@ export class Point0<
     QueryKey
   > {
     const queryKey = this._getServerQueryKey({ input: input as never, outputType, isInfiniteQuery: true })
+    const _eventData = {
+      point: this as never as AnyPoint,
+      input,
+      queryKey,
+      mode: 'server' as const,
+      error: undefined,
+      data: undefined,
+    }
     const queryFn = async ({ pageParam, signal }: { pageParam: unknown; signal: AbortSignal }) => {
       try {
+        this._emit('pointInfiniteQueryStart', _eventData)
         const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
         const data = await this.fetchServer(
           { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam } as never,
           { ...fetchOptions, signal },
           outputType,
         )
+        const eventData = {
+          ..._eventData,
+          data: data as Data,
+        }
+        this._emit('pointInfiniteQuerySettled', eventData)
+        this._emit('pointInfiniteQuerySuccess', eventData)
         return data
       } catch (error) {
-        throw Error0.from(error)
+        const error0 = Error0.from(error)
+        const eventData = {
+          ..._eventData,
+          error: error0,
+        }
+        this._emit('pointInfiniteQuerySettled', eventData)
+        this._emit('pointInfiniteQueryError', eventData)
+        throw error0
       }
     }
     const result = {
@@ -5062,8 +5163,17 @@ export class Point0<
     QueryKey
   > {
     const queryKey = this._getClientQueryKey({ input, isInfiniteQuery: true })
+    const _eventData = {
+      point: this as never as AnyPoint,
+      input,
+      queryKey,
+      mode: 'client' as const,
+      error: undefined,
+      data: undefined,
+    }
     const queryFn = async ({ pageParam }: { pageParam: unknown }) => {
       try {
+        this._emit('pointInfiniteQueryStart', _eventData)
         const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
         const { clientData } = await this._executeClientAsync({
           serverData,
@@ -5074,9 +5184,22 @@ export class Point0<
             [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam,
           } as InputRaw<TClientInputSchema>,
         })
+        const eventData = {
+          ..._eventData,
+          data: clientData as Data,
+        }
+        this._emit('pointInfiniteQuerySettled', eventData)
+        this._emit('pointInfiniteQuerySuccess', eventData)
         return clientData
       } catch (error) {
-        throw Error0.from(error)
+        const error0 = Error0.from(error)
+        const eventData = {
+          ..._eventData,
+          error: error0,
+        }
+        this._emit('pointInfiniteQuerySettled', eventData)
+        this._emit('pointInfiniteQueryError', eventData)
+        throw error0
       }
     }
     return {
@@ -5119,8 +5242,17 @@ export class Point0<
     QueryKey
   > {
     const queryKey = this._getCombinedQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
+    const _eventData = {
+      point: this as never as AnyPoint,
+      input,
+      queryKey,
+      mode: 'combined' as const,
+      error: undefined,
+      data: undefined,
+    }
     const queryFn = async (ctx: { pageParam: unknown }) => {
       try {
+        this._emit('pointInfiniteQueryStart', _eventData)
         const pageParam = ctx.pageParam ?? this._infiniteQueryOptions.initialPageParam
         const serverData = await (async () => {
           queryClient ??= _ssItems.__POINT0_QUERY_CLIENT__.get()
@@ -5166,9 +5298,23 @@ export class Point0<
           infiniteQueryOptions,
           location,
         })
-        return await (clientOpts as any).queryFn({ ...input, pageParam })
+        const clientData = await (clientOpts as any).queryFn({ ...input, pageParam })
+        const eventData = {
+          ..._eventData,
+          data: clientData as Data,
+        }
+        this._emit('pointInfiniteQuerySettled', eventData)
+        this._emit('pointInfiniteQuerySuccess', eventData)
+        return clientData
       } catch (error) {
-        throw Error0.from(error)
+        const error0 = Error0.from(error)
+        const eventData = {
+          ..._eventData,
+          error: error0,
+        }
+        this._emit('pointInfiniteQuerySettled', eventData)
+        this._emit('pointInfiniteQueryError', eventData)
+        throw error0
       }
     }
     const result = {
@@ -5412,6 +5558,13 @@ export class Point0<
     InputsRawMaybeOptional<TServerInputSchema, TClientInputSchema>
   > {
     const mutationFn = async (input: Record<string, any> = {}) => {
+      const eventData = {
+        point: this as never as AnyPoint,
+        input,
+        error: undefined,
+        output: undefined,
+      }
+      this._emit('pointMutationStart', eventData)
       try {
         if (_point0_env.target.is.server) {
           throw new Error(
@@ -5436,14 +5589,21 @@ export class Point0<
           if (!clientOutput) {
             throw new Error('Client output is not set')
           }
+          this._emit('pointMutationSettled', { ...eventData, output: clientOutput })
+          this._emit('pointMutationSuccess', { ...eventData, output: clientOutput })
           return clientOutput as FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
         }
         if (!serverFetchResult?.output) {
           throw new Error('Server output is not set')
         }
+        this._emit('pointMutationSettled', { ...eventData, output: serverFetchResult.output })
+        this._emit('pointMutationSuccess', { ...eventData, output: serverFetchResult.output })
         return serverFetchResult.output as never as FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
       } catch (error) {
-        throw Error0.from(error)
+        const error0 = Error0.from(error)
+        this._emit('pointMutationSettled', { ...eventData, error: error0 })
+        this._emit('pointMutationError', { ...eventData, error: error0 })
+        throw error0
       }
     }
     return {
@@ -6024,13 +6184,23 @@ export class Point0<
         ]
   ): Promise<void> {
     const [input = {}, queryOptions, options = {}] = args
+    const eventData = {
+      point: this as never as AnyPoint,
+      input,
+      options,
+      error: undefined,
+    }
     const { location: providedLocation, queryClient, fetchOptions, force, policy = this._getPrefetchPolicy() } = options
     if (policy === 'none') {
       return
     }
+    this._emit('pointPrefetchPageStart', eventData)
 
     if (!this.route) {
-      throw new Error('Route is not set')
+      const error = new Error0('Route is not set')
+      this._emit('pointPrefetchPageSettled', { ...eventData, error })
+      this._emit('pointPrefetchPageError', { ...eventData, error })
+      throw error
     }
     const location = providedLocation ?? this.route.getLocation(this.route.flat(input))
 
@@ -6055,6 +6225,8 @@ export class Point0<
     })()
 
     if (policy === 'queryClientDehydratedState') {
+      this._emit('pointPrefetchPageSuccess', eventData)
+      this._emit('pointPrefetchPageSettled', eventData)
       return
     }
 
@@ -6113,7 +6285,16 @@ export class Point0<
       }),
     )
 
-    await Promise.all([queriesPrefetching, onPrefetchFnsPromise])
+    try {
+      await Promise.all([queriesPrefetching, onPrefetchFnsPromise])
+      this._emit('pointPrefetchPageSettled', eventData)
+      this._emit('pointPrefetchPageSuccess', eventData)
+    } catch (error) {
+      const error0 = Error0.from(error)
+      this._emit('pointPrefetchPageSettled', { ...eventData, error: error0 })
+      this._emit('pointPrefetchPageError', { ...eventData, error: error0 })
+      throw error
+    }
   }
 
   // mountable components

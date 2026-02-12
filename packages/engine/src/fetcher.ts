@@ -229,8 +229,10 @@ export class Fetcher {
       isFromServer,
     })
 
-    // TODO:ASAP when action will be available allow it first
-    if (request.method === 'options') {
+    if (request.original.method === 'OPTIONS') {
+      const response = new Response(null, {
+        status: 204,
+      })
       return {
         scope: this.server.scope,
         request,
@@ -247,15 +249,36 @@ export class Fetcher {
         taskPointResult: undefined,
         pagePointResult: undefined,
         actionPointResult: undefined,
-        errorResult: new Error0('OPTIONS request must be handled by middleware before point execution', {
-          httpStatus: 500,
-          meta: {
-            method: request.original.method,
-            url: request.original.url,
-          },
-        }),
+        errorResult: undefined,
+        optionsResult: { response },
       }
     }
+    // if (request.method === 'options') {
+    //   return {
+    //     scope: this.server.scope,
+    //     request,
+    //     effects,
+    //     middlewares: [],
+    //     middlewareOptions: {
+    //       request,
+    //       set: effects.set,
+    //       point: undefined,
+    //       scope: this.server.scope,
+    //       variant: 'unknown',
+    //     },
+    //     publicdirResult: undefined,
+    //     taskPointResult: undefined,
+    //     pagePointResult: undefined,
+    //     actionPointResult: undefined,
+    //     errorResult: new Error0('OPTIONS request must be handled by middleware before point execution', {
+    //       httpStatus: 500,
+    //       meta: {
+    //         method: request.original.method,
+    //         url: request.original.url,
+    //       },
+    //     }),
+    //   }
+    // }
 
     for (const publicdir of this.server.publicdirs) {
       const staticResponse = await publicdir.fetch({ request })
@@ -281,6 +304,7 @@ export class Fetcher {
           pagePointResult: undefined,
           actionPointResult: undefined,
           errorResult: undefined,
+          optionsResult: undefined,
         }
       }
     }
@@ -307,6 +331,7 @@ export class Fetcher {
           pagePointResult: undefined,
           actionPointResult: undefined,
           errorResult: undefined,
+          optionsResult: undefined,
         }
       }
     }
@@ -338,6 +363,7 @@ export class Fetcher {
           errorResult: new Error0(`Root for point "${task.scope}.${task.pointType}.${task.pointName}" not found`, {
             httpStatus: 404,
           }),
+          optionsResult: undefined,
         }
       } else {
         return {
@@ -357,6 +383,7 @@ export class Fetcher {
           pagePointResult: undefined,
           actionPointResult: undefined,
           errorResult: undefined,
+          optionsResult: undefined,
         }
       }
     }
@@ -401,6 +428,7 @@ export class Fetcher {
         },
         actionPointResult: undefined,
         errorResult: undefined,
+        optionsResult: undefined,
       }
     }
 
@@ -438,6 +466,7 @@ export class Fetcher {
         },
         actionPointResult: undefined,
         errorResult: undefined,
+        optionsResult: undefined,
       }
     }
 
@@ -458,6 +487,7 @@ export class Fetcher {
       pagePointResult: undefined,
       actionPointResult: undefined,
       errorResult: new Error0(`Not Found`, { httpStatus: 404 }),
+      optionsResult: undefined,
     }
   }
 
@@ -1060,6 +1090,16 @@ export class Fetcher {
       }
     }
 
+    if (prepareFetchResult.optionsResult) {
+      return {
+        request: prepareFetchResult.request,
+        scope: prepareFetchResult.scope,
+        response: prepareFetchResult.optionsResult.response,
+        variant: 'unknown',
+        error: null,
+      }
+    }
+
     if (prepareFetchResult.errorResult) {
       return {
         request: prepareFetchResult.request,
@@ -1231,6 +1271,7 @@ export type PrepareFetchResult =
       pagePointResult: undefined
       actionPointResult: undefined
       errorResult: undefined
+      optionsResult: undefined
     }
   | {
       scope: PointsScope
@@ -1243,6 +1284,7 @@ export type PrepareFetchResult =
       pagePointResult: undefined
       actionPointResult: undefined
       errorResult: undefined
+      optionsResult: undefined
     }
   | {
       scope: PointsScope
@@ -1259,6 +1301,7 @@ export type PrepareFetchResult =
       }
       actionPointResult: undefined
       errorResult: undefined
+      optionsResult: undefined
     }
   | {
       scope: PointsScope
@@ -1271,6 +1314,20 @@ export type PrepareFetchResult =
       pagePointResult: undefined
       actionPointResult: undefined
       errorResult: Error0
+      optionsResult: undefined
+    }
+  | {
+      scope: PointsScope
+      request: Request0
+      effects: Effects
+      middlewares: MiddlewareFn[]
+      middlewareOptions: MiddlewareFnOptionsBase
+      publicdirResult: undefined
+      taskPointResult: undefined
+      pagePointResult: undefined
+      actionPointResult: undefined
+      errorResult: undefined
+      optionsResult: { response: Response }
     }
 
 // export type FetcherFetchDetailedResultGeneral = {

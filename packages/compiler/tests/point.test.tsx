@@ -831,6 +831,29 @@ export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(
       )
 
       it.concurrent(
+        'removes last arg from serverOn for client target and keeps on untouched',
+        helper(async ({ files: [file], walker }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root')
+  .serverOn('pointFetchServerError', (event) => console.info(event))
+  .on('pointFetchServerError', (event) => console.info(event))
+  .root()
+        `)
+          const result = walker.collectPointsFromFile({ file: file.path })
+          const point = result.points[0]
+          point.shakeMethods({ target: 'client' })
+          expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root')
+              .serverOn('pointFetchServerError')
+              .on('pointFetchServerError', (event) => console.info(event))
+              .root()
+            "
+          `)
+        }),
+      )
+
+      it.concurrent(
         'correctly understand when it is underSsr',
         helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
@@ -982,7 +1005,9 @@ export const page = root.lets('page', 'page', '/')
           `)
         }),
       )
+    })
 
+    describe('server', () => {
       it.concurrent(
         'correcttly prune rest for server without ssr',
         helper(async ({ files: [file], walker }) => {
@@ -1210,6 +1235,29 @@ export const page = root.lets('page', 'page', '/')
               .infiniteQuery(() => console.info('fake'))
               .mutation(() => console.info('fake'))
               .page()
+            "
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'removes last arg from clientOn for server target and keeps on untouched',
+        helper(async ({ files: [file], walker }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root')
+  .clientOn('pointFetchServerError', (event) => console.info(event))
+  .on('pointFetchServerError', (event) => console.info(event))
+  .root()
+        `)
+          const result = walker.collectPointsFromFile({ file: file.path })
+          const point = result.points[0]
+          point.shakeMethods({ target: 'server' })
+          expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root')
+              .clientOn('pointFetchServerError')
+              .on('pointFetchServerError', (event) => console.info(event))
+              .root()
             "
           `)
         }),

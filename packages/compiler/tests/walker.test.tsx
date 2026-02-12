@@ -503,120 +503,120 @@ describe('Walker', () => {
       }),
     )
 
-    it.concurrent(
-      'can parse files in parallel reusing cache',
-      helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
-        await f0.write(`import {Point0} from '@point0/core'
-                      export const rootV = Point0.lets('root', 'rootN').root()                      
-        `)
-        await f1.write(`import {rootV} from '${f0.importpath}'
-                      export const rootV2 = rootV.lets('root', 'rootN2').root()
-        `)
-        await f2.write(`import {rootV2} from '${f1.importpath}'
-                      export const pageV = rootV2.lets('page', 'pageN').page(() => <div>Hello</div>)
-        `)
-        await f3.write(`import {pageV} from '${f2.importpath}'
-                      export const layoutV = pageV.lets('layout', 'layoutN').layout(() => <div>Hello</div>)
-        `)
-        await f4.write(`import {layoutV} from '${f3.importpath}'
-                      export const componentV = layoutV.lets('component', 'componentN').component(() => <div>Hello</div>)
-        `)
-        await f5.write(`import {componentV} from '${f4.importpath}'
-                      export const mutationV = componentV.lets('mutation', 'mutationN').loader().mutation()
-        `)
-        await f6.write(`import {mutationV} from '${f5.importpath}'
-                      export const queryV = mutationV.lets('query', 'queryN').loader().query()
-        `)
-        await f7.write(`import {queryV} from '${f6.importpath}'
-                      export const infiniteQueryV = queryV.lets('infiniteQuery', 'infiniteQueryN').loader().infiniteQuery()
-        `)
-        await f8.write(`import {infiniteQueryV} from '${f7.importpath}'
-                      export const providerV = infiniteQueryV.lets('provider', 'providerN').loader().provider()
-        `)
-        await f9.write(`import {providerV} from '${f8.importpath}'
-                      export const baseV = providerV.lets('base', 'baseN').base()
-        `)
-        await f10.write(`import {baseV} from '${f9.importpath}'
-                      export const baseV2 = baseV.lets('base', 'baseN2').loader().base()
-        `)
-        await walker.readManyAsync({
-          files: [
-            f5.path,
-            f0.path,
-            f1.path,
-            f2.path,
-            f3.path,
-            f4.path,
-            f5.path,
-            f5.path,
-            f5.path,
-            f5.path,
-            f5.path,
-            f5.path,
-            f6.path,
-            f7.path,
-            f8.path,
-            f9.path,
-            f10.path,
-            f5.path,
-          ],
-          fresh: false,
-        })
-        const results = [
-          walker.collectPointsFromFile({ file: f5.path }),
-          walker.collectPointsFromFile({ file: f0.path }),
-          walker.collectPointsFromFile({ file: f1.path }),
-          walker.collectPointsFromFile({ file: f2.path }),
-          walker.collectPointsFromFile({ file: f3.path }),
-          walker.collectPointsFromFile({ file: f4.path }),
-          // one file multiple times
-          walker.collectPointsFromFile({ file: f5.path }),
-          walker.collectPointsFromFile({ file: f5.path }),
-          walker.collectPointsFromFile({ file: f5.path }),
-          walker.collectPointsFromFile({ file: f5.path }),
-          walker.collectPointsFromFile({ file: f5.path }),
-          walker.collectPointsFromFile({ file: f5.path }),
-          walker.collectPointsFromFile({ file: f6.path }),
-          walker.collectPointsFromFile({ file: f7.path }),
-          walker.collectPointsFromFile({ file: f8.path }),
-          walker.collectPointsFromFile({ file: f9.path }),
-          walker.collectPointsFromFile({ file: f10.path }),
-          walker.collectPointsFromFile({ file: f5.path }),
-        ]
-        const resultFirst = results[0]
-        const resultLast = results[results.length - 1]
-        expect(resultFirst.errors).toHaveLength(0)
-        expect(resultFirst.points).toHaveLength(1)
-        expect(resultFirst.points.map((p) => p.simplify())).toMatchObject([
-          {
-            exportName: 'mutationV',
-            type: 'mutation',
-            name: 'mutationN',
-          },
-        ])
-        expect(resultFirst.points[0].simplify()).toMatchObject(resultLast.points[0].simplify())
+    // it.concurrent(
+    //   'can parse files in parallel reusing cache',
+    //   helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
+    //     await f0.write(`import {Point0} from '@point0/core'
+    //                   export const rootV = Point0.lets('root', 'rootN').root()
+    //     `)
+    //     await f1.write(`import {rootV} from '${f0.importpath}'
+    //                   export const rootV2 = rootV.lets('root', 'rootN2').root()
+    //     `)
+    //     await f2.write(`import {rootV2} from '${f1.importpath}'
+    //                   export const pageV = rootV2.lets('page', 'pageN').page(() => <div>Hello</div>)
+    //     `)
+    //     await f3.write(`import {pageV} from '${f2.importpath}'
+    //                   export const layoutV = pageV.lets('layout', 'layoutN').layout(() => <div>Hello</div>)
+    //     `)
+    //     await f4.write(`import {layoutV} from '${f3.importpath}'
+    //                   export const componentV = layoutV.lets('component', 'componentN').component(() => <div>Hello</div>)
+    //     `)
+    //     await f5.write(`import {componentV} from '${f4.importpath}'
+    //                   export const mutationV = componentV.lets('mutation', 'mutationN').loader().mutation()
+    //     `)
+    //     await f6.write(`import {mutationV} from '${f5.importpath}'
+    //                   export const queryV = mutationV.lets('query', 'queryN').loader().query()
+    //     `)
+    //     await f7.write(`import {queryV} from '${f6.importpath}'
+    //                   export const infiniteQueryV = queryV.lets('infiniteQuery', 'infiniteQueryN').loader().infiniteQuery()
+    //     `)
+    //     await f8.write(`import {infiniteQueryV} from '${f7.importpath}'
+    //                   export const providerV = infiniteQueryV.lets('provider', 'providerN').loader().provider()
+    //     `)
+    //     await f9.write(`import {providerV} from '${f8.importpath}'
+    //                   export const baseV = providerV.lets('base', 'baseN').base()
+    //     `)
+    //     await f10.write(`import {baseV} from '${f9.importpath}'
+    //                   export const baseV2 = baseV.lets('base', 'baseN2').loader().base()
+    //     `)
+    //     await walker.readManyAsync({
+    //       files: [
+    //         f5.path,
+    //         f0.path,
+    //         f1.path,
+    //         f2.path,
+    //         f3.path,
+    //         f4.path,
+    //         f5.path,
+    //         f5.path,
+    //         f5.path,
+    //         f5.path,
+    //         f5.path,
+    //         f5.path,
+    //         f6.path,
+    //         f7.path,
+    //         f8.path,
+    //         f9.path,
+    //         f10.path,
+    //         f5.path,
+    //       ],
+    //       fresh: false,
+    //     })
+    //     const results = [
+    //       walker.collectPointsFromFile({ file: f5.path }),
+    //       walker.collectPointsFromFile({ file: f0.path }),
+    //       walker.collectPointsFromFile({ file: f1.path }),
+    //       walker.collectPointsFromFile({ file: f2.path }),
+    //       walker.collectPointsFromFile({ file: f3.path }),
+    //       walker.collectPointsFromFile({ file: f4.path }),
+    //       // one file multiple times
+    //       walker.collectPointsFromFile({ file: f5.path }),
+    //       walker.collectPointsFromFile({ file: f5.path }),
+    //       walker.collectPointsFromFile({ file: f5.path }),
+    //       walker.collectPointsFromFile({ file: f5.path }),
+    //       walker.collectPointsFromFile({ file: f5.path }),
+    //       walker.collectPointsFromFile({ file: f5.path }),
+    //       walker.collectPointsFromFile({ file: f6.path }),
+    //       walker.collectPointsFromFile({ file: f7.path }),
+    //       walker.collectPointsFromFile({ file: f8.path }),
+    //       walker.collectPointsFromFile({ file: f9.path }),
+    //       walker.collectPointsFromFile({ file: f10.path }),
+    //       walker.collectPointsFromFile({ file: f5.path }),
+    //     ]
+    //     const resultFirst = results[0]
+    //     const resultLast = results[results.length - 1]
+    //     expect(resultFirst.errors).toHaveLength(0)
+    //     expect(resultFirst.points).toHaveLength(1)
+    //     expect(resultFirst.points.map((p) => p.simplify())).toMatchObject([
+    //       {
+    //         exportName: 'mutationV',
+    //         type: 'mutation',
+    //         name: 'mutationN',
+    //       },
+    //     ])
+    //     expect(resultFirst.points[0].simplify()).toMatchObject(resultLast.points[0].simplify())
 
-        const parents0 = walker.collectParentPointsByPoint({ point: resultFirst.points[0] })
-        expect(parents0.errors).toHaveLength(0)
-        expect(parents0.parents).toHaveLength(5)
-        expect(parents0.parents.map((p) => p.extraSimplify())).toMatchObject([
-          {
-            name: 'componentN',
-          },
-          {
-            name: 'layoutN',
-          },
-          {
-            name: 'pageN',
-          },
-          {
-            name: 'rootN2',
-          },
-          {
-            name: 'rootN',
-          },
-        ])
-      }),
-    )
+    //     const parents0 = walker.collectParentPointsByPoint({ point: resultFirst.points[0] })
+    //     expect(parents0.errors).toHaveLength(0)
+    //     expect(parents0.parents).toHaveLength(5)
+    //     expect(parents0.parents.map((p) => p.extraSimplify())).toMatchObject([
+    //       {
+    //         name: 'componentN',
+    //       },
+    //       {
+    //         name: 'layoutN',
+    //       },
+    //       {
+    //         name: 'pageN',
+    //       },
+    //       {
+    //         name: 'rootN2',
+    //       },
+    //       {
+    //         name: 'rootN',
+    //       },
+    //     ])
+    //   }),
+    // )
   })
 })

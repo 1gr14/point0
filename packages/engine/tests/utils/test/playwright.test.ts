@@ -34,7 +34,7 @@ describe('playwright', () => {
   })
 
   afterAll(async () => {
-    await browser.close()
+    void browser.close()
   })
 
   describe.concurrent('browser', () => {

@@ -1156,6 +1156,9 @@ export type FetcherFetchDetailedResultUnknown = FetcherFetchDetailedResultGenera
 export type FetcherFetchDetailedResultPublicdir = FetcherFetchDetailedResultGeneral & {
   variant: 'publicdir'
 }
+export type FetcherFetchDetailedResultOptions = FetcherFetchDetailedResultGeneral & {
+  variant: 'options'
+}
 
 export type FetcherFetchDetailedResultNoMiddleware =
   | FetcherFetchDetailedResultTask
@@ -1177,7 +1180,9 @@ export type FetcherFetchDetailedResultSpecific<
           ? FetcherFetchDetailedResultUnknown
           : TVariant extends 'publicdir'
             ? FetcherFetchDetailedResultPublicdir
-            : never
+            : TVariant extends 'options'
+              ? FetcherFetchDetailedResultOptions
+              : never
 
 export type MiddlewareNextFn = () => Promise<FetcherFetchDetailedResult>
 export type MiddlewareFnOptions = {
@@ -1185,7 +1190,7 @@ export type MiddlewareFnOptions = {
   set: ResponseEffectsSetHelper
   point: AnyNiceReadyPoint | undefined
   scope: PointsScope
-  variant: 'task' | 'page' | 'unknown' | 'publicdir'
+  variant: 'task' | 'page' | 'unknown' | 'publicdir' | 'options'
   next: MiddlewareNextFn
 }
 export type MiddlewareFnOptionsBase = Omit<MiddlewareFnOptions, 'next'>
