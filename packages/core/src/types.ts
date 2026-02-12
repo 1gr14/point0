@@ -15,12 +15,11 @@ import type {
   UseInfiniteQueryResult,
   UseQueryResult,
 } from '@tanstack/react-query'
-import type { Point0 } from './point0.js'
-import type { Props, QueriesDefinitions } from './mountable.js'
-import type { PointsManager } from './points-manager.js'
-import type { Request0 } from './request0.js'
-import type { ResponseEffectsValues, ResponseEffectsSetHelper } from './effects.js'
 import type { ClientPoints } from './client-points.js'
+import type { ResponseEffectsSetHelper, ResponseEffectsValues } from './effects.js'
+import type { Props, QueriesDefinitions } from './mountable.js'
+import type { Point0 } from './point0.js'
+import type { Request0 } from './request0.js'
 
 // basic
 
@@ -41,7 +40,9 @@ export type RequiredCtx = UnknownCtx | UndefinedCtx
 export type Ctx = UnknownCtx | EmptyCtx
 // export type Ctx = UnknownCtx
 export type EmptyData = Record<never, never>
-export type UnknownData = Record<string, unknown>
+// Data payloads are object-like maps and should not be tuples/arrays.
+// Excluding iterable objects prevents `[status, data]` tuples from being inferred as plain data.
+export type UnknownData = Record<string, unknown> & { readonly [Symbol.iterator]?: never }
 export type UndefinedData = undefined
 export type Data = UnknownData | EmptyData
 // export type Data = UnknownData
@@ -934,10 +935,10 @@ export type LoaderResponseFn<
 > = (
   options: LoaderResponseFnOptions<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema>,
 ) =>
-  | Promise<[number, TNewServerLoaderOutput]>
-  | [number, TNewServerLoaderOutput]
-  | Promise<TNewServerLoaderOutput>
-  | TNewServerLoaderOutput
+  | Promise<[number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]>
+  | [number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]
+  | Promise<TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput>
+  | (TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput)
 
 export type LoaderDataFnOptions<
   TCtx extends Ctx = Ctx,
@@ -962,10 +963,10 @@ export type LoaderDataFn<
 > = (
   options: LoaderDataFnOptions<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema>,
 ) =>
-  | Promise<[number, TNewServerLoaderOutput]>
-  | [number, TNewServerLoaderOutput]
-  | Promise<TNewServerLoaderOutput>
-  | TNewServerLoaderOutput
+  | Promise<[number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]>
+  | [number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]
+  | Promise<TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput>
+  | (TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput)
 
 export type ServerExecuteAction<TType extends 'ctx' | 'loader' | 'input' = 'ctx' | 'loader' | 'input'> =
   TType extends 'ctx'
