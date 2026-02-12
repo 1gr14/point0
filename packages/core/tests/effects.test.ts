@@ -92,6 +92,41 @@ describe('Effects', () => {
         partitioned: true,
       })
     })
+
+    it('delete cookie when value is undefined in object signature', () => {
+      const effects = Effects.create()
+      effects.set.cookies({
+        name: 'token',
+        value: undefined,
+        path: '/api',
+        sameSite: 'strict',
+      })
+      expect(effects.cookies.token).toEqual({
+        name: 'token',
+        value: '',
+        path: '/api',
+        sameSite: 'strict',
+        expires: new Date(0),
+        maxAge: 0,
+      })
+    })
+
+    it('delete cookie when value is undefined in positional signature', () => {
+      const effects = Effects.create()
+      effects.set.cookies('session', undefined, {
+        path: '/app',
+        domain: 'example.com',
+      })
+      expect(effects.cookies.session).toEqual({
+        name: 'session',
+        value: '',
+        path: '/app',
+        sameSite: 'lax',
+        domain: 'example.com',
+        expires: new Date(0),
+        maxAge: 0,
+      })
+    })
   })
 
   describe('set status', () => {

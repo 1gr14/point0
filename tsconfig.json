@@ -1,27 +1,10 @@
 {
+  "extends": "./tsconfig.build.json",
   "compilerOptions": {
-    "types": ["node", "bun-types"],
-    "module": "NodeNext",
-    "target": "ES2022",
-    "lib": ["ES2022", "DOM"],
-    "moduleResolution": "NodeNext",
-    "resolveJsonModule": true,
-    "allowImportingTsExtensions": false,
-    "jsx": "react-jsx",
-    "noEmit": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "isolatedModules": true,
-    "strict": true,
-    "noImplicitReturns": true,
-    "noImplicitOverride": true,
-    "useUnknownInCatchVariables": true,
-    "exactOptionalPropertyTypes": false,
-    "noUncheckedIndexedAccess": false,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "paths": {
+      "@point0/core": ["./packages/core/src/index.ts"],
+      "@point0/engine": ["./packages/engine/src/index.ts"],
+      "@point0/engine/tests/utils": ["./packages/engine/tests/utils/index.ts"]
+    }
   }
 }

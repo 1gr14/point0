@@ -1,4 +1,4 @@
-import { CookiesStore } from '@point0/core'
+import { CookiesStore } from '@point0/cookies-store'
 import SuperJSON from 'superjson'
 
 CookiesStore.configure({

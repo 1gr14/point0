@@ -1,11 +1,13 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { ResolvableHead, Unhead } from 'unhead/types'
-import type { Request0, Effects, SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './index.js'
 import { queryClient } from './query-client.js'
+import type { SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './super-store.js'
 import { ss } from './super-store.js'
 import type { FetchFn, PointsScope } from './types.js'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ClientPoints } from './client-points.js'
+import type { Effects } from './effects.js'
+import type { Request0 } from './request0.js'
 
 const initUndefined = () => undefined as never
 

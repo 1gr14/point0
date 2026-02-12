@@ -8,9 +8,11 @@
     "sourceMap": true,
     "paths": {
       "@point0/core": ["../core/src/index.ts"],
-      "@point0/core/effects": ["../core/src/effects.ts"]
+      "@point0/core/effects": ["../core/src/effects.ts"],
+      "@point0/engine": ["../engine/src/index.ts"],
+      "@point0/engine/tests/utils": ["../engine/tests/utils/index.ts"]
     }
   },
   "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["dist/**/*", "node_modules/**/*", "tests/template/**/*", "tests/temp/**/*"]
+  "exclude": ["dist/**/*", "node_modules/**/*"]
 }

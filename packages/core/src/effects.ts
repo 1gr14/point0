@@ -45,8 +45,9 @@ export type SetResponseHeaderFn = {
 
 export type SetResponseCookieFn = {
   // (cookies: Record<string, string | CookieOptions>): void
-  (cookieOptions: CookieOptionsInput): void
+  (cookieOptions: Omit<CookieOptionsInput, 'value'> & { value?: string }): void
   (cookieName: string, cookieValue: string, cookieOptions?: Omit<CookieOptionsInput, 'name' | 'value'>): void
+  (cookieName: string, cookieValue: undefined, cookieOptions?: Omit<CookieOptionsInput, 'name' | 'value'>): void
 }
 
 export type SetResponseStatusFn = (status: number) => void
@@ -120,32 +121,37 @@ export class Effects {
 
   private _setCookies(...args: any[]): void {
     if (args.length === 1) {
-      const cookieOptions = args[0] as CookieOptionsInput
+      const cookieOptions = args[0] as Omit<CookieOptionsInput, 'value'> & { value?: string }
       this.cookies[cookieOptions.name] = {
         name: cookieOptions.name,
-        value: cookieOptions.value,
+        value: cookieOptions.value === undefined ? '' : cookieOptions.value,
         path: cookieOptions.path ?? '/',
         sameSite: cookieOptions.sameSite ?? 'lax',
         domain: cookieOptions.domain,
-        expires: cookieOptions.expires,
+        expires: cookieOptions.value === undefined ? new Date(0) : cookieOptions.expires,
         secure: cookieOptions.secure,
         httpOnly: cookieOptions.httpOnly,
         partitioned: cookieOptions.partitioned,
-        maxAge: cookieOptions.maxAge,
+        maxAge: cookieOptions.value === undefined ? 0 : cookieOptions.maxAge,
       }
     } else if (args.length >= 2) {
-      const [cookieName, cookieValue, cookieOptions] = args as [string, string, CookieOptionsInput?]
+      const [cookieName, cookieValue, cookieOptions] = args as [
+        string,
+        string | undefined,
+        Omit<CookieOptionsInput, 'name' | 'value'> | undefined,
+      ]
+      const shouldDelete = cookieValue === undefined
       this.cookies[cookieName] = {
         name: cookieName,
-        value: cookieValue,
+        value: shouldDelete ? '' : cookieValue,
         path: cookieOptions?.path ?? '/',
         sameSite: cookieOptions?.sameSite ?? 'lax',
         domain: cookieOptions?.domain,
-        expires: cookieOptions?.expires,
+        expires: shouldDelete ? new Date(0) : cookieOptions?.expires,
         secure: cookieOptions?.secure,
         httpOnly: cookieOptions?.httpOnly,
         partitioned: cookieOptions?.partitioned,
-        maxAge: cookieOptions?.maxAge,
+        maxAge: shouldDelete ? 0 : cookieOptions?.maxAge,
       }
     }
   }

@@ -9,7 +9,8 @@
     "build": "point0 build",
     "start": "cross-env NODE_ENV=production bun run ./dist/server/main.js",
     "clean": "rimraf dist",
-    "types": "tsc --noEmit"
+    "types": "tsc --noEmit",
+    "typesgo": "tsgo --noEmit"
   },
   "dependencies": {
     "@point0/core": "workspace:*",

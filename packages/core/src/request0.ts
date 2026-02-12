@@ -214,8 +214,8 @@ export interface RequestFrom {
   server: boolean
 }
 
-export type RequestHeaders = Record<string, string>
-export type RequestCookies = Record<string, string>
+export type RequestHeaders = Record<string, string | undefined>
+export type RequestCookies = Record<string, string | undefined>
 
 export type RequestState = {
   startedAt: number

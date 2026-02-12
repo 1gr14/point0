@@ -18,7 +18,6 @@ import * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
-import { CookiesStore } from './cookies-store.js'
 import { Effects } from './effects.js'
 import { _point0_env } from './env.js'
 import { _getFakeClient, _ssItems } from './internals.js'
@@ -4514,7 +4513,8 @@ export class Point0<
       const fetchRequest = this.modifyFetchRequestForServerIfRequired(fetchOptions)
 
       res = await fetchFn(fetchRequest)
-      CookiesStore.refresh()
+      // TODO:ASAP create eventer
+      // CookiesStore.refresh()
       if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
         return {
           response: res,
@@ -5357,10 +5357,9 @@ export class Point0<
   ): Promise<FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>> => {
     const [input, mutationOptionsProvided, fetchOptions] = args
     const mutationOptions = this.getMutationOptions(mutationOptionsProvided, fetchOptions)
-    return (await (mutationOptions as any).mutationFn(input)) as FinalLoaderOutput<
-      TServerLoaderOutput,
-      TClientLoaderOutput
-    >
+    const queryClient = _ssItems.__POINT0_QUERY_CLIENT__.get()
+    const mutation = queryClient.getMutationCache().build(queryClient, mutationOptions as any)
+    return (await mutation.execute(input as any)) as FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
   }
 
   fetch = async (

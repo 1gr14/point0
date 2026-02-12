@@ -21,9 +21,9 @@ import {
   _ssItems,
   _ssRunWithServerStorageState,
   blankDataTransformerExtended,
-  Effects,
   Request0,
 } from '@point0/core'
+import { Effects } from '@point0/core/effects'
 import { unflatten } from 'flat'
 import type { EngineClient } from './client.js'
 import type { Engine } from './engine.js'

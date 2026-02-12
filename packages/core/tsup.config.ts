@@ -3,7 +3,6 @@ import { fixImportsPlugin } from 'esbuild-fix-imports-plugin'
 
 const general = {
   entry: [
-    'src/cookies-store.ts',
     'src/env.ts',
     'src/env.types.ts',
     'src/index.ts',

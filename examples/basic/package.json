@@ -9,10 +9,12 @@
     "build": "point0 build",
     "start": "cross-env NODE_ENV=production bun run ./dist/server/index.server.js",
     "clean": "rimraf dist",
-    "types": "tsc --noEmit"
+    "types": "tsc --noEmit",
+    "typesgo": "tsgo --noEmit"
   },
   "dependencies": {
     "@point0/core": "workspace:*",
+    "@point0/cookies-store": "workspace:*",
     "@point0/engine": "workspace:*",
     "@point0/wouter": "workspace:*",
     "@point0/react-dom": "workspace:*",

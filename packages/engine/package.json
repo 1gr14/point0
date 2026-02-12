@@ -95,6 +95,7 @@
     "test": "bun test ./tests",
     "test:watch": "bun test --watch ./tests",
     "types": "tsc --noEmit",
+    "typesgo": "tsgo --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
     "pack:dist": "rimraf ../../packages-dist-npm && bun ../../scripts/transform-package-for-publish.ts && mkdir -p ../../packages-dist-npm/engine && npm pack --pack-destination ../../packages-dist-npm/engine --silent && (cd ../../packages-dist-npm/engine && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz) && bun ../../scripts/restore-package.ts",

@@ -11,6 +11,7 @@
         "@semantic-release/git": "^10.0.1",
         "@semantic-release/github": "^11.0.6",
         "@semantic-release/npm": "^12.0.2",
+        "@typescript/native-preview": "^7.0.0-dev.20260212.1",
         "concurrently": "^9.2.1",
         "eslint": "^9.36.0",
         "eslint-config-love": "^130.0.0",
@@ -141,6 +142,22 @@
         "typescript": "*",
       },
     },
+    "packages/cookies-store": {
+      "name": "@point0/cookies-store",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@types/bun": "^1.2.22",
+        "@types/node": "^20.0.0",
+        "tsup": "^8.0.0",
+        "typescript": "^5.9.3",
+      },
+      "peerDependencies": {
+        "@point0/core": "workspace:*",
+        "@point0/engine": "workspace:*",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+      },
+    },
     "packages/core": {
       "name": "@point0/core",
       "version": "0.1.0",
@@ -235,34 +252,6 @@
         "@unhead/react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
-      },
-    },
-    "packages/engine/tests/temp/dev/test-ddb4c205-2b0b-4e26-93e3-68f5859e5e6b": {
-      "name": "@point0/test-ddb4c205-2b0b-4e26-93e3-68f5859e5e6b",
-      "version": "1.0.0",
-      "dependencies": {
-        "@devp0nt/route0": "^1.0.0-next.55",
-        "@point0/compiler": "workspace:*",
-        "@point0/core": "workspace:*",
-        "@point0/engine": "workspace:*",
-        "@point0/react-dom": "workspace:*",
-        "@point0/wouter": "workspace:*",
-        "react": "^19.0.0",
-        "react-dom": "^19.0.0",
-        "server-only": "^0.0.1",
-        "superjson": "^2.2.5",
-      },
-      "devDependencies": {
-        "@svgr/core": "^8.1.0",
-        "@svgr/plugin-jsx": "^8.1.0",
-        "@types/bun": "^1.3.0",
-        "@types/react": "^19.2.2",
-        "@types/react-dom": "^19.2.2",
-        "concurrently": "^9.2.1",
-        "cross-env": "^10.0.0",
-        "ncp": "^2.0.0",
-        "rimraf": "^6.0.1",
-        "typescript": "^5.9.3",
       },
     },
     "packages/engine/tests/template": {
@@ -585,6 +574,8 @@
 
     "@point0/compiler": ["@point0/compiler@workspace:packages/compiler"],
 
+    "@point0/cookies-store": ["@point0/cookies-store@workspace:packages/cookies-store"],
+
     "@point0/core": ["@point0/core@workspace:packages/core"],
 
     "@point0/elysia": ["@point0/elysia@workspace:packages/elysia"],
@@ -598,8 +589,6 @@
     "@point0/example-vite": ["@point0/example-vite@workspace:examples/vite"],
 
     "@point0/react-dom": ["@point0/react-dom@workspace:packages/react-dom"],
-
-    "@point0/test-ddb4c205-2b0b-4e26-93e3-68f5859e5e6b": ["@point0/test-ddb4c205-2b0b-4e26-93e3-68f5859e5e6b@workspace:packages/engine/tests/temp/dev/test-ddb4c205-2b0b-4e26-93e3-68f5859e5e6b"],
 
     "@point0/test-project-name": ["@point0/test-project-name@workspace:packages/engine/tests/template"],
 
@@ -778,6 +767,22 @@
     "@typescript-eslint/utils": ["@typescript-eslint/utils@8.53.0", "", { "dependencies": { "@eslint-community/eslint-utils": "^4.9.1", "@typescript-eslint/scope-manager": "8.53.0", "@typescript-eslint/types": "8.53.0", "@typescript-eslint/typescript-estree": "8.53.0" }, "peerDependencies": { "eslint": "^8.57.0 || ^9.0.0", "typescript": ">=4.8.4 <6.0.0" } }, "sha512-XDY4mXTez3Z1iRDI5mbRhH4DFSt46oaIFsLg+Zn97+sYrXACziXSQcSelMybnVZ5pa1P6xYkPr5cMJyunM1ZDA=="],
 
     "@typescript-eslint/visitor-keys": ["@typescript-eslint/visitor-keys@8.53.0", "", { "dependencies": { "@typescript-eslint/types": "8.53.0", "eslint-visitor-keys": "^4.2.1" } }, "sha512-LZ2NqIHFhvFwxG0qZeLL9DvdNAHPGCY5dIRwBhyYeU+LfLhcStE1ImjsuTG/WaVh3XysGaeLW8Rqq7cGkPCFvw=="],
+
+    "@typescript/native-preview": ["@typescript/native-preview@7.0.0-dev.20260212.1", "", { "optionalDependencies": { "@typescript/native-preview-darwin-arm64": "7.0.0-dev.20260212.1", "@typescript/native-preview-darwin-x64": "7.0.0-dev.20260212.1", "@typescript/native-preview-linux-arm": "7.0.0-dev.20260212.1", "@typescript/native-preview-linux-arm64": "7.0.0-dev.20260212.1", "@typescript/native-preview-linux-x64": "7.0.0-dev.20260212.1", "@typescript/native-preview-win32-arm64": "7.0.0-dev.20260212.1", "@typescript/native-preview-win32-x64": "7.0.0-dev.20260212.1" }, "bin": { "tsgo": "bin/tsgo.js" } }, "sha512-VHAVbp8d2VGm90EK//brKIYvT3iPrLXMq4/LApCdkKww/Hfn33zPRVmig4rswNaJiVu8XhcdHld5yfMw6d5A9Q=="],
+
+    "@typescript/native-preview-darwin-arm64": ["@typescript/native-preview-darwin-arm64@7.0.0-dev.20260212.1", "", { "os": "darwin", "cpu": "arm64" }, "sha512-HH4bOVbNW6ITv00VSaE3aZjCuU2d+amgFZKdhbq7NpcJDxFvxyy9GT9gkKV0D1DXz5qoxZIcyBEIbwrhABb9vg=="],
+
+    "@typescript/native-preview-darwin-x64": ["@typescript/native-preview-darwin-x64@7.0.0-dev.20260212.1", "", { "os": "darwin", "cpu": "x64" }, "sha512-vnQ2xRJscbtyS/jHO5QY2xAZ3c11Yn1ZAor/XODDrxd7N7jIrm0Vtc2CIwsi51oncLS1SZtUd9cHZmJg5zUJrQ=="],
+
+    "@typescript/native-preview-linux-arm": ["@typescript/native-preview-linux-arm@7.0.0-dev.20260212.1", "", { "os": "linux", "cpu": "arm" }, "sha512-T8sF3YtYtODhWnFNhVuL/GABCHpKJs6ZxTtSC1LtXoM/CE0Ai06k5WKOxJG5rJrBtLIW+Dempk7qKPfhNliDTA=="],
+
+    "@typescript/native-preview-linux-arm64": ["@typescript/native-preview-linux-arm64@7.0.0-dev.20260212.1", "", { "os": "linux", "cpu": "arm64" }, "sha512-suA5OryrhL/tE7AiQXiNNV88XwKEOfO0sypJQj+cfg/fpQ2trFyDZcsdMLYVZ7J0zirDai6H3TDETYYoNFE1/g=="],
+
+    "@typescript/native-preview-linux-x64": ["@typescript/native-preview-linux-x64@7.0.0-dev.20260212.1", "", { "os": "linux", "cpu": "x64" }, "sha512-w687rpZKJM0Lev0ya0GYJlnFCITTUmN8jDpwLXn60jrNEZzL2J4F7biA6papr2sMdKRfWvRklhjB1TKHbJ6FKA=="],
+
+    "@typescript/native-preview-win32-arm64": ["@typescript/native-preview-win32-arm64@7.0.0-dev.20260212.1", "", { "os": "win32", "cpu": "arm64" }, "sha512-NhCXPQF6OTNEZl8iwRE1ef/zHiqit5p3m7hdT2vfAOi1iA2eoazX0zTSdhgjX83o9cLjen3V1R7nbSYehFHaqw=="],
+
+    "@typescript/native-preview-win32-x64": ["@typescript/native-preview-win32-x64@7.0.0-dev.20260212.1", "", { "os": "win32", "cpu": "x64" }, "sha512-0yqSBlASRx9rqM12QvaWc227w+bIsuI2EwAiNsoB1ybRbCXoXMah1RQlfjjTpD02eWCe/029vwrNhq+FLn7Z8A=="],
 
     "@unhead/react": ["@unhead/react@2.1.2", "", { "dependencies": { "unhead": "2.1.2" }, "peerDependencies": { "react": ">=18.3.1" } }, "sha512-VNKa0JJZq5Jp28VuiOMfjAA7CTLHI0SdW/Hs1ZPq2PsNV/cgxGv8quFBGXWx4gfoHB52pejO929RKjIpYX5+iQ=="],
 

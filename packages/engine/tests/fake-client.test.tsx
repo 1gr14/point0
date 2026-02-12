@@ -1,4 +1,5 @@
-import { CookiesStore, Point0, QueryClientProvider, env } from '@point0/core'
+import { Point0, QueryClientProvider, env } from '@point0/core'
+import { CookiesStore } from '@point0/cookies-store'
 import { Router } from '@point0/wouter'
 // import '@testing-library/jest-dom'
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'

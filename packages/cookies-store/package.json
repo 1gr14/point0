@@ -1,5 +1,5 @@
 {
-  "name": "@point0/elysia",
+  "name": "@point0/cookies-store",
   "version": "0.1.0",
   "license": "MIT",
   "author": {
@@ -10,7 +10,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/devp0nt/point0.git",
-    "directory": "packages/elysia"
+    "directory": "packages/react-dom"
   },
   "bugs": {
     "url": "https://github.com/devp0nt/point0/issues"
@@ -39,25 +39,19 @@
     "typesgo": "tsgo --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "pack:dist": "rimraf ../../packages-dist-npm && bun ../../scripts/transform-package-for-publish.ts && mkdir -p ../../packages-dist-npm/elysia && npm pack --pack-destination ../../packages-dist-npm/elysia --silent && (cd ../../packages-dist-npm/elysia && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz) && bun ../../scripts/restore-package.ts",
+    "pack:dist": "rimraf ../../packages-dist-npm && bun ../../scripts/transform-package-for-publish.ts && mkdir -p ../../packages-dist-npm/wouter && npm pack --pack-destination ../../packages-dist-npm/wouter --silent && (cd ../../packages-dist-npm/wouter && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz) && bun ../../scripts/restore-package.ts",
     "prepublishOnly": "bun ../../scripts/transform-package-for-publish.ts",
     "postpublish": "bun ../../scripts/restore-package.ts"
   },
   "peerDependencies": {
     "@point0/core": "workspace:*",
     "@point0/engine": "workspace:*",
-    "elysia": "^1.4.0",
     "react": "catalog:",
-    "react-dom": "catalog:",
-    "@tanstack/react-query": "catalog:",
-    "@devp0nt/error0": "catalog:",
-    "@devp0nt/route0": "catalog:",
-    "@unhead/react": "catalog:"
+    "react-dom": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
-    "esbuild-fix-imports-plugin": "^1.0.22",
     "tsup": "^8.0.0",
     "typescript": "^5.9.3"
   },

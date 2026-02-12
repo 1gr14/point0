@@ -32,7 +32,8 @@ import type {
   UnknownCtx,
   UnknownData,
 } from '@point0/core'
-import { _ssItems, _ssRunWithServerStorageState, Effects } from '@point0/core'
+import { _ssItems, _ssRunWithServerStorageState } from '@point0/core'
+import { Effects } from '@point0/core/effects'
 import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
 import { dehydrate } from '@tanstack/react-query'
 import { createHead } from '@unhead/react/server'
