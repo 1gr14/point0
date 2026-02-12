@@ -116,6 +116,13 @@ cookies-stroe as separate plugin
 
 
 
+=== CORS ===
+plugin cors as separate package
+remove auto cors for localhost from engine server, and made it via middleware
+
+
+
+
 === ROUTING ===
 Роут стейты, перфетчинг тразититонинг, а также добавить еррор саксес лоадинг который мы и берём и пейдж стейта
 Не нужно при префетче лэйоуты префетчить, лэйоуты и так есть в релейтед поинтсах
@@ -334,13 +341,7 @@ protected github branches next and amin
 
 === AUTH ===
 better auth plugin
-Куки босс знает все куки и может сериалайзить и десериалайзиться разберёмся на беттер аус
-
-
-
-=== CORS ===
-plugin cors as separate package
-remove auto cors for localhost from engine server, and made it via middleware
+Куки босс знает все куки и может сериалайзить и десериалайзиться разберёмся на беттер асунктически
 
 
 
