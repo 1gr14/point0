@@ -186,6 +186,15 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
+import type {
+  AnyEventerEvent,
+  AnyEventerSubscriptionCallback,
+  ClientEventerEvent,
+  ClientEventerSubscriptionCallback,
+  EventerSubscription,
+  ServerEventerEvent,
+  ServerEventerSubscriptionCallback,
+} from './eventer.js'
 // import stringify from 'safe-stable-stringify'
 
 // known stage fns
@@ -312,6 +321,7 @@ export class Point0<
   private readonly _letsReadyPointType: TLetsReadyPointType
   private readonly _transformer: DataTransformerExtended | undefined
   _getTransformer = () => this._transformer ?? blankDataTransformerExtended
+  private readonly _eventerSubscriptions: EventerSubscription[]
   readonly _ssr: boolean
   readonly scope: PointsScope
   readonly scopes: PointsScope[]
@@ -430,6 +440,7 @@ export class Point0<
     _baseurl?: string | null | undefined
     _transformer?: DataTransformerExtended | undefined
     _ssr?: boolean
+    _eventerSubscriptions?: EventerSubscription[]
     scope: PointsScope
     scopes: PointsScope[]
     _defaultMutationOptions?: UseMutationOptions
@@ -496,6 +507,7 @@ export class Point0<
     this._middlewares = options._middlewares ?? []
     this._transformer = options._transformer ?? undefined
     this._ssr = options._ssr ?? false
+    this._eventerSubscriptions = options._eventerSubscriptions ?? []
     this._serverurl = options._serverurl ?? undefined
     this._baseurl = options._baseurl ?? undefined
     this.type = options.type
@@ -571,6 +583,7 @@ export class Point0<
     _baseurl?: string | null | undefined
     _transformer?: DataTransformerExtended | null
     _ssr?: boolean
+    _eventerSubscriptions?: EventerSubscription[]
     _defaultMutationOptions?: UseMutationOptions | undefined
     _mutationOptions?: UseMutationOptions | undefined
     _defaultInfiniteQueryOptions?: PartialUseInfiniteQueryOptions | undefined
@@ -673,6 +686,7 @@ export class Point0<
       _baseurl: overrides._baseurl ?? this._baseurl,
       _transformer: overrides._transformer ?? this._transformer,
       _ssr: overrides._ssr ?? this._ssr,
+      _eventerSubscriptions: overrides._eventerSubscriptions ?? this._eventerSubscriptions,
       _defaultMutationOptions: overrides._defaultMutationOptions ?? { ...this._defaultMutationOptions },
       _mutationOptions: overrides._mutationOptions ?? { ...this._mutationOptions },
       _defaultQueryOptions: overrides._defaultQueryOptions ?? { ...this._defaultQueryOptions },
@@ -864,6 +878,96 @@ export class Point0<
   //     _asFormData: shouldAddMultipartFormDataHeaderToFetchOptions,
   //   }) as never
   // }
+
+  on<TEventName extends AnyEventerEvent['name'] | '*'>(
+    name: TEventName,
+    callback: AnyEventerSubscriptionCallback<TEventName>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  on(name: AnyEventerEvent['name'] | '*', callback: AnyEventerSubscriptionCallback | undefined) {
+    return this._continue({
+      _eventerSubscriptions: [
+        ...this._eventerSubscriptions,
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        { name, callback: callback || (() => {}), target: undefined },
+      ],
+    }) as never
+  }
+
+  serverOn<TEventName extends ServerEventerEvent['name'] | '*'>(
+    name: TEventName,
+    callback: ServerEventerSubscriptionCallback<TEventName>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  serverOn(name: ServerEventerEvent['name'] | '*', callback: ServerEventerSubscriptionCallback | undefined) {
+    return this._continue({
+      _eventerSubscriptions: [
+        ...this._eventerSubscriptions,
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        { name, callback: callback || (() => {}), target: 'server' },
+      ],
+    }) as never
+  }
+
+  clientOn<TEventName extends ClientEventerEvent['name'] | '*'>(
+    name: TEventName,
+    callback: ClientEventerSubscriptionCallback<TEventName>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  clientOn(name: ClientEventerEvent['name'] | '*', callback: ClientEventerSubscriptionCallback | undefined) {
+    return this._continue({
+      _eventerSubscriptions: [
+        ...this._eventerSubscriptions,
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        { name, callback: callback || (() => {}), target: 'client' },
+      ],
+    }) as never
+  }
 
   ssr(
     ssr: boolean,
@@ -3559,6 +3663,7 @@ export class Point0<
       _baseurl: point._baseurl,
       _transformer: point._transformer,
       // _ssr
+      _eventerSubscriptions: [...this._eventerSubscriptions, ...point._eventerSubscriptions],
       _defaultMutationOptions: { ...this._defaultMutationOptions, ...point._defaultMutationOptions },
       _mutationOptions: { ...this._mutationOptions, ...point._mutationOptions },
       _defaultInfiniteQueryOptions: { ...this._defaultInfiniteQueryOptions, ...point._defaultInfiniteQueryOptions },
@@ -4507,28 +4612,44 @@ export class Point0<
         ]
   ): Promise<FetchServerDetailedOutput<TServerLoaderOutput>> {
     let res: Response | undefined
+    const eventData = {
+      input: args[0] || {},
+      point: this as never as AnyPoint,
+    }
     try {
       const fetchOptions = this.getFetchServerOptions(...args)
       const fetchFn = this.getFetchFn()
       const fetchRequest = this.modifyFetchRequestForServerIfRequired(fetchOptions)
+      this._emit('pointFetchServerStart', eventData)
 
       res = await fetchFn(fetchRequest)
       // TODO:ASAP create eventer
       // CookiesStore.refresh()
       if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
-        return {
+        const result = {
           response: res,
           data: undefined,
           error: null,
           output: res,
-        } as FetchServerDetailedOutput<TServerLoaderOutput>
+        } as Extract<FetchServerDetailedOutput<TServerLoaderOutput>, { error: null }>
+        this._emit('pointFetchServerSettled', { ...result, ...eventData })
+        this._emit('pointFetchServerSuccess', { ...result, ...eventData })
+        return result
       }
       const json = await res.json()
       const data = this._getTransformer().deserialize(json)
       if (res.ok) {
-        return { response: res, data, error: null, output: data } as FetchServerDetailedOutput<TServerLoaderOutput>
+        const result = {
+          response: res,
+          data,
+          error: null,
+          output: data,
+        } as Extract<FetchServerDetailedOutput<TServerLoaderOutput>, { error: null }>
+        this._emit('pointFetchServerSettled', { ...result, ...eventData })
+        this._emit('pointFetchServerSuccess', { ...result, ...eventData })
+        return result
       }
-      return {
+      const result = {
         response: res,
         output: undefined,
         data: undefined,
@@ -4536,13 +4657,19 @@ export class Point0<
           httpStatus: res.status,
         }),
       }
+      this._emit('pointFetchServerSettled', { ...result, ...eventData })
+      this._emit('pointFetchServerError', { ...result, ...eventData })
+      return result
     } catch (error) {
-      return {
+      const result = {
         response: res,
         data: undefined,
         error: Error0.from(error),
         output: undefined,
-      } as FetchServerDetailedOutput<TServerLoaderOutput>
+      }
+      this._emit('pointFetchServerSettled', { ...result, ...eventData })
+      this._emit('pointFetchServerError', { ...result, ...eventData })
+      return result
     }
   }
 
@@ -6748,4 +6875,23 @@ export class Point0<
   //   })
   //   return null
   // }
+
+  _emit<TName extends AnyEventerEvent['name']>(name: TName, data: Extract<AnyEventerEvent, { name: TName }>['data']) {
+    const event = { name, data, target: _point0_env.target.name } as AnyEventerEvent
+    for (const subscription of this._eventerSubscriptions) {
+      if (subscription.target && subscription.target !== event.target) {
+        continue
+      }
+      if (subscription.name !== '*' && subscription.name !== event.name) {
+        continue
+      }
+      void (async () => {
+        try {
+          await subscription.callback(event)
+        } catch (error) {
+          console.error(error)
+        }
+      })()
+    }
+  }
 }
