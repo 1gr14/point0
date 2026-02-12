@@ -3,6 +3,7 @@ import type { AnyLocation } from '@devp0nt/route0'
 import type {
   AnyPoint,
   AppComponent,
+  ClientPoints,
   // Ctx,
   Data,
   DataTransformerExtended,
@@ -38,7 +39,6 @@ import { createHead } from '@unhead/react/server'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import { stringify } from 'safe-stable-stringify'
-import type { ClientPoints } from '../../core/src/client-points.js'
 import type { Engine } from './engine.js'
 
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
