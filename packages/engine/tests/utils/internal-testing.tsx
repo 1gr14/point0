@@ -356,7 +356,7 @@ export const createTestThings = async ({
           return '\n' + state.titles.join('\n') + '\n'
         }
 
-        rtl.render(app({ points: client.client.pointsManager }), { container: root })
+        rtl.render(app({ points: client.points }), { container: root })
         state.body = document.body
         state.document = document
         state.getHtmlView = async () => {

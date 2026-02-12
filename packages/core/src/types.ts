@@ -855,6 +855,7 @@ export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends Lo
       error: null
       status: number
       output: TServerLoaderOutput
+      point: ReadyPoint
     }
   | {
       ctx: Ctx
@@ -864,6 +865,7 @@ export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends Lo
       error: Error0
       status: number
       output: LoaderOutput | UndefinedLoaderOutput
+      point: ReadyPoint | undefined
     }
 
 export type CtxFnOptions<
@@ -1119,7 +1121,7 @@ export type DataTransformerExtended = {
 
 export type FetchTask = {
   pointType: ReadyPointType
-  outputType: 'data' | 'queryClientDehydratedState'
+  outputType: 'data' | 'queryClientDehydratedState' | 'html'
   scope: PointsScope
   pointName: PointName
   pointInput: InputRawUnknown | undefined // in case if it is page or layout, we will parse input on task level, becouse we need it to extract totally match pageLocation
@@ -1139,12 +1141,12 @@ export type FetcherFetchDetailedResultPage = FetcherFetchDetailedResultGeneral &
   point: ReadyPoint | undefined
   input: InputRawUnknown | undefined
 }
-export type FetcherFetchDetailedResultPoint = FetcherFetchDetailedResultGeneral & {
-  variant: 'point'
+export type FetcherFetchDetailedResultTask = FetcherFetchDetailedResultGeneral & {
+  variant: 'task'
   point: ReadyPoint | undefined
   task: FetchTask
   data: Data | undefined
-  responseFormat: 'json' | 'html' | 'headers'
+  responseFormat: 'json' | 'html'
   input: InputRawUnknown | undefined
 }
 export type FetcherFetchDetailedResultUnknown = FetcherFetchDetailedResultGeneral & {
@@ -1155,7 +1157,7 @@ export type FetcherFetchDetailedResultPublicdir = FetcherFetchDetailedResultGene
 }
 
 export type FetcherFetchDetailedResultNoMiddleware =
-  | FetcherFetchDetailedResultPoint
+  | FetcherFetchDetailedResultTask
   | FetcherFetchDetailedResultPage
   | FetcherFetchDetailedResultUnknown
   | FetcherFetchDetailedResultPublicdir
@@ -1168,8 +1170,8 @@ export type FetcherFetchDetailedResultSpecific<
     ? FetcherFetchDetailedResultMiddleware
     : TVariant extends 'page'
       ? FetcherFetchDetailedResultPage
-      : TVariant extends 'point'
-        ? FetcherFetchDetailedResultPoint
+      : TVariant extends 'task'
+        ? FetcherFetchDetailedResultTask
         : TVariant extends 'unknown'
           ? FetcherFetchDetailedResultUnknown
           : TVariant extends 'publicdir'
@@ -1182,7 +1184,7 @@ export type MiddlewareFnOptions = {
   set: ResponseEffectsSetHelper
   point: AnyNiceReadyPoint | undefined
   scope: PointsScope
-  variant: 'point' | 'page' | 'unknown' | 'publicdir'
+  variant: 'task' | 'page' | 'unknown' | 'publicdir'
   next: MiddlewareNextFn
 }
 export type MiddlewareFnOptionsBase = Omit<MiddlewareFnOptions, 'next'>

@@ -7,14 +7,13 @@ import type {
   PointsDefinitionSource,
   PointsScope,
 } from '@point0/core'
-import { PointsManager, env, getHostnameOrNull } from '@point0/core'
+import { ClientPoints, env, getBasepathOrNull, getHostnameOrNull } from '@point0/core'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
 import type { CompilerOptions } from '../../compiler/dist/compiler.js'
-import type { AllPointsManagers } from './all-points-managers.js'
 import type {
   EngineLogger,
   EngineOptionsAppComponent,
@@ -44,16 +43,17 @@ export class EngineClient<TInitialized extends boolean = boolean> {
   cwd: string
   scope: PointsScope
   engineFile: string | null
-  allPointsManagers: AllPointsManagers
   // pointsDistFile: string | null
-  pointsProvided: PointsDefinitionSource
-  pointsManager: TInitialized extends true ? PointsManager : PointsManager | null
-  ssr: TInitialized extends true ? boolean : null
+  pointsProvided: PointsDefinitionSource | null
+  points: TInitialized extends true ? ClientPoints | null : undefined
+  ssr: TInitialized extends true ? boolean : undefined
   appProvided: EngineOptionsAppComponent | null
-  App: TInitialized extends true ? AppComponent | null : null
+  App: TInitialized extends true ? AppComponent | null : undefined
   // appDistFile: string | null
   // TODO: baseurl get from root point, and remove from config
-  baseurl: TInitialized extends true ? string | null : undefined
+  baseurl: string | null
+  basepath: string | null
+  hostname: string | null
   indexHtml: string | null
   // indexHtmlDistFile: string | null
   domRootElementId: string
@@ -83,7 +83,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     initialized: TInitialized
     cwd: string
     // pointsDistFile: string | null
-    pointsProvided: PointsDefinitionSource
+    pointsProvided: PointsDefinitionSource | null
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
     indexHtml: string | null
@@ -103,7 +103,6 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     envVars: EngineOptionsEnvParsed
     envConsts: EngineOptionsEnvParsed
     publicdir: Publicdir | null
-    allPointsManagers: AllPointsManagers
     bunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
     bunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
     viteDevServer: ViteDevServer | true | null
@@ -111,13 +110,15 @@ export class EngineClient<TInitialized extends boolean = boolean> {
   }) {
     this.scope = input.scope
     this.cwd = input.cwd
-    this.allPointsManagers = input.allPointsManagers
     // this.pointsDistFile = input.pointsDistFile
-    this.pointsManager = null as TInitialized extends true ? PointsManager : null
+    this.points = null as TInitialized extends true ? ClientPoints | null : undefined
     this.pointsProvided = input.pointsProvided
     this.appProvided = input.appProvided
     // this.appDistFile = input.appDistFile
-    this.baseurl = undefined as TInitialized extends true ? string | null : undefined
+    // TODO:ASAP allow baseurl via config
+    this.baseurl = null
+    this.basepath = null
+    this.hostname = null
     this.indexHtml = input.indexHtml
     // this.indexHtmlDistFile = input.indexHtmlDistFile
     this.distIndexHtmlContent = input.distIndexHtmlContent
@@ -146,14 +147,14 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     this.server = input.server
     this.initialized = input.initialized
     this.engineFile = input.engineFile
-    this.ssr = null as TInitialized extends true ? boolean : null
-    this.App = null as TInitialized extends true ? AppComponent : null
+    this.ssr = undefined as TInitialized extends true ? boolean : undefined
+    this.App = undefined as TInitialized extends true ? AppComponent | null : undefined
   }
 
   static create(input: {
     scope: PointsScope
     cwd: string
-    pointsProvided: PointsDefinitionSource
+    pointsProvided: PointsDefinitionSource | null
     // pointsDistFile: string | null
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
@@ -174,7 +175,6 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     envVars: EngineOptionsEnvParsed
     envConsts: EngineOptionsEnvParsed
     engineFile: string | null
-    allPointsManagers: AllPointsManagers
     viteConfig: EngineOptionsViteConfig | null
     compiler: EngineOptionsCompilerParsed | false
     server: EngineServer
@@ -257,11 +257,16 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     this.viteDevServer = viteDevServer
     this.bunNativeDevServer = bunNativeDevServer
 
-    const pointsManager = await this.initPointsManager()
-    this.baseurl = (pointsManager.root._baseurl ?? null) as TInitialized extends true ? string | null : undefined
-    await this.initAppComponent()
+    const points = await this.readClientPoints()
 
-    this.ssr = pointsManager.ssr as TInitialized extends true ? boolean : null
+    // TODO:ASAP allow baseurl via config
+    this.baseurl = points?.baseurl ?? null
+    this.basepath = getBasepathOrNull(this.baseurl)
+    this.hostname = getHostnameOrNull(this.baseurl)
+
+    await this.readAppComponent()
+
+    this.ssr = (points?.ssr ?? false) as TInitialized extends true ? boolean : undefined
 
     if (this.publicdir) {
       this.publicdir.hostname = getHostnameOrNull(this.baseurl)
@@ -278,24 +283,36 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     return !!this.initialized
   }
 
-  async initPointsManager(): Promise<PointsManager> {
-    const pointsManager = await PointsManager.createFromSource(this.pointsProvided)
-    this.pointsManager = pointsManager as TInitialized extends true ? PointsManager : PointsManager | null
-    return pointsManager
+  async readClientPoints(): Promise<ClientPoints | null> {
+    if (!this.pointsProvided) {
+      return null
+    }
+    const points = await ClientPoints.createFromSource(this.pointsProvided)
+    this.points = points as TInitialized extends true ? ClientPoints | null : undefined
+    return points
   }
 
-  async initAppComponent(): Promise<AppComponent | null> {
+  async readAppComponent(): Promise<AppComponent | null> {
     if (!this.appProvided) {
-      this.App = null
+      this.App = null as TInitialized extends true ? AppComponent | null : undefined
       return null
     }
     const defaultOrApp = isAsyncFn(this.appProvided) ? await this.appProvided() : this.appProvided
     if ('default' in defaultOrApp && typeof defaultOrApp.default === 'function') {
-      this.App = defaultOrApp.default as TInitialized extends true ? AppComponent : null
+      this.App = defaultOrApp.default as TInitialized extends true ? AppComponent | null : undefined
       return defaultOrApp.default
     }
-    this.App = defaultOrApp as TInitialized extends true ? AppComponent : null
-    return defaultOrApp as TInitialized extends true ? AppComponent : null
+    this.App = defaultOrApp as TInitialized extends true ? AppComponent | null : undefined
+    return defaultOrApp as AppComponent | null
+  }
+
+  isPageLocationSuitable = ({ pageLocation }: { pageLocation: AnyLocation }): boolean => {
+    return ClientPoints.isPageLocationSuitable({
+      baseurl: this.baseurl,
+      hostname: this.hostname,
+      basepath: this.basepath,
+      pageLocation,
+    })
   }
 
   async startDevServer(): Promise<void> {
@@ -982,6 +999,9 @@ Bun.serve({
     pageLocation: AnyLocation
     input: InputParsed
   }): Promise<ReadableStream> {
+    if (!this.points) {
+      throw new Error('Client points not provided, so we can not render app as readable stream')
+    }
     return await renderAppAsReadableStream({
       App: await this.getAppComponentForce(),
       executor,
@@ -990,6 +1010,7 @@ Bun.serve({
       input,
       envVars: this.envVars,
       envConsts: this.envConsts,
+      clientPoints: this.points,
       originalIndexHtml: await this.getOriginalIndexHtml(pageLocation.href ?? pageLocation.hrefRel),
       domRootElementId: this.domRootElementId,
     })
@@ -1006,12 +1027,16 @@ Bun.serve({
     pageLocation: AnyLocation
     input: InputParsed
   }): Promise<void> {
+    if (!this.points) {
+      throw new Error('Client points not provided, so we can not prefetch app page point deep')
+    }
     await executor.prefetchAppPagePointDeep({
       App: await this.getAppComponentForce(),
       renderToReadableStream,
       pageLocation,
       pagePoint,
       input,
+      clientPoints: this.points,
     })
   }
 }

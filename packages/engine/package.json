@@ -38,21 +38,41 @@
       "types": "./dist/error.d.ts",
       "import": "./dist/error.js"
     },
-    "./fetch": {
-      "types": "./dist/fetch.d.ts",
-      "import": "./dist/fetch.js"
+    "./executor": {
+      "types": "./dist/executor.d.ts",
+      "import": "./dist/executor.js"
     },
-    "./render": {
-      "types": "./dist/render.d.ts",
-      "import": "./dist/render.js"
+    "./fake-client": {
+      "types": "./dist/fake-client.d.ts",
+      "import": "./dist/fake-client.js"
+    },
+    "./fetcher": {
+      "types": "./dist/fetcher.d.ts",
+      "import": "./dist/fetcher.js"
     },
     "./generator": {
       "types": "./dist/generator.d.ts",
       "import": "./dist/generator.js"
     },
+    "./kill-port": {
+      "types": "./dist/kill-port.d.ts",
+      "import": "./dist/kill-port.js"
+    },
+    "./meta": {
+      "types": "./dist/meta.d.ts",
+      "import": "./dist/meta.js"
+    },
     "./publicdir": {
       "types": "./dist/publicdir.d.ts",
       "import": "./dist/publicdir.js"
+    },
+    "./render": {
+      "types": "./dist/render.d.ts",
+      "import": "./dist/render.js"
+    },
+    "./server-points": {
+      "types": "./dist/server-points.d.ts",
+      "import": "./dist/server-points.js"
     },
     "./server": {
       "types": "./dist/server.d.ts",
@@ -61,18 +81,6 @@
     "./utils": {
       "types": "./dist/utils.d.ts",
       "import": "./dist/utils.js"
-    },
-    "./executor": {
-      "types": "./dist/executor.d.ts",
-      "import": "./dist/executor.js"
-    },
-    "./all-points-managers": {
-      "types": "./dist/all-points-managers.d.ts",
-      "import": "./dist/all-points-managers.js"
-    },
-    "./kill-port": {
-      "types": "./dist/kill-port.d.ts",
-      "import": "./dist/kill-port.js"
     }
   },
   "files": [

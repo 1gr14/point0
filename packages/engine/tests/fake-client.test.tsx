@@ -275,7 +275,7 @@ describe('FakeClient', () => {
       expect(container.querySelector('#clientLoaderTargetName')?.textContent).toBe('client')
       expect(container.querySelector('#serverMutationTargetName')?.textContent).toBe('server')
       expect(container.querySelector('#clientMutationTargetName')?.textContent).toBe('client')
-      const results = await fetchRecorder.waitFinishedResults({ pointType: 'mutation', variant: 'point' })
+      const results = await fetchRecorder.waitFinishedResults({ pointType: 'mutation', variant: 'task' })
       expect(results).toHaveLength(3)
     })
 

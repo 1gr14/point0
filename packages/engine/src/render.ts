@@ -1,5 +1,5 @@
 import type { AnyLocation } from '@devp0nt/route0'
-import type { AppComponent, InputRaw, PagePoint } from '@point0/core'
+import type { AppComponent, ClientPoints, InputRaw, PagePoint } from '@point0/core'
 import { superstore } from '@point0/core'
 import { transformHtmlTemplate } from '@unhead/react/server'
 import { createElement } from 'react'
@@ -245,6 +245,7 @@ export async function getReadableStreamWithWrapper({
   suffix,
   renderer = renderToReadableStream,
   clientBundlePath,
+  clientPoints,
   executor,
 }: {
   App: AppComponent
@@ -252,6 +253,7 @@ export async function getReadableStreamWithWrapper({
   prefix?: string
   clientBundlePath?: string
   renderer?: ReadableStreamRenderer
+  clientPoints: ClientPoints
   executor: Executor
 }) {
   const encoder = new TextEncoder()
@@ -261,7 +263,7 @@ export async function getReadableStreamWithWrapper({
     // Kick off the render first; any randoms used during render happen now
     const reactStream = await renderer(
       createElement(App, {
-        points: executor.pointsManager,
+        points: clientPoints,
       }),
       {
         ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
@@ -269,7 +271,7 @@ export async function getReadableStreamWithWrapper({
     )
 
     // Snapshot AFTER render started, in the same state scope
-    const escapedJS = escapeForInlineJSON(superstore.stringify(executor.pointsManager.transformer))
+    const escapedJS = escapeForInlineJSON(superstore.stringify(clientPoints.transformer))
     const compiledPrefix = (prefix ?? '').replace(
       '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
       `<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">
@@ -298,6 +300,7 @@ export async function renderReadableStream({
   envVars,
   envConsts,
   clientBundlePath,
+  clientPoints,
   renderer = renderToReadableStream,
   originalIndexHtml,
   domRootElementId,
@@ -306,6 +309,7 @@ export async function renderReadableStream({
   App: AppComponent
   envVars?: Record<string, string | number | boolean | undefined>
   envConsts?: Record<string, string | number | boolean | undefined>
+  clientPoints: ClientPoints
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
   originalIndexHtml: string
@@ -319,7 +323,7 @@ export async function renderReadableStream({
     envConsts,
     domRootElementId,
   })
-  return await getReadableStreamWithWrapper({ App, prefix, suffix, renderer, clientBundlePath, executor })
+  return await getReadableStreamWithWrapper({ App, prefix, suffix, renderer, clientBundlePath, executor, clientPoints })
 }
 
 export async function renderAppAsReadableStream({
@@ -328,6 +332,7 @@ export async function renderAppAsReadableStream({
   pagePoint,
   pageLocation,
   input,
+  clientPoints,
   ...props
 }: {
   App: AppComponent
@@ -335,6 +340,7 @@ export async function renderAppAsReadableStream({
   pagePoint: PagePoint | undefined
   pageLocation: AnyLocation
   input: InputRaw
+  clientPoints: ClientPoints
   envVars?: Record<string, string | number | boolean | undefined>
   envConsts?: Record<string, string | number | boolean | undefined>
   renderer?: ReadableStreamRenderer
@@ -345,6 +351,7 @@ export async function renderAppAsReadableStream({
   await executor.prefetchAppPagePointDeep({
     App,
     renderToReadableStream,
+    clientPoints,
     pagePoint,
     pageLocation,
     input,
@@ -353,5 +360,6 @@ export async function renderAppAsReadableStream({
     ...props,
     App,
     executor,
+    clientPoints,
   })
 }

@@ -259,6 +259,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           response: undefined,
           output: {},
           effects: effects.values,
+          point,
         }
       }
 
@@ -283,6 +284,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             response: currentResponse,
             output: currentOutput,
             effects: effects.values,
+            point: undefined,
           }
         }
 
@@ -298,6 +300,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             response: currentResponse,
             output: currentOutput,
             effects: effects.values,
+            point,
           }
         }
 
@@ -316,6 +319,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   response: currentResponse,
                   output: currentOutput,
                   effects: effects.values,
+                  point,
                 }
               }
               currentInputParsed = {
@@ -450,6 +454,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           status,
           output: currentOutput,
           effects: effects.values,
+          point,
         }
       } catch (error) {
         try {
@@ -464,6 +469,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             response: currentResponse,
             output: currentOutput,
             effects: effects.values,
+            point,
           }
         } catch (error2) {
           const error0 = Error0.from(error)
@@ -477,6 +483,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             response: currentResponse,
             output: currentOutput,
             effects: effects.values,
+            point,
           }
         }
       }
@@ -580,7 +587,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const suitableMarkers = queryClientState.flatMap((query) => {
         const parsedQueryKey = Executor.parseQueryKey({
           queryKey: query.queryKey,
-          transformer: clientPoints.manager.transformer,
+          transformer: clientPoints.transformer,
         })
         if (!parsedQueryKey) {
           return []
@@ -606,16 +613,16 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
 
       for (const suitableMarker of suitableMarkers) {
-        const suitablePoint = this.engine.server.points.find({
+        const exactPoint = this.engine.server.points?.findExact({
           scope: suitableMarker.scope,
           type: suitableMarker.pointType,
           name: suitableMarker.pointName,
         })
-        if (suitablePoint) {
-          if (suitablePoint._queryResultType === 'infiniteQuery') {
-            await suitablePoint.prefetchInfiniteQuery(suitableMarker.input, undefined, { force: true, mode: 'server' })
+        if (exactPoint) {
+          if (exactPoint._queryResultType === 'infiniteQuery') {
+            await exactPoint.prefetchInfiniteQuery(suitableMarker.input, undefined, { force: true, mode: 'server' })
           } else {
-            await suitablePoint.prefetchQuery(suitableMarker.input, undefined, { force: true, mode: 'server' })
+            await exactPoint.prefetchQuery(suitableMarker.input, undefined, { force: true, mode: 'server' })
           }
         }
       }

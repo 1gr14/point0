@@ -5,13 +5,12 @@ import type {
   PointsScope,
   RequiredCtx,
 } from '@point0/core'
-import { env, getHostnameOrNull, PointsManager, prependAndDeappendSlash } from '@point0/core'
+import { env, getHostnameOrNull, prependAndDeappendSlash } from '@point0/core'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { ViteDevServer } from 'vite'
 import type { CompilerOptions } from '../../compiler/dist/compiler.js'
-import type { AllPointsManagers } from './all-points-managers.js'
 import type { EngineClient } from './client.js'
 import type {
   EngineLogger,
@@ -24,6 +23,7 @@ import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
+import { ServerPoints } from './server-points.js'
 import type { EngineServerBuildConfigDefinition, EngineServerPluginsDefinition } from './utils.js'
 import {
   createViteDevServer,
@@ -40,8 +40,7 @@ import {
 export class EngineServer<TInitialized extends boolean = boolean> {
   scope: PointsScope
   cwd: string
-  allPointsManagers: AllPointsManagers
-  pointsManager: PointsManager | null
+  points: TInitialized extends true ? ServerPoints | null : undefined
   pointsProvided: PointsDefinitionSource | null
   itWasBuilt: boolean
   engineFile: string | null
@@ -57,7 +56,6 @@ export class EngineServer<TInitialized extends boolean = boolean> {
   bunBuildConfig: EngineServerBuildConfigDefinition
   bunPlugins: EngineServerPluginsDefinition
   baseurl: TInitialized extends true ? string | null : undefined
-  fallbackScope: PointsScope
   initialized: TInitialized
   bunPluginsLoaded = false
   bunServer: Bun.Server<unknown> | undefined
@@ -78,7 +76,6 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     engineFile: string | null
     cwdBeforeBuild: string
     port: number
-    fallbackScope: PointsScope
     logger: EngineLogger
     clients: EngineClient[]
     envConsts: EngineOptionsEnvParsed
@@ -88,17 +85,15 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
-    allPointsManagers: AllPointsManagers
     viteConfig: EngineOptionsViteConfig | null
     viteDevServer: ViteDevServer | null
     hmrPort: number | false
     compiler: EngineOptionsCompilerParsed | false
   }) {
     this.cwd = input.cwd
-    this.allPointsManagers = input.allPointsManagers
     this.scope = input.scope
     this.pointsProvided = input.pointsProvided
-    this.pointsManager = null as TInitialized extends true ? PointsManager : null
+    this.points = undefined as TInitialized extends true ? ServerPoints : undefined
     this.itWasBuilt = process.env.POINT0_ENGINE_WAS_BUILT
       ? process.env.POINT0_ENGINE_WAS_BUILT === 'true'
       : input.itWasBuilt
@@ -117,7 +112,6 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     this.outdir = input.outdir
     this.bunBuildConfig = input.bunBuildConfig
     this.bunPlugins = input.bunPlugins
-    this.fallbackScope = input.fallbackScope
     this.initialized = input.initialized
     this.viteConfig = input.viteConfig
     this.viteDevServer = input.viteDevServer
@@ -131,7 +125,6 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     cwd: string
     scope: PointsScope
     pointsProvided: PointsDefinitionSource | null
-    allPointsManagers: AllPointsManagers
     engineFile: string | null
     cwdBeforeBuild: string
     itWasBuilt: boolean
@@ -146,7 +139,6 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
-    fallbackScope: PointsScope
     logger: EngineLogger
     clients: EngineClient[]
     viteConfig: EngineOptionsViteConfig | null
@@ -204,19 +196,19 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     return { NODE_ENV, POINT0_SCOPE, POINT0_TARGET }
   }
 
-  async init({ engine }: { engine: Engine }): Promise<EngineServer<true>> {
+  async init({ engine }: { engine: Engine<RequiredCtx, true> }): Promise<EngineServer<true>> {
     if (this.isInitialized()) {
       return this as EngineServer<true>
     }
     this.setEnvVars({ assignToProcessEnv: true, nodeEnvFallback: undefined })
-    this.baseurl = (this.pointsManager?.root._baseurl ?? null) as TInitialized extends true ? string | null : undefined
+    const [points] = await Promise.all([
+      this.loadBunPlugins({ built: env.built }).then(async () => await this.readServerPoints()),
+      this.publicdir ? this.publicdir.init() : Promise.resolve(),
+    ])
+    this.baseurl = (points?.baseurl ?? null) as TInitialized extends true ? string | null : undefined
     if (this.publicdir) {
       this.publicdir.hostname = getHostnameOrNull(this.baseurl)
     }
-    await Promise.all([
-      this.loadBunPlugins({ built: env.built }).then(async () => await this.initPointsManager()),
-      this.publicdir ? this.publicdir.init() : Promise.resolve(),
-    ])
     this.initialized = true as never
     this.fetcher = Fetcher.create({ engine, server: this as EngineServer<true> }) as TInitialized extends true
       ? Fetcher
@@ -224,13 +216,14 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     return this as EngineServer<true>
   }
 
-  async initPointsManager(): Promise<PointsManager | null> {
+  async readServerPoints(): Promise<ServerPoints | null> {
     if (!this.pointsProvided) {
       return null
     }
-    const pointsManager = await PointsManager.createFromSource(this.pointsProvided)
-    this.pointsManager = pointsManager as TInitialized extends true ? PointsManager : PointsManager | null
-    return pointsManager
+    const points = await ServerPoints.createFromSource(this.pointsProvided)
+    await points.load()
+    this.points = points as TInitialized extends true ? ServerPoints | null : undefined
+    return points
   }
 
   getCompilerOptions(): CompilerOptions | false {
@@ -852,18 +845,16 @@ export class EngineServer<TInitialized extends boolean = boolean> {
   async fetchDetailed({
     request,
     requiredCtx,
-    scope,
     bunServer,
   }: {
     request: Request
     requiredCtx: RequiredCtx
-    scope?: PointsScope
     bunServer?: Bun.Server<unknown>
   }): Promise<FetcherFetchDetailedResult> {
     if (!this.isInitialized()) {
       throw new Error('Server is not initialized')
     }
-    return await this.fetcher.fetchDetailed({ request, requiredCtx, scope, bunServer })
+    return await this.fetcher.fetchDetailed({ request, requiredCtx, bunServer })
   }
 
   // async fetch({

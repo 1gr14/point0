@@ -63,7 +63,7 @@ export class FetchRecorder {
       if (filter.scope && record.result.scope !== filter.scope) {
         return false
       }
-      if (filter.pointType && record.result.variant === 'point' && record.result.point?.type !== filter.pointType) {
+      if (filter.pointType && record.result.variant === 'task' && record.result.point?.type !== filter.pointType) {
         return false
       }
       return true
@@ -137,7 +137,7 @@ export class FetchRecorder {
   tale = async () => {
     const results = await this.waitFinishedResults()
     const lines = results.flatMap((result) => {
-      if (result.variant !== 'page' && result.variant !== 'point') {
+      if (result.variant !== 'page' && result.variant !== 'task') {
         return []
       }
       const pointString = 'point' in result && result.point ? `${result.point.type}.${result.point.name}` : 'unknown'

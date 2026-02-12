@@ -11,7 +11,7 @@ describe('ClientPoints', () => {
   describe('pagesTree', () => {
     it('no layout pages', () => {
       const base = Point0.lets('root', 'base').root()
-      const points = ClientPoints.create([
+      const points = ClientPoints.createFromDefintion([
         base,
         base.lets('page', '1', '/1').page(getFC()),
         base.lets('page', '2', '/2').page(getFC()),
@@ -29,7 +29,7 @@ describe('ClientPoints', () => {
     it('one layout page', () => {
       const base = Point0.lets('root', 'base').root()
       const layout = base.lets('layout', 'layout', '/layout').layout(getFC()).point
-      const points = ClientPoints.create([
+      const points = ClientPoints.createFromDefintion([
         base,
         base.lets('page', '1', '/1').page(getFC()),
         layout.lets('page', '2', '/2').page(getFC()),
@@ -53,7 +53,7 @@ describe('ClientPoints', () => {
       const base = Point0.lets('root', 'base').root()
       const layout1 = base.lets('layout', 'layout1', '/layout1').layout(getFC()).point
       const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(getFC()).point
-      const points = ClientPoints.create([
+      const points = ClientPoints.createFromDefintion([
         base,
         base.lets('page', '1', '/1').page(getFC()),
         layout1.lets('page', '2', '/2').page(getFC()),
@@ -84,7 +84,7 @@ describe('ClientPoints', () => {
       const base = Point0.lets('root', 'base').root()
       const layout1 = base.lets('layout', 'layout1', '/layout1').layout(getFC())
       const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(getFC())
-      const points = ClientPoints.create([
+      const points = ClientPoints.createFromDefintion([
         base,
         base.lets('page', '0', '/0').page(getFC()),
         base.lets('page', '1', '/1').page(getFC()),

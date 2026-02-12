@@ -9,7 +9,6 @@ import type {
   RequiredCtx,
   RootPoint,
   UndefinedRoute,
-  DataTransformerExtended,
 } from './types.js'
 
 export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extends RequiredCtx = RequiredCtx> {
@@ -17,7 +16,6 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   root: RootPoint
   scope: PointsScope
   ready: TReady
-  transformer: DataTransformerExtended
 
   Infer: {
     RequiredCtx: TRequiredCtx
@@ -28,19 +26,16 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     ready,
     root,
     scope,
-    transformer,
   }: {
     collection: TReady extends true ? ReadyPointsCollection : NormalizedPointsCollection
     ready: boolean
     root: RootPoint
     scope: PointsScope
-    transformer: DataTransformerExtended
   }) {
     this.ready = ready as TReady
     this.collection = collection
     this.root = root
     this.scope = scope
-    this.transformer = transformer
   }
 
   static readonly createFromDefinition = <TPoints extends PointsDefinition | PointsManager>(
@@ -71,7 +66,6 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     return new PointsManager({
       root,
       scope: root.scope,
-      transformer: root._getTransformer(),
       collection,
       ready: false,
     })
@@ -108,10 +102,9 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     }
     return new PointsManager<true, TRequiredCtx>({
       root: this.root,
-      scope: this.scope,
+      scope: this.root.scope,
       collection: readyPoints,
       ready: true,
-      transformer: this.transformer,
     })
   }
 

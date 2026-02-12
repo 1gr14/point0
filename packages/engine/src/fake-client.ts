@@ -1,4 +1,4 @@
-import type { PointsScope, RichFetchFn } from '@point0/core'
+import type { ClientPoints, PointsScope, RichFetchFn } from '@point0/core'
 import { _getSsItemsWithRestErrors, _ssRunWithServerStorageState, superstore } from '@point0/core'
 import fetchCookie from 'fetch-cookie'
 import { Cookie, CookieJar } from 'tough-cookie'
@@ -89,6 +89,7 @@ export class FakeClient<TState extends FakeClientState = any> {
   id: string
   scope: PointsScope
   client: EngineClient<true>
+  points: ClientPoints
   engine: Engine<any, true>
   state: TState
   jar: CookieJar
@@ -105,6 +106,7 @@ export class FakeClient<TState extends FakeClientState = any> {
   private constructor({
     engine,
     client,
+    points,
     id,
     scope,
     state,
@@ -119,6 +121,7 @@ export class FakeClient<TState extends FakeClientState = any> {
   }: {
     engine: Engine<any, true>
     client: EngineClient<true>
+    points: ClientPoints
     id: string
     scope: PointsScope
     state: TState
@@ -133,6 +136,7 @@ export class FakeClient<TState extends FakeClientState = any> {
   }) {
     this.engine = engine
     this.client = client
+    this.points = points
     this.id = id
     this.scope = scope
     this.state = state
@@ -150,6 +154,7 @@ export class FakeClient<TState extends FakeClientState = any> {
     engine,
     scope,
     globals,
+    points,
     onRunStartOutside,
     onRunStartInside,
     onRunEndOutside,
@@ -161,6 +166,7 @@ export class FakeClient<TState extends FakeClientState = any> {
     engine: Engine
     scope: PointsScope
     globals: Record<string, any>
+    points?: ClientPoints
     onRunStartOutside?: FakeClientCallback<TState> | undefined
     onRunStartInside?: FakeClientCallback<TState> | undefined
     onRunEndOutside?: FakeClientCallback<TState> | undefined
@@ -218,11 +224,16 @@ export class FakeClient<TState extends FakeClientState = any> {
       }
       return response
     }, jar)
+    points ??= client.points ?? undefined
+    if (!points) {
+      throw new Error('Points for fake client not provided')
+    }
     const fakeClient = new FakeClient({
       engine: engine as Engine<any, true>,
       client: client as EngineClient<true>,
       id,
       scope,
+      points,
       jar,
       fetch,
       onRunStartOutside,
@@ -276,7 +287,7 @@ export class FakeClient<TState extends FakeClientState = any> {
         _getSsItemsWithRestErrors(
           {
             __POINT0_FAKE_CLIENT__: this,
-            __POINT0_CLIENT_POINTS__: this.client.points,
+            __POINT0_CLIENT_POINTS__: this.points,
           },
           'Not yet exists in test client run',
         ),

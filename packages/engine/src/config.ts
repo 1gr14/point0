@@ -90,7 +90,6 @@ export type EngineOptionsCompilerParsed = {
 
 export type EngineGeneralOptions = {
   file: string
-  fallbackScope?: PointsScope
   generte?: Array<Omit<FilesGeneratorTaskMeta, 'scopes'>>
   logger?: EngineLogger
   itWasBuilt?: boolean
@@ -310,7 +309,6 @@ export type EngineOptions<
 //         : never
 
 export type EngineGeneralOptionsParsed = {
-  fallbackScope: PointsScope
   logger: EngineLogger
   itWasBuilt: boolean
   cwdAfterBuild: string
@@ -372,7 +370,6 @@ export type EngineServerOptionsParsed = {
   engineFile: string
   cwdBeforeBuild: string
   itWasBuilt: boolean
-  fallbackScope: PointsScope
   bunBuildConfig: EngineServerBuildConfigDefinition
   bunPlugins: EngineServerPluginsDefinition
   viteConfig: EngineOptionsViteConfig | null
@@ -551,7 +548,6 @@ const parseEngineGeneralOptions = ({
               ...(generalOptions.compiler.target !== undefined ? { target: generalOptions.compiler.target } : {}),
             }
   const result = {
-    fallbackScope: generalOptions.fallbackScope || clientsOptions?.at(0)?.scope || serverOptions.scope,
     logger: generalOptions.logger || {
       info: console.info.bind(console),
       error: console.error.bind(console),
@@ -788,7 +784,6 @@ export const parseEngineServerOptions = ({
     engineFile: generalOptionsParsed.engineFile,
     cwdBeforeBuild: generalOptionsParsed.cwdBeforeBuild,
     itWasBuilt: generalOptionsParsed.itWasBuilt,
-    fallbackScope: generalOptionsParsed.fallbackScope,
     bunBuildConfig: serverOptions.bunBuildConfig ?? {},
     bunPlugins: serverOptions.bunPlugins ?? [],
     compiler,

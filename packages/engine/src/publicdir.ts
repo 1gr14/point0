@@ -1,10 +1,10 @@
-import type { Request0, PointsScope, PointsManager } from '@point0/core'
+import type { PointsScope, Request0 } from '@point0/core'
 import { prependAndDeappendSlash } from '@point0/core'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import { withError } from './utils.js'
-import type { EngineServer } from './server.js'
 import type { EngineClient } from './client.js'
+import type { EngineServer } from './server.js'
+import { withError } from './utils.js'
 
 async function* getAllFiles(dirPath: string): AsyncGenerator<string> {
   try {
@@ -200,16 +200,6 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     )
 
     return await Promise.all(fileOperations)
-  }
-
-  getPointsManager(): PointsManager | undefined {
-    if (this.server) {
-      return this.server.pointsManager ?? undefined
-    }
-    if (this.client) {
-      return this.client.pointsManager ?? undefined
-    }
-    return undefined
   }
 
   // TODO: add static checkConflicts(publicdirs: Publicdir[]): throw error if same files paths are used in different public dirs with same hostname

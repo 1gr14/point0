@@ -1,8 +1,8 @@
+import type { PointsDefinition, PointsManager } from '@point0/core'
+import { ClientPoints, superstore } from '@point0/core'
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { PointsDefinition } from '@point0/core'
-import { PointsManager, superstore } from '@point0/core'
 
 let reactRoot: Root | null = null
 
@@ -24,13 +24,13 @@ export function mount(
     }
   }
 
-  const pointsManager = PointsManager.create(points)
-  void pointsManager.init()
+  const clientPoints = ClientPoints.createFromDefintion(points)
+  clientPoints.mount()
   if (typeof window !== 'undefined' && typeof (window as any)?.__POINT0_DEHYDRATED_SUPER_STORE__ !== 'undefined') {
-    superstore.prepare((window as any).__POINT0_DEHYDRATED_SUPER_STORE__, pointsManager.transformer)
+    superstore.prepare((window as any).__POINT0_DEHYDRATED_SUPER_STORE__, clientPoints.transformer)
   }
   const appElement = createElement(App, {
-    points: pointsManager,
+    points: clientPoints,
   })
 
   // First invocation: create the root once.
@@ -52,5 +52,5 @@ export function mount(
 }
 
 // we have absolutly same type in @point0/core/types, so if somebody need it, get it from there
-type AppProps = { points: PointsManager }
+type AppProps = { points: ClientPoints }
 type AppComponent = (props: AppProps) => React.ReactElement

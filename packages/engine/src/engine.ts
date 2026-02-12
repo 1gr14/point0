@@ -2,7 +2,6 @@ import type { FetcherFetchDetailedResult, PointsScope, RequiredCtx, UndefinedCtx
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { AllPointsManagers } from './all-points-managers.js'
 import { EngineClient } from './client.js'
 import type { EngineLogger, EngineOptions } from './config.js'
 import { parseEngineOptions } from './config.js'
@@ -18,7 +17,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   publicdirs: TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
   logger: EngineLogger
   generator: FilesGenerator
-  allPointsManagers: AllPointsManagers
   initialized: TInitialized
 
   private readonly __POINT0_ENGINE__ = true as const
@@ -27,7 +25,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     clients: EngineClient[]
     server: EngineServer
     logger: EngineLogger
-    allPointsManagers: AllPointsManagers
     initialized: TInitialized
     generator: FilesGenerator
     publicdirs: Array<Publicdir<false>>
@@ -35,7 +32,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     this.clients = input.clients as TInitialized extends true ? Array<EngineClient<true>> : EngineClient[]
     this.server = input.server as TInitialized extends true ? EngineServer<true> : EngineServer<false>
     this.logger = input.logger
-    this.allPointsManagers = input.allPointsManagers
     this.initialized = input.initialized
     this.generator = input.generator
     this.publicdirs = input.publicdirs as TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
@@ -52,11 +48,9 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     options: EngineOptions<TRequiredCtx>,
   ): Engine<TRequiredCtx, false> {
     const parsedOptions = parseEngineOptions(options)
-    const allPointsManagers = AllPointsManagers.create()
 
     const server = EngineServer.create({
       ...parsedOptions.server,
-      allPointsManagers,
       cwd: parsedOptions.general.cwd,
       cwdBeforeBuild: parsedOptions.general.cwdBeforeBuild,
       engineFile: parsedOptions.general.engineFile,
@@ -69,7 +63,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
         ...clientOptions,
         cwd: parsedOptions.general.cwd,
         logger: parsedOptions.general.logger,
-        allPointsManagers,
         server,
       })
       return client
@@ -94,7 +87,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       clients,
       server,
       logger: parsedOptions.general.logger,
-      allPointsManagers,
       initialized: false,
       generator,
       publicdirs,
@@ -108,17 +100,13 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       return this as Engine<TRequiredCtx, true>
     }
 
-    const intializedServer = await this.server.init({ engine: this })
-    const intializedClients = await Promise.all(
+    await this.server.init({ engine: this as Engine<TRequiredCtx, true> })
+    await Promise.all(
       this.clients.map(async (client) => {
         return await client.init({
           preventDevServer: preventClientDevServers,
         })
       }),
-    )
-    await this.allPointsManagers.add(
-      ...(intializedServer.pointsManager ? [intializedServer.pointsManager] : []),
-      ...intializedClients.map((client) => client.pointsManager),
     )
     this.initialized = true as never
 

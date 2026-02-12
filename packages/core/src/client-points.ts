@@ -1,19 +1,22 @@
 import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0nt/route0'
 import { Route0, Routes } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
-import { _point0_env } from './index.js'
+import { _point0_env, appendSlash, getBasepathOrNull, getHostnameOrNull } from './index.js'
 import { _ssItems } from './internals.js'
 import type {
   NormalizedLazyPointsCollection,
   NormalizedLazyPointsCollectionRecord,
   NormalizedPointsCollection,
   PointsDefinition,
+  PointsDefinitionSource,
   ReadyPointsCollection,
   ReadyPointsCollectionRecord,
 } from './points-manager.js'
 import { PointsManager } from './points-manager.js'
 import type {
+  DataTransformerExtended,
   LayoutPoint,
+  MiddlewareFn,
   PagePoint,
   PagePrefetchPolicy,
   PointName,
@@ -24,6 +27,13 @@ import type {
 
 export class ClientPoints {
   manager: PointsManager
+
+  baseurl: string | null
+  basepath: string | null
+  hostname: string | null
+  ssr: boolean
+  middlewares: MiddlewareFn[]
+  transformer: DataTransformerExtended
 
   routes: RoutesPretty
   routesHash: string
@@ -36,26 +46,45 @@ export class ClientPoints {
     routesHash,
     pagesTreeSource,
     pagesTree,
+    baseurl,
+    basepath,
+    hostname,
+    ssr,
+    middlewares,
+    transformer,
   }: {
     manager: PointsManager
     routes: RoutesPretty
     routesHash: string
     pagesTreeSource: PagesTreeSource
     pagesTree: PagesTree
+    baseurl: string | null
+    basepath: string | null
+    hostname: string | null
+    ssr: boolean
+    middlewares: MiddlewareFn[]
+    transformer: DataTransformerExtended
   }) {
     this.manager = manager
     this.routes = routes
     this.routesHash = routesHash
     this.pagesTreeSource = pagesTreeSource
     this.pagesTree = pagesTree
+    this.baseurl = baseurl
+    this.basepath = basepath
+    this.hostname = hostname
+    this.ssr = ssr
+    this.middlewares = middlewares
+    this.transformer = transformer
   }
 
-  static create(points: PointsDefinition | PointsManager): ClientPoints {
+  static createFromDefintion(points: PointsDefinition | PointsManager): ClientPoints {
     const manager = PointsManager.createFromDefinition(points)
     // const manager = PointsManager.createFromCollection(_manager.collection.filter((p) => ['root', 'page', 'layout', 'provider', 'init'].))
     // I was tried to filter not needed points, but for what? In real client we already filter it on generate pahes, on server does not matter if there more points then needed
     const roots = manager.getRoots()
-    if (roots.length === 0) {
+    const root = roots.at(0)
+    if (!root) {
       throw new Error('No root points found')
     }
     if (roots.length > 1) {
@@ -68,7 +97,31 @@ export class ClientPoints {
     const pagesTree = ClientPoints.toPagesTree({ points: manager.collection, pagesTreeSource })
     const routesHash = routes._.pathsOrdering.join(',')
 
-    return new ClientPoints({ manager, routes, routesHash, pagesTreeSource, pagesTree })
+    const baseurl = root._baseurl || null
+    const basepath = getBasepathOrNull(baseurl)
+    const hostname = getHostnameOrNull(baseurl)
+    const ssr = root._ssr
+    const middlewares = root._middlewares
+    const transformer = root._getTransformer()
+
+    return new ClientPoints({
+      manager,
+      routes,
+      routesHash,
+      pagesTreeSource,
+      pagesTree,
+      baseurl,
+      basepath,
+      hostname,
+      ssr,
+      middlewares,
+      transformer,
+    })
+  }
+
+  static async createFromSource(source: PointsDefinitionSource): Promise<ClientPoints> {
+    const manager = await PointsManager.createFromSource(source)
+    return ClientPoints.createFromDefintion(manager)
   }
 
   static readonly toRoutes = ({
@@ -259,13 +312,13 @@ export class ClientPoints {
         point: ReadyPoint | (() => Promise<ReadyPoint>)
         name: PointName
         type: PointType
-        FC: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>> | undefined
-        pageLocation: ExactLocation | undefined
-        layouts: string[] | undefined
+        FC: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
+        pageLocation: ExactLocation
+        layouts: string[]
       }
     | undefined => {
     for (const { type, name, route, point, FC, layouts } of this.manager.collection) {
-      if (type === 'page' && route) {
+      if (type === 'page' && route && FC && layouts) {
         const match = route.getLocation(location)
         if (match.exact) {
           return {
@@ -282,7 +335,7 @@ export class ClientPoints {
     return undefined
   }
 
-  private readonly loadPage = async ({
+  readonly loadPage = async ({
     location,
   }: {
     location: AnyLocation
@@ -290,6 +343,7 @@ export class ClientPoints {
     | {
         page: PagePoint
         layouts: LayoutPoint[]
+        pageLocation: ExactLocation
       }
     | undefined
   > => {
@@ -300,17 +354,13 @@ export class ClientPoints {
     const page: ReadyPoint = typeof suitable.point === 'function' ? await suitable.point() : suitable.point
 
     // Prefetch the (possibly lazy) page component
-    if (suitable.FC) {
-      await ClientPoints.prefetchLazyComponent(suitable.FC)
-    }
+    await ClientPoints.prefetchLazyComponent(suitable.FC)
 
     const layouts: ReadyPoint[] = await Promise.all(
       this.manager.collection
-        .filter((p) => p.type === 'layout' && suitable.layouts?.includes(p.name))
+        .filter((p) => p.type === 'layout' && suitable.layouts.includes(p.name))
         .map(async (layout) => {
-          if (layout.FC) {
-            await ClientPoints.prefetchLazyComponent(layout.FC)
-          }
+          await ClientPoints.prefetchLazyComponent(layout.FC)
           return typeof layout.point === 'function' ? (await layout.point()).point : layout.point.point
         }),
     )
@@ -320,6 +370,7 @@ export class ClientPoints {
     return {
       page: page as PagePoint,
       layouts: layouts as LayoutPoint[],
+      pageLocation: suitable.pageLocation,
     }
   }
 
@@ -365,8 +416,6 @@ export class ClientPoints {
     }
   }
 
-  // helpers
-
   _getPageByHref = (
     href: string,
   ):
@@ -383,7 +432,42 @@ export class ClientPoints {
     return { point, location }
   }
 
-  // global
+  static isPageLocationSuitable = ({
+    baseurl,
+    hostname,
+    basepath,
+    pageLocation,
+  }: {
+    baseurl: string | null
+    hostname: string | null
+    basepath: string | null
+    pageLocation: AnyLocation
+  }): boolean => {
+    if (baseurl === null) {
+      return false
+    }
+    if (hostname && pageLocation.hostname && pageLocation.hostname !== hostname) {
+      return false
+    }
+    if (basepath) {
+      if (pageLocation.pathname === basepath) {
+        return true
+      }
+      if (pageLocation.pathname.startsWith(appendSlash(basepath))) {
+        return true
+      }
+      return false
+    }
+    return true
+  }
+  isPageLocationSuitable = ({ pageLocation }: { pageLocation: AnyLocation }): boolean => {
+    return ClientPoints.isPageLocationSuitable({
+      baseurl: this.baseurl,
+      hostname: this.hostname,
+      basepath: this.basepath,
+      pageLocation,
+    })
+  }
 
   mount = () => {
     if (_point0_env.target.is.server) {
