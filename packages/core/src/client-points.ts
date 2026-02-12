@@ -2,7 +2,7 @@ import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0n
 import { Route0, Routes } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import { _point0_env, appendSlash, getBasepathOrNull, getHostnameOrNull } from './index.js'
-import { _ssItems } from './internals.js'
+import { _getFakeClient, _ssItems } from './internals.js'
 import type {
   NormalizedLazyPointsCollection,
   NormalizedLazyPointsCollectionRecord,
@@ -480,7 +480,8 @@ export class ClientPoints {
     // all this needed only for router, to know which routes and pages exists in current scope
     // we can not here use env.scope, because for server it can be 'root' while for client it can be 'site' for example
     // and this code will be executed on server
-    const clientPoints = _ssItems.__POINT0_CLIENT_POINTS__.getWeak()
+    const fakeClient = _getFakeClient()
+    const clientPoints = fakeClient ? fakeClient.points : _ssItems.__POINT0_CLIENT_POINTS__.getWeak()
     if (!clientPoints) {
       if (_point0_env.target.is.server) {
         throw new Error(
@@ -488,7 +489,7 @@ export class ClientPoints {
         )
       } else {
         throw new Error(
-          'Client points instacne not found. You should call clientPoints.mount() first to mount it on client',
+          'Client points instance not found. You should call clientPoints.mount() first to mount it on client',
         )
       }
     }

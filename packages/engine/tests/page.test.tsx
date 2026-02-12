@@ -21,24 +21,46 @@ describe('page', () => {
 
   it('simple', async () => {
     const page = root.lets('page', 'home', '/').page(({ data }) => <div id="page">x=nothing</div>)
-
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
-          #page: x=nothing
-        "
-      `)
+          "/
+            #page: x=nothing
+          "
+        `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "
-      "
-    `)
+        "
+        "
+      `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page: x=nothing
-      "
-    `)
+        "#page: x=nothing
+        "
+      `)
+  })
+
+  it('page param', async () => {
+    const page = root
+      .lets('page', 'home', '/:x')
+      .page(({ data, location }) => <div id="page">x={location.params.x}</div>)
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
+    await render(page.route({ x: 'zxc' }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+          "/zxc
+            #page: x=zxc
+          "
+        `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+        "
+        "
+      `)
+    expect(await fetchPreview(page, { x: 'zxc' })).toMatchInlineSnapshot(`
+        "#page: x=zxc
+        "
+      `)
   })
 
   it('loader', async () => {

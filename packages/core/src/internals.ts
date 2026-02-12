@@ -9,7 +9,7 @@ import type { ClientPoints } from './client-points.js'
 
 const initUndefined = () => undefined as never
 
-type LikeFakeClient = { id: string; scope: PointsScope; fetch: FetchFn } | undefined
+type LikeFakeClient = { id: string; scope: PointsScope; fetch: FetchFn; points: ClientPoints } | undefined
 export const _getFakeClient = (): LikeFakeClient | undefined => {
   return ss.serverStorage?.getStore()?.__POINT0_FAKE_CLIENT__ as LikeFakeClient | undefined
 }

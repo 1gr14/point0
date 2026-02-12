@@ -3,9 +3,15 @@ export const engine = Engine.create({
   file: import.meta.url,
   pointsGlob: ['**/*.{ts,tsx}'],
   server: {
-    scope: 'server',
+    scope: 'client',
     port: 3000,
     entry: { main: './index.server.ts' },
+    generate: [
+      {
+        what: 'points',
+        file: './lib/points.ready.ts',
+      },
+    ],
     points: async () => await import('./lib/points.ready'),
     outdir: '../dist/server',
   },

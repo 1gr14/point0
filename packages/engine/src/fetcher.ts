@@ -145,6 +145,9 @@ export class Fetcher {
     request: Request0
     scope: PointsScope
   }): Promise<InputRawUnknown> => {
+    if (request.state.__POINT0_RAW_UNKNOWN_INPUT__) {
+      return request.state.__POINT0_RAW_UNKNOWN_INPUT__ as InputRawUnknown
+    }
     const result = await this._getPointInputFromTaskRequest({ request, scope })
     request.state.__POINT0_RAW_UNKNOWN_INPUT__ = result
     return result

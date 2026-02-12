@@ -100,12 +100,17 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     for (const error of errors) {
       console.error(error)
     }
-    return new PointsManager<true, TRequiredCtx>({
-      root: this.root,
-      scope: this.root.scope,
-      collection: readyPoints,
-      ready: true,
-    })
+    this.collection = readyPoints
+    this.ready = true as never
+    this.root = this.collection.at(0)?.point as RootPoint
+    this.scope = this.root.scope
+    return this as PointsManager<true, TRequiredCtx>
+    // return new PointsManager<true, TRequiredCtx>({
+    //   root: this.root,
+    //   scope: this.root.scope,
+    //   collection: readyPoints,
+    //   ready: true,
+    // })
   }
 
   static toNormalizedPointsCollection(points: MixedPointsCollection | PointsDefinition): NormalizedPointsCollection {
