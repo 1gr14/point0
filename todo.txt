@@ -37,6 +37,7 @@ todo.txt → github tasks
 launch
 
 
+
 ------
 ------
 ------
@@ -44,21 +45,22 @@ launch
 
 
 === REFACTOING 3000 ===
+Error0
+Логгер может принимать как готовый логгер, так и функцию разруливающую логи принимающую левел категорию аргументы
+normzliae all errors texts everyhere with point name and path to point where it was defined
+try catch evertywhere in engine to show real error in real place
+--+
 Разобраться с эррор баундари для фронта
 bun watcher, not parcel watcher
 ? html transformer not regex hack
 --+
 Remove comments, unusde code, unused types (except core/point0.ts and core/types.ts)
-Логгер может принимать как готовый логгер, так и функцию разруливающую логи принимающую левел категорию аргументы
 Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп
 При обнаружении поинта, который при своей инициализации не наблюдает над собой компилера судя по процесс енв, он должен сделать консоль варн что мол компилер забыли включить или импортнули его в энжине незаконно без асунк импорта, это можно отключить
 В поинтах сделать проверку в момент летс или криэйт, либо энжина должна быть инициализирована, либо это должен быть клиент
 --+
 types.ts file thet reexport only needed types
 store each point location to normalize errors messages for example in No route or id provided for this point
-normzliae all errors texts everyhere with point name and path to point where it was defined
-try catch evertywhere in engine to show real error in real place
-Replace all node methods with native bun methods
 refactor types names and order and any points, etc any things. Поправляя эни попробовать отказаться от ифэни в пользу стринг экстендс
 remove default generic values it is unsafe, better add AnySomethingType for it
 try do EmptyData as {} or something better
@@ -69,9 +71,7 @@ shrink core/index.ts size, by remove code duplicates
 ? Заменить поинт на поинт ИНСТАНС а то путаница какая-то, и в поинте хранить только тайп и нэйм
 find TODO in code
 ---
-??? remove all points manager
-??? Разделить клиент скоуп на фром скоуп и ту скоуп и моунтед скоуп, короче тут надо уточнить как это должно быть
-??? server should get only its own points, and its already should include all points, so we do not need all-points-manager
+? Replace all node methods with native bun methods
 ? getFakeClient remove from internals, use from superstore import fakeClient.get() from fake-client.ts
 ? name → _name чтобы не конфликтовать с нэймом реакт компонента
 ? В инфер добавить аргсИнаут где он может быть опшионалом
@@ -92,26 +92,16 @@ find TODO in code
 
 
 
-=== PREPARING ===
-
-parallel fake client tests
-
-? Квери в общий провайдер
-? Ввести плинт0 провайдер
-
-
-
 === REQUESTING ===
-ServerClient with own fetching like FakClient
+--+
+ServerClient with own fetching like FakeClient
 Когда в эффектах кукиса удаляют куки во втором запросе при сср проверить, что это работает
-Fix response effects cookies and headers provided not just record, better api like original heraders
 Реквест стейт это интерфейс который можно поменять
 Формдата авто фалс тру
 В реквест0 пометить это сервер а также последовательность предыдущих запросов
-fetch/query cancellation, maybe fetchWithCancel()
 on fetch error maybe no json, then if it is thore, do res.text()
-при запросах с сревреа к самому себе учитывать максимальную рекурсию 
-? Добавить реквест реферера и там указать какому скоупа принадлежал реферер (we have it, from scope, right already?)
+при запросах с сревреа к самому себе учитывать максимальную рекурсию
+---
 ? queryClientDehydratedState always should be returned additionally to data if it has more then only what we requests, we hydrate it, but then immediately remove and it not comes to query client cache
 ? between server calls we should have shared queryClientState
 
@@ -200,6 +190,7 @@ SuccessComponent>children также можно передавать и тогд
 
 
 === TESTING ===
+parallel fake client tests
 Дев и билд объединить тесты и запуск там делать в дескрайбе, а дальше в итах тестировать что нужно
 Кли тесты команд с названиями реальных команд, а отдельно тесты на билд также сделать через сам скрипт
 Тест билда и дева размазать по одному запущенному инстансу и там проверить многое

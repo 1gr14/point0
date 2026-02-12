@@ -19,8 +19,9 @@ import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import { CookiesStore } from './cookies-store.js'
+import { Effects } from './effects.js'
 import { _point0_env } from './env.js'
-import { _ssItems, _getFakeClient } from './internals.js'
+import { _getFakeClient, _ssItems } from './internals.js'
 import type { MethodQueryForAnyPoint } from './methods/query.js'
 import type {
   AppendProps,
@@ -61,8 +62,6 @@ import type {
   WithSelfQueryIfShouldBeFinalized,
   WrapperComponentType,
 } from './mountable.js'
-import { PointsManager } from './points-manager.js'
-import { Effects } from './effects.js'
 import type { RouterPageState } from './router.js'
 import { _usePageStateManager, useLocation, useRouterContext } from './router.js'
 import { superstore } from './super-store.js'
@@ -93,11 +92,11 @@ import type {
   ExtendRouteDefinition,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
-  FetchServerDetailedOutput,
   FetchFn,
   FetchOptions,
   FetchOptionsFn,
   FetchOptionsOrFn,
+  FetchServerDetailedOutput,
   FetchServerOutput,
   FetchServerOutputType,
   FinalLoaderData,
@@ -4676,8 +4675,8 @@ export class Point0<
     QueryKey
   > {
     const queryKey = this._getServerQueryKey({ input, outputType, isInfiniteQuery: false })
-    const queryFn = async () => {
-      const data = await this.fetchServer(input as never, fetchOptions, outputType)
+    const queryFn = async ({ signal }: { signal: AbortSignal }) => {
+      const data = await this.fetchServer(input as never, { ...fetchOptions, signal }, outputType)
       return data
     }
     const mountableDefaultQueryOptions =
@@ -4884,12 +4883,12 @@ export class Point0<
     QueryKey
   > {
     const queryKey = this._getServerQueryKey({ input: input as never, outputType, isInfiniteQuery: true })
-    const queryFn = async ({ pageParam }: { pageParam: unknown }) => {
+    const queryFn = async ({ pageParam, signal }: { pageParam: unknown; signal: AbortSignal }) => {
       try {
         const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
         const data = await this.fetchServer(
           { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam } as never,
-          fetchOptions,
+          { ...fetchOptions, signal },
           outputType,
         )
         return data
