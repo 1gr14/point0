@@ -181,6 +181,7 @@ SuccessComponent>children также можно передавать и тогд
 
 
 === TESTING ===
+remove not neeed test scripts from package json and made nice names to package jsoin scripts
 parallel fake client tests
 Дев и билд объединить тесты и запуск там делать в дескрайбе, а дальше в итах тестировать что нужно
 Кли тесты команд с названиями реальных команд, а отдельно тесты на билд также сделать через сам скрипт

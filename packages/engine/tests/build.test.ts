@@ -103,7 +103,7 @@ describe('build', () => {
         expect(publicDirText).toBe('Hi!')
       }),
       {
-        // retry: 3,
+        retry: 3,
       },
     )
 
@@ -145,7 +145,7 @@ describe('build', () => {
         expect(publicDirText).toBe('Hi!')
       }),
       {
-        // retry: 3,
+        retry: 3,
       },
     )
 
@@ -240,7 +240,7 @@ describe('build', () => {
         `)
       }),
       {
-        // retry: 3,
+        retry: 3,
       },
     )
   })

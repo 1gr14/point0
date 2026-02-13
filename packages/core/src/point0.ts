@@ -6329,7 +6329,7 @@ export class Point0<
         if (policy === 'onPrefetchOnly') {
           return []
         }
-        if (policy === 'everything' && !p._hasClientLoader()) {
+        if (policy === 'everything' && !p._hasClientLoader() && queryClientDehydratedStateWasPrefetched) {
           return []
         }
         if (policy === 'clientQuery' && !p._hasClientLoader()) {

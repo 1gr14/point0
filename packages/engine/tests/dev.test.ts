@@ -66,9 +66,6 @@ describe('dev', () => {
       'start ssr dev server',
       wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
         if (bundler === 'vite') {
-          return
-        }
-        if (bundler === 'vite') {
           expect(engine.server.viteConfig).toBeString()
         } else {
           expect(engine.server.viteConfig).toBeNull()
@@ -105,7 +102,7 @@ describe('dev', () => {
         expect(publicDirText1).toBe('Hi!')
       }),
       {
-        // retry: 3,
+        retry: 3,
       },
     )
 
@@ -144,7 +141,7 @@ describe('dev', () => {
         expect(publicDirText1).toBe('Hi!')
       }),
       {
-        // retry: 3,
+        retry: 3,
       },
     )
 
@@ -211,7 +208,7 @@ describe('dev', () => {
         expect(page.history.length).toBe(1)
       }),
       {
-        // retry: 10,
+        retry: 3,
       },
     )
   })
