@@ -1259,43 +1259,43 @@ describe('page', () => {
     `)
   })
 
-  it('related query fn', async () => {
-    const query = root
-      .lets('query', 'test')
-      .input(z.object({ y: z.number() }))
-      .loader(({ input }) => ({ x: input.y * 2 }))
-      .query()
-    const page = root
-      .lets('page', 'home', '/:y')
-      .relatedQuery(({ location }) => {
-        return query.useQuery({ y: +location.params.y })
-      })
-      .page(({ data, location }) => (
-        <div id="page">
-          x={data.x} y={location.params.y}
-        </div>
-      ))
+  // it('related query fn', async () => {
+  //   const query = root
+  //     .lets('query', 'test')
+  //     .input(z.object({ y: z.number() }))
+  //     .loader(({ input }) => ({ x: input.y * 2 }))
+  //     .query()
+  //   const page = root
+  //     .lets('page', 'home', '/:y')
+  //     .relatedQuery(({ location }) => {
+  //       return query.useQuery({ y: +location.params.y })
+  //     })
+  //     .page(({ data, location }) => (
+  //       <div id="page">
+  //         x={data.x} y={location.params.y}
+  //       </div>
+  //     ))
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
-    await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
-      await waitContent('#page')
-      expect(await tale()).toMatchInlineSnapshot(`
-        "/123
-          #loading: ...
+  //   const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+  //   await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
+  //     await waitContent('#page')
+  //     expect(await tale()).toMatchInlineSnapshot(`
+  //       "/123
+  //         #loading: ...
 
-          #page: x=246 y=123
-        "
-      `)
-    })
-    expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "query.test (client) < {"y":123}
-      "
-    `)
-    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
-      "#page: x=246 y=123
-      "
-    `)
-  })
+  //         #page: x=246 y=123
+  //       "
+  //     `)
+  //   })
+  //   expect(await fetchesTale()).toMatchInlineSnapshot(`
+  //     "query.test (client) < {"y":123}
+  //     "
+  //   `)
+  //   expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+  //     "#page: x=246 y=123
+  //     "
+  //   `)
+  // })
 
   it('related infinite query', async () => {
     const query = root
@@ -1386,96 +1386,96 @@ describe('page', () => {
     `)
   })
 
-  it('related infinite query fn', async () => {
-    const query = root
-      .lets('infiniteQuery', 'test')
-      .input(z.object({ cursor: z.number().optional() }))
-      .loader(({ input }) => {
-        const cursor = input.cursor ?? 0
-        const nextCursor = cursor + 2
-        return {
-          items: items.slice(cursor, cursor + 2),
-          nextCursor: nextCursor < items.length ? nextCursor : undefined,
-        }
-      })
-      .infiniteQuery({
-        pageParamFromInput: 'cursor',
-        getNextPageParam: (lastPage) => lastPage.nextCursor,
-        initialPageParam: 0,
-      })
-    const page = root
-      .lets('page', 'home')
-      .relatedQuery(({ location }) => {
-        return query.useInfiniteQuery()
-      })
-      .page(({ data, queries: [query] }) => {
-        const itms = data.pages.flatMap((page) => page.items)
-        const nextCursor = data.pages.at(-1)?.nextCursor
-        return (
-          <div id="page">
-            {itms.map((item) => (
-              <div key={item.id}>{item.name}</div>
-            ))}
-            {nextCursor && (
-              <button
-                id="more"
-                onClick={() => {
-                  void query.fetchNextPage()
-                }}
-              >
-                Load more
-              </button>
-            )}
-          </div>
-        )
-      })
+  // it('related infinite query fn', async () => {
+  //   const query = root
+  //     .lets('infiniteQuery', 'test')
+  //     .input(z.object({ cursor: z.number().optional() }))
+  //     .loader(({ input }) => {
+  //       const cursor = input.cursor ?? 0
+  //       const nextCursor = cursor + 2
+  //       return {
+  //         items: items.slice(cursor, cursor + 2),
+  //         nextCursor: nextCursor < items.length ? nextCursor : undefined,
+  //       }
+  //     })
+  //     .infiniteQuery({
+  //       pageParamFromInput: 'cursor',
+  //       getNextPageParam: (lastPage) => lastPage.nextCursor,
+  //       initialPageParam: 0,
+  //     })
+  //   const page = root
+  //     .lets('page', 'home')
+  //     .relatedQuery(({ location }) => {
+  //       return query.useInfiniteQuery()
+  //     })
+  //     .page(({ data, queries: [query] }) => {
+  //       const itms = data.pages.flatMap((page) => page.items)
+  //       const nextCursor = data.pages.at(-1)?.nextCursor
+  //       return (
+  //         <div id="page">
+  //           {itms.map((item) => (
+  //             <div key={item.id}>{item.name}</div>
+  //           ))}
+  //           {nextCursor && (
+  //             <button
+  //               id="more"
+  //               onClick={() => {
+  //                 void query.fetchNextPage()
+  //               }}
+  //             >
+  //               Load more
+  //             </button>
+  //           )}
+  //         </div>
+  //       )
+  //     })
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
-    await render(page.route(), async ({ waitContent, tale, click }) => {
-      await waitContent('#more')
-      await click('#more')
-      await waitContent('Item 4')
-      await click('#more')
-      await waitContent('Item 5')
-      expect(await tale()).toMatchInlineSnapshot(`
-        "/home
-          #loading: ...
+  //   const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+  //   await render(page.route(), async ({ waitContent, tale, click }) => {
+  //     await waitContent('#more')
+  //     await click('#more')
+  //     await waitContent('Item 4')
+  //     await click('#more')
+  //     await waitContent('Item 5')
+  //     expect(await tale()).toMatchInlineSnapshot(`
+  //       "/home
+  //         #loading: ...
 
-          #page:
-            div: Item 1
-            div: Item 2
-            #more: Load more
+  //         #page:
+  //           div: Item 1
+  //           div: Item 2
+  //           #more: Load more
 
-          #page:
-            div: Item 1
-            div: Item 2
-            div: Item 3
-            div: Item 4
-            #more: Load more
+  //         #page:
+  //           div: Item 1
+  //           div: Item 2
+  //           div: Item 3
+  //           div: Item 4
+  //           #more: Load more
 
-          #page:
-            div: Item 1
-            div: Item 2
-            div: Item 3
-            div: Item 4
-            div: Item 5
-        "
-      `)
-    })
-    expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "infiniteQuery.test (client) < {"cursor":0}
-      infiniteQuery.test (client) < {"cursor":2}
-      infiniteQuery.test (client) < {"cursor":4}
-      "
-    `)
-    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page:
-        div: Item 1
-        div: Item 2
-        #more: Load more
-      "
-    `)
-  })
+  //         #page:
+  //           div: Item 1
+  //           div: Item 2
+  //           div: Item 3
+  //           div: Item 4
+  //           div: Item 5
+  //       "
+  //     `)
+  //   })
+  //   expect(await fetchesTale()).toMatchInlineSnapshot(`
+  //     "infiniteQuery.test (client) < {"cursor":0}
+  //     infiniteQuery.test (client) < {"cursor":2}
+  //     infiniteQuery.test (client) < {"cursor":4}
+  //     "
+  //   `)
+  //   expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+  //     "#page:
+  //       div: Item 1
+  //       div: Item 2
+  //       #more: Load more
+  //     "
+  //   `)
+  // })
 
   it('query with injected query', async () => {
     const query = root

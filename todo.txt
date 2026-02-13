@@ -72,6 +72,7 @@ shrink core/index.ts size, by remove code duplicates
 ? Заменить поинт на поинт ИНСТАНС а то путаница какая-то, и в поинте хранить только тайп и нэйм
 find TODO in code
 ---
+? recursive ShowError on method in with query input, becouse now we can not show normal type error
 ? Replace all node methods with native bun methods
 ? getFakeClient remove from internals, use from superstore import fakeClient.get() from fake-client.ts
 ? name → _name чтобы не конфликтовать с нэймом реакт компонента
@@ -110,9 +111,8 @@ on fetch error maybe no json, then if it is thore, do res.text()
 
 
 === ROUTING ===
-recursive ShowError on method in with query input
-
 prefetchOnNavigate(policy) + prefetchOnHover(policy)
+relatedQueries prefetch on prefetch
 Роут стейты, перфетчинг тразититонинг, а также добавить еррор саксес лоадинг который мы и берём и пейдж стейта
 Не нужно при префетче лэйоуты префетчить, лэйоуты и так есть в релейтед поинтсах
 ? prefetch mode when have no ssr should be temporary disabled, becouse we can not prefetch queries without rendering
@@ -123,8 +123,9 @@ prefetch mode fix for no ssr
 
 
 
-=== ROUTES/NOT FOUND ===
-we already have in router option to provide 404
+=== ROUTES ===
+Not found page (we already have in router option to provide 404)
+---
 allow * in routes so we can define special 404 for specific paths
 optional params in routes
 

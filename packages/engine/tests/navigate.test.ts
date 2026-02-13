@@ -15,7 +15,6 @@ let tp: TestProject
 
 const layoutNavTsx = `import { root } from '../lib/root.js'
 import { SimpleLink } from '@point0/wouter'
-
 export const navLayout = root.lets('layout', 'navLayout').layout(({ children }) => (
   <div>
     <nav>
@@ -23,6 +22,8 @@ export const navLayout = root.lets('layout', 'navLayout').layout(({ children }) 
       <SimpleLink to="/with-server">/with-server</SimpleLink>
       <SimpleLink to="/with-client">/with-client</SimpleLink>
       <SimpleLink to="/with-both">/with-both</SimpleLink>
+      <SimpleLink to="/with-related-query">/with-related-query</SimpleLink>
+      <SimpleLink to="/with-mounted-query">/with-mounted-query</SimpleLink>
       <SimpleLink to="/with-none">/with-none</SimpleLink>
     </nav>
     <hr />
@@ -32,12 +33,10 @@ export const navLayout = root.lets('layout', 'navLayout').layout(({ children }) 
 `
 
 const pageHomeTsx = `import { navLayout } from '../layouts/nav.js'
-
 export const homePage = navLayout.lets('page', 'home', '/').page(() => <div id="home">home</div>)
 `
 
 const pageWithServerTsx = `import { navLayout } from '../layouts/nav.js'
-
 export const withServerPage = navLayout.lets('page', 'withServer', 'with-server')
   .loader(async () => {
     await new Promise((r) => setTimeout(r, 400))
@@ -47,7 +46,6 @@ export const withServerPage = navLayout.lets('page', 'withServer', 'with-server'
 `
 
 const pageWithClientTsx = `import { navLayout } from '../layouts/nav.js'
-
 export const withClientPage = navLayout.lets('page', 'withClient', 'with-client')
   .clientLoader(async () => {
     await new Promise((r) => setTimeout(r, 400))
@@ -57,7 +55,6 @@ export const withClientPage = navLayout.lets('page', 'withClient', 'with-client'
 `
 
 const pageWithBothTsx = `import { navLayout } from '../layouts/nav.js'
-
 export const withBothPage = navLayout.lets('page', 'withBoth', 'with-both')
   .loader(async () => {
     await new Promise((r) => setTimeout(r, 400))
@@ -68,6 +65,22 @@ export const withBothPage = navLayout.lets('page', 'withBoth', 'with-both')
     return { ...data, b: 2 }
   })
   .page(({ data }) => <div id="with-both">{data.a},{data.b}</div>)
+`
+
+const pageWithRelatedQueryTsx = `import { navLayout } from '../layouts/nav.js'
+import { root } from '../lib/root.js'
+export const relatedQuery = root.lets('query', 'relatedQuery').loader(() => ({ x: 1 })).query()
+export const withRelatedQueryPage = navLayout.lets('page', 'withRelatedQuery', 'with-related-query')
+  .relatedQuery(relatedQuery)
+  .page(({ data }) => <div id="with-related-query">{data.x}</div>)
+`
+
+const pageWithMountedQueryTsx = `import { navLayout } from '../layouts/nav.js'
+import { root } from '../lib/root.js'
+export const mountedQuery = root.lets('query', 'mountedQuery').loader(() => ({ x: 1 })).query()
+export const withMountedQueryPage = navLayout.lets('page', 'withMountedQuery', 'with-mounted-query')
+  .with(mountedQuery)
+  .page(({ data }) => <div id="with-mounted-query">{data.x}</div>)
 `
 
 const pageWithNoneTsx = `import { navLayout } from '../layouts/nav.js'
@@ -81,6 +94,8 @@ async function writeNavigatePages(tp: TestProject) {
   await tp.write('src/pages/with-server.tsx', pageWithServerTsx)
   await tp.write('src/pages/with-client.tsx', pageWithClientTsx)
   await tp.write('src/pages/with-both.tsx', pageWithBothTsx)
+  await tp.write('src/pages/with-related-query.tsx', pageWithRelatedQueryTsx)
+  await tp.write('src/pages/with-mounted-query.tsx', pageWithMountedQueryTsx)
   await tp.write('src/pages/with-none.tsx', pageWithNoneTsx)
 }
 
@@ -93,6 +108,8 @@ const getTale = (page: PlaywrightPage) => {
       a: /with-server
       a: /with-client
       a: /with-both
+      a: /with-related-query
+      a: /with-mounted-query
       a: /with-none
     hr:`,
     '',
@@ -140,11 +157,14 @@ describe('navigate', () => {
       await page.original.getByText('/with-both').click()
       await page.waitContent('#with-both')
 
+      await page.original.getByText('/with-related-query').click()
+      await page.waitContent('#with-related-query')
+
+      await page.original.getByText('/with-mounted-query').click()
+      await page.waitContent('#with-mounted-query')
+
       await page.original.getByText('/with-none').click()
       await page.waitContent('#with-none')
-
-      await page.original.getByText('/', { exact: true }).click()
-      await page.waitContent('#home')
 
       expect(getTale(page)).toMatchInlineSnapshot(`
       "/
@@ -163,13 +183,17 @@ describe('navigate', () => {
         div:
           #with-both: 1,2
         
+      /with-related-query
+        div:
+          #with-related-query: 1
+        
+      /with-mounted-query
+        div:
+          #with-mounted-query: 1
+        
       /with-none
         div:
           #with-none: none
-        
-      /
-        div:
-          #home: home
         "
     `)
     })
@@ -218,8 +242,11 @@ describe('navigate', () => {
       await page.original.getByText('/with-none').click()
       await page.waitContent('#with-none')
 
-      await page.original.getByText('/', { exact: true }).click()
-      await page.waitContent('#home')
+      await page.original.getByText('/with-related-query').click()
+      await page.waitContent('#with-related-query')
+
+      await page.original.getByText('/with-mounted-query').click()
+      await page.waitContent('#with-mounted-query')
 
       expect(getTale(page)).toMatchInlineSnapshot(`
       "/
@@ -244,9 +271,16 @@ describe('navigate', () => {
         div:
           #with-none: none
         
-      /
+      /with-related-query
         div:
-          #home: home
+          #with-related-query: 1
+        
+      /with-mounted-query
+        div:
+          div: Loading...
+        
+        div:
+          #with-mounted-query: 1
         "
     `)
     })

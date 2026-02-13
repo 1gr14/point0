@@ -63,8 +63,7 @@ import type {
   QueriesResults,
   QueryDefinition,
   QueryDefinitionByQuery,
-  RelatedQueryFn,
-  RelatedQueryOptions,
+  RelatedQueryInputGetter,
   UndefinedComponentSuccessComponent,
   UndefinedLayoutSuccessComponent,
   UndefinedSuccessPageComponent,
@@ -1916,26 +1915,18 @@ export class Point0<
   >(
     ...args: TLetsReadyPointType extends MountablePointType
       ? [
-          // point: TPoint &
-          //   (TPoint['Infer']['IsInputOptional'] extends true
-          //     ? unknown
-          //     : Record<`Input as second argument is required`, `Input as second argument is required`>),
           point: TPoint,
           ...rest: TPoint['Infer']['IsInputOptional'] extends true
             ? [
                 input?:
                   | TPoint['Infer']['InputRawOrUndefined']
-                  | ((
-                      options: RelatedQueryOptions<MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
-                    ) => TPoint['Infer']['InputRawOrUndefined']),
+                  | RelatedQueryInputGetter<TPoint, MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
                 queryOptions?: TPoint['Infer']['UseQueryOptions'],
               ]
             : [
                 input:
                   | TPoint['Infer']['InputRawOrUndefined']
-                  | ((
-                      options: RelatedQueryOptions<MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
-                    ) => TPoint['Infer']['InputRawOrUndefined']),
+                  | RelatedQueryInputGetter<TPoint, MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
                 queryOptions?: TPoint['Infer']['UseQueryOptions'],
               ],
         ]
@@ -1971,53 +1962,12 @@ export class Point0<
       },
     ]
   >
-  relatedQuery<TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults>(
-    relatedQueryFn: RelatedQueryFn<MountableLocation<TLetsReadyPointType, TRouteDefinition>, TNewQueries>,
-  ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
-      ? 'finalStage'
-      : StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    [
-      ...WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions
-      >,
-      // ...(TNewQueries extends UseQueryOrInfiniteQueryResult
-      //   ? [QueryDefinitionByQuery<TNewQueries>]
-      //   : TNewQueries extends UseQueryOrInfiniteQueryResult[]
-      //     ? QueriesDefinitionsByQueries<TNewQueries>
-      //     : never),
-      ...(TNewQueries extends QueriesResults
-        ? QueriesDefinitionsByQueries<TNewQueries>
-        : TNewQueries extends UseQueryOrInfiniteQueryResult
-          ? [QueryDefinitionByQuery<TNewQueries>]
-          : never),
-    ]
-  >
   relatedQuery(
-    ...args:
-      | [relatedQueryFn?: RelatedQueryFn<any, any> | undefined]
-      | [
-          point?: AnyPoint | undefined,
-          input?: (options: RelatedQueryOptions<MountableLocation<TLetsReadyPointType, TRouteDefinition>>) => InputRaw,
-          queryOptions?: ExtraUseQueryOptions | ExtraUseInfiniteQueryOptions<any, any, any, any, any, any> | undefined,
-        ]
+    ...args: [
+      point?: AnyPoint | undefined,
+      input?: RelatedQueryInputGetter<any, any> | InputRaw | undefined,
+      queryOptions?: ExtraUseQueryOptions | ExtraUseInfiniteQueryOptions<any, any, any, any, any, any> | undefined,
+    ]
   ) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
@@ -2032,44 +1982,22 @@ export class Point0<
       }) as never
     }
 
-    if ('point' in args[0]) {
-      const [{ point }, inputFnOrInput, queryOptions = {}] = args
-      const getInputFn =
-        typeof inputFnOrInput === 'function'
-          ? inputFnOrInput
-          : typeof inputFnOrInput === 'object'
-            ? () => inputFnOrInput
-            : () => ({})
-      const relatedQueryFn = ((options) => {
-        const input = getInputFn(options)
-        if (point._queryResultType === 'query') {
-          return point.useQuery(input, queryOptions)
-        } else {
-          return point.useInfiniteQuery(input, queryOptions as never)
-        }
-      }) as RelatedQueryFn<any, any>
-      return this._continue({
-        _mountActions: [
-          ...this._mountActions,
-          ...selfQueryAction,
-          {
-            type: 'relatedQuery',
-            fn: relatedQueryFn,
-            unstableId: Point0._getNextUnstableId(),
-          },
-        ],
-        ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
-      }) as never
-    }
-
-    const [relatedQueryFn] = args
+    const [{ point }, inputFnOrInput, queryOptions = {}] = args
+    const getInputFn =
+      typeof inputFnOrInput === 'function'
+        ? (inputFnOrInput as RelatedQueryInputGetter<any, any>)
+        : typeof inputFnOrInput === 'object'
+          ? () => inputFnOrInput
+          : () => ({})
     return this._continue({
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
         {
           type: 'relatedQuery',
-          fn: relatedQueryFn,
+          point,
+          queryOptions,
+          inputGetter: getInputFn,
           unstableId: Point0._getNextUnstableId(),
         },
       ],
@@ -6567,20 +6495,6 @@ export class Point0<
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
           input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-          queryOptions?:
-            | undefined
-            | (TQueryResultType extends 'infiniteQuery'
-                ? Partial<
-                    ExtraUseInfiniteQueryOptions<
-                      InputsRaw<TServerInputSchema, TClientInputSchema>,
-                      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                      Error0,
-                      InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-                      QueryKey,
-                      unknown
-                    >
-                  >
-                : Partial<ExtraUseQueryOptions>),
           options?: {
             location?: AnyLocation
             queryClient?: QueryClient
@@ -6591,20 +6505,6 @@ export class Point0<
         ]
       : [
           input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-          queryOptions?:
-            | undefined
-            | (TQueryResultType extends 'infiniteQuery'
-                ? Partial<
-                    ExtraUseInfiniteQueryOptions<
-                      InputsRaw<TServerInputSchema, TClientInputSchema>,
-                      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                      Error0,
-                      InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-                      QueryKey,
-                      unknown
-                    >
-                  >
-                : Partial<ExtraUseQueryOptions>),
           options?: {
             location?: AnyLocation
             queryClient?: QueryClient
@@ -6614,7 +6514,7 @@ export class Point0<
           },
         ]
   ): Promise<void> {
-    const [input = {}, queryOptions, options = {}] = args
+    const [input = {}, options = {}] = args
     const eventData = {
       point: this as never as AnyPoint,
       input,
@@ -6646,7 +6546,6 @@ export class Point0<
         await this._prefetchPageQueryClientDehydratedState({
           queryClient,
           input: input as never,
-          queryOptions,
           fetchOptions,
           force,
         })
@@ -6664,10 +6563,27 @@ export class Point0<
     const allRelatedPoints = [this as never as ReadyPoint, ...this._layouts]
     const uniqRelatedPoints = [...new Set<AnyPoint>(allRelatedPoints)]
     const uniqPrefetchFns = [...new Set<OnPrefetchFn>([...uniqRelatedPoints.flatMap((p) => p._onPrefetchFns)])]
+    const allRelatedQueries = allRelatedPoints.flatMap((p) => p._mountActions.filter((a) => a.type === 'relatedQuery'))
 
     const onPrefetchFnsPromise = Promise.all(
       uniqPrefetchFns.map(async (fn) => {
         return await fn()
+      }),
+    )
+
+    const relatedQueriesPrefetching = Promise.all(
+      allRelatedQueries.map(async (relatedQuery) => {
+        if (relatedQuery.point._queryResultType === 'infiniteQuery') {
+          return await relatedQuery.point.prefetchInfiniteQuery(
+            relatedQuery.inputGetter({ location }),
+            relatedQuery.queryOptions as never,
+          )
+        } else {
+          return await relatedQuery.point.prefetchQuery(
+            relatedQuery.inputGetter({ location }),
+            relatedQuery.queryOptions as never,
+          )
+        }
       }),
     )
 
@@ -6695,7 +6611,7 @@ export class Point0<
                 serverClientQuery: 'serverAndClient' as const,
               }[policy]
         if (p._queryResultType === 'infiniteQuery') {
-          return await p.prefetchInfiniteQuery(inputHere as never, queryOptions as never, {
+          return await p.prefetchInfiniteQuery(inputHere as never, undefined, {
             queryClient,
             location,
             fetchOptions,
@@ -6704,7 +6620,7 @@ export class Point0<
             preventPrefetchFns: true,
           })
         } else {
-          return await p.prefetchQuery(inputHere as never, queryOptions, {
+          return await p.prefetchQuery(inputHere as never, undefined, {
             queryClient,
             location,
             fetchOptions,
@@ -6717,7 +6633,7 @@ export class Point0<
     )
 
     try {
-      await Promise.all([queriesPrefetching, onPrefetchFnsPromise])
+      await Promise.all([queriesPrefetching, relatedQueriesPrefetching, onPrefetchFnsPromise])
       this._emit('pointPrefetchPageSettled', eventData)
       this._emit('pointPrefetchPageSuccess', eventData)
     } catch (error) {
@@ -7158,14 +7074,25 @@ export class Point0<
           }
         }
         case 'relatedQuery': {
-          const queryFnResult = action.fn({ location: mountState.location })
-          const queries = Array.isArray(queryFnResult) ? queryFnResult : [queryFnResult]
+          const query = (() => {
+            if (action.point._queryResultType === 'infiniteQuery') {
+              return action.point.useInfiniteQuery(
+                action.inputGetter({ location: mountState.location }),
+                action.queryOptions as never,
+              )
+            } else {
+              return action.point.useQuery(
+                action.inputGetter({ location: mountState.location }),
+                action.queryOptions as never,
+              )
+            }
+          })()
           return React.createElement(this._getMountable, {
             ..._nextMountableProps,
-            queryIndex: queryIndex + queries.length,
+            queryIndex: queryIndex + 1,
             prev: {
               ..._nextMountableProps.prev,
-              queries: [..._nextMountableProps.prev.queries, ...queries],
+              queries: [..._nextMountableProps.prev.queries, query],
             },
           })
         }

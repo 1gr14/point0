@@ -398,7 +398,7 @@ export class ClientPoints {
       if (!result) {
         return undefined
       }
-      await result.page.prefetchPage(result.page._getUnsafeInputRawByLocation(location), undefined, {
+      await result.page.prefetchPage(result.page._getUnsafeInputRawByLocation(location), {
         queryClient,
         location,
         policy,

@@ -9,9 +9,12 @@ import type {
 import type * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type {
+  AnyPoint,
   CurrentRouteDefinition,
   Data,
   EmptyData,
+  ExtraUseInfiniteQueryOptions,
+  ExtraUseQueryOptions,
   ReadyPointType,
   FinalLoaderDataOrNever,
   IfAnyThenElse,
@@ -388,10 +391,9 @@ export type WithQueryFn<
 > = (options: WithFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>) => TNewQueries
 
 export type RelatedQueryOptions<TLocation extends AnyLocation = AnyLocation> = { location: TLocation }
-export type RelatedQueryFn<
-  TLocation extends AnyLocation = AnyLocation,
-  TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults = UseQueryOrInfiniteQueryResult | QueriesResults,
-> = (options: RelatedQueryOptions<TLocation>) => TNewQueries
+export type RelatedQueryInputGetter<TPoint extends { point: AnyPoint }, TLocation extends AnyLocation = AnyLocation> = (
+  options: RelatedQueryOptions<TLocation>,
+) => TPoint['point']['Infer']['InputRawOrUndefined']
 
 // export type LightQueryFnOptions<TLocation extends AnyLocation> = { location: TLocation }
 // export type LightQueryFn<
@@ -812,7 +814,9 @@ export type MountAction<
 > = TType extends 'relatedQuery'
   ? {
       type: 'relatedQuery'
-      fn: RelatedQueryFn
+      point: AnyPoint
+      inputGetter: RelatedQueryInputGetter<{ point: AnyPoint }>
+      queryOptions: ExtraUseInfiniteQueryOptions<any> | ExtraUseQueryOptions
       unstableId: number
     }
   : TType extends 'selfQuery'
