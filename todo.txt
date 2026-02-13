@@ -109,6 +109,8 @@ on fetch error maybe no json, then if it is thore, do res.text()
 
 
 === ROUTING ===
+with(query) + withQuery(query)
+prefetchOnNavigate(policy) + prefetchOnHover(policy)
 Роут стейты, перфетчинг тразититонинг, а также добавить еррор саксес лоадинг который мы и берём и пейдж стейта
 Не нужно при префетче лэйоуты префетчить, лэйоуты и так есть в релейтед поинтсах
 ? prefetch mode when have no ssr should be temporary disabled, becouse we can not prefetch queries without rendering
