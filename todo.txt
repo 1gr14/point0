@@ -45,6 +45,7 @@ launch
 
 === REFACTOING 3000 ===
 Error0
+comments for methods
 Логгер может принимать как готовый логгер, так и функцию разруливающую логи принимающую левел категорию аргументы
 normzliae all errors texts everyhere with point name and path to point where it was defined
 try catch evertywhere in engine to show real error in real place
