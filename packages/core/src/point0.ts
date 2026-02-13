@@ -3708,9 +3708,9 @@ export class Point0<
   use(plugin: NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>) {
     const point = plugin.point
 
-    if (this._ssr !== point._ssr) {
-      throw new Error(`Point ${this.toString()} and ${point.toString()} have different ssr settings`)
-    }
+    // if (this._ssr !== point._ssr) {
+    //   throw new Error(`Point ${this.toString()} and ${point.toString()} have different ssr settings`)
+    // }
 
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized

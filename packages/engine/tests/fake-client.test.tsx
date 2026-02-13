@@ -131,7 +131,13 @@ describe('FakeClient', () => {
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
     }).init()
-    const client = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
+    const client = FakeClient.create({
+      engine,
+      scope: 'root',
+      globals: getFakeBrowserGlobals(),
+      cookieGetter: CookiesStore.clientDocumentCookieGetter,
+      cookieSetter: CookiesStore.clientDocumentCookieSetter,
+    })
     await client.run(async () => {
       cooka.set('3')
       expect(await client.getCookies()).toEqual([])

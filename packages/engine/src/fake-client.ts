@@ -1,10 +1,18 @@
 import type { ClientPoints, PointsScope, RichFetchFn } from '@point0/core'
 import { _getSsItemsWithRestErrors, _ssRunWithServerStorageState, superstore } from '@point0/core'
 import fetchCookie from 'fetch-cookie'
-import { Cookie, CookieJar } from 'tough-cookie'
+import { CookieJar } from 'tough-cookie'
+import type { Cookie } from 'tough-cookie'
 import type { EngineClient } from './client.js'
 import type { Engine } from './engine.js'
 import { generateId } from './utils.js'
+import { Effects, type CookieOptionsInput } from '@point0/core/effects'
+
+type CookiesStoreSetter = (options: CookieOptionsInput) => void
+type CookiesStoreGetter = {
+  (name: string): string | undefined
+  (): Record<string, string>
+}
 
 class GlobalThisItemProxy {
   // item key -> item proxy
@@ -95,7 +103,8 @@ export class FakeClient<TState extends FakeClientState = any> {
   jar: CookieJar
   // fetch: FetchCookieImpl<string | URL | Request, RequestInit, Response>
   fetch: RichFetchFn
-
+  cookieSetter: CookiesStoreSetter | undefined
+  cookieGetter: CookiesStoreGetter | undefined
   onRunStartOutside: FakeClientCallback<TState> | undefined
   onRunStartInside: FakeClientCallback<TState> | undefined
   onRunEndOutside: FakeClientCallback<TState> | undefined
@@ -118,6 +127,8 @@ export class FakeClient<TState extends FakeClientState = any> {
     onRunEndInside,
     onDestroyOutside,
     onDestroyInside,
+    cookieSetter,
+    cookieGetter,
   }: {
     engine: Engine<any, true>
     client: EngineClient<true>
@@ -133,6 +144,8 @@ export class FakeClient<TState extends FakeClientState = any> {
     onRunEndInside: FakeClientCallback<TState> | undefined
     onDestroyOutside: FakeClientCallback<TState> | undefined
     onDestroyInside: FakeClientCallback<TState> | undefined
+    cookieSetter: CookiesStoreSetter | undefined
+    cookieGetter: CookiesStoreGetter | undefined
   }) {
     this.engine = engine
     this.client = client
@@ -148,6 +161,8 @@ export class FakeClient<TState extends FakeClientState = any> {
     this.onRunEndInside = onRunEndInside
     this.onDestroyOutside = onDestroyOutside
     this.onDestroyInside = onDestroyInside
+    this.cookieSetter = cookieSetter
+    this.cookieGetter = cookieGetter
   }
 
   static create<TState extends FakeClientState = FakeClientState>({
@@ -161,6 +176,8 @@ export class FakeClient<TState extends FakeClientState = any> {
     onRunEndInside,
     onDestroyOutside,
     onDestroyInside,
+    cookieSetter,
+    cookieGetter,
     state,
   }: {
     engine: Engine
@@ -173,6 +190,8 @@ export class FakeClient<TState extends FakeClientState = any> {
     onRunEndInside?: FakeClientCallback<TState> | undefined
     onDestroyOutside?: FakeClientCallback<TState> | undefined
     onDestroyInside?: FakeClientCallback<TState> | undefined
+    cookieSetter?: CookiesStoreSetter | undefined
+    cookieGetter?: CookiesStoreGetter | undefined
     state?: TState | undefined
   }): FakeClient<TState> {
     if (!engine.initialized) {
@@ -184,6 +203,28 @@ export class FakeClient<TState extends FakeClientState = any> {
     }
     const id = generateId()
     const jar = new CookieJar()
+    const getCookieMap = (): Record<string, string> => {
+      if (cookieGetter) {
+        return cookieGetter()
+      }
+      return {}
+    }
+    const syncJarFromCookieGetter = async (requestUrl: string): Promise<void> => {
+      const cookies = getCookieMap()
+      for (const [name, value] of Object.entries(cookies)) {
+        const serializedCookie = Effects.serializeCookiePair({ name, value })
+        await jar.setCookie(serializedCookie, requestUrl)
+      }
+    }
+    const syncResponseCookiesToCookieSetter = (response: Response): void => {
+      if (!cookieSetter) {
+        return
+      }
+      const cookies = Effects.parseCookies(response)
+      for (const cookie of cookies) {
+        cookieSetter(cookie)
+      }
+    }
     const fetch = fetchCookie<string | URL | Request, RequestInit, Response>(async (input, init) => {
       const request =
         input instanceof Request
@@ -193,26 +234,10 @@ export class FakeClient<TState extends FakeClientState = any> {
               init,
             )
 
-      // Sync cookies from document.cookie to the jar before making the request
-      if (typeof document !== 'undefined' && document.cookie) {
-        const url = new URL(request.url)
-        const cookieStrings = document.cookie.split('; ').filter(Boolean)
-        for (const cookieString of cookieStrings) {
-          try {
-            // Parse the cookie string (format: "name=value" or "name=value; Path=/; Domain=...")
-            const cookie = Cookie.parse(cookieString)
-            if (cookie) {
-              // Set the cookie in the jar for the request URL
-              await jar.setCookie(cookie, url.toString())
-            }
-          } catch (error) {
-            // Ignore parsing errors for malformed cookies
-            // This can happen with cookies that have special characters or invalid formats
-          }
-        }
-      }
+      await syncJarFromCookieGetter(request.url)
 
       const response = await engine.fetch(request)
+      syncResponseCookiesToCookieSetter(response)
       // Ensure the response has a URL property for fetch-cookie
       if (!('url' in response) || !response.url) {
         Object.defineProperty(response, 'url', {
@@ -243,6 +268,8 @@ export class FakeClient<TState extends FakeClientState = any> {
       onDestroyOutside,
       onDestroyInside,
       state: state ?? ({} as TState),
+      cookieSetter,
+      cookieGetter,
     })
     for (const [key, value] of Object.entries(globals)) {
       GlobalThisItemProxy.create(fakeClient, key, value)

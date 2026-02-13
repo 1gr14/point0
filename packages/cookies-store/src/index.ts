@@ -1,4 +1,4 @@
-import type { DataTransformer, DataTransformerExtended } from '@point0/core'
+import { Point0, type DataTransformer, type DataTransformerExtended } from '@point0/core'
 import { blankDataTransformerExtended, env, Request0, toExtendedTransformer } from '@point0/core'
 import type { CookieOptionsInput } from '@point0/core/effects'
 import { Effects } from '@point0/core/effects'
@@ -11,10 +11,7 @@ const encodeCookieName = (name: string): string => {
 }
 
 const encodeCookieValue = (value: string): string => {
-  return encodeURIComponent(value).replace(
-    /%(2[346BF]|3[AC-F]|40|5[BDE]|60|7[BCD])/g,
-    decodeURIComponent,
-  )
+  return encodeURIComponent(value).replace(/%(2[346BF]|3[AC-F]|40|5[BDE]|60|7[BCD])/g, decodeURIComponent)
 }
 
 const decodeCookieValue = (value: string): string => {
@@ -49,28 +46,34 @@ export type CookieDefineOptions<
 }
 
 export class CookiesStore {
-  static clientDocumentCookieGetter: CookiesStoreGetter = (name) => {
-    if (typeof document !== 'undefined') {
-      const cookies = document.cookie ? document.cookie.split('; ') : []
-      for (const cookie of cookies) {
-        const separatorIndex = cookie.indexOf('=')
-        if (separatorIndex < 0) {
-          continue
-        }
-        const rawName = cookie.slice(0, separatorIndex)
-        const rawValue = cookie.slice(separatorIndex + 1)
-        try {
-          const decodedName = decodeURIComponent(rawName)
-          if (decodedName === name) {
-            return decodeCookieValue(rawValue)
-          }
-        } catch {
-          // Ignore malformed cookie name/value pairs.
-        }
+  private static getClientDocumentCookieMap(): Record<string, string> {
+    if (typeof document === 'undefined' || !document.cookie) {
+      return {}
+    }
+    const cookies: Record<string, string> = {}
+    for (const cookie of document.cookie.split('; ').filter(Boolean)) {
+      const separatorIndex = cookie.indexOf('=')
+      if (separatorIndex < 0) {
+        continue
+      }
+      const rawName = cookie.slice(0, separatorIndex)
+      const rawValue = cookie.slice(separatorIndex + 1)
+      try {
+        cookies[decodeURIComponent(rawName)] = decodeCookieValue(rawValue)
+      } catch {
+        continue
       }
     }
-    return undefined
+    return cookies
   }
+
+  static clientDocumentCookieGetter: CookiesStoreGetter = ((name?: string) => {
+    const cookies = CookiesStore.getClientDocumentCookieMap()
+    if (name === undefined) {
+      return cookies
+    }
+    return cookies[name]
+  }) as CookiesStoreGetter
 
   static clientDocumentCookieSetter: CookiesStoreSetter = (options) => {
     if (typeof document !== 'undefined') {
@@ -133,6 +136,21 @@ export class CookiesStore {
       : CookiesStore.transformer
     CookiesStore.clientCookieGetter = options?.clientCookieGetter ?? CookiesStore.clientCookieGetter
     CookiesStore.clientCookieSetter = options?.clientCookieSetter ?? CookiesStore.clientCookieSetter
+  }
+
+  static plugin = (options?: {
+    clientCookieGetter?: CookiesStoreGetter
+    clientCookieSetter?: CookiesStoreSetter
+    transformer?: DataTransformer | undefined
+  }) => {
+    if (options) {
+      CookiesStore.configure(options)
+    }
+    return Point0.lets('plugin', 'cookies-store')
+      .on('pointFetchServerSettled', () => {
+        CookiesStore.refresh()
+      })
+      .plugin()
   }
 
   // string, httpOnly=false, fallback=undefined
@@ -207,10 +225,13 @@ export class CookiesStore {
     return item
   }
 
-  static readonly serverCookieGetter: CookiesStoreGetter = (name) => {
+  static readonly serverCookieGetter: CookiesStoreGetter = ((...args: [name: string] | []) => {
     const request0 = Request0.get()
-    return request0.cookies[name]
-  }
+    if (args.length === 0) {
+      return request0.cookies
+    }
+    return request0.cookies[args[0]]
+  }) as CookiesStoreGetter
   static readonly serverCookieSetter: CookiesStoreSetter = (cookieOptionsInput) => {
     const effects = Effects.get()
     effects.set.cookies(cookieOptionsInput)
@@ -227,13 +248,13 @@ export class CookiesStore {
     }
   }
 
-  static get: CookiesStoreGetter = (name) => {
+  static get: CookiesStoreGetter = ((...args: [name: string] | []) => {
     if (env.target.is.server) {
-      return CookiesStore.serverCookieGetter(name)
+      return args.length === 0 ? CookiesStore.serverCookieGetter() : CookiesStore.serverCookieGetter(...args)
     } else {
-      return CookiesStore.clientCookieGetter(name)
+      return args.length === 0 ? CookiesStore.clientCookieGetter() : CookiesStore.clientCookieGetter(...args)
     }
-  }
+  }) as CookiesStoreGetter
 
   static refresh(): void {
     if (env.target.is.server) {
@@ -430,5 +451,8 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
   }
 }
 
-export type CookiesStoreGetter = (name: string) => string | undefined
+export type CookiesStoreGetter = {
+  (name: string): string | undefined
+  (): Record<string, string>
+}
 export type CookiesStoreSetter = (options: CookieOptionsInput) => void

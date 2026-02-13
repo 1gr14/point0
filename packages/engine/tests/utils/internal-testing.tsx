@@ -13,6 +13,7 @@ import type { DehydratedState, QueryClient } from '@tanstack/react-query'
 import * as rtl from '@testing-library/react'
 import { FetchRecorder } from './fetch-recorder.js'
 import { YAML } from 'bun'
+import { CookiesStore } from '@point0/cookies-store'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -306,6 +307,8 @@ export const createTestThings = async ({
     onRunEndInside: async (state) => {
       rtl.cleanup()
     },
+    cookieGetter: CookiesStore.clientDocumentCookieGetter,
+    cookieSetter: CookiesStore.clientDocumentCookieSetter,
   })
   async function render<TResult = undefined>(callback?: (state: TestThingsState) => TResult): Promise<TResult>
   async function render<TResult = undefined>(
