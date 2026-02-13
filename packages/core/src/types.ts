@@ -42,7 +42,7 @@ export type Ctx = UnknownCtx | EmptyCtx
 export type EmptyData = Record<never, never>
 // Data payloads are object-like maps and should not be tuples/arrays.
 // Excluding iterable objects prevents `[status, data]` tuples from being inferred as plain data.
-export type UnknownData = Record<string, unknown> & { readonly [Symbol.iterator]?: never }
+export type UnknownData = Record<string, unknown> // & { readonly [Symbol.iterator]?: never }
 export type UndefinedData = undefined
 export type Data = UnknownData | EmptyData
 // export type Data = UnknownData
