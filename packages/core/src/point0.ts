@@ -4553,7 +4553,7 @@ export class Point0<
       throw new Error('Server URL is not set')
     }
     const url = new URL('/_point0', serverurl)
-    const method = 'post'
+    const method = 'POST'
 
     const outputType = args[2] ?? 'data'
     url.searchParams.set('type', this.type)

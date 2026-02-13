@@ -10,7 +10,6 @@
 init
 action
 error0
-eventer
 mdx
 file-routing
 logger
@@ -104,12 +103,6 @@ on fetch error maybe no json, then if it is thore, do res.text()
 ---
 ? queryClientDehydratedState always should be returned additionally to data if it has more then only what we requests, we hydrate it, but then immediately remove and it not comes to query client cache
 ? between server calls we should have shared queryClientState
-
-
-
-
-=== COOKIES-STORE ===
-В куки добавить стрикт, чтобы если стрикт тру, то не парсить строку трансформером, а ещё лучше {transform: false,true,'auto'}
 
 
 
@@ -332,7 +325,7 @@ types test for requiredCtx and outerProps (shoud it be TRequiredCtx or hust Ctx?
 
 
 === NPM ===
-privaye publish
+private publish
 protected github branches next and amin
 
 

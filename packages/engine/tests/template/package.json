@@ -13,6 +13,7 @@
     "typesgo": "tsgo --noEmit -p tsconfig.build.json"
   },
   "dependencies": {
+    "@point0/cors": "workspace:*",
     "@point0/core": "workspace:*",
     "@point0/engine": "workspace:*",
     "@point0/wouter": "workspace:*",

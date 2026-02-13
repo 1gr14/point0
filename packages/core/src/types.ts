@@ -17,13 +17,12 @@ import type {
 } from '@tanstack/react-query'
 import type { ClientPoints } from './client-points.js'
 import type { ResponseEffectsSetHelper, ResponseEffectsValues } from './effects.js'
-import type { Props, QueriesDefinitions } from './mountable.js'
+import type { EmptyProps, Props, QueriesDefinitions } from './mountable.js'
 import type { Point0 } from './point0.js'
 import type { Request0 } from './request0.js'
 
 // basic
 
-export type Method = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head'
 export type UndefinedMethod = undefined
 export type PointName = string
 export type UndefinedPointName = undefined
@@ -2143,6 +2142,24 @@ export type NicePluginReadyPoint<
     TQueriesDefinitions
   >,
   'point' | 'type' | 'Infer'
+>
+
+export type NiceEmptyPluginReadyPoint = NicePluginReadyPoint<
+  'plugin',
+  undefined,
+  EmptyCtx,
+  EmptyCtx,
+  UndefinedCtxExposedKeys,
+  UndefinedLoaderOutput,
+  UndefinedLoaderOutput,
+  UndefinedMapperOutput,
+  UndefinedRoute,
+  UndefinedRoute,
+  UndefinedInputSchema,
+  UndefinedQueryResultType,
+  EmptyProps,
+  EmptyProps,
+  []
 >
 
 export type NiceBaseReadyPoint<

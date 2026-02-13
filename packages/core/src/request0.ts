@@ -90,7 +90,7 @@ export class Request0<
     const location = Route0.getLocation(original.url)
 
     // Extract method
-    const method = original.method.toLowerCase() as RequestMethod
+    const method = original.method.toUpperCase() as RequestMethod
 
     // Extract IP addresses
     // Prioritize Bun's requestIP (more trusted, can't be spoofed)
@@ -203,7 +203,41 @@ export class Request0<
   }
 }
 
-export type RequestMethod = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head'
+export type RequestMethod =
+  | 'ACL'
+  | 'BIND'
+  | 'CHECKOUT'
+  | 'CONNECT'
+  | 'COPY'
+  | 'DELETE'
+  | 'GET'
+  | 'HEAD'
+  | 'LINK'
+  | 'LOCK'
+  | 'M-SEARCH'
+  | 'MERGE'
+  | 'MKACTIVITY'
+  | 'MKCALENDAR'
+  | 'MKCOL'
+  | 'MOVE'
+  | 'NOTIFY'
+  | 'OPTIONS'
+  | 'PATCH'
+  | 'POST'
+  | 'PROPFIND'
+  | 'PROPPATCH'
+  | 'PURGE'
+  | 'PUT'
+  | 'REBIND'
+  | 'REPORT'
+  | 'SEARCH'
+  | 'SOURCE'
+  | 'SUBSCRIBE'
+  | 'TRACE'
+  | 'UNBIND'
+  | 'UNLINK'
+  | 'UNLOCK'
+  | 'UNSUBSCRIBE'
 
 export interface RequestFrom {
   ips: string[]

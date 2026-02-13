@@ -217,6 +217,10 @@ describe('build', () => {
         expect(serverFilesContent.includes('MY_ALWAYS_7')).toBe(true)
         expect(serverFilesContent.includes('MY_NEVER_8')).toBe(false)
 
+        // check for cors plugin, if it cutted correctly
+        expect(serverFilesContent.includes('Access-Control-Allow-Origin')).toBe(true)
+        expect(clientFilesContent.includes('Access-Control-Allow-Origin')).toBe(false)
+
         tp.spawn(['bun', 'run', 'start'])
         expect(engine.server.port).toBeNumber()
         expect(engine.clients[0].port).toBeNumber()

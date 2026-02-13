@@ -62,6 +62,12 @@ export default {
         pkgRoot: 'packages/compiler',
       },
     ],
+    [
+      '@semantic-release/npm',
+      {
+        pkgRoot: 'packages/cors',
+      },
+    ],
     '@semantic-release/github',
   ].filter(Boolean),
 }

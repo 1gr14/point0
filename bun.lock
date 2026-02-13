@@ -153,6 +153,22 @@
         "react-dom": "catalog:",
       },
     },
+    "packages/cors": {
+      "name": "@point0/cors",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@types/bun": "^1.2.22",
+        "@types/node": "^20.0.0",
+        "tsup": "^8.0.0",
+        "typescript": "^5.9.3",
+      },
+      "peerDependencies": {
+        "@point0/core": "workspace:*",
+        "@point0/engine": "workspace:*",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+      },
+    },
     "packages/engine": {
       "name": "@point0/engine",
       "version": "0.1.0",
@@ -208,6 +224,7 @@
         "@devp0nt/route0": "^1.0.0-next.55",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
+        "@point0/cors": "workspace:*",
         "@point0/engine": "workspace:*",
         "@point0/react-dom": "workspace:*",
         "@point0/wouter": "workspace:*",
@@ -521,6 +538,8 @@
     "@point0/cookies-store": ["@point0/cookies-store@workspace:packages/cookies-store"],
 
     "@point0/core": ["@point0/core@workspace:packages/core"],
+
+    "@point0/cors": ["@point0/cors@workspace:packages/cors"],
 
     "@point0/engine": ["@point0/engine@workspace:packages/engine"],
 
