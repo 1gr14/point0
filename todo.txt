@@ -111,7 +111,6 @@ on fetch error maybe no json, then if it is thore, do res.text()
 
 === ROUTING ===
 recursive ShowError on method in with query input
-Record<never, never>, fix input hsould be undefined if it is record never never (InputRawNormalized)
 
 prefetchOnNavigate(policy) + prefetchOnHover(policy)
 Роут стейты, перфетчинг тразититонинг, а также добавить еррор саксес лоадинг который мы и берём и пейдж стейта

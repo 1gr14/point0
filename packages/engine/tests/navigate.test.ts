@@ -102,14 +102,25 @@ const getTale = (page: PlaywrightPage) => {
 describe('navigate', () => {
   describe('ssr', () => {
     beforeAll(async () => {
-      await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-      tpf.setBrowser(await PlaywrightBrowser.init())
-      tp = tpf.create({ ssr: true, vite: false })
-      await tp.cleanup('ports')
-      await tp.init()
-      await writeNavigatePages(tp)
-      tp.spawn(['bun', 'run', 'dev'])
-      await tp.waitStarted()
+      const tries = 3
+      for (let tryIndex = 0; tryIndex < tries; tryIndex++) {
+        try {
+          await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
+          tpf.setBrowser(await PlaywrightBrowser.init())
+          tp = tpf.create({ ssr: true, vite: false })
+          await tp.cleanup('ports')
+          await tp.init()
+          await writeNavigatePages(tp)
+          tp.spawn(['bun', 'run', 'dev'])
+          await tp.waitStarted()
+        } catch (error) {
+          if (tryIndex === tries - 1) {
+            throw error
+          }
+          continue
+        }
+        break
+      }
     })
 
     afterAll(async () => {
@@ -166,14 +177,25 @@ describe('navigate', () => {
 
   describe('spa', () => {
     beforeAll(async () => {
-      await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-      tpf.setBrowser(await PlaywrightBrowser.init())
-      tp = tpf.create({ ssr: false, vite: false })
-      await tp.cleanup('ports')
-      await tp.init()
-      await writeNavigatePages(tp)
-      tp.spawn(['bun', 'run', 'dev'])
-      await tp.waitStarted()
+      const tries = 3
+      for (let tryIndex = 0; tryIndex < tries; tryIndex++) {
+        try {
+          await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
+          tpf.setBrowser(await PlaywrightBrowser.init())
+          tp = tpf.create({ ssr: false, vite: false })
+          await tp.cleanup('ports')
+          await tp.init()
+          await writeNavigatePages(tp)
+          tp.spawn(['bun', 'run', 'dev'])
+          await tp.waitStarted()
+        } catch (error) {
+          if (tryIndex === tries - 1) {
+            throw error
+          }
+          continue
+        }
+        break
+      }
     })
 
     afterAll(async () => {

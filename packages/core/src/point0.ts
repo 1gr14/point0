@@ -124,6 +124,7 @@ import type {
   InputSchema,
   InputsRaw,
   InputsRawMaybeOptional,
+  InputsRawOrUndefined,
   IsInputOptional,
   IsInputsOptional,
   LayoutPoint,
@@ -1620,74 +1621,6 @@ export class Point0<
     }) as never
   }
 
-  // with<
-  //   TPoint extends NiceReadyPoint<
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     'infiniteQuery' | 'query',
-  //     any,
-  //     any,
-  //     any
-  //   >,
-  // >(
-  //   point: TPoint,
-  //   input:
-  //     | TPoint['Infer']['InputRaw']
-  //     | ((
-  //         options: QueryFnOptions<
-  //           MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-  //           TInnerProps,
-  //           WithSelfQueryIfShouldBeFinalized<
-  //             TPointType,
-  //             TLetsReadyPointType,
-  //             TServerLoaderOutput,
-  //             TClientLoaderOutput,
-  //             TQueriesDefinitions
-  //           >,
-  //           TMapperOutput
-  //         >,
-  //       ) => TPoint['Infer']['InputRaw']),
-  //   queryOptions?: TPoint['Infer']['UseQueryOptions'],
-  // ): NiceStagePoint<
-  //   IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
-  //     ? 'finalStage'
-  //     : StagePointTypeOrNever<TPointType>,
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-  //   TOuterProps,
-  //   TInnerProps,
-  //   [
-  //     ...WithSelfQueryIfShouldBeFinalized<
-  //       TPointType,
-  //       TLetsReadyPointType,
-  //       TServerLoaderOutput,
-  //       TClientLoaderOutput,
-  //       TQueriesDefinitions
-  //     >,
-  //     {
-  //       type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
-  //       data: TPoint['Infer']['QueriedData']
-  //     },
-  //   ]
-  // >
   with<
     TPoint extends NiceReadyPoint<
       any,
@@ -1717,7 +1650,7 @@ export class Point0<
           ...rest: TPoint['Infer']['IsInputOptional'] extends true
             ? [
                 input?:
-                  | TPoint['Infer']['InputRaw']
+                  | TPoint['Infer']['InputRawOrUndefined']
                   | ((
                       options: WithFnOptions<
                         MountableLocation<TLetsReadyPointType, TRouteDefinition>,
@@ -1731,12 +1664,12 @@ export class Point0<
                         >,
                         TMapperOutput
                       >,
-                    ) => TPoint['Infer']['InputRaw']),
+                    ) => TPoint['Infer']['InputRawOrUndefined']),
                 queryOptions?: TPoint['Infer']['UseQueryOptions'],
               ]
             : [
                 input:
-                  | TPoint['Infer']['InputRaw']
+                  | TPoint['Infer']['InputRawOrUndefined']
                   | ((
                       options: WithFnOptions<
                         MountableLocation<TLetsReadyPointType, TRouteDefinition>,
@@ -1750,7 +1683,7 @@ export class Point0<
                         >,
                         TMapperOutput
                       >,
-                    ) => TPoint['Infer']['InputRaw']),
+                    ) => TPoint['Infer']['InputRawOrUndefined']),
                 queryOptions?: TPoint['Infer']['UseQueryOptions'],
               ],
         ]
@@ -1991,18 +1924,18 @@ export class Point0<
           ...rest: TPoint['Infer']['IsInputOptional'] extends true
             ? [
                 input?:
-                  | TPoint['Infer']['InputRaw']
+                  | TPoint['Infer']['InputRawOrUndefined']
                   | ((
                       options: RelatedQueryOptions<MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
-                    ) => TPoint['Infer']['InputRaw']),
+                    ) => TPoint['Infer']['InputRawOrUndefined']),
                 queryOptions?: TPoint['Infer']['UseQueryOptions'],
               ]
             : [
                 input:
-                  | TPoint['Infer']['InputRaw']
+                  | TPoint['Infer']['InputRawOrUndefined']
                   | ((
                       options: RelatedQueryOptions<MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
-                    ) => TPoint['Infer']['InputRaw']),
+                    ) => TPoint['Infer']['InputRawOrUndefined']),
                 queryOptions?: TPoint['Infer']['UseQueryOptions'],
               ],
         ]
@@ -4811,12 +4744,12 @@ export class Point0<
   useQuery(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
-          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
         ]
       : [
-          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
         ]
@@ -4862,7 +4795,7 @@ export class Point0<
   useInfiniteQuery(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
-          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -4876,7 +4809,7 @@ export class Point0<
           fetchOptions?: FetchOptions | undefined,
         ]
       : [
-          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -4945,12 +4878,12 @@ export class Point0<
   getFetchServerOptions(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
-          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           fetchOptions?: FetchOptions,
           _outputType?: FetchServerOutputType,
         ]
       : [
-          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           fetchOptions?: FetchOptions,
           _outputType?: FetchServerOutputType,
         ]
@@ -5081,12 +5014,12 @@ export class Point0<
   async fetchServerDetailed(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
-          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           fetchOptions?: FetchOptions,
           _outputType?: FetchServerOutputType,
         ]
       : [
-          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           fetchOptions?: FetchOptions,
           _outputType?: FetchServerOutputType,
         ]
@@ -5174,12 +5107,12 @@ export class Point0<
   async fetchServer(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
-          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           fetchOptions?: FetchOptions,
           _outputType?: FetchServerOutputType,
         ]
       : [
-          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           fetchOptions?: FetchOptions,
           _outputType?: FetchServerOutputType,
         ]
@@ -5254,8 +5187,8 @@ export class Point0<
 
   getQueryKey(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-      ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>, _outputType?: FetchServerOutputType]
-      : [input: InputsRaw<TServerInputSchema, TClientInputSchema>, _outputType?: FetchServerOutputType]
+      ? [input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>, _outputType?: FetchServerOutputType]
+      : [input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>, _outputType?: FetchServerOutputType]
   ): QueryKey {
     const [input, outputType] = args
     const hasClientLoader = this._hasClientLoader()
@@ -5284,7 +5217,7 @@ export class Point0<
   }
 
   _getServerQueryOptions({
-    input,
+    input = {} as never,
     queryOptions,
     fetchOptions,
     outputType,
@@ -5349,7 +5282,7 @@ export class Point0<
   }
 
   private _getClientQueryOptions({
-    input,
+    input = {} as never,
     queryOptions,
     location,
     serverData,
@@ -5418,7 +5351,7 @@ export class Point0<
   }
 
   private _getCombinedQueryOptions({
-    input,
+    input = {} as never,
     location,
     queryClient = _ssItems.__POINT0_QUERY_CLIENT__.get(),
     queryOptions,
@@ -5503,7 +5436,7 @@ export class Point0<
   getQueryOptions(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
-          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
             location?: AnyLocation
@@ -5514,7 +5447,7 @@ export class Point0<
           },
         ]
       : [
-          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
             location?: AnyLocation
@@ -5562,7 +5495,7 @@ export class Point0<
   }
 
   private _getServerInfiniteQueryOptions({
-    input,
+    input = {} as never,
     infiniteQueryOptions,
     fetchOptions,
     outputType,
@@ -5589,7 +5522,7 @@ export class Point0<
     const queryKey = this._getServerQueryKey({ input: input as never, outputType, isInfiniteQuery: true })
     const _eventData = {
       point: this as never as AnyPoint,
-      input,
+      input: input as InputRaw,
       queryKey,
       mode: 'server' as const,
       error: undefined,
@@ -5634,7 +5567,7 @@ export class Point0<
   }
 
   private _getClientInfiniteQueryOptions({
-    input,
+    input = {} as never,
     infiniteQueryOptions,
     serverData,
     location,
@@ -5711,7 +5644,7 @@ export class Point0<
   }
 
   private _getCombinedInfiniteQueryOptions({
-    input,
+    input = {} as never,
     infiniteQueryOptions,
     fetchOptions,
     location,
@@ -5829,7 +5762,7 @@ export class Point0<
   getInfiniteQueryOptions(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
-          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -5849,7 +5782,7 @@ export class Point0<
           },
         ]
       : [
-          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -5907,7 +5840,7 @@ export class Point0<
   }
 
   private _useServerQuery({
-    input,
+    input = {} as never,
     queryOptions,
     fetchOptions,
     outputType,
@@ -5921,7 +5854,7 @@ export class Point0<
   }
 
   private _useClientQuery({
-    input,
+    input = {} as never,
     queryOptions,
     location,
   }: {
@@ -5939,7 +5872,7 @@ export class Point0<
   }
 
   private _useCombinedQuery({
-    input,
+    input = {} as never,
     queryOptions,
     location,
     fetchOptions,
@@ -5962,7 +5895,7 @@ export class Point0<
   }
 
   private _useServerInfiniteQuery({
-    input,
+    input = {} as never,
     infiniteQueryOptions: providedInfiniteQueryOptions,
     fetchOptions,
     outputType,
@@ -5991,7 +5924,7 @@ export class Point0<
   }
 
   private _useClientInfiniteQuery({
-    input,
+    input = {} as never,
     infiniteQueryOptions: providedInfiniteQueryOptions,
     location,
   }: {
@@ -6017,7 +5950,7 @@ export class Point0<
   }
 
   private _useCombinedInfiniteQuery({
-    input,
+    input = {} as never,
     infiniteQueryOptions: providedInfiniteQueryOptions,
     fetchOptions,
     location,
@@ -6130,12 +6063,12 @@ export class Point0<
   fetchMutation = async (
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
-          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           mutationOptions?: MutationOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
         ]
       : [
-          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           mutationOptions?: MutationOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
         ]
@@ -6149,8 +6082,8 @@ export class Point0<
 
   fetch = async (
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-      ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
-      : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
+      ? [input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>]
+      : [input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>]
   ): Promise<
     TQueryResultType extends 'infiniteQuery'
       ? InfiniteData<FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>>
@@ -6191,7 +6124,7 @@ export class Point0<
     outputType,
     location,
   }: {
-    input: InputsRaw<any, any>
+    input: InputsRawOrUndefined<any, any>
     mode: QueryMode
     queryClient?: QueryClient
     queryOptions?: ExtraUseQueryOptions
@@ -6234,7 +6167,7 @@ export class Point0<
   async fetchQuery<TMode extends QueryMode = 'serverAndClient', TCacheOnly extends boolean = false>(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
-          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
             location?: AnyLocation
@@ -6247,7 +6180,7 @@ export class Point0<
           },
         ]
       : [
-          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
             location?: AnyLocation
@@ -6313,7 +6246,7 @@ export class Point0<
   async prefetchQuery(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
-          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
             location?: AnyLocation
@@ -6326,7 +6259,7 @@ export class Point0<
           },
         ]
       : [
-          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
             location?: AnyLocation
@@ -6377,7 +6310,7 @@ export class Point0<
     outputType,
     location,
   }: {
-    input: InputsRaw<any, any>
+    input: InputsRawOrUndefined<any, any>
     mode: QueryMode
     queryClient?: QueryClient
     infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<any, any, any, any, any, any>
@@ -6420,7 +6353,7 @@ export class Point0<
   async fetchInfiniteQuery<TMode extends QueryMode = 'serverAndClient', TCacheOnly extends boolean = false>(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
-          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -6442,7 +6375,7 @@ export class Point0<
           },
         ]
       : [
-          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -6517,7 +6450,7 @@ export class Point0<
   async prefetchInfiniteQuery(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
-          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -6539,7 +6472,7 @@ export class Point0<
           },
         ]
       : [
-          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -6594,7 +6527,7 @@ export class Point0<
   }
 
   private async _prefetchPageQueryClientDehydratedState({
-    input,
+    input = {} as never,
     queryClient,
     queryOptions,
     fetchOptions,
@@ -6633,7 +6566,7 @@ export class Point0<
   async prefetchPage(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
-          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           queryOptions?:
             | undefined
             | (TQueryResultType extends 'infiniteQuery'
@@ -6657,7 +6590,7 @@ export class Point0<
           },
         ]
       : [
-          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           queryOptions?:
             | undefined
             | (TQueryResultType extends 'infiniteQuery'
@@ -7453,7 +7386,7 @@ export class Point0<
     // ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
     //   ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
     //   : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
-    input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+    input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
   ): MountableSuccessData<TQueriesDefinitions, TMapperOutput> {
     const value = superstore.getValue<MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
       this.getSsProviderValueKey(input),
@@ -7471,7 +7404,7 @@ export class Point0<
     // ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
     //   ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
     //   : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
-    input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+    input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
   ): MountableSuccessData<TQueriesDefinitions, TMapperOutput> | undefined {
     const value = superstore.getValueWeak<MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
       this.getSsProviderValueKey(input),

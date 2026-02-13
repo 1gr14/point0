@@ -99,7 +99,9 @@ export type Infer<
   ServerInputSchema: TServerInputSchema
   ClientInputSchema: TClientInputSchema
   IsInputOptional: IsInputsOptional<TServerInputSchema, TClientInputSchema>
+  IsInputEmpty: IsInputsEmpty<TServerInputSchema, TClientInputSchema>
   InputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+  InputRawOrUndefined: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>
   ClientInputParsed: InputParsed<TClientInputSchema>
   ClientInputRaw: InputRaw<TClientInputSchema>
   IsClientInputOptional: IsInputOptional<TClientInputSchema>
@@ -529,6 +531,10 @@ export type InputsRawOrUndefined<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = UndefinedIfEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
+export type IsInputsEmpty<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = IsEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
 
 export type IsInputsSchemasDefined<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,

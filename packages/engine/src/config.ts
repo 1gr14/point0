@@ -108,7 +108,7 @@ export type EngineGeneralOptions = {
 
 export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   scope: PointsScope
-  points: PointsDefinitionSource<TRequiredCtx>
+  points?: PointsDefinitionSource<TRequiredCtx>
   generate?: Array<
     Omit<FilesGeneratorTaskPoints, 'scope' | 'target'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'target'>
   >
@@ -133,7 +133,7 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   scope: PointsScope
   // TODO: allow empty points
   // TODO: allow points collection
-  points: PointsDefinitionSource<TRequiredCtx>
+  points?: PointsDefinitionSource<TRequiredCtx>
   generate?: Array<
     Omit<FilesGeneratorTaskPoints, 'scope' | 'target'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'target'>
   >
@@ -327,7 +327,7 @@ export type EngineGeneralOptionsParsed = {
 export type EngineClientOptionsParsed = {
   scope: PointsScope
   engineFile: string
-  pointsProvided: PointsDefinitionSource
+  pointsProvided: PointsDefinitionSource | null
   banner: string | null
   generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
   routesProvided: EngineOptionsRoutes | null
@@ -354,7 +354,7 @@ export type EngineClientOptionsParsed = {
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
-  pointsProvided: PointsDefinitionSource
+  pointsProvided: PointsDefinitionSource | null
   banner: string | null
   generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
   routesProvided: EngineOptionsRoutes | null
@@ -775,7 +775,7 @@ export const parseEngineServerOptions = ({
   }
   return {
     scope: serverOptions.scope,
-    pointsProvided: serverOptions.points,
+    pointsProvided: serverOptions.points ?? null,
     port,
     hmrPort,
     outdir,
@@ -890,7 +890,7 @@ const parseEngineClientOptions = ({
   return {
     scope: clientOptions.scope,
     compiler,
-    pointsProvided: clientOptions.points,
+    pointsProvided: clientOptions.points ?? null,
     routesProvided: clientOptions.routes ?? null,
     generate: (clientOptions.generate ?? []).map((task) => ({
       ...task,

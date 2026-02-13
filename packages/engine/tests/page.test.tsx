@@ -730,6 +730,7 @@ describe('page', () => {
       .lets('query', 'test')
       .loader(() => ({ x: 1 }))
       .query()
+
     const page = root
       .lets('page', 'home')
       .with(query)
@@ -765,6 +766,7 @@ describe('page', () => {
     const page = root
       .lets('page', 'home', '/:y')
       .with(query, ({ location }) => ({ y: +location.params.y }))
+      // .with(query)
       .page(({ data, location }) => (
         <div id="page">
           x={data.x} y={location.params.y}
@@ -823,7 +825,7 @@ describe('page', () => {
       "query.test (client) < {"y":123}
       "
     `)
-    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "#page: x=246 y=123
       "
     `)
@@ -1080,7 +1082,7 @@ describe('page', () => {
       infiniteQuery.test (client) < {"cursor":4}
       "
     `)
-    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "#page:
         div: Item 1
         div: Item 2
@@ -1180,7 +1182,7 @@ describe('page', () => {
       infiniteQuery.test (client) < {"cursor":4}
       "
     `)
-    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "#page:
         #y: 2
         div: Item 1
@@ -1466,7 +1468,7 @@ describe('page', () => {
       infiniteQuery.test (client) < {"cursor":4}
       "
     `)
-    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "#page:
         div: Item 1
         div: Item 2
@@ -1481,6 +1483,7 @@ describe('page', () => {
       .input(z.object({ y: z.number() }))
       .loader(({ input }) => ({ x: input.y * 2 }))
       .query()
+
     const page = root
       .lets('page', 'home', '/:y')
       .loader(() => ({ z: 3 }))

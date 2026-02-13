@@ -249,10 +249,10 @@ export class FakeClient<TState extends FakeClientState = any> {
       }
       return response
     }, jar)
-    points ??= client.points ?? undefined
-    if (!points) {
-      throw new Error('Points for fake client not provided')
-    }
+    points ??= client.points ?? (undefined as never)
+    // if (!points) {
+    //   // throw new Error('Points for fake client not provided')
+    // }
     const fakeClient = new FakeClient({
       engine: engine as Engine<any, true>,
       client: client as EngineClient<true>,

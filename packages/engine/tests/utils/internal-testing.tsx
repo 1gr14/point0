@@ -214,26 +214,26 @@ type TestThingsState = {
 type FetchPoint = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['IsInputOptional'] extends true
-    ? [input?: T['Infer']['InputRaw']]
-    : [input: T['Infer']['InputRaw']]
+    ? [input?: T['Infer']['InputRawOrUndefined']]
+    : [input: T['Infer']['InputRawOrUndefined']]
 ) => ReturnType<T['fetch']>
 type FetchHtmlView = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['IsInputOptional'] extends true
-    ? [input?: T['Infer']['InputRaw']]
-    : [input: T['Infer']['InputRaw']]
+    ? [input?: T['Infer']['InputRawOrUndefined']]
+    : [input: T['Infer']['InputRawOrUndefined']]
 ) => Promise<HtmlView>
 type FetchHtmlPreview = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['IsInputOptional'] extends true
-    ? [input?: T['Infer']['InputRaw']]
-    : [input: T['Infer']['InputRaw']]
+    ? [input?: T['Infer']['InputRawOrUndefined']]
+    : [input: T['Infer']['InputRawOrUndefined']]
 ) => Promise<string>
 type FetchSsr = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['IsInputOptional'] extends true
-    ? [input?: T['Infer']['InputRaw']]
-    : [input: T['Infer']['InputRaw']]
+    ? [input?: T['Infer']['InputRawOrUndefined']]
+    : [input: T['Infer']['InputRawOrUndefined']]
 ) => Promise<{
   html: string
   preview: string
@@ -246,8 +246,8 @@ type FetchSsr = <T extends AnyNiceRequestableReadyPoint>(
 type FetchTitle = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['IsInputOptional'] extends true
-    ? [input?: T['Infer']['InputRaw']]
-    : [input: T['Infer']['InputRaw']]
+    ? [input?: T['Infer']['InputRawOrUndefined']]
+    : [input: T['Infer']['InputRawOrUndefined']]
 ) => Promise<string>
 
 export const createTestThings = async ({
@@ -257,7 +257,7 @@ export const createTestThings = async ({
   globals = getFakeBrowserGlobals(),
 }: {
   wrapper?: React.ComponentType<{ children: React.ReactNode }>
-  points: PointsDefinition
+  points?: PointsDefinition
   app?: AppComponent
   globals?: Record<string, any>
 }) => {
@@ -283,7 +283,9 @@ export const createTestThings = async ({
     limit: 100,
     enabled: true,
   })
-  points[0].point._middlewares.push(fetchRecorder.middleware)
+  if (points) {
+    points[0].point._middlewares.push(fetchRecorder.middleware)
+  }
   const engine = await Engine.create({
     compiler: false,
     file: nodePath.resolve(__dirname, '../temp/never'),
