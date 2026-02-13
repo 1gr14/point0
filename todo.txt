@@ -107,13 +107,6 @@ on fetch error maybe no json, then if it is thore, do res.text()
 
 
 
-=== CORS ===
-plugin cors as separate package
-remove auto cors for localhost from engine server, and made it via middleware
-
-
-
-
 === ROUTING ===
 Роут стейты, перфетчинг тразититонинг, а также добавить еррор саксес лоадинг который мы и берём и пейдж стейта
 Не нужно при префетче лэйоуты префетчить, лэйоуты и так есть в релейтед поинтсах
