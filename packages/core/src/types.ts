@@ -1519,8 +1519,7 @@ export type NicePageStagePoint<
   | 'type'
   | 'Infer'
   | 'query'
-  | 'infiniteQueryOptions'
-  | 'queryOptions'
+  | 'infiniteQuery'
 >
 
 export type NiceComponentStagePoint<
@@ -1579,8 +1578,7 @@ export type NiceComponentStagePoint<
   | 'type'
   | 'Infer'
   | 'query'
-  | 'queryOptions'
-  | 'infiniteQueryOptions'
+  | 'infiniteQuery'
 >
 
 export type NiceQueryStagePoint<
@@ -1806,8 +1804,7 @@ export type NiceLayoutStagePoint<
   | 'type'
   | 'Infer'
   | 'query'
-  | 'queryOptions'
-  | 'infiniteQueryOptions'
+  | 'infiniteQuery'
   | 'pageQueryOptions'
   | 'layoutQueryOptions'
 >
@@ -1864,8 +1861,7 @@ export type NiceProviderStagePoint<
   | 'type'
   | 'Infer'
   | 'query'
-  | 'queryOptions'
-  | 'infiniteQueryOptions'
+  | 'infiniteQuery'
   | 'error'
   | 'loading'
   | 'wrapper'

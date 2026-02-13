@@ -30,7 +30,6 @@ import type {
   ServerEventerSubscriptionCallback,
 } from './eventer.js'
 import { _getFakeClient, _ssItems } from './internals.js'
-import type { MethodQueryForAnyPoint } from './methods/query.js'
 import type {
   AppendProps,
   AppendQueries,
@@ -144,6 +143,7 @@ import type {
   NicePluginReadyPoint,
   NicePluginStagePoint,
   NiceProviderReadyPoint,
+  NiceQueryReadyPoint,
   NiceReadyPoint,
   NiceRootReadyPoint,
   NiceRootStagePoint,
@@ -1092,9 +1092,7 @@ export class Point0<
 
   // setting default query options in not mountable point
   queryOptions(
-    ...args: TLetsReadyPointType extends Exclude<PointType, MountablePointType>
-      ? [queryOptions: ExtraUseQueryOptions]
-      : never
+    queryOptions: ExtraUseQueryOptions,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -1112,73 +1110,14 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  // finalize query in mountable component
-  queryOptions(
-    ...args: TLetsReadyPointType extends MountablePointType
-      ? TPointType extends 'finalStage'
-        ? [ShowError<`You can not use queryOptions() to finalize yout query, becouse it is already finalized`>]
-        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
-          ? [
-              queryOptions?: ExtraUseQueryOptions<
-                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                Error0,
-                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                QueryKey
-              >,
-            ]
-          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
-            ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
-            : [
-                ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .queryOptions() to finalize query.`>,
-              ]
-      : never
-  ): NiceStagePoint<
-    'finalStage',
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    'query',
-    TOuterProps,
-    TInnerProps,
-    // [...TQueriesDefinitions, UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput>]
-    AppendQueries<
-      TQueriesDefinitions,
-      QueryDefinition<'query', FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>
-    >
-  >
-  queryOptions(...args: any[]) {
-    const queryOptions = (args[0] || {}) as ExtraUseQueryOptions
-    if (this._isMountableReadyPoint()) {
-      if (this.type === 'finalStage') {
-        throw new Error(
-          `You can not use queryOptions() in ${this.toString()} becouse this point query already finalized`,
-        )
-      }
-      return this._continue({
-        type: 'finalStage',
-        _queryResultType: 'query',
-        _queryOptions: queryOptions,
-        _mountActions: [...this._mountActions, { type: 'selfQuery', unstableId: Point0._getNextUnstableId() }],
-      }) as never
-    } else {
-      return this._continue({
-        _defaultQueryOptions: { ...this._defaultQueryOptions, ...queryOptions },
-      }) as never
-    }
+  queryOptions(queryOptions: ExtraUseQueryOptions | undefined = {}) {
+    return this._continue({
+      _defaultQueryOptions: { ...this._defaultQueryOptions, ...queryOptions },
+    }) as never
   }
 
-  // setting default infinite query options in not mountable point
   infiniteQueryOptions(
-    ...args: TLetsReadyPointType extends Exclude<PointType, MountablePointType>
-      ? [infiniteQueryOptions: PartialUseInfiniteQueryOptions]
-      : never
+    infiniteQueryOptions: PartialUseInfiniteQueryOptions,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -1196,76 +1135,13 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  // finalize infinite query in mountable point
-  infiniteQueryOptions(
-    ...args: TLetsReadyPointType extends MountablePointType
-      ? TPointType extends 'finalStage'
-        ? [ShowError<`You can not use infiniteQueryOptions() to finalize yout query, becouse it is already finalized`>]
-        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
-          ? [
-              infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-                InputsRaw<TServerInputSchema, TClientInputSchema>,
-                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                Error0,
-                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-                QueryKey,
-                unknown
-              >,
-            ]
-          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
-            ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
-            : [
-                ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQueryOptions() to finalize query.`>,
-              ]
-      : never
-  ): NiceStagePoint<
-    'finalStage',
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    'infiniteQuery',
-    TOuterProps,
-    TInnerProps,
-    AppendQueries<
-      TQueriesDefinitions,
-      QueryDefinition<'infiniteQuery', InfiniteData<FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>>
-    >
-  >
-  infiniteQueryOptions(...args: any[]) {
-    const infiniteQueryOptions = (args[0] || {}) as ExtraUseInfiniteQueryOptions<any> | PartialUseInfiniteQueryOptions
-    if (this._isMountableReadyPoint()) {
-      if (this.type === 'finalStage') {
-        throw new Error(
-          `You can not use infiniteQueryOptions() in ${this.toString()} becouse this point query already finalized`,
-        )
-      }
-      return this._continue({
-        type: 'finalStage',
-        _queryResultType: 'infiniteQuery',
-        _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<any>,
-        _mountActions: [
-          ...this._mountActions,
-          {
-            type: 'selfQuery',
-            unstableId: Point0._getNextUnstableId(),
-          },
-        ],
-      }) as never
-    } else {
-      return this._continue({
-        _defaultInfiniteQueryOptions: {
-          ...this._defaultInfiniteQueryOptions,
-          ...infiniteQueryOptions,
-        } as PartialUseInfiniteQueryOptions,
-      }) as never
-    }
+  infiniteQueryOptions(infiniteQueryOptions: PartialUseInfiniteQueryOptions | undefined = {}) {
+    return this._continue({
+      _defaultInfiniteQueryOptions: {
+        ...this._defaultInfiniteQueryOptions,
+        ...infiniteQueryOptions,
+      } as PartialUseInfiniteQueryOptions,
+    }) as never
   }
 
   pageQueryOptions(
@@ -1443,7 +1319,7 @@ export class Point0<
           unstableId: Point0._getNextUnstableId(),
         },
       ],
-      ...(this._isMountableReadyPoint()
+      ...(this._isMountablePoint()
         ? {
             _errorComponent: errorComponent,
           }
@@ -1676,7 +1552,7 @@ export class Point0<
           unstableId: Point0._getNextUnstableId(),
         },
       ],
-      ...(this._isMountableReadyPoint()
+      ...(this._isMountablePoint()
         ? {
             _loadingComponent: loadingComponent,
           }
@@ -2254,221 +2130,6 @@ export class Point0<
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
   }
-
-  // withQuery<
-  //   TPoint extends NiceReadyPoint<
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     any,
-  //     'infiniteQuery' | 'query',
-  //     any,
-  //     any,
-  //     any
-  //   >,
-  // >(
-  //   ...args: TLetsReadyPointType extends MountablePointType
-  //     ? [
-  //         // point: TPoint &
-  //         //   (TPoint['Infer']['IsInputOptional'] extends true
-  //         //     ? unknown
-  //         //     : Record<`Input as second argument is required`, `Input as second argument is required`>),
-  //         point: TPoint,
-  //         ...rest: TPoint['Infer']['IsInputOptional'] extends true
-  //           ? [
-  //               input?:
-  //                 | TPoint['Infer']['InputRaw']
-  //                 | ((
-  //                     options: QueryFnOptions<
-  //                       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-  //                       TInnerProps,
-  //                       WithSelfQueryIfShouldBeFinalized<
-  //                         TPointType,
-  //                         TLetsReadyPointType,
-  //                         TServerLoaderOutput,
-  //                         TClientLoaderOutput,
-  //                         TQueriesDefinitions
-  //                       >,
-  //                       TMapperOutput
-  //                     >,
-  //                   ) => TPoint['Infer']['InputRaw']),
-  //               queryOptions?: TPoint['Infer']['UseQueryOptions'],
-  //             ]
-  //           : [
-  //               input:
-  //                 | TPoint['Infer']['InputRaw']
-  //                 | ((
-  //                     options: QueryFnOptions<
-  //                       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-  //                       TInnerProps,
-  //                       WithSelfQueryIfShouldBeFinalized<
-  //                         TPointType,
-  //                         TLetsReadyPointType,
-  //                         TServerLoaderOutput,
-  //                         TClientLoaderOutput,
-  //                         TQueriesDefinitions
-  //                       >,
-  //                       TMapperOutput
-  //                     >,
-  //                   ) => TPoint['Infer']['InputRaw']),
-  //               queryOptions?: TPoint['Infer']['UseQueryOptions'],
-  //             ],
-  //       ]
-  //     : never
-  // ): NiceStagePoint<
-  //   IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
-  //     ? 'finalStage'
-  //     : StagePointTypeOrNever<TPointType>,
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-  //   TOuterProps,
-  //   TInnerProps,
-  //   [
-  //     ...WithSelfQueryIfShouldBeFinalized<
-  //       TPointType,
-  //       TLetsReadyPointType,
-  //       TServerLoaderOutput,
-  //       TClientLoaderOutput,
-  //       TQueriesDefinitions
-  //     >,
-  //     {
-  //       type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
-  //       data: TPoint['Infer']['QueriedData']
-  //     },
-  //   ]
-  // >
-  // withQuery<TNewInnerProps extends Props>(
-  //   withFn: WithFn<
-  //     MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-  //     TInnerProps,
-  //     WithSelfQueryIfShouldBeFinalized<
-  //       TPointType,
-  //       TLetsReadyPointType,
-  //       TServerLoaderOutput,
-  //       TClientLoaderOutput,
-  //       TQueriesDefinitions
-  //     >,
-  //     TMapperOutput,
-  //     TNewInnerProps
-  //   >,
-  // ): NiceStagePoint<
-  //   IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
-  //     ? 'finalStage'
-  //     : StagePointTypeOrNever<TPointType>,
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-  //   TOuterProps,
-  //   AppendProps<TInnerProps, TNewInnerProps>,
-  //   WithSelfQueryIfShouldBeFinalized<
-  //     TPointType,
-  //     TLetsReadyPointType,
-  //     TServerLoaderOutput,
-  //     TClientLoaderOutput,
-  //     TQueriesDefinitions
-  //   >
-  // >
-  // withQuery(
-  //   ...args:
-  //     | [withFn?: WithFn<any, any, any, any, any> | undefined]
-  //     | [
-  //         point?: AnyPoint | undefined,
-  //         input?: (
-  //           options: QueryFnOptions<
-  //             MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-  //             TInnerProps,
-  //             WithSelfQueryIfShouldBeFinalized<
-  //               TPointType,
-  //               TLetsReadyPointType,
-  //               TServerLoaderOutput,
-  //               TClientLoaderOutput,
-  //               TQueriesDefinitions
-  //             >,
-  //             TMapperOutput
-  //           >,
-  //         ) => InputRaw,
-  //         queryOptions?: ExtraUseQueryOptions | ExtraUseInfiniteQueryOptions<any, any, any, any, any, any> | undefined,
-  //       ]
-  // ) {
-  //   const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
-  //   const selfQueryAction: MountAction[] = queryShouldBeFinalized
-  //     ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
-  //     : []
-
-  //   // in case if we shake with for server without ssr
-  //   if (!args[0]) {
-  //     return this._continue({
-  //       _mountActions: [...this._mountActions, ...selfQueryAction],
-  //       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
-  //     }) as never
-  //   }
-
-  //   // it is query injection
-  //   if ('point' in args[0]) {
-  //     const [{ point }, inputFnOrInput, queryOptions = {}] = args
-  //     const getInputFn =
-  //       typeof inputFnOrInput === 'function'
-  //         ? inputFnOrInput
-  //         : typeof inputFnOrInput === 'object'
-  //           ? () => inputFnOrInput
-  //           : () => ({})
-  //     const queryFn = ((options) => {
-  //       const input = getInputFn(options)
-  //       if (point._queryResultType === 'query') {
-  //         return point.useQuery(input, queryOptions)
-  //       } else {
-  //         return point.useInfiniteQuery(input, queryOptions as never)
-  //       }
-  //     }) as QueryFn<any, any, any, any, any>
-  //     return this._continue({
-  //       _mountActions: [
-  //         ...this._mountActions,
-  //         ...selfQueryAction,
-  //         { type: 'query', fn: queryFn, unstableId: Point0._getNextUnstableId() },
-  //       ],
-  //       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
-  //     }) as never
-  //   }
-
-  //   // it is with fn
-  //   const [withFn] = args
-  //   return this._continue({
-  //     _mountActions: [
-  //       ...this._mountActions,
-  //       ...selfQueryAction,
-  //       {
-  //         type: 'with',
-  //         fn: withFn,
-  //         unstableId: Point0._getNextUnstableId(),
-  //       },
-  //     ],
-  //     ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
-  //   }) as never
-  // }
 
   // scroll restoration
 
@@ -4449,60 +4110,24 @@ export class Point0<
     }) as never
   }
 
-  query = ((...args: any) => {
-    if (this._letsReadyPointType === 'query') {
-      // usual query final
-      const [queryOptions = {}] = args as [ExtraUseQueryOptions | undefined]
-      return this._continue({
-        type: 'query',
-        _letsReadyPointType: undefined,
-        _queryResultType: 'query',
-        _queryOptions: queryOptions,
-      }) as never
-    }
-    // mountable related query injection
-    throw new Error('TODO:ASAP')
-    // const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
-    // const selfQueryAction: MountAction[] = queryShouldBeFinalized
-    //   ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
-    //   : []
-    // if (!args.length) {
-    //   // in case if we prune it for server with no ssr
-    //   return this._continue({
-    //     ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
-    //   }) as never
-    // }
-    // const relatedQueryFn = (() => {
-    //   if ('point' in args[0]) {
-    //     const point = args[0].point as AnyPoint
-    //     const getInputFn =
-    //       typeof args[1] === 'function' ? args[1] : typeof args[1] === 'object' ? () => args[1] : () => ({})
-    //     const queryOptions = typeof args[2] === 'object' ? args[2] : {}
-    //     return ((options) => {
-    //       const input = getInputFn(options)
-    //       if (point._queryResultType === 'query') {
-    //         return point.useQuery(input, queryOptions)
-    //       } else {
-    //         return point.useInfiniteQuery(input, queryOptions)
-    //       }
-    //     }) as QueryFn<any, any, any, any, any>
-    //   } else if (typeof args[0] === 'function') {
-    //     return args[0] as QueryFn<any, any, any, any, any>
-    //   } else {
-    //     throw new Error('Invalid arguments')
-    //   }
-    // })()
-    // return this._continue({
-    //   _mountActions: [
-    //     ...this._mountActions,
-    //     ...selfQueryAction,
-    //     { type: 'query', fn: queryFn, unstableId: Point0._getNextUnstableId() },
-    //   ],
-    //   ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
-    // }) as never
-  }) as MethodQueryForAnyPoint<
-    TPointType,
-    TLetsReadyPointType,
+  query(
+    ...args: TLetsReadyPointType extends Exclude<PointType, MountablePointType>
+      ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+        ? [
+            queryOptions?: ExtraUseQueryOptions<
+              FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+              Error0,
+              FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+              QueryKey
+            >,
+          ]
+        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+          ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
+          : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .query()`>]
+      : never
+  ): NiceQueryReadyPoint<
+    'query',
+    undefined,
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
@@ -4512,16 +4137,182 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    TQueryResultType,
+    'query',
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
   >
+  query(
+    ...args: TLetsReadyPointType extends MountablePointType
+      ? TPointType extends 'finalStage'
+        ? [ShowError<`You can not use query() to finalize yout query, becouse it is already finalized`>]
+        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+          ? [
+              queryOptions?: ExtraUseQueryOptions<
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                Error0,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                QueryKey
+              >,
+            ]
+          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+            ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
+            : [
+                ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .query() to finalize query.`>,
+              ]
+      : never
+  ): NiceStagePoint<
+    'finalStage',
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    'query',
+    TOuterProps,
+    TInnerProps,
+    AppendQueries<
+      TQueriesDefinitions,
+      QueryDefinition<'query', FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>
+    >
+  >
+  query(...args: any) {
+    const [queryOptions = {}] = args as [ExtraUseQueryOptions | undefined]
+    if (this._isMountablePoint()) {
+      // mountable point finalize query
+      if (this.type === 'finalStage') {
+        throw new Error(`You can not use query() in ${this.toString()} becouse this point query already finalized`)
+      }
+      return this._continue({
+        type: 'finalStage',
+        _queryResultType: 'query',
+        _queryOptions: queryOptions,
+        _mountActions: [...this._mountActions, { type: 'selfQuery', unstableId: Point0._getNextUnstableId() }],
+      }) as never
+    } else {
+      // usual query final
+      if (this._letsReadyPointType === 'query') {
+        return this._continue({
+          type: 'query',
+          _letsReadyPointType: undefined,
+          _queryResultType: 'query',
+          _queryOptions: queryOptions,
+        }) as never
+      } else {
+        throw new Error(`Unknown condition, please report this issue`)
+      }
+    }
+  }
 
   infiniteQuery(
-    ...args: FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
-      ? [
-          infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+    ...args: TLetsReadyPointType extends Exclude<PointType, MountablePointType>
+      ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+        ? [
+            infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+              InputsRaw<TServerInputSchema, TClientInputSchema>,
+              FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+              Error0,
+              InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+              QueryKey,
+              unknown
+            >,
+          ]
+        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+          ? [
+              ShowError<`InfiniteQuery can not return response. Last loader should provide plain object data, not response.`>,
+            ]
+          : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery()`>]
+      : never
+  ): NiceInfiniteQueryReadyPoint<
+    'infiniteQuery',
+    undefined,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    'infiniteQuery',
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  infiniteQuery(
+    ...args: TLetsReadyPointType extends MountablePointType
+      ? TPointType extends 'finalStage'
+        ? [ShowError<`You can not use infiniteQuery() to finalize yout query, becouse it is already finalized`>]
+        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+          ? [
+              infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+                InputsRaw<TServerInputSchema, TClientInputSchema>,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                Error0,
+                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+                QueryKey,
+                unknown
+              >,
+            ]
+          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+            ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
+            : [
+                ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery() to finalize query.`>,
+              ]
+      : never
+  ): NiceStagePoint<
+    'finalStage',
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    'infiniteQuery',
+    TOuterProps,
+    TInnerProps,
+    AppendQueries<
+      TQueriesDefinitions,
+      QueryDefinition<'infiniteQuery', InfiniteData<FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>>
+    >
+  >
+  infiniteQuery(...args: any[]) {
+    const [infiniteQueryOptions = {}] = args as [ExtraUseInfiniteQueryOptions<any> | undefined]
+    if (this._isMountablePoint()) {
+      if (this.type === 'finalStage') {
+        throw new Error(
+          `You can not use infiniteQueryOptions() in ${this.toString()} becouse this point query already finalized`,
+        )
+      }
+      return this._continue({
+        type: 'finalStage',
+        _queryResultType: 'infiniteQuery',
+        _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<any>,
+        _mountActions: [
+          ...this._mountActions,
+          {
+            type: 'selfQuery',
+            unstableId: Point0._getNextUnstableId(),
+          },
+        ],
+      }) as never
+    } else {
+      if (this._letsReadyPointType === 'infiniteQuery') {
+        return this._continue({
+          type: 'infiniteQuery',
+          _letsReadyPointType: undefined,
+          _queryResultType: 'infiniteQuery',
+          _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<
             InputsRaw<TServerInputSchema, TClientInputSchema>,
             FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
             Error0,
@@ -4529,74 +4320,10 @@ export class Point0<
             QueryKey,
             unknown
           >,
-        ]
-      : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
-        ? [
-            ShowError<`InfiniteQuery can not return response. Last loader should provide plain object data, not response.`>,
-          ]
-        : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery()`>]
-  ): TLetsReadyPointType extends 'infiniteQuery'
-    ? NiceInfiniteQueryReadyPoint<
-        'infiniteQuery',
-        undefined,
-        TRequiredCtx,
-        TCtx,
-        TCtxExposedKeys,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TMapperOutput,
-        TRouteDefinition,
-        TServerInputSchema,
-        TClientInputSchema,
-        'infiniteQuery',
-        TOuterProps,
-        TInnerProps,
-        TQueriesDefinitions
-      >
-    : NiceStagePoint<
-        StagePointTypeOrNever<TPointType>,
-        ReadyPointTypeOrNever<TLetsReadyPointType>,
-        TRequiredCtx,
-        TCtx,
-        TCtxExposedKeys,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TMapperOutput,
-        TRouteDefinition,
-        TServerInputSchema,
-        TClientInputSchema,
-        'infiniteQuery',
-        TOuterProps,
-        TInnerProps,
-        TQueriesDefinitions
-      > {
-    const [infiniteQueryOptions = {}] = args
-    if (this._letsReadyPointType === 'infiniteQuery') {
-      return this._continue({
-        type: 'infiniteQuery',
-        _letsReadyPointType: undefined,
-        _queryResultType: 'infiniteQuery',
-        _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<
-          InputsRaw<TServerInputSchema, TClientInputSchema>,
-          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-          Error0,
-          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-          QueryKey,
-          unknown
-        >,
-      }) as never
-    } else {
-      return this._continue({
-        _queryResultType: 'infiniteQuery',
-        _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<
-          InputsRaw<TServerInputSchema, TClientInputSchema>,
-          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-          Error0,
-          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-          QueryKey,
-          unknown
-        >,
-      }) as never
+        }) as never
+      } else {
+        throw new Error(`Unknown condition, please report this issue`)
+      }
     }
   }
 
@@ -4731,14 +4458,14 @@ export class Point0<
   private _normalizeQueryResultType(newQueryResultType: QueryResultType): QueryResultType | UndefinedQueryResultType {
     return this._isQueryableReadyPoint() ? (this._queryResultType ?? newQueryResultType) : this._queryResultType
   }
-  private static _isMountableReadyPointType(pointType: PointType): boolean {
+  private static _isMountablePointType(pointType: PointType): boolean {
     return pointType === 'page' || pointType === 'layout' || pointType === 'component' || pointType === 'provider'
   }
-  private _isMountableReadyPoint(): boolean {
-    return Point0._isMountableReadyPointType(this._letsReadyPointType || this.type)
+  private _isMountablePoint(): boolean {
+    return Point0._isMountablePointType(this._letsReadyPointType || this.type)
   }
   private _isMountableQueryShouldBeFinalized(): boolean {
-    return this._isMountableReadyPoint() && (this.type === 'serverStage' || this.type === 'clientStage')
+    return this._isMountablePoint() && (this.type === 'serverStage' || this.type === 'clientStage')
   }
 
   _isRoot(): boolean {

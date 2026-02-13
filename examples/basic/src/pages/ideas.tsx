@@ -18,7 +18,7 @@ export const ideasPage = generalLayout
   .loader(async ({ data, set }) => {
     return { ...data, amazing: '123', ideas: data.ideas.map((idea) => ({ ...idea, amazing: '234' })) }
   })
-  .infiniteQueryOptions({
+  .infiniteQuery({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: 0,
     pageParamFromInput: 'page',

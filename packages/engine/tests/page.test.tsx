@@ -64,7 +64,7 @@ describe('page', () => {
       `)
   })
 
-  it('loader', async () => {
+  it('query loader', async () => {
     const page = root
       .lets('page', 'home', '/')
       .loader(() => ({ x: 1 }))
@@ -91,7 +91,37 @@ describe('page', () => {
     `)
   })
 
-  it('clientLoader', async () => {
+  it('query loader finalized', async () => {
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(() => ({ x: 1 }))
+      .query({
+        enabled: true,
+      })
+      .page(({ data }) => <div id="page">x={data.x}</div>)
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/
+          #loading: ...
+
+          #page: x=1
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "page.home (client) < {}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "#page: x=1
+      "
+    `)
+  })
+
+  it('query clientLoader', async () => {
     const page = root
       .lets('page', 'home', '/')
       .clientLoader(() => ({ x: 1 }))
@@ -118,7 +148,7 @@ describe('page', () => {
     `)
   })
 
-  it('loader and clientLoader', async () => {
+  it('query loader and clientLoader', async () => {
     const page = root
       .lets('page', 'home', '/')
       .loader(() => ({ x: 1 }))
@@ -150,7 +180,7 @@ describe('page', () => {
     `)
   })
 
-  it('loader error', async () => {
+  it('query loader error', async () => {
     const page = root
       .lets('page', 'home', '/')
       .loader(() => {
@@ -182,7 +212,7 @@ describe('page', () => {
     `)
   })
 
-  it('loader with input', async () => {
+  it('query loader with input', async () => {
     const page = root
       .lets('page', 'home', '/:id')
       .loader(({ input }) => ({ x: input.id }))
