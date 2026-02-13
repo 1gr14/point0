@@ -239,6 +239,331 @@ describe('page', () => {
     `)
   })
 
+  const items: Array<{ id: number; name: string }> = [
+    { id: 1, name: 'Item 1' },
+    { id: 2, name: 'Item 2' },
+    { id: 3, name: 'Item 3' },
+    { id: 4, name: 'Item 4' },
+    { id: 5, name: 'Item 5' },
+  ]
+
+  it('infinite query loader', async () => {
+    const page = root
+      .lets('page', 'home', '/')
+      .input(z.object({ cursor: z.number().optional() }))
+      .loader(({ input }) => {
+        const cursor = input.cursor ?? 0
+        const nextCursor = cursor + 2
+        return {
+          items: items.slice(cursor, cursor + 2),
+          nextCursor: nextCursor < items.length ? nextCursor : undefined,
+        }
+      })
+      .infiniteQuery({
+        pageParamFromInput: 'cursor',
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialPageParam: 0,
+      })
+      .page(({ data, queries: [query] }) => {
+        const itms = data.pages.flatMap((page) => page.items)
+        const nextCursor = data.pages.at(-1)?.nextCursor
+        return (
+          <div id="page">
+            {itms.map((item) => (
+              <div key={item.id}>{item.name}</div>
+            ))}
+            {nextCursor && (
+              <button
+                id="more"
+                onClick={() => {
+                  void query.fetchNextPage()
+                }}
+              >
+                Load more
+              </button>
+            )}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
+    await render(page.route(), async ({ waitContent, tale, click }) => {
+      await waitContent('#more')
+      await click('#more')
+      await waitContent('Item 4')
+      await click('#more')
+      await waitContent('Item 5')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/
+          #loading: ...
+
+          #page:
+            div: Item 1
+            div: Item 2
+            #more: Load more
+
+          #page:
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            #more: Load more
+
+          #page:
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            div: Item 5
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "page.home (client) < {"cursor":0}
+      page.home (client) < {"cursor":2}
+      page.home (client) < {"cursor":4}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "#page:
+        div: Item 1
+        div: Item 2
+        #more: Load more
+      "
+    `)
+  })
+
+  it('infinite query clientLoader', async () => {
+    const page = root
+      .lets('page', 'home', '/')
+      .clientInput(z.object({ cursor: z.number().optional() }))
+      .clientLoader(({ input }) => {
+        const cursor = input.cursor ?? 0
+        const nextCursor = cursor + 2
+        return {
+          items: items.slice(cursor, cursor + 2),
+          nextCursor: nextCursor < items.length ? nextCursor : undefined,
+        }
+      })
+      .infiniteQuery({
+        pageParamFromInput: 'cursor',
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialPageParam: 0,
+      })
+      .page(({ data, queries: [query] }) => {
+        const itms = data.pages.flatMap((page) => page.items)
+        const nextCursor = data.pages.at(-1)?.nextCursor
+        return (
+          <div id="page">
+            {itms.map((item) => (
+              <div key={item.id}>{item.name}</div>
+            ))}
+            {nextCursor && (
+              <button
+                id="more"
+                onClick={() => {
+                  void query.fetchNextPage()
+                }}
+              >
+                Load more
+              </button>
+            )}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
+    await render(page.route(), async ({ waitContent, tale, click }) => {
+      await waitContent('#more')
+      await click('#more')
+      await waitContent('Item 4')
+      await click('#more')
+      await waitContent('Item 5')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/
+          #loading: ...
+
+          #page:
+            div: Item 1
+            div: Item 2
+            #more: Load more
+
+          #page:
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            #more: Load more
+
+          #page:
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            div: Item 5
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "#loading: ...
+      "
+    `)
+  })
+
+  it('infinite query loader and clientLoader', async () => {
+    const page = root
+      .lets('page', 'home', '/')
+      .combinedInput(z.object({ cursor: z.number().optional() }))
+      .loader(({ input }) => {
+        const cursor = input.cursor ?? 0
+        const nextCursor = cursor + 2
+        return {
+          items: items.slice(cursor, cursor + 2),
+          nextCursor: nextCursor < items.length ? nextCursor : undefined,
+        }
+      })
+      .clientLoader(({ data }) => ({
+        ...data,
+        items: data.items.map((item) => ({ ...item, name: item.name.toUpperCase() })),
+      }))
+      .infiniteQuery({
+        pageParamFromInput: 'cursor',
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialPageParam: 0,
+      })
+      .page(({ data, queries: [query] }) => {
+        const itms = data.pages.flatMap((page) => page.items)
+        const nextCursor = data.pages.at(-1)?.nextCursor
+        return (
+          <div id="page">
+            {itms.map((item) => (
+              <div key={item.id}>{item.name}</div>
+            ))}
+            {nextCursor && (
+              <button
+                id="more"
+                onClick={() => {
+                  void query.fetchNextPage()
+                }}
+              >
+                Load more
+              </button>
+            )}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
+    await render(page.route(), async ({ waitContent, tale, click }) => {
+      await waitContent('#more')
+      await click('#more')
+      await waitContent('ITEM 4')
+      await click('#more')
+      await waitContent('ITEM 5')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/
+          #loading: ...
+
+          #page:
+            div: ITEM 1
+            div: ITEM 2
+            #more: Load more
+
+          #page:
+            div: ITEM 1
+            div: ITEM 2
+            div: ITEM 3
+            div: ITEM 4
+            #more: Load more
+
+          #page:
+            div: ITEM 1
+            div: ITEM 2
+            div: ITEM 3
+            div: ITEM 4
+            div: ITEM 5
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "page.home (client) < {"cursor":0}
+      page.home (client) < {"cursor":2}
+      page.home (client) < {"cursor":4}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "#loading: ...
+      "
+    `)
+  })
+
+  it('infinite query loader error', async () => {
+    const page = root
+      .lets('page', 'home', '/')
+      .input(z.object({ cursor: z.number().optional() }))
+      .loader(({ input }) => {
+        if (Math.random() + 1) {
+          throw new Error('test error')
+        }
+        const cursor = input.cursor ?? 0
+        const nextCursor = cursor + 2
+        return {
+          items: items.slice(cursor, cursor + 2),
+          nextCursor: nextCursor < items.length ? nextCursor : undefined,
+        }
+      })
+      .infiniteQuery({
+        pageParamFromInput: 'cursor',
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialPageParam: 0,
+      })
+      .page(({ data, queries: [query] }) => {
+        const itms = data.pages.flatMap((page) => page.items)
+        const nextCursor = data.pages.at(-1)?.nextCursor
+        return (
+          <div id="page">
+            {itms.map((item) => (
+              <div key={item.id}>{item.name}</div>
+            ))}
+            {nextCursor && (
+              <button
+                id="more"
+                onClick={() => {
+                  void query.fetchNextPage()
+                }}
+              >
+                Load more
+              </button>
+            )}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
+    await render(page.route(), async ({ waitContent, tale, click }) => {
+      await waitContent('#error')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/
+          #loading: ...
+
+          #error: test error
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "page.home (client) < {"cursor":0}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "#loading: ...
+      "
+    `)
+  })
+
   it('wrapper', async () => {
     const page = root
       .lets('page', 'home', '/:id')
@@ -515,7 +840,7 @@ describe('page', () => {
       .with(({ location }) => {
         return query.useQuery({ y: +location.params.y })
       })
-      .page(({ data, location }) => (
+      .page(({ data, location, queries }) => (
         <div id="page">
           x={data.x} y={location.params.y}
         </div>
@@ -538,6 +863,329 @@ describe('page', () => {
     `)
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
       "#page: x=246 y=123
+      "
+    `)
+  })
+
+  it('with query fn return many queries', async () => {
+    const query1 = root
+      .lets('query', 'query1')
+      .loader(() => ({ x: 1 }))
+      .query()
+    const query2 = root
+      .lets('query', 'query2')
+      .loader(() => ({ y: 2 }))
+      .query()
+    const page = root
+      .lets('page', 'home')
+      .with(() => {
+        return [query1.useQuery(), query2.useQuery()] as const
+      })
+      .page(({ data, location, queries, props }) => (
+        <div id="page">
+          x={data.x}, y={queries[1].data.y}
+        </div>
+      ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query1, query2] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/home
+          #loading: ...
+
+          #page: x=1, y=2
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "query.query1 (client) < {}
+      query.query2 (client) < {}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "#page: x=1, y=2
+      "
+    `)
+  })
+
+  it('with infinite query', async () => {
+    const query = root
+      .lets('infiniteQuery', 'test')
+      .input(z.object({ cursor: z.number().optional() }))
+      .loader(({ input }) => {
+        const cursor = input.cursor ?? 0
+        const nextCursor = cursor + 2
+        return {
+          items: items.slice(cursor, cursor + 2),
+          nextCursor: nextCursor < items.length ? nextCursor : undefined,
+        }
+      })
+      .infiniteQuery({
+        pageParamFromInput: 'cursor',
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialPageParam: 0,
+      })
+    const page = root
+      .lets('page', 'home')
+      .with(query)
+      .page(({ data, queries: [query] }) => {
+        const itms = data.pages.flatMap((page) => page.items)
+        const nextCursor = data.pages.at(-1)?.nextCursor
+        return (
+          <div id="page">
+            {itms.map((item) => (
+              <div key={item.id}>{item.name}</div>
+            ))}
+            {nextCursor && (
+              <button
+                id="more"
+                onClick={() => {
+                  void query.fetchNextPage()
+                }}
+              >
+                Load more
+              </button>
+            )}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+    await render(page.route(), async ({ waitContent, tale, click }) => {
+      await waitContent('#more')
+      await click('#more')
+      await waitContent('Item 4')
+      await click('#more')
+      await waitContent('Item 5')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/home
+          #loading: ...
+
+          #page:
+            div: Item 1
+            div: Item 2
+            #more: Load more
+
+          #page:
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            #more: Load more
+
+          #page:
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            div: Item 5
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "infiniteQuery.test (client) < {"cursor":0}
+      infiniteQuery.test (client) < {"cursor":2}
+      infiniteQuery.test (client) < {"cursor":4}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "#page:
+        div: Item 1
+        div: Item 2
+        #more: Load more
+      "
+    `)
+  })
+
+  it('with infinite query fn', async () => {
+    const query = root
+      .lets('infiniteQuery', 'test')
+      .input(z.object({ cursor: z.number().optional() }))
+      .loader(({ input }) => {
+        const cursor = input.cursor ?? 0
+        const nextCursor = cursor + 2
+        return {
+          items: items.slice(cursor, cursor + 2),
+          nextCursor: nextCursor < items.length ? nextCursor : undefined,
+        }
+      })
+      .infiniteQuery({
+        pageParamFromInput: 'cursor',
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialPageParam: 0,
+      })
+    const page = root
+      .lets('page', 'home')
+      .with(() => {
+        return query.useInfiniteQuery()
+      })
+      .page(({ data, queries: [query] }) => {
+        const itms = data.pages.flatMap((page) => page.items)
+        const nextCursor = data.pages.at(-1)?.nextCursor
+        return (
+          <div id="page">
+            {itms.map((item) => (
+              <div key={item.id}>{item.name}</div>
+            ))}
+            {nextCursor && (
+              <button
+                id="more"
+                onClick={() => {
+                  void query.fetchNextPage()
+                }}
+              >
+                Load more
+              </button>
+            )}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+    await render(page.route(), async ({ waitContent, tale, click }) => {
+      await waitContent('#more')
+      await click('#more')
+      await waitContent('Item 4')
+      await click('#more')
+      await waitContent('Item 5')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/home
+          #loading: ...
+
+          #page:
+            div: Item 1
+            div: Item 2
+            #more: Load more
+
+          #page:
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            #more: Load more
+
+          #page:
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            div: Item 5
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "infiniteQuery.test (client) < {"cursor":0}
+      infiniteQuery.test (client) < {"cursor":2}
+      infiniteQuery.test (client) < {"cursor":4}
+      "
+    `)
+    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+      "#page:
+        div: Item 1
+        div: Item 2
+        #more: Load more
+      "
+    `)
+  })
+
+  it('with infinite query fn return many queries', async () => {
+    const query = root
+      .lets('infiniteQuery', 'test')
+      .input(z.object({ cursor: z.number().optional() }))
+      .loader(({ input }) => {
+        const cursor = input.cursor ?? 0
+        const nextCursor = cursor + 2
+        return {
+          items: items.slice(cursor, cursor + 2),
+          nextCursor: nextCursor < items.length ? nextCursor : undefined,
+        }
+      })
+      .infiniteQuery({
+        pageParamFromInput: 'cursor',
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialPageParam: 0,
+      })
+    const query2 = root
+      .lets('query', 'query2')
+      .loader(() => ({ y: 2 }))
+      .query()
+    const page = root
+      .lets('page', 'home')
+      .with(() => {
+        return [query.useInfiniteQuery(), query2.useQuery()] as const
+      })
+      .page(({ data, queries: [query, query2] }) => {
+        const itms = data.pages.flatMap((page) => page.items)
+        const nextCursor = data.pages.at(-1)?.nextCursor
+        return (
+          <div id="page">
+            <div id="y">{query2.data.y}</div>
+            {itms.map((item) => (
+              <div key={item.id}>{item.name}</div>
+            ))}
+            {nextCursor && (
+              <button
+                id="more"
+                onClick={() => {
+                  void query.fetchNextPage()
+                }}
+              >
+                Load more
+              </button>
+            )}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query, query2] })
+    await render(page.route(), async ({ waitContent, tale, click }) => {
+      await waitContent('#more')
+      await click('#more')
+      await waitContent('Item 4')
+      await click('#more')
+      await waitContent('Item 5')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/home
+          #loading: ...
+
+          #page:
+            #y: 2
+            div: Item 1
+            div: Item 2
+            #more: Load more
+
+          #page:
+            #y: 2
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            #more: Load more
+
+          #page:
+            #y: 2
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            div: Item 5
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "infiniteQuery.test (client) < {"cursor":0}
+      query.query2 (client) < {}
+      infiniteQuery.test (client) < {"cursor":2}
+      infiniteQuery.test (client) < {"cursor":4}
+      "
+    `)
+    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+      "#page:
+        #y: 2
+        div: Item 1
+        div: Item 2
+        #more: Load more
       "
     `)
   })
@@ -643,6 +1291,186 @@ describe('page', () => {
     `)
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
       "#page: x=246 y=123
+      "
+    `)
+  })
+
+  it('related infinite query', async () => {
+    const query = root
+      .lets('infiniteQuery', 'test')
+      .input(z.object({ cursor: z.number().optional() }))
+      .loader(({ input }) => {
+        const cursor = input.cursor ?? 0
+        const nextCursor = cursor + 2
+        return {
+          items: items.slice(cursor, cursor + 2),
+          nextCursor: nextCursor < items.length ? nextCursor : undefined,
+        }
+      })
+      .infiniteQuery({
+        pageParamFromInput: 'cursor',
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialPageParam: 0,
+      })
+    const page = root
+      .lets('page', 'home')
+      .relatedQuery(query)
+      .page(({ data, queries: [query] }) => {
+        const itms = data.pages.flatMap((page) => page.items)
+        const nextCursor = data.pages.at(-1)?.nextCursor
+        return (
+          <div id="page">
+            {itms.map((item) => (
+              <div key={item.id}>{item.name}</div>
+            ))}
+            {nextCursor && (
+              <button
+                id="more"
+                onClick={() => {
+                  void query.fetchNextPage()
+                }}
+              >
+                Load more
+              </button>
+            )}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+    await render(page.route(), async ({ waitContent, tale, click }) => {
+      await waitContent('#more')
+      await click('#more')
+      await waitContent('Item 4')
+      await click('#more')
+      await waitContent('Item 5')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/home
+          #loading: ...
+
+          #page:
+            div: Item 1
+            div: Item 2
+            #more: Load more
+
+          #page:
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            #more: Load more
+
+          #page:
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            div: Item 5
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "infiniteQuery.test (client) < {"cursor":0}
+      infiniteQuery.test (client) < {"cursor":2}
+      infiniteQuery.test (client) < {"cursor":4}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "#page:
+        div: Item 1
+        div: Item 2
+        #more: Load more
+      "
+    `)
+  })
+
+  it('related infinite query fn', async () => {
+    const query = root
+      .lets('infiniteQuery', 'test')
+      .input(z.object({ cursor: z.number().optional() }))
+      .loader(({ input }) => {
+        const cursor = input.cursor ?? 0
+        const nextCursor = cursor + 2
+        return {
+          items: items.slice(cursor, cursor + 2),
+          nextCursor: nextCursor < items.length ? nextCursor : undefined,
+        }
+      })
+      .infiniteQuery({
+        pageParamFromInput: 'cursor',
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialPageParam: 0,
+      })
+    const page = root
+      .lets('page', 'home')
+      .relatedQuery(({ location }) => {
+        return query.useInfiniteQuery()
+      })
+      .page(({ data, queries: [query] }) => {
+        const itms = data.pages.flatMap((page) => page.items)
+        const nextCursor = data.pages.at(-1)?.nextCursor
+        return (
+          <div id="page">
+            {itms.map((item) => (
+              <div key={item.id}>{item.name}</div>
+            ))}
+            {nextCursor && (
+              <button
+                id="more"
+                onClick={() => {
+                  void query.fetchNextPage()
+                }}
+              >
+                Load more
+              </button>
+            )}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+    await render(page.route(), async ({ waitContent, tale, click }) => {
+      await waitContent('#more')
+      await click('#more')
+      await waitContent('Item 4')
+      await click('#more')
+      await waitContent('Item 5')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/home
+          #loading: ...
+
+          #page:
+            div: Item 1
+            div: Item 2
+            #more: Load more
+
+          #page:
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            #more: Load more
+
+          #page:
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            div: Item 5
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "infiniteQuery.test (client) < {"cursor":0}
+      infiniteQuery.test (client) < {"cursor":2}
+      infiniteQuery.test (client) < {"cursor":4}
+      "
+    `)
+    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+      "#page:
+        div: Item 1
+        div: Item 2
+        #more: Load more
       "
     `)
   })

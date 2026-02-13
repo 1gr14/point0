@@ -45,7 +45,7 @@ export type AppendProps<TPrevProps extends Props, TAppendProps extends Props> = 
   : TAppendProps
 
 export type UseQueryOrInfiniteQueryResult = UseInfiniteQueryResult | UseQueryResult
-export type QueriesResults = UseQueryOrInfiniteQueryResult[]
+export type QueriesResults = readonly UseQueryOrInfiniteQueryResult[]
 export type QueryDefinition<TQueryResultType extends QueryResultType, TQueriedData extends Data> = {
   type: TQueryResultType
   data: TQueriedData // it is infinite data in infinite data case
@@ -77,35 +77,53 @@ export type QueryDefinitionByQuery<TQueryResult extends UseQueryOrInfiniteQueryR
     : TQueryResult extends UseQueryResult<any, any>
       ? QueryDefinition<'query', QueryDataByResult<TQueryResult>>
       : never
-export type QueriesDefinitionsByQueries<TQueries extends UseQueryOrInfiniteQueryResult[]> = IfAnyThenElse<
+type Q2D<T> = T extends UseQueryOrInfiniteQueryResult ? QueryDefinitionByQuery<T> : never
+export type QueriesDefinitionsByQueries<TQueries extends QueriesResults> = IfAnyThenElse<
   TQueries,
   any,
-  TQueries extends [infer Q1, ...infer Rest]
-    ? [
-        QueryDefinitionByQuery<Q1 extends UseQueryOrInfiniteQueryResult ? Q1 : never>,
-        ...QueriesDefinitionsByQueries<Extract<Rest, UseQueryOrInfiniteQueryResult[]>>,
-      ]
-    : []
+  TQueries extends readonly [infer Q1, infer Q2, infer Q3, infer Q4, infer Q5]
+    ? [Q2D<Q1>, Q2D<Q2>, Q2D<Q3>, Q2D<Q4>, Q2D<Q5>]
+    : TQueries extends readonly [infer Q1, infer Q2, infer Q3, infer Q4]
+      ? [Q2D<Q1>, Q2D<Q2>, Q2D<Q3>, Q2D<Q4>]
+      : TQueries extends readonly [infer Q1, infer Q2, infer Q3]
+        ? [Q2D<Q1>, Q2D<Q2>, Q2D<Q3>]
+        : TQueries extends readonly [infer Q1, infer Q2]
+          ? [Q2D<Q1>, Q2D<Q2>]
+          : TQueries extends readonly [infer Q1]
+            ? [Q2D<Q1>]
+            : []
 >
+type D2Q<T> = T extends QueryDefinition<any, any> ? QueryByDefinition<T> : never
 export type QueriesByDefinitions<TQueriesDefinitions extends QueriesDefinitions> = IfAnyThenElse<
   TQueriesDefinitions,
   any,
-  TQueriesDefinitions extends [infer Q1, ...infer Rest]
-    ? [
-        QueryByDefinition<Q1 extends QueryDefinition<any, any> ? Q1 : never>,
-        ...QueriesByDefinitions<Extract<Rest, QueriesDefinitions>>,
-      ]
-    : []
+  TQueriesDefinitions extends readonly [infer Q1, infer Q2, infer Q3, infer Q4, infer Q5]
+    ? [D2Q<Q1>, D2Q<Q2>, D2Q<Q3>, D2Q<Q4>, D2Q<Q5>]
+    : TQueriesDefinitions extends readonly [infer Q1, infer Q2, infer Q3, infer Q4]
+      ? [D2Q<Q1>, D2Q<Q2>, D2Q<Q3>, D2Q<Q4>]
+      : TQueriesDefinitions extends readonly [infer Q1, infer Q2, infer Q3]
+        ? [D2Q<Q1>, D2Q<Q2>, D2Q<Q3>]
+        : TQueriesDefinitions extends readonly [infer Q1, infer Q2]
+          ? [D2Q<Q1>, D2Q<Q2>]
+          : TQueriesDefinitions extends readonly [infer Q1]
+            ? [D2Q<Q1>]
+            : []
 >
+type D2SQ<T> = T extends QueryDefinition<any, any> ? SuccessQueryByDefinition<T> : never
 export type SuccessQueriesDefinitions<TQueriesDefinitions extends QueriesDefinitions> = IfAnyThenElse<
   TQueriesDefinitions,
   any,
-  TQueriesDefinitions extends [infer Q1, ...infer Rest]
-    ? [
-        SuccessQueryByDefinition<Q1 extends QueryDefinition<any, any> ? Q1 : never>,
-        ...SuccessQueriesDefinitions<Extract<Rest, QueriesDefinitions>>,
-      ]
-    : []
+  TQueriesDefinitions extends readonly [infer Q1, infer Q2, infer Q3, infer Q4, infer Q5]
+    ? [D2SQ<Q1>, D2SQ<Q2>, D2SQ<Q3>, D2SQ<Q4>, D2SQ<Q5>]
+    : TQueriesDefinitions extends readonly [infer Q1, infer Q2, infer Q3, infer Q4]
+      ? [D2SQ<Q1>, D2SQ<Q2>, D2SQ<Q3>, D2SQ<Q4>]
+      : TQueriesDefinitions extends readonly [infer Q1, infer Q2, infer Q3]
+        ? [D2SQ<Q1>, D2SQ<Q2>, D2SQ<Q3>]
+        : TQueriesDefinitions extends readonly [infer Q1, infer Q2]
+          ? [D2SQ<Q1>, D2SQ<Q2>]
+          : TQueriesDefinitions extends readonly [infer Q1]
+            ? [D2SQ<Q1>]
+            : []
 >
 
 export type QuerySuccess<TQuery extends UseQueryOrInfiniteQueryResult> = Extract<TQuery, { status: 'success' }>
@@ -117,16 +135,16 @@ export type QueryPending<TQuery extends UseQueryOrInfiniteQueryResult> = Extract
 //     : TQuery extends UseInfiniteQueryResult<infer TData, infer TError>
 //       ? UseInfiniteQueryResult<TData, TError>
 //       : never
-export type QueriesSuccess<TQueries extends UseQueryOrInfiniteQueryResult[]> = IfAnyThenElse<
-  TQueries,
-  any,
-  TQueries extends [infer Q1, ...infer Rest]
-    ? [
-        QuerySuccess<Q1 extends UseQueryOrInfiniteQueryResult ? Q1 : never>,
-        ...QueriesSuccess<Extract<Rest, UseQueryOrInfiniteQueryResult[]>>,
-      ]
-    : []
->
+// export type QueriesSuccess<TQueries extends QueriesResultsTuple> = IfAnyThenElse<
+//   TQueries,
+//   any,
+//   TQueries extends [infer Q1, ...infer Rest]
+//     ? [
+//         QuerySuccess<Q1 extends UseQueryOrInfiniteQueryResult ? Q1 : never>,
+//         ...QueriesSuccess<Extract<Rest, QueriesResultsTuple>>,
+//       ]
+//     : []
+// >
 // export type QueriesUnknownStatus<TQueries extends UseQueryOrInfiniteQueryResult[]> = TQueries extends [
 //   infer Q1,
 //   ...infer Rest,
@@ -366,17 +384,13 @@ export type WithQueryFn<
   TInnerProps extends Props = Props,
   TQueriesDefinitions extends QueriesDefinitions = QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TNewQueries extends UseQueryOrInfiniteQueryResult | UseQueryOrInfiniteQueryResult[] =
-    | UseQueryOrInfiniteQueryResult
-    | UseQueryOrInfiniteQueryResult[],
+  TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults = UseQueryOrInfiniteQueryResult | QueriesResults,
 > = (options: WithFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>) => TNewQueries
 
 export type RelatedQueryOptions<TLocation extends AnyLocation = AnyLocation> = { location: TLocation }
 export type RelatedQueryFn<
   TLocation extends AnyLocation = AnyLocation,
-  TNewQueries extends UseQueryOrInfiniteQueryResult | UseQueryOrInfiniteQueryResult[] =
-    | UseQueryOrInfiniteQueryResult
-    | UseQueryOrInfiniteQueryResult[],
+  TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults = UseQueryOrInfiniteQueryResult | QueriesResults,
 > = (options: RelatedQueryOptions<TLocation>) => TNewQueries
 
 // export type LightQueryFnOptions<TLocation extends AnyLocation> = { location: TLocation }

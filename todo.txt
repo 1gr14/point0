@@ -60,6 +60,7 @@ try catch evertywhere in engine to show real error in real place
 bun watcher, not parcel watcher
 ? html transformer not regex hack
 --+
+combinedInput → sharedInput
 Remove comments, unusde code, unused types (except core/point0.ts and core/types.ts)
 Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп
 При обнаружении поинта, который при своей инициализации не наблюдает над собой компилера судя по процесс енв, он должен сделать консоль варн что мол компилер забыли включить или импортнули его в энжине незаконно без асунк импорта, это можно отключить

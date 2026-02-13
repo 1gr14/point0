@@ -1786,7 +1786,7 @@ export class Point0<
       },
     ]
   >
-  with<TNewQueries extends UseQueryOrInfiniteQueryResult | UseQueryOrInfiniteQueryResult[]>(
+  with<TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults>(
     withQueryFn: WithQueryFn<
       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
       TInnerProps,
@@ -1825,10 +1825,15 @@ export class Point0<
         TClientLoaderOutput,
         TQueriesDefinitions
       >,
-      ...(TNewQueries extends UseQueryOrInfiniteQueryResult
-        ? [QueryDefinitionByQuery<TNewQueries>]
-        : TNewQueries extends UseQueryOrInfiniteQueryResult[]
-          ? QueriesDefinitionsByQueries<TNewQueries>
+      // ...(TNewQueries extends UseQueryOrInfiniteQueryResult
+      //   ? [QueryDefinitionByQuery<TNewQueries>]
+      //   : TNewQueries extends UseQueryOrInfiniteQueryResult[]
+      //     ? QueriesDefinitionsByQueries<TNewQueries>
+      //     : never),
+      ...(TNewQueries extends QueriesResults
+        ? QueriesDefinitionsByQueries<TNewQueries>
+        : TNewQueries extends UseQueryOrInfiniteQueryResult
+          ? [QueryDefinitionByQuery<TNewQueries>]
           : never),
     ]
   >
@@ -1845,7 +1850,10 @@ export class Point0<
       >,
       TMapperOutput,
       TNewInnerProps
-    >,
+    > &
+      (TNewInnerProps extends UseQueryOrInfiniteQueryResult[]
+        ? ShowError<`To return array of queries add as const after array like return [q1, q2] as const`>
+        : unknown),
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -2030,7 +2038,7 @@ export class Point0<
       },
     ]
   >
-  relatedQuery<TNewQueries extends UseQueryOrInfiniteQueryResult | UseQueryOrInfiniteQueryResult[]>(
+  relatedQuery<TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults>(
     relatedQueryFn: RelatedQueryFn<MountableLocation<TLetsReadyPointType, TRouteDefinition>, TNewQueries>,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
@@ -2057,10 +2065,15 @@ export class Point0<
         TClientLoaderOutput,
         TQueriesDefinitions
       >,
-      ...(TNewQueries extends UseQueryOrInfiniteQueryResult
-        ? [QueryDefinitionByQuery<TNewQueries>]
-        : TNewQueries extends UseQueryOrInfiniteQueryResult[]
-          ? QueriesDefinitionsByQueries<TNewQueries>
+      // ...(TNewQueries extends UseQueryOrInfiniteQueryResult
+      //   ? [QueryDefinitionByQuery<TNewQueries>]
+      //   : TNewQueries extends UseQueryOrInfiniteQueryResult[]
+      //     ? QueriesDefinitionsByQueries<TNewQueries>
+      //     : never),
+      ...(TNewQueries extends QueriesResults
+        ? QueriesDefinitionsByQueries<TNewQueries>
+        : TNewQueries extends UseQueryOrInfiniteQueryResult
+          ? [QueryDefinitionByQuery<TNewQueries>]
           : never),
     ]
   >
@@ -7177,7 +7190,7 @@ export class Point0<
               'errorUpdatedAt' in result
             )
           }
-          const isQueryResultArray = (result: any): result is UseQueryOrInfiniteQueryResult[] => {
+          const isQueryResultArray = (result: any): result is QueriesResults => {
             return Array.isArray(result) && result.every(isQueryResult)
           }
 

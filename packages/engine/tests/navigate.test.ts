@@ -86,7 +86,6 @@ async function writeNavigatePages(tp: TestProject) {
 
 const getTale = (page: PlaywrightPage) => {
   const originalTale = page.tale
-  console.log(originalTale)
   return originalTale.replaceAll(
     `
     nav:
@@ -178,7 +177,7 @@ describe('navigate', () => {
     })
 
     afterAll(async () => {
-      await tpf.cleanup({ files: false, processes: true, ports: true, browser: true })
+      await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
     })
 
     it('navigate between pages by links via browser', async () => {
