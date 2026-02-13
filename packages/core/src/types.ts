@@ -853,7 +853,7 @@ export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends Lo
       data: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
       response: TServerLoaderOutput extends Response ? TServerLoaderOutput : undefined
       effects: ResponseEffectsValues
-      error: null
+      error: undefined
       status: number
       output: TServerLoaderOutput
       point: ReadyPoint
@@ -1088,7 +1088,7 @@ export type FetchServerDetailedOutput<TServerLoaderOutput extends LoaderOutput |
       response: Response
       data: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
       output: TServerLoaderOutput extends Data ? TServerLoaderOutput : Response
-      error: null
+      error: undefined
     }
   | {
       response: Response | undefined
@@ -1132,7 +1132,7 @@ export type FetcherFetchDetailedResultGeneral = {
   response: Response
   request: Request0
   scope: PointsScope
-  error: Error0 | null
+  error: Error0 | undefined
 }
 export type FetcherFetchDetailedResultMiddleware = FetcherFetchDetailedResultGeneral & {
   variant: 'middleware'
@@ -1253,6 +1253,9 @@ export type NiceRootStagePoint<
   | 'use'
   | 'middleware'
   | 'ssr'
+  | 'on'
+  | 'serverOn'
+  | 'clientOn'
   | 'transformer'
   // | 'fetchFn'
   | 'serverurl'
@@ -1331,6 +1334,9 @@ export type NicePluginStagePoint<
   | 'use'
   | 'middleware'
   | 'ssr'
+  | 'on'
+  | 'serverOn'
+  | 'clientOn'
   | 'transformer'
   // | 'fetchFn'
   // | 'requireCtx'
@@ -1409,6 +1415,9 @@ export type NiceBaseStagePoint<
     TQueriesDefinitions
   >,
   | 'base'
+  | 'on'
+  | 'serverOn'
+  | 'clientOn'
   | 'use'
   | 'mutationOptions'
   | 'queryOptions'
@@ -1483,6 +1492,9 @@ export type NicePageStagePoint<
     TQueriesDefinitions
   >,
   | 'page'
+  | 'on'
+  | 'serverOn'
+  | 'clientOn'
   | 'use'
   | 'fetchOptions'
   | 'error'
@@ -1546,6 +1558,9 @@ export type NiceComponentStagePoint<
     TQueriesDefinitions
   >,
   | 'component'
+  | 'on'
+  | 'serverOn'
+  | 'clientOn'
   | 'use'
   | 'fetchOptions'
   | 'error'
@@ -1603,6 +1618,9 @@ export type NiceQueryStagePoint<
     TQueriesDefinitions
   >,
   | 'query'
+  | 'on'
+  | 'serverOn'
+  | 'clientOn'
   | 'use'
   | 'fetchOptions'
   | 'input'
@@ -1652,6 +1670,9 @@ export type NiceInfiniteQueryStagePoint<
     TQueriesDefinitions
   >,
   | 'infiniteQuery'
+  | 'on'
+  | 'serverOn'
+  | 'clientOn'
   | 'use'
   | 'fetchOptions'
   | 'input'
@@ -1701,6 +1722,9 @@ export type NiceMutationStagePoint<
     TQueriesDefinitions
   >,
   | 'mutation'
+  | 'on'
+  | 'serverOn'
+  | 'clientOn'
   | 'use'
   // | 'asFormData'
   | 'fetchOptions'
@@ -1750,6 +1774,9 @@ export type NiceLayoutStagePoint<
     TQueriesDefinitions
   >,
   | 'layout'
+  | 'on'
+  | 'serverOn'
+  | 'clientOn'
   | 'use'
   | 'fetchOptions'
   | 'pageQueryOptions'
@@ -1819,6 +1846,9 @@ export type NiceProviderStagePoint<
     TQueriesDefinitions
   >,
   | 'provider'
+  | 'on'
+  | 'serverOn'
+  | 'clientOn'
   | 'use'
   | 'fetchOptions'
   | 'input'

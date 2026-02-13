@@ -899,13 +899,35 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  on(name: AnyEventerEvent['name'] | '*', callback: AnyEventerSubscriptionCallback | undefined) {
+  on<TEventNames extends Array<AnyEventerEvent['name']>>(
+    names: TEventNames,
+    callback: AnyEventerSubscriptionCallback<TEventNames[number]>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  on(
+    name: AnyEventerEvent['name'] | '*' | Array<AnyEventerEvent['name']>,
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    callback: AnyEventerSubscriptionCallback | undefined = () => {},
+  ) {
+    const names = Array.isArray(name) ? name : [name]
+    const subscriptions = names.map((name) => ({ name, callback, target: undefined }))
     return this._continue({
-      _eventerSubscriptions: [
-        ...this._eventerSubscriptions,
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        { name, callback: callback || (() => {}), target: undefined },
-      ],
+      _eventerSubscriptions: [...this._eventerSubscriptions, ...subscriptions],
     }) as never
   }
 
@@ -929,13 +951,35 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  serverOn(name: ServerEventerEvent['name'] | '*', callback: ServerEventerSubscriptionCallback | undefined) {
+  serverOn<TEventNames extends Array<ServerEventerEvent['name']>>(
+    names: TEventNames,
+    callback: ServerEventerSubscriptionCallback<TEventNames[number]>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  serverOn(
+    name: ServerEventerEvent['name'] | '*' | Array<ServerEventerEvent['name']>,
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    callback: ServerEventerSubscriptionCallback | undefined = () => {},
+  ) {
+    const names = Array.isArray(name) ? name : [name]
+    const subscriptions = names.map((name) => ({ name, callback, target: 'server' as const }))
     return this._continue({
-      _eventerSubscriptions: [
-        ...this._eventerSubscriptions,
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        { name, callback: callback || (() => {}), target: 'server' },
-      ],
+      _eventerSubscriptions: [...this._eventerSubscriptions, ...subscriptions],
     }) as never
   }
 
@@ -959,13 +1003,35 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  clientOn(name: ClientEventerEvent['name'] | '*', callback: ClientEventerSubscriptionCallback | undefined) {
+  clientOn<TEventNames extends Array<ClientEventerEvent['name']>>(
+    names: TEventNames,
+    callback: ClientEventerSubscriptionCallback<TEventNames[number]>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  clientOn(
+    name: ClientEventerEvent['name'] | '*' | Array<ClientEventerEvent['name']>,
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    callback: ClientEventerSubscriptionCallback | undefined = () => {},
+  ) {
+    const names = Array.isArray(name) ? name : [name]
+    const subscriptions = names.map((name) => ({ name, callback, target: 'client' as const }))
     return this._continue({
-      _eventerSubscriptions: [
-        ...this._eventerSubscriptions,
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        { name, callback: callback || (() => {}), target: 'client' },
-      ],
+      _eventerSubscriptions: [...this._eventerSubscriptions, ...subscriptions],
     }) as never
   }
 
@@ -4612,15 +4678,17 @@ export class Point0<
         ]
   ): Promise<FetchServerDetailedOutput<TServerLoaderOutput>> {
     let res: Response | undefined
-    const eventData = {
+    const _eventData = {
       input: args[0] || {},
       point: this as never as AnyPoint,
+      error: undefined,
+      output: undefined,
     }
     try {
       const fetchOptions = this.getFetchServerOptions(...args)
       const fetchFn = this.getFetchFn()
       const fetchRequest = this.modifyFetchRequestForServerIfRequired(fetchOptions)
-      this._emit('pointFetchServerStart', eventData)
+      this._emit('pointFetchServerStart', _eventData)
 
       res = await fetchFn(fetchRequest)
       // TODO:ASAP create eventer
@@ -4629,11 +4697,15 @@ export class Point0<
         const result = {
           response: res,
           data: undefined,
-          error: null,
+          error: undefined,
           output: res,
-        } as Extract<FetchServerDetailedOutput<TServerLoaderOutput>, { error: null }>
-        this._emit('pointFetchServerSettled', { ...result, ...eventData })
-        this._emit('pointFetchServerSuccess', { ...result, ...eventData })
+        } as Extract<FetchServerDetailedOutput<TServerLoaderOutput>, { error: undefined }>
+        const eventData = {
+          ..._eventData,
+          ...result,
+        }
+        this._emit('pointFetchServerSettled', eventData)
+        this._emit('pointFetchServerSuccess', eventData)
         return result
       }
       const json = await res.json()
@@ -4642,11 +4714,15 @@ export class Point0<
         const result = {
           response: res,
           data,
-          error: null,
+          error: undefined,
           output: data,
-        } as Extract<FetchServerDetailedOutput<TServerLoaderOutput>, { error: null }>
-        this._emit('pointFetchServerSettled', { ...result, ...eventData })
-        this._emit('pointFetchServerSuccess', { ...result, ...eventData })
+        } as Extract<FetchServerDetailedOutput<TServerLoaderOutput>, { error: undefined }>
+        const eventData = {
+          ..._eventData,
+          ...result,
+        }
+        this._emit('pointFetchServerSettled', eventData)
+        this._emit('pointFetchServerSuccess', eventData)
         return result
       }
       const result = {
@@ -4657,8 +4733,12 @@ export class Point0<
           httpStatus: res.status,
         }),
       }
-      this._emit('pointFetchServerSettled', { ...result, ...eventData })
-      this._emit('pointFetchServerError', { ...result, ...eventData })
+      const eventData = {
+        ..._eventData,
+        ...result,
+      }
+      this._emit('pointFetchServerSettled', eventData)
+      this._emit('pointFetchServerError', eventData)
       return result
     } catch (error) {
       const result = {
@@ -4667,8 +4747,12 @@ export class Point0<
         error: Error0.from(error),
         output: undefined,
       }
-      this._emit('pointFetchServerSettled', { ...result, ...eventData })
-      this._emit('pointFetchServerError', { ...result, ...eventData })
+      const eventData = {
+        ..._eventData,
+        ...result,
+      }
+      this._emit('pointFetchServerSettled', eventData)
+      this._emit('pointFetchServerError', eventData)
       return result
     }
   }
@@ -4811,15 +4895,15 @@ export class Point0<
       data: undefined,
     }
     const queryFn = async ({ signal }: { signal: AbortSignal }) => {
-      this._emit('pointInfiniteQueryStart', _eventData)
+      this._emit('pointQueryStart', _eventData)
       try {
         const data = await this.fetchServer(input as never, { ...fetchOptions, signal }, outputType)
         const eventData = {
           ..._eventData,
           data: data as Data,
         }
-        this._emit('pointInfiniteQuerySettled', eventData)
-        this._emit('pointInfiniteQuerySuccess', eventData)
+        this._emit('pointQuerySettled', eventData)
+        this._emit('pointQuerySuccess', eventData)
         return data
       } catch (error) {
         const error0 = Error0.from(error)
@@ -4827,8 +4911,8 @@ export class Point0<
           ..._eventData,
           error: error0,
         }
-        this._emit('pointInfiniteQuerySettled', eventData)
-        this._emit('pointInfiniteQueryError', eventData)
+        this._emit('pointQuerySettled', eventData)
+        this._emit('pointQueryError', eventData)
         throw error0
       }
     }
@@ -6357,7 +6441,7 @@ export class Point0<
         Point0._usePrevHeadsAndSetPageState({
           pageState: {
             status: 'loading',
-            error: null,
+            error: undefined,
             loading: true,
             initial: false,
           },

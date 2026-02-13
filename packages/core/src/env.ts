@@ -49,8 +49,7 @@ const _isTargetClient = (): boolean => {
 }
 
 const isTargetClient = (): boolean => {
-  const fakeClient = superstore.isFakeClient()
-  if (fakeClient) {
+  if (superstore.isFakeClient()) {
     return true
   }
   if (process.env.POINT0_TARGET) {

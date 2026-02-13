@@ -60,7 +60,7 @@ export const createNavigate0 = <
           input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
           ...rest: Tail<Parameters<TNavigate>>,
         ]
-  ): Promise<{ location: AnyLocation; error: Error0 | null }> {
+  ): Promise<{ location: AnyLocation; error: Error0 | undefined }> {
     const [routeName, input, ...rest] = args
     const route = routes[routeName]
     if (!route) {
@@ -95,7 +95,7 @@ export const createUseNavigate0 = <
             input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
             ...rest: Tail<Parameters<ReturnType<TUseNavigate>>>,
           ]
-    ): Promise<{ location: AnyLocation; error: Error0 | null }>
+    ): Promise<{ location: AnyLocation; error: Error0 | undefined }>
     // function useNavigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
     //   ...args: OnlyIfHasParams<
     //     ExtractRoute<TRoutes, TRouteName>,
@@ -105,7 +105,7 @@ export const createUseNavigate0 = <
     //       ...rest: Tail<Parameters<ReturnType<TUseNavigate>>>,
     //     ]
     //   >
-    // ): Promise<{ location: AnyLocation; error: Error0 | null }>
+    // ): Promise<{ location: AnyLocation; error: Error0 | undefined }>
     // function useNavigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
     //   ...args: OnlyIfNoParams<
     //     ExtractRoute<TRoutes, TRouteName>,
@@ -115,11 +115,11 @@ export const createUseNavigate0 = <
     //       ...rest: Tail<Parameters<ReturnType<TUseNavigate>>>,
     //     ]
     //   >
-    // ): Promise<{ location: AnyLocation; error: Error0 | null }>
+    // ): Promise<{ location: AnyLocation; error: Error0 | undefined }>
     // function useNavigate0(
     //   to: { to: string },
     //   ...rest: Tail<Parameters<ReturnType<TUseNavigate>>>
-    // ): Promise<{ location: AnyLocation; error: Error0 | null }>
+    // ): Promise<{ location: AnyLocation; error: Error0 | undefined }>
     async function useNavigate0(...args: any[]) {
       const { to, rest } = ((): { to: string; rest: Tail<Parameters<ReturnType<TUseNavigate>>> } => {
         if (typeof args[0] === 'string') {

@@ -734,7 +734,7 @@ export class Fetcher {
       client,
       variant: 'point' as const,
       data: undefined,
-      error: null,
+      error: undefined,
     }
     let input: InputRawUnknown = {}
 
@@ -925,7 +925,7 @@ export class Fetcher {
       point,
       variant: 'page' as const,
       data: undefined,
-      error: null,
+      error: undefined,
       responseFormat: 'html' as const,
       input,
     }
@@ -1039,7 +1039,7 @@ export class Fetcher {
               scope: baseOptions.scope,
               response: result,
               variant: 'middleware',
-              error: null,
+              error: undefined,
             }
           }
           return result
@@ -1055,7 +1055,7 @@ export class Fetcher {
           scope: baseOptions.scope,
           response: result,
           variant: 'middleware',
-          error: null,
+          error: undefined,
         }
       }
       return result
@@ -1086,7 +1086,7 @@ export class Fetcher {
         scope: prepareFetchResult.scope,
         response: prepareFetchResult.publicdirResult.response,
         variant: 'publicdir',
-        error: null,
+        error: undefined,
       }
     }
 
@@ -1096,7 +1096,7 @@ export class Fetcher {
         scope: prepareFetchResult.scope,
         response: prepareFetchResult.optionsResult.response,
         variant: 'unknown',
-        error: null,
+        error: undefined,
       }
     }
 
@@ -1211,9 +1211,27 @@ export class Fetcher {
       originalRequest: request,
       bunServer,
     })
+    const _eventData = {
+      request: prepareFetchResult.request,
+      scope: prepareFetchResult.scope,
+      variant: prepareFetchResult.middlewareOptions.variant,
+      point: prepareFetchResult.middlewareOptions.point,
+      error: undefined,
+    }
+    // const emit =
+    //   prepareFetchResult.middlewareOptions.point?.point._emit.bind(prepareFetchResult.middlewareOptions.point.point) ??
+    //   this.server.points?.roots
+    //     .get(prepareFetchResult.scope)
+    //     ?._emit.bind(this.server.points.roots.get(prepareFetchResult.scope)) ??
+    //   this.server.points?._emit.bind(this.server.points)
+    const emit = this.engine.getEmit({
+      point: prepareFetchResult.middlewareOptions.point,
+      scope: prepareFetchResult.scope,
+    })
 
     const serverStorageState = _getSsItemsWithRestErrors(
       {
+        __POINT0_FAKE_CLIENT__: undefined,
         __POINT0_REQUEST0__: prepareFetchResult.request,
         __POINT0_EFFECTS__: prepareFetchResult.effects,
         // in case of recursive server response we want preserve query client to keep state
@@ -1226,6 +1244,7 @@ export class Fetcher {
     const middlewareOptions = prepareFetchResult.middlewareOptions
 
     return await _ssRunWithServerStorageState(serverStorageState, async () => {
+      emit?.('fetcherStart', _eventData)
       const result = await this._composeMiddlewares({
         middlewares,
         finalHandler: async () =>
@@ -1241,6 +1260,13 @@ export class Fetcher {
         ...result,
         response,
       } as FetcherFetchDetailedResult
+      const error = result.error
+      emit?.('fetcherSettled', { ..._eventData, error, result: finalResult })
+      if (error) {
+        emit?.('fetcherError', { ..._eventData, error, result: finalResult })
+      } else {
+        emit?.('fetcherSuccess', { ..._eventData, error: undefined, result: finalResult })
+      }
       return finalResult
     })
   }
@@ -1334,7 +1360,7 @@ export type PrepareFetchResult =
 //   response: Response | undefined
 //   request: Request0
 //   scope: PointsScope
-//   error: Error0 | null
+//   error: Error0 | undefined
 // }
 // export type FetcherFetchDetailedResultMiddleware = FetcherFetchDetailedResultGeneral & {
 //   variant: 'middleware'

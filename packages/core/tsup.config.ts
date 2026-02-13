@@ -5,6 +5,7 @@ const general = {
   entry: [
     'src/env.ts',
     'src/env.types.ts',
+    'src/eventer.ts',
     'src/index.ts',
     'src/internals.ts',
     'src/mountable.ts',

@@ -1,16 +1,20 @@
 import type { Error0 } from '@devp0nt/error0'
 import type {
-  AnyPoint,
+  AnyNiceReadyPoint,
   Data,
+  FetcherFetchDetailedResult,
   FetchOptions,
   FetchServerDetailedOutput,
   InputRaw,
   LoaderOutput,
+  MiddlewareFnOptions,
   PagePrefetchPolicy,
+  PointsScope,
   QueryKey,
 } from './types.js'
 import type { AnyLocation } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
+import type { Request0 } from './request0.js'
 
 export type EventerTarget = 'client' | 'server'
 
@@ -19,6 +23,11 @@ export type EventerEvent<TTarget extends EventerTarget, TName extends string, TD
   name: TName
   data: TData
 }
+
+export type EventerEmitFn = <TName extends AnyEventerEvent['name']>(
+  name: TName,
+  data: Extract<AnyEventerEvent, { name: TName }>['data'],
+) => void
 
 export type AnyEventerSubscriptionCallback<TName extends AnyEventerEvent['name'] | '*' = any> = (
   event: TName extends '*' ? AnyEventerEvent : Extract<AnyEventerEvent, { name: TName }>,
@@ -46,7 +55,7 @@ export type EventerEventPointFetchServerStart = EventerEvent<
   'pointFetchServerStart',
   {
     input: InputRaw
-    point: AnyPoint
+    point: AnyNiceReadyPoint
   }
 >
 export type EventerEventPointFetchServerSettled = EventerEvent<
@@ -54,15 +63,15 @@ export type EventerEventPointFetchServerSettled = EventerEvent<
   'pointFetchServerSettled',
   FetchServerDetailedOutput<any> & {
     input: InputRaw
-    point: AnyPoint
+    point: AnyNiceReadyPoint
   }
 >
 export type EventerEventPointFetchServerSuccess = EventerEvent<
   'client' | 'server',
   'pointFetchServerSuccess',
-  Extract<FetchServerDetailedOutput<any>, { error: null }> & {
+  Extract<FetchServerDetailedOutput<any>, { error: undefined }> & {
     input: InputRaw
-    point: AnyPoint
+    point: AnyNiceReadyPoint
   }
 >
 export type EventerEventPointFetchServerError = EventerEvent<
@@ -70,7 +79,7 @@ export type EventerEventPointFetchServerError = EventerEvent<
   'pointFetchServerError',
   Extract<FetchServerDetailedOutput<any>, { error: Error0 }> & {
     input: InputRaw
-    point: AnyPoint
+    point: AnyNiceReadyPoint
   }
 >
 
@@ -80,14 +89,14 @@ export type EventerEventPointMutationStart = EventerEvent<
   'pointMutationStart',
   {
     input: InputRaw
-    point: AnyPoint
+    point: AnyNiceReadyPoint
   }
 >
 export type EventerEventPointMutationSettled = EventerEvent<
   'client' | 'server',
   'pointMutationSettled',
   {
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
   } & (
     | {
@@ -104,7 +113,7 @@ export type EventerEventPointMutationSuccess = EventerEvent<
   'client' | 'server',
   'pointMutationSuccess',
   {
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
     output: LoaderOutput
     error: undefined
@@ -114,7 +123,7 @@ export type EventerEventPointMutationError = EventerEvent<
   'client' | 'server',
   'pointMutationError',
   {
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
     error: Error0
     output: undefined
@@ -127,7 +136,7 @@ export type EventerEventPointQueryStart = EventerEvent<
   'pointQueryStart',
   {
     queryKey: QueryKey
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
     mode: 'server' | 'client' | 'combined'
   }
@@ -137,7 +146,7 @@ export type EventerEventPointQuerySettled = EventerEvent<
   'pointQuerySettled',
   {
     queryKey: QueryKey
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
     mode: 'server' | 'client' | 'combined'
   } & (
@@ -156,7 +165,7 @@ export type EventerEventPointQuerySuccess = EventerEvent<
   'pointQuerySuccess',
   {
     queryKey: QueryKey
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
     data: Data
     error: undefined
@@ -168,7 +177,7 @@ export type EventerEventPointQueryError = EventerEvent<
   'pointQueryError',
   {
     queryKey: QueryKey
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
     error: Error0
     data: undefined
@@ -182,7 +191,7 @@ export type EventerEventPointInfiniteQueryStart = EventerEvent<
   'pointInfiniteQueryStart',
   {
     queryKey: QueryKey
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
     mode: 'server' | 'client' | 'combined'
   }
@@ -192,7 +201,7 @@ export type EventerEventPointInfiniteQuerySettled = EventerEvent<
   'pointInfiniteQuerySettled',
   {
     queryKey: QueryKey
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
     mode: 'server' | 'client' | 'combined'
   } & (
@@ -211,7 +220,7 @@ export type EventerEventPointInfiniteQuerySuccess = EventerEvent<
   'pointInfiniteQuerySuccess',
   {
     queryKey: QueryKey
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
     data: Data
     error: undefined
@@ -223,7 +232,7 @@ export type EventerEventPointInfiniteQueryError = EventerEvent<
   'pointInfiniteQueryError',
   {
     queryKey: QueryKey
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
     error: Error0
     data: undefined
@@ -236,7 +245,7 @@ export type EventerEventPointPrefetchPageStart = EventerEvent<
   'client' | 'server',
   'pointPrefetchPageStart',
   {
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
     options: {
       location?: AnyLocation
@@ -251,7 +260,7 @@ export type EventerEventPointPrefetchPageSettled = EventerEvent<
   'client' | 'server',
   'pointPrefetchPageSettled',
   {
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
     options: {
       location?: AnyLocation
@@ -267,7 +276,7 @@ export type EventerEventPointPrefetchPageSuccess = EventerEvent<
   'client' | 'server',
   'pointPrefetchPageSuccess',
   {
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
     options: {
       location?: AnyLocation
@@ -283,7 +292,7 @@ export type EventerEventPointPrefetchPageError = EventerEvent<
   'client' | 'server',
   'pointPrefetchPageError',
   {
-    point: AnyPoint
+    point: AnyNiceReadyPoint
     input: InputRaw
     options: {
       location?: AnyLocation
@@ -292,6 +301,54 @@ export type EventerEventPointPrefetchPageError = EventerEvent<
       force?: boolean
       policy?: PagePrefetchPolicy
     }
+    error: Error0
+  }
+>
+
+// fetcher
+export type EventerEventFetcherStart = EventerEvent<
+  'server',
+  'fetcherStart',
+  {
+    request: Request0
+    scope: PointsScope
+    variant: MiddlewareFnOptions['variant']
+    point: AnyNiceReadyPoint | undefined
+  }
+>
+export type EventerEventFetcherSettled = EventerEvent<
+  'server',
+  'fetcherSettled',
+  {
+    request: Request0
+    scope: PointsScope
+    variant: MiddlewareFnOptions['variant']
+    point: AnyNiceReadyPoint | undefined
+    result: FetcherFetchDetailedResult
+    error: Error0 | undefined
+  }
+>
+export type EventerEventFetcherSuccess = EventerEvent<
+  'server',
+  'fetcherSuccess',
+  {
+    request: Request0
+    scope: PointsScope
+    variant: MiddlewareFnOptions['variant']
+    point: AnyNiceReadyPoint | undefined
+    result: FetcherFetchDetailedResult
+    error: undefined
+  }
+>
+export type EventerEventFetcherError = EventerEvent<
+  'server',
+  'fetcherError',
+  {
+    request: Request0
+    scope: PointsScope
+    variant: MiddlewareFnOptions['variant']
+    point: AnyNiceReadyPoint | undefined
+    result: FetcherFetchDetailedResult
     error: Error0
   }
 >
@@ -317,6 +374,10 @@ export type AnyEventerEvent =
   | EventerEventPointPrefetchPageSettled
   | EventerEventPointPrefetchPageSuccess
   | EventerEventPointPrefetchPageError
+  | EventerEventFetcherStart
+  | EventerEventFetcherSettled
+  | EventerEventFetcherSuccess
+  | EventerEventFetcherError
 
 export type ClientEventerEvent = Extract<AnyEventerEvent, { target: 'client' | 'server' } | { target: 'client' }>
 

@@ -451,7 +451,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           ctx: currentCtx,
           data: currentData,
           response: currentResponse,
-          error: null,
+          error: undefined,
           status,
           output: currentOutput,
           effects: effects.values,

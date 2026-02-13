@@ -1,4 +1,12 @@
-import type { FetcherFetchDetailedResult, PointsScope, RequiredCtx, UndefinedCtx } from '@point0/core'
+import type {
+  AnyNiceReadyPoint,
+  AnyPoint,
+  FetcherFetchDetailedResult,
+  PointsScope,
+  RequiredCtx,
+  UndefinedCtx,
+  EventerEmitFn,
+} from '@point0/core'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -445,5 +453,28 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
         cause: error,
       })
     }
+  }
+
+  getEmit({
+    point,
+    scope,
+  }: {
+    point?: AnyPoint | AnyNiceReadyPoint | undefined
+    scope?: PointsScope | undefined
+  } = {}): EventerEmitFn | undefined {
+    if (point) {
+      return point.point._emit.bind(point.point) as EventerEmitFn
+    }
+    if (scope) {
+      const root = this.server.points?.roots.get(scope)
+      if (root) {
+        return root._emit.bind(root) as EventerEmitFn
+      }
+    }
+    const root = this.server.points?.roots.get(this.server.scope)
+    if (root) {
+      return root._emit.bind(root) as EventerEmitFn
+    }
+    return undefined
   }
 }

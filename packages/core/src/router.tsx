@@ -22,19 +22,19 @@ export type UseOnNavigateDetailedFn = (options: {
   prevLocation: AnyLocation
   nextLocation: AnyLocation
   status: RouterStatus
-  error: Error | null
+  error: Error | undefined
 }) => void
 export type UseIsInitalSsrLocationFn = () => boolean
 
 export type RouterPageStateSuccess = {
   status: 'success'
-  error: null
+  error: undefined
   loading: false
   initial: false
 }
 export type RouterPageStateLoading = {
   status: 'loading'
-  error: null
+  error: undefined
   loading: true
   initial: false
 }
@@ -71,7 +71,7 @@ type RouterContextValue = {
   currentLocation: AnyLocation
   nextLocation: AnyLocation | null
   status: RouterStatus
-  error: Error | null
+  error: Error | undefined
   useAdapterLocation: UseAdapterLocationFn
   addHashToLocation: boolean
   pageState: RouterPageState
@@ -80,7 +80,7 @@ type RouterContextValue = {
   setPrevLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
   setNextLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
   setStatus: React.Dispatch<React.SetStateAction<RouterStatus>>
-  setError: React.Dispatch<React.SetStateAction<Error | null>>
+  setError: React.Dispatch<React.SetStateAction<Error | undefined>>
   setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
 }
 
@@ -104,7 +104,7 @@ export function RouterContextProvider({
   const [nextLocation, setNextLocation] = useState<AnyLocation | null>(null)
   const [prevLocation, setPrevLocation] = useState<AnyLocation | null>(null)
   const [routerStatus, setStatus] = useState<RouterStatus>(status)
-  const [error, setError] = useState<Error | null>(null)
+  const [error, setError] = useState<Error | undefined>(undefined)
   const [pageState, setPageState] = useState<RouterPageState>({
     status: 'initial',
     error: undefined,
@@ -345,7 +345,7 @@ export const useIsNavigating = (): boolean => {
 
 export function _wrapUseNavigate<T extends () => (to: string, ...args: any[]) => any>(
   useAdapterNavigate: T,
-): () => (...args: Parameters<ReturnType<T>>) => Promise<{ location: AnyLocation; error: Error0 | null }> {
+): () => (...args: Parameters<ReturnType<T>>) => Promise<{ location: AnyLocation; error: Error0 | undefined }> {
   return () => {
     // const routerContext = React.useContext(RouterContext)
     // if (!routerContext) throw new Error('useNavigate must be used within RouterContextProvider')
@@ -389,7 +389,7 @@ export function _wrapUseNavigate<T extends () => (to: string, ...args: any[]) =>
 
 export function _wrapNavigate<T extends (to: string, ...args: any[]) => any>(
   adapterNavigate: T,
-): (...args: Parameters<T>) => Promise<{ location: AnyLocation; error: Error0 | null }> {
+): (...args: Parameters<T>) => Promise<{ location: AnyLocation; error: Error0 | undefined }> {
   return async (...args: Parameters<T>) => {
     const routerContext = getRouterContext()
     const to = (() => {
@@ -401,7 +401,7 @@ export function _wrapNavigate<T extends (to: string, ...args: any[]) => any>(
     const prevLocation = routerContext.currentLocation
     const location = ClientPoints.getInstance().routes._.getLocation(to)
     routerContext.setPrevLocation(prevLocation)
-    routerContext.setError(null)
+    routerContext.setError(undefined)
     routerContext.setNextLocation(location)
     routerContext.setStatus('prefetching')
     try {
@@ -412,7 +412,7 @@ export function _wrapNavigate<T extends (to: string, ...args: any[]) => any>(
       await adapterNavigate(...(args as [string, ...any[]]))
       routerContext.setStatus('idle')
       routerContext.setNextLocation(null)
-      return { location, error: null }
+      return { location, error: undefined }
     } catch (error) {
       const error0 = Error0.from(error)
       routerContext.setError(error0)
