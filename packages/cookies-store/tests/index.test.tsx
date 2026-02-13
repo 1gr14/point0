@@ -1,6 +1,7 @@
 import { Point0, queryClient } from '@point0/core'
 import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
-import { describe, expect, it } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
+import superjson from 'superjson'
 import * as z from 'zod'
 import { CookiesStore } from '../src/index.js'
 
@@ -125,128 +126,182 @@ describe('cookies-store', () => {
     })
   })
 
-  it('without', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()
-    const login = root
-      .lets('mutation', 'authorize')
-      .input(z.object({ nick: z.string() }))
-      .loader(({ set, input }) => {
-        set.cookies('nick', input.nick)
-        return { success: true }
-      })
-      .mutation({
-        onSuccess: (data) => {
-          void queryClient.get().refetchQueries()
-        },
-        onError: (error) => {
-          console.error(error)
-        },
-      })
-    const logout = root
-      .lets('mutation', 'logout')
-      .loader(({ set }) => {
-        set.cookies('nick', undefined)
-        return { success: true }
-      })
-      .mutation({
-        onSuccess: () => {
-          void queryClient.get().refetchQueries()
-        },
-        onError: (error) => {
-          console.error(error)
-        },
-      })
-    const page = root
-      .lets('page', 'home', '/')
-      .loader(({ request }) => ({ nick: request.cookies.nick }))
-      .page(({ data }) => (
-        <div id="page">
-          <div id="content">Hello, {data.nick || 'guest'}!</div>
-          {data.nick ? (
-            <button
-              id="logout"
-              onClick={() => {
-                void logout.fetch()
-              }}
-            >
-              Logout
-            </button>
-          ) : (
-            <button
-              id="login"
-              onClick={() => {
-                void login.fetch({ nick: 'm1xer' })
-              }}
-            >
-              Login
-            </button>
-          )}
-        </div>
-      ))
-    const { render } = await createTestThings({ points: [root, page, login, logout] })
-    await render(page.route(), async ({ waitContent, click, tale }) => {
-      await waitContent('#login')
-      await click('#login')
-      await waitContent('#logout')
-      await click('#logout')
-      await waitContent('#login')
-      expect(await tale()).toMatchInlineSnapshot(`
-        "/
-          (Empty)
+  describe('define unit possibilities', () => {
+    const originalPoint0Target = process.env.POINT0_TARGET
+    const originalClientGetter = CookiesStore.clientCookieGetter
+    const originalClientSetter = CookiesStore.clientCookieSetter
+    const originalTransformer = CookiesStore.transformer
+    const originalDocument = globalThis.document
+    const originalWindow = globalThis.window
+    const originalNavigator = globalThis.navigator
 
-          #page:
-            #content: Hello, guest!
-            #login: Login
+    let cookieState: Record<string, string>
 
-          #page:
-            #content: Hello, m1xer!
-            #logout: Logout
+    beforeEach(() => {
+      process.env.POINT0_TARGET = 'client'
+      ;(globalThis as any).window = {}
+      ;(globalThis as any).document = {}
+      ;(globalThis as any).navigator = {}
+      cookieState = {}
+      CookiesStore.items.clear()
+      CookiesStore.configure({
+        clientCookieGetter: ((name?: string) => {
+          if (name === undefined) {
+            return { ...cookieState }
+          }
+          return cookieState[name]
+        }) as any,
+        clientCookieSetter: (options) => {
+          cookieState[options.name] = options.value
+        },
+        transformer: {
+          serialize: (value: unknown) => value,
+          deserialize: (value: unknown) => value,
+        },
+      })
+    })
 
-          #page:
-            #content: Hello, guest!
-            #login: Login
-        "
-      `)
+    afterEach(() => {
+      if (originalPoint0Target === undefined) {
+        delete process.env.POINT0_TARGET
+      } else {
+        process.env.POINT0_TARGET = originalPoint0Target
+      }
+      ;(globalThis as any).document = originalDocument
+      ;(globalThis as any).window = originalWindow
+      ;(globalThis as any).navigator = originalNavigator
+      CookiesStore.items.clear()
+      CookiesStore.clientCookieGetter = originalClientGetter
+      CookiesStore.clientCookieSetter = originalClientSetter
+      CookiesStore.transformer = originalTransformer
+    })
+
+    it('define with string uses auto transformer and keeps string values', () => {
+      const nick = CookiesStore.define('nick')
+      nick.set('m1xer')
+      expect(cookieState.nick).toBe('m1xer')
+      expect(nick.get()).toBe('m1xer')
+    })
+
+    it('define with fallback returns fallback when cookie is missing', () => {
+      const nick = CookiesStore.define<string>({ name: 'nick', fallback: 'guest' })
+      expect(nick.get()).toBe('guest')
+    })
+
+    it('define with transformer=false keeps raw string values', () => {
+      const data = CookiesStore.define<string>({ name: 'data', transformer: false })
+      data.set('raw-string')
+      expect(cookieState.data).toBe('raw-string')
+      cookieState.data = '{"role":"user"}'
+      expect(data.get()).toBe('{"role":"user"}')
+    })
+
+    it('define with transformer=true always uses configured transformer', () => {
+      const data = CookiesStore.define<{ role: string }>({ name: 'data', transformer: true })
+      data.set({ role: 'admin' })
+      expect(cookieState.data).toBe('{"role":"admin"}')
+      expect(data.get()).toEqual({ role: 'admin' })
+    })
+
+    it('define with transformer="auto" parses non-string values and keeps strings', () => {
+      const data = CookiesStore.define<{ role: string } | string>({ name: 'data', transformer: 'auto' })
+      data.set('raw-string')
+      expect(cookieState.data).toBe('raw-string')
+      expect(data.get()).toBe('raw-string')
+
+      data.set({ role: 'admin' })
+      expect(cookieState.data).toBe('{"role":"admin"}')
+      expect(data.get()).toEqual({ role: 'admin' })
+    })
+
+    it('define with default auto policy parses string cookies that look like json', () => {
+      const data = CookiesStore.define<{ role: string } | string>('data')
+      data.set('{"role":"admin"}')
+      expect(cookieState.data).toBe('{"role":"admin"}')
+      expect(data.get()).toEqual({ role: 'admin' })
+    })
+
+    it('define without default auto policy not parses string cookies that look like json', () => {
+      const data = CookiesStore.define<string>({ name: 'data', transformer: false })
+      data.set('{"role":"admin"}')
+      expect(cookieState.data).toBe('{"role":"admin"}')
+      expect(data.get()).toBe('{"role":"admin"}')
+    })
+
+    it('define with custom transformer object uses that transformer', () => {
+      const data = CookiesStore.define<{ role: string }>({
+        name: 'data',
+        transformer: {
+          serialize: (value: unknown) => ({ wrapped: value }),
+          deserialize: (value: any) => value.wrapped,
+        },
+      })
+      data.set({ role: 'admin' })
+      expect(cookieState.data).toBe('{"wrapped":{"role":"admin"}}')
+      expect(data.get()).toEqual({ role: 'admin' })
+    })
+
+    it('define with superjson supports richer values', () => {
+      const session = CookiesStore.define<{ createdAt: Date }>({
+        name: 'session',
+        transformer: superjson,
+      })
+      const value = { createdAt: new Date('2024-02-02T00:00:00.000Z') }
+      session.set(value)
+      expect(cookieState.session).toContain('"meta"')
+      const parsed = session.get()
+      expect(parsed).toBeDefined()
+      if (!parsed) {
+        throw new Error('expected parsed session')
+      }
+      expect(parsed.createdAt).toBeInstanceOf(Date)
+      expect(parsed.createdAt.toISOString()).toBe('2024-02-02T00:00:00.000Z')
+    })
+
+    it('define with httpOnly=true blocks client read/write/delete', () => {
+      const secret = CookiesStore.define<string>({ name: 'secret', httpOnly: true })
+      expect(() => secret.set('token')).toThrow('httpOnly cookies are server-only')
+      expect(() => secret.get()).toThrow('httpOnly cookies are server-only')
+      expect(() => secret.delete()).toThrow('httpOnly cookies are server-only')
     })
   })
 
-  it('with', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).use(CookiesStore.plugin()).root()
-    const nickCookie = CookiesStore.define('nick')
-    const login = root
-      .lets('mutation', 'authorize')
-      .input(z.object({ nick: z.string() }))
-      .loader(({ input }) => {
-        nickCookie.set(input.nick)
-        return { success: true }
-      })
-      .mutation({
-        onSuccess: (data) => {
-          void queryClient.get().refetchQueries()
-        },
-        onError: (error) => {
-          console.error(error)
-        },
-      })
-    const logout = root
-      .lets('mutation', 'logout')
-      .loader(() => {
-        nickCookie.delete()
-        return { success: true }
-      })
-      .mutation({
-        onSuccess: () => {
-          void queryClient.get().refetchQueries()
-        },
-        onError: (error) => {
-          console.error(error)
-        },
-      })
-    const page = root
-      .lets('page', 'home', '/')
-      .loader(({ request }) => ({ nick: request.cookies.nick }))
-      .page(({ data }) => {
-        return (
+  describe('integration', () => {
+    it('without', async () => {
+      const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()
+      const login = root
+        .lets('mutation', 'authorize')
+        .input(z.object({ nick: z.string() }))
+        .loader(({ set, input }) => {
+          set.cookies('nick', input.nick)
+          return { success: true }
+        })
+        .mutation({
+          onSuccess: (data) => {
+            void queryClient.get().refetchQueries()
+          },
+          onError: (error) => {
+            console.error(error)
+          },
+        })
+      const logout = root
+        .lets('mutation', 'logout')
+        .loader(({ set }) => {
+          set.cookies('nick', undefined)
+          return { success: true }
+        })
+        .mutation({
+          onSuccess: () => {
+            void queryClient.get().refetchQueries()
+          },
+          onError: (error) => {
+            console.error(error)
+          },
+        })
+      const page = root
+        .lets('page', 'home', '/')
+        .loader(({ request }) => ({ nick: request.cookies.nick }))
+        .page(({ data }) => (
           <div id="page">
             <div id="content">Hello, {data.nick || 'guest'}!</div>
             {data.nick ? (
@@ -269,16 +324,15 @@ describe('cookies-store', () => {
               </button>
             )}
           </div>
-        )
-      })
-    const { render } = await createTestThings({ points: [root, page, login, logout] })
-    await render(page.route(), async ({ waitContent, click, tale }) => {
-      await waitContent('#login')
-      await click('#login')
-      await waitContent('#logout')
-      await click('#logout')
-      await waitContent('#login')
-      expect(await tale()).toMatchInlineSnapshot(`
+        ))
+      const { render } = await createTestThings({ points: [root, page, login, logout] })
+      await render(page.route(), async ({ waitContent, click, tale }) => {
+        await waitContent('#login')
+        await click('#login')
+        await waitContent('#logout')
+        await click('#logout')
+        await waitContent('#login')
+        expect(await tale()).toMatchInlineSnapshot(`
         "/
           (Empty)
 
@@ -295,79 +349,78 @@ describe('cookies-store', () => {
             #login: Login
         "
       `)
+      })
     })
-  })
 
-  it('use', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).use(CookiesStore.plugin()).root()
-    const nickCookie = CookiesStore.define('nick')
-    const login = root
-      .lets('mutation', 'authorize')
-      .input(z.object({ nick: z.string() }))
-      .loader(({ input }) => {
-        nickCookie.set(input.nick)
-        return { success: true }
-      })
-      .mutation({
-        onSuccess: (data) => {
-          void queryClient.get().refetchQueries()
-        },
-        onError: (error) => {
-          console.error(error)
-        },
-      })
-    const logout = root
-      .lets('mutation', 'logout')
-      .loader(() => {
-        nickCookie.delete()
-        return { success: true }
-      })
-      .mutation({
-        onSuccess: () => {
-          void queryClient.get().refetchQueries()
-        },
-        onError: (error) => {
-          console.error(error)
-        },
-      })
-    const page = root
-      .lets('page', 'home', '/')
-      .loader(({ request }) => ({ nick: request.cookies.nick }))
-      .page(() => {
-        const nick = nickCookie.use()
-        return (
-          <div id="page">
-            <div id="content">Hello, {nick || 'guest'}!</div>
-            {nick ? (
-              <button
-                id="logout"
-                onClick={() => {
-                  void logout.fetch()
-                }}
-              >
-                Logout
-              </button>
-            ) : (
-              <button
-                id="login"
-                onClick={() => {
-                  void login.fetch({ nick: 'm1xer' })
-                }}
-              >
-                Login
-              </button>
-            )}
-          </div>
-        )
-      })
-    const { render } = await createTestThings({ points: [root, page, login, logout] })
-    await render(page.route(), async ({ waitContent, click, tale }) => {
-      await waitContent('#login')
-      await click('#login')
-      await waitContent('#logout')
-      await click('#logout')
-      await waitContent('#login')
-      expect(await tale()).toMatchInlineSnapshot(`
+    it('with', async () => {
+      const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).use(CookiesStore.plugin()).root()
+      const nickCookie = CookiesStore.define('nick')
+      const login = root
+        .lets('mutation', 'authorize')
+        .input(z.object({ nick: z.string() }))
+        .loader(({ input }) => {
+          nickCookie.set(input.nick)
+          return { success: true }
+        })
+        .mutation({
+          onSuccess: (data) => {
+            void queryClient.get().refetchQueries()
+          },
+          onError: (error) => {
+            console.error(error)
+          },
+        })
+      const logout = root
+        .lets('mutation', 'logout')
+        .loader(() => {
+          nickCookie.delete()
+          return { success: true }
+        })
+        .mutation({
+          onSuccess: () => {
+            void queryClient.get().refetchQueries()
+          },
+          onError: (error) => {
+            console.error(error)
+          },
+        })
+      const page = root
+        .lets('page', 'home', '/')
+        .loader(({ request }) => ({ nick: request.cookies.nick }))
+        .page(({ data }) => {
+          return (
+            <div id="page">
+              <div id="content">Hello, {data.nick || 'guest'}!</div>
+              {data.nick ? (
+                <button
+                  id="logout"
+                  onClick={() => {
+                    void logout.fetch()
+                  }}
+                >
+                  Logout
+                </button>
+              ) : (
+                <button
+                  id="login"
+                  onClick={() => {
+                    void login.fetch({ nick: 'm1xer' })
+                  }}
+                >
+                  Login
+                </button>
+              )}
+            </div>
+          )
+        })
+      const { render } = await createTestThings({ points: [root, page, login, logout] })
+      await render(page.route(), async ({ waitContent, click, tale }) => {
+        await waitContent('#login')
+        await click('#login')
+        await waitContent('#logout')
+        await click('#logout')
+        await waitContent('#login')
+        expect(await tale()).toMatchInlineSnapshot(`
         "/
           (Empty)
 
@@ -384,6 +437,96 @@ describe('cookies-store', () => {
             #login: Login
         "
       `)
+      })
+    })
+
+    it('use', async () => {
+      const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).use(CookiesStore.plugin()).root()
+      const nickCookie = CookiesStore.define('nick')
+      const login = root
+        .lets('mutation', 'authorize')
+        .input(z.object({ nick: z.string() }))
+        .loader(({ input }) => {
+          nickCookie.set(input.nick)
+          return { success: true }
+        })
+        .mutation({
+          onSuccess: (data) => {
+            void queryClient.get().refetchQueries()
+          },
+          onError: (error) => {
+            console.error(error)
+          },
+        })
+      const logout = root
+        .lets('mutation', 'logout')
+        .loader(() => {
+          nickCookie.delete()
+          return { success: true }
+        })
+        .mutation({
+          onSuccess: () => {
+            void queryClient.get().refetchQueries()
+          },
+          onError: (error) => {
+            console.error(error)
+          },
+        })
+      const page = root
+        .lets('page', 'home', '/')
+        .loader(({ request }) => ({ nick: request.cookies.nick }))
+        .page(() => {
+          const nick = nickCookie.use()
+          return (
+            <div id="page">
+              <div id="content">Hello, {nick || 'guest'}!</div>
+              {nick ? (
+                <button
+                  id="logout"
+                  onClick={() => {
+                    void logout.fetch()
+                  }}
+                >
+                  Logout
+                </button>
+              ) : (
+                <button
+                  id="login"
+                  onClick={() => {
+                    void login.fetch({ nick: 'm1xer' })
+                  }}
+                >
+                  Login
+                </button>
+              )}
+            </div>
+          )
+        })
+      const { render } = await createTestThings({ points: [root, page, login, logout] })
+      await render(page.route(), async ({ waitContent, click, tale }) => {
+        await waitContent('#login')
+        await click('#login')
+        await waitContent('#logout')
+        await click('#logout')
+        await waitContent('#login')
+        expect(await tale()).toMatchInlineSnapshot(`
+        "/
+          (Empty)
+
+          #page:
+            #content: Hello, guest!
+            #login: Login
+
+          #page:
+            #content: Hello, m1xer!
+            #logout: Logout
+
+          #page:
+            #content: Hello, guest!
+            #login: Login
+        "
+      `)
+      })
     })
   })
 })

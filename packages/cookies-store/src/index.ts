@@ -35,6 +35,14 @@ const normalizeSameSite = (value: unknown): 'strict' | 'lax' | 'none' => {
   return 'lax'
 }
 
+const isDataTransformerLike = (value: unknown): value is DataTransformer => {
+  if (!value || (typeof value !== 'object' && typeof value !== 'function')) {
+    return false
+  }
+  const candidate = value as Partial<DataTransformer>
+  return typeof candidate.serialize === 'function' && typeof candidate.deserialize === 'function'
+}
+
 export type CookieDefineOptions<
   THttpOnly extends boolean = false,
   TTransformer extends DataTransformer | 'auto' | boolean = 'auto',
@@ -210,7 +218,7 @@ export class CookiesStore {
     const transformer =
       typeof options === 'string'
         ? CookiesStore.transformer
-        : typeof options.transformer === 'object'
+        : isDataTransformerLike(options.transformer)
           ? toExtendedTransformer(options.transformer)
           : CookiesStore.transformer
     const cookieDefineOptions = typeof options === 'string' ? { name: options } : options
