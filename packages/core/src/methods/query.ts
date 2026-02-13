@@ -6,9 +6,9 @@ import type {
   QueriesDefinitions,
   QueriesDefinitionsByQueries,
   QueryDefinitionByQuery,
-  QueryFn,
-  QueryFnOptions,
   UseQueryOrInfiniteQueryResult,
+  WithFnOptions,
+  WithQueryFn,
   WithSelfQueryIfShouldBeFinalized,
 } from '../mountable.js'
 import type {
@@ -190,7 +190,7 @@ export type MethodQueryForNonQueryPoint<
     input:
       | TPoint['Infer']['InputRaw']
       | ((
-          options: QueryFnOptions<
+          options: WithFnOptions<
             MountableLocation<TLetsReadyPointType, TRouteDefinition>,
             TInnerProps,
             WithSelfQueryIfShouldBeFinalized<
@@ -298,7 +298,7 @@ export type MethodQueryForNonQueryPoint<
   <TNewQueries extends UseQueryOrInfiniteQueryResult | UseQueryOrInfiniteQueryResult[]>(
     ...args: TLetsReadyPointType extends MountablePointType
       ? [
-          queryFn: QueryFn<
+          queryFn: WithQueryFn<
             MountableLocation<TLetsReadyPointType, TRouteDefinition>,
             TInnerProps,
             WithSelfQueryIfShouldBeFinalized<

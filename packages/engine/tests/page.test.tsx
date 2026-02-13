@@ -2,6 +2,7 @@ import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
 import { z } from 'zod'
 import { createTestThings } from './utils/internal-testing.js'
+import { useEffect, useState } from 'react'
 
 describe('page', () => {
   const root = Point0.lets('root', 'root')
@@ -282,7 +283,7 @@ describe('page', () => {
     `)
   })
 
-  it('with', async () => {
+  it('with fn', async () => {
     const page = root
       .lets('page', 'home', '/:y')
       .with(() => ({ x: 1 }))
@@ -311,14 +312,72 @@ describe('page', () => {
     `)
   })
 
-  it('query', async () => {
+  it('with fn state', async () => {
+    const page = root
+      .lets('page', 'home', '/:y')
+      .with(() => {
+        const [loading, setLoading] = useState(true)
+        const [error, setError] = useState<Error | null>(null)
+        useEffect(() => {
+          setTimeout(() => {
+            setError(new Error('test error'))
+          }, 50)
+          setTimeout(() => {
+            setError(null)
+          }, 100)
+          setTimeout(() => {
+            setLoading(false)
+          }, 150)
+        }, [])
+        if (error) {
+          return error
+        }
+        if (loading) {
+          return 'loading'
+        }
+        return {
+          x: 1,
+        }
+      })
+      .page(({ props, location }) => (
+        <div id="page">
+          x={props.x} y={location.params.y}
+        </div>
+      ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
+    await render(page.route({ y: 'zxc' }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/zxc
+          #loading: ...
+
+          #error: test error
+
+          #loading: ...
+
+          #page: x=1 y=zxc
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      "
+    `)
+    expect(await fetchPreview(page, { y: 'zxc' })).toMatchInlineSnapshot(`
+      "#loading: ...
+      "
+    `)
+  })
+
+  it('with query', async () => {
     const query = root
       .lets('query', 'test')
       .loader(() => ({ x: 1 }))
       .query()
     const page = root
       .lets('page', 'home')
-      .query(query)
+      .with(query)
       .page(({ data, location }) => <div id="page">x={data.x}</div>)
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
@@ -336,13 +395,13 @@ describe('page', () => {
       "query.test (client) < {}
       "
     `)
-    expect(await fetchPreview(page, { y: 'zxc' })).toMatchInlineSnapshot(`
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "#page: x=1
       "
     `)
   })
 
-  it('query with input', async () => {
+  it('with query input', async () => {
     const query = root
       .lets('query', 'test')
       .input(z.object({ y: z.number() }))
@@ -350,7 +409,187 @@ describe('page', () => {
       .query()
     const page = root
       .lets('page', 'home', '/:y')
-      .query(query, ({ location }) => ({ y: +location.params.y }))
+      .with(query, ({ location }) => ({ y: +location.params.y }))
+      .page(({ data, location }) => (
+        <div id="page">
+          x={data.x} y={location.params.y}
+        </div>
+      ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+    await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/123
+          #loading: ...
+
+          #page: x=246 y=123
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "query.test (client) < {"y":123}
+      "
+    `)
+    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+      "#page: x=246 y=123
+      "
+    `)
+  })
+
+  it('with query props input', async () => {
+    const query = root
+      .lets('query', 'test')
+      .input(z.object({ y: z.number() }))
+      .loader(({ input }) => ({ x: input.y * 2 }))
+      .query()
+    const page = root
+      .lets('page', 'home')
+      .with(() => ({ y: 123 }))
+      .with(query, ({ props }) => ({ y: props.y }))
+      .page(({ data, props }) => (
+        <div id="page">
+          x={data.x} y={props.y}
+        </div>
+      ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/home
+          #loading: ...
+
+          #page: x=246 y=123
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "query.test (client) < {"y":123}
+      "
+    `)
+    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+      "#page: x=246 y=123
+      "
+    `)
+  })
+
+  it('with query fn', async () => {
+    const query = root
+      .lets('query', 'test')
+      .input(z.object({ y: z.number() }))
+      .loader(({ input }) => ({ x: input.y * 2 }))
+      .query()
+    const page = root
+      .lets('page', 'home', '/:y')
+      .with(({ location }) => {
+        return query.useQuery({ y: +location.params.y })
+      })
+      .page(({ data, location }) => (
+        <div id="page">
+          x={data.x} y={location.params.y}
+        </div>
+      ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+    await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/123
+          #loading: ...
+
+          #page: x=246 y=123
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "query.test (client) < {"y":123}
+      "
+    `)
+    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+      "#page: x=246 y=123
+      "
+    `)
+  })
+
+  it('related query', async () => {
+    const query = root
+      .lets('query', 'test')
+      .loader(() => ({ x: 1 }))
+      .query()
+    const page = root
+      .lets('page', 'home')
+      .relatedQuery(query)
+      .page(({ data, location }) => <div id="page">x={data.x}</div>)
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/home
+          #loading: ...
+
+          #page: x=1
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "query.test (client) < {}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "#page: x=1
+      "
+    `)
+  })
+
+  it('related query input', async () => {
+    const query = root
+      .lets('query', 'test')
+      .input(z.object({ y: z.number() }))
+      .loader(({ input }) => ({ x: input.y * 2 }))
+      .query()
+    const page = root
+      .lets('page', 'home', '/:y')
+      .relatedQuery(query, ({ location }) => ({ y: +location.params.y }))
+      .page(({ data, location }) => (
+        <div id="page">
+          x={data.x} y={location.params.y}
+        </div>
+      ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
+    await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/123
+          #loading: ...
+
+          #page: x=246 y=123
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "query.test (client) < {"y":123}
+      "
+    `)
+    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+      "#page: x=246 y=123
+      "
+    `)
+  })
+
+  it('related query fn', async () => {
+    const query = root
+      .lets('query', 'test')
+      .input(z.object({ y: z.number() }))
+      .loader(({ input }) => ({ x: input.y * 2 }))
+      .query()
+    const page = root
+      .lets('page', 'home', '/:y')
+      .relatedQuery(({ location }) => {
+        return query.useQuery({ y: +location.params.y })
+      })
       .page(({ data, location }) => (
         <div id="page">
           x={data.x} y={location.params.y}
@@ -387,7 +626,7 @@ describe('page', () => {
     const page = root
       .lets('page', 'home', '/:y')
       .loader(() => ({ z: 3 }))
-      .query(query, ({ location }) => ({ y: +location.params.y }))
+      .with(query, ({ location }) => ({ y: +location.params.y }))
       // .query(query)
       .page(({ data, location, queries }) => (
         <div id="page">
@@ -454,7 +693,7 @@ describe('page', () => {
     const page = root
       .lets('page', 'home', '/:y')
       .loader(() => ({ z: 3 }))
-      .query(query, ({ location }) => ({ y: +location.params.y }))
+      .with(query, ({ location }) => ({ y: +location.params.y }))
       .mapper(({ data, queries, location }) => {
         return { x: queries[1].data.x, y: location.params.y, z: data.z }
       })

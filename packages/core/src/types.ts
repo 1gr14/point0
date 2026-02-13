@@ -1501,6 +1501,7 @@ export type NicePageStagePoint<
   | 'wrapper'
   | 'layout'
   | 'with'
+  | 'relatedQuery'
   | 'input'
   | 'clientInput'
   | 'combinedInput'
@@ -1787,6 +1788,7 @@ export type NiceLayoutStagePoint<
   | 'layoutLoading'
   | 'wrapper'
   | 'with'
+  | 'relatedQuery'
   | 'input'
   | 'clientInput'
   | 'combinedInput'
@@ -1868,6 +1870,7 @@ export type NiceProviderStagePoint<
   | 'loading'
   | 'wrapper'
   | 'with'
+  | 'relatedQuery'
 >
 
 export type NiceStagePoint<

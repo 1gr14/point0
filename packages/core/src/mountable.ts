@@ -346,34 +346,44 @@ export type WrapperComponentType<
 ) => Exclude<React.ReactNode, Promise<any>>
 
 export type WithFnOptions<
-  TLocation extends AnyLocation,
-  TInnerProps extends Props,
-  TQueriesDefinitions extends QueriesDefinitions,
-  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TLocation extends AnyLocation = AnyLocation,
+  TInnerProps extends Props = Props,
+  TQueriesDefinitions extends QueriesDefinitions = QueriesDefinitions,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
 > = MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
 export type WithFn<
-  TLocation extends AnyLocation,
-  TInnerProps extends Props,
-  TQueriesDefinitions extends QueriesDefinitions,
-  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TLocation extends AnyLocation = AnyLocation,
+  TInnerProps extends Props = Props,
+  TQueriesDefinitions extends QueriesDefinitions = QueriesDefinitions,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
   TNewInnerProps extends Props = TInnerProps,
 > = (
   options: WithFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
 ) => Error | 'loading' | TNewInnerProps | undefined
 
-export type QueryFnOptions<
-  TLocation extends AnyLocation,
-  TInnerProps extends Props,
-  TQueriesDefinitions extends QueriesDefinitions,
-  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
-export type QueryFn<
-  TLocation extends AnyLocation,
-  TInnerProps extends Props,
-  TQueriesDefinitions extends QueriesDefinitions,
-  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TNewQueries extends UseQueryOrInfiniteQueryResult | UseQueryOrInfiniteQueryResult[],
-> = (options: QueryFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>) => TNewQueries
+export type WithQueryFn<
+  TLocation extends AnyLocation = AnyLocation,
+  TInnerProps extends Props = Props,
+  TQueriesDefinitions extends QueriesDefinitions = QueriesDefinitions,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+  TNewQueries extends UseQueryOrInfiniteQueryResult | UseQueryOrInfiniteQueryResult[] =
+    | UseQueryOrInfiniteQueryResult
+    | UseQueryOrInfiniteQueryResult[],
+> = (options: WithFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>) => TNewQueries
+
+export type RelatedQueryOptions<TLocation extends AnyLocation = AnyLocation> = { location: TLocation }
+export type RelatedQueryFn<
+  TLocation extends AnyLocation = AnyLocation,
+  TNewQueries extends UseQueryOrInfiniteQueryResult | UseQueryOrInfiniteQueryResult[] =
+    | UseQueryOrInfiniteQueryResult
+    | UseQueryOrInfiniteQueryResult[],
+> = (options: RelatedQueryOptions<TLocation>) => TNewQueries
+
+// export type LightQueryFnOptions<TLocation extends AnyLocation> = { location: TLocation }
+// export type LightQueryFn<
+//   TLocation extends AnyLocation,
+//   TNewQueries extends UseQueryOrInfiniteQueryResult | UseQueryOrInfiniteQueryResult[],
+// > = (options: QueryFnOptions<TLocation>) => TNewQueries
 
 export type HeadFnOptions<
   TStatus extends 'loading' | 'error' | 'success',
@@ -765,7 +775,7 @@ export type ProviderSelfType<
 
 export type MountAction<
   TType extends
-    | 'query'
+    | 'relatedQuery'
     | 'wrapper'
     | 'with'
     | 'mapper'
@@ -775,7 +785,7 @@ export type MountAction<
     | 'selfQuery'
     | 'errorComponent'
     | 'loadingComponent' =
-    | 'query'
+    | 'relatedQuery'
     | 'wrapper'
     | 'with'
     | 'mapper'
@@ -785,10 +795,10 @@ export type MountAction<
     | 'selfQuery'
     | 'errorComponent'
     | 'loadingComponent',
-> = TType extends 'query'
+> = TType extends 'relatedQuery'
   ? {
-      type: 'query'
-      fn: QueryFn<any, any, any, any, any>
+      type: 'relatedQuery'
+      fn: RelatedQueryFn
       unstableId: number
     }
   : TType extends 'selfQuery'
@@ -796,7 +806,7 @@ export type MountAction<
     : TType extends 'wrapper'
       ? { type: 'wrapper'; Component: WrapperComponentType<any, any, any, any>; unstableId: number }
       : TType extends 'with'
-        ? { type: 'with'; fn: WithFn<any, any, any, any>; unstableId: number }
+        ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number }
         : TType extends 'mapper'
           ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number }
           : TType extends 'selfProps'
