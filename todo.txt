@@ -44,12 +44,6 @@ launch
 
 
 === REFACTOING 3000 ===
-recursive ShowError on method in with query input
-Record<never, never>, fix input hsould be undefined if it is record never never (InputRawNormalized)
-return query method as usual method, adn fix availability in types
-? .quer({}) and .inifintiteQuery({}) not .xOptions to finalize query
-! add infiniteQuery and query as related query injector
-
 Error0
 comments for methods
 Логгер может принимать как готовый логгер, так и функцию разруливающую логи принимающую левел категорию аргументы
@@ -116,7 +110,9 @@ on fetch error maybe no json, then if it is thore, do res.text()
 
 
 === ROUTING ===
-with(query) + withQuery(query)
+recursive ShowError on method in with query input
+Record<never, never>, fix input hsould be undefined if it is record never never (InputRawNormalized)
+
 prefetchOnNavigate(policy) + prefetchOnHover(policy)
 Роут стейты, перфетчинг тразититонинг, а также добавить еррор саксес лоадинг который мы и берём и пейдж стейта
 Не нужно при префетче лэйоуты префетчить, лэйоуты и так есть в релейтед поинтсах

@@ -524,6 +524,12 @@ export type InputsRaw<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = InputRaw<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+type UndefinedIfEmptyObject<T> = IsEmptyObject<T> extends true ? undefined : T
+export type InputsRawOrUndefined<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = UndefinedIfEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
+
 export type IsInputsSchemasDefined<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
