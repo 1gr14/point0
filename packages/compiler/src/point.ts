@@ -320,9 +320,9 @@ export class CompilerPoint<TValid extends boolean = any> {
   }
 
   getPrefetchOnLinkHover(): boolean | number {
-    // Go through chain methods (from child to parent), return first prefetchOnLinkHover value found.
+    // Go through chain methods (from child to parent), return first prefetchPageOnLinkHover value found.
     for (const method of [...this.chainMethods].reverse()) {
-      if (method.name === 'prefetchOnLinkHover') {
+      if (method.name === 'prefetchPageOnLinkHover') {
         if (method.nodePath.node.type !== 'CallExpression' || method.nodePath.node.arguments.length === 0) {
           continue
         }
@@ -791,7 +791,7 @@ export class CompilerPoint<TValid extends boolean = any> {
       if (method.name === 'clientOn') {
         this.removeLastMethodArg({ nodePath: method.nodePath })
       }
-      if (['scrollPosition', 'scrollRestore', 'onPrefetch', 'prefetchOnLinkHover'].includes(method.name)) {
+      if (['scrollPosition', 'scrollRestore', 'onPrefetch', 'prefetchPageOnLinkHover'].includes(method.name)) {
         this.removeMethodArgs({ nodePath: method.nodePath })
       } else if (!method.underSsr) {
         if (method.name === 'page') {

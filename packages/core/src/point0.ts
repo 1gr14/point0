@@ -149,8 +149,8 @@ import type {
   NiceRootStagePoint,
   NiceStagePoint,
   NormalizeQueryResultType,
-  OnPrefetchFn,
-  PagePrefetchPolicy,
+  OnPrefetchPageFn,
+  PrefetchPagePolicy,
   PartialUseInfiniteQueryOptions,
   PointName,
   PointType,
@@ -234,7 +234,7 @@ import {
 // scrollRestore: client, prune on server
 // prefetchPolicy: both, nothing to prune (but in fact right now not used in server code)
 // onPrefetch: client, prune on server
-// prefetchOnLinkHover: client, prune on server
+// prefetchPageOnLinkHover: client, prune on server
 
 // transformer: both, nothing to prune
 
@@ -368,12 +368,30 @@ export class Point0<
   private readonly _getScrollPositionSetter = () => this._scrollPositionSetter ?? windowScrollPositionSetter
   private readonly _scrollPositionRestorePolicy: ScrollPositionRestorePolicy | undefined
   private readonly _getScrollPositionRestorePolicy = () => this._scrollPositionRestorePolicy ?? (() => null)
-  private readonly _prefetchPolicy: PagePrefetchPolicy | undefined
-  private readonly _getPrefetchPolicy = () => this._prefetchPolicy ?? 'everything'
-  private readonly _onPrefetchFns: OnPrefetchFn[]
+  private readonly _polhPolicy: PrefetchPagePolicy | undefined
+  private readonly _ponPolicy: PrefetchPagePolicy | undefined
+  private readonly _getPrefetchPagePolicy = (
+    trigger: 'navigate' | 'linkHover' | undefined,
+    fallback: PrefetchPagePolicy | undefined,
+  ) =>
+    (trigger === 'linkHover'
+      ? this.polh === false
+        ? 'none'
+        : this._polhPolicy
+      : trigger === 'navigate'
+        ? // eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
+          this.pon === false
+          ? 'none'
+          : this._ponPolicy
+        : fallback) ?? 'everything'
+  private readonly _onPrefetchPageFns: OnPrefetchPageFn[]
   readonly _polh: boolean | number | undefined
-  get polh() {
-    return this._polh ?? false
+  readonly _pon: boolean | undefined
+  get polh(): boolean | number {
+    return this._polh ?? true
+  }
+  get pon(): boolean {
+    return this._pon ?? true
   }
   private readonly _ProviderReactContext: Context<MountableSuccessData<TQueriesDefinitions, TMapperOutput>> | undefined
   private readonly _errorComponent: ErrorComponentType<DestinationComponentVariant> | undefined
@@ -492,9 +510,11 @@ export class Point0<
     _scrollPositionGetter?: ScrollPositionGetter | undefined
     _scrollPositionSetter?: ScrollPositionSetter | undefined
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy | undefined
-    _prefetchPolicy?: PagePrefetchPolicy | undefined
-    _onPrefetchFns?: OnPrefetchFn[]
+    _polhPolicy?: PrefetchPagePolicy | undefined
+    _ponPolicy?: PrefetchPagePolicy | undefined
+    _onPrefetchPageFns?: OnPrefetchPageFn[]
     _polh?: boolean | number | undefined
+    _pon?: boolean | undefined
     _errorComponent?: ErrorComponentType<any>
     _layoutErrorComponent?: ErrorComponentType<any>
     _pageErrorComponent?: ErrorComponentType<any>
@@ -548,9 +568,11 @@ export class Point0<
     this._scrollPositionGetter = options._scrollPositionGetter ?? undefined
     this._scrollPositionSetter = options._scrollPositionSetter ?? undefined
     this._scrollPositionRestorePolicy = options._scrollPositionRestorePolicy ?? undefined
-    this._prefetchPolicy = options._prefetchPolicy ?? undefined
-    this._onPrefetchFns = options._onPrefetchFns ?? []
+    this._polhPolicy = options._polhPolicy ?? undefined
+    this._ponPolicy = options._ponPolicy ?? undefined
+    this._onPrefetchPageFns = options._onPrefetchPageFns ?? []
     this._polh = options._polh ?? undefined
+    this._pon = options._pon ?? undefined
     this._layoutErrorComponent = options._layoutErrorComponent ?? undefined
     this._pageErrorComponent = options._pageErrorComponent ?? undefined
     this._componentErrorComponent = options._componentErrorComponent ?? undefined
@@ -636,9 +658,11 @@ export class Point0<
     _scrollPositionGetter?: ScrollPositionGetter | undefined
     _scrollPositionSetter?: ScrollPositionSetter | undefined
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy | undefined
-    _prefetchPolicy?: PagePrefetchPolicy
-    _onPrefetchFns?: OnPrefetchFn[]
+    _polhPolicy?: PrefetchPagePolicy | undefined
+    _ponPolicy?: PrefetchPagePolicy | undefined
+    _onPrefetchPageFns?: OnPrefetchPageFn[]
     _polh?: boolean | number | undefined
+    _pon?: boolean | undefined
     _errorComponent?: ErrorComponentType<any> | undefined
     _layoutErrorComponent?: ErrorComponentType<any> | undefined
     _pageErrorComponent?: ErrorComponentType<any> | undefined
@@ -734,9 +758,11 @@ export class Point0<
       _scrollPositionGetter: overrides._scrollPositionGetter ?? this._scrollPositionGetter,
       _scrollPositionSetter: overrides._scrollPositionSetter ?? this._scrollPositionSetter,
       _scrollPositionRestorePolicy: overrides._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy,
-      _prefetchPolicy: overrides._prefetchPolicy ?? this._prefetchPolicy,
-      _onPrefetchFns: overrides._onPrefetchFns ?? this._onPrefetchFns,
+      _polhPolicy: overrides._polhPolicy ?? this._polhPolicy,
+      _ponPolicy: overrides._ponPolicy ?? this._ponPolicy,
+      _onPrefetchPageFns: overrides._onPrefetchPageFns ?? this._onPrefetchPageFns,
       _polh: overrides._polh ?? this._polh,
+      _pon: overrides._pon ?? this._pon,
       _errorComponent: (overrides._errorComponent ?? this._errorComponent) as never,
       _layoutErrorComponent: (overrides._layoutErrorComponent ?? this._layoutErrorComponent) as never,
       _pageErrorComponent: (overrides._pageErrorComponent ?? this._pageErrorComponent) as never,
@@ -2180,49 +2206,8 @@ export class Point0<
   }
   // prefetch mode
 
-  prefetchPolicy(
-    policy: PagePrefetchPolicy,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
-    return this._continue<
-      TPointType,
-      ReadyPointTypeOrNever<TLetsReadyPointType>,
-      TRequiredCtx,
-      TCtx,
-      TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TMapperOutput,
-      TRouteDefinition,
-      TServerInputSchema,
-      TClientInputSchema,
-      TQueryResultType,
-      TOuterProps,
-      TInnerProps,
-      TQueriesDefinitions
-    >({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for serverNoSsr
-      _prefetchPolicy: policy ?? this._prefetchPolicy,
-    }) as never
-  }
-
-  onPrefetch(
-    fn: OnPrefetchFn,
+  onPrefetchPage(
+    fn: OnPrefetchPageFn,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -2258,12 +2243,52 @@ export class Point0<
       TQueriesDefinitions
     >({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
-      _onPrefetchFns: [...this._onPrefetchFns, fn ?? (() => undefined)],
+      _onPrefetchPageFns: [...this._onPrefetchPageFns, fn ?? (() => undefined)],
     }) as never
   }
 
-  prefetchOnLinkHover(
-    polh: boolean | number,
+  prefetchPageOnLinkHover(
+    enabled: boolean | number,
+    policy?: PrefetchPagePolicy,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  prefetchPageOnLinkHover(
+    policy: PrefetchPagePolicy,
+    enabled?: number,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  prefetchPageOnLinkHover(
+    ...args: [enabled?: boolean | number, policy?: PrefetchPagePolicy] | [policy?: PrefetchPagePolicy, enabled?: number]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -2281,9 +2306,82 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   > {
+    const [policy, enabled] = (typeof args[0] === 'string' ? [args[0], args[1]] : [args[1], args[0]]) as [
+      PrefetchPagePolicy | undefined,
+      number | boolean | undefined,
+    ]
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
-      _polh: polh ?? this._polh,
+      ...(enabled !== undefined ? { _polh: enabled } : {}),
+      ...(policy !== undefined ? { _polhPolicy: policy } : {}),
+    }) as never
+  }
+
+  prefetchPageOnNavigate(
+    enabled: boolean,
+    policy?: PrefetchPagePolicy,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  prefetchPageOnNavigate(
+    policy: PrefetchPagePolicy,
+    enabled?: boolean,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  prefetchPageOnNavigate(
+    ...args: [enabled?: boolean, policy?: PrefetchPagePolicy] | [policy?: PrefetchPagePolicy, enabled?: boolean]
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  > {
+    const [policy, enabled] = (typeof args[0] === 'string' ? [args[0], args[1]] : [args[1], args[0]]) as [
+      PrefetchPagePolicy | undefined,
+      boolean | undefined,
+    ]
+    return this._continue({
+      ...(enabled !== undefined ? { _pon: enabled } : {}),
+      ...(policy !== undefined ? { _polhPolicy: policy } : {}),
     }) as never
   }
 
@@ -3438,8 +3536,9 @@ export class Point0<
       _scrollPositionGetter: this._base?._scrollPositionGetter,
       _scrollPositionSetter: this._base?._scrollPositionSetter,
       _scrollPositionRestorePolicy: this._base?._scrollPositionRestorePolicy,
-      _prefetchPolicy: this._base?._prefetchPolicy,
-      _onPrefetchFns: this._base?._onPrefetchFns,
+      _polhPolicy: this._base?._polhPolicy,
+      _ponPolicy: this._base?._ponPolicy,
+      _onPrefetchPageFns: this._base?._onPrefetchPageFns,
       _polh: this._base?._polh,
       _errorComponent: undefined,
       _layoutErrorComponent: this._base?._layoutErrorComponent as never,
@@ -3969,8 +4068,9 @@ export class Point0<
       _scrollPositionGetter: point._scrollPositionGetter,
       _scrollPositionSetter: point._scrollPositionSetter,
       _scrollPositionRestorePolicy: point._scrollPositionRestorePolicy,
-      _prefetchPolicy: point._prefetchPolicy,
-      _onPrefetchFns: [...this._onPrefetchFns, ...point._onPrefetchFns],
+      _polhPolicy: point._polhPolicy,
+      _ponPolicy: point._ponPolicy,
+      _onPrefetchPageFns: [...this._onPrefetchPageFns, ...point._onPrefetchPageFns],
       _polh: point._polh,
       _errorComponent: point._errorComponent,
       _layoutErrorComponent: point._layoutErrorComponent,
@@ -6026,22 +6126,22 @@ export class Point0<
     return this.fetchQuery(...args) as never
   }
 
-  async _callPrefetchFns({ preventPrefetchFns }: { preventPrefetchFns?: boolean | OnPrefetchFn[] }): Promise<void> {
-    const prefetchFns =
-      preventPrefetchFns === true ? new Set<OnPrefetchFn>() : new Set<OnPrefetchFn>([...this._onPrefetchFns])
-    if (Array.isArray(preventPrefetchFns)) {
-      for (const fn of preventPrefetchFns) {
-        if (prefetchFns.has(fn)) {
-          prefetchFns.delete(fn)
-        }
-      }
-    }
-    await Promise.all(
-      Array.from(prefetchFns).map(async (fn) => {
-        await fn()
-      }),
-    )
-  }
+  // async _callPrefetchFns({ preventPrefetchFns }: { preventPrefetchFns?: boolean | OnPrefetchFn[] }): Promise<void> {
+  //   const prefetchFns =
+  //     preventPrefetchFns === true ? new Set<OnPrefetchFn>() : new Set<OnPrefetchFn>([...this._onPrefetchPageFns])
+  //   if (Array.isArray(preventPrefetchFns)) {
+  //     for (const fn of preventPrefetchFns) {
+  //       if (prefetchFns.has(fn)) {
+  //         prefetchFns.delete(fn)
+  //       }
+  //     }
+  //   }
+  //   await Promise.all(
+  //     Array.from(prefetchFns).map(async (fn) => {
+  //       await fn()
+  //     }),
+  //   )
+  // }
 
   private _prepareFetchQuery({
     input,
@@ -6183,7 +6283,6 @@ export class Point0<
             force?: boolean
             mode?: QueryMode
             outputType?: FetchServerOutputType
-            preventPrefetchFns?: boolean | OnPrefetchFn[]
           },
         ]
       : [
@@ -6196,7 +6295,6 @@ export class Point0<
             force?: boolean
             mode?: QueryMode
             outputType?: FetchServerOutputType
-            preventPrefetchFns?: boolean | OnPrefetchFn[]
           },
         ]
   ): Promise<void> {
@@ -6208,7 +6306,6 @@ export class Point0<
       outputType,
       force,
       mode = 'serverAndClient',
-      preventPrefetchFns = false,
     } = options
     const preparedFetch = this._prepareFetchQuery({
       input,
@@ -6226,7 +6323,8 @@ export class Point0<
     if (cacheData && !force) {
       return
     }
-    await Promise.all([this._callPrefetchFns({ preventPrefetchFns }), queryClient.prefetchQuery(queryOptions as never)])
+    // await Promise.all([this._callPrefetchFns({ preventPrefetchFns }), queryClient.prefetchQuery(queryOptions as never)])
+    await queryClient.prefetchQuery(queryOptions as never)
   }
 
   private _prepareFetchInfiniteQuery({
@@ -6396,7 +6494,6 @@ export class Point0<
             force?: boolean
             mode?: QueryMode
             outputType?: FetchServerOutputType
-            preventPrefetchFns?: boolean | OnPrefetchFn[]
           },
         ]
       : [
@@ -6418,7 +6515,6 @@ export class Point0<
             force?: boolean
             mode?: QueryMode
             outputType?: FetchServerOutputType
-            preventPrefetchFns?: boolean | OnPrefetchFn[]
           },
         ]
   ): Promise<void> {
@@ -6430,7 +6526,6 @@ export class Point0<
       outputType,
       force,
       mode = 'serverAndClient',
-      preventPrefetchFns = false,
     } = options
     const preparedFetch = this._prepareFetchInfiniteQuery({
       input,
@@ -6448,10 +6543,11 @@ export class Point0<
     if (cacheData && !force) {
       return
     }
-    await Promise.all([
-      this._callPrefetchFns({ preventPrefetchFns }),
-      queryClient.prefetchInfiniteQuery(infiniteQueryOptions as never),
-    ])
+    // await Promise.all([
+    //   this._callPrefetchFns({ preventPrefetchFns }),
+    //   queryClient.prefetchInfiniteQuery(infiniteQueryOptions as never),
+    // ])
+    await queryClient.prefetchInfiniteQuery(infiniteQueryOptions as never)
   }
 
   private async _prefetchPageQueryClientDehydratedState({
@@ -6500,7 +6596,8 @@ export class Point0<
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
-            policy?: PagePrefetchPolicy
+            policy?: PrefetchPagePolicy
+            trigger?: 'navigate' | 'linkHover'
           },
         ]
       : [
@@ -6510,7 +6607,8 @@ export class Point0<
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
-            policy?: PagePrefetchPolicy
+            policy?: PrefetchPagePolicy
+            trigger?: 'navigate' | 'linkHover'
           },
         ]
   ): Promise<void> {
@@ -6521,7 +6619,8 @@ export class Point0<
       options,
       error: undefined,
     }
-    const { location: providedLocation, queryClient, fetchOptions, force, policy = this._getPrefetchPolicy() } = options
+    const { location: providedLocation, queryClient, fetchOptions, force, trigger } = options
+    const policy = this._getPrefetchPagePolicy(trigger, options.policy)
     if (policy === 'none') {
       return
     }
@@ -6562,7 +6661,7 @@ export class Point0<
 
     const allRelatedPoints = [this as never as ReadyPoint, ...this._layouts]
     const uniqRelatedPoints = [...new Set<AnyPoint>(allRelatedPoints)]
-    const uniqPrefetchFns = [...new Set<OnPrefetchFn>([...uniqRelatedPoints.flatMap((p) => p._onPrefetchFns)])]
+    const uniqPrefetchFns = [...new Set<OnPrefetchPageFn>([...uniqRelatedPoints.flatMap((p) => p._onPrefetchPageFns)])]
     const allRelatedQueries = allRelatedPoints.flatMap((p) => p._mountActions.filter((a) => a.type === 'relatedQuery'))
 
     const onPrefetchFnsPromise = Promise.all(
@@ -6589,7 +6688,7 @@ export class Point0<
 
     const queriesPrefetching = Promise.all(
       uniqRelatedPoints.flatMap(async (p) => {
-        if (policy === 'onPrefetchOnly') {
+        if (policy === 'onPrefetchPageOnly') {
           return []
         }
         if (policy === 'everything' && !p._hasClientLoader() && queryClientDehydratedStateWasPrefetched) {
@@ -6617,7 +6716,6 @@ export class Point0<
             fetchOptions,
             force,
             mode,
-            preventPrefetchFns: true,
           })
         } else {
           return await p.prefetchQuery(inputHere as never, undefined, {
@@ -6626,7 +6724,6 @@ export class Point0<
             fetchOptions,
             force,
             mode,
-            preventPrefetchFns: true,
           })
         }
       }),

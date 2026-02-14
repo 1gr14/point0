@@ -25,7 +25,8 @@ export const client = Point0.lets<{ zxc: number }>('root', 'client')
     refetchInterval: false,
     refetchIntervalInBackground: false,
   })
-  // .prefetchPolicy('everything')
+  // .prefetchPageOnNavigate(false)
+  // .prefetchPageOnLinkHover(false)
   .head('universal', ({ loading, error }) => ({
     ...(loading ? { title: 'Loading...' } : {}),
     ...(error ? { title: error.message } : {}),
@@ -40,7 +41,7 @@ export const client = Point0.lets<{ zxc: number }>('root', 'client')
       </div>
     )
   })
-  .prefetchOnLinkHover(true)
+  .prefetchPageOnLinkHover(true)
   .root()
 
 export type Ctx = (typeof client)['Infer']['Ctx']

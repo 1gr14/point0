@@ -198,6 +198,7 @@ export const SimpleLink = (props: LinkProps) => {
                 ClientPoints.getInstance()
                   .prefetchPage({
                     location: pointWithLocation.location,
+                    trigger: 'linkHover',
                   })
                   .catch((e: unknown) => {
                     // TODO: replace with onClientError handler

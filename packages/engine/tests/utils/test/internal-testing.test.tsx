@@ -13,7 +13,8 @@ describe('internal-testing', () => {
       .ssr(true)
       .baseurl('http://localhost/')
       .queryOptions({ refetchOnMount: false, staleTime: Infinity })
-      .prefetchPolicy('none')
+      .prefetchPageOnNavigate(false)
+      .prefetchPageOnLinkHover(false)
       .loading(() => <div id="loading">...</div>)
       .root()
     const page = root.lets('page', 'home', '/').page(({ data }) => (

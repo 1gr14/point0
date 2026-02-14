@@ -18,7 +18,7 @@ import type {
   LayoutPoint,
   MiddlewareFn,
   PagePoint,
-  PagePrefetchPolicy,
+  PrefetchPagePolicy,
   PointName,
   PointType,
   ReadyPoint,
@@ -383,10 +383,12 @@ export class ClientPoints {
     location,
     queryClient,
     policy,
+    trigger,
   }: {
     location: AnyLocation
     queryClient?: QueryClient
-    policy?: PagePrefetchPolicy
+    policy?: PrefetchPagePolicy
+    trigger?: 'navigate' | 'linkHover'
   }): Promise<PagePoint | undefined> => {
     const locationString = JSON.stringify(location)
     const exPromise = ClientPoints._pagesPrefetchingPromises.get(locationString)
@@ -402,6 +404,7 @@ export class ClientPoints {
         queryClient,
         location,
         policy,
+        trigger,
       })
       return result.page
     })()

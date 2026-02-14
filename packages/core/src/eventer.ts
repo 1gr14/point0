@@ -8,7 +8,7 @@ import type {
   InputRaw,
   LoaderOutput,
   MiddlewareFnOptions,
-  PagePrefetchPolicy,
+  PrefetchPagePolicy,
   PointsScope,
   QueryKey,
 } from './types.js'
@@ -252,7 +252,7 @@ export type EventerEventPointPrefetchPageStart = EventerEvent<
       queryClient?: QueryClient
       fetchOptions?: FetchOptions
       force?: boolean
-      policy?: PagePrefetchPolicy
+      policy?: PrefetchPagePolicy
     }
   }
 >
@@ -267,7 +267,7 @@ export type EventerEventPointPrefetchPageSettled = EventerEvent<
       queryClient?: QueryClient
       fetchOptions?: FetchOptions
       force?: boolean
-      policy?: PagePrefetchPolicy
+      policy?: PrefetchPagePolicy
     }
     error: Error0 | undefined
   }
@@ -283,7 +283,7 @@ export type EventerEventPointPrefetchPageSuccess = EventerEvent<
       queryClient?: QueryClient
       fetchOptions?: FetchOptions
       force?: boolean
-      policy?: PagePrefetchPolicy
+      policy?: PrefetchPagePolicy
     }
     error: undefined
   }
@@ -299,7 +299,7 @@ export type EventerEventPointPrefetchPageError = EventerEvent<
       queryClient?: QueryClient
       fetchOptions?: FetchOptions
       force?: boolean
-      policy?: PagePrefetchPolicy
+      policy?: PrefetchPagePolicy
     }
     error: Error0
   }

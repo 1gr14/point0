@@ -28,7 +28,7 @@ scrollPosition: client, prune on server
 scrollRestore: client, prune on server
 prefetchPolicy: both, nothing to prune (but in fact right now not used in server code)
 onPrefetch: client, prune on server
-prefetchOnLinkHover: client, prune on server
+prefetchPageOnLinkHover: client, prune on server
 
 transformer: both, nothing to prune
 

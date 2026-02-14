@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { PlaywrightPage } from './utils/playwright.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
-import type { TestProject } from './utils/project.js'
+import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 import { TestProjectFactory } from './utils/project.js'
+import type { PrefetchPagePolicy } from '@point0/core'
+import type { Engine } from '../src/engine.js'
 
 setDefaultTimeout(20000)
 
@@ -11,7 +13,9 @@ const tpf = TestProjectFactory.create({
   portsRange: [3400, 3499],
 })
 
-let tp: TestProject
+const loaderDuration = 300
+const hoverBiggerThanLoaderDuration = 400
+const hoverSmallerThanLoaderDuration = 150
 
 const layoutNavTsx = `import { root } from '../lib/root.js'
 import { SimpleLink } from '@point0/wouter'
@@ -39,7 +43,7 @@ export const homePage = navLayout.lets('page', 'home', '/').page(() => <div id="
 const pageWithServerTsx = `import { navLayout } from '../layouts/nav.js'
 export const withServerPage = navLayout.lets('page', 'withServer', 'with-server')
   .loader(async () => {
-    await new Promise((r) => setTimeout(r, 400))
+    await new Promise((r) => setTimeout(r, ${loaderDuration}))
     return { x: 1 }
   })
   .page(({ data }) => <div id="with-server">{data.x}</div>)
@@ -48,7 +52,7 @@ export const withServerPage = navLayout.lets('page', 'withServer', 'with-server'
 const pageWithClientTsx = `import { navLayout } from '../layouts/nav.js'
 export const withClientPage = navLayout.lets('page', 'withClient', 'with-client')
   .clientLoader(async () => {
-    await new Promise((r) => setTimeout(r, 400))
+    await new Promise((r) => setTimeout(r, ${loaderDuration}))
     return { y: 2 }
   })
   .page(({ data }) => <div id="with-client">{data.y}</div>)
@@ -57,11 +61,11 @@ export const withClientPage = navLayout.lets('page', 'withClient', 'with-client'
 const pageWithBothTsx = `import { navLayout } from '../layouts/nav.js'
 export const withBothPage = navLayout.lets('page', 'withBoth', 'with-both')
   .loader(async () => {
-    await new Promise((r) => setTimeout(r, 400))
+    await new Promise((r) => setTimeout(r, ${loaderDuration / 2}))
     return { a: 1 }
   })
   .clientLoader(async ({ data }) => {
-    await new Promise((r) => setTimeout(r, 400))
+    await new Promise((r) => setTimeout(r, ${loaderDuration / 2}))
     return { ...data, b: 2 }
   })
   .page(({ data }) => <div id="with-both">{data.a},{data.b}</div>)
@@ -88,7 +92,7 @@ const pageWithNoneTsx = `import { navLayout } from '../layouts/nav.js'
 export const withNonePage = navLayout.lets('page', 'withNone', '/with-none').page(() => <div id="with-none">none</div>)
 `
 
-async function writeNavigatePages(tp: TestProject) {
+async function writePages(tp: TestProject) {
   await tp.write('src/layouts/nav.tsx', layoutNavTsx)
   await tp.write('src/pages/home.tsx', pageHomeTsx)
   await tp.write('src/pages/with-server.tsx', pageWithServerTsx)
@@ -97,6 +101,38 @@ async function writeNavigatePages(tp: TestProject) {
   await tp.write('src/pages/with-related-query.tsx', pageWithRelatedQueryTsx)
   await tp.write('src/pages/with-mounted-query.tsx', pageWithMountedQueryTsx)
   await tp.write('src/pages/with-none.tsx', pageWithNoneTsx)
+}
+
+async function navigatePages(tp: TestProject, hover: number | false): Promise<{ tale: string; page: PlaywrightPage }> {
+  const page = await tp.gotoServer('/')
+  const click = async (selector: string) => {
+    if (hover !== false) {
+      await page.original.getByText(selector).hover()
+      await new Promise((resolve) => setTimeout(resolve, hover))
+    }
+    await page.original.getByText(selector).click()
+  }
+  await page.waitContent('#home')
+
+  await click('/with-server')
+  await page.waitContent('#with-server')
+
+  await click('/with-client')
+  await page.waitContent('#with-client')
+
+  await click('/with-both')
+  await page.waitContent('#with-both')
+
+  await click('/with-related-query')
+  await page.waitContent('#with-related-query')
+
+  await click('/with-mounted-query')
+  await page.waitContent('#with-mounted-query')
+
+  await click('/with-none')
+  await page.waitContent('#with-none')
+
+  return { tale: getTale(page), page }
 }
 
 const getTale = (page: PlaywrightPage) => {
@@ -116,18 +152,36 @@ const getTale = (page: PlaywrightPage) => {
   )
 }
 
-describe('navigate', () => {
-  describe('ssr', () => {
-    beforeAll(async () => {
+type ItFn = (done: (err?: unknown) => any) => any
+
+let preventFinalFilesCleanup = false
+function wrp(
+  options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
+  callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
+): ItFn
+function wrp(callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any): ItFn
+function wrp(
+  ...args:
+    | [callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any]
+    | [
+        options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
+        callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
+      ]
+): ItFn {
+  const [options, callback] = args.length === 1 ? [{}, args[0]] : args
+  const { preserve = false, ...tpOptions } = options
+  if (preserve) {
+    preventFinalFilesCleanup = true
+  }
+  const tp = tpf.create({ ...tpOptions, fixedId: preserve })
+  return async () => {
+    try {
       const tries = 3
       for (let tryIndex = 0; tryIndex < tries; tryIndex++) {
         try {
-          await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-          tpf.setBrowser(await PlaywrightBrowser.init())
-          tp = tpf.create({ ssr: true, vite: false })
           await tp.cleanup('ports')
           await tp.init()
-          await writeNavigatePages(tp)
+          await writePages(tp)
           tp.spawn(['bun', 'run', 'dev'])
           await tp.waitStarted()
         } catch (error) {
@@ -138,151 +192,165 @@ describe('navigate', () => {
         }
         break
       }
-    })
+      const engine = await tp.importEngine()
+      await callback({ tp, engine })
+      await tp.cleanup({ files: !preserve, ports: true, processes: true })
+    } catch (error) {
+      await tp.cleanup({ files: !preserve, ports: true, processes: true })
+      throw error
+    }
+  }
+}
 
-    afterAll(async () => {
-      await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-    })
+describe('navigate', () => {
+  beforeAll(async () => {
+    await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
+    tpf.setBrowser(await PlaywrightBrowser.init())
+  })
 
-    it('navigate between pages by links via browser', async () => {
-      const page = await tp.gotoServer('/')
-      await page.waitContent('#home')
+  afterAll(async () => {
+    await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
+  })
 
-      await page.original.getByText('/with-server').click()
-      await page.waitContent('#with-server')
+  describe('ssr', () => {
+    it(
+      'polh=false, pon=false, hover=false',
+      wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ tp }) => {
+        const { tale } = await navigatePages(tp, false)
+        expect(tale).toMatchInlineSnapshot()
+      }),
+    )
 
-      await page.original.getByText('/with-client').click()
-      await page.waitContent('#with-client')
+    it(
+      'polh=false, pon=false, hover=bigger',
+      wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ tp }) => {
+        const { tale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+        expect(tale).toMatchInlineSnapshot()
+      }),
+    )
 
-      await page.original.getByText('/with-both').click()
-      await page.waitContent('#with-both')
+    // skip hover=smaller becouse nothing should be changed when polh=false, pon=false
 
-      await page.original.getByText('/with-related-query').click()
-      await page.waitContent('#with-related-query')
+    it(
+      'polh=false, pon=everything, hover=false',
+      wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ tp }) => {
+        const { tale } = await navigatePages(tp, false)
+        expect(tale).toMatchInlineSnapshot()
+      }),
+    )
 
-      await page.original.getByText('/with-mounted-query').click()
-      await page.waitContent('#with-mounted-query')
+    it(
+      'polh=false, pon=everything, hover=bigger',
+      wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ tp }) => {
+        const { tale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+        expect(tale).toMatchInlineSnapshot()
+      }),
+    )
 
-      await page.original.getByText('/with-none').click()
-      await page.waitContent('#with-none')
+    // skip hover=smaller becouse nothing should be changed when polh=false, pon=everything
 
-      expect(getTale(page)).toMatchInlineSnapshot(`
-      "/
-        div:
-          #home: home
-        
-      /with-server
-        div:
-          #with-server: 1
-        
-      /with-client
-        div:
-          #with-client: 2
-        
-      /with-both
-        div:
-          #with-both: 1,2
-        
-      /with-related-query
-        div:
-          #with-related-query: 1
-        
-      /with-mounted-query
-        div:
-          #with-mounted-query: 1
-        
-      /with-none
-        div:
-          #with-none: none
-        "
-    `)
-    })
+    it(
+      'polh=everything, pon=everything, hover=false',
+      wrp(
+        { ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
+        async ({ tp }) => {
+          const { tale } = await navigatePages(tp, false)
+          expect(tale).toMatchInlineSnapshot()
+        },
+      ),
+    )
+
+    it(
+      'polh=everything, pon=everything, hover=bigger',
+      wrp(
+        { ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
+        async ({ tp }) => {
+          const { tale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+          expect(tale).toMatchInlineSnapshot()
+        },
+      ),
+    )
+
+    it(
+      'polh=everything, pon=everything, hover=smaller',
+      wrp(
+        { ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
+        async ({ tp }) => {
+          const { tale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
+          expect(tale).toMatchInlineSnapshot()
+        },
+      ),
+    )
   })
 
   describe('spa', () => {
-    beforeAll(async () => {
-      const tries = 3
-      for (let tryIndex = 0; tryIndex < tries; tryIndex++) {
-        try {
-          await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-          tpf.setBrowser(await PlaywrightBrowser.init())
-          tp = tpf.create({ ssr: false, vite: false })
-          await tp.cleanup('ports')
-          await tp.init()
-          await writeNavigatePages(tp)
-          tp.spawn(['bun', 'run', 'dev'])
-          await tp.waitStarted()
-        } catch (error) {
-          if (tryIndex === tries - 1) {
-            throw error
-          }
-          continue
-        }
-        break
-      }
-    })
+    it(
+      'polh=false, pon=false, hover=false',
+      wrp({ ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ tp }) => {
+        const { tale } = await navigatePages(tp, false)
+        expect(tale).toMatchInlineSnapshot()
+      }),
+    )
 
-    afterAll(async () => {
-      await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-    })
+    it(
+      'polh=false, pon=false, hover=bigger',
+      wrp({ ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ tp }) => {
+        const { tale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+        expect(tale).toMatchInlineSnapshot()
+      }),
+    )
 
-    it('navigate between pages by links via browser', async () => {
-      const page = await tp.gotoServer('/')
-      await page.waitContent('#home')
+    // skip hover=smaller becouse nothing should be changed when polh=false, pon=false
 
-      await page.original.getByText('/with-server').click()
-      await page.waitContent('#with-server')
+    it(
+      'polh=false, pon=everything, hover=false',
+      wrp({ ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ tp }) => {
+        const { tale } = await navigatePages(tp, false)
+        expect(tale).toMatchInlineSnapshot()
+      }),
+    )
 
-      await page.original.getByText('/with-client').click()
-      await page.waitContent('#with-client')
+    it(
+      'polh=false, pon=everything, hover=bigger',
+      wrp({ ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ tp }) => {
+        const { tale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+        expect(tale).toMatchInlineSnapshot()
+      }),
+    )
 
-      await page.original.getByText('/with-both').click()
-      await page.waitContent('#with-both')
+    // skip hover=smaller becouse nothing should be changed when polh=false, pon=everything
 
-      await page.original.getByText('/with-none').click()
-      await page.waitContent('#with-none')
+    it(
+      'polh=everything, pon=everything, hover=false',
+      wrp(
+        { ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
+        async ({ tp }) => {
+          const { tale } = await navigatePages(tp, false)
+          expect(tale).toMatchInlineSnapshot()
+        },
+      ),
+    )
 
-      await page.original.getByText('/with-related-query').click()
-      await page.waitContent('#with-related-query')
+    it(
+      'polh=everything, pon=everything, hover=bigger',
+      wrp(
+        { ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
+        async ({ tp }) => {
+          const { tale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+          expect(tale).toMatchInlineSnapshot()
+        },
+      ),
+    )
 
-      await page.original.getByText('/with-mounted-query').click()
-      await page.waitContent('#with-mounted-query')
-
-      expect(getTale(page)).toMatchInlineSnapshot(`
-      "/
-        (Empty)
-        
-        div:
-          #home: home
-        
-      /with-server
-        div:
-          #with-server: 1
-        
-      /with-client
-        div:
-          #with-client: 2
-        
-      /with-both
-        div:
-          #with-both: 1,2
-        
-      /with-none
-        div:
-          #with-none: none
-        
-      /with-related-query
-        div:
-          #with-related-query: 1
-        
-      /with-mounted-query
-        div:
-          div: Loading...
-        
-        div:
-          #with-mounted-query: 1
-        "
-    `)
-    })
+    it(
+      'polh=everything, pon=everything, hover=smaller',
+      wrp(
+        { ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
+        async ({ tp }) => {
+          const { tale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
+          expect(tale).toMatchInlineSnapshot()
+        },
+      ),
+    )
   })
 })

@@ -407,6 +407,7 @@ export function _wrapNavigate<T extends (to: string, ...args: any[]) => any>(
     try {
       await ClientPoints.getInstance().prefetchPage({
         location,
+        trigger: 'navigate',
       })
       routerContext.setStatus('transitioning')
       await adapterNavigate(...(args as [string, ...any[]]))

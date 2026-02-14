@@ -8,6 +8,8 @@ export const root = Point0.lets('root', 'root')
   .transformer(superjson)
   .loading(() => <div>Loading...</div>)
   .error(({ error }) => <div>Error: {error.message}</div>)
+  .prefetchPageOnNavigate(false)
+  .prefetchPageOnLinkHover(false)
   .queryOptions({
     retry: false,
     refetchOnMount: false,

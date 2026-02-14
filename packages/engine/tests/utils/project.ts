@@ -7,6 +7,7 @@ import { getDirFilesContent, throwOnHelperLogFnCalling, waitPortFree } from './o
 import type { PlaywrightPage } from './playwright.js'
 import { PlaywrightBrowser } from './playwright.js'
 import { TestProcess } from './process.js'
+import type { PrefetchPagePolicy } from '@point0/core'
 
 const testTemplateDir = nodePath.resolve(__dirname, '..', 'template')
 const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')
@@ -27,6 +28,8 @@ export class TestProject {
   clientHmrPort: number | false
   processes: TestProcess[] = []
   ports: number[] = []
+  prefetchPageOnNavigate: false | PrefetchPagePolicy
+  prefetchPageOnLinkHover: false | PrefetchPagePolicy
   tpf: TestProjectFactory
 
   constructor(options: {
@@ -38,6 +41,8 @@ export class TestProject {
     clientPort: number
     serverHmrPort: number | false
     clientHmrPort: number | false
+    prefetchPageOnNavigate: false | PrefetchPagePolicy
+    prefetchPageOnLinkHover: false | PrefetchPagePolicy
     tpf: TestProjectFactory
     fixedId: boolean
   }) {
@@ -47,6 +52,8 @@ export class TestProject {
     this.name = 'test-' + this.id
     this.dir = nodePath.resolve(testsGeneralTempDir, options.tpf.namespace, this.name)
     this.ssr = options.ssr
+    this.prefetchPageOnNavigate = options.prefetchPageOnNavigate
+    this.prefetchPageOnLinkHover = options.prefetchPageOnLinkHover
     this.superjson = options.superjson
     this.vite = options.vite
     this.serverPort = options.serverPort
@@ -265,6 +272,20 @@ export class TestProject {
     if (!this.ssr) {
       await this.replace(this.files.root, '.ssr(true)', '// .ssr(true)')
     }
+    if (this.prefetchPageOnNavigate !== false) {
+      await this.replace(
+        this.files.root,
+        '.prefetchPageOnNavigate(false)',
+        `.prefetchPageOnNavigate('${this.prefetchPageOnNavigate}')`,
+      )
+    }
+    if (this.prefetchPageOnLinkHover !== false) {
+      await this.replace(
+        this.files.root,
+        '.prefetchPageOnLinkHover(false)',
+        `.prefetchPageOnLinkHover('${this.prefetchPageOnLinkHover}')`,
+      )
+    }
     if (!this.superjson) {
       await this.replace(this.files.root, '.transformer(superjson)', '// .transformer(superjson)')
     }
@@ -338,6 +359,8 @@ export type TestProjectGeneralOptions = {
   serverHmr: boolean
   clientHmr: boolean
   fixedId: boolean
+  prefetchPageOnNavigate: false | PrefetchPagePolicy
+  prefetchPageOnLinkHover: false | PrefetchPagePolicy
 }
 
 export type TestProjectCreateOptions = Omit<TestProjectGeneralOptions, 'serverHmr' | 'clientHmr'> & {
@@ -383,6 +406,8 @@ export class TestProjectFactory {
       serverHmr: false,
       clientHmr: false,
       fixedId: false,
+      prefetchPageOnNavigate: false,
+      prefetchPageOnLinkHover: false,
       ...defaultOptions,
     }
     this.namespace = namespace
