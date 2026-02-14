@@ -6822,7 +6822,9 @@ export class Point0<
       outerProps,
       mountComponent,
       extraProps,
-      location = useLocation(),
+      // becouse we need in layout location be suitable for layout route and it params
+      // for page locaton already is page location, for component and provider also we need current page location
+      location = this.type === 'layout' ? useLocation(this.route) : useLocation(),
       level = 0,
       queryIndex = 0,
       prev,

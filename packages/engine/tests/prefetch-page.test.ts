@@ -454,16 +454,16 @@ describe('prefetch-page', () => {
             // so better use same policy for prefetchPageOnLinkHover and prefetchPageOnNavigate
             expect(requestsTale.split('\n').sort().join('\n')).toMatchInlineSnapshot(`
               "GET /
-              root.page.withServer (queryClientDehydratedState)
-              root.page.withServer (data)
-              root.page.withClient (queryClientDehydratedState)
-              root.page.withBoth (queryClientDehydratedState)
               root.page.withBoth (data)
-              root.page.withRelatedQuery (queryClientDehydratedState)
-              root.query.relatedQuery (data)
+              root.page.withBoth (queryClientDehydratedState)
+              root.page.withClient (queryClientDehydratedState)
               root.page.withMountedQuery (queryClientDehydratedState)
+              root.page.withNone (queryClientDehydratedState)
+              root.page.withRelatedQuery (queryClientDehydratedState)
+              root.page.withServer (data)
+              root.page.withServer (queryClientDehydratedState)
               root.query.mountedQuery (data)
-              root.page.withNone (queryClientDehydratedState)"
+              root.query.relatedQuery (data)"
             `)
           },
         ),

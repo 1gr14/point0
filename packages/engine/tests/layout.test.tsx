@@ -1,6 +1,6 @@
 import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
-import { createTestThings } from './utils/internal-testing.js'
+import { createTestThings, ymlify } from './utils/internal-testing.js'
 
 describe('layout', () => {
   const root = Point0.lets('root', 'root')
@@ -190,12 +190,17 @@ describe('layout', () => {
     const layout = root
       .lets('layout', 'app', '/:id')
       .loader(({ input }) => ({ x: input.id }))
-      .layout(({ data, children }) => (
-        <div id="layout">
-          <div id="layout-input">x={data.x}</div>
-          {children}
-        </div>
-      ))
+      .layout(({ data, children, location }) => {
+        return (
+          <div id="layout">
+            <div id="layout-route">{location.route}</div>
+            <div id="layout-href">{location.hrefRel}</div>
+            <div id="layout-params">{ymlify(location.params)}</div>
+            <div id="layout-input">x={data.x}</div>
+            {children}
+          </div>
+        )
+      })
     const page = layout.lets('page', 'home', '/:sn').page(({ location }) => {
       const value = layout.useValue()
       return (
@@ -213,6 +218,9 @@ describe('layout', () => {
           #loading: ...
 
           #layout:
+            #layout-route: /:id
+            #layout-href: /zxc/qwe
+            #layout-params: id: zxc
             #layout-input: x=zxc
             #page: x=zxc sn=qwe
         "
@@ -224,6 +232,9 @@ describe('layout', () => {
     `)
     expect(await fetchPreview(page, { id: 'zxc', sn: 'qwe' })).toMatchInlineSnapshot(`
       "#layout:
+        #layout-route: /:id
+        #layout-href: /zxc/qwe
+        #layout-params: id: zxc
         #layout-input: x=zxc
         #page: x=zxc sn=qwe
       "
