@@ -1,5 +1,5 @@
 import type { Error0 } from '@devp0nt/error0'
-import type { AnyLocation, ExactLocation, WeakChildrenLocation } from '@devp0nt/route0'
+import type { AnyLocation, ExactLocation, WeakDescendantLocation } from '@devp0nt/route0'
 import type {
   InfiniteQueryObserverSuccessResult,
   QueryObserverSuccessResult,
@@ -507,7 +507,7 @@ export type LayoutExtraInnerProps = {
   children: Exclude<React.ReactNode, Promise<any>>
 }
 export type LayoutLocation<TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition> =
-  | WeakChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
+  | WeakDescendantLocation<CurrentRouteDefinition<TRouteDefinition>>
   | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
 export type LayoutSuccessComponentProps<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,

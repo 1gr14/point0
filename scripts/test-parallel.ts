@@ -6,12 +6,15 @@ const noSlowTests = process.env.NO_SLOW_TESTS === '1'
 const noTestUtilsTests = process.env.NO_TEST_UTILS_TESTS === '1'
 const liveTestOutput = process.env.LIVE_TEST_OUTPUT === '1'
 
-const slowTests = [
-  'engine/tests/build.test.ts',
-  'engine/tests/dev.test.ts',
-  'engine/tests/navigate.test.ts',
-  'engine/tests/prefetch-page.test.ts',
-]
+const slowTests =
+  process.env.SLOW_TESTS_NOT_SLOW === '1'
+    ? []
+    : [
+        'engine/tests/build.test.ts',
+        'engine/tests/dev.test.ts',
+        'engine/tests/navigate.test.ts',
+        'engine/tests/prefetch-page.test.ts',
+      ]
 const testUtilsTests = ['engine/tests/utils/*']
 
 const cwd = nodePath.resolve(__dirname, '..', 'packages')

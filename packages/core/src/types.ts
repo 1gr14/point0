@@ -1,7 +1,7 @@
 import type { Error0 } from '@devp0nt/error0'
 import type {
   AnyLocation,
-  ChildrenLocation,
+  DescendantLocation,
   ExactLocation,
   Extended,
   FlatInputStringOnly,
@@ -1013,7 +1013,7 @@ export type ClientExecuteActionLocation<
   ? ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
   : TLetsReadyPointType extends 'layout'
     ?
-        | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
+        | DescendantLocation<CurrentRouteDefinition<TRouteDefinition>>
         | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
     : TLetsReadyPointType extends 'component'
       ? AnyLocation

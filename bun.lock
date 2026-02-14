@@ -29,7 +29,7 @@
       "name": "@point0/example-basic",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/route0": "^1.0.0-next.56",
+        "@devp0nt/route0": "^1.0.0-next.57",
         "@point0/compiler": "workspace:*",
         "@point0/cookies-store": "workspace:*",
         "@point0/core": "workspace:*",
@@ -57,7 +57,7 @@
       "name": "@point0/example-vite",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/route0": "^1.0.0-next.56",
+        "@devp0nt/route0": "^1.0.0-next.57",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/engine": "workspace:*",
@@ -218,11 +218,11 @@
         "react-dom": "catalog:",
       },
     },
-    "packages/engine/tests/temp/prefetch-page/test-a27b011b-8176-481a-a53e-589ff87a3c7e": {
-      "name": "@point0/test-a27b011b-8176-481a-a53e-589ff87a3c7e",
+    "packages/engine/tests/temp/navigate/test-0": {
+      "name": "@point0/test-0",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/route0": "^1.0.0-next.55",
+        "@devp0nt/route0": "^1.0.0-next.56",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/cors": "workspace:*",
@@ -250,7 +250,7 @@
       "name": "@point0/test-project-name",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/route0": "^1.0.0-next.56",
+        "@devp0nt/route0": "^1.0.0-next.57",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/cors": "workspace:*",
@@ -314,7 +314,7 @@
   },
   "catalog": {
     "@devp0nt/error0": "^1.0.0-next.38",
-    "@devp0nt/route0": "^1.0.0-next.56",
+    "@devp0nt/route0": "^1.0.0-next.57",
     "@tanstack/react-query": "^5.0.0",
     "@unhead/react": "^2.1.2",
     "react": "^19.0.0",
@@ -404,7 +404,7 @@
 
     "@devp0nt/meta0": ["@devp0nt/meta0@1.0.0-next.34", "", { "dependencies": { "@devp0nt/deepmap0": "^1.0.0-next.23" } }, "sha512-+TGxn2PIxxmqTiYOknC3b1SUETCz5elAeFI9csgosPbHyqiJ2Aw6zMqHNnISxMXpja7DWa9hL9+FdLD7EL73yw=="],
 
-    "@devp0nt/route0": ["@devp0nt/route0@1.0.0-next.56", "", { "dependencies": { "serialize-error": "^12.0.0" } }, "sha512-pUNnNR11Z3u6LFEL6pFNddUZdY1gKzDRmkNvTvHl/h5AWfUkV2g59p9kk8DMPMW6wG1dVRQdlPasowSGtnPXMQ=="],
+    "@devp0nt/route0": ["@devp0nt/route0@1.0.0-next.57", "", { "dependencies": { "serialize-error": "^12.0.0" } }, "sha512-cmY2NNZoYiNMhSz6ir7SP9DR6zKaswpN7TXCJnFtWcLvBqs8Jw7kE2hGx3vgCPjIWpnspvGDL/R2w16k8D1ApA=="],
 
     "@epic-web/invariant": ["@epic-web/invariant@1.0.0", "", {}, "sha512-lrTPqgvfFQtR/eY/qkIzp98OGdNJu0m5ji3q/nJI8v3SXkRKEnWiOxMmbvcSoAIzv/cGiuvRy57k4suKQSAdwA=="],
 
@@ -578,7 +578,7 @@
 
     "@point0/react-dom": ["@point0/react-dom@workspace:packages/react-dom"],
 
-    "@point0/test-a27b011b-8176-481a-a53e-589ff87a3c7e": ["@point0/test-a27b011b-8176-481a-a53e-589ff87a3c7e@workspace:packages/engine/tests/temp/prefetch-page/test-a27b011b-8176-481a-a53e-589ff87a3c7e"],
+    "@point0/test-0": ["@point0/test-0@workspace:packages/engine/tests/temp/navigate/test-0"],
 
     "@point0/test-project-name": ["@point0/test-project-name@workspace:packages/engine/tests/template"],
 

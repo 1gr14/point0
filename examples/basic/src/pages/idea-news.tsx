@@ -1,4 +1,4 @@
-// import { useNavigate0 } from '@/lib/routes.js'
+// import { useNavigate } from '@/lib/routes.js'
 import { ideaLayout } from '../layouts/idea.js'
 import { useEffect } from 'react'
 export const ideaNewsPage = ideaLayout
@@ -7,7 +7,7 @@ export const ideaNewsPage = ideaLayout
   .with(() => ({ idea: ideaLayout.useValue('idea') }))
   .head(({ props }) => `${props.idea.news.length} news for idea "${props.idea.title}"`)
   .page(({ props: { idea } }) => {
-    // const navigate = useNavigate0()
+    // const navigate = useNavigate()
     useEffect(() => {
       // navigate('home').catch(console.error)
       // navigate('idea', { id: idea.id, pp: 3, hash: 'zxc' }).catch(console.error)

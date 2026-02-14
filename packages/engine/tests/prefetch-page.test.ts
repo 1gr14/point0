@@ -18,16 +18,17 @@ const hoverSmallerThanLoaderDuration = 50
 
 const layoutNavTsx = `import { root } from '../lib/root.js'
 import { SimpleLink } from '@point0/wouter'
+import { Link, NavLink } from '../lib/navigate.js'
 export const navLayout = root.lets('layout', 'navLayout').layout(({ children }) => (
   <>
     <nav>
       <SimpleLink to="/">/</SimpleLink>
       <SimpleLink to="/with-server">/with-server</SimpleLink>
-      <SimpleLink to="/with-client">/with-client</SimpleLink>
+      <Link to="/with-client">/with-client</Link>
       <SimpleLink to="/with-both">/with-both</SimpleLink>
       <SimpleLink to="/with-related-query">/with-related-query</SimpleLink>
       <SimpleLink to="/with-mounted-query">/with-mounted-query</SimpleLink>
-      <SimpleLink to="/with-none">/with-none</SimpleLink>
+      <NavLink to="/with-none">/with-none</NavLink>
     </nav>
     <hr />
     {children}

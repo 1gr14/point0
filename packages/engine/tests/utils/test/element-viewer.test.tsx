@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import { fireEvent, render, waitFor } from '@testing-library/react'
+import '@testing-library/react/dont-cleanup-after-each'
 import { ElementViewer } from '../element-viewer.js'
 import { getFakeBrowserGlobals, getOriginalValuesOfFakeBrowserGlobals } from '../internal-testing.js'
 import assert from 'node:assert'

@@ -1,23 +1,20 @@
 import { Error0 } from '@devp0nt/error0'
-import type {
-  AnyLocation,
-  AnyRoute,
-  ExactLocation,
-  ExtractRoute,
-  ExtractRoutesKeys,
-  FlatInputWithHash,
-  HasParams,
-  RoutesPretty,
+import {
+  Route0,
+  type AnyLocation,
+  type AnyRoute,
+  type ExtractRoute,
+  type ExtractRoutesKeys,
+  type FlatInputWithHash,
+  type HasParams,
+  type RoutesPretty,
 } from '@devp0nt/route0'
 import type {
-  AnyPoint,
-  ReadyPoint,
-  getRouterContext,
   NormalizedLazyPointsCollectionRecord,
+  PagesTree,
   ReadyPointsCollectionRecord,
-  type PagesTree,
-  type RouterStatus,
-  type UseAdapterLocationFn,
+  RouterStatus,
+  UseAdapterLocationFn,
 } from '@point0/core'
 import {
   _ssItems,
@@ -28,7 +25,6 @@ import {
   RouterContext,
   RouterContextProvider,
   useLocation,
-  useRouterContext,
 } from '@point0/core'
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
 import React, { Fragment, useCallback, useMemo, useRef } from 'react'
@@ -50,7 +46,7 @@ const _useNativeNavigate = () => {
 }
 export const useSimpleNavigate = _wrapUseNavigate(_useNativeNavigate)
 
-export const createNavigate0 = <
+export const createNavigate = <
   TRoutes extends RoutesPretty<any>,
   TNavigate extends (to: string, ...rest: any[]) => any,
 >(
@@ -84,7 +80,7 @@ export const createNavigate0 = <
 
 type Tail<T extends readonly unknown[]> = T extends readonly [any, ...infer R] ? R : never
 
-export const createUseNavigate0 = <
+export const createUseNavigate = <
   TRoutes extends RoutesPretty<any>,
   TUseNavigate extends () => (to: string, ...args: any[]) => any = typeof useSimpleNavigate,
 >(
@@ -161,55 +157,73 @@ type AsChildProps<ComponentProps, DefaultElementProps> =
   | ({ asChild?: false } & DefaultElementProps)
   | ({ asChild: true } & ComponentProps)
 
-type HTMLLinkAttributes = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'className'> & {
-  className?: string | undefined | ((isActive: boolean) => string | undefined)
-}
-
+type HTMLLinkAttributes = AnchorHTMLAttributes<HTMLAnchorElement>
 type LinkAsChildProps = AsChildProps<
   { children: ReactElement; onClick?: MouseEventHandler },
   HTMLLinkAttributes & RefAttributes<HTMLAnchorElement>
 >
 type LinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> & LinkAsChildProps
 
-export type NavLinkStateName = 'exact' | 'ancestor' | 'descendant' | 'unmatched'
+export type NavLinkStateType = 'exact' | 'same' | 'ancestor' | 'descendant' | 'unmatched'
 export type NavLinkStateOptions =
   | {
-      status: 'exact'
+      type: 'exact'
       exact: true
+      same: false
       ancestor: false
       descendant: false
       unmatched: false
     }
   | {
-      status: 'ancestor'
+      type: 'same'
       exact: false
+      same: true
+      ancestor: false
+      descendant: false
+      unmatched: false
+    }
+  | {
+      type: 'ancestor'
+      exact: false
+      same: false
       ancestor: true
       descendant: false
       unmatched: false
     }
   | {
-      status: 'descendant'
+      type: 'descendant'
       exact: false
+      same: false
       ancestor: false
       descendant: true
       unmatched: false
     }
   | {
-      status: 'unmatched'
+      type: 'unmatched'
       exact: false
+      same: false
       ancestor: false
       descendant: false
       unmatched: true
     }
+type NavLinkClassNameProps = {
+  exactClassName?: string
+  sameClassName?: string
+  ancestorClassName?: string
+  descendantClassName?: string
+  unmatchedClassName?: string
+  classNames?: Partial<Record<'default' | NavLinkStateType, string | undefined>>
+  className?: string | ((state: NavLinkStateOptions) => string | undefined)
+}
+
+type NavLinkAsChildProps = AsChildProps<
+  { children: ReactElement; onClick?: MouseEventHandler },
+  Omit<HTMLLinkAttributes, 'className'> & RefAttributes<HTMLAnchorElement>
+>
+
 type NavLinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> &
-  LinkAsChildProps & {
-    exactClassName?: string
-    ancestorClassName?: string
-    descendantClassName?: string
-    unmatchedClassName?: string
-    classNames?: Partial<Record<NavLinkStateName, string | undefined>>
-    className?: string | ((options: NavLinkStateOptions) => string | undefined)
-  }
+  NavLinkAsChildProps &
+  NavLinkClassNameProps
 
 const _getWouterLinkProps = (
   props: LinkProps,
@@ -308,22 +322,50 @@ const _getWouterLinkProps = (
 }
 
 export const SimpleNavLink = (props: NavLinkProps) => {
-  const { pointWithLocation, wouterLinkProps } = _getWouterLinkProps(props)
+  const { exactClassName, ancestorClassName, descendantClassName, unmatchedClassName, classNames, className, ...rest } =
+    props
+  const { pointWithLocation, wouterLinkProps, to } = _getWouterLinkProps(rest)
   const location = useLocation(pointWithLocation?.point.route)
-  const statusOptions = useMemo(() => {
-    const result = { status: 'unmatched', exact: false, ancestor: false, descendant: false, unmatched: true }
+  const statusOptions = useMemo<NavLinkStateOptions>(() => {
     if (location.exact) {
-      return { ...result, exact: true, status: 'exact' }
+      if (
+        location.origin
+          ? Route0.toAbsLocation(Route0.getLocation(to), location.origin).href === location.href
+          : to === location.hrefRel
+      ) {
+        return { type: 'exact', exact: true, same: false, ancestor: false, descendant: false, unmatched: false }
+      } else {
+        return { type: 'same', exact: false, same: true, ancestor: false, descendant: false, unmatched: false }
+      }
     }
     if (location.ancestor) {
-      return { ...result, ancestor: true, status: 'ancestor' }
+      return { type: 'ancestor', exact: false, same: false, ancestor: true, descendant: false, unmatched: false }
     }
     if (location.descendant) {
-      return { ...result, descendant: true, status: 'descendant' }
+      return { type: 'descendant', exact: false, same: false, ancestor: false, descendant: true, unmatched: false }
     }
-    return result
-  }, [location])
-  return <WouterLink {...wouterLinkProps} />
+    return { type: 'unmatched', exact: false, same: false, ancestor: false, descendant: false, unmatched: true }
+  }, [location, to])
+  const resolvedClassName = useMemo(() => {
+    const allClassNames = [
+      typeof className === 'function' ? className(statusOptions) : className,
+      classNames?.default,
+      classNames?.[statusOptions.type],
+      statusOptions.exact ? exactClassName : undefined,
+      statusOptions.ancestor ? ancestorClassName : undefined,
+      statusOptions.descendant ? descendantClassName : undefined,
+      statusOptions.unmatched ? unmatchedClassName : undefined,
+    ]
+    const mergedClassNames = allClassNames.filter((value): value is string => Boolean(value)).join(' ')
+    return mergedClassNames || undefined
+  }, [className, classNames, statusOptions, exactClassName, ancestorClassName, descendantClassName, unmatchedClassName])
+  const finalWouterLinkProps = useMemo<LinkProps>(() => {
+    if ('asChild' in wouterLinkProps && wouterLinkProps.asChild) {
+      return wouterLinkProps
+    }
+    return { ...wouterLinkProps, className: resolvedClassName }
+  }, [wouterLinkProps, resolvedClassName])
+  return <WouterLink {...finalWouterLinkProps} />
 }
 
 export const SimpleLink = (props: LinkProps) => {
@@ -331,94 +373,26 @@ export const SimpleLink = (props: LinkProps) => {
   return <WouterLink {...wouterLinkProps} />
 }
 
-// export const SimpleLink = (props: LinkProps) => {
-//   const { to, href, onClick, onMouseEnter, onMouseLeave, replace, ...rest } = props as LinkProps & {
-//     onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => any
-//     onMouseLeave?: (e: React.MouseEvent<HTMLAnchorElement>) => any
-//   }
-//   const navigate = useSimpleNavigate()
-//   const location = useLocation()
-//   const routerCtx = useRouterContext()
-//   const finalTo = to || href || '#'
-//   const prefetchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-//   const pointWithLocation = useMemo(() => {
-//     if (!finalTo) {
-//       return undefined
-//     }
-//     if (finalTo.startsWith('#')) {
-//       const hashSuffix = !routerCtx.addHashToLocation ? '' : finalTo
-//       return ClientPoints.getInstance()._getPageByHref(location.pathname + hashSuffix)
-//     }
-//     return ClientPoints.getInstance()._getPageByHref(finalTo)
-//   }, [finalTo, location, routerCtx.addHashToLocation])
-//   return (
-//     <WouterLink
-//       {...rest}
-//       {...{
-//         onMouseEnter: (e) => {
-//           if (pointWithLocation && pointWithLocation.point.polh !== false) {
-//             // Clear any existing timeout
-//             if (prefetchTimeoutRef.current) {
-//               clearTimeout(prefetchTimeoutRef.current)
-//             }
-//             // Set a N ms delay before prefetching
-//             prefetchTimeoutRef.current = setTimeout(
-//               () => {
-//                 prefetchTimeoutRef.current = null
-//                 ClientPoints.getInstance()
-//                   .prefetchPage({
-//                     location: pointWithLocation.location,
-//                     trigger: 'linkHover',
-//                   })
-//                   .catch((e: unknown) => {
-//                     // TODO: replace with onClientError handler
-//                     console.error('Failed to prefetch page on hover', e)
-//                   })
-//               },
-//               pointWithLocation.point.polh === true ? 30 : pointWithLocation.point.polh,
-//             )
-//           }
-//           void onMouseEnter?.(e)
-//         },
-//         onMouseLeave: (e) => {
-//           // Cancel prefetch if mouse leaves before the N ms delay completes
-//           if (prefetchTimeoutRef.current) {
-//             clearTimeout(prefetchTimeoutRef.current)
-//             prefetchTimeoutRef.current = null
-//           }
-//           void onMouseLeave?.(e)
-//         },
-//       }}
-//       to={finalTo}
-//       replace={replace}
-//       onClick={(e) => {
-//         if (e.metaKey || e.ctrlKey) return
-//         e.preventDefault()
-//         void navigate(finalTo, { replace })
-//         onClick?.(e)
-//       }}
-//     />
-//   )
-// }
-
-export const createLink0 = <
+export const createLink = <
   TRoutes extends RoutesPretty<any>,
   TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
 >(
   routes: TRoutes,
 ) => {
-  function Link0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
-    props: { route: TRouteName } & (HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
+  type LinkRouteProps = {
+    [TRouteName in ExtractRoutesKeys<TRoutes>]: {
+      route: TRouteName
+    } & (HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
       ? { input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>> }
       : { input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>> }) &
       LinkAsChildProps &
-      HookNavigationOptions<TBaseLocationHook>,
-  ): React.ReactElement
+      HookNavigationOptions<TBaseLocationHook>
+  }[ExtractRoutesKeys<TRoutes>]
   function Link0(
-    props: { to: string } & LinkAsChildProps & HookNavigationOptions<TBaseLocationHook>,
-  ): React.ReactElement
-  function Link0(
-    props: { href: string } & LinkAsChildProps & HookNavigationOptions<TBaseLocationHook>,
+    props:
+      | LinkRouteProps
+      | ({ to: string } & LinkAsChildProps & HookNavigationOptions<TBaseLocationHook>)
+      | ({ href: string } & LinkAsChildProps & HookNavigationOptions<TBaseLocationHook>),
   ): React.ReactElement
   function Link0(props: {
     to?: string
@@ -455,6 +429,65 @@ export const createLink0 = <
     return <SimpleLink {...(rest as any)} to={finalTo} />
   }
   return Link0
+}
+
+export const createNavLink = <
+  TRoutes extends RoutesPretty<any>,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+>(
+  routes: TRoutes,
+) => {
+  type NavLinkRouteProps = {
+    [TRouteName in ExtractRoutesKeys<TRoutes>]: {
+      route: TRouteName
+    } & (HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
+      ? { input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>> }
+      : { input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>> }) &
+      NavLinkAsChildProps &
+      HookNavigationOptions<TBaseLocationHook> &
+      NavLinkClassNameProps
+  }[ExtractRoutesKeys<TRoutes>]
+  function NavLink0(
+    props:
+      | NavLinkRouteProps
+      | ({ to: string } & NavLinkProps<TBaseLocationHook>)
+      | ({ href: string } & NavLinkProps<TBaseLocationHook>),
+  ): React.ReactElement
+  function NavLink0(props: {
+    to?: string
+    href?: string
+    route?: string
+    input?: Record<string, any>
+  }): React.ReactElement {
+    const {
+      route: routeName,
+      input = {},
+      to: providedTo,
+      href: providedHref,
+      ...rest
+    } = props as typeof props & { input?: Record<string, any>; to?: string; href?: string }
+    const finalTo = useMemo(() => {
+      if (providedTo !== undefined) {
+        return providedTo
+      }
+      if (providedHref !== undefined) {
+        return providedHref
+      }
+      if (routeName === undefined) {
+        console.error('routeName is required for NavLink without to or href')
+        return '#'
+      }
+      const route = routes[routeName]
+      if (!route) {
+        // TODO: replace with onClientError handler
+        console.error(`Route "${routeName}" not found`)
+        return '#'
+      }
+      return route.flat(input)
+    }, [routeName, JSON.stringify(input), providedTo, providedHref])
+    return <SimpleNavLink {...(rest as any)} to={finalTo} />
+  }
+  return NavLink0
 }
 
 export const Router = ({

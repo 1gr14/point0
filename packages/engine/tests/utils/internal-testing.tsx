@@ -9,8 +9,9 @@ import { FakeClient } from '../../src/fake-client.js'
 import { ElementViewer } from './element-viewer.js'
 import { HtmlView } from './html-view.js'
 // import { AsyncLocalStorage } from 'node:async_hooks'
+import { notifyManager } from '@tanstack/query-core'
 import type { DehydratedState, QueryClient } from '@tanstack/react-query'
-import * as rtl from '@testing-library/react'
+import * as rtl from '@testing-library/react/pure.js'
 import { FetchRecorder } from './fetch-recorder.js'
 import { YAML } from 'bun'
 import { CookiesStore } from '@point0/cookies-store'
@@ -112,6 +113,7 @@ export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
     history: window.history,
     requestAnimationFrame: window.requestAnimationFrame.bind(window),
     cancelAnimationFrame: window.cancelAnimationFrame.bind(window),
+    event: window.Event,
   }
 }
 
@@ -210,6 +212,7 @@ type TestThingsState = {
   waitContent: ElementViewer['waitContent']
   click: (selector: string) => Promise<void>
   _locationCleanup: () => void
+  _notifyManagerCleanup: () => void
 }
 type FetchPoint = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
@@ -304,9 +307,11 @@ export const createTestThings = async ({
       state.viewer.destroy()
       // Clean up location change listeners
       state._locationCleanup()
+      state._notifyManagerCleanup()
       rtl.cleanup()
     },
     onRunEndInside: async (state) => {
+      state._notifyManagerCleanup()
       rtl.cleanup()
     },
     cookieGetter: CookiesStore.clientDocumentCookieGetter,
@@ -328,6 +333,23 @@ export const createTestThings = async ({
         clearInterval(state.titlesInterval)
       },
       onStartInside: async (state) => {
+        // Keep Query notifications within this test run to avoid late callbacks
+        // touching globals outside fake-client context.
+        notifyManager.setNotifyFunction((callback) => {
+          callback()
+        })
+        notifyManager.setScheduler((callback) => {
+          callback()
+        })
+        state._notifyManagerCleanup = () => {
+          notifyManager.setNotifyFunction((callback) => {
+            callback()
+          })
+          notifyManager.setScheduler((callback) => {
+            setTimeout(callback, 0)
+          })
+        }
+
         const window = globals.window as Window
         window.location.href = location.href
 
