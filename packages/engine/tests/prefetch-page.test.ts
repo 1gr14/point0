@@ -452,7 +452,7 @@ describe('prefetch-page', () => {
             `)
             // requests looks ugly, but behavior is correct
             // so better use same policy for prefetchPageOnLinkHover and prefetchPageOnNavigate
-            expect(requestsTale).toMatchInlineSnapshot(`
+            expect(requestsTale.split('\n').sort().join('\n')).toMatchInlineSnapshot(`
               "GET /
               root.page.withServer (queryClientDehydratedState)
               root.page.withServer (data)

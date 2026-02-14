@@ -1,6 +1,6 @@
 import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
-import { createTestThings } from './utils/internal-testing.js'
+import { createTestThings, waitReturn } from './utils/internal-testing.js'
 import z from 'zod'
 
 describe('query', () => {
@@ -66,11 +66,11 @@ describe('query', () => {
   it('with page loader and query loader', async () => {
     const q = root
       .lets('query', 'test')
-      .loader(() => ({ x: 1 }))
+      .loader(async () => await waitReturn({ x: 1 }))
       .query()
     const page = root
       .lets('page', 'home', '/')
-      .loader(() => ({ y: 2 }))
+      .loader(async () => await waitReturn({ y: 2 }))
       .page(({ data }) => {
         const query = q.useQuery()
         return (

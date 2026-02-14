@@ -3,7 +3,7 @@ import type { AnyLocation } from '@devp0nt/route0'
 import { Point0, useLocation, useOnNavigate } from '@point0/core'
 import { createLink, createNavigate, createNavLink, createUseNavigate, SimpleLink } from '@point0/wouter'
 import { beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { navigate as nativeNavigate } from 'wouter/use-browser-location'
 import { createTestThings } from './utils/internal-testing.js'
 import '@testing-library/react/dont-cleanup-after-each'
@@ -117,7 +117,7 @@ const postsPage = layout
     return (
       <div id="posts">
         {data.posts.map((post) => (
-          <>
+          <React.Fragment key={post}>
             <NavLink classNames={getClassNames(`link-post-preview-${post}`)} route="post" input={{ id: post }}>
               link post {post}
             </NavLink>
@@ -144,7 +144,7 @@ const postsPage = layout
                 </button>
               </>
             )}
-          </>
+          </React.Fragment>
         ))}
       </div>
     )
@@ -671,6 +671,69 @@ describe('navigate', () => {
             #from: undefined
             #to: undefined
           #post: post 1
+        "
+      `)
+    })
+  })
+
+  it('visit to 404', async () => {
+    await t.render(homePage.route() + '404', async ({ waitContent, tale, click }) => {
+      await waitContent('Page Not Found')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/404
+          #nav:
+            .link-home.ancestor: home
+            .link-about.unmatched: about
+            .link-posts.unmatched: posts
+            .link-post-1.unmatched: post 1
+            .link-post-2.unmatched: post 2
+          #info:
+            #route: undefined
+            #href: /404
+            #is-navigating: false
+            #from: undefined
+            #to: undefined
+          text: Page Not Found
+        "
+      `)
+    })
+  })
+
+  it('navigate to 404', async () => {
+    await t.render(homePage.route(), async ({ waitContent, tale, click }) => {
+      await waitContent('#home')
+      await navigate({ to: '/404' })
+      await waitContent('Page Not Found')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/
+          #nav:
+            .link-home.exact: home
+            .link-about.unmatched: about
+            .link-posts.unmatched: posts
+            .link-post-1.unmatched: post 1
+            .link-post-2.unmatched: post 2
+          #info:
+            #route: /
+            #href: /
+            #is-navigating: false
+            #from: undefined
+            #to: undefined
+          #home: home
+
+        /404
+          #nav:
+            .link-home.ancestor: home
+            .link-about.unmatched: about
+            .link-posts.unmatched: posts
+            .link-post-1.unmatched: post 1
+            .link-post-2.unmatched: post 2
+          #info:
+            #route: undefined
+            #href: /404
+            #is-navigating: false
+            #from: undefined
+            #to: undefined
+          text: Page Not Found
         "
       `)
     })

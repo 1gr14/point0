@@ -212,7 +212,7 @@ type TestThingsState = {
   waitContent: ElementViewer['waitContent']
   click: (selector: string) => Promise<void>
   _locationCleanup: () => void
-  _notifyManagerCleanup: () => void
+  _notifyManagerCleanup?: () => void
 }
 type FetchPoint = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
@@ -307,11 +307,11 @@ export const createTestThings = async ({
       state.viewer.destroy()
       // Clean up location change listeners
       state._locationCleanup()
-      state._notifyManagerCleanup()
+      state._notifyManagerCleanup?.()
       rtl.cleanup()
     },
     onRunEndInside: async (state) => {
-      state._notifyManagerCleanup()
+      state._notifyManagerCleanup?.()
       rtl.cleanup()
     },
     cookieGetter: CookiesStore.clientDocumentCookieGetter,

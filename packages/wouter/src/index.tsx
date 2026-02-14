@@ -46,6 +46,38 @@ const _useNativeNavigate = () => {
 }
 export const useSimpleNavigate = _wrapUseNavigate(_useNativeNavigate)
 
+// export const createNavigate = <
+//   TRoutes extends RoutesPretty<any>,
+//   TNavigate extends (to: string, ...rest: any[]) => any,
+// >(
+//   routes: TRoutes,
+//   navigate: TNavigate,
+// ) => {
+//   const wrappedNavigate = _wrapNavigate(navigate)
+//   async function navigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
+//     ...args: HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
+//       ? [
+//           route: TRouteName,
+//           input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+//           ...rest: Tail<Parameters<TNavigate>>,
+//         ]
+//       : [
+//           route: TRouteName,
+//           input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+//           ...rest: Tail<Parameters<TNavigate>>,
+//         ]
+//   ): Promise<{ location: AnyLocation; error: Error0 | undefined }> {
+//     const [routeName, input, ...rest] = args
+//     const route = routes[routeName]
+//     if (!route) {
+//       throw new Error0(`Route "${routeName}" not found`)
+//     }
+//     const to = route.flat(input || {}) as string
+//     return await wrappedNavigate(...([to, ...rest] as unknown as Parameters<TNavigate>))
+//   }
+//   return navigate0
+// }
+
 export const createNavigate = <
   TRoutes extends RoutesPretty<any>,
   TNavigate extends (to: string, ...rest: any[]) => any,
@@ -54,7 +86,7 @@ export const createNavigate = <
   navigate: TNavigate,
 ) => {
   const wrappedNavigate = _wrapNavigate(navigate)
-  async function navigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
+  function navigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
     ...args: HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
       ? [
           route: TRouteName,
@@ -66,12 +98,23 @@ export const createNavigate = <
           input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
           ...rest: Tail<Parameters<TNavigate>>,
         ]
-  ): Promise<{ location: AnyLocation; error: Error0 | undefined }> {
-    const [routeName, input, ...rest] = args
+  ): Promise<{ location: AnyLocation; error: Error0 | undefined }>
+  function navigate0(
+    to: { to: string },
+    ...rest: Tail<Parameters<TNavigate>>
+  ): Promise<{ location: AnyLocation; error: Error0 | undefined }>
+  async function navigate0(...args: any[]): Promise<{ location: AnyLocation; error: Error0 | undefined }> {
+    if (typeof args[0] === 'object' && args[0] && typeof args[0].to === 'string') {
+      const [to, ...rest] = args as [{ to: string }, ...Tail<Parameters<TNavigate>>]
+      return await wrappedNavigate(...([to.to, ...rest] as unknown as Parameters<TNavigate>))
+    }
+
+    const [routeName, input, ...rest] = args as [ExtractRoutesKeys<TRoutes>, unknown, ...Tail<Parameters<TNavigate>>]
     const route = routes[routeName]
     if (!route) {
       throw new Error0(`Route "${routeName}" not found`)
     }
+
     const to = route.flat(input || {}) as string
     return await wrappedNavigate(...([to, ...rest] as unknown as Parameters<TNavigate>))
   }
@@ -540,8 +583,10 @@ export const Router = ({
   )
 }
 
+const DefaultPage404 = () => <>Page Not Found</>
+
 export const RouterRoutes = ({
-  Page404 = () => <div>Page Not Found</div>,
+  Page404 = DefaultPage404,
   pagesTree = ClientPoints.getInstance().pagesTree,
 }: {
   Page404?: React.ComponentType
@@ -559,7 +604,7 @@ const combinePagesRoutesToRegexForLayout = (routes: AnyRoute[]) => {
 
 export const RenderPagesTree = ({
   pagesTree = ClientPoints.getInstance().pagesTree,
-  Page404 = () => <div>Page Not Found</div>,
+  Page404 = DefaultPage404,
   level = 0,
 }: {
   pagesTree?: PagesTree
@@ -585,6 +630,9 @@ export const RenderPagesTree = ({
                     )
                   })}
                   {node.nested && <RenderPagesTree pagesTree={node.nested} Page404={Page404} level={level + 1} />}
+                  <Route path="*">
+                    <Page404 />
+                  </Route>
                 </Switch>
               </Layout>
             </Route>
