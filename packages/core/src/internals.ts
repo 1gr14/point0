@@ -8,6 +8,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import type { ClientPoints } from './client-points.js'
 import type { Effects } from './effects.js'
 import type { Request0 } from './request0.js'
+import type { RouterContextValue } from './router.js'
 
 const initUndefined = () => undefined as never
 
@@ -39,6 +40,11 @@ export const _ssItems = {
   ),
   __POINT0_CURRENT_LOCATION__: ss.define<AnyLocation>(
     '__POINT0_CURRENT_LOCATION__',
+    initUndefined,
+    'clientServerIsolated',
+  ),
+  __POINT0_ROUTER_CONTEXT__: ss.define<RouterContextValue>(
+    '__POINT0_ROUTER_CONTEXT__',
     initUndefined,
     'clientServerIsolated',
   ),

@@ -97,6 +97,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         _ssItems.__POINT0_QUERY_CLIENT_FROM_PARENT_RUN__.getWeak() || _ssItems.__POINT0_QUERY_CLIENT__.config.init(),
       __POINT0_SSR_LOCATION__: undefined,
       __POINT0_CURRENT_LOCATION__: new Error('Current location will exists only on ssr phase') as never,
+      __POINT0_ROUTER_CONTEXT__: new Error('Router context will exists only on ssr phase') as never,
       __POINT0_UNHEAD_HEAD__: createHead(),
     } satisfies SuperStoreInternalValues)
     return new Executor<TRequiredCtx>({

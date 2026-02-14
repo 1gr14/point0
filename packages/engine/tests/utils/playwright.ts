@@ -281,7 +281,10 @@ export class PlaywrightPage {
   get requestsTale(): string {
     return this.requestsStory
       .filter((requestStoryItem) => {
-        if ('path' in requestStoryItem && requestStoryItem.path.startsWith('/_bun')) {
+        if (
+          'path' in requestStoryItem &&
+          (requestStoryItem.path.startsWith('/_bun') || requestStoryItem.path.startsWith('/chunk-'))
+        ) {
           return false
         }
         return true

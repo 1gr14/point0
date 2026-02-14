@@ -64,7 +64,7 @@ export type RouterPageState<TStatus extends 'success' | 'loading' | 'error' | 'i
           : never
 >
 
-type RouterContextValue = {
+export type RouterContextValue = {
   ssrLocation: AnyLocation | null
   // isSsr: boolean
   prevLocation: AnyLocation | null
@@ -144,16 +144,18 @@ export function RouterContextProvider({
     [ssrLocation, currentLocation, prevLocation, nextLocation, routerStatus, error, useAdapterLocation],
   )
   useEffect(() => {
-    _routerContextHolder.value = value
+    // _routerContextHolder.value = value
+    _ssItems.__POINT0_ROUTER_CONTEXT__.set(value)
   }, [value])
 
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>
 }
 
-const _routerContextHolder = { value: null as RouterContextValue | null }
+// const _routerContextHolder = { value: null as RouterContextValue | null }
 export const getRouterContext = (): RouterContextValue => {
-  if (_routerContextHolder.value) {
-    return _routerContextHolder.value
+  const routerContext = _ssItems.__POINT0_ROUTER_CONTEXT__.getWeak()
+  if (routerContext) {
+    return routerContext
   }
   throw new Error('RouterContextProvider is not yet initialized')
 }

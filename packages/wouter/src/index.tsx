@@ -161,6 +161,50 @@ type LinkAsChildProps = AsChildProps<
 >
 type LinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> & LinkAsChildProps
 
+export type NavLinkStatus = 'current' | 'parent' | 'nested' | 'none'
+export type NavLinkStatusOptions =
+  | {
+      status: 'current'
+      current: true
+      parent: false
+      nested: false
+      none: false
+    }
+  | {
+      status: 'parent'
+      current: false
+      parent: true
+      nested: false
+      none: false
+    }
+  | {
+      status: 'nested'
+      current: false
+      parent: false
+      nested: true
+      none: false
+    }
+  | {
+      status: 'none'
+      current: false
+      parent: false
+      nested: false
+      none: true
+    }
+type NavLinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> &
+  LinkAsChildProps & {
+    currentClassName?: string
+    parentClassName?: string
+    nestedClassName?: string
+    noneClassName?: string
+    classNames?: Partial<Record<NavLinkStatus, string | undefined>>
+    className?: string | ((options: NavLinkStatusOptions) => string | undefined)
+  }
+
+export const SimpleNavLink = (props: NavLinkProps) => {
+  const location = useLocation()
+}
+
 export const SimpleLink = (props: LinkProps) => {
   const { to, href, onClick, onMouseEnter, onMouseLeave, replace, ...rest } = props as LinkProps & {
     onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => any

@@ -97,7 +97,6 @@ export const withMountedQueryPage = navLayout.lets('page', 'withMountedQuery', '
 `
 
 const pageWithNoneTsx = `import { navLayout } from '../layouts/nav.js'
-
 export const withNonePage = navLayout.lets('page', 'withNone', '/with-none').page(() => <div id="with-none">none</div>)
 `
 
@@ -167,20 +166,20 @@ type ItFn = (done: (err?: unknown) => any) => any
 
 let preventFinalFilesCleanup = false
 function wrp(
-  options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
+  options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean; mode: 'dev' | 'build' },
   callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
 ): ItFn
-function wrp(callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any): ItFn
+// function wrp(callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any): ItFn
 function wrp(
-  ...args:
-    | [callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any]
-    | [
-        options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
-        callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
-      ]
+  ...args: // | [callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any]
+  [
+    options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean; mode: 'dev' | 'build' },
+    callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
+  ]
 ): ItFn {
-  const [options, callback] = args.length === 1 ? [{}, args[0]] : args
-  const { preserve = false, ...tpOptions } = options
+  // const [options, callback] = args.length === 1 ? [{}, args[0]] : args
+  const [options, callback] = args
+  const { preserve = false, mode, ...tpOptions } = options
   if (preserve) {
     preventFinalFilesCleanup = true
   }
@@ -193,7 +192,13 @@ function wrp(
           await tp.cleanup('ports')
           await tp.init()
           await writePages(tp)
-          tp.spawn(['bun', 'run', 'dev'])
+          if (mode === 'dev') {
+            tp.spawn(['bun', 'run', 'dev'])
+          } else {
+            const bp = tp.spawn(['bun', 'run', 'build'])
+            await bp.exited
+            tp.spawn(['bun', 'run', 'start'])
+          }
           await tp.waitStarted()
         } catch (error) {
           if (tryIndex === tries - 1) {
@@ -223,338 +228,88 @@ describe('prefetch-page', () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
   })
 
-  describe('ssr', () => {
-    it(
-      'polh=false, pon=false, hover=smaller',
-      wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ tp }) => {
-        const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
-        expect(tale).toMatchInlineSnapshot(`
-          "/
-            #home: home
-            
-          /with-server
-            div: Loading...
-            
-            #with-server: 1
-            
-          /with-client
-            div: Loading...
-            
-            #with-client: 1
-            
-          /with-both
-            div: Loading...
-            
-            #with-both: 1,2
-            
-          /with-related-query
-            div: Loading...
-            
-            #with-related-query: 1
-            
-          /with-mounted-query
-            div: Loading...
-            
-            #with-mounted-query: 1
-            
-          /with-none
-            #with-none: none
-            "
-        `)
-        expect(requestsTale).toMatchInlineSnapshot(`
-          "GET /
-          root.page.withServer (data)
-          root.page.withBoth (data)
-          root.query.relatedQuery (data)
-          root.query.mountedQuery (data)"
-        `)
-      }),
-    )
+  const modes = ['dev', 'build']
 
-    it(
-      'polh=false, pon=false, hover=bigger',
-      wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ tp }) => {
-        const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
-        expect(tale).toMatchInlineSnapshot(`
-          "/
-            #home: home
-            
-          /with-server
-            div: Loading...
-            
-            #with-server: 1
-            
-          /with-client
-            div: Loading...
-            
-            #with-client: 1
-            
-          /with-both
-            div: Loading...
-            
-            #with-both: 1,2
-            
-          /with-related-query
-            div: Loading...
-            
-            #with-related-query: 1
-            
-          /with-mounted-query
-            div: Loading...
-            
-            #with-mounted-query: 1
-            
-          /with-none
-            #with-none: none
-            "
-        `)
-        expect(requestsTale).toMatchInlineSnapshot(`
-          "GET /
-          root.page.withServer (data)
-          root.page.withBoth (data)
-          root.query.relatedQuery (data)
-          root.query.mountedQuery (data)"
-        `)
-      }),
-    )
-
-    it(
-      'polh=false, pon=everything, hover=smaller',
-      wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ tp }) => {
-        const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
-        expect(tale).toMatchInlineSnapshot(`
-          "/
-            #home: home
-            
-          /with-server
-            #with-server: 1
-            
-          /with-client
-            #with-client: 1
-            
-          /with-both
-            #with-both: 1,2
-            
-          /with-related-query
-            #with-related-query: 1
-            
-          /with-mounted-query
-            #with-mounted-query: 1
-            
-          /with-none
-            #with-none: none
-            "
-        `)
-        expect(requestsTale).toMatchInlineSnapshot(`
-          "GET /
-          root.page.withServer (queryClientDehydratedState)
-          root.page.withClient (queryClientDehydratedState)
-          root.page.withBoth (queryClientDehydratedState)
-          root.page.withRelatedQuery (queryClientDehydratedState)
-          root.page.withMountedQuery (queryClientDehydratedState)
-          root.page.withNone (queryClientDehydratedState)"
-        `)
-      }),
-    )
-
-    it(
-      'polh=false, pon=everything, hover=bigger',
-      wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ tp }) => {
-        const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
-        expect(tale).toMatchInlineSnapshot(`
-          "/
-            #home: home
-            
-          /with-server
-            #with-server: 1
-            
-          /with-client
-            #with-client: 1
-            
-          /with-both
-            #with-both: 1,2
-            
-          /with-related-query
-            #with-related-query: 1
-            
-          /with-mounted-query
-            #with-mounted-query: 1
-            
-          /with-none
-            #with-none: none
-            "
-        `)
-        expect(requestsTale).toMatchInlineSnapshot(`
-          "GET /
-          root.page.withServer (queryClientDehydratedState)
-          root.page.withClient (queryClientDehydratedState)
-          root.page.withBoth (queryClientDehydratedState)
-          root.page.withRelatedQuery (queryClientDehydratedState)
-          root.page.withMountedQuery (queryClientDehydratedState)
-          root.page.withNone (queryClientDehydratedState)"
-        `)
-      }),
-    )
-
-    it(
-      'polh=everything, pon=false, hover=smaller',
-      wrp({ ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false }, async ({ tp }) => {
-        const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
-        expect(tale).toMatchInlineSnapshot(`
-            "/
-              #home: home
-              
-            /with-server
-              div: Loading...
-              
-              #with-server: 1
-              
-            /with-client
-              div: Loading...
-              
-              #with-client: 1
-              
-            /with-both
-              div: Loading...
-              
-              #with-both: 1,2
-              
-            /with-related-query
-              div: Loading...
-              
-              #with-related-query: 1
-              
-            /with-mounted-query
-              div: Loading...
-              
-              #with-mounted-query: 1
-              
-            /with-none
-              #with-none: none
-              "
-          `)
-        // requests looks ugly, but behavior is correct
-        // so better use same policy for prefetchPageOnLinkHover and prefetchPageOnNavigate
-        expect(requestsTale).toMatchInlineSnapshot(`
-          "GET /
-          root.page.withServer (queryClientDehydratedState)
-          root.page.withServer (data)
-          root.page.withClient (queryClientDehydratedState)
-          root.page.withBoth (queryClientDehydratedState)
-          root.page.withBoth (data)
-          root.page.withRelatedQuery (queryClientDehydratedState)
-          root.query.relatedQuery (data)
-          root.page.withMountedQuery (queryClientDehydratedState)
-          root.query.mountedQuery (data)
-          root.page.withNone (queryClientDehydratedState)"
-        `)
-      }),
-    )
-
-    it(
-      'polh=everything, pon=false, hover=bigger',
-      wrp({ ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false }, async ({ tp }) => {
-        const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
-        expect(tale).toMatchInlineSnapshot(`
-            "/
-              #home: home
-              
-            /with-server
-              #with-server: 1
-              
-            /with-client
-              #with-client: 1
-              
-            /with-both
-              #with-both: 1,2
-              
-            /with-related-query
-              #with-related-query: 1
-              
-            /with-mounted-query
-              #with-mounted-query: 1
-              
-            /with-none
-              #with-none: none
-              "
-          `)
-        expect(requestsTale).toMatchInlineSnapshot(`
-            "GET /
-            root.page.withServer (queryClientDehydratedState)
-            root.page.withClient (queryClientDehydratedState)
-            root.page.withBoth (queryClientDehydratedState)
-            root.page.withRelatedQuery (queryClientDehydratedState)
-            root.page.withMountedQuery (queryClientDehydratedState)
-            root.page.withNone (queryClientDehydratedState)"
-          `)
-      }),
-    )
-
-    it(
-      'polh=everything, pon=everything, hover=smaller',
-      wrp(
-        { ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
-        async ({ tp }) => {
+  describe.each(modes as ['dev', 'build'])('%s', (mode) => {
+    describe('ssr', () => {
+      it(
+        'polh=false, pon=false, hover=smaller',
+        wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false, mode }, async ({ tp }) => {
           const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
           expect(tale).toMatchInlineSnapshot(`
-            "/
-              #home: home
-              
-            /with-server
-              #with-server: 1
-              
-            /with-client
-              #with-client: 1
-              
-            /with-both
-              #with-both: 1,2
-              
-            /with-related-query
-              #with-related-query: 1
-              
-            /with-mounted-query
-              #with-mounted-query: 1
-              
-            /with-none
-              #with-none: none
-              "
-          `)
+          "/
+            #home: home
+            
+          /with-server
+            div: Loading...
+            
+            #with-server: 1
+            
+          /with-client
+            div: Loading...
+            
+            #with-client: 1
+            
+          /with-both
+            div: Loading...
+            
+            #with-both: 1,2
+            
+          /with-related-query
+            div: Loading...
+            
+            #with-related-query: 1
+            
+          /with-mounted-query
+            div: Loading...
+            
+            #with-mounted-query: 1
+            
+          /with-none
+            #with-none: none
+            "
+        `)
           expect(requestsTale).toMatchInlineSnapshot(`
-            "GET /
-            root.page.withServer (queryClientDehydratedState)
-            root.page.withClient (queryClientDehydratedState)
-            root.page.withBoth (queryClientDehydratedState)
-            root.page.withRelatedQuery (queryClientDehydratedState)
-            root.page.withMountedQuery (queryClientDehydratedState)
-            root.page.withNone (queryClientDehydratedState)"
-          `)
-        },
-      ),
-    )
+          "GET /
+          root.page.withServer (data)
+          root.page.withBoth (data)
+          root.query.relatedQuery (data)
+          root.query.mountedQuery (data)"
+        `)
+        }),
+      )
 
-    it(
-      'polh=everything, pon=everything, hover=bigger',
-      wrp(
-        { ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
-        async ({ tp }) => {
+      it(
+        'polh=false, pon=false, hover=bigger',
+        wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false, mode }, async ({ tp }) => {
           const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
           expect(tale).toMatchInlineSnapshot(`
             "/
               #home: home
               
             /with-server
+              div: Loading...
+              
               #with-server: 1
               
             /with-client
+              div: Loading...
+              
               #with-client: 1
               
             /with-both
+              div: Loading...
+              
               #with-both: 1,2
               
             /with-related-query
+              div: Loading...
+              
               #with-related-query: 1
               
             /with-mounted-query
+              div: Loading...
+              
               #with-mounted-query: 1
               
             /with-none
@@ -563,296 +318,287 @@ describe('prefetch-page', () => {
           `)
           expect(requestsTale).toMatchInlineSnapshot(`
             "GET /
-            root.page.withServer (queryClientDehydratedState)
-            root.page.withClient (queryClientDehydratedState)
-            root.page.withBoth (queryClientDehydratedState)
-            root.page.withRelatedQuery (queryClientDehydratedState)
-            root.page.withMountedQuery (queryClientDehydratedState)
-            root.page.withNone (queryClientDehydratedState)"
-          `)
-        },
-      ),
-    )
-  })
-
-  describe('spa', () => {
-    it(
-      'polh=false, pon=false, hover=smaller',
-      wrp({ ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ tp }) => {
-        const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
-        expect(tale).toMatchInlineSnapshot(`
-          "/
-            (Empty)
-            
-            #home: home
-            
-          /with-server
-            div: Loading...
-            
-            #with-server: 1
-            
-          /with-client
-            div: Loading...
-            
-            #with-client: 1
-            
-          /with-both
-            div: Loading...
-            
-            #with-both: 1,2
-            
-          /with-related-query
-            div: Loading...
-            
-            #with-related-query: 1
-            
-          /with-mounted-query
-            div: Loading...
-            
-            #with-mounted-query: 1
-            
-          /with-none
-            #with-none: none
-            "
-        `)
-        expect(requestsTale).toMatchInlineSnapshot(`
-          "GET /
-          root.page.withServer (data)
-          root.page.withBoth (data)
-          root.query.relatedQuery (data)
-          root.query.mountedQuery (data)"
-        `)
-      }),
-    )
-
-    it(
-      'polh=false, pon=false, hover=bigger',
-      wrp({ ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ tp }) => {
-        const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
-        expect(tale).toMatchInlineSnapshot(`
-          "/
-            (Empty)
-            
-            #home: home
-            
-          /with-server
-            div: Loading...
-            
-            #with-server: 1
-            
-          /with-client
-            div: Loading...
-            
-            #with-client: 1
-            
-          /with-both
-            div: Loading...
-            
-            #with-both: 1,2
-            
-          /with-related-query
-            div: Loading...
-            
-            #with-related-query: 1
-            
-          /with-mounted-query
-            div: Loading...
-            
-            #with-mounted-query: 1
-            
-          /with-none
-            #with-none: none
-            "
-        `)
-        expect(requestsTale).toMatchInlineSnapshot(`
-          "GET /
-          root.page.withServer (data)
-          root.page.withBoth (data)
-          root.query.relatedQuery (data)
-          root.query.mountedQuery (data)"
-        `)
-      }),
-    )
-
-    it(
-      'polh=false, pon=everything, hover=smaller',
-      wrp({ ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ tp }) => {
-        const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
-        // mounted queries not preloaded, this the reason why we have relatedQuery
-        // mounted queries can be prefetched only in ssr via fetching queryClientDehydratedState
-        expect(tale).toMatchInlineSnapshot(`
-          "/
-            (Empty)
-            
-            #home: home
-            
-          /with-server
-            #with-server: 1
-            
-          /with-client
-            #with-client: 1
-            
-          /with-both
-            #with-both: 1,2
-            
-          /with-related-query
-            #with-related-query: 1
-            
-          /with-mounted-query
-            div: Loading...
-            
-            #with-mounted-query: 1
-            
-          /with-none
-            #with-none: none
-            "
-        `)
-        expect(requestsTale).toMatchInlineSnapshot(`
-          "GET /
-          root.page.withServer (data)
-          root.page.withBoth (data)
-          root.query.relatedQuery (data)
-          root.query.mountedQuery (data)"
-        `)
-      }),
-    )
-
-    it(
-      'polh=false, pon=everything, hover=bigger',
-      wrp({ ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ tp }) => {
-        const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
-        expect(tale).toMatchInlineSnapshot(`
-          "/
-            (Empty)
-            
-            #home: home
-            
-          /with-server
-            #with-server: 1
-            
-          /with-client
-            #with-client: 1
-            
-          /with-both
-            #with-both: 1,2
-            
-          /with-related-query
-            #with-related-query: 1
-            
-          /with-mounted-query
-            div: Loading...
-            
-            #with-mounted-query: 1
-            
-          /with-none
-            #with-none: none
-            "
-        `)
-        expect(requestsTale).toMatchInlineSnapshot(`
-          "GET /
-          root.page.withServer (data)
-          root.page.withBoth (data)
-          root.query.relatedQuery (data)
-          root.query.mountedQuery (data)"
-        `)
-      }),
-    )
-
-    it(
-      'polh=everything, pon=false, hover=smaller',
-      wrp({ ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false }, async ({ tp }) => {
-        const { tale, requestsTale } = await navigatePages(tp, 10)
-        expect(tale).toMatchInlineSnapshot(`
-            "/
-              (Empty)
-              
-              #home: home
-              
-            /with-server
-              div: Loading...
-              
-              #with-server: 1
-              
-            /with-client
-              div: Loading...
-              
-              #with-client: 1
-              
-            /with-both
-              div: Loading...
-              
-              #with-both: 1,2
-              
-            /with-related-query
-              div: Loading...
-              
-              #with-related-query: 1
-              
-            /with-mounted-query
-              div: Loading...
-              
-              #with-mounted-query: 1
-              
-            /with-none
-              #with-none: none
-              "
-          `)
-        expect(requestsTale).toMatchInlineSnapshot(`
-          "GET /
-          root.page.withServer (data)
-          root.page.withBoth (data)
-          root.query.relatedQuery (data)
-          root.query.mountedQuery (data)"
-        `)
-      }),
-    )
-
-    it(
-      'polh=everything, pon=false, hover=bigger',
-      wrp({ ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false }, async ({ tp }) => {
-        const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
-        expect(tale).toMatchInlineSnapshot(`
-            "/
-              (Empty)
-              
-              #home: home
-              
-            /with-server
-              #with-server: 1
-              
-            /with-client
-              #with-client: 1
-              
-            /with-both
-              #with-both: 1,2
-              
-            /with-related-query
-              #with-related-query: 1
-              
-            /with-mounted-query
-              div: Loading...
-              
-              #with-mounted-query: 1
-              
-            /with-none
-              #with-none: none
-              "
-          `)
-        expect(requestsTale).toMatchInlineSnapshot(`
-            "GET /
             root.page.withServer (data)
             root.page.withBoth (data)
             root.query.relatedQuery (data)
             root.query.mountedQuery (data)"
           `)
-      }),
-    )
+        }),
+      )
 
-    it(
-      'polh=everything, pon=everything, hover=smaller',
-      wrp(
-        { ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
-        async ({ tp }) => {
+      it(
+        'polh=false, pon=everything, hover=smaller',
+        wrp(
+          { ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything', mode },
+          async ({ tp }) => {
+            const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
+            expect(tale).toMatchInlineSnapshot(`
+              "/
+                #home: home
+                
+              /with-server
+                #with-server: 1
+                
+              /with-client
+                #with-client: 1
+                
+              /with-both
+                #with-both: 1,2
+                
+              /with-related-query
+                #with-related-query: 1
+                
+              /with-mounted-query
+                #with-mounted-query: 1
+                
+              /with-none
+                #with-none: none
+                "
+            `)
+            expect(requestsTale).toMatchInlineSnapshot(`
+              "GET /
+              root.page.withServer (queryClientDehydratedState)
+              root.page.withClient (queryClientDehydratedState)
+              root.page.withBoth (queryClientDehydratedState)
+              root.page.withRelatedQuery (queryClientDehydratedState)
+              root.page.withMountedQuery (queryClientDehydratedState)
+              root.page.withNone (queryClientDehydratedState)"
+            `)
+          },
+        ),
+      )
+
+      it(
+        'polh=false, pon=everything, hover=bigger',
+        wrp(
+          { ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything', mode },
+          async ({ tp }) => {
+            const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+            expect(tale).toMatchInlineSnapshot(`
+              "/
+                #home: home
+                
+              /with-server
+                #with-server: 1
+                
+              /with-client
+                #with-client: 1
+                
+              /with-both
+                #with-both: 1,2
+                
+              /with-related-query
+                #with-related-query: 1
+                
+              /with-mounted-query
+                #with-mounted-query: 1
+                
+              /with-none
+                #with-none: none
+                "
+            `)
+            expect(requestsTale).toMatchInlineSnapshot(`
+              "GET /
+              root.page.withServer (queryClientDehydratedState)
+              root.page.withClient (queryClientDehydratedState)
+              root.page.withBoth (queryClientDehydratedState)
+              root.page.withRelatedQuery (queryClientDehydratedState)
+              root.page.withMountedQuery (queryClientDehydratedState)
+              root.page.withNone (queryClientDehydratedState)"
+            `)
+          },
+        ),
+      )
+
+      it(
+        'polh=everything, pon=false, hover=smaller',
+        wrp(
+          { ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false, mode },
+          async ({ tp }) => {
+            const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
+            expect(tale).toMatchInlineSnapshot(`
+              "/
+                #home: home
+                
+              /with-server
+                div: Loading...
+                
+                #with-server: 1
+                
+              /with-client
+                div: Loading...
+                
+                #with-client: 1
+                
+              /with-both
+                div: Loading...
+                
+                #with-both: 1,2
+                
+              /with-related-query
+                div: Loading...
+                
+                #with-related-query: 1
+                
+              /with-mounted-query
+                div: Loading...
+                
+                #with-mounted-query: 1
+                
+              /with-none
+                #with-none: none
+                "
+            `)
+            // requests looks ugly, but behavior is correct
+            // so better use same policy for prefetchPageOnLinkHover and prefetchPageOnNavigate
+            expect(requestsTale).toMatchInlineSnapshot(`
+              "GET /
+              root.page.withServer (queryClientDehydratedState)
+              root.page.withServer (data)
+              root.page.withClient (queryClientDehydratedState)
+              root.page.withBoth (queryClientDehydratedState)
+              root.page.withBoth (data)
+              root.page.withRelatedQuery (queryClientDehydratedState)
+              root.query.relatedQuery (data)
+              root.page.withMountedQuery (queryClientDehydratedState)
+              root.query.mountedQuery (data)
+              root.page.withNone (queryClientDehydratedState)"
+            `)
+          },
+        ),
+      )
+
+      it(
+        'polh=everything, pon=false, hover=bigger',
+        wrp(
+          { ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false, mode },
+          async ({ tp }) => {
+            const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+            expect(tale).toMatchInlineSnapshot(`
+              "/
+                #home: home
+                
+              /with-server
+                #with-server: 1
+                
+              /with-client
+                #with-client: 1
+                
+              /with-both
+                #with-both: 1,2
+                
+              /with-related-query
+                #with-related-query: 1
+                
+              /with-mounted-query
+                #with-mounted-query: 1
+                
+              /with-none
+                #with-none: none
+                "
+            `)
+            expect(requestsTale).toMatchInlineSnapshot(`
+              "GET /
+              root.page.withServer (queryClientDehydratedState)
+              root.page.withClient (queryClientDehydratedState)
+              root.page.withBoth (queryClientDehydratedState)
+              root.page.withRelatedQuery (queryClientDehydratedState)
+              root.page.withMountedQuery (queryClientDehydratedState)
+              root.page.withNone (queryClientDehydratedState)"
+            `)
+          },
+        ),
+      )
+
+      it(
+        'polh=everything, pon=everything, hover=smaller',
+        wrp(
+          { ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything', mode },
+          async ({ tp }) => {
+            const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
+            expect(tale).toMatchInlineSnapshot(`
+              "/
+                #home: home
+                
+              /with-server
+                #with-server: 1
+                
+              /with-client
+                #with-client: 1
+                
+              /with-both
+                #with-both: 1,2
+                
+              /with-related-query
+                #with-related-query: 1
+                
+              /with-mounted-query
+                #with-mounted-query: 1
+                
+              /with-none
+                #with-none: none
+                "
+            `)
+            expect(requestsTale).toMatchInlineSnapshot(`
+              "GET /
+              root.page.withServer (queryClientDehydratedState)
+              root.page.withClient (queryClientDehydratedState)
+              root.page.withBoth (queryClientDehydratedState)
+              root.page.withRelatedQuery (queryClientDehydratedState)
+              root.page.withMountedQuery (queryClientDehydratedState)
+              root.page.withNone (queryClientDehydratedState)"
+            `)
+          },
+        ),
+      )
+
+      it(
+        'polh=everything, pon=everything, hover=bigger',
+        wrp(
+          { ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything', mode },
+          async ({ tp }) => {
+            const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+            expect(tale).toMatchInlineSnapshot(`
+              "/
+                #home: home
+                
+              /with-server
+                #with-server: 1
+                
+              /with-client
+                #with-client: 1
+                
+              /with-both
+                #with-both: 1,2
+                
+              /with-related-query
+                #with-related-query: 1
+                
+              /with-mounted-query
+                #with-mounted-query: 1
+                
+              /with-none
+                #with-none: none
+                "
+            `)
+            expect(requestsTale).toMatchInlineSnapshot(`
+              "GET /
+              root.page.withServer (queryClientDehydratedState)
+              root.page.withClient (queryClientDehydratedState)
+              root.page.withBoth (queryClientDehydratedState)
+              root.page.withRelatedQuery (queryClientDehydratedState)
+              root.page.withMountedQuery (queryClientDehydratedState)
+              root.page.withNone (queryClientDehydratedState)"
+            `)
+          },
+        ),
+      )
+    })
+
+    describe('spa', () => {
+      it(
+        'polh=false, pon=false, hover=smaller',
+        wrp({ ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false, mode }, async ({ tp }) => {
           const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
           expect(tale).toMatchInlineSnapshot(`
             "/
@@ -861,15 +607,23 @@ describe('prefetch-page', () => {
               #home: home
               
             /with-server
+              div: Loading...
+              
               #with-server: 1
               
             /with-client
+              div: Loading...
+              
               #with-client: 1
               
             /with-both
+              div: Loading...
+              
               #with-both: 1,2
               
             /with-related-query
+              div: Loading...
+              
               #with-related-query: 1
               
             /with-mounted-query
@@ -888,15 +642,12 @@ describe('prefetch-page', () => {
             root.query.relatedQuery (data)
             root.query.mountedQuery (data)"
           `)
-        },
-      ),
-    )
+        }),
+      )
 
-    it(
-      'polh=everything, pon=everything, hover=bigger',
-      wrp(
-        { ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
-        async ({ tp }) => {
+      it(
+        'polh=false, pon=false, hover=bigger',
+        wrp({ ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false, mode }, async ({ tp }) => {
           const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
           expect(tale).toMatchInlineSnapshot(`
             "/
@@ -905,15 +656,23 @@ describe('prefetch-page', () => {
               #home: home
               
             /with-server
+              div: Loading...
+              
               #with-server: 1
               
             /with-client
+              div: Loading...
+              
               #with-client: 1
               
             /with-both
+              div: Loading...
+              
               #with-both: 1,2
               
             /with-related-query
+              div: Loading...
+              
               #with-related-query: 1
               
             /with-mounted-query
@@ -932,8 +691,282 @@ describe('prefetch-page', () => {
             root.query.relatedQuery (data)
             root.query.mountedQuery (data)"
           `)
-        },
-      ),
-    )
+        }),
+      )
+
+      it(
+        'polh=false, pon=everything, hover=smaller',
+        wrp(
+          { ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything', mode },
+          async ({ tp }) => {
+            const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
+            // mounted queries not preloaded, this the reason why we have relatedQuery
+            // mounted queries can be prefetched only in ssr via fetching queryClientDehydratedState
+            expect(tale).toMatchInlineSnapshot(`
+              "/
+                (Empty)
+                
+                #home: home
+                
+              /with-server
+                #with-server: 1
+                
+              /with-client
+                #with-client: 1
+                
+              /with-both
+                #with-both: 1,2
+                
+              /with-related-query
+                #with-related-query: 1
+                
+              /with-mounted-query
+                div: Loading...
+                
+                #with-mounted-query: 1
+                
+              /with-none
+                #with-none: none
+                "
+            `)
+            expect(requestsTale).toMatchInlineSnapshot(`
+              "GET /
+              root.page.withServer (data)
+              root.page.withBoth (data)
+              root.query.relatedQuery (data)
+              root.query.mountedQuery (data)"
+            `)
+          },
+        ),
+      )
+
+      it(
+        'polh=false, pon=everything, hover=bigger',
+        wrp(
+          { ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything', mode },
+          async ({ tp }) => {
+            const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+            expect(tale).toMatchInlineSnapshot(`
+              "/
+                (Empty)
+                
+                #home: home
+                
+              /with-server
+                #with-server: 1
+                
+              /with-client
+                #with-client: 1
+                
+              /with-both
+                #with-both: 1,2
+                
+              /with-related-query
+                #with-related-query: 1
+                
+              /with-mounted-query
+                div: Loading...
+                
+                #with-mounted-query: 1
+                
+              /with-none
+                #with-none: none
+                "
+            `)
+            expect(requestsTale).toMatchInlineSnapshot(`
+              "GET /
+              root.page.withServer (data)
+              root.page.withBoth (data)
+              root.query.relatedQuery (data)
+              root.query.mountedQuery (data)"
+            `)
+          },
+        ),
+      )
+
+      it(
+        'polh=everything, pon=false, hover=smaller',
+        wrp(
+          { ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false, mode },
+          async ({ tp }) => {
+            const { tale, requestsTale } = await navigatePages(tp, 10)
+            expect(tale).toMatchInlineSnapshot(`
+              "/
+                (Empty)
+                
+                #home: home
+                
+              /with-server
+                div: Loading...
+                
+                #with-server: 1
+                
+              /with-client
+                div: Loading...
+                
+                #with-client: 1
+                
+              /with-both
+                div: Loading...
+                
+                #with-both: 1,2
+                
+              /with-related-query
+                div: Loading...
+                
+                #with-related-query: 1
+                
+              /with-mounted-query
+                div: Loading...
+                
+                #with-mounted-query: 1
+                
+              /with-none
+                #with-none: none
+                "
+            `)
+            expect(requestsTale).toMatchInlineSnapshot(`
+              "GET /
+              root.page.withServer (data)
+              root.page.withBoth (data)
+              root.query.relatedQuery (data)
+              root.query.mountedQuery (data)"
+            `)
+          },
+        ),
+      )
+
+      it(
+        'polh=everything, pon=false, hover=bigger',
+        wrp(
+          { ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false, mode },
+          async ({ tp }) => {
+            const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+            expect(tale).toMatchInlineSnapshot(`
+              "/
+                (Empty)
+                
+                #home: home
+                
+              /with-server
+                #with-server: 1
+                
+              /with-client
+                #with-client: 1
+                
+              /with-both
+                #with-both: 1,2
+                
+              /with-related-query
+                #with-related-query: 1
+                
+              /with-mounted-query
+                div: Loading...
+                
+                #with-mounted-query: 1
+                
+              /with-none
+                #with-none: none
+                "
+            `)
+            expect(requestsTale).toMatchInlineSnapshot(`
+              "GET /
+              root.page.withServer (data)
+              root.page.withBoth (data)
+              root.query.relatedQuery (data)
+              root.query.mountedQuery (data)"
+            `)
+          },
+        ),
+      )
+
+      it(
+        'polh=everything, pon=everything, hover=smaller',
+        wrp(
+          { ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything', mode },
+          async ({ tp }) => {
+            const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
+            expect(tale).toMatchInlineSnapshot(`
+              "/
+                (Empty)
+                
+                #home: home
+                
+              /with-server
+                #with-server: 1
+                
+              /with-client
+                #with-client: 1
+                
+              /with-both
+                #with-both: 1,2
+                
+              /with-related-query
+                #with-related-query: 1
+                
+              /with-mounted-query
+                div: Loading...
+                
+                #with-mounted-query: 1
+                
+              /with-none
+                #with-none: none
+                "
+            `)
+            expect(requestsTale).toMatchInlineSnapshot(`
+            "GET /
+            root.page.withServer (data)
+            root.page.withBoth (data)
+            root.query.relatedQuery (data)
+            root.query.mountedQuery (data)"
+          `)
+          },
+        ),
+      )
+
+      it(
+        'polh=everything, pon=everything, hover=bigger',
+        wrp(
+          { ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything', mode },
+          async ({ tp }) => {
+            const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+            expect(tale).toMatchInlineSnapshot(`
+              "/
+                (Empty)
+                
+                #home: home
+                
+              /with-server
+                #with-server: 1
+                
+              /with-client
+                #with-client: 1
+                
+              /with-both
+                #with-both: 1,2
+                
+              /with-related-query
+                #with-related-query: 1
+                
+              /with-mounted-query
+                div: Loading...
+                
+                #with-mounted-query: 1
+                
+              /with-none
+                #with-none: none
+                "
+            `)
+            expect(requestsTale).toMatchInlineSnapshot(`
+              "GET /
+              root.page.withServer (data)
+              root.page.withBoth (data)
+              root.query.relatedQuery (data)
+              root.query.mountedQuery (data)"
+            `)
+          },
+        ),
+      )
+    })
   })
 })
