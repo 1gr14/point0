@@ -1,7 +1,7 @@
 import { chromium, type Browser, type Page } from 'playwright'
 import { HtmlView } from './html-view.js'
 import { throwOnHelperLogFnCalling } from './other.js'
-import type { PointName, PointsScope, ReadyPointType } from '@point0/core'
+import type { FetchServerOutputType, PointName, PointsScope, ReadyPointType } from '@point0/core'
 
 export interface PlaywrightBrowserInitOptions {
   headless?: boolean
@@ -96,10 +96,13 @@ export type PagePointRequestStoryItem = {
   scope: PointsScope
   name: PointName
   type: ReadyPointType
+  result: 'finished' | 'failed'
+  output: FetchServerOutputType
 }
 export type PageNonPointRequestStoryItem = {
   path: string
   method: string
+  result: 'finished' | 'failed'
 }
 export type PageRequestStoryItem = PagePointRequestStoryItem | PageNonPointRequestStoryItem
 
@@ -255,11 +258,14 @@ export class PlaywrightPage {
           const scope = parsed.searchParams.get('scope')
           const name = parsed.searchParams.get('name')
           const type = parsed.searchParams.get('type')
-          if (scope && name && type) {
+          const output = parsed.searchParams.get('output')
+          if (scope && name && type && output) {
             return {
               scope,
               name,
               type: type as ReadyPointType,
+              result: request.result,
+              output: output as FetchServerOutputType,
             }
           }
         }
@@ -267,6 +273,7 @@ export class PlaywrightPage {
       return {
         method: request.method,
         path: PlaywrightPage.prettifyUrl(request.url),
+        result: request.result,
       }
     })
   }
@@ -280,10 +287,12 @@ export class PlaywrightPage {
         return true
       })
       .map((requestStoryItem) => {
+        const errorPrefix = requestStoryItem.result === 'failed' ? `failed ` : ''
         if ('scope' in requestStoryItem) {
-          return `${requestStoryItem.scope}.${requestStoryItem.type}.${requestStoryItem.name}`
+          const outputTypeSuffix = ` (${requestStoryItem.output})`
+          return `${errorPrefix}${requestStoryItem.scope}.${requestStoryItem.type}.${requestStoryItem.name}${outputTypeSuffix}`
         }
-        return `${requestStoryItem.method} ${requestStoryItem.path}`
+        return `${errorPrefix}${requestStoryItem.method} ${requestStoryItem.path}`
       })
       .join('\n')
   }

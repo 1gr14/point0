@@ -371,7 +371,7 @@ export class Point0<
   private readonly _polhPolicy: PrefetchPagePolicy | undefined
   private readonly _polhDuration: number | undefined
   private readonly _ponPolicy: PrefetchPagePolicy | undefined
-  private readonly _getPrefetchPagePolicy = (
+  readonly _getPrefetchPagePolicy = (
     trigger: 'navigate' | 'linkHover' | undefined,
     fallback: PrefetchPagePolicy | undefined,
   ) => (trigger === 'linkHover' ? this._polhPolicy : trigger === 'navigate' ? this._ponPolicy : fallback) ?? 'none'
@@ -6574,17 +6574,48 @@ export class Point0<
     )
 
     const relatedQueriesPrefetching = Promise.all(
-      allRelatedQueries.map(async (relatedQuery) => {
-        if (relatedQuery.point._queryResultType === 'infiniteQuery') {
-          return await relatedQuery.point.prefetchInfiniteQuery(
+      allRelatedQueries.flatMap(async (relatedQuery) => {
+        const p = relatedQuery.point
+        if (policy === 'onPrefetchPageOnly') {
+          return []
+        }
+        if (policy === 'everything' && !p._hasClientLoader() && queryClientDehydratedStateWasPrefetched) {
+          return []
+        }
+        if (policy === 'clientQuery' && !p._hasClientLoader()) {
+          return []
+        }
+        const mode =
+          policy === 'everything'
+            ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step
+              queryClientDehydratedStateWasPrefetched
+              ? 'client'
+              : 'serverAndClient'
+            : {
+                serverQuery: 'server' as const,
+                clientQuery: 'client' as const,
+                serverClientQuery: 'serverAndClient' as const,
+              }[policy]
+        if (p._queryResultType === 'infiniteQuery') {
+          return await p.prefetchInfiniteQuery(
             relatedQuery.inputGetter({ location }),
             relatedQuery.queryOptions as never,
+            {
+              queryClient,
+              location,
+              fetchOptions,
+              force,
+              mode,
+            },
           )
         } else {
-          return await relatedQuery.point.prefetchQuery(
-            relatedQuery.inputGetter({ location }),
-            relatedQuery.queryOptions as never,
-          )
+          return await p.prefetchQuery(relatedQuery.inputGetter({ location }), relatedQuery.queryOptions as never, {
+            queryClient,
+            location,
+            fetchOptions,
+            force,
+            mode,
+          })
         }
       }),
     )
@@ -6600,6 +6631,7 @@ export class Point0<
         if (policy === 'clientQuery' && !p._hasClientLoader()) {
           return []
         }
+        // for self we get input, all others is layouts so we calculate its input by page
         const inputHere = p === (this as never as ReadyPoint) ? input : p._getUnsafeInputRawByLocation(location)
         const mode =
           policy === 'everything'
