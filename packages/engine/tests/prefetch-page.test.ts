@@ -8,13 +8,13 @@ import type { Engine } from '../src/engine.js'
 setDefaultTimeout(20000)
 
 const tpf = TestProjectFactory.create({
-  namespace: 'navigate',
+  namespace: 'prefetch-page',
   portsRange: [3400, 3499],
 })
 
 const loaderDuration = 300
 const hoverBiggerThanLoaderDuration = 400
-const hoverSmallerThanLoaderDuration = 150
+const hoverSmallerThanLoaderDuration = 50
 
 const layoutNavTsx = `import { root } from '../lib/root.js'
 import { SimpleLink } from '@point0/wouter'
@@ -72,7 +72,12 @@ export const withBothPage = navLayout.lets('page', 'withBoth', 'with-both')
 
 const pageWithRelatedQueryTsx = `import { navLayout } from '../layouts/nav.js'
 import { root } from '../lib/root.js'
-export const relatedQuery = root.lets('query', 'relatedQuery').loader(() => ({ x: 1 })).query()
+export const relatedQuery = root.lets('query', 'relatedQuery')
+  .loader(async () => {
+    await new Promise((r) => setTimeout(r, ${loaderDuration}))
+    return { x: 1 }
+  })
+  .query()
 export const withRelatedQueryPage = navLayout.lets('page', 'withRelatedQuery', 'with-related-query')
   .relatedQuery(relatedQuery)
   .page(({ data }) => <div id="with-related-query">{data.x}</div>)
@@ -80,7 +85,12 @@ export const withRelatedQueryPage = navLayout.lets('page', 'withRelatedQuery', '
 
 const pageWithMountedQueryTsx = `import { navLayout } from '../layouts/nav.js'
 import { root } from '../lib/root.js'
-export const mountedQuery = root.lets('query', 'mountedQuery').loader(() => ({ x: 1 })).query()
+export const mountedQuery = root.lets('query', 'mountedQuery')
+  .loader(async () => {
+    await new Promise((r) => setTimeout(r, ${loaderDuration}))
+    return { x: 1 }
+  })
+  .query()
 export const withMountedQueryPage = navLayout.lets('page', 'withMountedQuery', 'with-mounted-query')
   .with(mountedQuery)
   .page(({ data }) => <div id="with-mounted-query">{data.x}</div>)
@@ -203,7 +213,7 @@ function wrp(
   }
 }
 
-describe('navigate', () => {
+describe('prefetch-page', () => {
   beforeAll(async () => {
     await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
     tpf.setBrowser(await PlaywrightBrowser.init())
@@ -395,31 +405,47 @@ describe('navigate', () => {
               #home: home
               
             /with-server
+              div: Loading...
+              
               #with-server: 1
               
             /with-client
+              div: Loading...
+              
               #with-client: 1
               
             /with-both
+              div: Loading...
+              
               #with-both: 1,2
               
             /with-related-query
+              div: Loading...
+              
               #with-related-query: 1
               
             /with-mounted-query
+              div: Loading...
+              
               #with-mounted-query: 1
               
             /with-none
               #with-none: none
               "
           `)
+        // requests looks ugly, but behavior is correct
+        // so better use same policy for prefetchPageOnLinkHover and prefetchPageOnNavigate
         expect(requestsTale).toMatchInlineSnapshot(`
           "GET /
           root.page.withServer (queryClientDehydratedState)
+          root.page.withServer (data)
           root.page.withClient (queryClientDehydratedState)
           root.page.withBoth (queryClientDehydratedState)
+          root.page.withBoth (data)
           root.page.withRelatedQuery (queryClientDehydratedState)
+          root.query.relatedQuery (data)
           root.page.withMountedQuery (queryClientDehydratedState)
+          root.query.mountedQuery (data)
           root.page.withNone (queryClientDehydratedState)"
         `)
       }),
@@ -734,20 +760,22 @@ describe('navigate', () => {
 
     it(
       'polh=everything, pon=false, hover=smaller',
-      wrp(
-        { ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false, preserve: true },
-        async ({ tp }) => {
-          const { tale, requestsTale } = await navigatePages(tp, 10)
-          expect(tale).toMatchInlineSnapshot(`
+      wrp({ ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false }, async ({ tp }) => {
+        const { tale, requestsTale } = await navigatePages(tp, 10)
+        expect(tale).toMatchInlineSnapshot(`
             "/
               (Empty)
               
               #home: home
               
             /with-server
+              div: Loading...
+              
               #with-server: 1
               
             /with-client
+              div: Loading...
+              
               #with-client: 1
               
             /with-both
@@ -769,15 +797,14 @@ describe('navigate', () => {
               #with-none: none
               "
           `)
-          expect(requestsTale).toMatchInlineSnapshot(`
+        expect(requestsTale).toMatchInlineSnapshot(`
           "GET /
           root.page.withServer (data)
           root.page.withBoth (data)
           root.query.relatedQuery (data)
           root.query.mountedQuery (data)"
         `)
-        },
-      ),
+      }),
     )
 
     it(

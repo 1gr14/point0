@@ -114,8 +114,6 @@ on fetch error maybe no json, then if it is thore, do res.text()
 
 
 === ROUTING ===
-Tests for prefetch page and on link hover
-
 Роут стейты, перфетчинг тразититонинг, а также добавить еррор саксес лоадинг который мы и берём и пейдж стейта
 
 wouter add to Link match result, so we can use current, active, aprent, exact, etc (location => className)
