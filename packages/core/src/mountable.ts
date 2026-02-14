@@ -486,9 +486,9 @@ export type GlobalHeadFn<
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type PageExtraInnerProps = {}
-export type PageLocation<TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition> =
-  | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
-  | WeakChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
+export type PageLocation<TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition> = ExactLocation<
+  CurrentRouteDefinition<TRouteDefinition>
+>
 export type PageSuccessComponentProps<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInnerProps extends Props,

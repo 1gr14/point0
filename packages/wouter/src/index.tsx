@@ -2,13 +2,23 @@ import { Error0 } from '@devp0nt/error0'
 import type {
   AnyLocation,
   AnyRoute,
+  ExactLocation,
   ExtractRoute,
   ExtractRoutesKeys,
   FlatInputWithHash,
   HasParams,
   RoutesPretty,
 } from '@devp0nt/route0'
-import type { PagesTree, RouterStatus, UseAdapterLocationFn } from '@point0/core'
+import type {
+  AnyPoint,
+  ReadyPoint,
+  getRouterContext,
+  NormalizedLazyPointsCollectionRecord,
+  ReadyPointsCollectionRecord,
+  type PagesTree,
+  type RouterStatus,
+  type UseAdapterLocationFn,
+} from '@point0/core'
 import {
   _ssItems,
   _wrapNavigate,
@@ -161,58 +171,69 @@ type LinkAsChildProps = AsChildProps<
 >
 type LinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> & LinkAsChildProps
 
-export type NavLinkStatus = 'current' | 'parent' | 'nested' | 'none'
-export type NavLinkStatusOptions =
+export type NavLinkStateName = 'exact' | 'ancestor' | 'descendant' | 'unmatched'
+export type NavLinkStateOptions =
   | {
-      status: 'current'
-      current: true
-      parent: false
-      nested: false
-      none: false
+      status: 'exact'
+      exact: true
+      ancestor: false
+      descendant: false
+      unmatched: false
     }
   | {
-      status: 'parent'
-      current: false
-      parent: true
-      nested: false
-      none: false
+      status: 'ancestor'
+      exact: false
+      ancestor: true
+      descendant: false
+      unmatched: false
     }
   | {
-      status: 'nested'
-      current: false
-      parent: false
-      nested: true
-      none: false
+      status: 'descendant'
+      exact: false
+      ancestor: false
+      descendant: true
+      unmatched: false
     }
   | {
-      status: 'none'
-      current: false
-      parent: false
-      nested: false
-      none: true
+      status: 'unmatched'
+      exact: false
+      ancestor: false
+      descendant: false
+      unmatched: true
     }
 type NavLinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> &
   LinkAsChildProps & {
-    currentClassName?: string
-    parentClassName?: string
-    nestedClassName?: string
-    noneClassName?: string
-    classNames?: Partial<Record<NavLinkStatus, string | undefined>>
-    className?: string | ((options: NavLinkStatusOptions) => string | undefined)
+    exactClassName?: string
+    ancestorClassName?: string
+    descendantClassName?: string
+    unmatchedClassName?: string
+    classNames?: Partial<Record<NavLinkStateName, string | undefined>>
+    className?: string | ((options: NavLinkStateOptions) => string | undefined)
   }
 
-export const SimpleNavLink = (props: NavLinkProps) => {
-  const location = useLocation()
-}
-
-export const SimpleLink = (props: LinkProps) => {
-  const { to, href, onClick, onMouseEnter, onMouseLeave, replace, ...rest } = props as LinkProps & {
+const _getWouterLinkProps = (
+  props: LinkProps,
+): {
+  wouterLinkProps: LinkProps
+  navigate: ReturnType<typeof useSimpleNavigate>
+  to: string
+  pointWithLocation:
+    | { point: NormalizedLazyPointsCollectionRecord | ReadyPointsCollectionRecord; location: AnyLocation }
+    | undefined
+} => {
+  const {
+    to,
+    href,
+    onClick: providedOnClick,
+    onMouseEnter: providedOnMouseEnter,
+    onMouseLeave: providedOnMouseLeave,
+    replace,
+    ...rest
+  } = props as LinkProps & {
     onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => any
     onMouseLeave?: (e: React.MouseEvent<HTMLAnchorElement>) => any
   }
   const navigate = useSimpleNavigate()
-  const location = useLocation()
-  const routerCtx = useRouterContext()
   const finalTo = to || href || '#'
   const prefetchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const pointWithLocation = useMemo(() => {
@@ -220,60 +241,165 @@ export const SimpleLink = (props: LinkProps) => {
       return undefined
     }
     if (finalTo.startsWith('#')) {
-      const hashSuffix = !routerCtx.addHashToLocation ? '' : finalTo
-      return ClientPoints.getInstance()._getPageByHref(location.pathname + hashSuffix)
+      return undefined
     }
     return ClientPoints.getInstance()._getPageByHref(finalTo)
-  }, [finalTo, location, routerCtx.addHashToLocation])
-  return (
-    <WouterLink
-      {...rest}
-      {...{
-        onMouseEnter: (e) => {
-          if (pointWithLocation && pointWithLocation.point.polh !== false) {
-            // Clear any existing timeout
-            if (prefetchTimeoutRef.current) {
-              clearTimeout(prefetchTimeoutRef.current)
-            }
-            // Set a N ms delay before prefetching
-            prefetchTimeoutRef.current = setTimeout(
-              () => {
-                prefetchTimeoutRef.current = null
-                ClientPoints.getInstance()
-                  .prefetchPage({
-                    location: pointWithLocation.location,
-                    trigger: 'linkHover',
-                  })
-                  .catch((e: unknown) => {
-                    // TODO: replace with onClientError handler
-                    console.error('Failed to prefetch page on hover', e)
-                  })
-              },
-              pointWithLocation.point.polh === true ? 30 : pointWithLocation.point.polh,
-            )
-          }
-          void onMouseEnter?.(e)
-        },
-        onMouseLeave: (e) => {
-          // Cancel prefetch if mouse leaves before the N ms delay completes
-          if (prefetchTimeoutRef.current) {
-            clearTimeout(prefetchTimeoutRef.current)
+  }, [finalTo])
+  const onMouseEnter = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      if (pointWithLocation && pointWithLocation.point.polh !== false) {
+        // Clear any existing timeout
+        if (prefetchTimeoutRef.current) {
+          clearTimeout(prefetchTimeoutRef.current)
+        }
+        // Set a N ms delay before prefetching
+        prefetchTimeoutRef.current = setTimeout(
+          () => {
             prefetchTimeoutRef.current = null
-          }
-          void onMouseLeave?.(e)
-        },
-      }}
-      to={finalTo}
-      replace={replace}
-      onClick={(e) => {
-        if (e.metaKey || e.ctrlKey) return
-        e.preventDefault()
-        void navigate(finalTo, { replace })
-        onClick?.(e)
-      }}
-    />
+            ClientPoints.getInstance()
+              .prefetchPage({
+                location: pointWithLocation.location,
+                trigger: 'linkHover',
+              })
+              .catch((e: unknown) => {
+                // TODO: replace with onClientError handler
+                console.error('Failed to prefetch page on hover', e)
+              })
+          },
+          pointWithLocation.point.polh === true ? 30 : pointWithLocation.point.polh,
+        )
+      }
+      void providedOnMouseEnter?.(e)
+    },
+    [pointWithLocation],
   )
+  const onMouseLeave = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      if (prefetchTimeoutRef.current) {
+        clearTimeout(prefetchTimeoutRef.current)
+        prefetchTimeoutRef.current = null
+      }
+      void providedOnMouseLeave?.(e)
+    },
+    [prefetchTimeoutRef],
+  )
+  const onClick = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      if (e.metaKey || e.ctrlKey) return
+      e.preventDefault()
+      void navigate(finalTo, { replace })
+      providedOnClick?.(e)
+    },
+    [finalTo, replace, navigate, providedOnClick],
+  )
+  return {
+    navigate,
+    to: finalTo,
+    pointWithLocation,
+    wouterLinkProps: {
+      ...rest,
+      onMouseEnter,
+      onMouseLeave,
+      to: finalTo,
+      replace,
+      onClick,
+    } as LinkProps,
+  }
 }
+
+export const SimpleNavLink = (props: NavLinkProps) => {
+  const { pointWithLocation, wouterLinkProps } = _getWouterLinkProps(props)
+  const location = useLocation(pointWithLocation?.point.route)
+  const statusOptions = useMemo(() => {
+    const result = { status: 'unmatched', exact: false, ancestor: false, descendant: false, unmatched: true }
+    if (location.exact) {
+      return { ...result, exact: true, status: 'exact' }
+    }
+    if (location.ancestor) {
+      return { ...result, ancestor: true, status: 'ancestor' }
+    }
+    if (location.descendant) {
+      return { ...result, descendant: true, status: 'descendant' }
+    }
+    return result
+  }, [location])
+  return <WouterLink {...wouterLinkProps} />
+}
+
+export const SimpleLink = (props: LinkProps) => {
+  const { wouterLinkProps } = _getWouterLinkProps(props)
+  return <WouterLink {...wouterLinkProps} />
+}
+
+// export const SimpleLink = (props: LinkProps) => {
+//   const { to, href, onClick, onMouseEnter, onMouseLeave, replace, ...rest } = props as LinkProps & {
+//     onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => any
+//     onMouseLeave?: (e: React.MouseEvent<HTMLAnchorElement>) => any
+//   }
+//   const navigate = useSimpleNavigate()
+//   const location = useLocation()
+//   const routerCtx = useRouterContext()
+//   const finalTo = to || href || '#'
+//   const prefetchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+//   const pointWithLocation = useMemo(() => {
+//     if (!finalTo) {
+//       return undefined
+//     }
+//     if (finalTo.startsWith('#')) {
+//       const hashSuffix = !routerCtx.addHashToLocation ? '' : finalTo
+//       return ClientPoints.getInstance()._getPageByHref(location.pathname + hashSuffix)
+//     }
+//     return ClientPoints.getInstance()._getPageByHref(finalTo)
+//   }, [finalTo, location, routerCtx.addHashToLocation])
+//   return (
+//     <WouterLink
+//       {...rest}
+//       {...{
+//         onMouseEnter: (e) => {
+//           if (pointWithLocation && pointWithLocation.point.polh !== false) {
+//             // Clear any existing timeout
+//             if (prefetchTimeoutRef.current) {
+//               clearTimeout(prefetchTimeoutRef.current)
+//             }
+//             // Set a N ms delay before prefetching
+//             prefetchTimeoutRef.current = setTimeout(
+//               () => {
+//                 prefetchTimeoutRef.current = null
+//                 ClientPoints.getInstance()
+//                   .prefetchPage({
+//                     location: pointWithLocation.location,
+//                     trigger: 'linkHover',
+//                   })
+//                   .catch((e: unknown) => {
+//                     // TODO: replace with onClientError handler
+//                     console.error('Failed to prefetch page on hover', e)
+//                   })
+//               },
+//               pointWithLocation.point.polh === true ? 30 : pointWithLocation.point.polh,
+//             )
+//           }
+//           void onMouseEnter?.(e)
+//         },
+//         onMouseLeave: (e) => {
+//           // Cancel prefetch if mouse leaves before the N ms delay completes
+//           if (prefetchTimeoutRef.current) {
+//             clearTimeout(prefetchTimeoutRef.current)
+//             prefetchTimeoutRef.current = null
+//           }
+//           void onMouseLeave?.(e)
+//         },
+//       }}
+//       to={finalTo}
+//       replace={replace}
+//       onClick={(e) => {
+//         if (e.metaKey || e.ctrlKey) return
+//         e.preventDefault()
+//         void navigate(finalTo, { replace })
+//         onClick?.(e)
+//       }}
+//     />
+//   )
+// }
 
 export const createLink0 = <
   TRoutes extends RoutesPretty<any>,
