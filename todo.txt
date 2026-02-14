@@ -52,12 +52,12 @@ try catch evertywhere in engine to show real error in real place
 --+
 try engine dev with usual dev process wothout manual restarting
 killPort: true for engine, and remove withRetries for server starting
+detect if client servable via server or not, and then do or not fetchPoint
 --+
 Разобраться с эррор баундари для фронта
 bun watcher, not parcel watcher
 ? html transformer not regex hack
 --+
-combinedInput → sharedInput
 Remove comments, unusde code, unused types (except core/point0.ts and core/types.ts)
 Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп
 При обнаружении поинта, который при своей инициализации не наблюдает над собой компилера судя по процесс енв, он должен сделать консоль варн что мол компилер забыли включить или импортнули его в энжине незаконно без асунк импорта, это можно отключить
@@ -292,6 +292,7 @@ binary, just throw error if some engine distdirs not inside firstlevel server di
 ? Инпут парам в инфинити квери должен быть именно из сервер инпута
 Написать тест на дефолтный инпут функцию где на входе пустота а на выходе что-то
 Проверить расширяемость инпута на юниты
+combinedInput → sharedInput
 
 
 
