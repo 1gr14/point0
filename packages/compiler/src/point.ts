@@ -323,15 +323,26 @@ export class CompilerPoint<TValid extends boolean = any> {
     // Go through chain methods (from child to parent), return first prefetchPageOnLinkHover value found.
     for (const method of [...this.chainMethods].reverse()) {
       if (method.name === 'prefetchPageOnLinkHover') {
-        if (method.nodePath.node.type !== 'CallExpression' || method.nodePath.node.arguments.length === 0) {
+        if (method.nodePath.node.type !== 'CallExpression') {
           continue
         }
-        const firstArg = method.nodePath.node.arguments[0]
-        if (firstArg.type === 'BooleanLiteral') {
-          return firstArg.value
+        const firstArg = method.nodePath.node.arguments.at(0)
+        if (!firstArg) {
+          continue
         }
-        if (firstArg.type === 'NumericLiteral') {
-          return firstArg.value
+        const secondArg = method.nodePath.node.arguments.at(1)
+        const duration = secondArg?.type === 'NumericLiteral' ? secondArg.value : undefined
+        if (firstArg.type === 'BooleanLiteral') {
+          if (!firstArg.value) {
+            return false
+          }
+          return duration ?? true
+        }
+        if (firstArg.type === 'StringLiteral') {
+          if (firstArg.value === 'none') {
+            return false
+          }
+          return duration ?? true
         }
       }
     }
@@ -791,7 +802,15 @@ export class CompilerPoint<TValid extends boolean = any> {
       if (method.name === 'clientOn') {
         this.removeLastMethodArg({ nodePath: method.nodePath })
       }
-      if (['scrollPosition', 'scrollRestore', 'onPrefetch', 'prefetchPageOnLinkHover'].includes(method.name)) {
+      if (
+        [
+          'scrollPosition',
+          'scrollRestore',
+          'onPrefetchPage',
+          'prefetchPageOnNavigate',
+          'prefetchPageOnLinkHover',
+        ].includes(method.name)
+      ) {
         this.removeMethodArgs({ nodePath: method.nodePath })
       } else if (!method.underSsr) {
         if (method.name === 'page') {

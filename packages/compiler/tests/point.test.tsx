@@ -500,7 +500,10 @@ export const l3 = b2.lets('layout', 'l3').layout()
 export const root = Point0.lets('root', 'root').prefetchPageOnLinkHover(true).root()
 export const p1 = root.lets('page', 'p1', '/').prefetchPageOnLinkHover(false).page(() => <div>Hello</div>)
 export const p2 = p1.lets('page', 'p2', 'r2').page(() => <div>Hello</div>)
-export const p3 = p2.lets('page', 'p3', '/r3').prefetchPageOnLinkHover(100).page(() => <div>Hello</div>)
+export const p3 = p2.lets('page', 'p3', '/r3').prefetchPageOnLinkHover('evertyhing').page(() => <div>Hello</div>)
+export const p4 = p3.lets('page', 'p4', '/r4').prefetchPageOnLinkHover('none').page(() => <div>Hello</div>)
+export const p5 = p4.lets('page', 'p5', '/r5').prefetchPageOnLinkHover('evertyhing', 100).page(() => <div>Hello</div>)
+export const p6 = p5.lets('page', 'p6', '/r6').prefetchPageOnLinkHover('none', 100).page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -526,7 +529,25 @@ export const p3 = p2.lets('page', 'p3', '/r3').prefetchPageOnLinkHover(100).page
         expect(parsed[3]).toMatchObject({
           valid: true,
           name: 'p3',
+          polh: true,
+          baseurl: undefined,
+        })
+        expect(parsed[4]).toMatchObject({
+          valid: true,
+          name: 'p4',
+          polh: false,
+          baseurl: undefined,
+        })
+        expect(parsed[5]).toMatchObject({
+          valid: true,
+          name: 'p5',
           polh: 100,
+          baseurl: undefined,
+        })
+        expect(parsed[6]).toMatchObject({
+          valid: true,
+          name: 'p6',
+          polh: false,
           baseurl: undefined,
         })
       }),

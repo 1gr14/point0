@@ -369,29 +369,15 @@ export class Point0<
   private readonly _scrollPositionRestorePolicy: ScrollPositionRestorePolicy | undefined
   private readonly _getScrollPositionRestorePolicy = () => this._scrollPositionRestorePolicy ?? (() => null)
   private readonly _polhPolicy: PrefetchPagePolicy | undefined
+  private readonly _polhDuration: number | undefined
   private readonly _ponPolicy: PrefetchPagePolicy | undefined
   private readonly _getPrefetchPagePolicy = (
     trigger: 'navigate' | 'linkHover' | undefined,
     fallback: PrefetchPagePolicy | undefined,
-  ) =>
-    (trigger === 'linkHover'
-      ? this.polh === false
-        ? 'none'
-        : this._polhPolicy
-      : trigger === 'navigate'
-        ? // eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
-          this.pon === false
-          ? 'none'
-          : this._ponPolicy
-        : fallback) ?? 'everything'
+  ) => (trigger === 'linkHover' ? this._polhPolicy : trigger === 'navigate' ? this._ponPolicy : fallback) ?? 'none'
   private readonly _onPrefetchPageFns: OnPrefetchPageFn[]
-  readonly _polh: boolean | number | undefined
-  readonly _pon: boolean | undefined
   get polh(): boolean | number {
-    return this._polh ?? true
-  }
-  get pon(): boolean {
-    return this._pon ?? true
+    return !this._polhPolicy || this._polhPolicy === 'none' ? false : (this._polhDuration ?? true)
   }
   private readonly _ProviderReactContext: Context<MountableSuccessData<TQueriesDefinitions, TMapperOutput>> | undefined
   private readonly _errorComponent: ErrorComponentType<DestinationComponentVariant> | undefined
@@ -511,10 +497,9 @@ export class Point0<
     _scrollPositionSetter?: ScrollPositionSetter | undefined
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy | undefined
     _polhPolicy?: PrefetchPagePolicy | undefined
+    _polhDuration?: number | undefined
     _ponPolicy?: PrefetchPagePolicy | undefined
     _onPrefetchPageFns?: OnPrefetchPageFn[]
-    _polh?: boolean | number | undefined
-    _pon?: boolean | undefined
     _errorComponent?: ErrorComponentType<any>
     _layoutErrorComponent?: ErrorComponentType<any>
     _pageErrorComponent?: ErrorComponentType<any>
@@ -569,10 +554,9 @@ export class Point0<
     this._scrollPositionSetter = options._scrollPositionSetter ?? undefined
     this._scrollPositionRestorePolicy = options._scrollPositionRestorePolicy ?? undefined
     this._polhPolicy = options._polhPolicy ?? undefined
+    this._polhDuration = options._polhDuration ?? undefined
     this._ponPolicy = options._ponPolicy ?? undefined
     this._onPrefetchPageFns = options._onPrefetchPageFns ?? []
-    this._polh = options._polh ?? undefined
-    this._pon = options._pon ?? undefined
     this._layoutErrorComponent = options._layoutErrorComponent ?? undefined
     this._pageErrorComponent = options._pageErrorComponent ?? undefined
     this._componentErrorComponent = options._componentErrorComponent ?? undefined
@@ -659,10 +643,9 @@ export class Point0<
     _scrollPositionSetter?: ScrollPositionSetter | undefined
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy | undefined
     _polhPolicy?: PrefetchPagePolicy | undefined
+    _polhDuration?: number | undefined
     _ponPolicy?: PrefetchPagePolicy | undefined
     _onPrefetchPageFns?: OnPrefetchPageFn[]
-    _polh?: boolean | number | undefined
-    _pon?: boolean | undefined
     _errorComponent?: ErrorComponentType<any> | undefined
     _layoutErrorComponent?: ErrorComponentType<any> | undefined
     _pageErrorComponent?: ErrorComponentType<any> | undefined
@@ -759,10 +742,9 @@ export class Point0<
       _scrollPositionSetter: overrides._scrollPositionSetter ?? this._scrollPositionSetter,
       _scrollPositionRestorePolicy: overrides._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy,
       _polhPolicy: overrides._polhPolicy ?? this._polhPolicy,
+      _polhDuration: overrides._polhDuration ?? this._polhDuration,
       _ponPolicy: overrides._ponPolicy ?? this._ponPolicy,
       _onPrefetchPageFns: overrides._onPrefetchPageFns ?? this._onPrefetchPageFns,
-      _polh: overrides._polh ?? this._polh,
-      _pon: overrides._pon ?? this._pon,
       _errorComponent: (overrides._errorComponent ?? this._errorComponent) as never,
       _layoutErrorComponent: (overrides._layoutErrorComponent ?? this._layoutErrorComponent) as never,
       _pageErrorComponent: (overrides._pageErrorComponent ?? this._pageErrorComponent) as never,
@@ -2248,8 +2230,8 @@ export class Point0<
   }
 
   prefetchPageOnLinkHover(
-    enabled: boolean | number,
-    policy?: PrefetchPagePolicy,
+    policy: PrefetchPagePolicy | boolean,
+    duration?: number,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -2268,57 +2250,18 @@ export class Point0<
     TQueriesDefinitions
   >
   prefetchPageOnLinkHover(
-    policy: PrefetchPagePolicy,
-    enabled?: number,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  prefetchPageOnLinkHover(
-    ...args: [enabled?: boolean | number, policy?: PrefetchPagePolicy] | [policy?: PrefetchPagePolicy, enabled?: number]
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
-    const [policy, enabled] = (typeof args[0] === 'string' ? [args[0], args[1]] : [args[1], args[0]]) as [
-      PrefetchPagePolicy | undefined,
-      number | boolean | undefined,
-    ]
+    policy?: PrefetchPagePolicy | boolean, // in case if it was shaked for nossr server
+    duration?: number,
+  ) {
+    const policyNormalized = typeof policy === 'boolean' ? (policy ? 'everything' : 'none') : policy
     return this._continue({
-      ...(enabled !== undefined ? { _polh: enabled } : {}),
-      ...(policy !== undefined ? { _polhPolicy: policy } : {}),
+      _polhPolicy: policyNormalized,
+      _polhDuration: duration,
     }) as never
   }
 
   prefetchPageOnNavigate(
-    enabled: boolean,
-    policy?: PrefetchPagePolicy,
+    policy: PrefetchPagePolicy | boolean,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -2337,51 +2280,11 @@ export class Point0<
     TQueriesDefinitions
   >
   prefetchPageOnNavigate(
-    policy: PrefetchPagePolicy,
-    enabled?: boolean,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  prefetchPageOnNavigate(
-    ...args: [enabled?: boolean, policy?: PrefetchPagePolicy] | [policy?: PrefetchPagePolicy, enabled?: boolean]
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
-    const [policy, enabled] = (typeof args[0] === 'string' ? [args[0], args[1]] : [args[1], args[0]]) as [
-      PrefetchPagePolicy | undefined,
-      boolean | undefined,
-    ]
+    policy?: PrefetchPagePolicy | boolean, // in case if it was shaked for nossr server
+  ) {
+    const policyNormalized = typeof policy === 'boolean' ? (policy ? 'everything' : 'none') : policy
     return this._continue({
-      ...(enabled !== undefined ? { _pon: enabled } : {}),
-      ...(policy !== undefined ? { _polhPolicy: policy } : {}),
+      _ponPolicy: policyNormalized,
     }) as never
   }
 
@@ -3537,9 +3440,9 @@ export class Point0<
       _scrollPositionSetter: this._base?._scrollPositionSetter,
       _scrollPositionRestorePolicy: this._base?._scrollPositionRestorePolicy,
       _polhPolicy: this._base?._polhPolicy,
+      _polhDuration: this._base?._polhDuration,
       _ponPolicy: this._base?._ponPolicy,
       _onPrefetchPageFns: this._base?._onPrefetchPageFns,
-      _polh: this._base?._polh,
       _errorComponent: undefined,
       _layoutErrorComponent: this._base?._layoutErrorComponent as never,
       _pageErrorComponent: this._base?._pageErrorComponent as never,
@@ -4069,9 +3972,9 @@ export class Point0<
       _scrollPositionSetter: point._scrollPositionSetter,
       _scrollPositionRestorePolicy: point._scrollPositionRestorePolicy,
       _polhPolicy: point._polhPolicy,
+      _polhDuration: point._polhDuration,
       _ponPolicy: point._ponPolicy,
       _onPrefetchPageFns: [...this._onPrefetchPageFns, ...point._onPrefetchPageFns],
-      _polh: point._polh,
       _errorComponent: point._errorComponent,
       _layoutErrorComponent: point._layoutErrorComponent,
       _pageErrorComponent: point._pageErrorComponent,

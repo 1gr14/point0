@@ -3,7 +3,6 @@ import type { PlaywrightPage } from './utils/playwright.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
 import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 import { TestProjectFactory } from './utils/project.js'
-import type { PrefetchPagePolicy } from '@point0/core'
 import type { Engine } from '../src/engine.js'
 
 setDefaultTimeout(20000)
@@ -53,9 +52,9 @@ const pageWithClientTsx = `import { navLayout } from '../layouts/nav.js'
 export const withClientPage = navLayout.lets('page', 'withClient', 'with-client')
   .clientLoader(async () => {
     await new Promise((r) => setTimeout(r, ${loaderDuration}))
-    return { y: 2 }
+    return { x: 1 }
   })
-  .page(({ data }) => <div id="with-client">{data.y}</div>)
+  .page(({ data }) => <div id="with-client">{data.x}</div>)
 `
 
 const pageWithBothTsx = `import { navLayout } from '../layouts/nav.js'
@@ -103,14 +102,21 @@ async function writePages(tp: TestProject) {
   await tp.write('src/pages/with-none.tsx', pageWithNoneTsx)
 }
 
-async function navigatePages(tp: TestProject, hover: number | false): Promise<{ tale: string; page: PlaywrightPage }> {
+async function navigatePages(
+  tp: TestProject,
+  hover: number | false,
+): Promise<{ tale: string; requestsTale: string; page: PlaywrightPage }> {
   const page = await tp.gotoServer('/')
   const click = async (selector: string) => {
+    const link = page.original.getByRole('link', { name: selector, exact: true })
     if (hover !== false) {
-      await page.original.getByText(selector).hover()
+      await link.hover()
+      // React's onMouseEnter is synthesized from mouseover/mouseout listeners.
+      // Dispatch mouseover explicitly to make hover prefetch deterministic in tests.
+      await link.dispatchEvent('mouseover')
       await new Promise((resolve) => setTimeout(resolve, hover))
     }
-    await page.original.getByText(selector).click()
+    await link.click()
   }
   await page.waitContent('#home')
 
@@ -132,7 +138,7 @@ async function navigatePages(tp: TestProject, hover: number | false): Promise<{ 
   await click('/with-none')
   await page.waitContent('#with-none')
 
-  return { tale: getTale(page), page }
+  return { tale: getTale(page), requestsTale: page.requestsTale, page }
 }
 
 const getTale = (page: PlaywrightPage) => {
@@ -216,16 +222,106 @@ describe('navigate', () => {
     it(
       'polh=false, pon=false, hover=false',
       wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ tp }) => {
-        const { tale } = await navigatePages(tp, false)
-        expect(tale).toMatchInlineSnapshot()
+        const { tale, requestsTale } = await navigatePages(tp, false)
+        expect(tale).toMatchInlineSnapshot(`
+          "/
+            div:
+              #home: home
+            
+          /with-server
+            div:
+              div: Loading...
+            
+            div:
+              #with-server: 1
+            
+          /with-client
+            div:
+              div: Loading...
+            
+            div:
+              #with-client: 1
+            
+          /with-both
+            div:
+              div: Loading...
+            
+            div:
+              #with-both: 1,2
+            
+          /with-related-query
+            div:
+              div: Loading...
+            
+            div:
+              #with-related-query: 1
+            
+          /with-mounted-query
+            div:
+              div: Loading...
+            
+            div:
+              #with-mounted-query: 1
+            
+          /with-none
+            div:
+              #with-none: none
+            "
+        `)
+        expect(requestsTale).toMatchInlineSnapshot()
       }),
     )
 
     it(
       'polh=false, pon=false, hover=bigger',
       wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ tp }) => {
-        const { tale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
-        expect(tale).toMatchInlineSnapshot()
+        const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+        expect(tale).toMatchInlineSnapshot(`
+          "/
+            div:
+              #home: home
+            
+          /with-server
+            div:
+              div: Loading...
+            
+            div:
+              #with-server: 1
+            
+          /with-client
+            div:
+              div: Loading...
+            
+            div:
+              #with-client: 1
+            
+          /with-both
+            div:
+              div: Loading...
+            
+            div:
+              #with-both: 1,2
+            
+          /with-related-query
+            div:
+              div: Loading...
+            
+            div:
+              #with-related-query: 1
+            
+          /with-mounted-query
+            div:
+              div: Loading...
+            
+            div:
+              #with-mounted-query: 1
+            
+          /with-none
+            div:
+              #with-none: none
+            "
+        `)
+        expect(requestsTale).toMatchInlineSnapshot()
       }),
     )
 
@@ -234,28 +330,271 @@ describe('navigate', () => {
     it(
       'polh=false, pon=everything, hover=false',
       wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ tp }) => {
-        const { tale } = await navigatePages(tp, false)
-        expect(tale).toMatchInlineSnapshot()
+        const { tale, requestsTale } = await navigatePages(tp, false)
+        expect(tale).toMatchInlineSnapshot(`
+          "/
+            div:
+              #home: home
+            
+          /with-server
+            div:
+              #with-server: 1
+            
+          /with-client
+            div:
+              #with-client: 1
+            
+          /with-both
+            div:
+              #with-both: 1,2
+            
+          /with-related-query
+            div:
+              #with-related-query: 1
+            
+          /with-mounted-query
+            div:
+              #with-mounted-query: 1
+            
+          /with-none
+            div:
+              #with-none: none
+            "
+        `)
+        expect(requestsTale).toMatchInlineSnapshot()
       }),
     )
 
     it(
       'polh=false, pon=everything, hover=bigger',
       wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ tp }) => {
-        const { tale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
-        expect(tale).toMatchInlineSnapshot()
+        const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+        expect(tale).toMatchInlineSnapshot(`
+          "/
+            div:
+              #home: home
+            
+          /with-server
+            div:
+              #with-server: 1
+            
+          /with-client
+            div:
+              #with-client: 1
+            
+          /with-both
+            div:
+              #with-both: 1,2
+            
+          /with-related-query
+            div:
+              #with-related-query: 1
+            
+          /with-mounted-query
+            div:
+              #with-mounted-query: 1
+            
+          /with-none
+            div:
+              #with-none: none
+            "
+        `)
+        expect(requestsTale).toMatchInlineSnapshot()
       }),
     )
 
     // skip hover=smaller becouse nothing should be changed when polh=false, pon=everything
 
     it(
+      'polh=everything, pon=false, hover=false',
+      wrp({ ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false }, async ({ tp }) => {
+        const { tale, requestsTale } = await navigatePages(tp, false)
+        expect(tale).toMatchInlineSnapshot(`
+            "/
+              div:
+                #home: home
+              
+            /with-server
+              div:
+                div: Loading...
+              
+              div:
+                #with-server: 1
+              
+            /with-client
+              div:
+                div: Loading...
+              
+              div:
+                #with-client: 1
+              
+            /with-both
+              div:
+                div: Loading...
+              
+              div:
+                #with-both: 1,2
+              
+            /with-related-query
+              div:
+                div: Loading...
+              
+              div:
+                #with-related-query: 1
+              
+            /with-mounted-query
+              div:
+                div: Loading...
+              
+              div:
+                #with-mounted-query: 1
+              
+            /with-none
+              div:
+                #with-none: none
+              "
+          `)
+        expect(requestsTale).toMatchInlineSnapshot()
+      }),
+    )
+
+    it(
+      'polh=everything, pon=false, hover=bigger',
+      wrp({ ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false }, async ({ tp }) => {
+        const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+        expect(tale).toMatchInlineSnapshot(`
+            "/
+              div:
+                #home: home
+              
+            /with-server
+              div:
+                #with-server: 1
+              
+            /with-client
+              div:
+                #with-client: 1
+              
+            /with-both
+              div:
+                #with-both: 1,2
+              
+            /with-related-query
+              div:
+                #with-related-query: 1
+              
+            /with-mounted-query
+              div:
+                #with-mounted-query: 1
+              
+            /with-none
+              div:
+                #with-none: none
+              "
+          `)
+        expect(requestsTale).toMatchInlineSnapshot(`
+            "url GET /
+            url GET /_bun/client/index-00000000565b345f.js
+            point root.page.withServer
+            point root.page.withClient
+            point root.page.withBoth
+            point root.page.withRelatedQuery
+            point root.page.withMountedQuery
+            point root.page.withNone"
+          `)
+      }),
+    )
+
+    it(
+      'polh=everything, pon=false, hover=smaller',
+      wrp({ ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false }, async ({ tp }) => {
+        const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
+        expect(tale).toMatchInlineSnapshot(`
+            "/
+              div:
+                #home: home
+              
+            /with-server
+              div:
+                div: Loading...
+              
+              div:
+                #with-server: 1
+              
+            /with-client
+              div:
+                div: Loading...
+              
+              div:
+                #with-client: 1
+              
+            /with-both
+              div:
+                div: Loading...
+              
+              div:
+                #with-both: 1,2
+              
+            /with-related-query
+              div:
+                div: Loading...
+              
+              div:
+                #with-related-query: 1
+              
+            /with-mounted-query
+              div:
+                div: Loading...
+              
+              div:
+                #with-mounted-query: 1
+              
+            /with-none
+              div:
+                #with-none: none
+              "
+          `)
+        expect(requestsTale).toMatchInlineSnapshot()
+      }),
+    )
+
+    it(
       'polh=everything, pon=everything, hover=false',
       wrp(
         { ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
         async ({ tp }) => {
-          const { tale } = await navigatePages(tp, false)
-          expect(tale).toMatchInlineSnapshot()
+          const { tale, requestsTale } = await navigatePages(tp, false)
+          expect(tale).toMatchInlineSnapshot(`
+            "/
+              div:
+                #home: home
+              
+            /with-server
+              div:
+                #with-server: 1
+              
+            /with-client
+              div:
+                #with-client: 1
+              
+            /with-both
+              div:
+                #with-both: 1,2
+              
+            /with-related-query
+              div:
+                #with-related-query: 1
+              
+            /with-mounted-query
+              div:
+                #with-mounted-query: 1
+              
+            /with-none
+              div:
+                #with-none: none
+              "
+          `)
+          expect(requestsTale).toMatchInlineSnapshot()
         },
       ),
     )
@@ -265,8 +604,38 @@ describe('navigate', () => {
       wrp(
         { ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
         async ({ tp }) => {
-          const { tale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
-          expect(tale).toMatchInlineSnapshot()
+          const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+          expect(tale).toMatchInlineSnapshot(`
+            "/
+              div:
+                #home: home
+              
+            /with-server
+              div:
+                #with-server: 1
+              
+            /with-client
+              div:
+                #with-client: 1
+              
+            /with-both
+              div:
+                #with-both: 1,2
+              
+            /with-related-query
+              div:
+                #with-related-query: 1
+              
+            /with-mounted-query
+              div:
+                #with-mounted-query: 1
+              
+            /with-none
+              div:
+                #with-none: none
+              "
+          `)
+          expect(requestsTale).toMatchInlineSnapshot()
         },
       ),
     )
@@ -276,8 +645,38 @@ describe('navigate', () => {
       wrp(
         { ssr: true, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
         async ({ tp }) => {
-          const { tale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
-          expect(tale).toMatchInlineSnapshot()
+          const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
+          expect(tale).toMatchInlineSnapshot(`
+            "/
+              div:
+                #home: home
+              
+            /with-server
+              div:
+                #with-server: 1
+              
+            /with-client
+              div:
+                #with-client: 1
+              
+            /with-both
+              div:
+                #with-both: 1,2
+              
+            /with-related-query
+              div:
+                #with-related-query: 1
+              
+            /with-mounted-query
+              div:
+                #with-mounted-query: 1
+              
+            /with-none
+              div:
+                #with-none: none
+              "
+          `)
+          expect(requestsTale).toMatchInlineSnapshot()
         },
       ),
     )
@@ -287,16 +686,110 @@ describe('navigate', () => {
     it(
       'polh=false, pon=false, hover=false',
       wrp({ ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ tp }) => {
-        const { tale } = await navigatePages(tp, false)
-        expect(tale).toMatchInlineSnapshot()
+        const { tale, requestsTale } = await navigatePages(tp, false)
+        expect(tale).toMatchInlineSnapshot(`
+          "/
+            (Empty)
+            
+            div:
+              #home: home
+            
+          /with-server
+            div:
+              div: Loading...
+            
+            div:
+              #with-server: 1
+            
+          /with-client
+            div:
+              div: Loading...
+            
+            div:
+              #with-client: 1
+            
+          /with-both
+            div:
+              div: Loading...
+            
+            div:
+              #with-both: 1,2
+            
+          /with-related-query
+            div:
+              div: Loading...
+            
+            div:
+              #with-related-query: 1
+            
+          /with-mounted-query
+            div:
+              div: Loading...
+            
+            div:
+              #with-mounted-query: 1
+            
+          /with-none
+            div:
+              #with-none: none
+            "
+        `)
+        expect(requestsTale).toMatchInlineSnapshot()
       }),
     )
 
     it(
       'polh=false, pon=false, hover=bigger',
       wrp({ ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ tp }) => {
-        const { tale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
-        expect(tale).toMatchInlineSnapshot()
+        const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+        expect(tale).toMatchInlineSnapshot(`
+          "/
+            (Empty)
+            
+            div:
+              #home: home
+            
+          /with-server
+            div:
+              div: Loading...
+            
+            div:
+              #with-server: 1
+            
+          /with-client
+            div:
+              div: Loading...
+            
+            div:
+              #with-client: 1
+            
+          /with-both
+            div:
+              div: Loading...
+            
+            div:
+              #with-both: 1,2
+            
+          /with-related-query
+            div:
+              div: Loading...
+            
+            div:
+              #with-related-query: 1
+            
+          /with-mounted-query
+            div:
+              div: Loading...
+            
+            div:
+              #with-mounted-query: 1
+            
+          /with-none
+            div:
+              #with-none: none
+            "
+        `)
+        expect(requestsTale).toMatchInlineSnapshot()
       }),
     )
 
@@ -305,16 +798,86 @@ describe('navigate', () => {
     it(
       'polh=false, pon=everything, hover=false',
       wrp({ ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ tp }) => {
-        const { tale } = await navigatePages(tp, false)
-        expect(tale).toMatchInlineSnapshot()
+        const { tale, requestsTale } = await navigatePages(tp, false)
+        expect(tale).toMatchInlineSnapshot(`
+          "/
+            (Empty)
+            
+            div:
+              #home: home
+            
+          /with-server
+            div:
+              #with-server: 1
+            
+          /with-client
+            div:
+              #with-client: 1
+            
+          /with-both
+            div:
+              #with-both: 1,2
+            
+          /with-related-query
+            div:
+              #with-related-query: 1
+            
+          /with-mounted-query
+            div:
+              div: Loading...
+            
+            div:
+              #with-mounted-query: 1
+            
+          /with-none
+            div:
+              #with-none: none
+            "
+        `)
+        expect(requestsTale).toMatchInlineSnapshot()
       }),
     )
 
     it(
       'polh=false, pon=everything, hover=bigger',
       wrp({ ssr: false, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ tp }) => {
-        const { tale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
-        expect(tale).toMatchInlineSnapshot()
+        const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+        expect(tale).toMatchInlineSnapshot(`
+          "/
+            (Empty)
+            
+            div:
+              #home: home
+            
+          /with-server
+            div:
+              #with-server: 1
+            
+          /with-client
+            div:
+              #with-client: 1
+            
+          /with-both
+            div:
+              #with-both: 1,2
+            
+          /with-related-query
+            div:
+              #with-related-query: 1
+            
+          /with-mounted-query
+            div:
+              div: Loading...
+            
+            div:
+              #with-mounted-query: 1
+            
+          /with-none
+            div:
+              #with-none: none
+            "
+        `)
+        expect(requestsTale).toMatchInlineSnapshot()
       }),
     )
 
@@ -325,8 +888,43 @@ describe('navigate', () => {
       wrp(
         { ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
         async ({ tp }) => {
-          const { tale } = await navigatePages(tp, false)
-          expect(tale).toMatchInlineSnapshot()
+          const { tale, requestsTale } = await navigatePages(tp, false)
+          expect(tale).toMatchInlineSnapshot(`
+            "/
+              (Empty)
+              
+              div:
+                #home: home
+              
+            /with-server
+              div:
+                #with-server: 1
+              
+            /with-client
+              div:
+                #with-client: 1
+              
+            /with-both
+              div:
+                #with-both: 1,2
+              
+            /with-related-query
+              div:
+                #with-related-query: 1
+              
+            /with-mounted-query
+              div:
+                div: Loading...
+              
+              div:
+                #with-mounted-query: 1
+              
+            /with-none
+              div:
+                #with-none: none
+              "
+          `)
+          expect(requestsTale).toMatchInlineSnapshot()
         },
       ),
     )
@@ -336,8 +934,43 @@ describe('navigate', () => {
       wrp(
         { ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
         async ({ tp }) => {
-          const { tale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
-          expect(tale).toMatchInlineSnapshot()
+          const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration)
+          expect(tale).toMatchInlineSnapshot(`
+            "/
+              (Empty)
+              
+              div:
+                #home: home
+              
+            /with-server
+              div:
+                #with-server: 1
+              
+            /with-client
+              div:
+                #with-client: 1
+              
+            /with-both
+              div:
+                #with-both: 1,2
+              
+            /with-related-query
+              div:
+                #with-related-query: 1
+              
+            /with-mounted-query
+              div:
+                div: Loading...
+              
+              div:
+                #with-mounted-query: 1
+              
+            /with-none
+              div:
+                #with-none: none
+              "
+          `)
+          expect(requestsTale).toMatchInlineSnapshot()
         },
       ),
     )
@@ -347,8 +980,43 @@ describe('navigate', () => {
       wrp(
         { ssr: false, prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' },
         async ({ tp }) => {
-          const { tale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
-          expect(tale).toMatchInlineSnapshot()
+          const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration)
+          expect(tale).toMatchInlineSnapshot(`
+            "/
+              (Empty)
+              
+              div:
+                #home: home
+              
+            /with-server
+              div:
+                #with-server: 1
+              
+            /with-client
+              div:
+                #with-client: 1
+              
+            /with-both
+              div:
+                #with-both: 1,2
+              
+            /with-related-query
+              div:
+                #with-related-query: 1
+              
+            /with-mounted-query
+              div:
+                div: Loading...
+              
+              div:
+                #with-mounted-query: 1
+              
+            /with-none
+              div:
+                #with-none: none
+              "
+          `)
+          expect(requestsTale).toMatchInlineSnapshot()
         },
       ),
     )

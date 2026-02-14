@@ -1,6 +1,7 @@
 import { chromium, type Browser, type Page } from 'playwright'
 import { HtmlView } from './html-view.js'
 import { throwOnHelperLogFnCalling } from './other.js'
+import type { PointName, PointsScope, ReadyPointType } from '@point0/core'
 
 export interface PlaywrightBrowserInitOptions {
   headless?: boolean
@@ -65,6 +66,7 @@ export type PageHistoryItem = {
   url: string
   htmls: Array<HtmlView<true>>
   logs: PlaywrightPageLogEntry[]
+  requests: PlaywrightPageRequestEntry[]
 }
 
 export type PageStoryItem = {
@@ -78,6 +80,28 @@ export type PlaywrightPageLogEntry = {
   type: string
   text: string
 }
+
+export type PlaywrightPageRequestEntry = {
+  timestamp: number
+  method: string
+  url: string
+  resourceType: string
+  result: 'finished' | 'failed'
+  status: number | null
+  ok: boolean | null
+  failureText: string | null
+}
+
+export type PagePointRequestStoryItem = {
+  scope: PointsScope
+  name: PointName
+  type: ReadyPointType
+}
+export type PageNonPointRequestStoryItem = {
+  path: string
+  method: string
+}
+export type PageRequestStoryItem = PagePointRequestStoryItem | PageNonPointRequestStoryItem
 
 export class PlaywrightPage {
   original: Page
@@ -111,7 +135,7 @@ export class PlaywrightPage {
     // Listen for navigation to start a new history bucket
     this.original.on('framenavigated', (frame) => {
       if (frame !== this.original.mainFrame()) return
-      this.history.push({ url: this.original.url(), htmls: [], logs: [] })
+      this.history.push({ url: this.original.url(), htmls: [], logs: [], requests: [] })
     })
   }
 
@@ -217,6 +241,51 @@ export class PlaywrightPage {
 
   get logs(): PlaywrightPageLogEntry[] {
     return this.history.flatMap((item) => item.logs)
+  }
+
+  get requests(): PlaywrightPageRequestEntry[] {
+    return this.history.flatMap((item) => item.requests)
+  }
+
+  get requestsStory(): PageRequestStoryItem[] {
+    return this.requests.map((request) => {
+      try {
+        const parsed = new URL(request.url)
+        if (parsed.pathname === '/_point0') {
+          const scope = parsed.searchParams.get('scope')
+          const name = parsed.searchParams.get('name')
+          const type = parsed.searchParams.get('type')
+          if (scope && name && type) {
+            return {
+              scope,
+              name,
+              type: type as ReadyPointType,
+            }
+          }
+        }
+      } catch (e) {}
+      return {
+        method: request.method,
+        path: PlaywrightPage.prettifyUrl(request.url),
+      }
+    })
+  }
+
+  get requestsTale(): string {
+    return this.requestsStory
+      .filter((requestStoryItem) => {
+        if ('path' in requestStoryItem && requestStoryItem.path.startsWith('/_bun')) {
+          return false
+        }
+        return true
+      })
+      .map((requestStoryItem) => {
+        if ('scope' in requestStoryItem) {
+          return `${requestStoryItem.scope}.${requestStoryItem.type}.${requestStoryItem.name}`
+        }
+        return `${requestStoryItem.method} ${requestStoryItem.path}`
+      })
+      .join('\n')
   }
 
   get story(): PageStoryItem[] {
@@ -327,6 +396,11 @@ export class PlaywrightPage {
     console.dir(this.story, { depth: null })
   }
 
+  logLogs(): void {
+    throwOnHelperLogFnCalling()
+    console.dir(this.logs, { depth: null })
+  }
+
   async waitNoContent(search: string, timeout = 2000): Promise<void> {
     const startTime = Date.now()
     while (true) {
@@ -416,6 +490,13 @@ export class PlaywrightPage {
     }
   }
 
+  private addRequestToLastHistoryItem(request: PlaywrightPageRequestEntry): void {
+    const lastHistoryItem = this.history.at(-1)
+    if (lastHistoryItem) {
+      lastHistoryItem.requests.push(request)
+    }
+  }
+
   private static prettifyLogEntry(logEntry: PlaywrightPageLogEntry): string {
     return `[${logEntry.timestamp}] [${logEntry.type.toUpperCase()}] ${logEntry.text}`
   }
@@ -450,6 +531,35 @@ export class PlaywrightPage {
     this.original.on('pageerror', (exception) => {
       const timestamp = Date.now()
       this.addLogToLastHistoryItem({ timestamp, type: 'error', text: exception.message })
+    })
+
+    // Track requests that finished successfully with a response.
+    this.original.on('requestfinished', async (request) => {
+      const response = await request.response()
+      this.addRequestToLastHistoryItem({
+        timestamp: Date.now(),
+        method: request.method(),
+        url: request.url(),
+        resourceType: request.resourceType(),
+        result: 'finished',
+        status: response?.status() ?? null,
+        ok: response?.ok() ?? null,
+        failureText: null,
+      })
+    })
+
+    // Track requests that failed to complete.
+    this.original.on('requestfailed', (request) => {
+      this.addRequestToLastHistoryItem({
+        timestamp: Date.now(),
+        method: request.method(),
+        url: request.url(),
+        resourceType: request.resourceType(),
+        result: 'failed',
+        status: null,
+        ok: null,
+        failureText: request.failure()?.errorText ?? null,
+      })
     })
   }
 }
