@@ -4,15 +4,15 @@ import { stringify } from 'safe-stable-stringify'
 
 export function mergeHeaders(
   base?: HeadersInit,
-  ...extras: Array<HeadersInit | Record<string, string> | undefined>
+  ...extras: Array<HeadersInit | undefined>
 ): Headers {
   const merged = new Headers(base)
   for (const extra of extras) {
-    if (extra) {
-      for (const [key, value] of Object.entries(extra)) {
-        merged.set(key, value)
-      }
-    }
+    if (!extra) continue
+    const normalized = new Headers(extra)
+    normalized.forEach((value, key) => {
+      merged.set(key, value)
+    })
   }
   return merged
 }

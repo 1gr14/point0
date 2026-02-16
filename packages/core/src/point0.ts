@@ -1344,7 +1344,11 @@ export class Point0<
       const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
       const newFetchOptions: FetchOptions =
         typeof fetchOptionsOrFn === 'function' ? fetchOptionsOrFn() : fetchOptionsOrFn
-      return { ...prevFetchOptions, ...newFetchOptions }
+      return {
+        ...prevFetchOptions,
+        ...newFetchOptions,
+        headers: mergeHeaders(prevFetchOptions.headers, newFetchOptions.headers),
+      }
     }
     return this._continue({
       _fetchOptions: newFetchOptionsFn,
@@ -4039,7 +4043,11 @@ export class Point0<
       _fetchOptions: () => {
         const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
         const newFetchOptions: FetchOptions = point._fetchOptions?.() || {}
-        return { ...prevFetchOptions, ...newFetchOptions }
+        return {
+          ...prevFetchOptions,
+          ...newFetchOptions,
+          headers: mergeHeaders(prevFetchOptions.headers, newFetchOptions.headers),
+        }
       },
       _scrollPositionGetter: point._scrollPositionGetter,
       _scrollPositionSetter: point._scrollPositionSetter,
@@ -4891,9 +4899,10 @@ export class Point0<
         ]
   ): { url: string; init: RequestInit; request: Request } {
     const [input = {}, { fetchOptions: _fetchOptions, _outputType = 'data' } = {}] = args
-    const fetchOptions = { ...this._fetchOptions?.(), ..._fetchOptions }
+    const baseFetchOptions = this._fetchOptions?.() || {}
+    const fetchOptions = { ...baseFetchOptions, ..._fetchOptions }
     const fromScope = _ssItems.__POINT0_CLIENT_POINTS__.getWeak()?.manager.scope ?? _getFakeClient()?.scope
-    const headers = mergeHeaders(fetchOptions.headers, _fetchOptions?.headers, {
+    const headers = mergeHeaders(baseFetchOptions.headers, _fetchOptions?.headers, {
       Accept: 'application/json',
       ...(fromScope ? { 'X-Point0-From-Scope': fromScope } : {}),
       'X-Point0-Client-Request-Id': generateId(),
@@ -4934,7 +4943,6 @@ export class Point0<
 
     const fetchUrl = url.toString()
     const fetchInit = {
-      ...this._fetchOptions?.(),
       ...fetchOptions,
       headers,
       method,

@@ -45,8 +45,6 @@ launch
 
 === REFACTOING 0 ===
 Проанализировать должен выкидывать ошибку в опшинсах на поинте, или должен возвращать 204?
-fetch options never as arg, but as {fetchOptions} becouse later we may have {axoisOptions}
-fetch options headers should merges
 Ошибка при не том роуте должна накладываться на сам роут
 --+
 Error0
