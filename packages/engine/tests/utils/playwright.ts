@@ -110,6 +110,7 @@ export class PlaywrightPage {
   original: Page
   browser: PlaywrightBrowser
   history: PageHistoryItem[] = []
+  private domChangeQueue: Promise<void> = Promise.resolve()
 
   private constructor(options: PlaywrightPageConstructorOptions) {
     this.original = options.original
@@ -283,7 +284,14 @@ export class PlaywrightPage {
       .filter((requestStoryItem) => {
         if (
           'path' in requestStoryItem &&
-          (requestStoryItem.path.startsWith('/_bun') || requestStoryItem.path.startsWith('/chunk-'))
+          (requestStoryItem.path.startsWith('/_bun') ||
+            requestStoryItem.path.startsWith('/chunk-') ||
+            requestStoryItem.path.startsWith('/@fs/') ||
+            requestStoryItem.path.startsWith('/assets/') ||
+            requestStoryItem.path.startsWith('/@vite/') ||
+            requestStoryItem.path.startsWith('/index.client.js') ||
+            requestStoryItem.path.endsWith('.tsx') ||
+            requestStoryItem.path.endsWith('.ts'))
         ) {
           return false
         }
@@ -522,9 +530,19 @@ export class PlaywrightPage {
     await this.original.exposeFunction('onDomChanged', (html: string) => {
       const currentItem = this.history.at(-1)
       if (currentItem) {
-        // We do not await here to keep the bridge loop fast
-        // currentItem.htmls.push(HtmlView.create(html))
-        void HtmlView.parse(html).then((htmlView) => currentItem.htmls.push(htmlView))
+        // Keep processing ordered and dedupe by preview, because tale is preview-based.
+        this.domChangeQueue = this.domChangeQueue
+          .then(async () => {
+            const htmlView = await HtmlView.parse(html)
+            const lastPreview = currentItem.htmls.at(-1)?.preview
+            if (lastPreview === htmlView.preview) {
+              return
+            }
+            currentItem.htmls.push(htmlView)
+          })
+          .catch(() => {
+            // Keep queue alive even if one parse fails.
+          })
       }
     })
     // await this.original.exposeFunction('log', (...args: any[]) => {

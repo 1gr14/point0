@@ -1,28 +1,64 @@
 import type { PointsDefinition } from '@point0/core'
 import { client as root_0 } from './client.js'
-import { default as unnamed_1, BestIdeaComponent as BestIdeaComponent_9 } from '../pages/home.js'
-import { empty as empty_2 } from '../pages/empty.js'
-import { ideasPage as ideasPage_3 } from '../pages/ideas.js'
-import { default as unnamed_4, createIdeaMutation as createIdeaMutation_10, generateIdeaMutation as generateIdeaMutation_11 } from '../pages/idea-create.js'
-import { ideaPage as ideaPage_5 } from '../pages/idea.js'
-import { ideasNewsPage as ideasNewsPage_6 } from '../pages/idea-news.js'
-import { generalLayout as generalLayout_7 } from '../layouts/general.js'
-import { ideaLayout as ideaLayout_8 } from '../layouts/idea.js'
-import { clientCtx1 as clientCtx1_12, clientCtx2 as clientCtx2_13, clientCtx3 as clientCtx3_14 } from './client-ctx.js'
 export default [
   root_0,
-  unnamed_1,
-  empty_2,
-  ideasPage_3,
-  unnamed_4,
-  ideaPage_5,
-  ideasNewsPage_6,
-  generalLayout_7,
-  ideaLayout_8,
-  BestIdeaComponent_9,
-  createIdeaMutation_10,
-  generateIdeaMutation_11,
-  clientCtx1_12,
-  clientCtx2_13,
-  clientCtx3_14,
+  {
+    type: 'page',
+    name: 'home',
+    route: '/',
+    polh: true,
+    layouts: ['generalLayout'],
+    point: async () => (await import('../pages/home.js')).default,
+  },
+  {
+    type: 'page',
+    name: 'empty',
+    route: '/empty',
+    polh: true,
+    point: async () => (await import('../pages/empty.js')).empty,
+  },
+  {
+    type: 'page',
+    name: 'ideas',
+    route: '/ideas',
+    polh: true,
+    layouts: ['generalLayout'],
+    point: async () => (await import('../pages/ideas.js')).ideasPage,
+  },
+  {
+    type: 'page',
+    name: 'newIdea',
+    route: '/ideas/new',
+    polh: true,
+    layouts: ['generalLayout'],
+    point: async () => (await import('../pages/idea-create.js')).default,
+  },
+  {
+    type: 'page',
+    name: 'idea',
+    route: '/ideas/:id',
+    polh: true,
+    layouts: ['generalLayout', 'ideaLayout'],
+    point: async () => (await import('../pages/idea.js')).ideaPage,
+  },
+  {
+    type: 'page',
+    name: 'ideaNews',
+    route: '/ideas/:id/news',
+    polh: true,
+    layouts: ['generalLayout', 'ideaLayout'],
+    point: async () => (await import('../pages/idea-news.js')).ideasNewsPage,
+  },
+  {
+    type: 'layout',
+    name: 'generalLayout',
+    route: '/',
+    point: async () => (await import('../layouts/general.js')).generalLayout,
+  },
+  {
+    type: 'layout',
+    name: 'ideaLayout',
+    route: '/ideas/:id',
+    point: async () => (await import('../layouts/idea.js')).ideaLayout,
+  },
 ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>

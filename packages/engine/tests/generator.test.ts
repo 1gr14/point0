@@ -377,7 +377,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "import { Routes } from '@devp0nt/route0'
 
           export const routes = Routes.create({
-            mypage: '/news',
+            'mypage': '/news',
           })
           "
         `)
@@ -413,7 +413,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "import { Routes } from '@devp0nt/route0'
 
           export const routes = Routes.create({
-            mypage: '/news',
+            'mypage': '/news',
           }, { baseurl: 'https://example.com' })
           "
         `)
@@ -449,7 +449,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "import { Routes } from '@devp0nt/route0'
 
           export const routes = Routes.create({
-            mypage: '/my/path/news',
+            'mypage': '/my/path/news',
           }, { baseurl: 'https://example.com' })
           "
         `)
@@ -485,7 +485,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "import { Routes } from '@devp0nt/route0'
 
           export const routes = Routes.create({
-            mypage: '/my/path/news',
+            'mypage': '/my/path/news',
           }, { baseurl: 'https://example.com' })
           "
         `)
@@ -521,7 +521,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "import { Routes } from '@devp0nt/route0'
 
           export const routes = Routes.create({
-            mypage: '/my/path/extra/path/news',
+            'mypage': '/my/path/extra/path/news',
           }, { baseurl: 'https://example.com' })
           "
         `)
@@ -557,7 +557,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "import { Routes } from '@devp0nt/route0'
 
           export const routes = Routes.create({
-            mypage: '/news',
+            'mypage': '/news',
           }, { baseurl: process.env.BASE_URL })
           "
         `)
@@ -593,7 +593,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "import { Routes } from '@devp0nt/route0'
 
           export const routes = Routes.create({
-            mypage: '/extra/path/news',
+            'mypage': '/extra/path/news',
           }, { baseurl: process.env.BASE_URL })
           "
         `)
@@ -679,7 +679,7 @@ export const layout = root.lets('layout', 'mylayout', '/layout').layout(() => <d
           "import { Routes } from '@devp0nt/route0'
 
           export const routes = Routes.create({
-            mypage: '/news',
+            'mypage': '/news',
           })
           "
         `)
