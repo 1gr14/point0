@@ -2,7 +2,15 @@ import type { NodePath } from '@babel/traverse'
 import type { Node } from '@babel/types'
 import type { AnyRoute } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import { type ReadyPointType, type PointName, type PointsScope, getBasepathOrNull } from '@point0/core'
+import {
+  type ReadyPointType,
+  type PointName,
+  type PointsScope,
+  getBasepathOrNull,
+  deappendSlash,
+  deprependSlash,
+  prependAndDeappendSlash,
+} from '@point0/core'
 import { dedupeSlashes, toPascalCase } from '@point0/core'
 import * as nodeFsPath from 'node:path'
 import type { CompilerFile } from './file.js'
@@ -245,7 +253,7 @@ export class CompilerPoint<TValid extends boolean = any> {
     return Route0.create(
       dedupeSlashes([this.basepath, route.definition === '/' ? '' : route.definition].filter(Boolean).join('/') || '/'),
       {
-        baseurl: this.baseurl,
+        baseurl: this.baseurl || undefined,
       },
     )
   }
@@ -360,7 +368,7 @@ export class CompilerPoint<TValid extends boolean = any> {
     return false
   }
 
-  getBaseurl(): string | undefined {
+  getBaseurlAndBasepath(): { baseurl: string | undefined; basepath: string } {
     // Go through self and parents (from child to parent)
     // Return the first baseurl value found, or undefined if none found
     // If string literal → return its value. If process.env.VAR → return 'process.env.VAR'. If import.meta.env.VAR → return 'import.meta.env.VAR'.
@@ -372,8 +380,18 @@ export class CompilerPoint<TValid extends boolean = any> {
           continue
         }
         const firstArg = nodePath.node.arguments[0]
+        const secondArg = nodePath.node.arguments.at(1)
+        const extraBasepath = secondArg?.type === 'StringLiteral' ? prependAndDeappendSlash(secondArg.value) : null
         if (firstArg.type === 'StringLiteral') {
-          return firstArg.value
+          if (!extraBasepath) {
+            return { baseurl: firstArg.value, basepath: getBasepathOrNull(firstArg.value) ?? '/' }
+          }
+          const baseurl =
+            [deappendSlash(firstArg.value), deprependSlash(extraBasepath)].filter(Boolean).join('/') || '/'
+          return {
+            baseurl,
+            basepath: getBasepathOrNull(baseurl) ?? '/',
+          }
         }
         if (firstArg.type === 'MemberExpression') {
           const arg = firstArg
@@ -386,7 +404,7 @@ export class CompilerPoint<TValid extends boolean = any> {
             arg.object.property.name === 'env' &&
             arg.property.type === 'Identifier'
           ) {
-            return `process.env.${arg.property.name}`
+            return { baseurl: `process.env.${arg.property.name}`, basepath: extraBasepath ?? '/' }
           }
           // import.meta.env.VAR: object is MemberExpression(MetaProperty(import, meta), env), property is Identifier(VAR)
           if (
@@ -398,7 +416,7 @@ export class CompilerPoint<TValid extends boolean = any> {
             arg.object.property.name === 'env' &&
             arg.property.type === 'Identifier'
           ) {
-            return `import.meta.env.${arg.property.name}`
+            return { baseurl: `import.meta.env.${arg.property.name}`, basepath: extraBasepath ?? '/' }
           }
           // env.vars.VAR: object is MemberExpression(env, vars), property is Identifier(VAR)
           if (
@@ -409,13 +427,12 @@ export class CompilerPoint<TValid extends boolean = any> {
             arg.object.property.name === 'vars' &&
             arg.property.type === 'Identifier'
           ) {
-            return `process.env.${arg.property.name}` // becouse we will use it in routes file, where env not imported we use process.env directly
+            return { baseurl: `process.env.${arg.property.name}`, basepath: extraBasepath ?? '/' } // becouse we will use it in routes file, where env not imported we use process.env directly
           }
         }
       }
     }
-
-    return undefined
+    return { baseurl: undefined, basepath: '/' }
   }
 
   getLayouts(): string[] {
@@ -547,8 +564,9 @@ export class CompilerPoint<TValid extends boolean = any> {
       this.chainMethods = this.getChainMethods()
 
       this.polh = this.getPrefetchOnLinkHover()
-      this.baseurl = this.getBaseurl()
-      this.basepath = getBasepathOrNull(this.baseurl) ?? '/'
+      const { baseurl, basepath } = this.getBaseurlAndBasepath()
+      this.baseurl = baseurl
+      this.basepath = basepath
 
       const { route, errors: routeErrors } = this.scope
         ? this.getRoute({ scope: this.scope })

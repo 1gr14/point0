@@ -171,4 +171,15 @@ describe('route', () => {
     expect(page.route({ y: '123', x: '456' })).toBe('/456/123')
     expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/my/path/:x/:y'>()
   })
+
+  it('baseurl path https://example.com with basepath my/path is used to extend route', async () => {
+    const root = Point0.lets('root', 'root').baseurl('https://example.com', 'my/path').root()
+    expectTypeOf<typeof root.Infer.RouteDefinition>().toEqualTypeOf<'/my/path'>()
+    const layout = root.lets('layout', 'layout', '/:x').layout(({ children }) => {
+      return <div>{children}</div>
+    })
+    const page = layout.lets('page', 'test', '/:y').page()
+    expect(page.route({ y: '123', x: '456' })).toBe('/456/123')
+    expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/my/path/:x/:y'>()
+  })
 })

@@ -192,6 +192,9 @@ import type {
 import {
   blankDataTransformerExtended,
   dedupeSlashes,
+  getBasepathOrNull,
+  getHostnameOrNull,
+  getOriginOrNull,
   getWindowScrollPositionGetterByElementGetter,
   getWindowScrollPositionGetterBySelector,
   getWindowScrollPositionSetterByElementGetter,
@@ -848,8 +851,9 @@ export class Point0<
     }) as never
   }
 
-  baseurl<TBaseurl extends string>(
+  baseurl<TBaseurl extends string, TBasepath extends string = BasepathByBaseurl<TBaseurl>>(
     baseurl: TBaseurl,
+    basepath?: TBasepath,
   ): NiceRootStagePoint<
     StagePointTypeOrNever<TPointType>,
     'root',
@@ -859,7 +863,7 @@ export class Point0<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TMapperOutput,
-    BasepathByBaseurl<TBaseurl>,
+    ExtendRouteDefinition<'/', TBasepath>,
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
@@ -867,8 +871,14 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   > {
+    // const normalizedBaseurl = [baseurl, basepath ].filter(Boolean).join('/') || '/'
+    const normalizedBasepath = basepath ? (getBasepathOrNull(baseurl) ?? '/') : basepath || '/'
+    const normalizedOrigin = getOriginOrNull(baseurl)
+    const normalizedBaseurl = normalizedOrigin ? `${normalizedOrigin}${normalizedBasepath}` : normalizedBasepath
+    const route = Route0.create(dedupeSlashes(`/${normalizedBasepath}`), { baseurl: normalizedBaseurl })
     return this._continue({
-      _baseurl: baseurl,
+      _baseurl: normalizedBaseurl,
+      route: route,
     }) as never
   }
 
@@ -3355,7 +3365,7 @@ export class Point0<
         if (typeof route === 'string' || !route) {
           const routeOrPointName = route ?? pointName
           if (routeOrPointName === '/') {
-            return prevRoute?.clone() ?? Route0.create('/', routeConfig)
+            return prevRoute?.clone(routeConfig) ?? Route0.create('/', routeConfig)
           }
           return prevRoute
             ? prevRoute.extend(routeOrPointName).clone(routeConfig)
@@ -3367,7 +3377,7 @@ export class Point0<
         if (typeof route === 'string' || !route) {
           const routeNormalized = route ?? '/'
           if (routeNormalized === '/') {
-            return prevRoute?.clone() ?? Route0.create('/', routeConfig)
+            return prevRoute?.clone(routeConfig) ?? Route0.create('/', routeConfig)
           }
           return prevRoute
             ? prevRoute.extend(routeNormalized).clone(routeConfig)

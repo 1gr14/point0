@@ -1,6 +1,7 @@
 import type { RoutesPretty } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
 import { CompilerPoint, END_POINT_TYPES, Walker } from '@point0/compiler'
+import { getOriginOrNull } from '@point0/core'
 import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
@@ -39,7 +40,6 @@ export type FilesGeneratorTaskRoutes = {
   what: 'routes'
   banner?: string | null
   file: string
-  baseurl?: string // accept string or 'process.env.SOMETHING' also as string, if ptovides process.env.SOMETHING it will be replaced with it value
 }
 
 export type FilesGeneratorTaskMeta = {
@@ -108,11 +108,6 @@ export class FilesGenerator {
       } satisfies FilesGeneratorTask
       if (task.what === 'points' && typeof task.lazy === 'undefined') {
         task.lazy = task.target === 'client'
-      }
-      if (task.what === 'routes') {
-        if (!task.baseurl || task.baseurl === '/') {
-          task.baseurl = undefined
-        }
       }
       return task
     })
@@ -888,11 +883,18 @@ export class FilesGenerator {
     lines.push(`import { Routes } from '@devp0nt/route0'`)
     lines.push(``)
 
-    const baseurlString = !task.baseurl
+    const rootPoint = points.find((p) => p.type === 'root' && p.scope === task.scope)
+    if (!rootPoint) {
+      throw new Error(`Root point not found for scope ${task.scope}`)
+    }
+
+    const baseurlString = !rootPoint.baseurl
       ? undefined
-      : task.baseurl.startsWith('process.env.') || task.baseurl.startsWith('import.meta.env.')
-        ? task.baseurl
-        : `'${task.baseurl}'`
+      : rootPoint.baseurl.startsWith('process.env.') || rootPoint.baseurl.startsWith('import.meta.env.')
+        ? rootPoint.baseurl
+        : getOriginOrNull(rootPoint.baseurl)
+          ? `'${getOriginOrNull(rootPoint.baseurl)}'`
+          : undefined
     const baseurlSuffix = baseurlString ? `, { baseurl: ${baseurlString} }` : ''
 
     const pagePoints = points.flatMap((p) =>

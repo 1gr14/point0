@@ -38,6 +38,16 @@ export type ParsedUrl = {
   urlStr: string
 }
 
+export const getOriginOrNull = (baseurl: string | null | undefined): string | null => {
+  if (!baseurl) {
+    return null
+  }
+  if (/^https?:\/\//.test(baseurl)) {
+    return new URL(baseurl).origin
+  }
+  return null
+}
+
 export const getHostnameOrNull = (baseurl: string | null | undefined): string | null => {
   if (!baseurl) {
     return null
@@ -84,6 +94,20 @@ export const appendSlash = <T extends string | undefined | null>(path: T): T => 
     return undefined as T
   }
   return (path + '/').replace(/\/\/+/g, '/') as T
+}
+
+export const deprependSlash = <T extends string | undefined | null>(path: T): T => {
+  if (!path) {
+    return undefined as T
+  }
+  return path.replace(/^\/+/, '') as T
+}
+
+export const deappendSlash = <T extends string | undefined | null>(path: T): T => {
+  if (!path) {
+    return undefined as T
+  }
+  return path.replace(/\/+$/, '') as T
 }
 
 export const windowScrollPositionGetter: ScrollPositionGetter = () => {
@@ -195,9 +219,7 @@ export const toCamelCase = (str: string): string => {
 export const toPascalCase = (str: string): string => {
   // Split camelCase/PascalCase boundaries before camelizing,
   // so names like "componentLoading" become "ComponentLoading".
-  const normalized = str
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+  const normalized = str.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
   const name = toCamelCase(normalized)
   const pascal = toCapitalized(name)
   return /^[A-Za-z_$]/.test(pascal) ? pascal : `_${pascal}`

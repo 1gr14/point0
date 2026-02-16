@@ -385,10 +385,10 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
     )
 
     it.concurrent(
-      'generates routes file with baseurl as string',
+      'generates routes file with baseurl without path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, logger }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').root()
+export const root = Point0.lets('root', 'myroot').baseurl('https://example.com').root()
 export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
         `)
 
@@ -400,7 +400,6 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
               scope: 'myroot',
               what: 'routes',
               file: routesFile.path,
-              baseurl: 'https://example.com',
             },
           ],
           logger,
@@ -422,10 +421,10 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
     )
 
     it.concurrent(
-      'generates routes file with baseurl as process.env.BASE_URL',
+      'generates routes file with baseurl with path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, logger }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').root()
+export const root = Point0.lets('root', 'myroot').baseurl('https://example.com/my/path').root()
 export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
         `)
 
@@ -437,7 +436,114 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
               scope: 'myroot',
               what: 'routes',
               file: routesFile.path,
-              baseurl: 'process.env.BASE_URL',
+            },
+          ],
+          logger,
+          routes: {},
+        })
+
+        await generator.sync()
+
+        const content = fixPaths(await routesFile.text())
+        expect(content).toMatchInlineSnapshot(`
+          "import { Routes } from '@devp0nt/route0'
+
+          export const routes = Routes.create({
+            mypage: '/my/path/news',
+          }, { baseurl: 'https://example.com' })
+          "
+        `)
+      }),
+    )
+
+    it.concurrent(
+      'generates routes file with baseurl with extra path as string',
+      helper(async ({ dir, files: [rootFile, routesFile], fixPaths, logger }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').baseurl('https://example.com', 'my/path').root()
+export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [
+            {
+              scope: 'myroot',
+              what: 'routes',
+              file: routesFile.path,
+            },
+          ],
+          logger,
+          routes: {},
+        })
+
+        await generator.sync()
+
+        const content = fixPaths(await routesFile.text())
+        expect(content).toMatchInlineSnapshot(`
+          "import { Routes } from '@devp0nt/route0'
+
+          export const routes = Routes.create({
+            mypage: '/my/path/news',
+          }, { baseurl: 'https://example.com' })
+          "
+        `)
+      }),
+    )
+
+    it.concurrent(
+      'generates routes file with baseurl with path and extra path as string',
+      helper(async ({ dir, files: [rootFile, routesFile], fixPaths, logger }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').baseurl('https://example.com/my/path', 'extra/path').root()
+export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [
+            {
+              scope: 'myroot',
+              what: 'routes',
+              file: routesFile.path,
+            },
+          ],
+          logger,
+          routes: {},
+        })
+
+        await generator.sync()
+
+        const content = fixPaths(await routesFile.text())
+        expect(content).toMatchInlineSnapshot(`
+          "import { Routes } from '@devp0nt/route0'
+
+          export const routes = Routes.create({
+            mypage: '/my/path/extra/path/news',
+          }, { baseurl: 'https://example.com' })
+          "
+        `)
+      }),
+    )
+
+    it.concurrent(
+      'generates routes file with baseurl as process.env.BASE_URL',
+      helper(async ({ dir, files: [rootFile, routesFile], fixPaths, logger }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').baseurl(process.env.BASE_URL).root()
+export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [
+            {
+              scope: 'myroot',
+              what: 'routes',
+              file: routesFile.path,
             },
           ],
           logger,
@@ -452,6 +558,42 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
 
           export const routes = Routes.create({
             mypage: '/news',
+          }, { baseurl: process.env.BASE_URL })
+          "
+        `)
+      }),
+    )
+
+    it.concurrent(
+      'generates routes file with baseurl as process.env.BASE_URL and extra path as string',
+      helper(async ({ dir, files: [rootFile, routesFile], fixPaths, logger }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').baseurl(process.env.BASE_URL, 'extra/path').root()
+export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [
+            {
+              scope: 'myroot',
+              what: 'routes',
+              file: routesFile.path,
+            },
+          ],
+          logger,
+          routes: {},
+        })
+
+        await generator.sync()
+
+        const content = fixPaths(await routesFile.text())
+        expect(content).toMatchInlineSnapshot(`
+          "import { Routes } from '@devp0nt/route0'
+
+          export const routes = Routes.create({
+            mypage: '/extra/path/news',
           }, { baseurl: process.env.BASE_URL })
           "
         `)
