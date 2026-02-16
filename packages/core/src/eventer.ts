@@ -308,7 +308,7 @@ export type EventerEventPointPrefetchPageError = EventerEvent<
 // fetcher
 export type EventerEventFetcherStart = EventerEvent<
   'server',
-  'fetcherStart',
+  'engineFetchStart',
   {
     request: Request0
     scope: PointsScope
@@ -318,7 +318,7 @@ export type EventerEventFetcherStart = EventerEvent<
 >
 export type EventerEventFetcherSettled = EventerEvent<
   'server',
-  'fetcherSettled',
+  'engineFetchSettled',
   {
     request: Request0
     scope: PointsScope
@@ -330,7 +330,7 @@ export type EventerEventFetcherSettled = EventerEvent<
 >
 export type EventerEventFetcherSuccess = EventerEvent<
   'server',
-  'fetcherSuccess',
+  'engineFetchSuccess',
   {
     request: Request0
     scope: PointsScope
@@ -342,7 +342,7 @@ export type EventerEventFetcherSuccess = EventerEvent<
 >
 export type EventerEventFetcherError = EventerEvent<
   'server',
-  'fetcherError',
+  'engineFetchError',
   {
     request: Request0
     scope: PointsScope

@@ -45,8 +45,6 @@ launch
 
 === REFACTOING 0 ===
 Проанализировать должен выкидывать ошибку в опшинсах на поинте, или должен возвращать 204?
-Не фетчер фетч старт а энжин фетч старт
-Он листенер префетч пейджа пусть полиси передаёт
 Он эрор который вызывается там где надо без дублирования ошибки
 fetch options never as arg, but as {fetchOptions} becouse later we may have {axoisOptions}
 fetch options headers should merges
@@ -174,6 +172,7 @@ Forbidden to return conflicted props from with by types
 дисплей нэймс
 SuccessComponent>children также можно передавать и тогда во врапере можно всё остановить
 Лоадинг и эррор комопнент разрешить использовать как обёртку чтобы на месте сделать свой кастомный
+'onPrefetchPageOnly' → 'onPrefetchOnly'; prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout,prefetchWrapper)
 --+
 Вероятно для экспо стоит пейджу и компоненту возвращать не обёртку над нулом, а обёртку над X, чтобы он мог заиспользоваться
 ---

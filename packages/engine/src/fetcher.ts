@@ -1248,7 +1248,7 @@ export class Fetcher {
     const middlewareOptions = prepareFetchResult.middlewareOptions
 
     return await _ssRunWithServerStorageState(serverStorageState, async () => {
-      emit?.('fetcherStart', _eventData)
+      emit?.('engineFetchStart', _eventData)
       const result = await this._composeMiddlewares({
         middlewares,
         finalHandler: async () =>
@@ -1265,11 +1265,11 @@ export class Fetcher {
         response,
       } as FetcherFetchDetailedResult
       const error = result.error
-      emit?.('fetcherSettled', { ..._eventData, error, result: finalResult })
+      emit?.('engineFetchSettled', { ..._eventData, error, result: finalResult })
       if (error) {
-        emit?.('fetcherError', { ..._eventData, error, result: finalResult })
+        emit?.('engineFetchError', { ..._eventData, error, result: finalResult })
       } else {
-        emit?.('fetcherSuccess', { ..._eventData, error: undefined, result: finalResult })
+        emit?.('engineFetchSuccess', { ..._eventData, error: undefined, result: finalResult })
       }
       return finalResult
     })

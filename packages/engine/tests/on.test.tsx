@@ -31,15 +31,15 @@ describe('on', () => {
             "target": "client",
           },
           {
-            "name": "fetcherStart",
+            "name": "engineFetchStart",
             "target": "server",
           },
           {
-            "name": "fetcherSettled",
+            "name": "engineFetchSettled",
             "target": "server",
           },
           {
-            "name": "fetcherSuccess",
+            "name": "engineFetchSuccess",
             "target": "server",
           },
           {
@@ -66,7 +66,7 @@ describe('on', () => {
   it('name', async () => {
     const events: AnyEventerEvent[] = []
     const root = Point0.lets('root', 'root')
-      .on('fetcherStart', (event) => {
+      .on('engineFetchStart', (event) => {
         events.push(event)
       })
       .on('pointQuerySuccess', (event) => {
@@ -88,7 +88,7 @@ describe('on', () => {
       expect(events.map((e) => ({ name: e.name, target: e.target }))).toMatchInlineSnapshot(`
         [
           {
-            "name": "fetcherStart",
+            "name": "engineFetchStart",
             "target": "server",
           },
           {
@@ -103,7 +103,7 @@ describe('on', () => {
   it('[name, name]', async () => {
     const events: AnyEventerEvent[] = []
     const root = Point0.lets('root', 'root')
-      .on('fetcherStart', (event) => {
+      .on('engineFetchStart', (event) => {
         events.push(event)
       })
       .on(['pointQuerySuccess', 'pointInfiniteQuerySuccess', 'pointMutationSuccess'], (event) => {
@@ -122,7 +122,7 @@ describe('on', () => {
       expect(events.map((e) => ({ name: e.name, target: e.target }))).toMatchInlineSnapshot(`
         [
           {
-            "name": "fetcherStart",
+            "name": "engineFetchStart",
             "target": "server",
           },
           {
