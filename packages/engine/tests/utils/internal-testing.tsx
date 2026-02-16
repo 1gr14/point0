@@ -155,6 +155,20 @@ export const ymlifyline = (result: any) => {
   return YAML.stringify(result, undefined, 2).split('\n').join(', ')
 }
 
+let isNotifyManagerBound = false
+const bindNotifyManager = () => {
+  if (isNotifyManagerBound) {
+    return
+  }
+  notifyManager.setNotifyFunction((callback) => {
+    callback()
+  })
+  notifyManager.setScheduler((callback) => {
+    callback()
+  })
+  isNotifyManagerBound = true
+}
+
 const createFilteredConsole = () => {
   const originalConsole = console
   const shouldFilterMessage = (...args: any[]): boolean => {
@@ -216,7 +230,7 @@ type TestThingsState = {
   waitContent: ElementViewer['waitContent']
   click: (selector: string) => Promise<void>
   _locationCleanup: () => void
-  _notifyManagerCleanup?: () => void
+  _unmount?: () => void
 }
 type FetchPoint = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
@@ -268,6 +282,7 @@ export const createTestThings = async ({
   app?: AppComponent
   globals?: Record<string, any>
 }) => {
+  bindNotifyManager()
   const Wrapper = wrapper ?? undefined
   const app =
     appProvided ??
@@ -311,12 +326,12 @@ export const createTestThings = async ({
       state.viewer.destroy()
       // Clean up location change listeners
       state._locationCleanup()
-      state._notifyManagerCleanup?.()
-      rtl.cleanup()
+      state._unmount?.()
+      state._unmount = undefined
     },
     onRunEndInside: async (state) => {
-      state._notifyManagerCleanup?.()
-      rtl.cleanup()
+      state._unmount?.()
+      state._unmount = undefined
     },
     cookieGetter: CookiesStore.clientDocumentCookieGetter,
     cookieSetter: CookiesStore.clientDocumentCookieSetter,
@@ -337,23 +352,6 @@ export const createTestThings = async ({
         clearInterval(state.titlesInterval)
       },
       onStartInside: async (state) => {
-        // Keep Query notifications within this test run to avoid late callbacks
-        // touching globals outside fake-client context.
-        notifyManager.setNotifyFunction((callback) => {
-          callback()
-        })
-        notifyManager.setScheduler((callback) => {
-          callback()
-        })
-        state._notifyManagerCleanup = () => {
-          notifyManager.setNotifyFunction((callback) => {
-            callback()
-          })
-          notifyManager.setScheduler((callback) => {
-            setTimeout(callback, 0)
-          })
-        }
-
         const window = globals.window as Window
         window.location.href = location.href
 
@@ -387,7 +385,8 @@ export const createTestThings = async ({
           return '\n' + state.titles.join('\n') + '\n'
         }
 
-        rtl.render(app({ points: client.points }), { container: root })
+        const rendered = rtl.render(app({ points: client.points }), { container: root })
+        state._unmount = rendered.unmount
         state.body = document.body
         state.document = document
         state.getHtmlView = async () => {
@@ -398,12 +397,12 @@ export const createTestThings = async ({
         state.preview = async () => await state.viewer.preview()
         state.tale = async () => await state.viewer.tale()
         state.click = async (selector: string) => {
-          await rtl.act(async () => {
-            await state.viewer.waitContent(selector)
-            const element = root.querySelector(selector)
-            assert(element)
-            rtl.fireEvent.click(element)
-          })
+          // await rtl.act(async () => {
+          await state.viewer.waitContent(selector)
+          const element = root.querySelector(selector)
+          assert(element)
+          rtl.fireEvent.click(element)
+          // })
         }
         state.waitContent = async (search: string) => {
           await state.viewer.waitContent(search)

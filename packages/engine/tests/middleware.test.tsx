@@ -36,7 +36,7 @@ import { createTestThings } from './utils/internal-testing.js'
 //   return async () => {
 //     try {
 //       await tp.cleanup('ports')
-//       await tp.init()
+//       await tp.init.concurrent()
 //       const engine = await tp.importEngine()
 //       await callback({ tp, engine })
 //       await tp.cleanup({ files: !preserve, ports: true, processes: true })
@@ -73,7 +73,7 @@ describe('midleware', () => {
 
   // afterEach(cleanup)
 
-  it('without', async () => {
+  it.concurrent('without', async () => {
     const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()
     const page = root
       .lets('page', 'home', '/')
@@ -93,7 +93,7 @@ describe('midleware', () => {
     `)
   })
 
-  it('change headers', async () => {
+  it.concurrent('change headers', async () => {
     const root = Point0.lets('root', 'root')
       .middleware(async ({ request, set, next }) => {
         set.headers('y', '3')
@@ -126,7 +126,7 @@ describe('midleware', () => {
     `)
   })
 
-  it('return custom response', async () => {
+  it.concurrent('return custom response', async () => {
     const root = Point0.lets('root', 'root')
       .middleware(async ({ request, set, next }) => {
         set.headers('y', '3')
@@ -151,7 +151,7 @@ describe('midleware', () => {
     expect(await response.text()).toBe('custom response')
   })
 
-  it('throws error', async () => {
+  it.concurrent('throws error', async () => {
     const root = Point0.lets('root', 'root')
       .middleware(async ({ request, set, next }) => {
         set.headers('y', '3')
@@ -178,7 +178,7 @@ describe('midleware', () => {
     expect(await response.text()).toContain('custom error')
   })
 
-  it('override final response', async () => {
+  it.concurrent('override final response', async () => {
     const root = Point0.lets('root', 'root')
       .middleware(async ({ request, set, next }) => {
         set.headers('y', '3')

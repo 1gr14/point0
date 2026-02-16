@@ -4,22 +4,24 @@ import { createTestThings, waitReturn } from './utils/internal-testing.js'
 import z from 'zod'
 
 describe('query', () => {
-  const root = Point0.lets('root', 'root')
-    .ssr(true)
-    .baseurl('http://localhost/')
-    .loading(() => <div id="loading">...</div>)
-    .error(({ error }) => <div id="error">{error.message}</div>)
-    .queryOptions({
-      retry: false,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      refetchInterval: false,
-      refetchIntervalInBackground: false,
-    })
-    .root()
+  const createRoot = () =>
+    Point0.lets('root', 'root')
+      .ssr(true)
+      .baseurl('http://localhost/')
+      .loading(() => <div id="loading">...</div>)
+      .error(({ error }) => <div id="error">{error.message}</div>)
+      .queryOptions({
+        retry: false,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
+      })
+      .root()
 
-  it('simple', async () => {
+  it.concurrent('simple', async () => {
+    const root = createRoot()
     const q = root
       .lets('query', 'test')
       .loader(() => ({ x: 1 }))
@@ -63,7 +65,8 @@ describe('query', () => {
       `)
   })
 
-  it('with page loader and query loader', async () => {
+  it.concurrent('with page loader and query loader', async () => {
+    const root = createRoot()
     const q = root
       .lets('query', 'test')
       .loader(async () => await waitReturn({ x: 1 }))
@@ -104,7 +107,8 @@ describe('query', () => {
       `)
   })
 
-  it('with clientLoader', async () => {
+  it.concurrent('with clientLoader', async () => {
+    const root = createRoot()
     const q = root
       .lets('query', 'test')
       .clientLoader(() => ({ y: 2 }))
@@ -135,7 +139,8 @@ describe('query', () => {
       `)
   })
 
-  it('with loader and clientLoader', async () => {
+  it.concurrent('with loader and clientLoader', async () => {
+    const root = createRoot()
     const q = root
       .lets('query', 'test')
       .loader(() => ({ x: 1 }))
@@ -171,7 +176,8 @@ describe('query', () => {
       `)
   })
 
-  it('with input and loader', async () => {
+  it.concurrent('with input and loader', async () => {
+    const root = createRoot()
     const q = root
       .lets('query', 'test')
       .input(z.object({ y: z.number() }))
@@ -203,7 +209,8 @@ describe('query', () => {
       `)
   })
 
-  it('with input and clientLoader', async () => {
+  it.concurrent('with input and clientLoader', async () => {
+    const root = createRoot()
     const q = root
       .lets('query', 'test')
       .combinedInput(z.object({ y: z.number() }))
@@ -235,7 +242,8 @@ describe('query', () => {
       `)
   })
 
-  it('with input and clientLoader and loader', async () => {
+  it.concurrent('with input and clientLoader and loader', async () => {
+    const root = createRoot()
     const q = root
       .lets('query', 'test')
       .combinedInput(z.object({ y: z.number() }))

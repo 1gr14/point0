@@ -3,7 +3,7 @@ import { describe, expect, it } from 'bun:test'
 import { createTestThings } from './utils/internal-testing.js'
 
 describe('plugin', () => {
-  it('merges ctx', async () => {
+  it.concurrent('merges ctx', async () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
       .ctx(() => ({ plugin: 'ok1' }))
       .plugin()
@@ -34,7 +34,7 @@ describe('plugin', () => {
     `)
   })
 
-  it('merges ctx with exposed keys', async () => {
+  it.concurrent('merges ctx with exposed keys', async () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
       .ctx(() => ({ plugin: 'ok1' }))
       .ctx(() => [{ pluginExposed: 'ok9' }])
@@ -70,7 +70,7 @@ describe('plugin', () => {
     `)
   })
 
-  it('merges middlewares', async () => {
+  it.concurrent('merges middlewares', async () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
       .middleware(async ({ next, request }) => {
         request.state.x = [request.state.x, 'plugin'].join(',')

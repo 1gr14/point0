@@ -4,22 +4,24 @@ import { createTestThings } from './utils/internal-testing.js'
 import { z } from 'zod'
 
 describe('provider', () => {
-  const root = Point0.lets('root', 'root')
-    .ssr(true)
-    .baseurl('http://localhost/')
-    .loading(() => <div id="loading">...</div>)
-    .error(({ error }) => <div id="error">{error.message}</div>)
-    .queryOptions({
-      retry: false,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      refetchInterval: false,
-      refetchIntervalInBackground: false,
-    })
-    .root()
+  const createRoot = () =>
+    Point0.lets('root', 'root')
+      .ssr(true)
+      .baseurl('http://localhost/')
+      .loading(() => <div id="loading">...</div>)
+      .error(({ error }) => <div id="error">{error.message}</div>)
+      .queryOptions({
+        retry: false,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
+      })
+      .root()
 
   it('simple', async () => {
+    const root = createRoot()
     const provider = root.lets('provider', 'app').provider(() => ({ x: 1, y: 2 }))
     const page = root.lets('page', 'home').page(() => {
       const usedValue = provider.useValue()
@@ -54,6 +56,7 @@ describe('provider', () => {
   })
 
   it('with input', async () => {
+    const root = createRoot()
     const provider = root
       .lets('provider', 'app')
       .input(z.object({ z: z.number() }))
@@ -94,6 +97,7 @@ describe('provider', () => {
   })
 
   it('use specific key', async () => {
+    const root = createRoot()
     const provider = root.lets('provider', 'app').provider(() => ({ x: 1, y: 2, z: 3 }))
     const page = root.lets('page', 'home').page(() => {
       const x = provider.useValue('x')
@@ -123,6 +127,7 @@ describe('provider', () => {
   })
 
   it('use specific keys', async () => {
+    const root = createRoot()
     const provider = root.lets('provider', 'app').provider(() => ({ x: 1, y: 2, z: 3 }))
     const page = root.lets('page', 'home').page(() => {
       const { x, y } = provider.useValue(['x', 'y'])

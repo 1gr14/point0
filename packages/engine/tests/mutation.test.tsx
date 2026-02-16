@@ -4,22 +4,24 @@ import { createTestThings } from './utils/internal-testing.js'
 import z from 'zod'
 
 describe('mutation', () => {
-  const root = Point0.lets('root', 'root')
-    .ssr(true)
-    .baseurl('http://localhost/')
-    .loading(() => <div id="loading">...</div>)
-    .error(({ error }) => <div id="error">{error.message}</div>)
-    .queryOptions({
-      retry: false,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      refetchInterval: false,
-      refetchIntervalInBackground: false,
-    })
-    .root()
+  const createRoot = () =>
+    Point0.lets('root', 'root')
+      .ssr(true)
+      .baseurl('http://localhost/')
+      .loading(() => <div id="loading">...</div>)
+      .error(({ error }) => <div id="error">{error.message}</div>)
+      .queryOptions({
+        retry: false,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
+      })
+      .root()
 
-  it('simple', async () => {
+  it.concurrent('simple', async () => {
+    const root = createRoot()
     const q = root
       .lets('mutation', 'test')
       .loader(() => ({ x: 1 }))
@@ -59,7 +61,8 @@ describe('mutation', () => {
       `)
   })
 
-  it('with clientLoader', async () => {
+  it.concurrent('with clientLoader', async () => {
+    const root = createRoot()
     const q = root
       .lets('mutation', 'test')
       .clientLoader(() => ({ y: 2 }))
@@ -99,7 +102,8 @@ describe('mutation', () => {
       `)
   })
 
-  it('with loader and clientLoader', async () => {
+  it.concurrent('with loader and clientLoader', async () => {
+    const root = createRoot()
     const q = root
       .lets('mutation', 'test')
       .loader(() => ({ x: 1 }))
@@ -142,7 +146,8 @@ describe('mutation', () => {
     })
   })
 
-  it('with input and loader', async () => {
+  it.concurrent('with input and loader', async () => {
+    const root = createRoot()
     const q = root
       .lets('mutation', 'test')
       .input(z.object({ y: z.number() }))
@@ -183,7 +188,8 @@ describe('mutation', () => {
     })
   })
 
-  it('with input and clientLoader', async () => {
+  it.concurrent('with input and clientLoader', async () => {
+    const root = createRoot()
     const q = root
       .lets('mutation', 'test')
       .clientInput(z.object({ y: z.number() }))
@@ -224,7 +230,8 @@ describe('mutation', () => {
       `)
   })
 
-  it('with input and clientLoader and loader', async () => {
+  it.concurrent('with input and clientLoader and loader', async () => {
+    const root = createRoot()
     const q = root
       .lets('mutation', 'test')
       .combinedInput(z.object({ y: z.number() }))

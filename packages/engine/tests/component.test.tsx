@@ -3,22 +3,24 @@ import { describe, expect, it } from 'bun:test'
 import { createTestThings } from './utils/internal-testing.js'
 
 describe('component', () => {
-  const root = Point0.lets('root', 'root')
-    .ssr(true)
-    .baseurl('http://localhost/')
-    .loading(() => <div id="loading">...</div>)
-    .error(({ error }) => <div id="error">{error.message}</div>)
-    .queryOptions({
-      retry: false,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      refetchInterval: false,
-      refetchIntervalInBackground: false,
-    })
-    .root()
+  const createRoot = () =>
+    Point0.lets('root', 'root')
+      .ssr(true)
+      .baseurl('http://localhost/')
+      .loading(() => <div id="loading">...</div>)
+      .error(({ error }) => <div id="error">{error.message}</div>)
+      .queryOptions({
+        retry: false,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
+      })
+      .root()
 
-  it('simple', async () => {
+  it.concurrent('simple', async () => {
+    const root = createRoot()
     const component = root.lets('component', 'stats').component(() => <div id="component">x=nothing</div>)
     const page = root.lets('page', 'home', '/').page(() => (
       <div id="page">
@@ -47,7 +49,8 @@ describe('component', () => {
     `)
   })
 
-  it('loader', async () => {
+  it.concurrent('loader', async () => {
+    const root = createRoot()
     const component = root
       .lets('component', 'stats')
       .loader(() => ({ x: 1 }))
@@ -82,7 +85,8 @@ describe('component', () => {
     `)
   })
 
-  it('loader error', async () => {
+  it.concurrent('loader error', async () => {
+    const root = createRoot()
     const component = root
       .lets('component', 'stats')
       .loader(() => {
@@ -122,7 +126,8 @@ describe('component', () => {
     `)
   })
 
-  it('props and input', async () => {
+  it.concurrent('props and input', async () => {
+    const root = createRoot()
     const component = root
       .lets<{ x: number; y: number }>('component', 'stats')
       .combinedInput<{ id: string; mult: number }>()
@@ -162,7 +167,8 @@ describe('component', () => {
     `)
   })
 
-  it('earlier defined props overrides', async () => {
+  it.concurrent('earlier defined props overrides', async () => {
+    const root = createRoot()
     const base = root
       .lets('base', 'base')
       .with(() => ({ x: 100, z: 3 }))
@@ -199,7 +205,8 @@ describe('component', () => {
     `)
   })
 
-  it('wrapper', async () => {
+  it.concurrent('wrapper', async () => {
+    const root = createRoot()
     const component = root
       .lets('component', 'stats')
       .combinedInput<{ id: string }>()

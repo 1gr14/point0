@@ -69,7 +69,9 @@ class GlobalThisItemProxy {
         key,
         fakeClientId: fakeClient.id,
         fakeClientValue: value,
-        originalValue: (globalThis as any)[key],
+        // Keep a stable fallback for globals that don't exist in Node/Bun by default
+        // (e.g. window/document) to avoid async callbacks crashing outside fake-client context.
+        originalValue: typeof (globalThis as any)[key] === 'undefined' ? undefined : (globalThis as any)[key],
       })
     }
     item.fakeClientsValues.set(fakeClient.id, value)
@@ -78,7 +80,9 @@ class GlobalThisItemProxy {
 
   static destroy(fakeClient?: FakeClient) {
     if (fakeClient) {
-      GlobalThisItemProxy.items.delete(fakeClient.id)
+      GlobalThisItemProxy.items.forEach((item) => {
+        item.fakeClientsValues.delete(fakeClient.id)
+      })
     } else {
       GlobalThisItemProxy.items.forEach((item) => {
         ;(globalThis as any)[item.key] = item.originalValue

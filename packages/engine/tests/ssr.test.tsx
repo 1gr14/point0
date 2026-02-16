@@ -4,7 +4,7 @@ import { describe, expect, it } from 'bun:test'
 import { createTestThings } from './utils/internal-testing.js'
 
 describe('ssr', () => {
-  it('page without loader', async () => {
+  it.concurrent('page without loader', async () => {
     const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()
     const page = root.lets('page', 'home', '/').page(({ data }) => <div id="page">x</div>)
     const { fetchSsr } = await createTestThings({ points: [root, page] })
@@ -15,7 +15,7 @@ describe('ssr', () => {
     `)
   })
 
-  it('page with loader', async () => {
+  it.concurrent('page with loader', async () => {
     const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()
     const page = root
       .lets('page', 'home', '/')
@@ -34,7 +34,7 @@ describe('ssr', () => {
     `)
   })
 
-  it('page with loader and component with loader', async () => {
+  it.concurrent('page with loader and component with loader', async () => {
     const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()
     const component = root
       .lets('component', 'component')
@@ -72,7 +72,7 @@ describe('ssr', () => {
     `)
   })
 
-  it('page with loader and component with client loader', async () => {
+  it.concurrent('page with loader and component with client loader', async () => {
     const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()
     const component = root
       .lets('component', 'component')
@@ -107,7 +107,7 @@ describe('ssr', () => {
     `)
   })
 
-  it('page with loader and component with loader and client loader', async () => {
+  it.concurrent('page with loader and component with loader and client loader', async () => {
     const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()
     const component = root
       .lets('component', 'component')

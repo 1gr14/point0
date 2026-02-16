@@ -2,8 +2,7 @@ import { Point0, QueryClientProvider, env } from '@point0/core'
 import { CookiesStore } from '@point0/cookies-store'
 import { Router } from '@point0/wouter'
 // import '@testing-library/jest-dom'
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
-import '@testing-library/react/dont-cleanup-after-each'
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react/pure.js'
 import { beforeAll, afterAll, describe, expect, it } from 'bun:test'
 import assert from 'node:assert'
 import { Engine } from '../src/engine.js'
@@ -82,7 +81,7 @@ describe('FakeClient', () => {
 
   // afterEach(cleanup)
 
-  it('fetch page with loader', async () => {
+  it.concurrent('fetch page with loader', async () => {
     const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
     const page = root
       .lets('page', 'page')
@@ -107,7 +106,7 @@ describe('FakeClient', () => {
     expect(env.target.name).toBe('server')
   })
 
-  it('respect cookies', async () => {
+  it.concurrent('respect cookies', async () => {
     const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'page')
@@ -163,7 +162,7 @@ describe('FakeClient', () => {
     expect(env.target.name).toBe('server')
   })
 
-  it('execute page with loader and client loader', async () => {
+  it.concurrent('execute page with loader and client loader', async () => {
     const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
     const page = root
       .lets('page', 'page')
@@ -193,7 +192,7 @@ describe('FakeClient', () => {
     expect(env.target.name).toBe('server')
   })
 
-  it('should render page with loader and client loader', async () => {
+  it.concurrent('should render page with loader and client loader', async () => {
     const fetchRecorder = FetchRecorder.create({
       limit: 100,
     })
@@ -290,7 +289,7 @@ describe('FakeClient', () => {
     await client.destroy()
   })
 
-  it('send recieve client request id, and also recieve server request id', async () => {
+  it.concurrent('send recieve client request id, and also recieve server request id', async () => {
     const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'page')

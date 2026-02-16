@@ -1,26 +1,27 @@
+import { Route0 } from '@devp0nt/route0'
 import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
-import { createTestThings, ymlify, ymlifyline } from './utils/internal-testing.js'
-import { Route0 } from '@devp0nt/route0'
-import { z } from 'zod'
+import { createTestThings, ymlifyline } from './utils/internal-testing.js'
 
 describe('layout', () => {
-  const root = Point0.lets('root', 'root')
-    .ssr(true)
-    .baseurl('http://localhost/')
-    .loading(() => <div id="loading">...</div>)
-    .error(({ error }) => <div id="error">{error.message}</div>)
-    .queryOptions({
-      retry: false,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      refetchInterval: false,
-      refetchIntervalInBackground: false,
-    })
-    .root()
+  const createRoot = () =>
+    Point0.lets('root', 'root')
+      .ssr(true)
+      .baseurl('http://localhost/')
+      .loading(() => <div id="loading">...</div>)
+      .error(({ error }) => <div id="error">{error.message}</div>)
+      .queryOptions({
+        retry: false,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
+      })
+      .root()
 
-  it('simple', async () => {
+  it.concurrent('simple', async () => {
+    const root = createRoot()
     const layout = root.lets('layout', 'app').layout(({ children }) => <div id="layout">{children}</div>)
     const page = layout.lets('page', 'home').page(() => <div id="page">x=nothing</div>)
 
@@ -45,7 +46,8 @@ describe('layout', () => {
       `)
   })
 
-  it('layout in layout', async () => {
+  it.concurrent('layout in layout', async () => {
+    const root = createRoot()
     const layout1 = root.lets('layout', 'layout1').layout(({ children }) => <div id="layout1">{children}</div>)
     const layout2 = layout1.lets('layout', 'layout2').layout(({ children }) => <div id="layout2">{children}</div>)
     const page = layout2.lets('page', 'home').page(() => <div id="page">x=nothing</div>)
@@ -73,7 +75,8 @@ describe('layout', () => {
       `)
   })
 
-  it('loader', async () => {
+  it.concurrent('loader', async () => {
+    const root = createRoot()
     const layout = root
       .lets('layout', 'app')
       .loader(() => ({ x: 1 }))
@@ -110,7 +113,8 @@ describe('layout', () => {
     `)
   })
 
-  it('loader error', async () => {
+  it.concurrent('loader error', async () => {
+    const root = createRoot()
     const layout = root
       .lets('layout', 'app')
       .loader(() => {
@@ -148,7 +152,8 @@ describe('layout', () => {
     `)
   })
 
-  it('loader with input', async () => {
+  it.concurrent('loader with input', async () => {
+    const root = createRoot()
     const layout = root
       .lets('layout', 'app', '/:id')
       .loader(({ input }) => ({ x: input.id }))
@@ -188,7 +193,8 @@ describe('layout', () => {
     `)
   })
 
-  it('layout input includes page params', async () => {
+  it.concurrent('layout input includes page params', async () => {
+    const root = createRoot()
     const layout = root
       .lets('layout', 'app', '/:id')
       .loader(({ input }) => ({ x: input.id }))
@@ -254,7 +260,8 @@ describe('layout', () => {
     `)
   })
 
-  it('weak layout input by route includes page params', async () => {
+  it.concurrent('weak layout input by route includes page params', async () => {
+    const root = createRoot()
     const layout = root
       .lets('layout', 'app', 'one/:id')
       .loader(({ input }) => ({ x: input.id }))
@@ -281,7 +288,7 @@ describe('layout', () => {
       )
     })
 
-    const { render, fetchPreview, fetchesTale, client } = await createTestThings({ points: [root, layout, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, layout, page] })
     await render(page.route({ id: 'zxc', sn: 'qwe' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -320,7 +327,8 @@ describe('layout', () => {
     `)
   })
 
-  it('wrapper', async () => {
+  it.concurrent('wrapper', async () => {
+    const root = createRoot()
     const layout = root
       .lets('layout', 'app', '/:id')
       .loader(({ input }) => ({ x: input.id }))
@@ -373,7 +381,8 @@ describe('layout', () => {
     `)
   })
 
-  it('defines layout in page', async () => {
+  it.concurrent('defines layout in page', async () => {
+    const root = createRoot()
     const layout = root
       .lets('layout', 'app')
       .loader(() => ({ x: 1 }))

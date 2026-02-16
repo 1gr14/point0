@@ -5,22 +5,24 @@ import { createTestThings } from './utils/internal-testing.js'
 import { useEffect, useState } from 'react'
 
 describe('page', () => {
-  const root = Point0.lets('root', 'root')
-    .ssr(true)
-    .baseurl('http://localhost/')
-    .loading(() => <div id="loading">...</div>)
-    .error(({ error }) => <div id="error">{error.message}</div>)
-    .queryOptions({
-      retry: false,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      refetchInterval: false,
-      refetchIntervalInBackground: false,
-    })
-    .root()
+  const createRoot = () =>
+    Point0.lets('root', 'root')
+      .ssr(true)
+      .baseurl('http://localhost/')
+      .loading(() => <div id="loading">...</div>)
+      .error(({ error }) => <div id="error">{error.message}</div>)
+      .queryOptions({
+        retry: false,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
+      })
+      .root()
 
   it('simple', async () => {
+    const root = createRoot()
     const page = root.lets('page', 'home', '/').page(({ data }) => <div id="page">x=nothing</div>)
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
@@ -42,6 +44,7 @@ describe('page', () => {
   })
 
   it('page param', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/:x')
       .page(({ data, location }) => <div id="page">x={location.params.x}</div>)
@@ -65,6 +68,7 @@ describe('page', () => {
   })
 
   it('query loader', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
       .loader(() => ({ x: 1 }))
@@ -92,6 +96,7 @@ describe('page', () => {
   })
 
   it('query loader finalized', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
       .loader(() => ({ x: 1 }))
@@ -122,6 +127,7 @@ describe('page', () => {
   })
 
   it('query clientLoader', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
       .clientLoader(() => ({ x: 1 }))
@@ -149,6 +155,7 @@ describe('page', () => {
   })
 
   it('query loader and clientLoader', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
       .loader(() => ({ x: 1 }))
@@ -181,6 +188,7 @@ describe('page', () => {
   })
 
   it('query loader error', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
       .loader(() => {
@@ -213,6 +221,7 @@ describe('page', () => {
   })
 
   it('query loader with input', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/:id')
       .loader(({ input }) => ({ x: input.id }))
@@ -248,6 +257,7 @@ describe('page', () => {
   ]
 
   it('infinite query loader', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
       .input(z.object({ cursor: z.number().optional() }))
@@ -334,6 +344,7 @@ describe('page', () => {
   })
 
   it('infinite query clientLoader', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
       .clientInput(z.object({ cursor: z.number().optional() }))
@@ -415,6 +426,7 @@ describe('page', () => {
   })
 
   it('infinite query loader and clientLoader', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
       .combinedInput(z.object({ cursor: z.number().optional() }))
@@ -502,6 +514,7 @@ describe('page', () => {
   })
 
   it('infinite query loader error', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
       .input(z.object({ cursor: z.number().optional() }))
@@ -565,6 +578,7 @@ describe('page', () => {
   })
 
   it('wrapper', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/:id')
       .loader(({ input }) => ({ x: input.id }))
@@ -608,6 +622,7 @@ describe('page', () => {
   })
 
   it('wrapper can block query', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/:id')
       .wrapper(({ children, location }) => {
@@ -639,6 +654,7 @@ describe('page', () => {
   })
 
   it('with fn', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/:y')
       .with(() => ({ x: 1 }))
@@ -668,6 +684,7 @@ describe('page', () => {
   })
 
   it('with fn state', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/:y')
       .with(() => {
@@ -726,6 +743,7 @@ describe('page', () => {
   })
 
   it('with query', async () => {
+    const root = createRoot()
     const query = root
       .lets('query', 'test')
       .loader(() => ({ x: 1 }))
@@ -758,6 +776,7 @@ describe('page', () => {
   })
 
   it('with query input', async () => {
+    const root = createRoot()
     const query = root
       .lets('query', 'test')
       .input(z.object({ y: z.number() }))
@@ -795,6 +814,7 @@ describe('page', () => {
   })
 
   it('with query props input', async () => {
+    const root = createRoot()
     const query = root
       .lets('query', 'test')
       .input(z.object({ y: z.number() }))
@@ -832,6 +852,7 @@ describe('page', () => {
   })
 
   it('with query fn', async () => {
+    const root = createRoot()
     const query = root
       .lets('query', 'test')
       .input(z.object({ y: z.number() }))
@@ -870,6 +891,7 @@ describe('page', () => {
   })
 
   it('with query fn return many queries', async () => {
+    const root = createRoot()
     const query1 = root
       .lets('query', 'query1')
       .loader(() => ({ x: 1 }))
@@ -912,6 +934,7 @@ describe('page', () => {
   })
 
   it('with infinite query', async () => {
+    const root = createRoot()
     const query = root
       .lets('infiniteQuery', 'test')
       .input(z.object({ cursor: z.number().optional() }))
@@ -1001,6 +1024,7 @@ describe('page', () => {
   })
 
   it('with infinite query fn', async () => {
+    const root = createRoot()
     const query = root
       .lets('infiniteQuery', 'test')
       .input(z.object({ cursor: z.number().optional() }))
@@ -1092,6 +1116,7 @@ describe('page', () => {
   })
 
   it('with infinite query fn return many queries', async () => {
+    const root = createRoot()
     const query = root
       .lets('infiniteQuery', 'test')
       .input(z.object({ cursor: z.number().optional() }))
@@ -1193,6 +1218,7 @@ describe('page', () => {
   })
 
   it('related query', async () => {
+    const root = createRoot()
     const query = root
       .lets('query', 'test')
       .loader(() => ({ x: 1 }))
@@ -1224,6 +1250,7 @@ describe('page', () => {
   })
 
   it('related query input', async () => {
+    const root = createRoot()
     const query = root
       .lets('query', 'test')
       .input(z.object({ y: z.number() }))
@@ -1298,6 +1325,7 @@ describe('page', () => {
   // })
 
   it('related infinite query', async () => {
+    const root = createRoot()
     const query = root
       .lets('infiniteQuery', 'test')
       .input(z.object({ cursor: z.number().optional() }))
@@ -1478,6 +1506,7 @@ describe('page', () => {
   // })
 
   it('query with injected query', async () => {
+    const root = createRoot()
     const query = root
       .lets('query', 'test')
       .input(z.object({ y: z.number() }))
@@ -1518,6 +1547,7 @@ describe('page', () => {
   })
 
   it('mapper standalone', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/:y')
       .mapper(({ data }) => {
@@ -1546,6 +1576,7 @@ describe('page', () => {
   })
 
   it('mapper with qureies', async () => {
+    const root = createRoot()
     const query = root
       .lets('query', 'test')
       .input(z.object({ y: z.number() }))
@@ -1587,6 +1618,7 @@ describe('page', () => {
   })
 
   it('many wrappers and with', async () => {
+    const root = createRoot()
     const page = root
       .lets('page', 'home', '/:id')
       .wrapper(({ children, location }) => {
