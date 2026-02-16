@@ -1,11 +1,11 @@
 import type {
-  ReadyPointType,
   FetcherFetchDetailedResult,
   FetcherFetchDetailedResultSpecific,
   MiddlewareFn,
   PointsScope,
-  Request0,
+  ReadyPointType,
 } from '@point0/core'
+import type { Request0 } from '@point0/core/request0'
 
 export class FetchRecorder {
   records: FetchRecorderRecord[]

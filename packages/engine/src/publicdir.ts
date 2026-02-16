@@ -1,4 +1,5 @@
-import type { PointsScope, Request0 } from '@point0/core'
+import type { PointsScope } from '@point0/core'
+import { Request0 } from '@point0/core/request0'
 import { prependAndDeappendSlash } from '@point0/core'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'

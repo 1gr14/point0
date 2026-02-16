@@ -1,4 +1,6 @@
-import type { EmptyCtx, EmptyProps, NicePluginReadyPoint, MiddlewareFnOptionsBase, RequestMethod } from '@point0/core'
+import type { EmptyCtx, EmptyProps, MiddlewareFnOptionsBase, NicePluginReadyPoint } from '@point0/core'
+import type { RequestMethod } from '@point0/core/request0'
+
 import { Point0, env } from '@point0/core'
 
 // inspired by https://github.com/elysiajs/elysia-cors/tree/main

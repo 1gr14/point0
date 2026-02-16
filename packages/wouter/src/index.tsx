@@ -86,7 +86,7 @@ export const createNavigate = <
   navigate: TNavigate,
 ) => {
   const wrappedNavigate = _wrapNavigate(navigate)
-  function navigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
+  async function navigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
     ...args: HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
       ? [
           route: TRouteName,
@@ -98,17 +98,7 @@ export const createNavigate = <
           input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
           ...rest: Tail<Parameters<TNavigate>>,
         ]
-  ): Promise<{ location: AnyLocation; error: Error0 | undefined }>
-  function navigate0(
-    to: { to: string },
-    ...rest: Tail<Parameters<TNavigate>>
-  ): Promise<{ location: AnyLocation; error: Error0 | undefined }>
-  async function navigate0(...args: any[]): Promise<{ location: AnyLocation; error: Error0 | undefined }> {
-    if (typeof args[0] === 'object' && args[0] && typeof args[0].to === 'string') {
-      const [to, ...rest] = args as [{ to: string }, ...Tail<Parameters<TNavigate>>]
-      return await wrappedNavigate(...([to.to, ...rest] as unknown as Parameters<TNavigate>))
-    }
-
+  ): Promise<{ location: AnyLocation; error: Error0 | undefined }> {
     const [routeName, input, ...rest] = args as [ExtractRoutesKeys<TRoutes>, unknown, ...Tail<Parameters<TNavigate>>]
     const route = routes[routeName]
     if (!route) {
@@ -118,7 +108,22 @@ export const createNavigate = <
     const to = route.flat(input || {}) as string
     return await wrappedNavigate(...([to, ...rest] as unknown as Parameters<TNavigate>))
   }
-  return navigate0
+  return Object.assign(navigate0, { to: wrappedNavigate }) as never as {
+    <TRouteName extends ExtractRoutesKeys<TRoutes>>(
+      ...args: HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
+        ? [
+            route: TRouteName,
+            input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+            ...rest: Tail<Parameters<TNavigate>>,
+          ]
+        : [
+            route: TRouteName,
+            input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+            ...rest: Tail<Parameters<TNavigate>>,
+          ]
+    ): Promise<{ location: AnyLocation; error: Error0 | undefined }>
+    to: typeof wrappedNavigate
+  }
 }
 
 type Tail<T extends readonly unknown[]> = T extends readonly [any, ...infer R] ? R : never
@@ -414,7 +419,15 @@ export const SimpleNavLink = (props: NavLinkProps) => {
     ]
     const mergedClassNames = allClassNames.filter((value): value is string => Boolean(value)).join(' ')
     return mergedClassNames || undefined
-  }, [className, statusOptions, exactClassName, sameClassName, ancestorClassName, descendantClassName, unmatchedClassName])
+  }, [
+    className,
+    statusOptions,
+    exactClassName,
+    sameClassName,
+    ancestorClassName,
+    descendantClassName,
+    unmatchedClassName,
+  ])
   const finalWouterLinkProps = useMemo<LinkProps>(() => {
     if ('asChild' in wouterLinkProps && wouterLinkProps.asChild) {
       return wouterLinkProps

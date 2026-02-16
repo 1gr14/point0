@@ -290,6 +290,47 @@ describe('FakeClient', () => {
     await client.destroy()
   })
 
+  it('send recieve client request id, and also recieve server request id', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const page = root
+      .lets('page', 'page')
+      .loader(() => ({ serverLoaderTargetName: env.target.name }))
+      .page(({ data }) => <div>Hello from {data.serverLoaderTargetName}</div>)
+    const mutation = root
+      .lets('mutation', 'mutation')
+      .loader(({ set, request }) => {
+        return {
+          serverRequestId: request.id,
+          clientRequestId: request.headers['x-point0-client-request-id'],
+        }
+      })
+      .mutation()
+    expect(env.target.name).toBe('server')
+    const points = [root, page, mutation] as const
+    const engine = await Engine.create({
+      compiler: false,
+      file: import.meta.url,
+      server: { scope: 'root', points },
+      clients: [{ scope: 'root', points }],
+    }).init()
+    const client = FakeClient.create({
+      engine,
+      scope: 'root',
+      globals: getFakeBrowserGlobals(),
+      cookieGetter: CookiesStore.clientDocumentCookieGetter,
+      cookieSetter: CookiesStore.clientDocumentCookieSetter,
+    })
+    await client.run(async () => {
+      const result = await mutation.fetchServerDetailed()
+      assert(result.error === undefined)
+      expect(result.data.serverRequestId).toBeDefined()
+      expect(result.data.clientRequestId).toBeDefined()
+      expect(result.response.headers.get('x-point0-request-id')).toBe(result.data.serverRequestId)
+      expect(result.response.headers.get('x-point0-client-request-id')).toBe(result.data.clientRequestId || null)
+    })
+    expect(env.target.name).toBe('server')
+  })
+
   // it('should render page with loader and client loader from ssr', async () => {
   //   const root = Point0.lets('root', 'root').ssr(true).serverurl('http://localhost:3000').root()
   //   let counter = 0

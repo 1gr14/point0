@@ -26,6 +26,10 @@
     "./effects": {
       "types": "./dist/effects.d.ts",
       "import": "./dist/effects.js"
+    },
+    "./request0": {
+      "types": "./dist/request0.d.ts",
+      "import": "./dist/request0.js"
     }
   },
   "files": [

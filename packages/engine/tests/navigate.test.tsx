@@ -702,8 +702,7 @@ describe('navigate', () => {
   it('navigate to 404', async () => {
     await t.render(homePage.route(), async ({ waitContent, tale, click }) => {
       await waitContent('#home')
-      await navigate({ to: '/404' })
-      await navigate('post')
+      await navigate.to('/404')
       await waitContent('Page Not Found')
       expect(await tale()).toMatchInlineSnapshot(`
         "/

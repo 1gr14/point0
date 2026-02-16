@@ -224,3 +224,13 @@ export const toPascalCase = (str: string): string => {
   const pascal = toCapitalized(name)
   return /^[A-Za-z_$]/.test(pascal) ? pascal : `_${pascal}`
 }
+
+export const generateId = (): string => {
+  try {
+    // for server and modern clients
+    return crypto.randomUUID()
+  } catch {
+    // for old clients
+    return Math.random().toString(36).slice(2) + Date.now().toString(36)
+  }
+}

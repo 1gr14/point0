@@ -5,6 +5,7 @@
       "@point0/core": ["../core/src/index.ts"],
       "@point0/wouter": ["../wouter/src/index.tsx"],
       "@point0/core/effects": ["../core/src/effects.ts"],
+      "@point0/core/request0": ["../core/src/request0.ts"],
       "@point0/engine/config": ["../config/src/index.ts"]
     }
   }

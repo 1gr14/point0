@@ -192,6 +192,7 @@ import type {
 import {
   blankDataTransformerExtended,
   dedupeSlashes,
+  generateId,
   getBasepathOrNull,
   getHostnameOrNull,
   getOriginOrNull,
@@ -4836,6 +4837,7 @@ export class Point0<
     const headers = mergeHeaders(fetchOptions.headers, options?.headers, {
       Accept: 'application/json',
       ...(fromScope ? { 'X-Point0-From-Scope': fromScope } : {}),
+      'X-Point0-Client-Request-Id': generateId(),
     })
     const serverurl = this.getServerUrl()
     if (!serverurl) {

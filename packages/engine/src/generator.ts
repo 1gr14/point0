@@ -1,13 +1,13 @@
 import type { RoutesPretty } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
 import { CompilerPoint, END_POINT_TYPES, Walker } from '@point0/compiler'
-import { getOriginOrNull } from '@point0/core'
+import { getOriginOrNull, generateId } from '@point0/core'
 import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { EngineLogger, EngineOptionsRoutes } from './config.js'
-import { generateId, getDirByPaths, resolveTempDirPath } from './utils.js'
+import { getDirByPaths, resolveTempDirPath } from './utils.js'
 
 type ChangeCollectedPointsEvent = {
   deleted: CompilerPoint[]

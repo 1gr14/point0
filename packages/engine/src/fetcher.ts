@@ -21,8 +21,9 @@ import {
   _ssItems,
   _ssRunWithServerStorageState,
   blankDataTransformerExtended,
-  Request0,
+  generateId,
 } from '@point0/core'
+import { Request0 } from '@point0/core/request0'
 import { Effects } from '@point0/core/effects'
 import { unflatten } from 'flat'
 import type { EngineClient } from './client.js'
@@ -31,7 +32,6 @@ import { toJsonErrorResponse } from './error.js'
 import { Executor } from './executor.js'
 import type { Publicdir } from './publicdir.js'
 import type { EngineServer } from './server.js'
-import { generateId } from './utils.js'
 
 export class Fetcher {
   engine: Engine<RequiredCtx, true>
@@ -228,6 +228,10 @@ export class Fetcher {
       id: generateId(),
       isFromServer,
     })
+    effects.set.headers('x-point0-request-id', request.id)
+    if (request.headers['x-point0-client-request-id']) {
+      effects.set.headers('x-point0-client-request-id', request.headers['x-point0-client-request-id'])
+    }
 
     if (request.original.method === 'OPTIONS') {
       const response = new Response(null, {

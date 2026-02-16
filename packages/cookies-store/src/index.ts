@@ -1,7 +1,14 @@
-import { Point0, type DataTransformer, type DataTransformerExtended } from '@point0/core'
-import { blankDataTransformerExtended, env, Request0, toExtendedTransformer } from '@point0/core'
-import type { CookieOptionsInput } from '@point0/core/effects'
+import {
+  blankDataTransformerExtended,
+  env,
+  Point0,
+  toExtendedTransformer,
+  type DataTransformer,
+  type DataTransformerExtended,
+} from '@point0/core'
 import { Effects } from '@point0/core/effects'
+import type { CookieOptionsInput } from '@point0/core/effects'
+import { Request0 } from '@point0/core/request0'
 import { useEffect, useRef, useState } from 'react'
 
 const encodeCookieName = (name: string): string => {
@@ -234,6 +241,9 @@ export class CookiesStore {
   }
 
   static readonly serverCookieGetter: CookiesStoreGetter = ((...args: [name: string] | []) => {
+    if (!env.target.is.server) {
+      throw new Error('serverCookieGetter is only available on the server')
+    }
     const request0 = Request0.get()
     if (args.length === 0) {
       return request0.cookies

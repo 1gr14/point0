@@ -19,7 +19,6 @@ import type {
   QueryKey,
   ReadyPoint,
   ReadyPointType,
-  Request0,
   RequiredCtx,
   SafeParseInputResult,
   // ServerExecuteAction,
@@ -32,6 +31,7 @@ import type {
   UnknownCtx,
   UnknownData,
 } from '@point0/core'
+import type { Request0 } from '@point0/core/request0'
 import { _ssItems, _ssRunWithServerStorageState } from '@point0/core'
 import { Effects } from '@point0/core/effects'
 import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
