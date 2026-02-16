@@ -481,8 +481,7 @@ Bun.serve({
     if (!this.indexHtml) {
       throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
     }
-    const srcIndexHtmlContent =
-      this.indexHtml === '__POINT0_TEST_INDEX_HTML__' ? this.getTestIndexHtml() : await Bun.file(this.indexHtml).text()
+    const srcIndexHtmlContent = await Bun.file(this.indexHtml).text()
     const bunViteDevServer = withRetries(process.env.NODE_ENV === 'test' ? 99 : 5, () =>
       Bun.serve({
         port: this.port,
