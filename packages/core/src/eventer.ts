@@ -1,4 +1,7 @@
 import type { Error0 } from '@devp0nt/error0'
+import type { AnyLocation } from '@devp0nt/route0'
+import type { QueryClient } from '@tanstack/react-query'
+import type { Request0 } from './request0.js'
 import type {
   AnyNiceReadyPoint,
   Data,
@@ -8,13 +11,10 @@ import type {
   InputRaw,
   LoaderOutput,
   MiddlewareFnOptions,
-  PrefetchPagePolicy,
   PointsScope,
+  PrefetchPagePolicy,
   QueryKey,
 } from './types.js'
-import type { AnyLocation } from '@devp0nt/route0'
-import type { QueryClient } from '@tanstack/react-query'
-import type { Request0 } from './request0.js'
 
 export type EventerTarget = 'client' | 'server'
 
@@ -306,7 +306,7 @@ export type EventerEventPointPrefetchPageError = EventerEvent<
 >
 
 // fetcher
-export type EventerEventFetcherStart = EventerEvent<
+export type EventerEventEngineFetchStart = EventerEvent<
   'server',
   'engineFetchStart',
   {
@@ -316,7 +316,7 @@ export type EventerEventFetcherStart = EventerEvent<
     point: AnyNiceReadyPoint | undefined
   }
 >
-export type EventerEventFetcherSettled = EventerEvent<
+export type EventerEventEngineFetchSettled = EventerEvent<
   'server',
   'engineFetchSettled',
   {
@@ -328,7 +328,7 @@ export type EventerEventFetcherSettled = EventerEvent<
     error: Error0 | undefined
   }
 >
-export type EventerEventFetcherSuccess = EventerEvent<
+export type EventerEventEngineFetchSuccess = EventerEvent<
   'server',
   'engineFetchSuccess',
   {
@@ -340,7 +340,7 @@ export type EventerEventFetcherSuccess = EventerEvent<
     error: undefined
   }
 >
-export type EventerEventFetcherError = EventerEvent<
+export type EventerEventEngineFetchError = EventerEvent<
   'server',
   'engineFetchError',
   {
@@ -374,13 +374,21 @@ export type AnyEventerEvent =
   | EventerEventPointPrefetchPageSettled
   | EventerEventPointPrefetchPageSuccess
   | EventerEventPointPrefetchPageError
-  | EventerEventFetcherStart
-  | EventerEventFetcherSettled
-  | EventerEventFetcherSuccess
-  | EventerEventFetcherError
+  | EventerEventEngineFetchStart
+  | EventerEventEngineFetchSettled
+  | EventerEventEngineFetchSuccess
+  | EventerEventEngineFetchError
 
 export type ClientEventerEvent = Extract<AnyEventerEvent, { target: 'client' | 'server' } | { target: 'client' }>
 
 export type ServerEventerEvent = Extract<AnyEventerEvent, { target: 'client' | 'server' } | { target: 'server' }>
 
 export type UniversalEventerEvent = Extract<AnyEventerEvent, { target: 'client' | 'server' }>
+
+export const uniqEventerErrorEventNames = [
+  'pointMutationError',
+  'pointQueryError',
+  'pointInfiniteQueryError',
+  'engineFetchError',
+] satisfies Array<AnyEventerEvent['name']>
+export type UniqEventerErrorEventName = (typeof uniqEventerErrorEventNames)[number]

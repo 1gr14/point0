@@ -133,4 +133,40 @@ describe('on', () => {
       `)
     })
   })
+
+  it('error', async () => {
+    const events: AnyEventerEvent[] = []
+    const root = Point0.lets('root', 'root')
+      .on('error', (event) => {
+        events.push(event)
+      })
+      .baseurl('http://localhost/')
+      .ssr(true)
+      .root()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(({ request }) => {
+        if (Math.random() + 1) {
+          throw new Error('test error')
+        }
+        return { x: 1 }
+      })
+      .page(({ data }) => <div id="page">x={data.x}</div>)
+    const { render } = await createTestThings({ points: [root, page] })
+    await render(page.route(), async ({ waitContent }) => {
+      await waitContent('error')
+      expect(events.map((e) => ({ name: e.name, target: e.target }))).toMatchInlineSnapshot(`
+        [
+          {
+            "name": "engineFetchError",
+            "target": "server",
+          },
+          {
+            "name": "pointQueryError",
+            "target": "client",
+          },
+        ]
+      `)
+    })
+  })
 })

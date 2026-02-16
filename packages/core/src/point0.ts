@@ -1,6 +1,7 @@
 import { Error0 } from '@devp0nt/error0'
-import type { AnyLocation, AnyRoute, CallableRoute, KnownLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, CallableRoute, KnownLocation } from '@devp0nt/route0'
+import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   DehydratedState,
   InfiniteData,
@@ -11,15 +12,15 @@ import type {
   UseMutationResult,
   UseQueryResult,
 } from '@tanstack/react-query'
-import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import { flatten } from 'flat'
 import * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
-import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
+import type { Context } from 'use-context-selector'
 import { Effects } from './effects.js'
 import { _point0_env } from './env.js'
+import { uniqEventerErrorEventNames } from './eventer.js'
 import type {
   AnyEventerEvent,
   AnyEventerSubscriptionCallback,
@@ -28,6 +29,7 @@ import type {
   EventerSubscription,
   ServerEventerEvent,
   ServerEventerSubscriptionCallback,
+  UniqEventerErrorEventName,
 } from './eventer.js'
 import { _getFakeClient, _ssItems } from './internals.js'
 import type {
@@ -74,8 +76,8 @@ import type {
   WithSelfQueryIfShouldBeFinalized,
   WrapperComponentType,
 } from './mountable.js'
-import type { RouterPageState } from './router.js'
 import { _usePageStateManager, useLocation, useRouterContext } from './router.js'
+import type { RouterPageState } from './router.js'
 import { superstore } from './super-store.js'
 import type {
   AnyPoint,
@@ -88,6 +90,7 @@ import type {
   AssertNoForbiddenMethodsIfNotSuitableStage,
   AssertRouteDefinitionInputExtends,
   BasePoint,
+  BasepathByBaseurl,
   ClientExecuteAction,
   ClientLoaderDataFn,
   ClientLoaderResponseFn,
@@ -150,11 +153,11 @@ import type {
   NiceStagePoint,
   NormalizeQueryResultType,
   OnPrefetchPageFn,
-  PrefetchPagePolicy,
   PartialUseInfiniteQueryOptions,
   PointName,
   PointType,
   PointsScope,
+  PrefetchPagePolicy,
   QueriedData,
   QueryKey,
   QueryMode,
@@ -187,14 +190,12 @@ import type {
   UsePointQueryResult,
   UseQueryOptions,
   WithError,
-  BasepathByBaseurl,
 } from './types.js'
 import {
   blankDataTransformerExtended,
   dedupeSlashes,
   generateId,
   getBasepathOrNull,
-  getHostnameOrNull,
   getOriginOrNull,
   getWindowScrollPositionGetterByElementGetter,
   getWindowScrollPositionGetterBySelector,
@@ -879,7 +880,7 @@ export class Point0<
     const route = Route0.create(dedupeSlashes(`/${normalizedBasepath}`), { baseurl: normalizedBaseurl })
     return this._continue({
       _baseurl: normalizedBaseurl,
-      route: route,
+      route,
     }) as never
   }
 
@@ -926,6 +927,26 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
+  on(
+    name: 'error',
+    callback: AnyEventerSubscriptionCallback<UniqEventerErrorEventName>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
   on<TEventNames extends Array<AnyEventerEvent['name']>>(
     names: TEventNames,
     callback: AnyEventerSubscriptionCallback<TEventNames[number]>,
@@ -947,11 +968,11 @@ export class Point0<
     TQueriesDefinitions
   >
   on(
-    name: AnyEventerEvent['name'] | '*' | Array<AnyEventerEvent['name']>,
+    name: AnyEventerEvent['name'] | 'error' | '*' | Array<AnyEventerEvent['name']>,
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     callback: AnyEventerSubscriptionCallback | undefined = () => {},
   ) {
-    const names = Array.isArray(name) ? name : [name]
+    const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
     const subscriptions = names.map((name) => ({ name, callback, target: undefined }))
     return this._continue({
       _eventerSubscriptions: [...this._eventerSubscriptions, ...subscriptions],
@@ -961,6 +982,26 @@ export class Point0<
   serverOn<TEventName extends ServerEventerEvent['name'] | '*'>(
     name: TEventName,
     callback: ServerEventerSubscriptionCallback<TEventName>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  serverOn(
+    name: 'error',
+    callback: ServerEventerSubscriptionCallback<UniqEventerErrorEventName>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -999,11 +1040,11 @@ export class Point0<
     TQueriesDefinitions
   >
   serverOn(
-    name: ServerEventerEvent['name'] | '*' | Array<ServerEventerEvent['name']>,
+    name: ServerEventerEvent['name'] | 'error' | '*' | Array<ServerEventerEvent['name']>,
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     callback: ServerEventerSubscriptionCallback | undefined = () => {},
   ) {
-    const names = Array.isArray(name) ? name : [name]
+    const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
     const subscriptions = names.map((name) => ({ name, callback, target: 'server' as const }))
     return this._continue({
       _eventerSubscriptions: [...this._eventerSubscriptions, ...subscriptions],
@@ -1013,6 +1054,26 @@ export class Point0<
   clientOn<TEventName extends ClientEventerEvent['name'] | '*'>(
     name: TEventName,
     callback: ClientEventerSubscriptionCallback<TEventName>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  clientOn(
+    name: 'error',
+    callback: ClientEventerSubscriptionCallback<UniqEventerErrorEventName>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -1051,11 +1112,11 @@ export class Point0<
     TQueriesDefinitions
   >
   clientOn(
-    name: ClientEventerEvent['name'] | '*' | Array<ClientEventerEvent['name']>,
+    name: ClientEventerEvent['name'] | 'error' | '*' | Array<ClientEventerEvent['name']>,
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     callback: ClientEventerSubscriptionCallback | undefined = () => {},
   ) {
-    const names = Array.isArray(name) ? name : [name]
+    const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
     const subscriptions = names.map((name) => ({ name, callback, target: 'client' as const }))
     return this._continue({
       _eventerSubscriptions: [...this._eventerSubscriptions, ...subscriptions],
