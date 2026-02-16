@@ -481,7 +481,8 @@ Bun.serve({
     if (!this.indexHtml) {
       throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
     }
-    const srcIndexHtmlContent = await Bun.file(this.indexHtml).text()
+    const srcIndexHtmlContent =
+      this.indexHtml === '__POINT0_TEST_INDEX_HTML__' ? this.getTestIndexHtml() : await Bun.file(this.indexHtml).text()
     const bunViteDevServer = withRetries(process.env.NODE_ENV === 'test' ? 99 : 5, () =>
       Bun.serve({
         port: this.port,
@@ -658,12 +659,8 @@ Bun.serve({
     ])
   }
 
-  async getOriginalIndexHtml(url: string): Promise<string> {
-    if (!this.isInitialized()) {
-      throw new Error('Client is not initialized')
-    }
-    if (this.indexHtml === '__POINT0_TEST_INDEX_HTML__') {
-      return `<!DOCTYPE html>
+  private getTestIndexHtml(): string {
+    return `<!DOCTYPE html>
   <html lang="en">
   <head>
     <meta charset="UTF-8">
@@ -674,6 +671,14 @@ Bun.serve({
     <div id="root"></div>
   </body>
 </html>`
+  }
+
+  async getOriginalIndexHtml(url: string): Promise<string> {
+    if (!this.isInitialized()) {
+      throw new Error('Client is not initialized')
+    }
+    if (this.indexHtml === '__POINT0_TEST_INDEX_HTML__') {
+      return this.getTestIndexHtml()
     }
     if (!this.indexHtml) {
       throw new Error(`indexHtml not found for client "${this.scope}"`)

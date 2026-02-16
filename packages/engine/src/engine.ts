@@ -145,7 +145,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     }
   }
 
-  async dev(options: {
+  async dev(options?: {
     // engineFile: string
     generateFiles?: boolean
     clientDevServersOnly?: boolean
@@ -163,7 +163,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       bunRunArgs = [],
       watch = true,
       cwd = process.cwd(),
-    } = options
+    } = options ?? {}
     normalizeAndValidateNodeEnv('development')
     // const generatorProcess = generateFiles ? (watch ? this.generateWatch() : this.generate()) : null
     if (generateFiles) {

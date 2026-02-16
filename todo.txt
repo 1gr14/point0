@@ -52,6 +52,8 @@ try catch evertywhere in engine to show real error in real place
 
 
 === REFACTOING 3000 ===
+__INPUT_RAW__ не хранить в стейте, а геж-то ещё хранить напримерв _state
+test body really has raw body after request
 --+
 Разобраться с эррор баундари для фронта
 bun watcher, not parcel watcher
@@ -178,13 +180,12 @@ SuccessComponent>children также можно передавать и тогд
 
 
 === TESTING ===
-parallel fake client tests
 В тестах префктч пейджа использовать одно поднятие сервера, и просто создать много лэйоутов и страниц и поним проходиться
 nice names to package json scripts
-test body really has raw body after request
 Убрать локалхост из тэйла тестов, просто путь пусть будет
 Добавить перенос строки перед первым " для красоты
 ---
+parallel fake client tests (problem here with testing libraries itself)
 Плэйврайт пусть тоже будет на лупе сидеть, так надёжнее, Тупо переиспользовать элемент вьюер в плэйврайте
 Передавать рендер функцию в энжину, чтобы ртл не воряала, и использовать в рендер файле
 В тестах рендер по умолчанию ждёт пока в квериклиенте не будет не разрезолвленных кверей

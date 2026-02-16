@@ -262,8 +262,12 @@ export class Walker {
         firstLetsArgNodePath?.node.type === 'StringLiteral'
           ? (firstLetsArgNodePath.node.value as ReadyPointType)
           : undefined
+      if (secondLetsArgNodePath?.node.type === 'TemplateLiteral') {
+        errors.push(new Error('.lets() second argument must be a regular string literal, not a template string.'))
+      }
       const pointName =
         secondLetsArgNodePath?.node.type === 'StringLiteral' ? secondLetsArgNodePath.node.value : undefined
+
       if (!pointName) {
         return { point: null, errors }
       }

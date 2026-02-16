@@ -903,7 +903,7 @@ export class FilesGenerator {
     if (pagePoints.length > 0) {
       lines.push(`export const routes = Routes.create({`)
       for (const p of pagePoints) {
-        lines.push(`  ${p.name}: '${p.route}',`)
+        lines.push(`  '${p.name}': '${p.route}',`)
       }
       lines.push(`}${baseurlSuffix})`)
     } else {

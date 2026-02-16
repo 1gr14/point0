@@ -321,6 +321,7 @@ export type EngineGeneralOptionsParsed = {
   buildWatchGlob: string[]
   banner: string | null
   compiler: EngineOptionsCompiler | boolean | null
+  viteConfig: EngineOptionsViteConfig | null
   bunBuildConfig: BunBuildConfigDefinition | null
   bunPlugins: BunPluginsDefinition | null
 }
@@ -567,6 +568,15 @@ const parseEngineGeneralOptions = ({
     ...result,
     bunBuildConfig: generalOptions.bunBuildConfig ?? null,
     bunPlugins: generalOptions.bunPlugins ?? null,
+    viteConfig:
+      typeof generalOptions.viteConfig === 'string'
+        ? toFinalPath({
+            ...result,
+            relPathAfterBuild: null,
+            cwdIfWasBuilt: null,
+            path: generalOptions.viteConfig,
+          })
+        : (generalOptions.viteConfig ?? null),
     clientsOutdir: toFinalPath({
       ...result,
       cwdIfWasBuilt: null,
@@ -804,7 +814,7 @@ export const parseEngineServerOptions = ({
             cwdIfWasBuilt: null,
             path: serverOptions.viteConfig,
           })
-        : (serverOptions.viteConfig ?? null),
+        : (serverOptions.viteConfig ?? generalOptionsParsed.viteConfig ?? null),
   }
 }
 const parseEngineClientOptions = ({
@@ -933,7 +943,7 @@ const parseEngineClientOptions = ({
             cwdIfWasBuilt: null,
             path: clientOptions.viteConfig,
           })
-        : (clientOptions.viteConfig ?? null),
+        : (clientOptions.viteConfig ?? generalOptionsParsed.viteConfig ?? null),
     outdir,
     indexHtml: toFinalPath({
       ...generalOptionsParsed,

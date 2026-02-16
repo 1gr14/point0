@@ -15,6 +15,7 @@ import * as rtl from '@testing-library/react/pure.js'
 import { FetchRecorder } from './fetch-recorder.js'
 import { YAML } from 'bun'
 import { CookiesStore } from '@point0/cookies-store'
+import type { EngineOptions } from '../../src/config.js'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -276,11 +277,15 @@ export const createTestThings = async ({
   wrapper,
   app: appProvided,
   globals = getFakeBrowserGlobals(),
+  engineOptions,
+  preventClientDevServers = true,
 }: {
   wrapper?: React.ComponentType<{ children: React.ReactNode }>
   points?: PointsDefinition
   app?: AppComponent
   globals?: Record<string, any>
+  engineOptions?: Partial<EngineOptions>
+  preventClientDevServers?: boolean
 }) => {
   bindNotifyManager()
   const Wrapper = wrapper ?? undefined
@@ -313,7 +318,8 @@ export const createTestThings = async ({
     file: nodePath.resolve(__dirname, '../temp/never'),
     server: { scope: 'root', points },
     clients: [{ scope: 'root', points, indexHtml: '__POINT0_TEST_INDEX_HTML__', app }],
-  }).init({ preventClientDevServers: true })
+    ...engineOptions,
+  }).init({ preventClientDevServers })
   const client = FakeClient.create<TestThingsState>({
     engine,
     scope: 'root',
@@ -613,3 +619,6 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
     fetchTitle,
   }
 }
+
+export type TestThings = Awaited<ReturnType<typeof createTestThings>>
+export type ItFn = (done: (err?: unknown) => any) => any
