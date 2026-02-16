@@ -179,24 +179,6 @@ SuccessComponent>children также можно передавать и тогд
 
 
 
-=== TESTING ===
-Убрать локалхост из тэйла тестов, просто путь пусть будет
-Добавить перенос строки перед первым " для красоты
----
-parallel fake client tests (problem here with testing libraries itself)
-Плэйврайт пусть тоже будет на лупе сидеть, так надёжнее, Тупо переиспользовать элемент вьюер в плэйврайте
-Передавать рендер функцию в энжину, чтобы ртл не воряала, и использовать в рендер файле
-В тестах рендер по умолчанию ждёт пока в квериклиенте не будет не разрезолвленных кверей
-bun run test-no-log (trhow error if any .logSomething exists)
-throwOnBundlersLengthNot2 → to eslintplugin
-@point0/react-dom/testing для всех
-Кли тесты команд с названиями реальных команд, а отдельно тесты на билд также сделать через сам скрипт
-? В элемент вьюер добавить не урл а экшон и туда может прописать
-? В проджект тестах рут вручную везде прописывать, и реоганизовать папки
-? При ините тест прожекта проводить клинап
-
-
-
 
 === SUPERSTORE ===
 we should have transformer.set() transformer.get(), os apply to everything if no transformer defined specially (use in points and cookies-store)
@@ -282,7 +264,6 @@ combinedInput → sharedInput
 
 === MIDDLEARE ===
 .middleware('post', '/', () => {}) | .middleware('*', '*', () => {})
-
 add "final" to middleware pops so we can call it final() to pass all other middlewares
 Мидлвару можно на любом поинте задать, просто она будет отсекать обращения к другим поинтам
 ---
@@ -585,18 +566,34 @@ launch
 
 
 
+
+=== TESTING ===
+---
+parallel fake client tests (problem here with testing libraries itself)
+Плэйврайт пусть тоже будет на лупе сидеть, так надёжнее, Тупо переиспользовать элемент вьюер в плэйврайте
+Передавать рендер функцию в энжину, чтобы ртл не воряала, и использовать в рендер файле
+В тестах рендер по умолчанию ждёт пока в квериклиенте не будет не разрезолвленных кверей
+bun run test-no-log (trhow error if any .logSomething exists)
+throwOnBundlersLengthNot2 → to eslintplugin
+@point0/react-dom/testing для всех
+Кли тесты команд с названиями реальных команд, а отдельно тесты на билд также сделать через сам скрипт
+? В элемент вьюер добавить не урл а экшон и туда может прописать
+? В проджект тестах рут вручную везде прописывать, и реоганизовать папки
+? При ините тест прожекта проводить клинап
+
 === ROUTER ===
 ---
 Префетч мод пререндер, тогда всё просто запререндерится и само подфетчится
 Роут стейты, перфетчинг тразититонинг, а также добавить еррор саксес лоадинг который мы и берём и пейдж стейта
 
+=== ROUTES ===
+---
+allow * in routes so we can define special 404 for specific paths
+optional params in routes
+
 === GRPC ===
 grpc
 replaceGetFetchOptions
-
-=== ROUTES ===
-allow * in routes so we can define special 404 for specific paths
-optional params in routes
 
 === CATEGORY ===
 Ввести понятие категори, оно через точку определяется в названии поинта, чтобы их группировать .lets('category', 'name').meta(description); .lets('page', 'idea.view');

@@ -44,7 +44,8 @@ describe('mutation', () => {
       await click('#mutate')
       await waitContent('x=1')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page:
               #data: x=nothing
               #mutate: Mutate
@@ -56,7 +57,8 @@ describe('mutation', () => {
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "mutation.test (client) < {}
+        "
+        mutation.test (client) < {}
         "
       `)
   })
@@ -85,7 +87,8 @@ describe('mutation', () => {
       await click('#mutate')
       await waitContent('y=2')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page:
               #data: y=nothing
               #mutate: Mutate
@@ -98,6 +101,7 @@ describe('mutation', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
+
         "
       `)
   })
@@ -129,7 +133,8 @@ describe('mutation', () => {
       await click('#mutate')
       await waitContent('x=1 y=2')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page:
               #data: x=nothing y=nothing
               #mutate: Mutate
@@ -140,7 +145,8 @@ describe('mutation', () => {
           "
         `)
       expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "mutation.test (client) < {}
+        "
+        mutation.test (client) < {}
         "
       `)
     })
@@ -171,7 +177,8 @@ describe('mutation', () => {
       await click('#mutate')
       await waitContent('x=246')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page:
               #data: x=nothing
               #mutate: Mutate
@@ -182,7 +189,8 @@ describe('mutation', () => {
           "
         `)
       expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "mutation.test (client) < {"y":123}
+        "
+        mutation.test (client) < {"y":123}
         "
       `)
     })
@@ -213,7 +221,8 @@ describe('mutation', () => {
       await click('#mutate')
       await waitContent('x=246')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page:
               #data: x=nothing
               #mutate: Mutate
@@ -226,6 +235,7 @@ describe('mutation', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
+
         "
       `)
   })
@@ -256,7 +266,8 @@ describe('mutation', () => {
       await click('#mutate')
       await waitContent('x=246')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page:
               #data: x=nothing
               #mutate: Mutate
@@ -268,7 +279,8 @@ describe('mutation', () => {
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "mutation.test (client) < {"y":123}
+        "
+        mutation.test (client) < {"y":123}
         "
       `)
   })

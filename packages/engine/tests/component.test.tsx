@@ -32,7 +32,8 @@ describe('component', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#component')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #page:
             #component: x=nothing
         "
@@ -40,10 +41,12 @@ describe('component', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
+
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page:
+      "
+      #page:
         #component: x=nothing
       "
     `)
@@ -65,7 +68,8 @@ describe('component', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#component')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #page:
             #loading: ...
 
@@ -75,11 +79,13 @@ describe('component', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "component.stats (client) < {}
+      "
+      component.stats (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page:
+      "
+      #page:
         #component: x=1
       "
     `)
@@ -106,7 +112,8 @@ describe('component', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#error')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #page:
             #loading: ...
 
@@ -116,11 +123,13 @@ describe('component', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "component.stats (client) < {}
+      "
+      component.stats (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page:
+      "
+      #page:
         #loading: ...
       "
     `)
@@ -147,7 +156,8 @@ describe('component', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#component')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #page:
             #loading: ...
 
@@ -157,11 +167,13 @@ describe('component', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "component.stats (client) < {"id":"zxc","mult":2}
+      "
+      component.stats (client) < {"id":"zxc","mult":2}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page:
+      "
+      #page:
         #component: x=1 y=2 v=zxc-2
       "
     `)
@@ -188,7 +200,8 @@ describe('component', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#component')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #page:
             #component: x=1 y=2 z=3
         "
@@ -196,10 +209,12 @@ describe('component', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
+
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page:
+      "
+      #page:
         #component: x=1 y=2 z=3
       "
     `)
@@ -228,7 +243,8 @@ describe('component', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#component')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #page:
             #wrapper:
               #query-status: pending
@@ -242,11 +258,13 @@ describe('component', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "component.stats (client) < {"id":"zxc"}
+      "
+      component.stats (client) < {"id":"zxc"}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page:
+      "
+      #page:
         #wrapper:
           #query-status: success
           #component: x=zxc

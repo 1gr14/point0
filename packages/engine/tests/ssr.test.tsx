@@ -10,7 +10,8 @@ describe('ssr', () => {
     const { fetchSsr } = await createTestThings({ points: [root, page] })
     const result = await fetchSsr(page)
     expect(result.preview).toMatchInlineSnapshot(`
-      "#page: x
+      "
+      #page: x
       "
     `)
   })
@@ -29,7 +30,8 @@ describe('ssr', () => {
       "
     `)
     expect(result.preview).toMatchInlineSnapshot(`
-      "#page: x=1
+      "
+      #page: x=1
       "
     `)
   })
@@ -59,13 +61,15 @@ describe('ssr', () => {
       "
     `)
     expect(result.preview).toMatchInlineSnapshot(`
-      "#page:
+      "
+      #page:
         #page-content: x=1
         #component: y=2
       "
     `)
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.home (client) (page) < {}
+      "
+      page.home (client) (page) < {}
       page.home (server) < {}
       component.component (server) < {}
       "
@@ -95,13 +99,15 @@ describe('ssr', () => {
       "
     `)
     expect(result.preview).toMatchInlineSnapshot(`
-      "#page:
+      "
+      #page:
         #page-content: x=1
         text: Loading...
       "
     `)
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.home (client) (page) < {}
+      "
+      page.home (client) (page) < {}
       page.home (server) < {}
       "
     `)
@@ -137,13 +143,15 @@ describe('ssr', () => {
       "
     `)
     expect(result.preview).toMatchInlineSnapshot(`
-      "#page:
+      "
+      #page:
         #page-content: x=1
         text: Loading...
       "
     `)
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.home (client) (page) < {}
+      "
+      page.home (client) (page) < {}
       page.home (server) < {}
       component.component (server) < {}
       "

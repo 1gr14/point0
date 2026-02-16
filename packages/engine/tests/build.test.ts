@@ -94,7 +94,8 @@ describe('build', () => {
         const page = await tp.gotoServer('/')
         await page.stable
         expect(page.tale).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           div: My Cool Page, VAR1, CONST1, VAR1, CONST1
           "
         `)
@@ -134,7 +135,8 @@ describe('build', () => {
         const page = await tp.gotoServer('/')
         await page.stable
         expect(page.tale).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           (Empty)
           
           div: My Cool Page, VAR1, CONST1, VAR1, CONST1
@@ -232,7 +234,8 @@ describe('build', () => {
         const page = await tp.gotoServer('/3')
         await page.stable
         expect(page.tale).toMatchInlineSnapshot(`
-          "/3
+          "
+          /3
             div: MY_SERVER_ONLY4
             
             div: MY_CLIENT_ONLY5
@@ -285,7 +288,8 @@ describe('build', () => {
       const page = await tp.gotoServer('/')
       await page.stable
       expect(page.tale).toMatchInlineSnapshot(`
-      "/
+      "
+      /
         div: My Cool Page
         "
     `)

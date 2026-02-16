@@ -25,7 +25,8 @@ describe('element-viewer', () => {
     )
     const viewer = ElementViewer.create(container)
     expect(await viewer.tale()).toMatchInlineSnapshot(`
-      "/
+      "
+      /
         p: Hello
       "
     `)
@@ -72,7 +73,8 @@ describe('element-viewer', () => {
     //   expect(container.querySelector('p')?.textContent).toBe('Hello')
     // })
     expect(await viewer.tale()).toMatchInlineSnapshot(`
-      "/
+      "
+      /
         p: Hello
         #first: x
         #second: x

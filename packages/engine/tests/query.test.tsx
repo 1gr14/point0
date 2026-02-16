@@ -39,27 +39,31 @@ describe('query', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#data')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page:
               #data: nothing
-  
+
             #page:
               #data: 1
           "
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "query.test (client) < {}
+        "
+        query.test (client) < {}
         "
       `)
     fetchRecorder.prune()
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page:
+        "
+        #page:
           #data: 1
         "
       `)
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "page.home (client) (page) < {}
+        "
+        page.home (client) (page) < {}
         query.test (server) < {}
         "
       `)
@@ -87,7 +91,8 @@ describe('query', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #loading: ...
 
             #page: q=nothing y=2
@@ -97,12 +102,14 @@ describe('query', () => {
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "page.home (client) < {}
+        "
+        page.home (client) < {}
         query.test (client) < {}
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: q=1 y=2
+        "
+        #page: q=1 y=2
         "
       `)
   })
@@ -122,7 +129,8 @@ describe('query', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page: y=nothing
 
             #page: y=2
@@ -131,10 +139,12 @@ describe('query', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
+
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: y=nothing
+        "
+        #page: y=nothing
         "
       `)
   })
@@ -159,7 +169,8 @@ describe('query', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page: q=nothing y=nothing
 
             #page: q=1 y=2
@@ -167,11 +178,13 @@ describe('query', () => {
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "query.test (client) < {}
+        "
+        query.test (client) < {}
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: q=nothing y=nothing
+        "
+        #page: q=nothing y=nothing
         "
       `)
   })
@@ -192,7 +205,8 @@ describe('query', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page: x=nothing
 
             #page: x=246
@@ -200,11 +214,13 @@ describe('query', () => {
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "query.test (client) < {"y":123}
+        "
+        query.test (client) < {"y":123}
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: x=246
+        "
+        #page: x=246
         "
       `)
   })
@@ -225,7 +241,8 @@ describe('query', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page: x=nothing
 
             #page: x=246
@@ -234,10 +251,12 @@ describe('query', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
+
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: x=nothing
+        "
+        #page: x=nothing
         "
       `)
   })
@@ -259,7 +278,8 @@ describe('query', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page: x=nothing
 
             #page: x=246
@@ -267,11 +287,13 @@ describe('query', () => {
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "query.test (client) < {"y":123}
+        "
+        query.test (client) < {"y":123}
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: x=nothing
+        "
+        #page: x=nothing
         "
       `)
   })

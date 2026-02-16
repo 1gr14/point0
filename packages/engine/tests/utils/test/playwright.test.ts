@@ -176,7 +176,8 @@ describe('playwright', () => {
         // Check that story captured the state changes
         const story = page.story
         expect(page.tale).toMatchInlineSnapshot(`
-          "data:...
+          "
+          data:...
             #counter: 0
             #increment: Click me
             
@@ -328,7 +329,8 @@ describe('playwright', () => {
         expect(lastHtml.html).toContain(clickCount2.toString())
 
         expect(page.tale).toMatchInlineSnapshot(`
-          "data:...
+          "
+          data:...
             #counter: 0
             #increment: Click me
             
@@ -439,7 +441,8 @@ describe('playwright', () => {
         // await page.waitContent('Initial', 1000)
         await page.waitContent('Changed', 1000)
         expect(page.tale).toMatchInlineSnapshot(`
-          "data:...
+          "
+          data:...
             #status: Initial
             
             #status: Changed
@@ -467,7 +470,8 @@ describe('playwright', () => {
         // eslint-disable-next-line @typescript-eslint/await-thenable
         await expect(page.waitContent('But Maybe Changes', 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
-          "data:...
+          "
+          data:...
             div: Never Changes
             "
         `)
@@ -499,7 +503,8 @@ describe('playwright', () => {
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
         await page.waitNoContent('Will Disappear', 300)
         expect(page.tale).toMatchInlineSnapshot(`
-          "data:...
+          "
+          data:...
             #status: Will Disappear
             
             (Empty)
@@ -526,7 +531,8 @@ describe('playwright', () => {
         // eslint-disable-next-line @typescript-eslint/await-thenable
         await expect(page.waitNoContent('Always Present', 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
-          "data:...
+          "
+          data:...
             div: Always Present
             "
         `)
@@ -563,7 +569,8 @@ describe('playwright', () => {
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
         await page.waitContentSequence(['Changed', '!Will Disappear'])
         expect(page.tale).toMatchInlineSnapshot(`
-          "data:...
+          "
+          data:...
             #status: Initial
             #status2: Will Disappear
             
@@ -595,7 +602,8 @@ describe('playwright', () => {
         // eslint-disable-next-line @typescript-eslint/await-thenable
         await expect(page.waitContentSequence(['Changed', '!Will Not Disappear'], 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
-          "data:...
+          "
+          data:...
             #status: Initial
             #status2: Will Not Disappear
             "

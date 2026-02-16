@@ -280,32 +280,35 @@ export class PlaywrightPage {
   }
 
   get requestsTale(): string {
-    return this.requestsStory
-      .filter((requestStoryItem) => {
-        if (
-          'path' in requestStoryItem &&
-          (requestStoryItem.path.startsWith('/_bun') ||
-            requestStoryItem.path.startsWith('/chunk-') ||
-            requestStoryItem.path.startsWith('/@fs/') ||
-            requestStoryItem.path.startsWith('/assets/') ||
-            requestStoryItem.path.startsWith('/@vite/') ||
-            requestStoryItem.path.startsWith('/index.client.js') ||
-            requestStoryItem.path.endsWith('.tsx') ||
-            requestStoryItem.path.endsWith('.ts'))
-        ) {
-          return false
-        }
-        return true
-      })
-      .map((requestStoryItem) => {
-        const errorPrefix = requestStoryItem.result === 'failed' ? `failed ` : ''
-        if ('scope' in requestStoryItem) {
-          const outputTypeSuffix = ` (${requestStoryItem.output})`
-          return `${errorPrefix}${requestStoryItem.scope}.${requestStoryItem.type}.${requestStoryItem.name}${outputTypeSuffix}`
-        }
-        return `${errorPrefix}${requestStoryItem.method} ${requestStoryItem.path}`
-      })
-      .join('\n')
+    return (
+      '\n' +
+      this.requestsStory
+        .filter((requestStoryItem) => {
+          if (
+            'path' in requestStoryItem &&
+            (requestStoryItem.path.startsWith('/_bun') ||
+              requestStoryItem.path.startsWith('/chunk-') ||
+              requestStoryItem.path.startsWith('/@fs/') ||
+              requestStoryItem.path.startsWith('/assets/') ||
+              requestStoryItem.path.startsWith('/@vite/') ||
+              requestStoryItem.path.startsWith('/index.client.js') ||
+              requestStoryItem.path.endsWith('.tsx') ||
+              requestStoryItem.path.endsWith('.ts'))
+          ) {
+            return false
+          }
+          return true
+        })
+        .map((requestStoryItem) => {
+          const errorPrefix = requestStoryItem.result === 'failed' ? `failed ` : ''
+          if ('scope' in requestStoryItem) {
+            const outputTypeSuffix = ` (${requestStoryItem.output})`
+            return `${errorPrefix}${requestStoryItem.scope}.${requestStoryItem.type}.${requestStoryItem.name}${outputTypeSuffix}`
+          }
+          return `${errorPrefix}${requestStoryItem.method} ${requestStoryItem.path}`
+        })
+        .join('\n')
+    )
   }
 
   get story(): PageStoryItem[] {
@@ -338,8 +341,9 @@ export class PlaywrightPage {
     for (const item of this.story) {
       const pair: [string, string[]] = [PlaywrightPage.prettifyUrl(item.url), []]
       for (const preview of item.previews) {
+        const normalizedPreview = preview.replace(/^\n/, '')
         pair[1].push(
-          preview
+          normalizedPreview
             .split('\n')
             .map((line) => `  ${line}`)
             .join('\n'),
@@ -347,7 +351,7 @@ export class PlaywrightPage {
       }
       pairs.push(pair)
     }
-    return pairs.map(([url, previews]) => `${url}\n${previews.join('\n')}`).join('\n')
+    return '\n' + pairs.map(([url, previews]) => `${url}\n${previews.join('\n')}`).join('\n')
   }
 
   get stable(): Promise<PageStoryItem[]> {

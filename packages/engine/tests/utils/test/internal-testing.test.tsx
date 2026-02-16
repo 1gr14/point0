@@ -41,7 +41,8 @@ describe('internal-testing', () => {
       points: [root, page, news],
     })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#home:
+      "
+      #home:
         h1: Home Page
         #link: Go to News
       "
@@ -60,7 +61,8 @@ describe('internal-testing', () => {
       await click('#link')
       await waitContent('#news')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #home:
             h1: Home Page
             #link: Go to News
@@ -85,7 +87,8 @@ describe('internal-testing', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.news (client) < {}
+      "
+      page.news (client) < {}
       "
     `)
 

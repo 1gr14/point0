@@ -196,7 +196,8 @@ describe('navigate', () => {
       await click('.link-about')
       await waitContent('#about')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #nav:
             .link-home.exact: home
             .link-about.unmatched: about
@@ -265,7 +266,8 @@ describe('navigate', () => {
       await click('.link-posts')
       await waitContent('#posts')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/about
+        "
+        /about
           #nav:
             .link-home.ancestor: home
             .link-about.exact: about
@@ -344,7 +346,8 @@ describe('navigate', () => {
       await click('.link-post-preview-1')
       await waitContent('#post')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/posts
+        "
+        /posts
           #nav:
             .link-home.ancestor: home
             .link-about.unmatched: about
@@ -437,7 +440,8 @@ describe('navigate', () => {
       await click('.link-post-2')
       await waitContent('#post')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/posts/1
+        "
+        /posts/1
           #nav:
             .link-home.ancestor: home
             .link-about.unmatched: about
@@ -520,7 +524,8 @@ describe('navigate', () => {
       await click('.use-navigate-post-preview-1')
       await waitContent('#post')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/posts
+        "
+        /posts
           #nav:
             .link-home.ancestor: home
             .link-about.unmatched: about
@@ -613,7 +618,8 @@ describe('navigate', () => {
       await click('.navigate-post-preview-1')
       await waitContent('#post')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/posts
+        "
+        /posts
           #nav:
             .link-home.ancestor: home
             .link-about.unmatched: about
@@ -704,7 +710,8 @@ describe('navigate', () => {
     await t.render(t.homePage.route() + '404', async ({ waitContent, tale, click }) => {
       await waitContent('Page Not Found')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/404
+        "
+        /404
           #nav:
             .link-home.ancestor: home
             .link-about.unmatched: about
@@ -730,7 +737,8 @@ describe('navigate', () => {
       await t.navigate.to('/404')
       await waitContent('Page Not Found')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #nav:
             .link-home.exact: home
             .link-about.unmatched: about

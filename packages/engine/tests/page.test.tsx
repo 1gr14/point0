@@ -28,17 +28,20 @@ describe('page', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page: x=nothing
           "
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
+
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: x=nothing
+        "
+        #page: x=nothing
         "
       `)
   })
@@ -52,17 +55,20 @@ describe('page', () => {
     await render(page.route({ x: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/zxc
+          "
+          /zxc
             #page: x=zxc
           "
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
+
         "
       `)
     expect(await fetchPreview(page, { x: 'zxc' })).toMatchInlineSnapshot(`
-        "#page: x=zxc
+        "
+        #page: x=zxc
         "
       `)
   })
@@ -78,7 +84,8 @@ describe('page', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #loading: ...
 
           #page: x=1
@@ -86,11 +93,13 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.home (client) < {}
+      "
+      page.home (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page: x=1
+      "
+      #page: x=1
       "
     `)
   })
@@ -109,7 +118,8 @@ describe('page', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #loading: ...
 
           #page: x=1
@@ -117,11 +127,13 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.home (client) < {}
+      "
+      page.home (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page: x=1
+      "
+      #page: x=1
       "
     `)
   })
@@ -137,7 +149,8 @@ describe('page', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #loading: ...
 
           #page: x=1
@@ -146,10 +159,12 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
+
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#loading: ...
+      "
+      #loading: ...
       "
     `)
   })
@@ -170,7 +185,8 @@ describe('page', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #loading: ...
 
           #page: x=1, y=2
@@ -178,11 +194,13 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.home (client) < {}
+      "
+      page.home (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#loading: ...
+      "
+      #loading: ...
       "
     `)
   })
@@ -203,7 +221,8 @@ describe('page', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#error')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #loading: ...
 
           #error: test error
@@ -211,11 +230,13 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.home (client) < {}
+      "
+      page.home (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#loading: ...
+      "
+      #loading: ...
       "
     `)
   })
@@ -231,7 +252,8 @@ describe('page', () => {
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/zxc
+        "
+        /zxc
           #loading: ...
 
           #page: x=zxc
@@ -239,11 +261,13 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.home (client) < {"id":"zxc"}
+      "
+      page.home (client) < {"id":"zxc"}
       "
     `)
     expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
-      "#page: x=zxc
+      "
+      #page: x=zxc
       "
     `)
   })
@@ -304,7 +328,8 @@ describe('page', () => {
       await click('#more')
       await waitContent('Item 5')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #loading: ...
 
           #page:
@@ -329,13 +354,15 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.home (client) < {"cursor":0}
+      "
+      page.home (client) < {"cursor":0}
       page.home (client) < {"cursor":2}
       page.home (client) < {"cursor":4}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page:
+      "
+      #page:
         div: Item 1
         div: Item 2
         #more: Load more
@@ -391,7 +418,8 @@ describe('page', () => {
       await click('#more')
       await waitContent('Item 5')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #loading: ...
 
           #page:
@@ -417,10 +445,12 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
+
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#loading: ...
+      "
+      #loading: ...
       "
     `)
   })
@@ -477,7 +507,8 @@ describe('page', () => {
       await click('#more')
       await waitContent('ITEM 5')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #loading: ...
 
           #page:
@@ -502,13 +533,15 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.home (client) < {"cursor":0}
+      "
+      page.home (client) < {"cursor":0}
       page.home (client) < {"cursor":2}
       page.home (client) < {"cursor":4}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#loading: ...
+      "
+      #loading: ...
       "
     `)
   })
@@ -560,7 +593,8 @@ describe('page', () => {
     await render(page.route(), async ({ waitContent, tale, click }) => {
       await waitContent('#error')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           #loading: ...
 
           #error: test error
@@ -568,11 +602,13 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.home (client) < {"cursor":0}
+      "
+      page.home (client) < {"cursor":0}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#loading: ...
+      "
+      #loading: ...
       "
     `)
   })
@@ -595,7 +631,8 @@ describe('page', () => {
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/zxc
+        "
+        /zxc
           #wrapper:
             #params: zxc
             #query-status: pending
@@ -609,11 +646,13 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.home (client) < {"id":"zxc"}
+      "
+      page.home (client) < {"id":"zxc"}
       "
     `)
     expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
-      "#wrapper:
+      "
+      #wrapper:
         #params: zxc
         #query-status: success
         #page: x=zxc
@@ -638,17 +677,20 @@ describe('page', () => {
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#wrapper')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/zxc
+        "
+        /zxc
           #wrapper: you shell not pass
         "
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
+
       "
     `)
     expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
-      "#wrapper: you shell not pass
+      "
+      #wrapper: you shell not pass
       "
     `)
   })
@@ -668,17 +710,20 @@ describe('page', () => {
     await render(page.route({ y: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/zxc
+        "
+        /zxc
           #page: x=1 y=zxc
         "
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
+
       "
     `)
     expect(await fetchPreview(page, { y: 'zxc' })).toMatchInlineSnapshot(`
-      "#page: x=1 y=zxc
+      "
+      #page: x=1 y=zxc
       "
     `)
   })
@@ -721,7 +766,8 @@ describe('page', () => {
     await render(page.route({ y: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/zxc
+        "
+        /zxc
           #loading: ...
 
           #error: test error
@@ -734,10 +780,12 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
+
       "
     `)
     expect(await fetchPreview(page, { y: 'zxc' })).toMatchInlineSnapshot(`
-      "#loading: ...
+      "
+      #loading: ...
       "
     `)
   })
@@ -758,7 +806,8 @@ describe('page', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/home
+        "
+        /home
           #loading: ...
 
           #page: x=1
@@ -766,11 +815,13 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "query.test (client) < {}
+      "
+      query.test (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page: x=1
+      "
+      #page: x=1
       "
     `)
   })
@@ -796,7 +847,8 @@ describe('page', () => {
     await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/123
+        "
+        /123
           #loading: ...
 
           #page: x=246 y=123
@@ -804,11 +856,13 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "query.test (client) < {"y":123}
+      "
+      query.test (client) < {"y":123}
       "
     `)
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
-      "#page: x=246 y=123
+      "
+      #page: x=246 y=123
       "
     `)
   })
@@ -834,7 +888,8 @@ describe('page', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/home
+        "
+        /home
           #loading: ...
 
           #page: x=246 y=123
@@ -842,11 +897,13 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "query.test (client) < {"y":123}
+      "
+      query.test (client) < {"y":123}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page: x=246 y=123
+      "
+      #page: x=246 y=123
       "
     `)
   })
@@ -873,7 +930,8 @@ describe('page', () => {
     await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/123
+        "
+        /123
           #loading: ...
 
           #page: x=246 y=123
@@ -881,11 +939,13 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "query.test (client) < {"y":123}
+      "
+      query.test (client) < {"y":123}
       "
     `)
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
-      "#page: x=246 y=123
+      "
+      #page: x=246 y=123
       "
     `)
   })
@@ -915,7 +975,8 @@ describe('page', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/home
+        "
+        /home
           #loading: ...
 
           #page: x=1, y=2
@@ -923,12 +984,14 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "query.query1 (client) < {}
+      "
+      query.query1 (client) < {}
       query.query2 (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page: x=1, y=2
+      "
+      #page: x=1, y=2
       "
     `)
   })
@@ -984,7 +1047,8 @@ describe('page', () => {
       await click('#more')
       await waitContent('Item 5')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/home
+        "
+        /home
           #loading: ...
 
           #page:
@@ -1009,13 +1073,15 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "infiniteQuery.test (client) < {"cursor":0}
+      "
+      infiniteQuery.test (client) < {"cursor":0}
       infiniteQuery.test (client) < {"cursor":2}
       infiniteQuery.test (client) < {"cursor":4}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page:
+      "
+      #page:
         div: Item 1
         div: Item 2
         #more: Load more
@@ -1076,7 +1142,8 @@ describe('page', () => {
       await click('#more')
       await waitContent('Item 5')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/home
+        "
+        /home
           #loading: ...
 
           #page:
@@ -1101,13 +1168,15 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "infiniteQuery.test (client) < {"cursor":0}
+      "
+      infiniteQuery.test (client) < {"cursor":0}
       infiniteQuery.test (client) < {"cursor":2}
       infiniteQuery.test (client) < {"cursor":4}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page:
+      "
+      #page:
         div: Item 1
         div: Item 2
         #more: Load more
@@ -1173,7 +1242,8 @@ describe('page', () => {
       await click('#more')
       await waitContent('Item 5')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/home
+        "
+        /home
           #loading: ...
 
           #page:
@@ -1201,14 +1271,16 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "infiniteQuery.test (client) < {"cursor":0}
+      "
+      infiniteQuery.test (client) < {"cursor":0}
       query.query2 (client) < {}
       infiniteQuery.test (client) < {"cursor":2}
       infiniteQuery.test (client) < {"cursor":4}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page:
+      "
+      #page:
         #y: 2
         div: Item 1
         div: Item 2
@@ -1232,7 +1304,8 @@ describe('page', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/home
+        "
+        /home
           #loading: ...
 
           #page: x=1
@@ -1240,11 +1313,13 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "query.test (client) < {}
+      "
+      query.test (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page: x=1
+      "
+      #page: x=1
       "
     `)
   })
@@ -1269,7 +1344,8 @@ describe('page', () => {
     await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/123
+        "
+        /123
           #loading: ...
 
           #page: x=246 y=123
@@ -1277,11 +1353,13 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "query.test (client) < {"y":123}
+      "
+      query.test (client) < {"y":123}
       "
     `)
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
-      "#page: x=246 y=123
+      "
+      #page: x=246 y=123
       "
     `)
   })
@@ -1375,7 +1453,8 @@ describe('page', () => {
       await click('#more')
       await waitContent('Item 5')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/home
+        "
+        /home
           #loading: ...
 
           #page:
@@ -1400,13 +1479,15 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "infiniteQuery.test (client) < {"cursor":0}
+      "
+      infiniteQuery.test (client) < {"cursor":0}
       infiniteQuery.test (client) < {"cursor":2}
       infiniteQuery.test (client) < {"cursor":4}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page:
+      "
+      #page:
         div: Item 1
         div: Item 2
         #more: Load more
@@ -1528,7 +1609,8 @@ describe('page', () => {
     await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/123
+        "
+        /123
           #loading: ...
 
           #page: x=246 y=123 z=3
@@ -1536,12 +1618,14 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "query.test (client) < {"y":123}
+      "
+      query.test (client) < {"y":123}
       page.home (client) < {"y":"123"}
       "
     `)
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
-      "#page: x=246 y=123 z=3
+      "
+      #page: x=246 y=123 z=3
       "
     `)
   })
@@ -1560,17 +1644,20 @@ describe('page', () => {
     await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/123
+        "
+        /123
           #page: x=1
         "
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
+
       "
     `)
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
-      "#page: x=1
+      "
+      #page: x=1
       "
     `)
   })
@@ -1599,7 +1686,8 @@ describe('page', () => {
     await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/123
+        "
+        /123
           #loading: ...
 
           #page: x=246 y=123 z=3
@@ -1607,12 +1695,14 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "query.test (client) < {"y":123}
+      "
+      query.test (client) < {"y":123}
       page.home (client) < {"y":"123"}
       "
     `)
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
-      "#page: x=246 y=123 z=3
+      "
+      #page: x=246 y=123 z=3
       "
     `)
   })
@@ -1656,7 +1746,8 @@ describe('page', () => {
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/zxc
+        "
+        /zxc
           #wrapper:
             #wrapper1:
               #props: y=1
@@ -1678,11 +1769,13 @@ describe('page', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.home (client) < {"id":"zxc"}
+      "
+      page.home (client) < {"id":"zxc"}
       "
     `)
     expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
-      "#wrapper:
+      "
+      #wrapper:
         #wrapper1:
           #props: y=1
           #query-status: success

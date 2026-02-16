@@ -38,6 +38,7 @@ describe('env', () => {
     process.env = { ...originalEnv }
     // Clear global objects that might affect target detection
     try {
+      process.env.POINT0_TARGET = undefined
       delete (globalThis as any).window
       delete (globalThis as any).document
       delete (globalThis as any).navigator

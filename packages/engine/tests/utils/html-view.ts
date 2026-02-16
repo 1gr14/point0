@@ -298,7 +298,7 @@ export class HtmlView<TParsed extends boolean = any> {
     const tree = await HtmlView.htmlToTree(html)
     const lines = tree.map((item) => HtmlView.formatTreeItemToString(item, 0))
     const result = lines.join('\n') || '(Empty)'
-    return result + '\n'
+    return '\n' + result + '\n'
   }
 
   private static buildTreeItem(el: HTMLRewriterTypes.Element): HtmlTreeItem {

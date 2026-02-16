@@ -278,7 +278,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #home: home
             
           /with-server
@@ -311,7 +312,8 @@ describe('prefetch-page', () => {
             "
         `)
             expect(requestsTale).toMatchInlineSnapshot(`
-          "GET /
+          "
+          GET /
           root.page.withServer (data)
           root.page.withBoth (data)
           root.query.relatedQuery (data)
@@ -325,7 +327,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-            "/
+            "
+            /
               #home: home
               
             /with-server
@@ -358,7 +361,8 @@ describe('prefetch-page', () => {
               "
           `)
             expect(requestsTale).toMatchInlineSnapshot(`
-            "GET /
+            "
+            GET /
             root.page.withServer (data)
             root.page.withBoth (data)
             root.query.relatedQuery (data)
@@ -372,7 +376,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-              "/
+              "
+              /
                 #home: home
                 
               /with-server
@@ -395,7 +400,8 @@ describe('prefetch-page', () => {
                 "
             `)
             expect(requestsTale).toMatchInlineSnapshot(`
-              "GET /
+              "
+              GET /
               root.page.withServer (queryClientDehydratedState)
               root.page.withClient (queryClientDehydratedState)
               root.page.withBoth (queryClientDehydratedState)
@@ -411,7 +417,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-              "/
+              "
+              /
                 #home: home
                 
               /with-server
@@ -434,7 +441,8 @@ describe('prefetch-page', () => {
                 "
             `)
             expect(requestsTale).toMatchInlineSnapshot(`
-              "GET /
+              "
+              GET /
               root.page.withServer (queryClientDehydratedState)
               root.page.withClient (queryClientDehydratedState)
               root.page.withBoth (queryClientDehydratedState)
@@ -450,7 +458,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-              "/
+              "
+              /
                 #home: home
                 
               /with-server
@@ -485,7 +494,8 @@ describe('prefetch-page', () => {
             // requests looks ugly, but behavior is correct
             // so better use same policy for prefetchPageOnLinkHover and prefetchPageOnNavigate
             expect(requestsTale.split('\n').sort().join('\n')).toMatchInlineSnapshot(`
-              "GET /
+              "
+              GET /
               root.page.withBoth (data)
               root.page.withBoth (queryClientDehydratedState)
               root.page.withClient (queryClientDehydratedState)
@@ -505,7 +515,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-              "/
+              "
+              /
                 #home: home
                 
               /with-server
@@ -528,7 +539,8 @@ describe('prefetch-page', () => {
                 "
             `)
             expect(requestsTale).toMatchInlineSnapshot(`
-              "GET /
+              "
+              GET /
               root.page.withServer (queryClientDehydratedState)
               root.page.withClient (queryClientDehydratedState)
               root.page.withBoth (queryClientDehydratedState)
@@ -544,7 +556,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-              "/
+              "
+              /
                 #home: home
                 
               /with-server
@@ -567,7 +580,8 @@ describe('prefetch-page', () => {
                 "
             `)
             expect(requestsTale).toMatchInlineSnapshot(`
-              "GET /
+              "
+              GET /
               root.page.withServer (queryClientDehydratedState)
               root.page.withClient (queryClientDehydratedState)
               root.page.withBoth (queryClientDehydratedState)
@@ -583,7 +597,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-              "/
+              "
+              /
                 #home: home
                 
               /with-server
@@ -606,7 +621,8 @@ describe('prefetch-page', () => {
                 "
             `)
             expect(requestsTale).toMatchInlineSnapshot(`
-              "GET /
+              "
+              GET /
               root.page.withServer (queryClientDehydratedState)
               root.page.withClient (queryClientDehydratedState)
               root.page.withBoth (queryClientDehydratedState)
@@ -638,7 +654,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-            "/
+            "
+            /
               (Empty)
               
               #home: home
@@ -673,7 +690,8 @@ describe('prefetch-page', () => {
               "
           `)
             expect(requestsTale).toMatchInlineSnapshot(`
-            "GET /
+            "
+            GET /
             root.page.withServer (data)
             root.page.withBoth (data)
             root.query.relatedQuery (data)
@@ -687,7 +705,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-            "/
+            "
+            /
               (Empty)
               
               #home: home
@@ -722,7 +741,8 @@ describe('prefetch-page', () => {
               "
           `)
             expect(requestsTale).toMatchInlineSnapshot(`
-            "GET /
+            "
+            GET /
             root.page.withServer (data)
             root.page.withBoth (data)
             root.query.relatedQuery (data)
@@ -738,7 +758,8 @@ describe('prefetch-page', () => {
             // mounted queries not preloaded, this the reason why we have relatedQuery
             // mounted queries can be prefetched only in ssr via fetching queryClientDehydratedState
             expect(tale).toMatchInlineSnapshot(`
-              "/
+              "
+              /
                 (Empty)
                 
                 #home: home
@@ -765,7 +786,8 @@ describe('prefetch-page', () => {
                 "
             `)
             expect(requestsTale).toMatchInlineSnapshot(`
-              "GET /
+              "
+              GET /
               root.page.withServer (data)
               root.page.withBoth (data)
               root.query.relatedQuery (data)
@@ -779,7 +801,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: false, prefetchPageOnNavigate: 'everything' }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-              "/
+              "
+              /
                 (Empty)
                 
                 #home: home
@@ -806,7 +829,8 @@ describe('prefetch-page', () => {
                 "
             `)
             expect(requestsTale).toMatchInlineSnapshot(`
-              "GET /
+              "
+              GET /
               root.page.withServer (data)
               root.page.withBoth (data)
               root.query.relatedQuery (data)
@@ -820,7 +844,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-              "/
+              "
+              /
                 (Empty)
                 
                 #home: home
@@ -855,7 +880,8 @@ describe('prefetch-page', () => {
                 "
             `)
             expect(requestsTale).toMatchInlineSnapshot(`
-              "GET /
+              "
+              GET /
               root.page.withServer (data)
               root.page.withBoth (data)
               root.query.relatedQuery (data)
@@ -869,7 +895,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: false }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-              "/
+              "
+              /
                 (Empty)
                 
                 #home: home
@@ -896,7 +923,8 @@ describe('prefetch-page', () => {
                 "
             `)
             expect(requestsTale).toMatchInlineSnapshot(`
-              "GET /
+              "
+              GET /
               root.page.withServer (data)
               root.page.withBoth (data)
               root.query.relatedQuery (data)
@@ -910,7 +938,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverSmallerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-              "/
+              "
+              /
                 (Empty)
                 
                 #home: home
@@ -937,7 +966,8 @@ describe('prefetch-page', () => {
                 "
             `)
             expect(requestsTale).toMatchInlineSnapshot(`
-            "GET /
+            "
+            GET /
             root.page.withServer (data)
             root.page.withBoth (data)
             root.query.relatedQuery (data)
@@ -951,7 +981,8 @@ describe('prefetch-page', () => {
           wrp({ prefetchPageOnLinkHover: 'everything', prefetchPageOnNavigate: 'everything' }, async ({ mark }) => {
             const { tale, requestsTale } = await navigatePages(tp, hoverBiggerThanLoaderDuration, mark)
             expect(tale).toMatchInlineSnapshot(`
-              "/
+              "
+              /
                 (Empty)
                 
                 #home: home
@@ -978,7 +1009,8 @@ describe('prefetch-page', () => {
                 "
             `)
             expect(requestsTale).toMatchInlineSnapshot(`
-              "GET /
+              "
+              GET /
               root.page.withServer (data)
               root.page.withBoth (data)
               root.query.relatedQuery (data)

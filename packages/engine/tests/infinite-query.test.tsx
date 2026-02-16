@@ -79,7 +79,8 @@ describe('infinityQuery', () => {
       await click('#more')
       await waitContent('Item 5')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #loading: ...
 
             #page:
@@ -104,21 +105,24 @@ describe('infinityQuery', () => {
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "infiniteQuery.test (client) < {"cursor":0}
+        "
+        infiniteQuery.test (client) < {"cursor":0}
         infiniteQuery.test (client) < {"cursor":2}
         infiniteQuery.test (client) < {"cursor":4}
         "
       `)
     fetchRecorder.prune()
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page:
+        "
+        #page:
           div: Item 1
           div: Item 2
           #more: Load more
         "
       `)
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "page.home (client) (page) < {}
+        "
+        page.home (client) (page) < {}
         infiniteQuery.test (server) < {"cursor":0}
         "
       `)
@@ -180,7 +184,8 @@ describe('infinityQuery', () => {
       await click('#more')
       await waitContent('ITEM 5')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #loading: ...
 
             #page:
@@ -205,18 +210,21 @@ describe('infinityQuery', () => {
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "infiniteQuery.test (client) < {"cursor":0}
+        "
+        infiniteQuery.test (client) < {"cursor":0}
         infiniteQuery.test (client) < {"cursor":2}
         infiniteQuery.test (client) < {"cursor":4}
         "
       `)
     fetchRecorder.prune()
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#loading: ...
+        "
+        #loading: ...
         "
       `)
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "page.home (client) (page) < {}
+        "
+        page.home (client) (page) < {}
         infiniteQuery.test (server) < {"cursor":0}
         "
       `)
@@ -244,7 +252,8 @@ describe('infinityQuery', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #loading: ...
 
             #page: q=nothing y=2
@@ -254,12 +263,14 @@ describe('infinityQuery', () => {
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "page.home (client) < {}
+        "
+        page.home (client) < {}
         query.test (client) < {}
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: q=1 y=2
+        "
+        #page: q=1 y=2
         "
       `)
   })
@@ -279,7 +290,8 @@ describe('infinityQuery', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page: y=nothing
 
             #page: y=2
@@ -288,10 +300,12 @@ describe('infinityQuery', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
+
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: y=nothing
+        "
+        #page: y=nothing
         "
       `)
   })
@@ -316,7 +330,8 @@ describe('infinityQuery', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page: q=nothing y=nothing
 
             #page: q=1 y=2
@@ -324,11 +339,13 @@ describe('infinityQuery', () => {
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "query.test (client) < {}
+        "
+        query.test (client) < {}
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: q=nothing y=nothing
+        "
+        #page: q=nothing y=nothing
         "
       `)
   })
@@ -349,7 +366,8 @@ describe('infinityQuery', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page: x=nothing
 
             #page: x=246
@@ -357,11 +375,13 @@ describe('infinityQuery', () => {
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "query.test (client) < {"y":123}
+        "
+        query.test (client) < {"y":123}
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: x=246
+        "
+        #page: x=246
         "
       `)
   })
@@ -382,7 +402,8 @@ describe('infinityQuery', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page: x=nothing
 
             #page: x=246
@@ -391,10 +412,12 @@ describe('infinityQuery', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
+
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: x=nothing
+        "
+        #page: x=nothing
         "
       `)
   })
@@ -416,7 +439,8 @@ describe('infinityQuery', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/
+          "
+          /
             #page: x=nothing
 
             #page: x=246
@@ -424,11 +448,13 @@ describe('infinityQuery', () => {
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "query.test (client) < {"y":123}
+        "
+        query.test (client) < {"y":123}
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: x=nothing
+        "
+        #page: x=nothing
         "
       `)
   })

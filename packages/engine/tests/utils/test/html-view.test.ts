@@ -177,7 +177,8 @@ describe('html-viewer', () => {
     `
       const { tree, preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(`
-        "#header:
+        "
+        #header:
           .nav:
             a: Home
         #content:
@@ -367,7 +368,8 @@ describe('html-viewer', () => {
       const html = '<div id="root"><p>Start<span>Middle</span>End</p></div>'
       const { tree, preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(`
-        "p:
+        "
+        p:
           text: Start
           span: Middle
           text: End
@@ -430,7 +432,8 @@ describe('html-viewer', () => {
       const html = '<div id="root"><p>Hello</p></div>'
       const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(`
-      "p: Hello
+      "
+      p: Hello
       "
     `)
     })
@@ -440,7 +443,8 @@ describe('html-viewer', () => {
       const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(
         `
-        "#container: Content
+        "
+        #container: Content
         "
       `,
       )
@@ -451,7 +455,8 @@ describe('html-viewer', () => {
       const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(
         `
-        "div:
+        "
+        div:
           span: Nested
         "
       `,
@@ -463,7 +468,8 @@ describe('html-viewer', () => {
       const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(
         `
-        "#page:
+        "
+        #page:
           #page-content: x=1
           text: Loading...
         "
@@ -476,7 +482,8 @@ describe('html-viewer', () => {
       const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(
         `
-        "#page: {"x":1,"y":[{"z":3}]}
+        "
+        #page: {"x":1,"y":[{"z":3}]}
         "
       `,
       )
@@ -487,7 +494,8 @@ describe('html-viewer', () => {
       const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(
         `
-        "p: First
+        "
+        p: First
         p: Second
         p: Third
         "
@@ -514,7 +522,8 @@ describe('html-viewer', () => {
       const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(
         `
-        "#header:
+        "
+        #header:
           .nav:
             a: Home
         #content:
@@ -530,7 +539,8 @@ describe('html-viewer', () => {
       const html = '<div id="root"></div>'
       const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(`
-      "(Empty)
+      "
+      (Empty)
       "
     `)
     })

@@ -148,7 +148,7 @@ export class FetchRecorder {
       }
       return `${pointString} (${serverOrClient}) < ${inputString}`
     })
-    return lines.join('\n') + '\n'
+    return '\n' + lines.join('\n') + '\n'
   }
 }
 

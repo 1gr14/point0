@@ -29,7 +29,8 @@ describe('layout', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/home
+          "
+          /home
             #layout:
               #page: x=nothing
           "
@@ -37,10 +38,12 @@ describe('layout', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
+
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#layout:
+        "
+        #layout:
           #page: x=nothing
         "
       `)
@@ -56,7 +59,8 @@ describe('layout', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/home
+          "
+          /home
             #layout1:
               #layout2:
                 #page: x=nothing
@@ -65,10 +69,12 @@ describe('layout', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
+
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#layout1:
+        "
+        #layout1:
           #layout2:
             #page: x=nothing
         "
@@ -92,7 +98,8 @@ describe('layout', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/home
+        "
+        /home
           #loading: ...
 
           #layout:
@@ -102,11 +109,13 @@ describe('layout', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "layout.app (client) < {}
+      "
+      layout.app (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#layout:
+      "
+      #layout:
         #layout-content: x=1
         #page: x=1
       "
@@ -135,7 +144,8 @@ describe('layout', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#error')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/home
+        "
+        /home
           #loading: ...
 
           #error: test error
@@ -143,11 +153,13 @@ describe('layout', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "layout.app (client) < {}
+      "
+      layout.app (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#loading: ...
+      "
+      #loading: ...
       "
     `)
   })
@@ -172,7 +184,8 @@ describe('layout', () => {
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/zxc/page
+        "
+        /zxc/page
           #loading: ...
 
           #layout:
@@ -182,11 +195,13 @@ describe('layout', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "layout.app (client) < {"id":"zxc"}
+      "
+      layout.app (client) < {"id":"zxc"}
       "
     `)
     expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
-      "#layout:
+      "
+      #layout:
         #layout-input: x=zxc
         #page: x=zxc
       "
@@ -225,7 +240,8 @@ describe('layout', () => {
     await render(page.route({ id: 'zxc', sn: 'qwe' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/zxc/qwe
+        "
+        /zxc/qwe
           #loading: ...
 
           #layout:
@@ -242,11 +258,13 @@ describe('layout', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "layout.app (client) < {"id":"zxc"}
+      "
+      layout.app (client) < {"id":"zxc"}
       "
     `)
     expect(await fetchPreview(page, { id: 'zxc', sn: 'qwe' })).toMatchInlineSnapshot(`
-      "#layout:
+      "
+      #layout:
         #layout-route: /:id
         #layout-href: /zxc/qwe
         #layout-params: id: zxc
@@ -292,7 +310,8 @@ describe('layout', () => {
     await render(page.route({ id: 'zxc', sn: 'qwe' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/two/zxc/qwe
+        "
+        /two/zxc/qwe
           #loading: ...
 
           #layout:
@@ -309,11 +328,13 @@ describe('layout', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "layout.app (client) < {"id":"zxc"}
+      "
+      layout.app (client) < {"id":"zxc"}
       "
     `)
     expect(await fetchPreview(page, { id: 'zxc', sn: 'qwe' })).toMatchInlineSnapshot(`
-      "#layout:
+      "
+      #layout:
         #layout-route: /one/:id
         #layout-href: /two/zxc/qwe
         #layout-params: {}
@@ -351,7 +372,8 @@ describe('layout', () => {
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/zxc/page
+        "
+        /zxc/page
           #wrapper:
             #input: zxc
             #query-status: pending
@@ -367,11 +389,13 @@ describe('layout', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "layout.app (client) < {"id":"zxc"}
+      "
+      layout.app (client) < {"id":"zxc"}
       "
     `)
     expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
-      "#wrapper:
+      "
+      #wrapper:
         #input: zxc
         #query-status: success
         #layout:
@@ -401,7 +425,8 @@ describe('layout', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/home
+        "
+        /home
           #loading: ...
 
           #layout:
@@ -411,11 +436,13 @@ describe('layout', () => {
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "layout.app (client) < {}
+      "
+      layout.app (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#layout:
+      "
+      #layout:
         #layout-content: x=1
         #page: x=1
       "

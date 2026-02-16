@@ -196,7 +196,7 @@ export class ElementViewer {
       }
       lines.push('')
     }
-    return lines.join('\n')
+    return '\n' + lines.join('\n')
   }
 
   async stable(): Promise<ElementViewerHistoryParsedItem[]> {

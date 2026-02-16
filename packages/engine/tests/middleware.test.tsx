@@ -88,7 +88,8 @@ describe('midleware', () => {
     expect(data.x).toBe(1)
     const preview = await fetchPreview(page)
     expect(preview).toMatchInlineSnapshot(`
-      "#page: x=1,y=
+      "
+      #page: x=1,y=
       "
     `)
   })
@@ -121,7 +122,8 @@ describe('midleware', () => {
     expect(data.x).toBe(1)
     const preview = await fetchPreview(page)
     expect(preview).toMatchInlineSnapshot(`
-      "#page: x=1,y=3,z=4
+      "
+      #page: x=1,y=3,z=4
       "
     `)
   })

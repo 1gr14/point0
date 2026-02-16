@@ -90,7 +90,8 @@ describe('dev', () => {
         expect(html).toContain('CONST1')
         const page = await tp.gotoServer('/')
         expect(page.tale).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           div: Hello, VAR1, CONST1, VAR1, CONST1
           "
         `)
@@ -127,7 +128,8 @@ describe('dev', () => {
         const page = await tp.gotoServer('/')
         await page.stable
         expect(page.tale).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           (Empty)
           
           div: Hello, VAR1, CONST1, VAR1, CONST1

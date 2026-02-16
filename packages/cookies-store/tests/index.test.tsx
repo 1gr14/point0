@@ -364,7 +364,8 @@ describe('cookies-store', () => {
         await click('#logout')
         await waitContent('#login')
         expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           (Empty)
 
           #page:
@@ -452,7 +453,8 @@ describe('cookies-store', () => {
         await click('#logout')
         await waitContent('#login')
         expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           (Empty)
 
           #page:
@@ -541,7 +543,8 @@ describe('cookies-store', () => {
         await click('#logout')
         await waitContent('#login')
         expect(await tale()).toMatchInlineSnapshot(`
-        "/
+        "
+        /
           (Empty)
 
           #page:

@@ -40,17 +40,20 @@ describe('provider', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/home
+          "
+          /home
             #page: x=1 y=2
           "
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
+
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: x=1 y=2
+        "
+        #page: x=1 y=2
         "
       `)
   })
@@ -79,7 +82,8 @@ describe('provider', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/home
+          "
+          /home
             #loading: ...
 
             #page: x=80 y=800
@@ -87,11 +91,13 @@ describe('provider', () => {
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "provider.app (client) < {"z":4}
+        "
+        provider.app (client) < {"z":4}
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: x=80 y=800
+        "
+        #page: x=80 y=800
         "
       `)
   })
@@ -111,17 +117,20 @@ describe('provider', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/home
+          "
+          /home
             #page: x=1
           "
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
+
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: x=1
+        "
+        #page: x=1
         "
       `)
   })
@@ -145,17 +154,20 @@ describe('provider', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "/home
+          "
+          /home
             #page: x=1 y=2
           "
         `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
+
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "#page: x=1 y=2
+        "
+        #page: x=1 y=2
         "
       `)
   })
