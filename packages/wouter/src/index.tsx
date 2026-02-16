@@ -255,8 +255,10 @@ type NavLinkClassNameProps = {
   ancestorClassName?: string
   descendantClassName?: string
   unmatchedClassName?: string
-  classNames?: Partial<Record<'default' | NavLinkStateType, string | undefined>>
-  className?: string | ((state: NavLinkStateOptions) => string | undefined)
+  className?:
+    | string
+    | ((state: NavLinkStateOptions) => string | undefined)
+    | Partial<Record<'default' | NavLinkStateType, string | undefined>>
 }
 
 type NavLinkAsChildProps = AsChildProps<
@@ -365,8 +367,15 @@ const _getWouterLinkProps = (
 }
 
 export const SimpleNavLink = (props: NavLinkProps) => {
-  const { exactClassName, ancestorClassName, descendantClassName, unmatchedClassName, classNames, className, ...rest } =
-    props
+  const {
+    exactClassName,
+    sameClassName,
+    ancestorClassName,
+    descendantClassName,
+    unmatchedClassName,
+    className,
+    ...rest
+  } = props
   const { pointWithLocation, wouterLinkProps, to } = _getWouterLinkProps(rest)
   const location = useLocation(pointWithLocation?.point.route)
   const statusOptions = useMemo<NavLinkStateOptions>(() => {
@@ -390,18 +399,22 @@ export const SimpleNavLink = (props: NavLinkProps) => {
     return { type: 'unmatched', exact: false, same: false, ancestor: false, descendant: false, unmatched: true }
   }, [location, to])
   const resolvedClassName = useMemo(() => {
+    const classNameFromFnOrString =
+      typeof className === 'function' ? className(statusOptions) : typeof className === 'string' ? className : undefined
+    const classNamesFromMap =
+      typeof className === 'object' && className !== null ? [className.default, className[statusOptions.type]] : []
     const allClassNames = [
-      typeof className === 'function' ? className(statusOptions) : className,
-      classNames?.default,
-      classNames?.[statusOptions.type],
+      classNameFromFnOrString,
+      ...classNamesFromMap,
       statusOptions.exact ? exactClassName : undefined,
+      statusOptions.same ? sameClassName : undefined,
       statusOptions.ancestor ? ancestorClassName : undefined,
       statusOptions.descendant ? descendantClassName : undefined,
       statusOptions.unmatched ? unmatchedClassName : undefined,
     ]
     const mergedClassNames = allClassNames.filter((value): value is string => Boolean(value)).join(' ')
     return mergedClassNames || undefined
-  }, [className, classNames, statusOptions, exactClassName, ancestorClassName, descendantClassName, unmatchedClassName])
+  }, [className, statusOptions, exactClassName, sameClassName, ancestorClassName, descendantClassName, unmatchedClassName])
   const finalWouterLinkProps = useMemo<LinkProps>(() => {
     if ('asChild' in wouterLinkProps && wouterLinkProps.asChild) {
       return wouterLinkProps

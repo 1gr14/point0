@@ -80,16 +80,16 @@ const layout = root.lets('layout', 'layout').layout(({ children }) => {
         <NavLink route="home" className={({ type }) => `link-home ${type}`}>
           home
         </NavLink>
-        <NavLink route="about" classNames={getClassNames('link-about')}>
+        <NavLink route="about" className={getClassNames('link-about')}>
           about
         </NavLink>
-        <NavLink to="/posts" classNames={getClassNames('link-posts')}>
+        <NavLink to="/posts" className={getClassNames('link-posts')}>
           posts
         </NavLink>
-        <NavLink route="post" input={{ id: '1' }} classNames={getClassNames('link-post-1')}>
+        <NavLink route="post" input={{ id: '1' }} className={getClassNames('link-post-1')}>
           post 1
         </NavLink>
-        <NavLink route="post" input={{ id: '2' }} classNames={getClassNames('link-post-2')}>
+        <NavLink route="post" input={{ id: '2' }} className={getClassNames('link-post-2')}>
           post 2
         </NavLink>
       </nav>
@@ -118,7 +118,7 @@ const postsPage = layout
       <div id="posts">
         {data.posts.map((post) => (
           <React.Fragment key={post}>
-            <NavLink classNames={getClassNames(`link-post-preview-${post}`)} route="post" input={{ id: post }}>
+            <NavLink className={getClassNames(`link-post-preview-${post}`)} route="post" input={{ id: post }}>
               link post {post}
             </NavLink>
             {post === 1 && (
@@ -703,6 +703,7 @@ describe('navigate', () => {
     await t.render(homePage.route(), async ({ waitContent, tale, click }) => {
       await waitContent('#home')
       await navigate({ to: '/404' })
+      await navigate('post')
       await waitContent('Page Not Found')
       expect(await tale()).toMatchInlineSnapshot(`
         "/
