@@ -152,6 +152,9 @@ export const cors = (
       const isOptionsRequest =
         middlewareOptions.variant === 'options' || request.original.method.toUpperCase() === 'OPTIONS'
       const isPreflightRequest = shouldHandlePreflight && isOptionsRequest
+      if (isOptionsRequest && !shouldHandlePreflight) {
+        return await next()
+      }
 
       const allowOrigin = await resolveAllowOrigin({
         requestOrigin,

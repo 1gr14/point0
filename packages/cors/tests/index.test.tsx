@@ -285,11 +285,12 @@ describe('cors', () => {
     expect(response.status).toBe(204)
   })
 
-  it('preflight disabled does not return 204', async () => {
+  it('preflight disabled skips CORS headers for options requests', async () => {
     const { fetch } = await prepare({
       preflight: false,
     })
     const response = await fetch(preflight())
+    expect(response.status).toBe(204)
     expect(response.headers.get('access-control-allow-origin')).toBeNull()
   })
 

@@ -705,12 +705,14 @@ export type WithError<TError, T> = unknown extends TError ? T : TError
 export type BasepathByBaseurl<TBaseUrl extends string | undefined> = TBaseUrl extends undefined
   ? '/'
   : TBaseUrl extends `${string}://${string}/${infer TPath}`
-    ? TPath extends '' ? '/' : `/${TPath}`
+    ? TPath extends ''
+      ? '/'
+      : `/${TPath}`
     : TBaseUrl extends `${string}://${string}`
       ? '/'
-    : TBaseUrl extends `/${string}`
-      ? TBaseUrl
-      : '/'
+      : TBaseUrl extends `/${string}`
+        ? TBaseUrl
+        : '/'
 
 // fetching and queries
 
@@ -1190,6 +1192,7 @@ export type FetcherFetchDetailedResultNoMiddleware =
   | FetcherFetchDetailedResultPage
   | FetcherFetchDetailedResultUnknown
   | FetcherFetchDetailedResultPublicdir
+  | FetcherFetchDetailedResultOptions
 export type FetcherFetchDetailedResult = FetcherFetchDetailedResultNoMiddleware | FetcherFetchDetailedResultMiddleware
 export type FetcherFetchDetailedResultSpecific<
   TVariant extends FetcherFetchDetailedResult['variant'] | undefined = undefined,

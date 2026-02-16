@@ -233,30 +233,6 @@ export class Fetcher {
       effects.set.headers('x-point0-client-request-id', request.headers['x-point0-client-request-id'])
     }
 
-    if (request.original.method === 'OPTIONS') {
-      const response = new Response(null, {
-        status: 204,
-      })
-      return {
-        scope: this.server.scope,
-        request,
-        effects,
-        middlewares: [],
-        middlewareOptions: {
-          request,
-          set: effects.set,
-          point: undefined,
-          scope: this.server.scope,
-          variant: 'unknown',
-        },
-        publicdirResult: undefined,
-        taskPointResult: undefined,
-        pagePointResult: undefined,
-        actionPointResult: undefined,
-        errorResult: undefined,
-        optionsResult: { response },
-      }
-    }
     // if (request.method === 'options') {
     //   return {
     //     scope: this.server.scope,
@@ -1094,12 +1070,12 @@ export class Fetcher {
       }
     }
 
-    if (prepareFetchResult.optionsResult) {
+    if (prepareFetchResult.request.original.method === 'OPTIONS') {
       return {
         request: prepareFetchResult.request,
         scope: prepareFetchResult.scope,
-        response: prepareFetchResult.optionsResult.response,
-        variant: 'unknown',
+        response: new Response(null, { status: 204 }),
+        variant: 'options',
         error: undefined,
       }
     }
@@ -1346,20 +1322,6 @@ export type PrepareFetchResult =
       errorResult: Error0
       optionsResult: undefined
     }
-  | {
-      scope: PointsScope
-      request: Request0
-      effects: Effects
-      middlewares: MiddlewareFn[]
-      middlewareOptions: MiddlewareFnOptionsBase
-      publicdirResult: undefined
-      taskPointResult: undefined
-      pagePointResult: undefined
-      actionPointResult: undefined
-      errorResult: undefined
-      optionsResult: { response: Response }
-    }
-
 // export type FetcherFetchDetailedResultGeneral = {
 //   response: Response | undefined
 //   request: Request0
