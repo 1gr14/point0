@@ -4750,15 +4750,15 @@ export class Point0<
       ? [
           input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
-          fetchOptions?: FetchOptions | undefined,
+          options?: { fetchOptions?: FetchOptions | undefined },
         ]
       : [
           input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
-          fetchOptions?: FetchOptions | undefined,
+          options?: { fetchOptions?: FetchOptions | undefined },
         ]
   ): UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput, any> {
-    const [input = {}, queryOptions, fetchOptions] = args
+    const [input = {}, queryOptions, { fetchOptions } = {}] = args
     const location = useLocation()
     const serverQueryEnabled = this._hasServerLoader()
     const clientQueryEnabled = this._hasClientLoader()
@@ -4810,7 +4810,7 @@ export class Point0<
                 unknown
               >
             | undefined,
-          fetchOptions?: FetchOptions | undefined,
+          options?: { fetchOptions?: FetchOptions | undefined },
         ]
       : [
           input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
@@ -4824,10 +4824,10 @@ export class Point0<
                 unknown
               >
             | undefined,
-          fetchOptions?: FetchOptions | undefined,
+          options?: { fetchOptions?: FetchOptions | undefined },
         ]
   ): UsePointQueryResult<'infiniteQuery', TServerLoaderOutput, TClientLoaderOutput, any> {
-    const [input = {}, infiniteQueryOptions, fetchOptions] = args
+    const [input = {}, infiniteQueryOptions, { fetchOptions } = {}] = args
     const location = useLocation()
     const serverQueryEnabled = this._hasServerLoader()
     const clientQueryEnabled = this._hasClientLoader()
@@ -4883,19 +4883,17 @@ export class Point0<
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
           input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-          fetchOptions?: FetchOptions,
-          _outputType?: FetchServerOutputType,
+          options?: { fetchOptions?: FetchOptions; _outputType?: FetchServerOutputType },
         ]
       : [
           input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-          fetchOptions?: FetchOptions,
-          _outputType?: FetchServerOutputType,
+          options?: { fetchOptions?: FetchOptions; _outputType?: FetchServerOutputType },
         ]
   ): { url: string; init: RequestInit; request: Request } {
-    const [input = {}, options] = args
-    const fetchOptions = { ...this._fetchOptions?.(), ...options }
+    const [input = {}, { fetchOptions: _fetchOptions, _outputType = 'data' } = {}] = args
+    const fetchOptions = { ...this._fetchOptions?.(), ..._fetchOptions }
     const fromScope = _ssItems.__POINT0_CLIENT_POINTS__.getWeak()?.manager.scope ?? _getFakeClient()?.scope
-    const headers = mergeHeaders(fetchOptions.headers, options?.headers, {
+    const headers = mergeHeaders(fetchOptions.headers, _fetchOptions?.headers, {
       Accept: 'application/json',
       ...(fromScope ? { 'X-Point0-From-Scope': fromScope } : {}),
       'X-Point0-Client-Request-Id': generateId(),
@@ -4907,11 +4905,10 @@ export class Point0<
     const url = new URL('/_point0', serverurl)
     const method = 'POST'
 
-    const outputType = args[2] ?? 'data'
     url.searchParams.set('type', this.type)
     url.searchParams.set('name', this.name)
     url.searchParams.set('scope', this.scope)
-    url.searchParams.set('output', outputType)
+    url.searchParams.set('output', _outputType)
 
     // const shouldAddMultipartFormDataHeaderToFetchOptions = this._asFormData ?? isContainsBinary(input)
     const shouldAddMultipartFormDataHeaderToFetchOptions = isContainsBinary(input)
@@ -5020,13 +5017,11 @@ export class Point0<
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
           input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-          fetchOptions?: FetchOptions,
-          _outputType?: FetchServerOutputType,
+          options?: { fetchOptions?: FetchOptions; _outputType?: FetchServerOutputType },
         ]
       : [
           input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-          fetchOptions?: FetchOptions,
-          _outputType?: FetchServerOutputType,
+          options?: { fetchOptions?: FetchOptions; _outputType?: FetchServerOutputType },
         ]
   ): Promise<FetchServerDetailedOutput<TServerLoaderOutput>> {
     let res: Response | undefined
@@ -5113,13 +5108,11 @@ export class Point0<
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
           input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-          fetchOptions?: FetchOptions,
-          _outputType?: FetchServerOutputType,
+          options?: { fetchOptions?: FetchOptions; _outputType?: FetchServerOutputType },
         ]
       : [
           input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-          fetchOptions?: FetchOptions,
-          _outputType?: FetchServerOutputType,
+          options?: { fetchOptions?: FetchOptions; _outputType?: FetchServerOutputType },
         ]
   ): Promise<FetchServerOutput<TServerLoaderOutput>> {
     const detailedResult = await this.fetchServerDetailed(...args)
@@ -5192,16 +5185,22 @@ export class Point0<
 
   getQueryKey(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-      ? [input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>, _outputType?: FetchServerOutputType]
-      : [input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>, _outputType?: FetchServerOutputType]
+      ? [
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          options?: { _outputType?: FetchServerOutputType },
+        ]
+      : [
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          options?: { _outputType?: FetchServerOutputType },
+        ]
   ): QueryKey {
-    const [input, outputType] = args
+    const [input, { _outputType } = {}] = args
     const hasClientLoader = this._hasClientLoader()
     const hasServerLoader = this._hasServerLoader()
     if (hasClientLoader && hasServerLoader) {
       return this._getCombinedQueryKey({
         input: input as never,
-        outputType,
+        outputType: _outputType,
         isInfiniteQuery: this._queryResultType === 'infiniteQuery',
       })
     }
@@ -5214,7 +5213,7 @@ export class Point0<
     if (hasServerLoader) {
       return this._getServerQueryKey({
         input: input as never,
-        outputType,
+        outputType: _outputType,
         isInfiniteQuery: this._queryResultType === 'infiniteQuery',
       })
     }
@@ -5249,7 +5248,10 @@ export class Point0<
     const queryFn = async ({ signal }: { signal: AbortSignal }) => {
       this._emit('pointQueryStart', _eventData)
       try {
-        const data = await this.fetchServer(input as never, { ...fetchOptions, signal }, outputType)
+        const data = await this.fetchServer(input as never, {
+          fetchOptions: { signal, ...fetchOptions },
+          _outputType: outputType,
+        })
         const eventData = {
           ..._eventData,
           data: data as Data,
@@ -5539,8 +5541,7 @@ export class Point0<
         const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
         const data = await this.fetchServer(
           { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam } as never,
-          { ...fetchOptions, signal },
-          outputType,
+          { fetchOptions: { signal, ...fetchOptions }, _outputType: outputType },
         )
         const eventData = {
           ..._eventData,
@@ -5987,7 +5988,7 @@ export class Point0<
 
   getMutationOptions(
     mutationOptions?: MutationOptions,
-    fetchOptions?: FetchOptions,
+    options?: { fetchOptions?: FetchOptions },
   ): MutationOptions<
     FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
     Error0,
@@ -6009,7 +6010,7 @@ export class Point0<
         }
         const serverFetchResult = await (async () => {
           if (this._hasServerLoader()) {
-            return await this.fetchServerDetailed(input as never, fetchOptions, undefined)
+            return await this.fetchServerDetailed(input as never, options)
           }
           return undefined
         })()
@@ -6056,13 +6057,13 @@ export class Point0<
 
   useMutation = (
     mutationOptions?: MutationOptions | undefined,
-    fetchOptions?: FetchOptions | undefined,
+    options?: { fetchOptions?: FetchOptions | undefined },
   ): UseMutationResult<
     FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
     Error0,
     InputsRawMaybeOptional<TServerInputSchema, TClientInputSchema>
   > => {
-    return useMutation(this.getMutationOptions(mutationOptions, fetchOptions))
+    return useMutation(this.getMutationOptions(mutationOptions, options))
   }
 
   fetchMutation = async (
@@ -6070,16 +6071,16 @@ export class Point0<
       ? [
           input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           mutationOptions?: MutationOptions | undefined,
-          fetchOptions?: FetchOptions | undefined,
+          options?: { fetchOptions?: FetchOptions | undefined },
         ]
       : [
           input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           mutationOptions?: MutationOptions | undefined,
-          fetchOptions?: FetchOptions | undefined,
+          options?: { fetchOptions?: FetchOptions | undefined },
         ]
   ): Promise<FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>> => {
-    const [input, mutationOptionsProvided, fetchOptions] = args
-    const mutationOptions = this.getMutationOptions(mutationOptionsProvided, fetchOptions)
+    const [input, mutationOptionsProvided, options] = args
+    const mutationOptions = this.getMutationOptions(mutationOptionsProvided, options)
     const queryClient = _ssItems.__POINT0_QUERY_CLIENT__.get()
     const mutation = queryClient.getMutationCache().build(queryClient, mutationOptions as any)
     return (await mutation.execute(input as any)) as FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
