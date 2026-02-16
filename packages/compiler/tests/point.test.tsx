@@ -609,6 +609,53 @@ export const p3 = root3.lets('page', 'p3', '/').page(() => <div>Hello</div>)
     )
 
     it.concurrent(
+      'route is prefixed with basepath from baseurl',
+      helper(async ({ files: [file] }) => {
+        const walker = new Walker({
+          routes: {
+            myroot: Routes.create({
+              r1: Route0.create('/r1'),
+            }),
+          },
+        })
+        await file.write(`import {Point0} from '@point0/core'
+import { Route0, Routes } from '@devp0nt/route0'
+export const root = Point0.lets('root', 'myroot').baseurl('https://example.com/my/base').root()
+const routes = Routes.create({
+  r1: Route0.create('/r1'),
+})
+export const p1 = root.lets('page', 'p1', '/').page(() => <div>Hello</div>)
+export const p2 = root.lets('page', 'p2', 'p2').page(() => <div>Hello</div>)
+export const p3 = root.lets('page', 'p3', Route0.create('/p3')).page(() => <div>Hello</div>)
+export const p4 = root.lets('page', 'p4', routes.r1).page(() => <div>Hello</div>)
+        `)
+        const result = walker.collectPointsFromFile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        const parsed = result.points.filter((p) => p.type === 'page').map((p) => fix1(p.parse()))
+        expect(parsed[0]).toMatchObject({
+          valid: true,
+          name: 'p1',
+          route: '/my/base',
+        })
+        expect(parsed[1]).toMatchObject({
+          valid: true,
+          name: 'p2',
+          route: '/my/base/p2',
+        })
+        expect(parsed[2]).toMatchObject({
+          valid: true,
+          name: 'p3',
+          route: '/my/base/p3',
+        })
+        expect(parsed[3]).toMatchObject({
+          valid: true,
+          name: 'p4',
+          route: '/my/base/r1',
+        })
+      }),
+    )
+
+    it.concurrent(
       'error when last called method name does not match point type',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({

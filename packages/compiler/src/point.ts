@@ -2,7 +2,7 @@ import type { NodePath } from '@babel/traverse'
 import type { Node } from '@babel/types'
 import type { AnyRoute } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import type { ReadyPointType, PointName, PointsScope } from '@point0/core'
+import { type ReadyPointType, type PointName, type PointsScope, getBasepathOrNull } from '@point0/core'
 import { dedupeSlashes, toPascalCase } from '@point0/core'
 import * as nodeFsPath from 'node:path'
 import type { CompilerFile } from './file.js'
@@ -33,6 +33,7 @@ export class CompilerPoint<TValid extends boolean = any> {
   valid: TValid extends true ? true : false
   parsed: boolean
   baseurl: string | undefined
+  basepath: string
 
   constructor({
     walker,
@@ -74,6 +75,7 @@ export class CompilerPoint<TValid extends boolean = any> {
     this.selfMethods = []
     this.chainMethods = []
     this.baseurl = undefined
+    this.basepath = '/'
 
     file.addPointToMemory(this)
   }
@@ -203,7 +205,7 @@ export class CompilerPoint<TValid extends boolean = any> {
       const routeFull = routeInfo.routeFull
       if (routeFull) {
         if (point === this) {
-          return { errors, route: routeFull }
+          return { errors, route: this.respectBaseurl(routeFull) }
         } else {
           routeSegments.splice(0, routeSegments.length, routeFull.definition)
         }
@@ -224,7 +226,7 @@ export class CompilerPoint<TValid extends boolean = any> {
 
       if (nonEmptySegments.length === 0) {
         // All segments were empty, return root route
-        return { errors, route: Route0.from('/') }
+        return { errors, route: this.respectBaseurl(Route0.from('/')) }
       }
 
       // Start with first segment as base route
@@ -233,10 +235,19 @@ export class CompilerPoint<TValid extends boolean = any> {
       for (let i = 1; i < nonEmptySegments.length; i++) {
         finalRoute = finalRoute.extend(nonEmptySegments[i]) as AnyRoute
       }
-      return { errors, route: finalRoute }
+      return { errors, route: this.respectBaseurl(finalRoute) }
     }
 
     return { errors, route: undefined }
+  }
+
+  private respectBaseurl(route: AnyRoute): AnyRoute {
+    return Route0.create(
+      dedupeSlashes([this.basepath, route.definition === '/' ? '' : route.definition].filter(Boolean).join('/') || '/'),
+      {
+        baseurl: this.baseurl,
+      },
+    )
   }
 
   private extractRouteFromLetsCall({
@@ -532,12 +543,20 @@ export class CompilerPoint<TValid extends boolean = any> {
         this.errors.push(new Error('Point position not found. We do not know what to do...'))
       }
 
+      this.selfMethods = this.getSelfMethods()
+      this.chainMethods = this.getChainMethods()
+
+      this.polh = this.getPrefetchOnLinkHover()
+      this.baseurl = this.getBaseurl()
+      this.basepath = getBasepathOrNull(this.baseurl) ?? '/'
+
       const { route, errors: routeErrors } = this.scope
         ? this.getRoute({ scope: this.scope })
         : { route: undefined, errors: [] }
       this.route = route
       this.errors.push(...routeErrors)
-      this.selfMethods = this.getSelfMethods()
+
+      this.layouts = this.getLayouts()
 
       const lastCalledMethodName = this.selfMethods.at(-1)?.name
       if (lastCalledMethodName !== this.type) {
@@ -555,11 +574,6 @@ export class CompilerPoint<TValid extends boolean = any> {
           new Error(`Earliest point is not related to Point0. It is strange. Check it please: ${earliestPoint.strpos}`),
         )
       }
-      this.chainMethods = this.getChainMethods()
-
-      this.polh = this.getPrefetchOnLinkHover()
-      this.baseurl = this.getBaseurl()
-      this.layouts = this.getLayouts()
 
       this.valid = !this.errors.length as TValid extends true ? true : false
       this.parsed = true

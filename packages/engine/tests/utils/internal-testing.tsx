@@ -151,6 +151,10 @@ export const ymlify = (result: any) => {
   return '\n' + YAML.stringify(result, undefined, 2) + '\n'
 }
 
+export const ymlifyline = (result: any) => {
+  return YAML.stringify(result, undefined, 2).split('\n').join(', ')
+}
+
 const createFilteredConsole = () => {
   const originalConsole = console
   const shouldFilterMessage = (...args: any[]): boolean => {

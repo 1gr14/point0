@@ -1,6 +1,8 @@
 import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
-import { createTestThings, ymlify } from './utils/internal-testing.js'
+import { createTestThings, ymlify, ymlifyline } from './utils/internal-testing.js'
+import { Route0 } from '@devp0nt/route0'
+import { z } from 'zod'
 
 describe('layout', () => {
   const root = Point0.lets('root', 'root')
@@ -195,7 +197,7 @@ describe('layout', () => {
           <div id="layout">
             <div id="layout-route">{location.route}</div>
             <div id="layout-href">{location.hrefRel}</div>
-            <div id="layout-params">{ymlify(location.params)}</div>
+            <div id="layout-params">{ymlifyline(location.params)}</div>
             <div id="layout-input">x={data.x}</div>
             {children}
           </div>
@@ -205,7 +207,10 @@ describe('layout', () => {
       const value = layout.useValue()
       return (
         <div id="page">
-          x={value.x} sn={location.params.sn}
+          <div id="page-route">{location.route}</div>
+          <div id="page-href">{location.hrefRel}</div>
+          <div id="page-params">{ymlifyline(location.params)}</div>
+          <div id="layout-value">x={value.x}</div>
         </div>
       )
     })
@@ -222,7 +227,11 @@ describe('layout', () => {
             #layout-href: /zxc/qwe
             #layout-params: id: zxc
             #layout-input: x=zxc
-            #page: x=zxc sn=qwe
+            #page:
+              #page-route: /:id/:sn
+              #page-href: /zxc/qwe
+              #page-params: id: zxc, sn: qwe
+              #layout-value: x=zxc
         "
       `)
     })
@@ -236,7 +245,77 @@ describe('layout', () => {
         #layout-href: /zxc/qwe
         #layout-params: id: zxc
         #layout-input: x=zxc
-        #page: x=zxc sn=qwe
+        #page:
+          #page-route: /:id/:sn
+          #page-href: /zxc/qwe
+          #page-params: id: zxc, sn: qwe
+          #layout-value: x=zxc
+      "
+    `)
+  })
+
+  it('weak layout input by route includes page params', async () => {
+    const layout = root
+      .lets('layout', 'app', 'one/:id')
+      .loader(({ input }) => ({ x: input.id }))
+      .layout(({ data, children, location }) => {
+        return (
+          <div id="layout">
+            <div id="layout-route">{location.route}</div>
+            <div id="layout-href">{location.hrefRel}</div>
+            <div id="layout-params">{ymlifyline(location.params)}</div>
+            <div id="layout-input">x={data.x}</div>
+            {children}
+          </div>
+        )
+      })
+    const page = layout.lets('page', 'home', Route0.create('/two/:id/:sn')).page(({ location }) => {
+      const value = layout.useValue()
+      return (
+        <div id="page">
+          <div id="page-route">{location.route}</div>
+          <div id="page-href">{location.hrefRel}</div>
+          <div id="page-params">{ymlifyline(location.params)}</div>
+          <div id="layout-value">x={value.x}</div>
+        </div>
+      )
+    })
+
+    const { render, fetchPreview, fetchesTale, client } = await createTestThings({ points: [root, layout, page] })
+    await render(page.route({ id: 'zxc', sn: 'qwe' }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/two/zxc/qwe
+          #loading: ...
+
+          #layout:
+            #layout-route: /one/:id
+            #layout-href: /two/zxc/qwe
+            #layout-params: {}
+            #layout-input: x=zxc
+            #page:
+              #page-route: /two/:id/:sn
+              #page-href: /two/zxc/qwe
+              #page-params: id: zxc, sn: qwe
+              #layout-value: x=zxc
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "layout.app (client) < {"id":"zxc"}
+      "
+    `)
+    expect(await fetchPreview(page, { id: 'zxc', sn: 'qwe' })).toMatchInlineSnapshot(`
+      "#layout:
+        #layout-route: /one/:id
+        #layout-href: /two/zxc/qwe
+        #layout-params: {}
+        #layout-input: x=zxc
+        #page:
+          #page-route: /two/:id/:sn
+          #page-href: /two/zxc/qwe
+          #page-params: id: zxc, sn: qwe
+          #layout-value: x=zxc
       "
     `)
   })

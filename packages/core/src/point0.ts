@@ -187,6 +187,7 @@ import type {
   UsePointQueryResult,
   UseQueryOptions,
   WithError,
+  BasepathByBaseurl,
 } from './types.js'
 import {
   blankDataTransformerExtended,
@@ -847,8 +848,8 @@ export class Point0<
     }) as never
   }
 
-  baseurl(
-    baseurl: string,
+  baseurl<TBaseurl extends string>(
+    baseurl: TBaseurl,
   ): NiceRootStagePoint<
     StagePointTypeOrNever<TPointType>,
     'root',
@@ -858,7 +859,7 @@ export class Point0<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TMapperOutput,
-    TRouteDefinition,
+    BasepathByBaseurl<TBaseurl>,
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
@@ -3209,7 +3210,7 @@ export class Point0<
       TPointType extends 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
       TPointType extends 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
       TPointType extends 'base' ? TMapperOutput : UndefinedMapperOutput,
-      TProvidedRoute['definition'],
+      ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
       MergeRecordValidationSchemas<
         TServerInputSchema,
         RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
@@ -3287,7 +3288,7 @@ export class Point0<
       TPointType extends 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
       TPointType extends 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
       TPointType extends 'base' ? TMapperOutput : UndefinedMapperOutput,
-      TProvidedRoute['definition'],
+      ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
       MergeRecordValidationSchemas<
         TServerInputSchema,
         RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
@@ -3360,7 +3361,7 @@ export class Point0<
             ? prevRoute.extend(routeOrPointName).clone(routeConfig)
             : Route0.create(dedupeSlashes(`/${routeOrPointName}`), routeConfig)
         }
-        return route
+        return Route0.create(dedupeSlashes(`/${route.definition}`), routeConfig)
       }
       if (letsReadyPointType === 'layout') {
         if (typeof route === 'string' || !route) {
@@ -3372,7 +3373,7 @@ export class Point0<
             ? prevRoute.extend(routeNormalized).clone(routeConfig)
             : Route0.create(dedupeSlashes(`/${routeNormalized}`), routeConfig)
         }
-        return route
+        return Route0.create(dedupeSlashes(`/${route.definition}`), routeConfig)
       }
       return prevRoute
     })()

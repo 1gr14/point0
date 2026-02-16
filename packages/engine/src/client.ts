@@ -115,7 +115,6 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     this.pointsProvided = input.pointsProvided
     this.appProvided = input.appProvided
     // this.appDistFile = input.appDistFile
-    // TODO:ASAP allow baseurl via config
     this.baseurl = null
     this.basepath = null
     this.hostname = null
@@ -259,7 +258,6 @@ export class EngineClient<TInitialized extends boolean = boolean> {
 
     const points = await this.readClientPoints()
 
-    // TODO:ASAP allow baseurl via config
     this.baseurl = points?.baseurl ?? null
     this.basepath = getBasepathOrNull(this.baseurl)
     this.hostname = getHostnameOrNull(this.baseurl)
