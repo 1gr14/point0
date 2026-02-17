@@ -252,6 +252,7 @@ describe('plugin', () => {
       .loader(({ ctx }) => ({
         pluginCtx: ctx.pluginCtx,
       }))
+      .ctx((options) => ({ pageCtx: 'ok5' }))
       .page(({ props, data, queries }) => (
         <div id="page">
           <div id="related-query">{ymlifyline(data)}</div>

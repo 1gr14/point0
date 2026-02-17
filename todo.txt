@@ -160,12 +160,13 @@ ssr can be not on root point, but client still can be ssr if it has ssr point, s
 
 
 === PLUGIN ===
-В плагин добавить шифтпропс с лузтипом объекта, потому что там реально мы не знаем какие допрокинутся
-.query and .layout to plugin (check if not already there)
-types test for requiredCtx and outerProps (shoud it be TRequiredCtx or just Ctx?)
----
-Разрешить первым генерирком передать тайп оф поинт, чтобы всё то же самое как летс от этого поинта
-? разрешить летс от бейзов и рута (чтобы руками не передавать requiredCtx and outerProps)
+! when we do use, we apply to all action pluginUsageId, and when we execute we pass there mountable state for this pluginUsageId, and pass results to all prev usages
+? when we do use, we add special use action to mountables and to server, which can contain same type actions
+Дефолтный скоуп плагина пусть будет шифт шифт плагин
+remove LoaderPluginFn
+.layout to plugin (check if not already there)
+remove requiredCtx and outer props
+? Так и дата может экстендить надо, зачем её переписывать то (так не красиво будет)
 
 
 
