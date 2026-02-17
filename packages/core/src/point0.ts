@@ -44,6 +44,7 @@ import type {
   GlobalHeadFn,
   HeadFn,
   IsQueryShouldBeFinalized,
+  LayoutLocation,
   LayoutSelfProps,
   LayoutSelfType,
   LayoutSuccessComponentType,
@@ -54,6 +55,8 @@ import type {
   MountableSelfType,
   MountableState,
   MountableSuccessData,
+  OnPrefetchMountableFn,
+  PageLocation,
   PageSelfProps,
   PageSelfType,
   PageSuccessComponentType,
@@ -152,7 +155,6 @@ import type {
   NiceRootStagePoint,
   NiceStagePoint,
   NormalizeQueryResultType,
-  OnPrefetchPageFn,
   PartialUseInfiniteQueryOptions,
   PointName,
   PointType,
@@ -381,7 +383,7 @@ export class Point0<
     trigger: 'navigate' | 'linkHover' | undefined,
     fallback: PrefetchPagePolicy | undefined,
   ) => (trigger === 'linkHover' ? this._polhPolicy : trigger === 'navigate' ? this._ponPolicy : fallback) ?? 'none'
-  private readonly _onPrefetchPageFns: OnPrefetchPageFn[]
+  private readonly _onPrefetchMountableFns: OnPrefetchMountableFn[]
   get polh(): boolean | number {
     return !this._polhPolicy || this._polhPolicy === 'none' ? false : (this._polhDuration ?? true)
   }
@@ -505,7 +507,7 @@ export class Point0<
     _polhPolicy?: PrefetchPagePolicy | undefined
     _polhDuration?: number | undefined
     _ponPolicy?: PrefetchPagePolicy | undefined
-    _onPrefetchPageFns?: OnPrefetchPageFn[]
+    _onPrefetchMountableFns?: OnPrefetchMountableFn[]
     _errorComponent?: ErrorComponentType<any>
     _layoutErrorComponent?: ErrorComponentType<any>
     _pageErrorComponent?: ErrorComponentType<any>
@@ -562,7 +564,7 @@ export class Point0<
     this._polhPolicy = options._polhPolicy ?? undefined
     this._polhDuration = options._polhDuration ?? undefined
     this._ponPolicy = options._ponPolicy ?? undefined
-    this._onPrefetchPageFns = options._onPrefetchPageFns ?? []
+    this._onPrefetchMountableFns = options._onPrefetchMountableFns ?? []
     this._layoutErrorComponent = options._layoutErrorComponent ?? undefined
     this._pageErrorComponent = options._pageErrorComponent ?? undefined
     this._componentErrorComponent = options._componentErrorComponent ?? undefined
@@ -651,7 +653,7 @@ export class Point0<
     _polhPolicy?: PrefetchPagePolicy | undefined
     _polhDuration?: number | undefined
     _ponPolicy?: PrefetchPagePolicy | undefined
-    _onPrefetchPageFns?: OnPrefetchPageFn[]
+    _onPrefetchMountableFns?: OnPrefetchMountableFn[]
     _errorComponent?: ErrorComponentType<any> | undefined
     _layoutErrorComponent?: ErrorComponentType<any> | undefined
     _pageErrorComponent?: ErrorComponentType<any> | undefined
@@ -750,7 +752,7 @@ export class Point0<
       _polhPolicy: overrides._polhPolicy ?? this._polhPolicy,
       _polhDuration: overrides._polhDuration ?? this._polhDuration,
       _ponPolicy: overrides._ponPolicy ?? this._ponPolicy,
-      _onPrefetchPageFns: overrides._onPrefetchPageFns ?? this._onPrefetchPageFns,
+      _onPrefetchMountableFns: overrides._onPrefetchMountableFns ?? this._onPrefetchMountableFns,
       _errorComponent: (overrides._errorComponent ?? this._errorComponent) as never,
       _layoutErrorComponent: (overrides._layoutErrorComponent ?? this._layoutErrorComponent) as never,
       _pageErrorComponent: (overrides._pageErrorComponent ?? this._pageErrorComponent) as never,
@@ -2266,7 +2268,11 @@ export class Point0<
   // prefetch mode
 
   onPrefetchPage(
-    fn: OnPrefetchPageFn,
+    fn: TLetsReadyPointType extends 'page'
+      ? OnPrefetchMountableFn<PageLocation<TRouteDefinition>, TOuterProps>
+      : TLetsReadyPointType extends 'layout'
+        ? OnPrefetchMountableFn<LayoutLocation<TRouteDefinition>, TOuterProps>
+        : OnPrefetchMountableFn<AnyLocation, TOuterProps>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -2302,7 +2308,7 @@ export class Point0<
       TQueriesDefinitions
     >({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
-      _onPrefetchPageFns: [...this._onPrefetchPageFns, fn ?? (() => undefined)],
+      _onPrefetchMountableFns: [...this._onPrefetchMountableFns, (fn ?? (() => undefined)) as never],
     }) as never
   }
 
@@ -3519,7 +3525,7 @@ export class Point0<
       _polhPolicy: this._base?._polhPolicy,
       _polhDuration: this._base?._polhDuration,
       _ponPolicy: this._base?._ponPolicy,
-      _onPrefetchPageFns: this._base?._onPrefetchPageFns,
+      _onPrefetchMountableFns: this._base?._onPrefetchMountableFns,
       _errorComponent: undefined,
       _layoutErrorComponent: this._base?._layoutErrorComponent as never,
       _pageErrorComponent: this._base?._pageErrorComponent as never,
@@ -4055,7 +4061,7 @@ export class Point0<
       _polhPolicy: point._polhPolicy,
       _polhDuration: point._polhDuration,
       _ponPolicy: point._ponPolicy,
-      _onPrefetchPageFns: [...this._onPrefetchPageFns, ...point._onPrefetchPageFns],
+      _onPrefetchMountableFns: [...this._onPrefetchMountableFns, ...point._onPrefetchMountableFns],
       _errorComponent: point._errorComponent,
       _layoutErrorComponent: point._layoutErrorComponent,
       _pageErrorComponent: point._pageErrorComponent,
@@ -6114,7 +6120,7 @@ export class Point0<
 
   // async _callPrefetchFns({ preventPrefetchFns }: { preventPrefetchFns?: boolean | OnPrefetchFn[] }): Promise<void> {
   //   const prefetchFns =
-  //     preventPrefetchFns === true ? new Set<OnPrefetchFn>() : new Set<OnPrefetchFn>([...this._onPrefetchPageFns])
+  //     preventPrefetchFns === true ? new Set<OnPrefetchFn>() : new Set<OnPrefetchFn>([...this._onPrefetchMountableFns])
   //   if (Array.isArray(preventPrefetchFns)) {
   //     for (const fn of preventPrefetchFns) {
   //       if (prefetchFns.has(fn)) {
@@ -6599,6 +6605,8 @@ export class Point0<
         ]
   ): Promise<void> {
     const [input = {}, options = {}] = args
+    // later we will have prefetchComponent and prefetchWrapper, so there will be props
+    const outerProps = {} as Props
     const eventData = {
       point: this as never as AnyPoint,
       input,
@@ -6647,19 +6655,21 @@ export class Point0<
 
     const allRelatedPoints = [this as never as ReadyPoint, ...this._layouts]
     const uniqRelatedPoints = [...new Set<AnyPoint>(allRelatedPoints)]
-    const uniqPrefetchFns = [...new Set<OnPrefetchPageFn>([...uniqRelatedPoints.flatMap((p) => p._onPrefetchPageFns)])]
+    const uniqPrefetchFns = [
+      ...new Set<OnPrefetchMountableFn>([...uniqRelatedPoints.flatMap((p) => p._onPrefetchMountableFns)]),
+    ]
     const allRelatedQueries = allRelatedPoints.flatMap((p) => p._mountActions.filter((a) => a.type === 'relatedQuery'))
 
     const onPrefetchFnsPromise = Promise.all(
       uniqPrefetchFns.map(async (fn) => {
-        return await fn()
+        return await fn({ location, props: outerProps })
       }),
     )
 
     const relatedQueriesPrefetching = Promise.all(
       allRelatedQueries.flatMap(async (relatedQuery) => {
         const p = relatedQuery.point
-        if (policy === 'onPrefetchPageOnly') {
+        if (policy === 'onPrefetchOnly') {
           return []
         }
         if (policy === 'everything' && !p._hasClientLoader() && queryClientDehydratedStateWasPrefetched) {
@@ -6681,7 +6691,7 @@ export class Point0<
               }[policy]
         if (p._queryResultType === 'infiniteQuery') {
           return await p.prefetchInfiniteQuery(
-            relatedQuery.inputGetter({ location }),
+            relatedQuery.inputGetter({ location, props: {} as never }),
             relatedQuery.queryOptions as never,
             {
               queryClient,
@@ -6692,20 +6702,24 @@ export class Point0<
             },
           )
         } else {
-          return await p.prefetchQuery(relatedQuery.inputGetter({ location }), relatedQuery.queryOptions as never, {
-            queryClient,
-            location,
-            fetchOptions,
-            force,
-            mode,
-          })
+          return await p.prefetchQuery(
+            relatedQuery.inputGetter({ location, props: outerProps }),
+            relatedQuery.queryOptions as never,
+            {
+              queryClient,
+              location,
+              fetchOptions,
+              force,
+              mode,
+            },
+          )
         }
       }),
     )
 
     const queriesPrefetching = Promise.all(
       uniqRelatedPoints.flatMap(async (p) => {
-        if (policy === 'onPrefetchPageOnly') {
+        if (policy === 'onPrefetchOnly') {
           return []
         }
         if (policy === 'everything' && !p._hasClientLoader() && queryClientDehydratedStateWasPrefetched) {
@@ -7194,12 +7208,12 @@ export class Point0<
           const query = (() => {
             if (action.point._queryResultType === 'infiniteQuery') {
               return action.point.useInfiniteQuery(
-                action.inputGetter({ location: mountState.location }),
+                action.inputGetter({ location: mountState.location, props: outerProps }),
                 action.queryOptions as never,
               )
             } else {
               return action.point.useQuery(
-                action.inputGetter({ location: mountState.location }),
+                action.inputGetter({ location: mountState.location, props: outerProps }),
                 action.queryOptions as never,
               )
             }

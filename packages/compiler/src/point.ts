@@ -845,11 +845,7 @@ export class CompilerPoint<TValid extends boolean = any> {
       ) {
         this.removeMethodArgs({ nodePath: method.nodePath })
       } else if (!method.underSsr) {
-        if (method.name === 'page') {
-          this.replaceLastArgWithArrowFnReturnNull({ nodePath: method.nodePath })
-        } else if (method.name === 'provider') {
-          this.replaceAllArgsWithArrowFnReturnEmptyObject({ nodePath: method.nodePath })
-        } else if (
+        if (
           [
             'error',
             'layoutError',
@@ -863,7 +859,10 @@ export class CompilerPoint<TValid extends boolean = any> {
             'with',
             'mapper',
             'component',
+            'provider',
             'layout',
+            'page',
+            'head',
             // 'query',
             // 'infiniteQuery',
             // 'mutationOptions',

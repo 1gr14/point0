@@ -1,5 +1,5 @@
 import type { Error0 } from '@devp0nt/error0'
-import type { AnyLocation, ExactLocation, WeakAncestorLocation, WeakDescendantLocation } from '@devp0nt/route0'
+import type { AnyLocation, ExactLocation, WeakAncestorLocation } from '@devp0nt/route0'
 import type {
   InfiniteQueryObserverSuccessResult,
   QueryObserverSuccessResult,
@@ -8,6 +8,7 @@ import type {
 } from '@tanstack/react-query'
 import type * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
+import type { RouterPageState } from './router.js'
 import type {
   AnyPoint,
   CurrentRouteDefinition,
@@ -15,11 +16,11 @@ import type {
   EmptyData,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
-  ReadyPointType,
   FinalLoaderDataOrNever,
   IfAnyThenElse,
   InputSchema,
   InputsRaw,
+  IsEmptyObject,
   IsInputsOptional,
   IsInputsSchemasDefined,
   IsNever,
@@ -28,14 +29,14 @@ import type {
   PointType,
   QueryableReadyPointType,
   QueryResultType,
+  ReadyPointType,
   RouteDefinition,
-  UndefinedReadyPointType,
   UndefinedInputSchema,
   UndefinedLoaderOutput,
   UndefinedMapperOutput,
+  UndefinedReadyPointType,
   UndefinedRouteDefinition,
 } from './types.js'
-import type { RouterPageState } from './router.js'
 
 export type Props = Record<string, any>
 export type UndefinedProps = undefined
@@ -46,6 +47,24 @@ export type AppendProps<TPrevProps extends Props, TAppendProps extends Props> = 
     ? TAppendProps
     : Omit<TPrevProps, keyof TAppendProps> & TAppendProps
   : TAppendProps
+
+export type WithOuterPropsIfExists<TOuterProps extends Props> =
+  IsEmptyObject<TOuterProps> extends true
+    ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+      {}
+    : { props: TOuterProps }
+export type WithLocationIfExists<TLocation extends AnyLocation | undefined> = TLocation extends undefined
+  ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    {}
+  : { location: TLocation }
+
+type RequiredKeys<T> = {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  [K in keyof T]-?: {} extends Pick<T, K> ? never : K
+}[keyof T]
+
+export type IsOuterPropsOptional<TOuterProps extends Props> =
+  IsNever<keyof TOuterProps> extends true ? true : RequiredKeys<TOuterProps> extends never ? true : false
 
 export type UseQueryOrInfiniteQueryResult = UseInfiniteQueryResult | UseQueryResult
 export type QueriesResults = readonly UseQueryOrInfiniteQueryResult[]
@@ -390,10 +409,20 @@ export type WithQueryFn<
   TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults = UseQueryOrInfiniteQueryResult | QueriesResults,
 > = (options: WithFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>) => TNewQueries
 
-export type RelatedQueryOptions<TLocation extends AnyLocation = AnyLocation> = { location: TLocation }
-export type RelatedQueryInputGetter<TPoint extends { point: AnyPoint }, TLocation extends AnyLocation = AnyLocation> = (
+export type RelatedQueryOptions<TLocation extends AnyLocation = any, TOuterProps extends Props = any> = {
+  location: TLocation
+} & WithOuterPropsIfExists<TOuterProps>
+export type RelatedQueryInputGetter<TPoint extends { point: AnyPoint }, TLocation extends AnyLocation = any> = (
   options: RelatedQueryOptions<TLocation>,
 ) => TPoint['point']['Infer']['InputRawOrUndefined']
+
+export type OnPrefetchMountableFnOptions<
+  TLocation extends AnyLocation | undefined = any,
+  TOuterProps extends Props = any,
+> = WithOuterPropsIfExists<TOuterProps> & WithLocationIfExists<TLocation>
+export type OnPrefetchMountableFn<TLocation extends AnyLocation | undefined = any, TOuterProps extends Props = any> = (
+  options: OnPrefetchMountableFnOptions<TLocation, TOuterProps>,
+) => Promise<void> | void
 
 // export type LightQueryFnOptions<TLocation extends AnyLocation> = { location: TLocation }
 // export type LightQueryFn<
@@ -524,19 +553,6 @@ export type LayoutSuccessComponentType<
 > = React.ComponentType<LayoutSuccessComponentProps<TRouteDefinition, TInnerProps, TQueriesDefinitions, TMapperOutput>>
 export type UndefinedLayoutSuccessComponent = undefined
 
-export type MountableLocation<
-  TPointType extends PointType | undefined,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-> = TPointType extends 'page'
-  ? PageLocation<TRouteDefinition>
-  : TPointType extends 'layout'
-    ? LayoutLocation<TRouteDefinition>
-    : TPointType extends 'component'
-      ? ComponentLocation
-      : TPointType extends 'provider'
-        ? ProviderLocation
-        : AnyLocation
-
 export type ProviderExtraInnerProps = {
   children: Exclude<React.ReactNode, Promise<any>>
 }
@@ -567,6 +583,19 @@ export type ComponentSuccessComponentType<
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<ComponentSuccessComponentProps<TInnerProps, TQueriesDefinitions, TMapperOutput>>
 export type UndefinedComponentSuccessComponent = undefined
+
+export type MountableLocation<
+  TPointType extends PointType | undefined,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+> = TPointType extends 'page'
+  ? PageLocation<TRouteDefinition>
+  : TPointType extends 'layout'
+    ? LayoutLocation<TRouteDefinition>
+    : TPointType extends 'component'
+      ? ComponentLocation
+      : TPointType extends 'provider'
+        ? ProviderLocation
+        : AnyLocation
 
 export type MountableSelfChildrenFn<
   TLocation extends AnyLocation,

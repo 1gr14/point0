@@ -856,9 +856,8 @@ export type PrefetchPagePolicy =
   | 'serverClientQuery'
   | 'queryClientDehydratedState'
   | 'everything'
-  | 'onPrefetchPageOnly'
+  | 'onPrefetchOnly'
   | 'none'
-export type OnPrefetchPageFn = () => Promise<void> | void
 
 // middlewares
 

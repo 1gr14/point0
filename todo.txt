@@ -52,8 +52,10 @@ try catch evertywhere in engine to show real error in real place
 
 
 === REFACTOING 3000 ===
+Префетч мод эврисынг не должен существовать, там хватает тру, и для сср это будет квериСтейтЭндКлиент, а для спа это просто сервер энд клиент
 __INPUT_RAW__ не хранить в стейте, а геж-то ещё хранить напримерв _state
 test body really has raw body after request
+В апп не передавать поинтсы, зачем они там
 --+
 Разобраться с эррор баундари для фронта
 bun watcher, not parcel watcher
@@ -115,13 +117,10 @@ on fetch error maybe no json, then if it is thore, do res.text()
 
 
 === SSR ===
-Сср это опция клиента и по ней всё определяется
-SSR он прямо в компилере также определяется и влият на то будет клиент пруниться под сср или нет
-В чейне сср нельзя включить, его можно только выключить
-Сср по ходу лучше то указывать в энжине, а то не понятно как плагины прунить, пусть уж если сср, то всё там сср, и опцию сср оставить, вэнжине мы определяем значение по умолчанию
+--+
+Instead we recommend using a library like Serialize JavaScript or devalue which are both safe against XSS injections out of the box.
 При дипшмифетче сверяться а является ли запрошенная кверя дочерней по отношению к нашему серверному скоупу, или это вообще другой сервер
 Test for mount()
-Instead we recommend using a library like Serialize JavaScript or devalue which are both safe against XSS injections out of the box.
 __POINT0_GET_SSR_PHASE__
 ---
 Если не сср поинт, то прунить ещё для сервера и компоненты до первого сср фалс, а значит нужно при компилинге уже всех парентов находить (короче находить родителей по поинту убедиться, что при компилинге только 1 файла, он находит родительский файл)
@@ -134,6 +133,10 @@ ssr can be not on root point, but client still can be ssr if it has ssr point, s
 ? В ССР можно передать строку финалайз, тогда будем прогонять ещё разок с финалайзом в конце 
 ? layout pruned .layout() transforms to .layout(() => this._layoutLoading)
 ? ↓ add ssr to queryKey and if it is false, then do not ssr when meet it (what?)
+× Сср это опция клиента и по ней всё определяется
+× SSR он прямо в компилере также определяется и влият на то будет клиент пруниться под сср или нет
+× В чейне сср нельзя включить, его можно только выключить
+× Сср по ходу лучше то указывать в энжине, а то не понятно как плагины прунить, пусть уж если сср, то всё там сср, и опцию сср оставить, вэнжине мы определяем значение по умолчанию
 
 
 
@@ -157,20 +160,18 @@ ssr can be not on root point, but client still can be ssr if it has ssr point, s
 
 
 === MOUNTABLES ===
-related query dидит внешние пропсы
-Онпрефетч тоже видит внешние пропсы
-В префетч компонента и врапера вторым аргументом передаются пропсы
-Разрешить префетчить компонент и врапер учитывая что там внешние пропсы рулят а не локейшен
 Провайдеру написать тесты на реагирование на изменение частей при юзВэлью
 Добавить поинт типа враппер, вот в него и можно закинуть всякие виз квери (вероято для кжспо поможет обойтись без лэйоутов), также проверить что он нормально передаётся в .wrapper(wrapper)
-Forbidden to return conflicted props from with by types
 Убдаиться что хед для носср с 2 аргументами тоже прунится
-дисплей нэймс
-SuccessComponent>children также можно передавать и тогда во врапере можно всё остановить
-Лоадинг и эррор комопнент разрешить использовать как обёртку чтобы на месте сделать свой кастомный
-'onPrefetchPageOnly' → 'onPrefetchOnly'; prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout,prefetchWrapper)
 --+
 Вероятно для экспо стоит пейджу и компоненту возвращать не обёртку над нулом, а обёртку над X, чтобы он мог заиспользоваться
+---
+SuccessComponent>children также можно передавать и тогда во врапере можно всё остановить
+Лоадинг и эррор комопнент разрешить использовать как обёртку чтобы на месте сделать свой кастомный
+дисплей нэймс
+Разрешить префетчить компонент и врапер
+В префетч компонента и врапера вторым аргументом передаются пропсы
+prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout,prefetchWrapper)
 ---
 В пейдже и лэйоуте убедиться что при перемене локэйшена компоненты реально не рендерятся
 ? remove Provider Page Component from public api X is enough (chanel is ok to have Provider sounds nice)
@@ -208,6 +209,7 @@ we should have transformer.set() transformer.get(), os apply to everything if no
 
 
 === ENGINE ===
+Разобраться, зачем вообще клиенту поинтсы в энжине
 try engine dev with usual dev process wothout manual restarting
 killPort: true for engine, and remove withRetries for server starting
 detect if client servable via server or not, and then do or not fetchPoint
@@ -448,6 +450,7 @@ cli extract point by type and name, so agent can see errors right in terminal
 
 
 === FILEROUTING ===
+Два слеша дают тоже абсолютный роут
 --?
 Просто > ставить в строку, чтобы файловый роутинг получить
 > файлроут, которая автоматически вставляет в себя строку текущего файла по отношению к файлу .файлроут или текущей папке. И к ней даже к строка можно дописать плюсики или как стринглитерал заиспользовать
@@ -530,6 +533,7 @@ elysia and uWebSocket separate realizations
 
 === EXAMPLES ===
 example refactor
+example test
 example auth
 example monorepo
 ---
