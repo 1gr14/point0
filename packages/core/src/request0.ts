@@ -6,6 +6,7 @@ import type { InputParsed, InputRawUnknown, InputSchema, UndefinedInputSchema } 
 
 export class Request0<
   TInputWasExtracted extends boolean = boolean,
+  // TODO:ASAP do we really need input here?
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > {
   // export class Request0<

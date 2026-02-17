@@ -160,8 +160,7 @@ ssr can be not on root point, but client still can be ssr if it has ssr point, s
 
 
 === PLUGIN ===
-Убрать мапер из плагина
-В плагин добавить шифтпропс с лузтипом объекта, потому что там реально мы не знаем какие допрокинутся, и проверять что не конфликтуют при применении
+В плагин добавить шифтпропс с лузтипом объекта, потому что там реально мы не знаем какие допрокинутся
 .query and .layout to plugin (check if not already there)
 types test for requiredCtx and outerProps (shoud it be TRequiredCtx or just Ctx?)
 ---
@@ -171,9 +170,9 @@ types test for requiredCtx and outerProps (shoud it be TRequiredCtx or just Ctx?
 
 
 === MOUNTABLES ===
+--+
 relatedComponent
 prefetchComponent
---+
 Вероятно для экспо стоит пейджу и компоненту возвращать не обёртку над нулом, а обёртку над X, чтобы он мог заиспользоваться
 ---
 SuccessComponent>children также можно передавать и тогда во врапере можно всё остановить
@@ -233,6 +232,7 @@ cli inspect by filepath how this file and in which place come to files via cli c
 check bun compiler, and vite compiler creates correct sourcemaps
 Пабликдирам дать кэшированный пул, чтобы отдавать из памяти не читая с диска
 Написать тесты на правильное определение путей после билда в энжине
+forbidden '*' and '' for client env vars and consts
 ---
 В роут с генерированными роутами добавлять в комментах путь к компоненту, который объявил
 Энв варс и констс на верхний уровень в том числе

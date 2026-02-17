@@ -32,6 +32,8 @@ import type {
   UniqEventerErrorEventName,
 } from './eventer.js'
 import { _getFakeClient, _ssItems } from './internals.js'
+import type { MethodCtx, MethodPluginCtx } from './methods/ctx.js'
+import type { MethodPluginWith, MethodWith } from './methods/with.js'
 import type {
   AppendProps,
   AppendQueries,
@@ -43,6 +45,7 @@ import type {
   ErrorComponentType,
   GlobalHeadFn,
   HeadFn,
+  HeadPluginFn,
   IsQueryShouldBeFinalized,
   LayoutLocation,
   LayoutSelfProps,
@@ -50,6 +53,7 @@ import type {
   LayoutSuccessComponentType,
   LoadingComponentType,
   MapperFn,
+  MergeQueries,
   MountAction,
   MountableLocation,
   MountableSelfType,
@@ -64,10 +68,9 @@ import type {
   ProviderSelfProps,
   ProviderSelfType,
   QueriesDefinitions,
-  QueriesDefinitionsByQueries,
   QueriesResults,
   QueryDefinition,
-  QueryDefinitionByQuery,
+  RelatedPluginQueryInputGetter,
   RelatedQueryInputGetter,
   UndefinedComponentSuccessComponent,
   UndefinedLayoutSuccessComponent,
@@ -75,9 +78,12 @@ import type {
   UseQueryOrInfiniteQueryResult,
   WithFn,
   WithFnOptions,
+  WithPluginFn,
+  WithPluginFnOptions,
   WithQueryFn,
   WithSelfQueryIfShouldBeFinalized,
   WrapperComponentType,
+  WrapperPluginComponentType,
 } from './mountable.js'
 import { _usePageStateManager, useLocation, useRouterContext } from './router.js'
 import type { RouterPageState } from './router.js'
@@ -86,10 +92,7 @@ import type {
   AnyPoint,
   AppendCtx,
   AppendCtxExposedKeys,
-  AssertCurrentCtxExtendsPluginRequiredCtx,
-  AssertCurrentInnerPropsExtendsPluginOuterProps,
   AssertInputSchemaNotWider,
-  AssertNoForbiddenCtxExposedKeys,
   AssertNoForbiddenMethodsIfNotSuitableStage,
   AssertRouteDefinitionInputExtends,
   BasePoint,
@@ -100,6 +103,7 @@ import type {
   Ctx,
   CtxExposedKeys,
   CtxFn,
+  CtxPluginFn,
   CurrentRouteDefinition,
   CustomValidationFn,
   CustomValidationFnToRecordValidationSchema,
@@ -122,8 +126,6 @@ import type {
   FinalLoaderOutput,
   IfAnyThenElse,
   Infer,
-  InferCtxFnOutputCtxAppend,
-  InferCtxFnOutputCtxExposedKeys,
   InputParsed,
   InputRaw,
   InputSchema,
@@ -135,6 +137,7 @@ import type {
   LayoutPoint,
   LoaderDataFn,
   LoaderOutput,
+  LoaderPluginFn,
   LoaderResponseFn,
   MapperOutput,
   MergeRecordValidationSchemas,
@@ -1393,7 +1396,7 @@ export class Point0<
     // })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() }]
       : []
     return this._continue({
       _mountActions: [
@@ -1404,6 +1407,7 @@ export class Point0<
           Component: errorComponent,
           variant: this._getDestinationComponentVariant(),
           unstableId: Point0._getNextUnstableId(),
+          plugin: this._isPlugin(),
         },
       ],
       ...(this._isMountablePoint()
@@ -1626,7 +1630,7 @@ export class Point0<
     // })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() }]
       : []
     return this._continue({
       _mountActions: [
@@ -1637,6 +1641,7 @@ export class Point0<
           Component: loadingComponent,
           variant: this._getDestinationComponentVariant(),
           unstableId: Point0._getNextUnstableId(),
+          plugin: this._isPlugin(),
         },
       ],
       ...(this._isMountablePoint()
@@ -1652,18 +1657,20 @@ export class Point0<
   }
 
   wrapper(
-    wrapperComponent: WrapperComponentType<
-      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-      TInnerProps,
-      WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions
-      >,
-      TMapperOutput
-    >,
+    wrapperComponent: TLetsReadyPointType extends 'plugin'
+      ? WrapperPluginComponentType
+      : WrapperComponentType<
+          MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+          TInnerProps,
+          WithSelfQueryIfShouldBeFinalized<
+            TPointType,
+            TLetsReadyPointType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TQueriesDefinitions
+          >,
+          TMapperOutput
+        >,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -1691,7 +1698,7 @@ export class Point0<
   > {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() }]
       : []
     return this._continue({
       _mountActions: [
@@ -1701,228 +1708,316 @@ export class Point0<
           type: 'wrapper',
           Component: wrapperComponent,
           unstableId: Point0._getNextUnstableId(),
+          plugin: this._isPlugin(),
         },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
   }
 
-  with<
-    TPoint extends NiceReadyPoint<
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      'infiniteQuery' | 'query',
-      any,
-      any,
-      any
-    >,
-  >(
-    ...args: TLetsReadyPointType extends MountablePointType
-      ? [
-          // point: TPoint &
-          //   (TPoint['Infer']['IsInputOptional'] extends true
-          //     ? unknown
-          //     : Record<`Input as second argument is required`, `Input as second argument is required`>),
-          point: TPoint,
-          ...rest: TPoint['Infer']['IsInputOptional'] extends true
-            ? [
-                input?:
-                  | TPoint['Infer']['InputRawOrUndefined']
-                  | ((
-                      options: WithFnOptions<
-                        MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-                        TInnerProps,
-                        WithSelfQueryIfShouldBeFinalized<
-                          TPointType,
-                          TLetsReadyPointType,
-                          TServerLoaderOutput,
-                          TClientLoaderOutput,
-                          TQueriesDefinitions
-                        >,
-                        TMapperOutput
-                      >,
-                    ) => TPoint['Infer']['InputRawOrUndefined']),
-                queryOptions?: TPoint['Infer']['UseQueryOptions'],
-              ]
-            : [
-                input:
-                  | TPoint['Infer']['InputRawOrUndefined']
-                  | ((
-                      options: WithFnOptions<
-                        MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-                        TInnerProps,
-                        WithSelfQueryIfShouldBeFinalized<
-                          TPointType,
-                          TLetsReadyPointType,
-                          TServerLoaderOutput,
-                          TClientLoaderOutput,
-                          TQueriesDefinitions
-                        >,
-                        TMapperOutput
-                      >,
-                    ) => TPoint['Infer']['InputRawOrUndefined']),
-                queryOptions?: TPoint['Infer']['UseQueryOptions'],
-              ],
-        ]
-      : never
-  ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
-      ? 'finalStage'
-      : StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    [
-      ...WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions
-      >,
-      {
-        type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
-        data: TPoint['Infer']['QueriedData']
-      },
-    ]
-  >
-  with<TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults>(
-    withQueryFn: WithQueryFn<
-      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-      TInnerProps,
-      WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions
-      >,
-      TMapperOutput,
-      TNewQueries
-    >,
-  ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
-      ? 'finalStage'
-      : StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    [
-      ...WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions
-      >,
-      // ...(TNewQueries extends UseQueryOrInfiniteQueryResult
-      //   ? [QueryDefinitionByQuery<TNewQueries>]
-      //   : TNewQueries extends UseQueryOrInfiniteQueryResult[]
-      //     ? QueriesDefinitionsByQueries<TNewQueries>
-      //     : never),
-      ...(TNewQueries extends QueriesResults
-        ? QueriesDefinitionsByQueries<TNewQueries>
-        : TNewQueries extends UseQueryOrInfiniteQueryResult
-          ? [QueryDefinitionByQuery<TNewQueries>]
-          : never),
-    ]
-  >
-  with<TNewInnerProps extends Props>(
-    withFn: WithFn<
-      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-      TInnerProps,
-      WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions
-      >,
-      TMapperOutput,
-      TNewInnerProps
-    > &
-      (TNewInnerProps extends UseQueryOrInfiniteQueryResult[]
-        ? ShowError<`To return array of queries add as const after array like return [q1, q2] as const`>
-        : unknown),
-  ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
-      ? 'finalStage'
-      : StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-    TOuterProps,
-    AppendProps<TInnerProps, TNewInnerProps>,
-    WithSelfQueryIfShouldBeFinalized<
-      TPointType,
-      TLetsReadyPointType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TQueriesDefinitions
-    >
-  >
-  with(
-    ...args:
-      | [withFn?: WithFn<any, any, any, any, any> | undefined]
+  // with<
+  //   TPoint extends NiceReadyPoint<
+  //     any,
+  //     any,
+  //     any,
+  //     any,
+  //     any,
+  //     any,
+  //     any,
+  //     any,
+  //     any,
+  //     any,
+  //     any,
+  //     'infiniteQuery' | 'query',
+  //     any,
+  //     any,
+  //     any
+  //   >,
+  // >(
+  //   ...args: TLetsReadyPointType extends MountablePointType
+  //     ? [
+  //         // point: TPoint &
+  //         //   (TPoint['Infer']['IsInputOptional'] extends true
+  //         //     ? unknown
+  //         //     : Record<`Input as second argument is required`, `Input as second argument is required`>),
+  //         point: TPoint,
+  //         ...rest: TPoint['Infer']['IsInputOptional'] extends true
+  //           ? [
+  //               input?:
+  //                 | TPoint['Infer']['InputRawOrUndefined']
+  //                 | ((
+  //                     options: WithFnOptions<
+  //                       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+  //                       TInnerProps,
+  //                       WithSelfQueryIfShouldBeFinalized<
+  //                         TPointType,
+  //                         TLetsReadyPointType,
+  //                         TServerLoaderOutput,
+  //                         TClientLoaderOutput,
+  //                         TQueriesDefinitions
+  //                       >,
+  //                       TMapperOutput
+  //                     >,
+  //                   ) => TPoint['Infer']['InputRawOrUndefined']),
+  //               queryOptions?: TPoint['Infer']['UseQueryOptions'],
+  //             ]
+  //           : [
+  //               input:
+  //                 | TPoint['Infer']['InputRawOrUndefined']
+  //                 | ((
+  //                     options: WithFnOptions<
+  //                       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+  //                       TInnerProps,
+  //                       WithSelfQueryIfShouldBeFinalized<
+  //                         TPointType,
+  //                         TLetsReadyPointType,
+  //                         TServerLoaderOutput,
+  //                         TClientLoaderOutput,
+  //                         TQueriesDefinitions
+  //                       >,
+  //                       TMapperOutput
+  //                     >,
+  //                   ) => TPoint['Infer']['InputRawOrUndefined']),
+  //               queryOptions?: TPoint['Infer']['UseQueryOptions'],
+  //             ],
+  //       ]
+  //     : never
+  // ): NiceStagePoint<
+  //   IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
+  //     ? 'finalStage'
+  //     : StagePointTypeOrNever<TPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TCtxExposedKeys,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   TMapperOutput,
+  //   TRouteDefinition,
+  //   TServerInputSchema,
+  //   TClientInputSchema,
+  //   IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
+  //   TOuterProps,
+  //   TInnerProps,
+  //   [
+  //     ...WithSelfQueryIfShouldBeFinalized<
+  //       TPointType,
+  //       TLetsReadyPointType,
+  //       TServerLoaderOutput,
+  //       TClientLoaderOutput,
+  //       TQueriesDefinitions
+  //     >,
+  //     {
+  //       type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
+  //       data: TPoint['Infer']['QueriedData']
+  //     },
+  //   ]
+  // >
+  // with<TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults>(
+  //   withQueryFn: WithQueryFn<
+  //     MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+  //     TInnerProps,
+  //     WithSelfQueryIfShouldBeFinalized<
+  //       TPointType,
+  //       TLetsReadyPointType,
+  //       TServerLoaderOutput,
+  //       TClientLoaderOutput,
+  //       TQueriesDefinitions
+  //     >,
+  //     TMapperOutput,
+  //     TNewQueries
+  //   >,
+  // ): NiceStagePoint<
+  //   IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
+  //     ? 'finalStage'
+  //     : StagePointTypeOrNever<TPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TCtxExposedKeys,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   TMapperOutput,
+  //   TRouteDefinition,
+  //   TServerInputSchema,
+  //   TClientInputSchema,
+  //   IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
+  //   TOuterProps,
+  //   TInnerProps,
+  //   [
+  //     ...WithSelfQueryIfShouldBeFinalized<
+  //       TPointType,
+  //       TLetsReadyPointType,
+  //       TServerLoaderOutput,
+  //       TClientLoaderOutput,
+  //       TQueriesDefinitions
+  //     >,
+  //     // ...(TNewQueries extends UseQueryOrInfiniteQueryResult
+  //     //   ? [QueryDefinitionByQuery<TNewQueries>]
+  //     //   : TNewQueries extends UseQueryOrInfiniteQueryResult[]
+  //     //     ? QueriesDefinitionsByQueries<TNewQueries>
+  //     //     : never),
+  //     ...(TNewQueries extends QueriesResults
+  //       ? QueriesDefinitionsByQueries<TNewQueries>
+  //       : TNewQueries extends UseQueryOrInfiniteQueryResult
+  //         ? [QueryDefinitionByQuery<TNewQueries>]
+  //         : never),
+  //   ]
+  // >
+  // with<TNewInnerProps extends Props>(
+  //   withFn: WithFn<
+  //     MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+  //     TInnerProps,
+  //     WithSelfQueryIfShouldBeFinalized<
+  //       TPointType,
+  //       TLetsReadyPointType,
+  //       TServerLoaderOutput,
+  //       TClientLoaderOutput,
+  //       TQueriesDefinitions
+  //     >,
+  //     TMapperOutput,
+  //     TNewInnerProps
+  //   > &
+  //     (TNewInnerProps extends UseQueryOrInfiniteQueryResult[]
+  //       ? ShowError<`To return array of queries add as const after array like return [q1, q2] as const`>
+  //       : unknown),
+  // ): NiceStagePoint<
+  //   IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
+  //     ? 'finalStage'
+  //     : StagePointTypeOrNever<TPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TCtxExposedKeys,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   TMapperOutput,
+  //   TRouteDefinition,
+  //   TServerInputSchema,
+  //   TClientInputSchema,
+  //   IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
+  //   TOuterProps,
+  //   AppendProps<TInnerProps, TNewInnerProps>,
+  //   WithSelfQueryIfShouldBeFinalized<
+  //     TPointType,
+  //     TLetsReadyPointType,
+  //     TServerLoaderOutput,
+  //     TClientLoaderOutput,
+  //     TQueriesDefinitions
+  //   >
+  // >
+  // with(
+  //   ...args:
+  //     | [withFn?: WithFn<any, any, any, any, any> | undefined]
+  //     | [
+  //         point?: AnyPoint | undefined,
+  //         input?: (
+  //           options: WithFnOptions<
+  //             MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+  //             TInnerProps,
+  //             WithSelfQueryIfShouldBeFinalized<
+  //               TPointType,
+  //               TLetsReadyPointType,
+  //               TServerLoaderOutput,
+  //               TClientLoaderOutput,
+  //               TQueriesDefinitions
+  //             >,
+  //             TMapperOutput
+  //           >,
+  //         ) => InputRaw,
+  //         queryOptions?: ExtraUseQueryOptions | ExtraUseInfiniteQueryOptions<any, any, any, any, any, any> | undefined,
+  //       ]
+  // ) {
+  //   const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
+  //   const selfQueryAction: MountAction[] = queryShouldBeFinalized
+  //     ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() }]
+  //     : []
+
+  //   // in case if we shake with for server without ssr
+  //   if (!args[0]) {
+  //     return this._continue({
+  //       _mountActions: [...this._mountActions, ...selfQueryAction],
+  //       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
+  //     }) as never
+  //   }
+
+  //   // it is query injection
+  //   if ('point' in args[0]) {
+  //     const [{ point }, inputFnOrInput, queryOptions = {}] = args
+  //     const getInputFn =
+  //       typeof inputFnOrInput === 'function'
+  //         ? inputFnOrInput
+  //         : typeof inputFnOrInput === 'object'
+  //           ? () => inputFnOrInput
+  //           : () => ({})
+  //     const withQueryFn = ((options) => {
+  //       const input = getInputFn(options)
+  //       if (point._queryResultType === 'query') {
+  //         return point.useQuery(input, queryOptions)
+  //       } else {
+  //         return point.useInfiniteQuery(input, queryOptions as never)
+  //       }
+  //     }) as WithQueryFn<any, any, any, any, any>
+  //     return this._continue({
+  //       _mountActions: [
+  //         ...this._mountActions,
+  //         ...selfQueryAction,
+  //         // { type: 'query', fn: queryFn, unstableId: Point0._getNextUnstableId() },
+  //         {
+  //           type: 'with',
+  //           fn: withQueryFn,
+  //           unstableId: Point0._getNextUnstableId(),
+  //           plugin: this._isPlugin(),
+  //         },
+  //       ],
+  //       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
+  //     }) as never
+  //   }
+
+  //   // it is with fn
+  //   const [withFn] = args
+  //   return this._continue({
+  //     _mountActions: [
+  //       ...this._mountActions,
+  //       ...selfQueryAction,
+  //       {
+  //         type: 'with',
+  //         fn: withFn,
+  //         unstableId: Point0._getNextUnstableId(),
+  //         plugin: this._isPlugin(),
+  //       },
+  //     ],
+  //     ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
+  //   }) as never
+  // }
+
+  readonly with = ((..._args: any[]) => {
+    const args = _args as
+      | [withFn?: WithFn<any, any, any, any, any> | WithPluginFn<any> | undefined]
       | [
           point?: AnyPoint | undefined,
-          input?: (
-            options: WithFnOptions<
-              MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-              TInnerProps,
-              WithSelfQueryIfShouldBeFinalized<
-                TPointType,
-                TLetsReadyPointType,
-                TServerLoaderOutput,
-                TClientLoaderOutput,
-                TQueriesDefinitions
-              >,
-              TMapperOutput
-            >,
-          ) => InputRaw,
+          input?:
+            | ((
+                options: WithFnOptions<
+                  MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                  TInnerProps,
+                  WithSelfQueryIfShouldBeFinalized<
+                    TPointType,
+                    TLetsReadyPointType,
+                    TServerLoaderOutput,
+                    TClientLoaderOutput,
+                    TQueriesDefinitions
+                  >,
+                  TMapperOutput
+                >,
+              ) => InputRaw)
+            | ((options: WithPluginFnOptions) => InputRaw),
           queryOptions?: ExtraUseQueryOptions | ExtraUseInfiniteQueryOptions<any, any, any, any, any, any> | undefined,
         ]
-  ) {
+
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() }]
       : []
 
     // in case if we shake with for server without ssr
@@ -1959,6 +2054,7 @@ export class Point0<
             type: 'with',
             fn: withQueryFn,
             unstableId: Point0._getNextUnstableId(),
+            plugin: this._isPlugin(),
           },
         ],
         ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
@@ -1975,11 +2071,46 @@ export class Point0<
           type: 'with',
           fn: withFn,
           unstableId: Point0._getNextUnstableId(),
+          plugin: this._isPlugin(),
         },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
-  }
+  }) as TLetsReadyPointType extends 'plugin'
+    ? MethodPluginWith<
+        TPointType,
+        TLetsReadyPointType,
+        TRequiredCtx,
+        TCtx,
+        TCtxExposedKeys,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TMapperOutput,
+        TRouteDefinition,
+        TServerInputSchema,
+        TClientInputSchema,
+        TQueryResultType,
+        TOuterProps,
+        TInnerProps,
+        TQueriesDefinitions
+      >
+    : MethodWith<
+        TPointType,
+        TLetsReadyPointType,
+        TRequiredCtx,
+        TCtx,
+        TCtxExposedKeys,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TMapperOutput,
+        TRouteDefinition,
+        TServerInputSchema,
+        TClientInputSchema,
+        TQueryResultType,
+        TOuterProps,
+        TInnerProps,
+        TQueriesDefinitions
+      >
 
   relatedQuery<
     TPoint extends NiceReadyPoint<
@@ -2000,24 +2131,24 @@ export class Point0<
       any
     >,
   >(
-    ...args: TLetsReadyPointType extends MountablePointType
+    point: TPoint,
+    ...rest: TPoint['Infer']['IsInputOptional'] extends true
       ? [
-          point: TPoint,
-          ...rest: TPoint['Infer']['IsInputOptional'] extends true
-            ? [
-                input?:
-                  | TPoint['Infer']['InputRawOrUndefined']
-                  | RelatedQueryInputGetter<TPoint, MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
-                queryOptions?: TPoint['Infer']['UseQueryOptions'],
-              ]
-            : [
-                input:
-                  | TPoint['Infer']['InputRawOrUndefined']
-                  | RelatedQueryInputGetter<TPoint, MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
-                queryOptions?: TPoint['Infer']['UseQueryOptions'],
-              ],
+          input?:
+            | TPoint['Infer']['InputRawOrUndefined']
+            | (TLetsReadyPointType extends 'plugin'
+                ? RelatedPluginQueryInputGetter<TPoint>
+                : RelatedQueryInputGetter<TPoint, MountableLocation<TLetsReadyPointType, TRouteDefinition>>),
+          queryOptions?: TPoint['Infer']['UseQueryOptions'],
         ]
-      : never
+      : [
+          input:
+            | TPoint['Infer']['InputRawOrUndefined']
+            | (TLetsReadyPointType extends 'plugin'
+                ? RelatedPluginQueryInputGetter<TPoint>
+                : RelatedQueryInputGetter<TPoint, MountableLocation<TLetsReadyPointType, TRouteDefinition>>),
+          queryOptions?: TPoint['Infer']['UseQueryOptions'],
+        ]
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -2058,7 +2189,7 @@ export class Point0<
   ) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() }]
       : []
 
     // in case if we shake with for server without ssr
@@ -2086,6 +2217,7 @@ export class Point0<
           queryOptions,
           inputGetter: getInputFn,
           unstableId: Point0._getNextUnstableId(),
+          plugin: this._isPlugin(),
         },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
@@ -2399,89 +2531,105 @@ export class Point0<
 
   // middlewares
 
-  ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TServerInputSchema, Ctx>>(
-    ctxFn: TCtxFn &
-      AssertNoForbiddenCtxExposedKeys<InferCtxFnOutputCtxExposedKeys<TCtxFn>> &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
-    AppendCtxExposedKeys<TCtxExposedKeys, InferCtxFnOutputCtxExposedKeys<TCtxFn>>,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  ctx<TAppendCtx extends Ctx>(
-    ctx: [TAppendCtx] &
-      AssertNoForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>> &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    AppendCtx<TCtx, TAppendCtx>,
-    AppendCtxExposedKeys<TCtxExposedKeys, Extract<keyof TAppendCtx, string>>,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
-    ctx: [TAppendCtx, ...TAppendCtxExposedKeys[]] &
-      AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys> &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    AppendCtx<TCtx, TAppendCtx>,
-    AppendCtxExposedKeys<TCtxExposedKeys, TAppendCtxExposedKeys>,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  ctx<TAppendCtx extends Ctx>(
-    ctx: TAppendCtx & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    AppendCtx<TCtx, TAppendCtx>,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  ctx(ctxOrFn: CtxFn | Ctx | [Ctx, ...CtxExposedKeys[]]) {
+  // ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TServerInputSchema, Ctx>>(
+  //   ctxFn: TCtxFn &
+  //     AssertNoForbiddenCtxExposedKeys<InferCtxFnOutputCtxExposedKeys<TCtxFn>> &
+  //     AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
+  // ): NiceStagePoint<
+  //   StagePointTypeOrNever<TPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
+  //   TRequiredCtx,
+  //   AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
+  //   AppendCtxExposedKeys<TCtxExposedKeys, InferCtxFnOutputCtxExposedKeys<TCtxFn>>,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   TMapperOutput,
+  //   TRouteDefinition,
+  //   TServerInputSchema,
+  //   TClientInputSchema,
+  //   TQueryResultType,
+  //   TOuterProps,
+  //   TInnerProps,
+  //   TQueriesDefinitions
+  // >
+  // ctx<TAppendCtx extends Ctx>(
+  //   ctx: [TAppendCtx] &
+  //     AssertNoForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>> &
+  //     AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
+  // ): NiceStagePoint<
+  //   StagePointTypeOrNever<TPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
+  //   TRequiredCtx,
+  //   AppendCtx<TCtx, TAppendCtx>,
+  //   AppendCtxExposedKeys<TCtxExposedKeys, Extract<keyof TAppendCtx, string>>,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   TMapperOutput,
+  //   TRouteDefinition,
+  //   TServerInputSchema,
+  //   TClientInputSchema,
+  //   TQueryResultType,
+  //   TOuterProps,
+  //   TInnerProps,
+  //   TQueriesDefinitions
+  // >
+  // ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
+  //   ctx: [TAppendCtx, ...TAppendCtxExposedKeys[]] &
+  //     AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys> &
+  //     AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
+  // ): NiceStagePoint<
+  //   StagePointTypeOrNever<TPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
+  //   TRequiredCtx,
+  //   AppendCtx<TCtx, TAppendCtx>,
+  //   AppendCtxExposedKeys<TCtxExposedKeys, TAppendCtxExposedKeys>,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   TMapperOutput,
+  //   TRouteDefinition,
+  //   TServerInputSchema,
+  //   TClientInputSchema,
+  //   TQueryResultType,
+  //   TOuterProps,
+  //   TInnerProps,
+  //   TQueriesDefinitions
+  // >
+  // ctx<TAppendCtx extends Ctx>(
+  //   ctx: TAppendCtx & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
+  // ): NiceStagePoint<
+  //   StagePointTypeOrNever<TPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
+  //   TRequiredCtx,
+  //   AppendCtx<TCtx, TAppendCtx>,
+  //   TCtxExposedKeys,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   TMapperOutput,
+  //   TRouteDefinition,
+  //   TServerInputSchema,
+  //   TClientInputSchema,
+  //   TQueryResultType,
+  //   TOuterProps,
+  //   TInnerProps,
+  //   TQueriesDefinitions
+  // >
+  // ctx(...args: any[]) {
+  //   const ctxOrFn = args[0] as CtxFn | CtxPluginFn | Ctx | [Ctx, ...CtxExposedKeys[]] | undefined
+  //   const ctxFn =
+  //     typeof ctxOrFn === 'undefined' // in case if we shake ctx for client target
+  //       ? () => ({})
+  //       : typeof ctxOrFn === 'function'
+  //         ? ctxOrFn
+  //         : () => ctxOrFn
+  //   return this._continue({
+  //     _serverExecuteActions: [
+  //       ...this._serverExecuteActions,
+  //       { type: 'ctx', fn: ctxFn, unstableId: Point0._getNextUnstableId() },
+  //     ] as never,
+  //   }) as never
+  // }
+  readonly ctx = ((...args: any[]) => {
+    const ctxOrFn = args[0] as CtxFn | CtxPluginFn | Ctx | [Ctx, ...CtxExposedKeys[]] | undefined
     const ctxFn =
       typeof ctxOrFn === 'undefined' // in case if we shake ctx for client target
         ? () => ({})
@@ -2491,17 +2639,54 @@ export class Point0<
     return this._continue({
       _serverExecuteActions: [
         ...this._serverExecuteActions,
-        { type: 'ctx', fn: ctxFn, unstableId: Point0._getNextUnstableId() },
-      ] as never,
+        { type: 'ctx', fn: ctxFn as never, unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() },
+      ],
     }) as never
-  }
+  }) as TLetsReadyPointType extends 'plugin'
+    ? MethodPluginCtx<
+        TPointType,
+        TLetsReadyPointType,
+        TRequiredCtx,
+        TCtx,
+        TCtxExposedKeys,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TMapperOutput,
+        TRouteDefinition,
+        TServerInputSchema,
+        TClientInputSchema,
+        TQueryResultType,
+        TOuterProps,
+        TInnerProps,
+        TQueriesDefinitions
+      >
+    : MethodCtx<
+        TPointType,
+        TLetsReadyPointType,
+        TRequiredCtx,
+        TCtx,
+        TCtxExposedKeys,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TMapperOutput,
+        TRouteDefinition,
+        TServerInputSchema,
+        TClientInputSchema,
+        TQueryResultType,
+        TOuterProps,
+        TInnerProps,
+        TQueriesDefinitions
+      >
 
   loader<TNewServerLoaderOutput extends LoaderOutput = LoaderOutput>(
     loaderFn: TLetsReadyPointType extends 'mutation'
       ? LoaderResponseFn<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema, TNewServerLoaderOutput> &
           AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>
-      : LoaderDataFn<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema, TNewServerLoaderOutput> &
-          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>,
+      : TLetsReadyPointType extends 'plugin'
+        ? LoaderPluginFn<TCtx, TCtxExposedKeys, any, TNewServerLoaderOutput> &
+            AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>
+        : LoaderDataFn<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema, TNewServerLoaderOutput> &
+            AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>,
   ): NiceStagePoint<
     TNewServerLoaderOutput extends Response ? 'clientStage' : 'serverStage',
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -2519,7 +2704,13 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  loader(loaderFn: LoaderDataFn<any, any, any, any, any> | LoaderResponseFn<any, any, any, any, any> | boolean) {
+  loader(
+    loaderFn:
+      | LoaderDataFn<any, any, any, any, any>
+      | LoaderPluginFn<any, any, any, any>
+      | LoaderResponseFn<any, any, any, any, any>
+      | boolean,
+  ) {
     return this._continue({
       type: 'serverStage', // it should be clientStage if loader returns response, but we know it only by types, we do not know it in runtime, bu it is ok to have here for runtime serverStage. Not good, but ok.
       _queryResultType: this._normalizeQueryResultType('query'),
@@ -2643,14 +2834,14 @@ export class Point0<
     mapperFn ||= ((o) => o.data) as MapperFn<any, any, any, any, any>
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() }]
       : []
     return this._continue({
       // _sameQueryPoint: null,
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
-        { type: 'mapper', fn: mapperFn, unstableId: Point0._getNextUnstableId() },
+        { type: 'mapper', fn: mapperFn, unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
@@ -2721,22 +2912,24 @@ export class Point0<
   // }
 
   head(
-    head:
-      | HeadFn<
-          'success',
-          MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-          TInnerProps,
-          WithSelfQueryIfShouldBeFinalized<
-            TPointType,
-            TLetsReadyPointType,
-            TServerLoaderOutput,
-            TClientLoaderOutput,
-            TQueriesDefinitions
-          >,
-          TMapperOutput
-        >
-      | ResolvableHead
-      | string,
+    head: TLetsReadyPointType extends 'plugin'
+      ? HeadPluginFn | ResolvableHead | string
+      :
+          | HeadFn<
+              'success',
+              MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+              TInnerProps,
+              WithSelfQueryIfShouldBeFinalized<
+                TPointType,
+                TLetsReadyPointType,
+                TServerLoaderOutput,
+                TClientLoaderOutput,
+                TQueriesDefinitions
+              >,
+              TMapperOutput
+            >
+          | ResolvableHead
+          | string,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -2766,22 +2959,24 @@ export class Point0<
     status: TStatus,
     head: TStatus extends 'global'
       ? GlobalHeadFn<any, MountableLocation<TLetsReadyPointType, TRouteDefinition>>
-      :
-          | HeadFn<
-              TStatus extends 'loading' | 'error' | 'success' ? TStatus : any,
-              MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-              TInnerProps,
-              WithSelfQueryIfShouldBeFinalized<
-                TPointType,
-                TLetsReadyPointType,
-                TServerLoaderOutput,
-                TClientLoaderOutput,
-                TQueriesDefinitions
-              >,
-              TMapperOutput
-            >
-          | ResolvableHead
-          | string,
+      : TLetsReadyPointType extends 'plugin'
+        ? HeadPluginFn | ResolvableHead | string
+        :
+            | HeadFn<
+                TStatus extends 'loading' | 'error' | 'success' ? TStatus : any,
+                MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                TInnerProps,
+                WithSelfQueryIfShouldBeFinalized<
+                  TPointType,
+                  TLetsReadyPointType,
+                  TServerLoaderOutput,
+                  TClientLoaderOutput,
+                  TQueriesDefinitions
+                >,
+                TMapperOutput
+              >
+            | ResolvableHead
+            | string,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -2873,7 +3068,7 @@ export class Point0<
     })()
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() }]
       : []
     return this._continue({
       _mountActions: [
@@ -2885,9 +3080,10 @@ export class Point0<
                 type: 'globalHead' as const,
                 fn: headFn as GlobalHeadFn<any, any>,
                 unstableId: Point0._getNextUnstableId(),
+                plugin: this._isPlugin(),
               },
             ]
-          : [{ type: 'head' as const, fn: headFn, unstableId: Point0._getNextUnstableId() }]),
+          : [{ type: 'head' as const, fn: headFn, unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() }]),
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
@@ -3014,7 +3210,7 @@ export class Point0<
     return this._continue({
       _serverExecuteActions: [
         ...this._serverExecuteActions,
-        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() },
       ],
     }) as never
   }
@@ -3142,7 +3338,7 @@ export class Point0<
     return this._continue({
       _clientExecuteActions: [
         ...this._clientExecuteActions,
-        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() },
       ],
     }) as never
   }
@@ -3270,11 +3466,11 @@ export class Point0<
     return this._continue({
       _serverExecuteActions: [
         ...this._serverExecuteActions,
-        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() },
       ],
       _clientExecuteActions: [
         ...this._clientExecuteActions,
-        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() },
       ],
     }) as never
   }
@@ -3300,9 +3496,9 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
-      TPointType extends 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'base' ? TMapperOutput : UndefinedMapperOutput,
+      TPointType extends 'root' | 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
+      TPointType extends 'root' | 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
+      TPointType extends 'root' | 'base' ? TMapperOutput : UndefinedMapperOutput,
       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3312,7 +3508,7 @@ export class Point0<
         TClientInputSchema,
         RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
       >,
-      TPointType extends 'base' ? TQueryResultType : UndefinedQueryResultType,
+      TPointType extends 'root' | 'base' ? TQueryResultType : UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'layout' ? EmptyProps : TInnerProps, // if it was layout we drop all wrappers so no inner props, else it was created form base or root so we keep wrappers
       TPointType extends 'layout' ? [] : TQueriesDefinitions // same here
@@ -3339,9 +3535,9 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
-      TPointType extends 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'base' ? TMapperOutput : UndefinedMapperOutput,
+      TPointType extends 'root' | 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
+      TPointType extends 'root' | 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
+      TPointType extends 'root' | 'base' ? TMapperOutput : UndefinedMapperOutput,
       ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3351,7 +3547,7 @@ export class Point0<
         TClientInputSchema,
         RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
       >,
-      TPointType extends 'base' ? TQueryResultType : UndefinedQueryResultType,
+      TPointType extends 'root' | 'base' ? TQueryResultType : UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'layout' ? EmptyProps : TInnerProps, // if it was layout we drop all wrappers so no inner props, else it was created form base or root so we keep wrappers
       TPointType extends 'layout' ? [] : TQueriesDefinitions // same here
@@ -3378,9 +3574,9 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
-      TPointType extends 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'base' ? TMapperOutput : UndefinedMapperOutput,
+      TPointType extends 'root' | 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
+      TPointType extends 'root' | 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
+      TPointType extends 'root' | 'base' ? TMapperOutput : UndefinedMapperOutput,
       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3390,7 +3586,7 @@ export class Point0<
         TClientInputSchema,
         RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
       >,
-      TPointType extends 'base' ? TQueryResultType : UndefinedQueryResultType,
+      TPointType extends 'root' | 'base' ? TQueryResultType : UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'layout' ? EmptyProps : TInnerProps, // if it was layout we drop all wrappers so no inner props, else it was created form base or root so we keep wrappers
       TPointType extends 'layout' ? [] : TQueriesDefinitions // same here
@@ -3417,9 +3613,9 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
-      TPointType extends 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'base' ? TMapperOutput : UndefinedMapperOutput,
+      TPointType extends 'root' | 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
+      TPointType extends 'root' | 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
+      TPointType extends 'root' | 'base' ? TMapperOutput : UndefinedMapperOutput,
       ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3429,7 +3625,7 @@ export class Point0<
         TClientInputSchema,
         RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
       >,
-      TPointType extends 'base' ? TQueryResultType : UndefinedQueryResultType,
+      TPointType extends 'root' | 'base' ? TQueryResultType : UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'layout' ? EmptyProps : TInnerProps, // if it was layout we drop all wrappers so no inner props, else it was created form base or root so we keep wrappers
       TPointType extends 'layout' ? [] : TQueriesDefinitions // same here
@@ -3443,13 +3639,13 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
-    TPointType extends 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
-    TPointType extends 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
-    TPointType extends 'base' ? TMapperOutput : UndefinedMapperOutput,
+    TPointType extends 'root' | 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
+    TPointType extends 'root' | 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
+    TPointType extends 'root' | 'base' ? TMapperOutput : UndefinedMapperOutput,
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    TPointType extends 'base' ? TQueryResultType : UndefinedQueryResultType,
+    TPointType extends 'root' | 'base' ? TQueryResultType : UndefinedQueryResultType,
     TNewOuterProps,
     AppendProps<TInnerProps, TNewOuterProps>,
     TQueriesDefinitions
@@ -3462,13 +3658,13 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
-    TPointType extends 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
-    TPointType extends 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
-    TPointType extends 'base' ? TMapperOutput : UndefinedMapperOutput,
+    TPointType extends 'root' | 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
+    TPointType extends 'root' | 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
+    TPointType extends 'root' | 'base' ? TMapperOutput : UndefinedMapperOutput,
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    TPointType extends 'base' ? TQueryResultType : UndefinedQueryResultType,
+    TPointType extends 'root' | 'base' ? TQueryResultType : UndefinedQueryResultType,
     TNewOuterProps,
     AppendProps<TInnerProps, TNewOuterProps>,
     TQueriesDefinitions
@@ -3486,13 +3682,13 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
-    TPointType extends 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
-    TPointType extends 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
-    TPointType extends 'base' ? TMapperOutput : UndefinedMapperOutput,
+    TPointType extends 'root' | 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
+    TPointType extends 'root' | 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
+    TPointType extends 'root' | 'base' ? TMapperOutput : UndefinedMapperOutput,
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    TPointType extends 'base' ? TQueryResultType : UndefinedQueryResultType,
+    TPointType extends 'root' | 'base' ? TQueryResultType : UndefinedQueryResultType,
     EmptyProps,
     TInnerProps,
     TQueriesDefinitions
@@ -3538,25 +3734,30 @@ export class Point0<
               type: 'input' as const,
               schema: Point0.customValidationFnToInputSchema((input) => newRoute.parseFlatInput(input)),
               unstableId: 0,
+              plugin: this._isPlugin(),
             },
           ]
 
     const serverExecuteActionsAll = [...this._serverExecuteActions, ...newInputExecuteAction]
     const serverExecuteActionsSuitable =
-      this.type !== 'base'
+      this.type !== 'base' && this.type !== 'root'
         ? serverExecuteActionsAll.filter((action) => action.type !== 'loader')
         : serverExecuteActionsAll
 
     const clientExecuteActionsAll = [...this._clientExecuteActions, ...newInputExecuteAction]
     const clientExecuteActionsSuitable =
-      this.type !== 'base'
+      this.type !== 'base' && this.type !== 'root'
         ? clientExecuteActionsAll.filter((action) => action.type !== 'loader')
         : clientExecuteActionsAll
 
     const mountActionsAll = [...this._mountActions]
     const mountActionsSuitable = this.type !== 'base' && this.type !== 'root' ? [] : mountActionsAll
     if (letsReadyPointType === 'component' || letsReadyPointType === 'provider') {
-      mountActionsSuitable.push({ type: 'selfProps', unstableId: Point0._getNextUnstableId() })
+      mountActionsSuitable.push({
+        type: 'selfProps',
+        unstableId: Point0._getNextUnstableId(),
+        plugin: this._isPlugin(),
+      })
     }
 
     return this._continue({
@@ -3723,7 +3924,7 @@ export class Point0<
     // this._applyComponentDisplayName(page as React.ComponentType<any>, { suffix: 'PageInner' })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() }]
       : []
     const point = this._continue({
       type: 'page',
@@ -3782,7 +3983,7 @@ export class Point0<
     // this._applyComponentDisplayName(component, { suffix: 'Inner' })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() }]
       : []
     const point = this._continue({
       type: 'component',
@@ -3881,7 +4082,7 @@ export class Point0<
   layout(...args: any[]) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() }]
       : []
     if (this._letsReadyPointType === 'layout') {
       const [layout = ({ children }: { children: Exclude<React.ReactNode, Promise<any>> }) => children] = args as [
@@ -4007,7 +4208,7 @@ export class Point0<
     const mapperFn = _mapperFn as MapperFn<any, any, any, any, any> | undefined
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() }]
       : []
     const point = this._continue({
       type: 'provider',
@@ -4021,6 +4222,7 @@ export class Point0<
                 type: 'mapper' as const,
                 fn: mapperFn,
                 unstableId: Point0._getNextUnstableId(),
+                plugin: this._isPlugin(),
               },
             ]
           : []),
@@ -4039,10 +4241,10 @@ export class Point0<
     plugin: T &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'use'> &
       AssertInputSchemaNotWider<T['Infer']['ServerInputSchema'], TServerInputSchema, TClientInputSchema> &
-      AssertInputSchemaNotWider<T['Infer']['ClientInputSchema'], TServerInputSchema, TClientInputSchema> &
-      AssertCurrentCtxExtendsPluginRequiredCtx<TCtx, T['Infer']['RequiredCtx']> &
-      AssertCurrentInnerPropsExtendsPluginOuterProps<TOuterProps, T['Infer']['OuterProps']>,
-  ): NiceStagePoint<
+      AssertInputSchemaNotWider<T['Infer']['ClientInputSchema'], TServerInputSchema, TClientInputSchema>, // &
+    // AssertCurrentCtxExtendsPluginRequiredCtx<TCtx, T['Infer']['RequiredCtx']> &
+  ) // AssertCurrentInnerPropsExtendsPluginOuterProps<TOuterProps, T['Infer']['OuterProps']>,
+  : NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
@@ -4058,13 +4260,16 @@ export class Point0<
     MergeRecordValidationSchemas<TClientInputSchema, T['Infer']['ClientInputSchema']>,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
-    TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<
-      TPointType,
-      TLetsReadyPointType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TQueriesDefinitions
+    AppendProps<TInnerProps, T['Infer']['InnerProps']>,
+    MergeQueries<
+      WithSelfQueryIfShouldBeFinalized<
+        TPointType,
+        TLetsReadyPointType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TQueriesDefinitions
+      >,
+      T['Infer']['Queries']
     >
   >
   use(plugin: NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>) {
@@ -4076,7 +4281,7 @@ export class Point0<
 
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() }]
       : []
 
     return this._continue({
@@ -4225,7 +4430,10 @@ export class Point0<
         type: 'finalStage',
         _queryResultType: 'query',
         _queryOptions: queryOptions,
-        _mountActions: [...this._mountActions, { type: 'selfQuery', unstableId: Point0._getNextUnstableId() }],
+        _mountActions: [
+          ...this._mountActions,
+          { type: 'selfQuery', unstableId: Point0._getNextUnstableId(), plugin: this._isPlugin() },
+        ],
       }) as never
     } else {
       // usual query final
@@ -4336,6 +4544,7 @@ export class Point0<
           {
             type: 'selfQuery',
             unstableId: Point0._getNextUnstableId(),
+            plugin: this._isPlugin(),
           },
         ],
       }) as never
@@ -4546,6 +4755,10 @@ export class Point0<
 
   _hasClientLoader(): boolean {
     return this._clientExecuteActions.length > 0 && this._clientExecuteActions.some((fn) => fn.type === 'loader')
+  }
+
+  _isPlugin(): boolean {
+    return this._letsReadyPointType === 'plugin' || this.type === 'plugin'
   }
 
   private _hasClientAsyncLoader(): boolean {
@@ -6863,7 +7076,7 @@ export class Point0<
       // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
       switch (action.type) {
         case 'head': {
-          const headFnResult = action.fn(state)
+          const headFnResult = action.fn(action.plugin ? ({ location: state.location } as never) : state)
           const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
           useHead(headFnResultResolvable)
           continue
@@ -7222,14 +7435,14 @@ export class Point0<
       switch (action.type) {
         case 'wrapper': {
           return React.createElement(action.Component, {
-            ...mountState,
+            ...(action.plugin ? ({ location: mountState.location } as never) : mountState),
             children: React.createElement(this._getMountable, _nextMountableProps),
             LoadingComponent,
             ErrorComponent,
           })
         }
         case 'with': {
-          const result = action.fn(mountState)
+          const result = action.fn(action.plugin ? ({ location: mountState.location } as never) : mountState)
           const isQueryResult = (result: any): result is UseQueryOrInfiniteQueryResult => {
             return (
               typeof result === 'object' &&
@@ -7277,12 +7490,20 @@ export class Point0<
           const query = (() => {
             if (action.point._queryResultType === 'infiniteQuery') {
               return action.point.useInfiniteQuery(
-                action.inputGetter({ location: mountState.location, props: outerProps }),
+                action.inputGetter(
+                  action.plugin
+                    ? ({ location: mountState.location } as never)
+                    : { location: mountState.location, props: outerProps },
+                ),
                 action.queryOptions as never,
               )
             } else {
               return action.point.useQuery(
-                action.inputGetter({ location: mountState.location, props: outerProps }),
+                action.inputGetter(
+                  action.plugin
+                    ? ({ location: mountState.location } as never)
+                    : { location: mountState.location, props: outerProps },
+                ),
                 action.queryOptions as never,
               )
             }

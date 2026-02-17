@@ -348,15 +348,21 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               //     currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
               //   }
               // } else {
-              const result = await serverExecuteAction.fn({
+              const nonPluginOptions = {
                 ...currentCtxExposed,
                 ctx: { ...currentCtx },
                 input: currentInputParsed,
                 execute: this.execute.bind(this),
+              }
+              const pluginOptions = {
                 request: this.request,
                 set: effects.set,
                 point,
-              })
+              }
+              const options = serverExecuteAction.plugin
+                ? (pluginOptions as never)
+                : { ...nonPluginOptions, ...pluginOptions }
+              const result = await serverExecuteAction.fn(options)
               if (Array.isArray(result)) {
                 const appendCtxExposedKeys = result.length > 1 ? (result.slice(1) as string[]) : Object.keys(result[0])
                 currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
@@ -399,16 +405,22 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               //     }
               //   }
               // } else {
-              const promise = serverExecuteAction.fn({
+              const nonPluginOptions = {
                 ...currentCtxExposed,
                 ctx: { ...currentCtx },
                 data: { ...currentData },
                 input: currentInputParsed,
                 execute: this.execute.bind(this),
+              }
+              const pluginOptions = {
                 request: this.request as never,
                 set: effects.set,
                 point,
-              })
+              }
+              const options = serverExecuteAction.plugin
+                ? (pluginOptions as never)
+                : { ...nonPluginOptions, ...pluginOptions }
+              const promise = serverExecuteAction.fn(options)
               const result = (await (promise as any)) as [number, Data | Response] | Data | Response
               if (Array.isArray(result)) {
                 effects.set.status(result[0])

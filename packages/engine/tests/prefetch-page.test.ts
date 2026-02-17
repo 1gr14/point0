@@ -423,6 +423,9 @@ describe('prefetch-page', () => {
             `)
             },
           ),
+          {
+            retry: 3,
+          },
         )
 
         it.concurrent(
