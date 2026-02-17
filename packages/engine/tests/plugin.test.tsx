@@ -1,7 +1,7 @@
 import type { Prettify } from '@point0/core'
 import { Point0 } from '@point0/core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
-import { createTestThings, ymlifyline } from './utils/internal-testing.js'
+import { createTestThings, ymlify, ymlifyline } from './utils/internal-testing.js'
 import { z } from 'zod'
 
 describe('plugin', () => {
@@ -155,6 +155,57 @@ describe('plugin', () => {
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #page: plugin: 123, query: 456
+      "
+    `)
+  })
+
+  it.concurrent.only('not get outside ctx, but keep ctx inside', async () => {
+    const plugin = Point0.lets('plugin', 'test-plugin')
+      .ctx(() => ({ plugin1: 'plugin1' }))
+      .ctx(({ ctx }) => {
+        expectTypeOf(ctx).toHaveProperty('plugin1')
+        expectTypeOf(ctx).not.toHaveProperty('page1')
+        return {
+          plugin2: 'plugin2',
+          plugin21: ctx.plugin1,
+          pluginPage1: (ctx as any).page1 ?? '❌',
+          pluginPage2: (ctx as any).page2 ?? '❌',
+        }
+      })
+      .plugin()
+    const root = Point0.lets('root', 'root').ssr(true).baseurl('http://localhost/').root()
+    const page = root
+      .lets('page', 'home', '/')
+      .ctx(() => ({ page1: 'page1' }))
+      .ctx(({ ctx }) => {
+        expectTypeOf(ctx).toHaveProperty('page1')
+        return { page2: 'page2', page21: ctx.page1 }
+      })
+      .use(plugin)
+      .ctx(({ ctx }) => {
+        expectTypeOf(ctx.page1).toEqualTypeOf<string>()
+        expectTypeOf(ctx.page2).toEqualTypeOf<string>()
+        expectTypeOf(ctx.plugin2).toEqualTypeOf<string>()
+        expectTypeOf(ctx.plugin21).toEqualTypeOf<string>()
+        return { page3: 'page3' }
+      })
+      .loader(({ ctx }) => {
+        return ctx
+      })
+      .page(({ data }) => <div id="page">{ymlify(data)}</div>)
+
+    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page: page1: page1
+      page2: page2
+      page21: page1
+      page3: page3
+      plugin1: plugin1
+      plugin2: plugin2
+      plugin21: plugin1
+      pluginPage1: page1
+      pluginPage2: page2
       "
     `)
   })
