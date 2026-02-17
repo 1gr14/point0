@@ -4082,6 +4082,7 @@ export class Point0<
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
+    const pluginInjectionId = Point0._getNextUnstableId()
 
     return this._continue({
       // type
@@ -4107,9 +4108,19 @@ export class Point0<
       // _queryOptions: { ...this._queryOptions, ...point._queryOptions },
       // _infiniteQueryOptions: { ...this._infiniteQueryOptions, ...point._infiniteQueryOptions },
       // _asFormData: this._asFormData,
-      _serverExecuteActions: [...this._serverExecuteActions, ...point._serverExecuteActions],
-      _clientExecuteActions: [...this._clientExecuteActions, ...point._clientExecuteActions],
-      _mountActions: [...this._mountActions, ...selfQueryAction, ...point._mountActions],
+      _serverExecuteActions: [
+        ...this._serverExecuteActions,
+        ...point._serverExecuteActions.map((action) => ({ ...action, pluginInjectionId })),
+      ],
+      _clientExecuteActions: [
+        ...this._clientExecuteActions,
+        ...point._clientExecuteActions.map((action) => ({ ...action, pluginInjectionId })),
+      ],
+      _mountActions: [
+        ...this._mountActions,
+        ...selfQueryAction,
+        ...point._mountActions.map((action) => ({ ...action, pluginInjectionId })),
+      ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
       // _ProviderReactContext: point._ProviderReactContext,
       // _useValue: point._useValue,

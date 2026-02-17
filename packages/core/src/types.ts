@@ -1022,15 +1022,17 @@ export type ServerExecuteAction<TType extends 'ctx' | 'loader' | 'input' = 'ctx'
         type: 'ctx'
         fn: CtxFn
         unstableId: number
+        pluginInjectionId?: number
       }
     : TType extends 'loader'
       ? {
           type: 'loader'
           fn: LoaderResponseFn | LoaderDataFn
           unstableId: number
+          pluginInjectionId?: number
         }
       : TType extends 'input'
-        ? { type: 'input'; schema: InputSchema; unstableId: number }
+        ? { type: 'input'; schema: InputSchema; unstableId: number; pluginInjectionId?: number }
         : never
 
 export type ClientExecuteAction<TType extends 'loader' | 'input' = 'loader' | 'input'> = TType extends 'loader'
@@ -1038,9 +1040,10 @@ export type ClientExecuteAction<TType extends 'loader' | 'input' = 'loader' | 'i
       type: 'loader'
       fn: ClientLoaderResponseFn | ClientLoaderDataFn
       unstableId: number
+      pluginInjectionId?: number
     }
   : TType extends 'input'
-    ? { type: 'input'; schema: InputSchema; unstableId: number }
+    ? { type: 'input'; schema: InputSchema; unstableId: number; pluginInjectionId?: number }
     : never
 
 export type ClientExecuteActionLocation<

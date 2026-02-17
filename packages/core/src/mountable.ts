@@ -847,27 +847,34 @@ export type MountAction<
       inputGetter: RelatedQueryInputGetter<{ point: AnyPoint }>
       queryOptions: ExtraUseInfiniteQueryOptions<any> | ExtraUseQueryOptions
       unstableId: number
+      pluginInjectionId?: number
     }
   : TType extends 'selfQuery'
-    ? { type: 'selfQuery'; unstableId: number }
+    ? { type: 'selfQuery'; unstableId: number; pluginInjectionId?: number }
     : TType extends 'wrapper'
-      ? { type: 'wrapper'; Component: WrapperComponentType<any, any, any, any>; unstableId: number }
+      ? {
+          type: 'wrapper'
+          Component: WrapperComponentType<any, any, any, any>
+          unstableId: number
+          pluginInjectionId?: number
+        }
       : TType extends 'with'
-        ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number }
+        ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number; pluginInjectionId?: number }
         : TType extends 'mapper'
-          ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number }
+          ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number; pluginInjectionId?: number }
           : TType extends 'selfProps'
-            ? { type: 'selfProps'; unstableId: number }
+            ? { type: 'selfProps'; unstableId: number; pluginInjectionId?: number }
             : TType extends 'head'
-              ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number }
+              ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number; pluginInjectionId?: number }
               : TType extends 'globalHead'
-                ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number }
+                ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number; pluginInjectionId?: number }
                 : TType extends 'errorComponent'
                   ? {
                       type: 'errorComponent'
                       Component: ErrorComponentType<any>
                       variant: DestinationComponentVariant | undefined
                       unstableId: number
+                      pluginInjectionId?: number
                     }
                   : TType extends 'loadingComponent'
                     ? {
@@ -875,6 +882,7 @@ export type MountAction<
                         Component: LoadingComponentType<any>
                         variant: DestinationComponentVariant | undefined
                         unstableId: number
+                        pluginInjectionId?: number
                       }
                     : never
 
