@@ -284,14 +284,14 @@ describe('plugin', () => {
       plugin1: plugin1
       plugin2: plugin2
       plugin21: plugin1
-      pluginPage1: page1
-      pluginPage2: page2
+      pluginPage1: ❌
+      pluginPage2: ❌
       page3: page3
       "
     `)
   })
 
-  it.concurrent.only('nested plugin props', async () => {
+  it.concurrent('nested plugin props', async () => {
     const plugin1 = Point0.lets('plugin', 'test-plugin1')
       .with(() => ({ plugin1: 'plugin1' }))
       .plugin()

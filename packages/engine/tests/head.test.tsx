@@ -206,9 +206,17 @@ describe('head', () => {
       .page(() => <div id="page" />)
 
     const { render, fetchTitle } = await createTestThings({ points: [root, page] })
-    await render(page.route(), async ({ waitContent, titlesTale }) => {
+    await render(page.route(), async ({ waitContent, titlesTale, tale }) => {
       await waitContent('#error')
       await waitReturn(100)
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /
+          #loading: ...
+
+          #error: my message
+        "
+      `)
       expect(await titlesTale()).toMatchInlineSnapshot(`
           "
           My Error Title: my message

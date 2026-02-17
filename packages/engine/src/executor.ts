@@ -298,7 +298,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       //   }
       // }
       const branches = [getCleanBranch()]
-      console.log('EXECUTE')
 
       try {
         if (!point) {
