@@ -2,6 +2,7 @@ import type { AnyLocation } from '@devp0nt/route0'
 import type { AppComponent, ClientPoints, InputRaw, PagePoint } from '@point0/core'
 import { superstore } from '@point0/core'
 import { transformHtmlTemplate } from '@unhead/react/server'
+import { uneval } from 'devalue'
 import { createElement } from 'react'
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
 import { renderToReadableStream } from 'react-dom/server'
@@ -12,15 +13,6 @@ export type ReadableStreamRenderer = (
   reactNode: React.ReactNode,
   options?: RenderToReadableStreamOptions,
 ) => Promise<ReactDOMServerReadableStream>
-
-function escapeForInlineJSON(json: string) {
-  return json
-    .replace(/</g, '\\u003C')
-    .replace(/>/g, '\\u003E')
-    .replace(/&/g, '\\u0026')
-    .replace(/\u2028/g, '\\u2028')
-    .replace(/\u2029/g, '\\u2029')
-}
 
 export function renderDocumentHtmlSuffix(props?: { clientBundlePath?: string }) {
   const { clientBundlePath } = props ?? {}
@@ -164,9 +156,10 @@ export function addEnvToDocumentHtml({
   envConsts?: Record<string, string | number | boolean | undefined>
 }): string {
   const env = { ...envVars, ...envConsts }
+  const jsonCompatibleEnv = JSON.parse(JSON.stringify(env)) as Record<string, string | number | boolean>
   return prependHeadElement({
     content: `<script id="__POINT0_ENV__" type="text/javascript">
-  const __POINT0_ENV__ = ${escapeForInlineJSON(JSON.stringify(env))};
+  const __POINT0_ENV__ = ${uneval(jsonCompatibleEnv)};
   window.__POINT0_ENV__ = __POINT0_ENV__;
   window.process = window.process || {};
   window.process.env = { ...(window.process.env || {}), ...__POINT0_ENV__ };
@@ -271,11 +264,10 @@ export async function getReadableStreamWithWrapper({
     )
 
     // Snapshot AFTER render started, in the same state scope
-    const escapedJS = escapeForInlineJSON(superstore.stringify(clientPoints.transformer))
     const compiledPrefix = (prefix ?? '').replace(
       '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
       `<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">
-         window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${JSON.stringify(escapedJS)};
+         window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientPoints.transformer))};
        </script>`,
     )
 

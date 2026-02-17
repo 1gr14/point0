@@ -261,7 +261,7 @@ describe('prefetch-page', () => {
   // })
 
   describe('ssr', () => {
-    it.only(
+    it(
       'polh=false, pon=false, hover=smaller',
       wrp({ ssr: true, prefetchPageOnLinkHover: false, prefetchPageOnNavigate: false }, async (t) => {
         const { tale, requestsTale } = await navigatePages(t, hoverSmallerThanLoaderDuration)

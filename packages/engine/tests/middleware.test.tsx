@@ -210,4 +210,66 @@ describe('midleware', () => {
     expect(response.headers.get('y')).toBe('3')
     expect(await response.text()).toContain('overriden page response')
   })
+
+  it.concurrent('applied only to specific point', async () => {
+    const calledMiddlewres: string[] = []
+    const root = Point0.lets('root', 'root')
+      .middleware(async ({ request, set, next }) => {
+        calledMiddlewres.push('root')
+        return await next()
+      })
+      .ssr(true)
+      .baseurl('http://localhost/')
+      .root()
+    const page1 = root
+      .lets('page', 'home1', '/home1')
+      .middleware(async ({ request, set, next }) => {
+        calledMiddlewres.push('page1')
+        return await next()
+      })
+      .loader(({ set }) => ({ x: 1 }))
+      .page(({ data }) => <div id="page1">x={data.x}</div>)
+    const page2 = root
+      .lets('page', 'home2', '/home2')
+      .middleware(async ({ request, set, next }) => {
+        calledMiddlewres.push('page2')
+        return await next()
+      })
+      .loader(({ set }) => ({ y: 2 }))
+      .page(({ data }) => <div id="page2">y={data.y}</div>)
+
+    const { fetchPreview, fetchesTale, fetchRecorder } = await createTestThings({ points: [root, page1, page2] })
+
+    const prview1 = await fetchPreview(page1)
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      page.home1 (client) (page) < {}
+      page.home1 (server) < {}
+      "
+    `)
+    expect(prview1).toMatchInlineSnapshot(`
+      "
+      #page1: x=1
+      "
+    `)
+    // we call it twice, becouse of ssr, which rernder all app before all pending queries resolved
+    expect(calledMiddlewres).toEqual(['root', 'page1', 'root', 'page1'])
+    calledMiddlewres.length = 0
+    fetchRecorder.prune()
+
+    const prview2 = await fetchPreview(page2)
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      page.home2 (client) (page) < {}
+      page.home2 (server) < {}
+      "
+    `)
+    expect(prview2).toMatchInlineSnapshot(`
+      "
+      #page2: y=2
+      "
+    `)
+    // we call it twice, becouse of ssr, which rernder all app before all pending queries resolved
+    expect(calledMiddlewres).toEqual(['root', 'page2', 'root', 'page2'])
+  })
 })

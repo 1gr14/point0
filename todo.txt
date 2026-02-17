@@ -118,7 +118,6 @@ on fetch error maybe no json, then if it is thore, do res.text()
 
 === SSR ===
 --+
-Instead we recommend using a library like Serialize JavaScript or devalue which are both safe against XSS injections out of the box.
 При дипшмифетче сверяться а является ли запрошенная кверя дочерней по отношению к нашему серверному скоупу, или это вообще другой сервер
 Test for mount()
 __POINT0_GET_SSR_PHASE__
@@ -160,18 +159,17 @@ ssr can be not on root point, but client still can be ssr if it has ssr point, s
 
 
 === MOUNTABLES ===
-Провайдеру написать тесты на реагирование на изменение частей при юзВэлью
-Добавить поинт типа враппер, вот в него и можно закинуть всякие виз квери (вероято для кжспо поможет обойтись без лэйоутов), также проверить что он нормально передаётся в .wrapper(wrapper)
-Убдаиться что хед для носср с 2 аргументами тоже прунится
 --+
 Вероятно для экспо стоит пейджу и компоненту возвращать не обёртку над нулом, а обёртку над X, чтобы он мог заиспользоваться
 ---
+relatedComponent
 SuccessComponent>children также можно передавать и тогда во врапере можно всё остановить
 Лоадинг и эррор комопнент разрешить использовать как обёртку чтобы на месте сделать свой кастомный
 дисплей нэймс
 Разрешить префетчить компонент и врапер
 В префетч компонента и врапера вторым аргументом передаются пропсы
 prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout,prefetchWrapper)
+? maybe add lets('wrapper'), but component already can be wrapper just by providing children as props
 ---
 В пейдже и лэйоуте убедиться что при перемене локэйшена компоненты реально не рендерятся
 ? remove Provider Page Component from public api X is enough (chanel is ok to have Provider sounds nice)
@@ -261,17 +259,6 @@ combinedInput → sharedInput
 инпут парам в инфинити квери должен быть именно из сервер инпута (убдиться)
 Написать тест на дефолтный инпут функцию где на входе пустота а на выходе что-то
 Проверить расширяемость инпута на юниты
-
-
-
-=== MIDDLEARE ===
-.middleware('post', '/', () => {}) | .middleware('*', '*', () => {})
-add "final" to middleware pops so we can call it final() to pass all other middlewares
-Мидлвару можно на любом поинте задать, просто она будет отсекать обращения к другим поинтам
----
-И коннект мидлвара возможна просто по вызову её в обычной мидлвара через обёртку
-? .middleware({connect: true, early: booelan}, () => {}) для интеграции с экспресс плагинами
-? .middleware({early: true}, () => {}) | .middleware({early: true}, 'post', '/', () => {})
 
 
 
@@ -585,25 +572,47 @@ throwOnBundlersLengthNot2 → to eslintplugin
 ? В проджект тестах рут вручную везде прописывать, и реоганизовать папки
 ? При ините тест прожекта проводить клинап
 
+
+
+=== MIDDLEARE ===
+---
+? add "final" to middleware pops so we can call it final() to pass all other middlewares
+? .middleware('post', '/', () => {}) | .middleware('*', '*', () => {})
+? И коннект мидлвара возможна просто по вызову её в обычной мидлвара через обёртку
+? .middleware({connect: true, early: booelan}, () => {}) для интеграции с экспресс плагинами
+? .middleware({early: true}, () => {}) | .middleware({early: true}, 'post', '/', () => {})
+
+
+
 === ROUTER ===
 ---
 Префетч мод пререндер, тогда всё просто запререндерится и само подфетчится
 Роут стейты, перфетчинг тразититонинг, а также добавить еррор саксес лоадинг который мы и берём и пейдж стейта
+
+
 
 === ROUTES ===
 ---
 allow * in routes so we can define special 404 for specific paths
 optional params in routes
 
+
+
 === GRPC ===
 grpc
 replaceGetFetchOptions
 
+
+
 === CATEGORY ===
 Ввести понятие категори, оно через точку определяется в названии поинта, чтобы их группировать .lets('category', 'name').meta(description); .lets('page', 'idea.view');
 
+
+
 === SERVER COMPONENTS ===
 Все моунтабл компоненты оформленные с асунк функцией автоматически делают префетч мод htmlом
+
+
 
 === REFACTORING 4 ===
 Сделать элизия плагины компатибл с поинт0
@@ -632,24 +641,36 @@ oxc lint
 ? Ну и добавить тогда уж тасунк чтобы знать есть ли асунк лоадеры
 ? .lazy(), а зачем это нужно, можно просто импортнуть нужные страницы на нужные страницы, и они сами сбандлятся как надо
 
+
+
 === AXIOS ===
 .axios(provide axios instance) .axios(false), .axios(true)
 onUploadProgress, onDownloadProgress
 
+
+
 === ROBOTS.TXT ===
 .robotsTxt(take, skip)
+
+
 
 === OUTPUT ===
 .output(z.object({}))
 ? Октпут поражает Юнион и если надо то парсит пока не допарсит
 
+
+
 === BATCH ===
 batchQuery, batchPrefetch, batchExecute
+
+
 
 === WALKER/COMPILER ===
 Отрефачить Волкер, пусть просто при коллекционировании поинтов, записывает всё что знает статически, а когда придёт компилер, он просто обращается к Волкеру за уже имеющейся информацией о поинтах и сможет прунить мгновенно
 Генератор может и должен хранить кеш в бд, чтобы когда в деве компилер пытался понять как прунить, то он бы сверялся с этим кешем
 Волкер генератор прунер кеш прямо контент файла, если он не менялся, можно инпут хешировать и с таким именем файлик и создавать, и подчищать после генерации
+
+
 
 === CONFIG ===
 config object for point, it should be even mutatable, but type defined only at root point, and it is accessible in any point method
@@ -658,14 +679,20 @@ config object for point, it should be even mutatable, but type defined only at r
 config({}), clientConfig({})
 and in loader settings is immutable
 
+
+
 === EXTENSIONS ===
 ? Экстеншены сразу замутить главное чтобы они возвращали поинт компатибл штуку
 И добавить экстеншены, они дадутся последним генериком и могут добавлять методы реди поинтам, методы мидл поинтам, добавлять экстракт фн ситуации
 Разрешить летс первым аргументом передать что угодно типо свой билдер. Так мы можем и ресурсы тераформа создать, и мессенджер кастомный
 А потом и девопс штуки Аля летс ресурс, с такими же зависимостями как у инит CDKTF. Но пусть это делается через экстеншен, который позволяет доопределить всё включая опции энжины, кли команды, летс поинт тайпы, и прочее
 
+
+
 === NODE.JS ===
 polyfill
+
+
 
 === ??? ===
 .loader({listpreviw: () => , () => {listview: () =?}}) // so dynamic output by input

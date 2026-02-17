@@ -271,4 +271,62 @@ describe('component', () => {
       "
     `)
   })
+
+  it.concurrent('compoent as wrapper', async () => {
+    const root = createRoot()
+    const wrapper = root
+      .lets<{ children: React.ReactNode }>('component', 'wrapper')
+      .combinedInput<{ sn: string }>()
+      .loader(({ input }) => ({ y: input.sn }))
+      .component(({ props, data }) => (
+        <div id="wrapper">
+          <div id="y">{data.y}</div>
+          {props.children}
+        </div>
+      ))
+    const component = root
+      .lets('component', 'stats')
+      .combinedInput<{ id: string }>()
+      .loader(({ input }) => ({ x: input.id }))
+      .component(({ data }) => <div id="component">x={data.x}</div>)
+    const page = root.lets('page', 'home', '/').page(() => (
+      <div id="page">
+        <wrapper.X input={{ sn: '123' }}>
+          <component.X input={{ id: 'zxc' }} />
+        </wrapper.X>
+      </div>
+    ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, component, wrapper, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await waitContent('#component')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /
+          #page:
+            #loading: ...
+
+          #page:
+            #wrapper:
+              #y: 123
+              #component: x=zxc
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      component.wrapper (client) < {"sn":"123"}
+      component.stats (client) < {"id":"zxc"}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page:
+        #wrapper:
+          #y: 123
+          #component: x=zxc
+      "
+    `)
+  })
 })

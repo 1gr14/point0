@@ -703,7 +703,7 @@ export class Point0<
       _root: overrides._root ?? this._root,
       type: (overrides.type ?? this.type) as TPointType,
       _letsReadyPointType: (overrides._letsReadyPointType ?? this._letsReadyPointType) as TLetsReadyPointType,
-      _middlewares: overrides._middlewares ?? this._middlewares,
+      _middlewares: overrides._middlewares ?? [...this._middlewares],
       _serverurl: overrides._serverurl ?? this._serverurl,
       _baseurl: overrides._baseurl ?? this._baseurl,
       _transformer: overrides._transformer ?? this._transformer,
@@ -3404,8 +3404,27 @@ export class Point0<
     AppendProps<TInnerProps, TNewOuterProps>,
     TQueriesDefinitions
   >
+  lets<TNewOuterProps extends Props = EmptyProps>(
+    ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'provider', pointName: string] : never[]
+  ): NiceStagePoint<
+    'coreStage',
+    'provider',
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TPointType extends 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
+    TPointType extends 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
+    TPointType extends 'base' ? TMapperOutput : UndefinedMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TPointType extends 'base' ? TQueryResultType : UndefinedQueryResultType,
+    TNewOuterProps,
+    AppendProps<TInnerProps, TNewOuterProps>,
+    TQueriesDefinitions
+  >
   lets<
-    TNewLetsReadyPointType extends Exclude<ReadyPointType, 'page' | 'layout' | 'component'>,
+    TNewLetsReadyPointType extends Exclude<ReadyPointType, 'page' | 'layout' | 'component' | 'provider'>,
     TPointName extends PointName,
   >(
     ...args: TPointType extends 'root' | 'base'
@@ -3486,7 +3505,7 @@ export class Point0<
 
     const mountActionsAll = [...this._mountActions]
     const mountActionsSuitable = this.type !== 'base' && this.type !== 'root' ? [] : mountActionsAll
-    if (letsReadyPointType === 'component') {
+    if (letsReadyPointType === 'component' || letsReadyPointType === 'provider') {
       mountActionsSuitable.push({ type: 'selfProps', unstableId: Point0._getNextUnstableId() })
     }
 

@@ -311,7 +311,11 @@ export const createTestThings = async ({
     enabled: true,
   })
   if (points) {
-    points[0].point._middlewares.push(fetchRecorder.middleware)
+    for (const point of points) {
+      if ('_middlewares' in point.point) {
+        point.point._middlewares.unshift(fetchRecorder.middleware)
+      }
+    }
   }
   const engine = await Engine.create({
     compiler: false,
