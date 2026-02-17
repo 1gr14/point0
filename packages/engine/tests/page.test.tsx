@@ -459,7 +459,7 @@ describe('page', () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
-      .combinedInput(z.object({ cursor: z.number().optional() }))
+      .sharedInput(z.object({ cursor: z.number().optional() }))
       .loader(({ input }) => {
         const cursor = input.cursor ?? 0
         const nextCursor = cursor + 2

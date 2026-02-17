@@ -390,7 +390,7 @@ describe('infinityQuery', () => {
     const root = createRoot()
     const q = root
       .lets('query', 'test')
-      .combinedInput(z.object({ y: z.number() }))
+      .sharedInput(z.object({ y: z.number() }))
       .clientLoader(({ input }) => ({ x: input.y * 2 }))
       .query()
     const page = root.lets('page', 'home', '/').page(() => {
@@ -426,7 +426,7 @@ describe('infinityQuery', () => {
     const root = createRoot()
     const q = root
       .lets('query', 'test')
-      .combinedInput(z.object({ y: z.number() }))
+      .sharedInput(z.object({ y: z.number() }))
       .loader(({ data }) => ({ z: 3 }))
       .clientLoader(({ input }) => ({ x: input.y * 2 }))
       .query()

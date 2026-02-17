@@ -417,8 +417,9 @@ export type CustomValidationFnToRecordValidationSchema<T extends CustomValidatio
   ReturnType<T>
 >
 
-export type MergeObjects<A, B> =
+type MergeObjectsSingle<A, B> =
   IsEmptyObject<B> extends true ? A : IsEmptyObject<A> extends true ? B : Omit<A, keyof B> & B
+export type MergeObjects<A, B> = A extends unknown ? (B extends unknown ? MergeObjectsSingle<A, B> : never) : never
 export type MergeRecordValidationSchemas<
   TSchema1 extends RecordValidationSchema | undefined,
   TSchema2 extends RecordValidationSchema | undefined,
@@ -437,12 +438,19 @@ export type MergeRecordValidationSchemas<
       : undefined
 >
 
-type RequiredKeys<T> = {
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-  [K in keyof T]-?: {} extends Pick<T, K> ? never : K
-}[keyof T]
+// type RequiredKeys<T> = {
+//   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+//   [K in keyof T]-?: {} extends Pick<T, K> ? never : K
+// }[keyof T]
+// export type HasRequiredKeysInValidationSchema<S extends RecordValidationSchema | undefined> =
+//   S extends RecordValidationSchema ? (RequiredKeys<RecordValidationSchemaInput<S>> extends never ? false : true) : false
+
 export type HasRequiredKeysInValidationSchema<S extends RecordValidationSchema | undefined> =
-  S extends RecordValidationSchema ? (RequiredKeys<RecordValidationSchemaInput<S>> extends never ? false : true) : false
+  S extends RecordValidationSchema
+    ? Record<never, never> extends RecordValidationSchemaInput<S>
+      ? false
+      : true
+    : false
 
 export type IsInputOptional<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -455,13 +463,24 @@ export type IsInputsOptional<
     ? false
     : true
 
-type OverlapKeys<A, B> = keyof A & keyof B
+// type OverlapKeys<A, B> = keyof A & keyof B
+// type IsNarrowerOrEqual<New, Prev> = [New] extends [Prev] ? true : false
+// type HasWideningKey<Prev, New> = {
+//   [K in OverlapKeys<Prev, New>]: IsNarrowerOrEqual<New[K], Prev[K]> extends true ? never : K
+// }[OverlapKeys<Prev, New>] extends never
+//   ? false
+//   : true
+
+type KeysOfUnion<T> = T extends unknown ? keyof T : never
+type ValueAtKey<T, K extends PropertyKey> = T extends unknown ? (K extends keyof T ? T[K] : never) : never
+type OverlapKeys<A, B> = KeysOfUnion<A> & KeysOfUnion<B>
 type IsNarrowerOrEqual<New, Prev> = [New] extends [Prev] ? true : false
 type HasWideningKey<Prev, New> = {
-  [K in OverlapKeys<Prev, New>]: IsNarrowerOrEqual<New[K], Prev[K]> extends true ? never : K
+  [K in OverlapKeys<Prev, New>]: IsNarrowerOrEqual<ValueAtKey<New, K>, ValueAtKey<Prev, K>> extends true ? never : K
 }[OverlapKeys<Prev, New>] extends never
   ? false
   : true
+
 export type IsInputSchemaConflicts<
   TPrevInputSchema extends InputSchema | UndefinedInputSchema,
   TNewInputSchema extends InputSchema | UndefinedInputSchema,
@@ -488,9 +507,9 @@ export type AssertInputSchemaNotWider<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
 > =
   IsInputSchemaConflicts<TServerInputSchema, TNewInputSchema> extends true
-    ? ShowError<`Provided input schema is not assignable to current point server input schema`>
+    ? ShowError<`Last provided input schema is not assignable to current point server input schema`>
     : IsInputSchemaConflicts<TClientInputSchema, TNewInputSchema> extends true
-      ? ShowError<`Provided input schema is not assignable to current point client input schema`>
+      ? ShowError<`Last provided input schema is not assignable to current point client input schema`>
       : unknown
 
 export type AssertCurrentCtxExtendsPluginRequiredCtx<
@@ -526,7 +545,8 @@ export type InputsRaw<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = InputRaw<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
-type UndefinedIfEmptyObject<T> = IsEmptyObject<T> extends true ? undefined : T
+type UndefinedIfEmptyObject<T> = IsEmptyObjectSpecial<T> extends true ? undefined : T
+// type UndefinedIfEmptyObject<T> = Record<never, never> extends T ? undefined : T
 export type InputsRawOrUndefined<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -591,7 +611,7 @@ export type SafeParseInputsResult<
 export type Prettify<T extends object> = {
   [K in keyof T]: T[K]
 }
-export type PrettifyOrUndefined<T> = T extends object ? Prettify<T> : undefined
+// export type PrettifyOrUndefined<T> = T extends object ? Prettify<T> : undefined
 
 export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends UnknownCtx> = TCtx extends Ctx
   ? IsNever<keyof TCtx> extends true
@@ -680,6 +700,8 @@ export type HasAnyLoader<
 > = TServerLoaderOutput extends LoaderOutput ? true : TClientLoaderOutput extends LoaderOutput ? true : false
 
 export type IsEmptyObject<T> = keyof T extends never ? true : false
+type HasAnyKeys<T> = T extends unknown ? (keyof T extends never ? never : true) : never
+export type IsEmptyObjectSpecial<T> = [T] extends [object] ? ([HasAnyKeys<T>] extends [never] ? true : false) : false
 export type IsUnknownRecord<T> = T extends Record<string, unknown> ? true : false
 export type IsNever<T> = [T] extends [never] ? true : false
 
@@ -1227,17 +1249,17 @@ export type MiddlewareFn = (options: MiddlewareFnOptions) => Promise<Response | 
 
 export type AssertNoForbiddenMethodsIfNotSuitableStage<
   TPointType extends PointType,
-  TMethod extends 'ctx' | 'loader' | 'use' | 'clientLoader' | 'input' | 'combinedInput' | 'clientInput',
+  TMethod extends 'ctx' | 'loader' | 'use' | 'clientLoader' | 'input' | 'sharedInput' | 'clientInput',
 > = TPointType extends 'serverStage'
   ? TMethod extends never // nothing is forbiden
     ? ShowError<`You can not use ${TMethod}() after calling .loader()`>
     : unknown
   : TPointType extends 'clientStage'
-    ? TMethod extends 'loader' | 'ctx' | 'input' | 'combinedInput'
+    ? TMethod extends 'loader' | 'ctx' | 'input' | 'sharedInput'
       ? ShowError<`You can not use ${TMethod}() in client loaders stage`>
       : unknown
     : TPointType extends 'finalStage'
-      ? TMethod extends 'loader' | 'ctx' | 'input' | 'combinedInput' | 'clientLoader' | 'clientInput'
+      ? TMethod extends 'loader' | 'ctx' | 'input' | 'sharedInput' | 'clientLoader' | 'clientInput'
         ? ShowError<`You can not use ${TMethod}() in final stage, add it somewhere earlier`>
         : unknown
       : unknown
@@ -1305,7 +1327,7 @@ export type NiceRootStagePoint<
   | 'loading'
   | 'input'
   | 'clientInput'
-  | 'combinedInput'
+  | 'sharedInput'
   | 'ctx'
   // | 'loader'
   // | 'clientLoader'
@@ -1389,7 +1411,7 @@ export type NicePluginStagePoint<
   | 'loading'
   | 'input'
   | 'clientInput'
-  | 'combinedInput'
+  | 'sharedInput'
   | 'ctx'
   // | 'loader'
   // | 'clientLoader'
@@ -1469,7 +1491,7 @@ export type NiceBaseStagePoint<
   | 'with'
   | 'input'
   | 'clientInput'
-  | 'combinedInput'
+  | 'sharedInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -1534,7 +1556,7 @@ export type NicePageStagePoint<
   | 'relatedQuery'
   | 'input'
   | 'clientInput'
-  | 'combinedInput'
+  | 'sharedInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -1599,7 +1621,7 @@ export type NiceComponentStagePoint<
   | 'with'
   | 'input'
   | 'clientInput'
-  | 'combinedInput'
+  | 'sharedInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -1655,7 +1677,7 @@ export type NiceQueryStagePoint<
   | 'fetchOptions'
   | 'input'
   | 'clientInput'
-  | 'combinedInput'
+  | 'sharedInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -1708,7 +1730,7 @@ export type NiceInfiniteQueryStagePoint<
   | 'fetchOptions'
   | 'input'
   | 'clientInput'
-  | 'combinedInput'
+  | 'sharedInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -1762,7 +1784,7 @@ export type NiceMutationStagePoint<
   | 'fetchOptions'
   | 'input'
   | 'clientInput'
-  | 'combinedInput'
+  | 'sharedInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -1824,7 +1846,7 @@ export type NiceLayoutStagePoint<
   | 'relatedQuery'
   | 'input'
   | 'clientInput'
-  | 'combinedInput'
+  | 'sharedInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -1887,7 +1909,7 @@ export type NiceProviderStagePoint<
   | 'fetchOptions'
   | 'input'
   | 'clientInput'
-  | 'combinedInput'
+  | 'sharedInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'

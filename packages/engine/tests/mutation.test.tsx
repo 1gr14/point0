@@ -244,7 +244,7 @@ describe('mutation', () => {
     const root = createRoot()
     const q = root
       .lets('mutation', 'test')
-      .combinedInput(z.object({ y: z.number() }))
+      .sharedInput(z.object({ y: z.number() }))
       .loader(({ data }) => ({ z: 3 }))
       .clientLoader(({ input }) => ({ x: input.y * 2 }))
       .mutation()

@@ -257,7 +257,7 @@ import {
 // props: both, nothing to prune
 // input: server, prune on client
 // clientInput: client, prune on server
-// combinedInput: both, nothing to prune
+// sharedInput: both, nothing to prune
 
 // root: both, nothing to prune
 // base: both, nothing to prune
@@ -2893,80 +2893,92 @@ export class Point0<
     }) as never
   }
 
-  input<TNextServerInputSchema extends InputSchema>(
-    inputSchema: TNextServerInputSchema &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+  input<
+    TNextServerInputSchema extends InputSchema,
+    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
       AssertInputSchemaNotWider<TNextServerInputSchema, TServerInputSchema, TClientInputSchema>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    MergeRecordValidationSchemas<TServerInputSchema, TNextServerInputSchema>,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
+  >(
+    inputSchema: TNextServerInputSchema,
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, TNextServerInputSchema>,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions
+    >
   >
-  input<TInputRaw extends InputRaw, TInputParsed extends InputParsed = TInputRaw>(
-    ...args: TInputParsed extends InputSchema
-      ? never[]
-      : [
-          validateFn: CustomValidationFn<TInputParsed> &
-            AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
-            AssertInputSchemaNotWider<
-              RecordValidationSchema<TInputRaw, TInputParsed>,
-              TServerInputSchema,
-              TClientInputSchema
-            >,
-        ]
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
+  input<
+    TInputRaw extends InputRaw,
+    TInputParsed extends InputParsed = TInputRaw,
+    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+      AssertInputSchemaNotWider<
+        RecordValidationSchema<TInputRaw, TInputParsed>,
+        TServerInputSchema,
+        TClientInputSchema
+      >,
+  >(
+    ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TError]
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions
+    >
   >
-  input<TValidateFn extends CustomValidationFn<any>>(
-    validateFn: TValidateFn &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+  input<
+    TValidateFn extends CustomValidationFn<any>,
+    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
       AssertInputSchemaNotWider<
         CustomValidationFnToRecordValidationSchema<TValidateFn>,
         TServerInputSchema,
         TClientInputSchema
       >,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
+  >(
+    validateFn: TValidateFn & TError,
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions
+    >
   >
   input<
     TInput extends InputRaw,
@@ -3007,76 +3019,92 @@ export class Point0<
     }) as never
   }
 
-  clientInput<TNextClientInputSchema extends InputSchema>(
-    inputSchema: TNextClientInputSchema &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+  clientInput<
+    TNextClientInputSchema extends InputSchema,
+    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
       AssertInputSchemaNotWider<TNextClientInputSchema, TServerInputSchema, TClientInputSchema>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    MergeRecordValidationSchemas<TClientInputSchema, TNextClientInputSchema>,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
+  >(
+    inputSchema: TNextClientInputSchema,
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      MergeRecordValidationSchemas<TClientInputSchema, TNextClientInputSchema>,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions
+    >
   >
-  clientInput<TInputRaw extends InputRaw, TInputParsed extends InputParsed = TInputRaw>(
-    validateFn: CustomValidationFn<TInputParsed> &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+  clientInput<
+    TInputRaw extends InputRaw,
+    TInputParsed extends InputParsed = TInputRaw,
+    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
       AssertInputSchemaNotWider<
         RecordValidationSchema<TInputRaw, TInputParsed>,
         TServerInputSchema,
         TClientInputSchema
       >,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
+  >(
+    validateFn: CustomValidationFn<TInputParsed> & TError,
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions
+    >
   >
-  clientInput<TValidateFn extends CustomValidationFn<any>>(
-    validateFn: TValidateFn &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+  clientInput<
+    TValidateFn extends CustomValidationFn<any>,
+    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
       AssertInputSchemaNotWider<
         CustomValidationFnToRecordValidationSchema<TValidateFn>,
         TServerInputSchema,
         TClientInputSchema
       >,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    MergeRecordValidationSchemas<TClientInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
+  >(
+    validateFn: TValidateFn & TError,
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      MergeRecordValidationSchemas<TClientInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions
+    >
   >
   clientInput<
     TInput extends InputRaw,
@@ -3084,22 +3112,25 @@ export class Point0<
       AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
   >(
     ...args: unknown extends TError ? [] : [TError]
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInput, TInput>>,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInput, TInput>>,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions
+    >
   >
   clientInput(...args: any[]) {
     const inputSchema = args[0] as InputSchema | CustomValidationFn | undefined
@@ -3116,101 +3147,120 @@ export class Point0<
     }) as never
   }
 
-  combinedInput<TNextInputSchema extends InputSchema>(
-    inputSchema: TNextInputSchema &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'combinedInput'> &
+  sharedInput<
+    TNextInputSchema extends InputSchema,
+    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
       AssertInputSchemaNotWider<TNextInputSchema, TServerInputSchema, TClientInputSchema>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    MergeRecordValidationSchemas<TServerInputSchema, TNextInputSchema>,
-    MergeRecordValidationSchemas<TClientInputSchema, TNextInputSchema>,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
+  >(
+    inputSchema: TNextInputSchema,
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, TNextInputSchema>,
+      MergeRecordValidationSchemas<TClientInputSchema, TNextInputSchema>,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions
+    >
   >
-  combinedInput<TInputRaw extends InputRaw, TInputParsed extends InputParsed = TInputRaw>(
-    validateFn: CustomValidationFn<TInputParsed> &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'combinedInput'> &
+  sharedInput<
+    TInputRaw extends InputRaw,
+    TInputParsed extends InputParsed = TInputRaw,
+    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
       AssertInputSchemaNotWider<
         RecordValidationSchema<TInputRaw, TInputParsed>,
         TServerInputSchema,
         TClientInputSchema
       >,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
-    MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
+  >(
+    validateFn: CustomValidationFn<TInputParsed> & TError,
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions
+    >
   >
-  combinedInput<TValidateFn extends CustomValidationFn<any>>(
-    validateFn: TValidateFn &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'combinedInput'> &
+  sharedInput<
+    TValidateFn extends CustomValidationFn<any>,
+    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
       AssertInputSchemaNotWider<
         CustomValidationFnToRecordValidationSchema<TValidateFn>,
         TServerInputSchema,
         TClientInputSchema
       >,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
-    MergeRecordValidationSchemas<TClientInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
+  >(
+    validateFn: TValidateFn & TError,
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      MergeRecordValidationSchemas<TClientInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions
+    >
   >
-  combinedInput<
+  sharedInput<
     TInput extends InputRaw,
-    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'combinedInput'> &
+    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
       AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
   >(
     ...args: unknown extends TError ? [] : [TError]
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInput, TInput>>,
-    MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInput, TInput>>,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInput, TInput>>,
+      MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInput, TInput>>,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions
+    >
   >
-  combinedInput(...args: any[]) {
+  sharedInput(...args: any[]) {
     const inputSchema = args[0] as InputSchema | CustomValidationFn | undefined
     const schema = !inputSchema
       ? Point0.customValidationFnToInputSchema((x) => x)
