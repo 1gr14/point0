@@ -385,14 +385,6 @@ export type WrapperComponentType<
   options: WrapperComponentProps<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
 ) => Exclude<React.ReactNode, Promise<any>>
 
-export type WrapperPluginComponentProps = {
-  location: AnyLocation
-  children: Exclude<React.ReactNode, Promise<any>> | undefined
-} & WithErrorAndLoadingComponents
-export type WrapperPluginComponentType = (
-  options: WrapperPluginComponentProps,
-) => Exclude<React.ReactNode, Promise<any>>
-
 export type WithFnOptions<
   TLocation extends AnyLocation = AnyLocation,
   TInnerProps extends Props = Props,
@@ -409,13 +401,6 @@ export type WithFn<
   options: WithFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
 ) => Error | 'loading' | TNewInnerProps | undefined
 
-export type WithPluginFnOptions = {
-  location: AnyLocation
-}
-export type WithPluginFn<TNewInnerProps extends Props = EmptyProps> = (
-  options: WithPluginFnOptions,
-) => Error | 'loading' | TNewInnerProps | undefined
-
 export type WithQueryFn<
   TLocation extends AnyLocation = AnyLocation,
   TInnerProps extends Props = Props,
@@ -423,21 +408,12 @@ export type WithQueryFn<
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
   TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults = UseQueryOrInfiniteQueryResult | QueriesResults,
 > = (options: WithFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>) => TNewQueries
-export type WithPluginQueryFn<
-  TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults = UseQueryOrInfiniteQueryResult | QueriesResults,
-> = (options: WithPluginFnOptions) => TNewQueries
 
 export type RelatedQueryOptions<TLocation extends AnyLocation = any, TOuterProps extends Props = any> = {
   location: TLocation
 } & WithOuterPropsIfExists<TOuterProps>
 export type RelatedQueryInputGetter<TPoint extends { point: AnyPoint }, TLocation extends AnyLocation = any> = (
   options: RelatedQueryOptions<TLocation>,
-) => TPoint['point']['Infer']['InputRawOrUndefined']
-export type RelatedPluginQueryOptions = {
-  location: AnyLocation
-}
-export type RelatedPluginQueryInputGetter<TPoint extends { point: AnyPoint }> = (
-  options: RelatedPluginQueryOptions,
 ) => TPoint['point']['Infer']['InputRawOrUndefined']
 
 export type OnPrefetchMountableFnOptions<
@@ -470,10 +446,6 @@ export type HeadFn<
 > = (
   options: HeadFnOptions<TStatus, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
 ) => ResolvableHead | string
-export type HeadPluginFnOptions = {
-  location: AnyLocation
-}
-export type HeadPluginFn = (options: HeadPluginFnOptions) => ResolvableHead | string
 
 export type GlobalHeadFnOptions<
   TStatus extends 'loading' | 'error' | 'success' | 'initial',
@@ -875,29 +847,27 @@ export type MountAction<
       inputGetter: RelatedQueryInputGetter<{ point: AnyPoint }>
       queryOptions: ExtraUseInfiniteQueryOptions<any> | ExtraUseQueryOptions
       unstableId: number
-      plugin: boolean
     }
   : TType extends 'selfQuery'
-    ? { type: 'selfQuery'; unstableId: number; plugin: boolean }
+    ? { type: 'selfQuery'; unstableId: number }
     : TType extends 'wrapper'
-      ? { type: 'wrapper'; Component: WrapperComponentType<any, any, any, any>; unstableId: number; plugin: boolean }
+      ? { type: 'wrapper'; Component: WrapperComponentType<any, any, any, any>; unstableId: number }
       : TType extends 'with'
-        ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number; plugin: boolean }
+        ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number }
         : TType extends 'mapper'
-          ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number; plugin: boolean }
+          ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number }
           : TType extends 'selfProps'
-            ? { type: 'selfProps'; unstableId: number; plugin: boolean }
+            ? { type: 'selfProps'; unstableId: number }
             : TType extends 'head'
-              ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number; plugin: boolean }
+              ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number }
               : TType extends 'globalHead'
-                ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number; plugin: boolean }
+                ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number }
                 : TType extends 'errorComponent'
                   ? {
                       type: 'errorComponent'
                       Component: ErrorComponentType<any>
                       variant: DestinationComponentVariant | undefined
                       unstableId: number
-                      plugin: boolean
                     }
                   : TType extends 'loadingComponent'
                     ? {
@@ -905,7 +875,6 @@ export type MountAction<
                         Component: LoadingComponentType<any>
                         variant: DestinationComponentVariant | undefined
                         unstableId: number
-                        plugin: boolean
                       }
                     : never
 

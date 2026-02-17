@@ -942,21 +942,7 @@ export type CtxFn<
   | TCtxAppend
   | [TCtxAppend, ...Array<keyof TCtxAppend>]
 
-export type CtxPluginFnOptions = {
-  request: Request0<boolean, any>
-  point: ReadyPoint | undefined
-  set: ResponseEffectsSetHelper
-}
-export type CtxPluginFn<TCtxAppend extends Ctx = Ctx> = (
-  props: CtxPluginFnOptions,
-) =>
-  | Promise<TCtxAppend>
-  | Promise<[TCtxAppend, ...Array<keyof TCtxAppend>]>
-  | TCtxAppend
-  | [TCtxAppend, ...Array<keyof TCtxAppend>]
-
 export type CtxFnOutput<TCtxFn extends CtxFn<any, any, any, any>> = Awaited<ReturnType<TCtxFn>>
-export type CtxPluginFnOutput<TCtxPluginFn extends CtxPluginFn<any>> = Awaited<ReturnType<TCtxPluginFn>>
 export type ForbiddenCtxExposedKeys = 'request' | 'input' | 'inputRaw' | 'data' | 'set' | 'execute' | 'ctx'
 export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] extends [never]
   ? unknown
@@ -967,16 +953,12 @@ export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] exten
       : ShowError<`Forbidden to expose ctx keys: ${Extract<TExposedKeys, ForbiddenCtxExposedKeys> & string}`>
 export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any>> =
   TCtxFn extends CtxFn<any, any, any, infer TCtxAppend> ? TCtxAppend : never
-export type InferCtxPluginFnOutputCtxAppend<TCtxPluginFn extends CtxPluginFn<any>> =
-  TCtxPluginFn extends CtxPluginFn<infer TCtxAppend> ? TCtxAppend : never
 export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, any>> =
   CtxFnOutput<TCtxFn> extends [infer TCtx]
     ? Extract<keyof TCtx, string>
     : CtxFnOutput<TCtxFn> extends [Ctx, ...infer TCtxExposedKeys extends string[]]
       ? TCtxExposedKeys[number]
       : undefined
-export type InferCtxPluginFnOutputCtxExposedKeys<TCtxPluginFn extends CtxPluginFn<any>> =
-  CtxPluginFnOutput<TCtxPluginFn> extends [infer TCtx] ? Extract<keyof TCtx, string> : undefined
 
 export type LoaderResponseFnOptions<
   TCtx extends Ctx = Ctx,
@@ -1034,45 +1016,21 @@ export type LoaderDataFn<
   | Promise<TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput>
   | (TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput)
 
-export type LoaderPluginFnOptions<
-  TCtx extends Ctx = Ctx,
-  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
-  request: Request0<true, TServerInputSchema>
-  point: ReadyPoint | undefined
-  set: ResponseEffectsSetHelper
-}
-export type LoaderPluginFn<
-  TCtx extends Ctx = Ctx,
-  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TNewServerLoaderOutput extends Data = Data,
-> = (
-  options: LoaderPluginFnOptions<TCtx, TCtxExposedKeys, TServerInputSchema>,
-) =>
-  | Promise<[number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]>
-  | [number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]
-  | Promise<TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput>
-  | (TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput)
-
 export type ServerExecuteAction<TType extends 'ctx' | 'loader' | 'input' = 'ctx' | 'loader' | 'input'> =
   TType extends 'ctx'
     ? {
         type: 'ctx'
         fn: CtxFn
         unstableId: number
-        plugin: boolean
       }
     : TType extends 'loader'
       ? {
           type: 'loader'
           fn: LoaderResponseFn | LoaderDataFn
           unstableId: number
-          plugin: boolean
         }
       : TType extends 'input'
-        ? { type: 'input'; schema: InputSchema; unstableId: number; plugin: boolean }
+        ? { type: 'input'; schema: InputSchema; unstableId: number }
         : never
 
 export type ClientExecuteAction<TType extends 'loader' | 'input' = 'loader' | 'input'> = TType extends 'loader'
@@ -1080,10 +1038,9 @@ export type ClientExecuteAction<TType extends 'loader' | 'input' = 'loader' | 'i
       type: 'loader'
       fn: ClientLoaderResponseFn | ClientLoaderDataFn
       unstableId: number
-      plugin: boolean
     }
   : TType extends 'input'
-    ? { type: 'input'; schema: InputSchema; unstableId: number; plugin: boolean }
+    ? { type: 'input'; schema: InputSchema; unstableId: number }
     : never
 
 export type ClientExecuteActionLocation<
@@ -1462,7 +1419,6 @@ export type NicePluginStagePoint<
   | 'head'
   | 'wrapper'
   | 'with'
-  | 'relatedQuery'
   | 'scrollPosition'
   | 'scrollRestore'
   | 'onPrefetchPage'
@@ -1676,7 +1632,6 @@ export type NiceComponentStagePoint<
   | 'Infer'
   | 'query'
   | 'infiniteQuery'
-  | 'relatedQuery'
 >
 
 export type NiceQueryStagePoint<

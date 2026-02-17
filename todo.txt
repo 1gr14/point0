@@ -233,7 +233,6 @@ cli inspect by filepath how this file and in which place come to files via cli c
 check bun compiler, and vite compiler creates correct sourcemaps
 Пабликдирам дать кэшированный пул, чтобы отдавать из памяти не читая с диска
 Написать тесты на правильное определение путей после билда в энжине
-forbidden '*' and '' for client env vars and consts
 ---
 В роут с генерированными роутами добавлять в комментах путь к компоненту, который объявил
 Энв варс и констс на верхний уровень в том числе
