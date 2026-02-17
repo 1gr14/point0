@@ -159,7 +159,7 @@ describe('plugin', () => {
     `)
   })
 
-  it.concurrent.only('not get outside ctx, but keep ctx inside', async () => {
+  it.concurrent('not get outside ctx, but keep ctx inside', async () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
       .ctx(() => ({ plugin1: 'plugin1' }))
       .ctx(({ ctx }) => {
@@ -204,8 +204,119 @@ describe('plugin', () => {
       plugin1: plugin1
       plugin2: plugin2
       plugin21: plugin1
+      pluginPage1: ❌
+      pluginPage2: ❌
+      "
+    `)
+  })
+
+  it.concurrent('nested plugin ctx', async () => {
+    const plugin1 = Point0.lets('plugin', 'test-plugin1')
+      .ctx(() => ({ plugin1: 'plugin1' }))
+      .plugin()
+    const plugin2 = Point0.lets('plugin', 'test-plugin2')
+      .use(plugin1)
+      .ctx(({ ctx }) => ({ plugin2: 'plugin2', plugin21: ctx.plugin1 }))
+      .plugin()
+    const root = Point0.lets('root', 'root').ssr(true).baseurl('http://localhost/').root()
+    const page = root
+      .lets('page', 'home', '/')
+      .use(plugin2)
+      .ctx(({ ctx }) => {
+        expectTypeOf(ctx.plugin2).toEqualTypeOf<string>()
+        expectTypeOf(ctx.plugin21).toEqualTypeOf<string>()
+        return { page3: 'page3' }
+      })
+      .loader(({ ctx }) => {
+        return ctx
+      })
+      .page(({ data }) => <div id="page">{ymlify(data)}</div>)
+
+    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page: page3: page3
+      plugin1: plugin1
+      plugin2: plugin2
+      plugin21: plugin1
+      "
+    `)
+  })
+
+  it.concurrent('not get outside props, but keep props inside', async () => {
+    const plugin = Point0.lets('plugin', 'test-plugin')
+      .with(() => ({ plugin1: 'plugin1' }))
+      .with(({ props }) => {
+        expectTypeOf(props).toHaveProperty('plugin1')
+        expectTypeOf(props).not.toHaveProperty('page1')
+        return {
+          plugin2: 'plugin2',
+          plugin21: props.plugin1,
+          pluginPage1: (props as any).page1 ?? '❌',
+          pluginPage2: (props as any).page2 ?? '❌',
+        }
+      })
+      .plugin()
+    const root = Point0.lets('root', 'root').ssr(true).baseurl('http://localhost/').root()
+    const page = root
+      .lets('page', 'home', '/')
+      .with(() => ({ page1: 'page1' }))
+      .with(({ props }) => {
+        expectTypeOf(props).toHaveProperty('page1')
+        return { page2: 'page2', page21: props.page1 }
+      })
+      .use(plugin)
+      .with(({ props }) => {
+        expectTypeOf(props.page1).toEqualTypeOf<string>()
+        expectTypeOf(props.page2).toEqualTypeOf<string>()
+        expectTypeOf(props.plugin2).toEqualTypeOf<string>()
+        expectTypeOf(props.plugin21).toEqualTypeOf<string>()
+        return { page3: 'page3' }
+      })
+      .page(({ props }) => <div id="page">{ymlify(props)}</div>)
+
+    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page: page1: page1
+      page2: page2
+      page21: page1
+      plugin1: plugin1
+      plugin2: plugin2
+      plugin21: plugin1
       pluginPage1: page1
       pluginPage2: page2
+      page3: page3
+      "
+    `)
+  })
+
+  it.concurrent.only('nested plugin props', async () => {
+    const plugin1 = Point0.lets('plugin', 'test-plugin1')
+      .with(() => ({ plugin1: 'plugin1' }))
+      .plugin()
+    const plugin2 = Point0.lets('plugin', 'test-plugin2')
+      .use(plugin1)
+      .with(({ props }) => ({ plugin2: 'plugin2', plugin21: props.plugin1 }))
+      .plugin()
+    const root = Point0.lets('root', 'root').ssr(true).baseurl('http://localhost/').root()
+    const page = root
+      .lets('page', 'home', '/')
+      .use(plugin2)
+      .with(({ props }) => {
+        expectTypeOf(props.plugin2).toEqualTypeOf<string>()
+        expectTypeOf(props.plugin21).toEqualTypeOf<string>()
+        return { page3: 'page3' }
+      })
+      .page(({ props }) => <div id="page">{ymlify(props)}</div>)
+
+    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page: plugin1: plugin1
+      plugin2: plugin2
+      plugin21: plugin1
+      page3: page3
       "
     `)
   })

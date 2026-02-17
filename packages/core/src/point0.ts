@@ -4082,7 +4082,15 @@ export class Point0<
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
-    const pluginInjectionId = Point0._getNextUnstableId()
+
+    const pluginStart = { type: 'pluginStart' as const, name: point.name, unstableId: Point0._getNextUnstableId() }
+    const pluginEnd = { type: 'pluginEnd' as const, name: point.name, unstableId: Point0._getNextUnstableId() }
+    const pluginStartServerAction = point._serverExecuteActions.length > 0 ? [pluginStart] : []
+    const pluginEndServerAction = point._serverExecuteActions.length > 0 ? [pluginEnd] : []
+    const pluginStartClientAction = point._clientExecuteActions.length > 0 ? [pluginStart] : []
+    const pluginEndClientAction = point._clientExecuteActions.length > 0 ? [pluginEnd] : []
+    const pluginStartMountAction = point._mountActions.length > 0 ? [pluginStart] : []
+    const pluginEndMountAction = point._mountActions.length > 0 ? [pluginEnd] : []
 
     return this._continue({
       // type
@@ -4110,16 +4118,22 @@ export class Point0<
       // _asFormData: this._asFormData,
       _serverExecuteActions: [
         ...this._serverExecuteActions,
-        ...point._serverExecuteActions.map((action) => ({ ...action, pluginInjectionId })),
+        ...pluginStartServerAction,
+        ...point._serverExecuteActions,
+        ...pluginEndServerAction,
       ],
       _clientExecuteActions: [
         ...this._clientExecuteActions,
-        ...point._clientExecuteActions.map((action) => ({ ...action, pluginInjectionId })),
+        ...pluginStartClientAction,
+        ...point._clientExecuteActions,
+        ...pluginEndClientAction,
       ],
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
-        ...point._mountActions.map((action) => ({ ...action, pluginInjectionId })),
+        ...pluginStartMountAction,
+        ...point._mountActions,
+        ...pluginEndMountAction,
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
       // _ProviderReactContext: point._ProviderReactContext,
@@ -4765,6 +4779,12 @@ export class Point0<
         : _ssItems.__POINT0_CURRENT_LOCATION__.get()
     for (const clientExecuteAction of this._clientExecuteActions) {
       switch (clientExecuteAction.type) {
+        case 'pluginStart': {
+          continue
+        }
+        case 'pluginEnd': {
+          continue
+        }
         case 'input': {
           const result = Point0.parseInputSafeSync(clientExecuteAction.schema, input)
           if (result.error) {
@@ -7142,6 +7162,12 @@ export class Point0<
 
       // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
       switch (action.type) {
+        case 'pluginStart': {
+          continue
+        }
+        case 'pluginEnd': {
+          continue
+        }
         case 'errorComponent': {
           ErrorComponent = React.useCallback(
             Point0._createBoundErrorComponent({

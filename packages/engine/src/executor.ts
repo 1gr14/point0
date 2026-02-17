@@ -265,13 +265,40 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
       }
 
-      let currentCtx: UnknownCtx = this.requiredCtx ?? {}
-      let currentCtxExposedKeys: string[] = []
-      let currentCtxExposed: UnknownCtx = {}
-      let currentData: UnknownData | UndefinedData = undefined
-      let currentResponse: Response | undefined = undefined
-      let currentOutput: LoaderOutput | UndefinedLoaderOutput = currentData
-      let currentInputParsed: InputParsed = {}
+      type Branch = {
+        ctx: UnknownCtx
+        ctxExposedKeys: string[]
+        ctxExposed: UnknownCtx
+        data: UnknownData | UndefinedData
+        response: Response | undefined
+        output: LoaderOutput | UndefinedLoaderOutput
+        inputParsed: InputParsed
+      }
+      const getCleanBranch = (): Branch => {
+        return {
+          ctx: this.requiredCtx ?? {},
+          ctxExposedKeys: [],
+          ctxExposed: {},
+          data: undefined,
+          response: undefined,
+          output: undefined,
+          inputParsed: {},
+        }
+      }
+      // const mainCurrent = getCleanCurrent()
+      // const pluginsCurrents: Array<{
+      //   pluginInjectionId: number
+      //   current: Current
+      // }> = []
+      // const pluginCurrent: Current | undefined = undefined
+      // const forEachCurrent = (callback: (current: Current) => void) => {
+      //   callback(mainCurrent)
+      //   for (const pluginCurrent of pluginsCurrents) {
+      //     callback(pluginCurrent.current)
+      //   }
+      // }
+      const branches = [getCleanBranch()]
+      console.log('EXECUTE')
 
       try {
         if (!point) {
@@ -279,12 +306,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           const status = 404
           effects.set.status(status)
           return {
-            ctx: currentCtx,
-            data: currentData,
+            ctx: branches[0].ctx,
+            data: branches[0].data,
             error,
             status,
-            response: currentResponse,
-            output: currentOutput,
+            response: branches[0].response,
+            output: branches[0].output,
             effects: effects.values,
             point: undefined,
           }
@@ -295,12 +322,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           const status = 500
           effects.set.status(status)
           return {
-            ctx: currentCtx,
-            data: currentData,
+            ctx: branches[0].ctx,
+            data: branches[0].data,
             error,
             status,
-            response: currentResponse,
-            output: currentOutput,
+            response: branches[0].response,
+            output: branches[0].output,
             effects: effects.values,
             point,
           }
@@ -308,6 +335,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
         for (const serverExecuteAction of point._serverExecuteActions) {
           switch (serverExecuteAction.type) {
+            case 'pluginStart': {
+              branches.unshift(getCleanBranch())
+              break
+            }
+            case 'pluginEnd': {
+              branches.shift()
+              break
+            }
             case 'input': {
               const safeParseResult = await Executor.parseInputSafeAsync(serverExecuteAction.schema, input)
               if (safeParseResult.error) {
@@ -315,19 +350,21 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 effects.set.status(status)
                 return {
                   ctx: this.requiredCtx ?? {},
-                  data: currentData,
+                  data: branches[0].data,
                   error: Error0.from(safeParseResult.error),
                   status,
-                  response: currentResponse,
-                  output: currentOutput,
+                  response: branches[0].response,
+                  output: branches[0].output,
                   effects: effects.values,
                   point,
                 }
               }
-              currentInputParsed = {
-                ...currentInputParsed,
-                ...safeParseResult.data,
-              }
+              branches.forEach((branch) => {
+                branch.inputParsed = {
+                  ...branch.inputParsed,
+                  ...safeParseResult.data,
+                }
+              })
               break
             }
             case 'ctx': {
@@ -349,9 +386,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               //   }
               // } else {
               const result = await serverExecuteAction.fn({
-                ...currentCtxExposed,
-                ctx: { ...currentCtx },
-                input: currentInputParsed,
+                ...branches[0].ctxExposed,
+                ctx: { ...branches[0].ctx },
+                input: branches[0].inputParsed,
                 execute: this.execute.bind(this),
                 request: this.request,
                 set: effects.set,
@@ -359,14 +396,16 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               })
               if (Array.isArray(result)) {
                 const appendCtxExposedKeys = result.length > 1 ? (result.slice(1) as string[]) : Object.keys(result[0])
-                currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
-                currentCtx = { ...currentCtx, ...result[0] }
-                // eslint-disable-next-line @typescript-eslint/no-loop-func
-                currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
+                branches.forEach((branch) => {
+                  branch.ctxExposedKeys = [...new Set([...branch.ctxExposedKeys, ...appendCtxExposedKeys])]
+                  branch.ctx = { ...branch.ctx, ...result[0] }
+                  branch.ctxExposed = Object.fromEntries(branch.ctxExposedKeys.map((key) => [key, branch.ctx[key]]))
+                })
               } else {
-                currentCtx = { ...currentCtx, ...result }
-                // eslint-disable-next-line @typescript-eslint/no-loop-func
-                currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
+                branches.forEach((branch) => {
+                  branch.ctx = { ...branch.ctx, ...result }
+                  branch.ctxExposed = Object.fromEntries(branch.ctxExposedKeys.map((key) => [key, branch.ctx[key]]))
+                })
               }
               // this.serverExecuteActionsWithOutput.push({
               //   output: result,
@@ -400,10 +439,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               //   }
               // } else {
               const promise = serverExecuteAction.fn({
-                ...currentCtxExposed,
-                ctx: { ...currentCtx },
-                data: { ...currentData },
-                input: currentInputParsed,
+                ...branches[0].ctxExposed,
+                ctx: { ...branches[0].ctx },
+                data: { ...branches[0].data },
+                input: branches[0].inputParsed,
                 execute: this.execute.bind(this),
                 request: this.request as never,
                 set: effects.set,
@@ -413,19 +452,27 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               if (Array.isArray(result)) {
                 effects.set.status(result[0])
                 if (result[1] instanceof Response) {
-                  currentResponse = result[1]
-                  currentOutput = result[1]
+                  branches.forEach((branch) => {
+                    branch.response = result[1]
+                    branch.output = result[1]
+                  })
                 } else {
-                  currentData = result[1]
-                  currentOutput = result[1]
+                  branches.forEach((branch) => {
+                    branch.data = result[1]
+                    branch.output = result[1]
+                  })
                 }
               } else {
                 if (result instanceof Response) {
-                  currentResponse = result
-                  currentOutput = result
+                  branches.forEach((branch) => {
+                    branch.response = result
+                    branch.output = result
+                  })
                 } else {
-                  currentData = result
-                  currentOutput = result
+                  branches.forEach((branch) => {
+                    branch.data = result
+                    branch.output = result
+                  })
                 }
               }
               // this.serverExecuteActionsWithOutput.push({
@@ -441,20 +488,24 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           }
         }
 
-        if (currentResponse) {
+        if (branches.length !== 1) {
+          throw new Error(`Unexpected branches length: ${branches.length}, please report this as a bug`)
+        }
+
+        if (branches[0].response) {
           // if we have response, then we can not have data by design
-          currentData = undefined
+          branches[0].data = undefined
         }
 
         const status = effects.status ?? 200
         effects.set.status(status)
         return {
-          ctx: currentCtx,
-          data: currentData,
-          response: currentResponse,
+          ctx: branches[0].ctx,
+          data: branches[0].data,
+          response: branches[0].response,
           error: undefined,
           status,
-          output: currentOutput,
+          output: branches[0].output,
           effects: effects.values,
           point,
         }
@@ -464,12 +515,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           const status = error0.httpStatus ?? 500
           effects.set.status(status)
           return {
-            ctx: currentCtx,
-            data: currentData,
+            ctx: branches[0].ctx,
+            data: branches[0].data,
             error: error0,
             status,
-            response: currentResponse,
-            output: currentOutput,
+            response: branches[0].response,
+            output: branches[0].output,
             effects: effects.values,
             point,
           }
@@ -478,12 +529,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           const status = error0.httpStatus ?? 500
           effects.set.status(status)
           return {
-            ctx: currentCtx,
-            data: currentData,
+            ctx: branches[0].ctx,
+            data: branches[0].data,
             error: error0,
             status,
-            response: currentResponse,
-            output: currentOutput,
+            response: branches[0].response,
+            output: branches[0].output,
             effects: effects.values,
             point,
           }

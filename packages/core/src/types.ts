@@ -1016,35 +1016,48 @@ export type LoaderDataFn<
   | Promise<TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput>
   | (TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput)
 
-export type ServerExecuteAction<TType extends 'ctx' | 'loader' | 'input' = 'ctx' | 'loader' | 'input'> =
-  TType extends 'ctx'
+export type ServerExecuteAction<
+  TType extends 'ctx' | 'loader' | 'input' | 'pluginStart' | 'pluginEnd' =
+    | 'ctx'
+    | 'loader'
+    | 'input'
+    | 'pluginStart'
+    | 'pluginEnd',
+> = TType extends 'ctx'
+  ? {
+      type: 'ctx'
+      fn: CtxFn
+      unstableId: number
+    }
+  : TType extends 'loader'
     ? {
-        type: 'ctx'
-        fn: CtxFn
+        type: 'loader'
+        fn: LoaderResponseFn | LoaderDataFn
         unstableId: number
-        pluginInjectionId?: number
       }
-    : TType extends 'loader'
-      ? {
-          type: 'loader'
-          fn: LoaderResponseFn | LoaderDataFn
-          unstableId: number
-          pluginInjectionId?: number
-        }
-      : TType extends 'input'
-        ? { type: 'input'; schema: InputSchema; unstableId: number; pluginInjectionId?: number }
-        : never
+    : TType extends 'input'
+      ? { type: 'input'; schema: InputSchema; unstableId: number }
+      : TType extends 'pluginStart'
+        ? { type: 'pluginStart'; name: string; unstableId: number }
+        : TType extends 'pluginEnd'
+          ? { type: 'pluginEnd'; name: string; unstableId: number }
+          : never
 
-export type ClientExecuteAction<TType extends 'loader' | 'input' = 'loader' | 'input'> = TType extends 'loader'
+export type ClientExecuteAction<
+  TType extends 'loader' | 'input' | 'pluginStart' | 'pluginEnd' = 'loader' | 'input' | 'pluginStart' | 'pluginEnd',
+> = TType extends 'loader'
   ? {
       type: 'loader'
       fn: ClientLoaderResponseFn | ClientLoaderDataFn
       unstableId: number
-      pluginInjectionId?: number
     }
   : TType extends 'input'
-    ? { type: 'input'; schema: InputSchema; unstableId: number; pluginInjectionId?: number }
-    : never
+    ? { type: 'input'; schema: InputSchema; unstableId: number }
+    : TType extends 'pluginStart'
+      ? { type: 'pluginStart'; name: string; unstableId: number }
+      : TType extends 'pluginEnd'
+        ? { type: 'pluginEnd'; name: string; unstableId: number }
+        : never
 
 export type ClientExecuteActionLocation<
   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType = ReadyPointType | UndefinedReadyPointType,

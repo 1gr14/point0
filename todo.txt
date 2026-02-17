@@ -166,6 +166,7 @@ ssr can be not on root point, but client still can be ssr if it has ssr point, s
 remove LoaderPluginFn
 .layout to plugin (check if not already there)
 remove requiredCtx and outer props
+forbid laoders in base and root also, on types also
 ? Так и дата может экстендить надо, зачем её переписывать то (так не красиво будет)
 
 

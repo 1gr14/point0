@@ -829,7 +829,9 @@ export type MountAction<
     | 'selfProps'
     | 'selfQuery'
     | 'errorComponent'
-    | 'loadingComponent' =
+    | 'loadingComponent'
+    | 'pluginStart'
+    | 'pluginEnd' =
     | 'relatedQuery'
     | 'wrapper'
     | 'with'
@@ -839,7 +841,9 @@ export type MountAction<
     | 'selfProps'
     | 'selfQuery'
     | 'errorComponent'
-    | 'loadingComponent',
+    | 'loadingComponent'
+    | 'pluginStart'
+    | 'pluginEnd',
 > = TType extends 'relatedQuery'
   ? {
       type: 'relatedQuery'
@@ -847,34 +851,31 @@ export type MountAction<
       inputGetter: RelatedQueryInputGetter<{ point: AnyPoint }>
       queryOptions: ExtraUseInfiniteQueryOptions<any> | ExtraUseQueryOptions
       unstableId: number
-      pluginInjectionId?: number
     }
   : TType extends 'selfQuery'
-    ? { type: 'selfQuery'; unstableId: number; pluginInjectionId?: number }
+    ? { type: 'selfQuery'; unstableId: number }
     : TType extends 'wrapper'
       ? {
           type: 'wrapper'
           Component: WrapperComponentType<any, any, any, any>
           unstableId: number
-          pluginInjectionId?: number
         }
       : TType extends 'with'
-        ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number; pluginInjectionId?: number }
+        ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number }
         : TType extends 'mapper'
-          ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number; pluginInjectionId?: number }
+          ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number }
           : TType extends 'selfProps'
-            ? { type: 'selfProps'; unstableId: number; pluginInjectionId?: number }
+            ? { type: 'selfProps'; unstableId: number }
             : TType extends 'head'
-              ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number; pluginInjectionId?: number }
+              ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number }
               : TType extends 'globalHead'
-                ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number; pluginInjectionId?: number }
+                ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number }
                 : TType extends 'errorComponent'
                   ? {
                       type: 'errorComponent'
                       Component: ErrorComponentType<any>
                       variant: DestinationComponentVariant | undefined
                       unstableId: number
-                      pluginInjectionId?: number
                     }
                   : TType extends 'loadingComponent'
                     ? {
@@ -882,9 +883,12 @@ export type MountAction<
                         Component: LoadingComponentType<any>
                         variant: DestinationComponentVariant | undefined
                         unstableId: number
-                        pluginInjectionId?: number
                       }
-                    : never
+                    : TType extends 'pluginStart'
+                      ? { type: 'pluginStart'; name: string; unstableId: number }
+                      : TType extends 'pluginEnd'
+                        ? { type: 'pluginEnd'; name: string; unstableId: number }
+                        : never
 
 export type IsQueryShouldBeFinalized<
   TPointType extends PointType,
