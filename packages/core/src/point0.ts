@@ -7003,7 +7003,7 @@ export class Point0<
       pageState: RouterPageState
       setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
     }
-    branches: Array<{
+    layers: Array<{
       inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
       outerProps: TOuterProps
       queryIndex?: number
@@ -7025,8 +7025,9 @@ export class Point0<
       // for page locaton already is page location, for component and provider also we need current page location
       location = this.type === 'layout' ? useLocation(this.route) : useLocation(),
       pageStateManager = _usePageStateManager(),
-      branches,
+      layers,
     } = props
+    const [currentLayer, ...siblingLayers] = layers
 
     const componentVariant = this._getDestinationComponentVariant() ?? 'page'
     const isHeadable = this.type === 'page' || this.type === 'layout'
@@ -7052,19 +7053,15 @@ export class Point0<
       prevQueries,
       prevMappedData,
     } = (() => {
-      const prev = branches[0].prev
+      const prev = currentLayer.prev
       if (!prev) {
-        const prevInnerProps = {}
-
-        const prevQueries: QueriesResults = []
-
         return {
           nextMountActions: this._mountActions,
           prevMountActions: [] as Array<{ action: MountAction; state: MountableState<any, any, any, any, any> }>,
           PrevLoadingComponent: undefined,
           PrevErrorComponent: undefined,
-          prevInnerProps,
-          prevQueries,
+          prevInnerProps: {},
+          prevQueries: [],
           prevMappedData: undefined,
         }
       } else {
@@ -7119,7 +7116,7 @@ export class Point0<
     const mountState = {
       ...queriesState,
       location,
-      input: branches[0].inputRaw,
+      input: currentLayer.inputRaw,
       props: prevInnerProps,
       queries: prevQueries,
     } as MountableState<any, any, any, any, any>
@@ -7149,6 +7146,30 @@ export class Point0<
         [],
       )
 
+    const createBoundErrorComponent = () =>
+      React.useCallback(
+        Point0._createBoundErrorComponent({
+          componentVariant,
+          pageStateManager,
+          prevMountActions,
+          isHeadable,
+          fallbackErrorComponent,
+        }),
+        [],
+      )
+
+    const createBoundLoadingComponent = () =>
+      React.useCallback(
+        Point0._createBoundLoadingComponent({
+          componentVariant,
+          pageStateManager,
+          prevMountActions,
+          isHeadable,
+          fallbackLoadingComponent,
+        }),
+        [],
+      )
+
     const currentMountActions = [...nextMountActions]
 
     const getNextProps = () => {
@@ -7161,7 +7182,7 @@ export class Point0<
         queries: mountState.queries,
         mappedData: nextMappedData,
       }
-      const _nextBranches: Array<{
+      const _nextLayers: Array<{
         inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
         outerProps: TOuterProps
         queryIndex?: number
@@ -7176,44 +7197,44 @@ export class Point0<
         }
       }> = [
         {
-          ...branches[0],
+          ...currentLayer,
           prev: _nextPrev,
         },
-        ...branches.slice(1),
+        ...siblingLayers,
       ]
       const _nextMountableProps = {
         mountComponent,
         extraProps,
         location,
         pageStateManager,
-        branches: _nextBranches,
+        layers: _nextLayers,
       } satisfies Parameters<typeof this._getMountable>[0]
       return {
         _nextPrev,
-        _nextBranches,
+        _nextLayers,
         _nextMountableProps,
       }
     }
 
     for (const action of nextMountActions) {
-      prevMountActions.push({ action, state: mountState })
+      const actionState = { action, state: mountState }
+      prevMountActions.push(actionState)
       currentMountActions.shift()
-      branches.slice(1).forEach((branch) => {
-        branch.prev?.prevMountActions.push({ action, state: mountState })
-        branch.prev?.nextMountActions.shift()
+      siblingLayers.forEach((layer) => {
+        if (!layer.prev) {
+          return
+        }
+        layer.prev.prevMountActions.push(actionState)
+        layer.prev.nextMountActions.shift()
       })
 
       // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
       switch (action.type) {
         case 'pluginStart': {
-          // branches.unshift({
-          //   queryIndex: 0,
-          //   prev: undefined,
-          // })
-          const { _nextPrev, _nextBranches, _nextMountableProps } = getNextProps()
+          const { _nextPrev, _nextLayers, _nextMountableProps } = getNextProps()
           return this._getMountable({
             ..._nextMountableProps,
-            branches: [
+            layers: [
               {
                 inputRaw: {} as never,
                 outerProps: {} as never,
@@ -7227,70 +7248,34 @@ export class Point0<
                   mappedData: undefined,
                 },
               },
-              ..._nextBranches,
+              ..._nextLayers,
             ],
           })
         }
         case 'pluginEnd': {
-          const { _nextBranches, _nextMountableProps } = getNextProps()
+          const { _nextLayers, _nextMountableProps } = getNextProps()
           return this._getMountable({
             ..._nextMountableProps,
-            branches: _nextBranches.slice(1),
+            layers: _nextLayers.slice(1),
           })
         }
         case 'errorComponent': {
-          ErrorComponent = React.useCallback(
-            Point0._createBoundErrorComponent({
-              componentVariant,
-              pageStateManager,
-              prevMountActions,
-              isHeadable,
-              fallbackErrorComponent,
-            }),
-            [],
-          )
+          ErrorComponent = createBoundErrorComponent()
           continue
         }
         case 'loadingComponent': {
-          LoadingComponent = React.useCallback(
-            Point0._createBoundLoadingComponent({
-              componentVariant,
-              pageStateManager,
-              prevMountActions,
-              isHeadable,
-              fallbackLoadingComponent,
-            }),
-            [],
-          )
+          LoadingComponent = createBoundLoadingComponent()
           continue
         }
         case 'selfProps': {
-          mountState.props = { ...mountState.props, ...branches[0].outerProps }
+          mountState.props = { ...mountState.props, ...currentLayer.outerProps }
           continue
         }
         case 'head':
         case 'globalHead': {
           if (isHeadable) {
-            ErrorComponent = React.useCallback(
-              Point0._createBoundErrorComponent({
-                componentVariant,
-                pageStateManager,
-                prevMountActions,
-                isHeadable,
-                fallbackErrorComponent,
-              }),
-              [],
-            )
-            LoadingComponent = React.useCallback(
-              Point0._createBoundLoadingComponent({
-                componentVariant,
-                pageStateManager,
-                prevMountActions,
-                isHeadable,
-                fallbackLoadingComponent,
-              }),
-              [],
-            )
+            ErrorComponent = createBoundErrorComponent()
+            LoadingComponent = createBoundLoadingComponent()
           }
           continue
         }
@@ -7310,7 +7295,7 @@ export class Point0<
 
       // below causes wrapping
 
-      const { _nextBranches, _nextMountableProps } = getNextProps()
+      const { _nextLayers, _nextMountableProps } = getNextProps()
 
       switch (action.type) {
         case 'wrapper': {
@@ -7341,29 +7326,13 @@ export class Point0<
             const queries = Array.isArray(result) ? result : [result]
             return React.createElement(this._getMountable, {
               ..._nextMountableProps,
-              // queryIndex: queryIndex + queries.length,
-              // prev: {
-              //   ..._nextMountableProps.prev,
-              //   queries: [..._nextMountableProps.prev.queries, ...queries],
-              // },
-              // branches: [
-              //   {
-              //     ..._nextBranches[0],
-              //     queryIndex: (branches[0].queryIndex ?? 0) + queries.length,
-              //     prev: {
-              //       ..._nextPrev,
-              //       queries: [..._nextPrev.queries, ...queries],
-              //     },
-              //   },
-              //   ...branches.slice(1),
-              // ],
-              branches: _nextBranches.map((branch) => ({
-                ...branch,
-                queryIndex: (branch.queryIndex ?? 0) + queries.length,
-                prev: branch.prev
+              layers: _nextLayers.map((layer) => ({
+                ...layer,
+                queryIndex: (layer.queryIndex ?? 0) + queries.length,
+                prev: layer.prev
                   ? {
-                      ...branch.prev,
-                      queries: [...branch.prev.queries, ...queries],
+                      ...layer.prev,
+                      queries: [...layer.prev.queries, ...queries],
                     }
                   : undefined,
               })),
@@ -7380,26 +7349,12 @@ export class Point0<
           } else {
             return React.createElement(this._getMountable, {
               ..._nextMountableProps,
-              // prev: {
-              //   ..._nextMountableProps.prev,
-              //   innerProps: { ..._nextMountableProps.prev.innerProps, ...(result || {}) },
-              // },
-              // branches: [
-              //   {
-              //     ..._nextBranches[0],
-              //     prev: {
-              //       ..._nextPrev,
-              //       innerProps: { ..._nextPrev.innerProps, ...(result || {}) },
-              //     },
-              //   },
-              //   ...branches.slice(1),
-              // ],
-              branches: _nextBranches.map((branch) => ({
-                ...branch,
-                prev: branch.prev
+              layers: _nextLayers.map((layer) => ({
+                ...layer,
+                prev: layer.prev
                   ? {
-                      ...branch.prev,
-                      innerProps: { ...branch.prev.innerProps, ...(result || {}) },
+                      ...layer.prev,
+                      innerProps: { ...layer.prev.innerProps, ...(result || {}) },
                     }
                   : undefined,
               })),
@@ -7410,41 +7365,25 @@ export class Point0<
           const query = (() => {
             if (action.point._queryResultType === 'infiniteQuery') {
               return action.point.useInfiniteQuery(
-                action.inputGetter({ location: mountState.location, props: branches[0].outerProps }),
+                action.inputGetter({ location: mountState.location, props: currentLayer.outerProps }),
                 action.queryOptions as never,
               )
             } else {
               return action.point.useQuery(
-                action.inputGetter({ location: mountState.location, props: branches[0].outerProps }),
+                action.inputGetter({ location: mountState.location, props: currentLayer.outerProps }),
                 action.queryOptions as never,
               )
             }
           })()
           return React.createElement(this._getMountable, {
             ..._nextMountableProps,
-            // queryIndex: queryIndex + 1,
-            // prev: {
-            //   ..._nextMountableProps.prev,
-            //   queries: [..._nextMountableProps.prev.queries, query],
-            // },
-            // branches: [
-            //   {
-            //     ..._nextBranches[0],
-            //     queryIndex: (branches[0].queryIndex ?? 0) + 1,
-            //     prev: {
-            //       ..._nextPrev,
-            //       queries: [..._nextPrev.queries, query],
-            //     },
-            //   },
-            //   ...branches.slice(1),
-            // ],
-            branches: _nextBranches.map((branch) => ({
-              ...branch,
-              queryIndex: (branch.queryIndex ?? 0) + 1,
-              prev: branch.prev
+            layers: _nextLayers.map((layer) => ({
+              ...layer,
+              queryIndex: (layer.queryIndex ?? 0) + 1,
+              prev: layer.prev
                 ? {
-                    ...branch.prev,
-                    queries: [...branch.prev.queries, query],
+                    ...layer.prev,
+                    queries: [...layer.prev.queries, query],
                   }
                 : undefined,
             })),
@@ -7453,34 +7392,18 @@ export class Point0<
         case 'selfQuery': {
           const queryResult =
             this._queryResultType === 'infiniteQuery'
-              ? this.useInfiniteQuery(branches[0].inputRaw as never)
-              : this.useQuery(branches[0].inputRaw as never)
+              ? this.useInfiniteQuery(currentLayer.inputRaw as never)
+              : this.useQuery(currentLayer.inputRaw as never)
           const queries = [queryResult]
           return React.createElement(this._getMountable, {
             ..._nextMountableProps,
-            // queryIndex: queryIndex + 1,
-            // prev: {
-            //   ..._nextMountableProps.prev,
-            //   queries: [..._nextMountableProps.prev.queries, ...queries],
-            // },
-            // branches: [
-            //   {
-            //     ..._nextBranches[0],
-            //     queryIndex: (branches[0].queryIndex ?? 0) + 1,
-            //     prev: {
-            //       ..._nextPrev,
-            //       queries: [..._nextPrev.queries, ...queries],
-            //     },
-            //   },
-            //   ...branches.slice(1),
-            // ],
-            branches: _nextBranches.map((branch) => ({
-              ...branch,
-              queryIndex: (branch.queryIndex ?? 0) + 1,
-              prev: branch.prev
+            layers: _nextLayers.map((layer) => ({
+              ...layer,
+              queryIndex: (layer.queryIndex ?? 0) + 1,
+              prev: layer.prev
                 ? {
-                    ...branch.prev,
-                    queries: [...branch.prev.queries, ...queries],
+                    ...layer.prev,
+                    queries: [...layer.prev.queries, ...queries],
                   }
                 : undefined,
             })),
@@ -7592,7 +7515,7 @@ export class Point0<
     }, [this.name, inputRaw, prevLocation, status])
 
     return this._getMountable({
-      branches: [
+      layers: [
         {
           inputRaw,
           outerProps: restProps,
@@ -7625,7 +7548,7 @@ export class Point0<
     }, [props])
 
     return this._getMountable({
-      branches: [
+      layers: [
         {
           inputRaw,
           outerProps: restProps,
@@ -7662,7 +7585,7 @@ export class Point0<
     }, [props, location])
 
     return this._getMountable({
-      branches: [
+      layers: [
         {
           inputRaw,
           outerProps: restProps,
@@ -7748,7 +7671,7 @@ export class Point0<
     }, [props])
 
     return this._getMountable({
-      branches: [
+      layers: [
         {
           inputRaw,
           outerProps: restProps,

@@ -274,7 +274,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         output: LoaderOutput | UndefinedLoaderOutput
         inputParsed: InputParsed
       }
-      const getCleanBranch = (): Branch => {
+      const getCleanLayer = (): Branch => {
         return {
           ctx: this.requiredCtx ?? {},
           ctxExposedKeys: [],
@@ -297,7 +297,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       //     callback(pluginCurrent.current)
       //   }
       // }
-      const branches = [getCleanBranch()]
+      const layers = [getCleanLayer()]
 
       try {
         if (!point) {
@@ -305,12 +305,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           const status = 404
           effects.set.status(status)
           return {
-            ctx: branches[0].ctx,
-            data: branches[0].data,
+            ctx: layers[0].ctx,
+            data: layers[0].data,
             error,
             status,
-            response: branches[0].response,
-            output: branches[0].output,
+            response: layers[0].response,
+            output: layers[0].output,
             effects: effects.values,
             point: undefined,
           }
@@ -321,12 +321,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           const status = 500
           effects.set.status(status)
           return {
-            ctx: branches[0].ctx,
-            data: branches[0].data,
+            ctx: layers[0].ctx,
+            data: layers[0].data,
             error,
             status,
-            response: branches[0].response,
-            output: branches[0].output,
+            response: layers[0].response,
+            output: layers[0].output,
             effects: effects.values,
             point,
           }
@@ -335,11 +335,11 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         for (const serverExecuteAction of point._serverExecuteActions) {
           switch (serverExecuteAction.type) {
             case 'pluginStart': {
-              branches.unshift(getCleanBranch())
+              layers.unshift(getCleanLayer())
               break
             }
             case 'pluginEnd': {
-              branches.shift()
+              layers.shift()
               break
             }
             case 'input': {
@@ -349,18 +349,18 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 effects.set.status(status)
                 return {
                   ctx: this.requiredCtx ?? {},
-                  data: branches[0].data,
+                  data: layers[0].data,
                   error: Error0.from(safeParseResult.error),
                   status,
-                  response: branches[0].response,
-                  output: branches[0].output,
+                  response: layers[0].response,
+                  output: layers[0].output,
                   effects: effects.values,
                   point,
                 }
               }
-              branches.forEach((branch) => {
-                branch.inputParsed = {
-                  ...branch.inputParsed,
+              layers.forEach((layer) => {
+                layer.inputParsed = {
+                  ...layer.inputParsed,
                   ...safeParseResult.data,
                 }
               })
@@ -385,9 +385,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               //   }
               // } else {
               const result = await serverExecuteAction.fn({
-                ...branches[0].ctxExposed,
-                ctx: { ...branches[0].ctx },
-                input: branches[0].inputParsed,
+                ...layers[0].ctxExposed,
+                ctx: { ...layers[0].ctx },
+                input: layers[0].inputParsed,
                 execute: this.execute.bind(this),
                 request: this.request,
                 set: effects.set,
@@ -395,15 +395,15 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               })
               if (Array.isArray(result)) {
                 const appendCtxExposedKeys = result.length > 1 ? (result.slice(1) as string[]) : Object.keys(result[0])
-                branches.forEach((branch) => {
-                  branch.ctxExposedKeys = [...new Set([...branch.ctxExposedKeys, ...appendCtxExposedKeys])]
-                  branch.ctx = { ...branch.ctx, ...result[0] }
-                  branch.ctxExposed = Object.fromEntries(branch.ctxExposedKeys.map((key) => [key, branch.ctx[key]]))
+                layers.forEach((layer) => {
+                  layer.ctxExposedKeys = [...new Set([...layer.ctxExposedKeys, ...appendCtxExposedKeys])]
+                  layer.ctx = { ...layer.ctx, ...result[0] }
+                  layer.ctxExposed = Object.fromEntries(layer.ctxExposedKeys.map((key) => [key, layer.ctx[key]]))
                 })
               } else {
-                branches.forEach((branch) => {
-                  branch.ctx = { ...branch.ctx, ...result }
-                  branch.ctxExposed = Object.fromEntries(branch.ctxExposedKeys.map((key) => [key, branch.ctx[key]]))
+                layers.forEach((layer) => {
+                  layer.ctx = { ...layer.ctx, ...result }
+                  layer.ctxExposed = Object.fromEntries(layer.ctxExposedKeys.map((key) => [key, layer.ctx[key]]))
                 })
               }
               // this.serverExecuteActionsWithOutput.push({
@@ -438,10 +438,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               //   }
               // } else {
               const promise = serverExecuteAction.fn({
-                ...branches[0].ctxExposed,
-                ctx: { ...branches[0].ctx },
-                data: { ...branches[0].data },
-                input: branches[0].inputParsed,
+                ...layers[0].ctxExposed,
+                ctx: { ...layers[0].ctx },
+                data: { ...layers[0].data },
+                input: layers[0].inputParsed,
                 execute: this.execute.bind(this),
                 request: this.request as never,
                 set: effects.set,
@@ -451,26 +451,26 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               if (Array.isArray(result)) {
                 effects.set.status(result[0])
                 if (result[1] instanceof Response) {
-                  branches.forEach((branch) => {
-                    branch.response = result[1]
-                    branch.output = result[1]
+                  layers.forEach((layer) => {
+                    layer.response = result[1]
+                    layer.output = result[1]
                   })
                 } else {
-                  branches.forEach((branch) => {
-                    branch.data = result[1]
-                    branch.output = result[1]
+                  layers.forEach((layer) => {
+                    layer.data = result[1]
+                    layer.output = result[1]
                   })
                 }
               } else {
                 if (result instanceof Response) {
-                  branches.forEach((branch) => {
-                    branch.response = result
-                    branch.output = result
+                  layers.forEach((layer) => {
+                    layer.response = result
+                    layer.output = result
                   })
                 } else {
-                  branches.forEach((branch) => {
-                    branch.data = result
-                    branch.output = result
+                  layers.forEach((layer) => {
+                    layer.data = result
+                    layer.output = result
                   })
                 }
               }
@@ -487,24 +487,24 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           }
         }
 
-        if (branches.length !== 1) {
-          throw new Error(`Unexpected branches length: ${branches.length}, please report this as a bug`)
+        if (layers.length !== 1) {
+          throw new Error(`Unexpected layers length: ${layers.length}, please report this as a bug`)
         }
 
-        if (branches[0].response) {
+        if (layers[0].response) {
           // if we have response, then we can not have data by design
-          branches[0].data = undefined
+          layers[0].data = undefined
         }
 
         const status = effects.status ?? 200
         effects.set.status(status)
         return {
-          ctx: branches[0].ctx,
-          data: branches[0].data,
-          response: branches[0].response,
+          ctx: layers[0].ctx,
+          data: layers[0].data,
+          response: layers[0].response,
           error: undefined,
           status,
-          output: branches[0].output,
+          output: layers[0].output,
           effects: effects.values,
           point,
         }
@@ -514,12 +514,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           const status = error0.httpStatus ?? 500
           effects.set.status(status)
           return {
-            ctx: branches[0].ctx,
-            data: branches[0].data,
+            ctx: layers[0].ctx,
+            data: layers[0].data,
             error: error0,
             status,
-            response: branches[0].response,
-            output: branches[0].output,
+            response: layers[0].response,
+            output: layers[0].output,
             effects: effects.values,
             point,
           }
@@ -528,12 +528,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           const status = error0.httpStatus ?? 500
           effects.set.status(status)
           return {
-            ctx: branches[0].ctx,
-            data: branches[0].data,
+            ctx: layers[0].ctx,
+            data: layers[0].data,
             error: error0,
             status,
-            response: branches[0].response,
-            output: branches[0].output,
+            response: layers[0].response,
+            output: layers[0].output,
             effects: effects.values,
             point,
           }
