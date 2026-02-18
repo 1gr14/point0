@@ -1,7 +1,7 @@
 import type { Prettify } from '@point0/core'
 import { Point0 } from '@point0/core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
-import { createTestThings, ymlify, ymlifyline } from './utils/internal-testing.js'
+import { createTestThings, waitReturn, ymlify, ymlifyline } from './utils/internal-testing.js'
 import { z } from 'zod'
 
 describe('plugin', () => {
@@ -319,5 +319,69 @@ describe('plugin', () => {
       page3: page3
       "
     `)
+  })
+
+  it.concurrent('merges head', async () => {
+    const plugin = Point0.lets('plugin', 'test-plugin')
+      .input(z.object({ plugin: z.number() }))
+      .plugin()
+    const root = Point0.lets('root', 'root').ssr(true).baseurl('http://localhost/').root()
+    const query = root
+      .lets('query', 'test')
+      .use(plugin)
+      .input(z.object({ query: z.number() }))
+      .loader(({ input }) => {
+        expectTypeOf<Prettify<typeof input>>().toEqualTypeOf<{ plugin: number; query: number }>()
+        return input
+      })
+      .query()
+    const page = root
+      .lets('page', 'home', '/')
+      .with(query, { plugin: 123, query: 456 })
+      .page(({ data }) => <div id="page">{ymlifyline(data)}</div>)
+
+    const { fetchPreview } = await createTestThings({ points: [root, page, query] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page: plugin: 123, query: 456
+      "
+    `)
+  })
+
+  it.concurrent('merge error head', async () => {
+    const root = Point0.lets('root', 'root')
+      .ssr(true)
+      .error(({ error }) => <div id="error">{error.message}</div>)
+      .baseurl('http://localhost/')
+      .root()
+    const plugin = Point0.lets('plugin', 'test-plugin')
+      .head('global', ({ error }) => {
+        if (error) {
+          return { title: `My Error Title: ${error.message}` }
+        }
+        return {}
+      })
+      .plugin()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(async () => {
+        await waitReturn()
+        if (Math.random() + 1) {
+          throw new Error('my message')
+        }
+        return { x: 1 }
+      })
+      .use(plugin)
+      .page(() => <div id="page" />)
+
+    const { render } = await createTestThings({ points: [root, page] })
+    await render(page.route(), async ({ waitContent, titlesTale, tale }) => {
+      await waitContent('#error')
+      expect(await titlesTale()).toMatchInlineSnapshot(`
+          "
+          My Error Title: my message
+          "
+        `)
+    })
   })
 })
