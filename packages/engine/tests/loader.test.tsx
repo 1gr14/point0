@@ -2,6 +2,7 @@ import { Point0 } from '@point0/core'
 import type { Prettify } from '@point0/core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { createTestThings, ymlify } from './utils/internal-testing.js'
+import { Error0 } from '@devp0nt/error0'
 
 describe('loader', () => {
   const createRoot = () =>
@@ -58,6 +59,36 @@ describe('loader', () => {
     expect(response.status).toBe(201)
   })
 
+  it('returns error status code with page', async () => {
+    const root = createRoot()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(() => {
+        if (Math.random() + 1) {
+          throw new Error0('test error', { httpStatus: 410 })
+        }
+        return { x: 1 }
+      })
+      .page(({ data }) => {
+        expectTypeOf(data).toEqualTypeOf<{ x: number }>()
+        return ymlify(data)
+      })
+    const { render, fetchSsr } = await createTestThings({ points: [root, page] })
+    await render(page.route(), async ({ waitContent, tale, click }) => {
+      await waitContent('#error')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /
+          #loading: ...
+
+          #error: test error
+        "
+      `)
+    })
+    const { response } = await fetchSsr(page)
+    expect(response.status).toBe(410)
+  })
+
   it('returns status code with mutation', async () => {
     const root = createRoot()
     const page = root.lets('page', 'home', '/').page(() => {
@@ -72,6 +103,24 @@ describe('loader', () => {
       const result = await mutation.fetchServerDetailed()
       expect(result.response?.status).toBe(201)
       expect(result.data?.x).toBe(1)
+    })
+  })
+
+  it('returns error status code with mutation', async () => {
+    const root = createRoot()
+    const page = root.lets('page', 'home', '/').page(() => {
+      return <div id="page">Home</div>
+    })
+    const mutation = root
+      .lets('mutation', 'test')
+      .loader(() => {
+        throw new Error0('test error', { httpStatus: 410 })
+      })
+      .mutation()
+    const { render } = await createTestThings({ points: [root, mutation, page] })
+    await render(page.route(), async ({ waitContent, tale, click }) => {
+      const result = await mutation.fetchServerDetailed()
+      expect(result.response?.status).toBe(410)
     })
   })
 
