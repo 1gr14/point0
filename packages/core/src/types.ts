@@ -23,6 +23,13 @@ import type { Request0 } from './request0.js'
 
 // basic
 
+export type PlainObject<Value> = {
+  [K: string]: Value
+} & {
+  [K: number]: never
+}
+export type EmptyObject = Record<never, never>
+
 export type UndefinedMethod = undefined
 export type PointName = string
 export type UndefinedPointName = undefined
@@ -926,11 +933,7 @@ export type CtxFn<
   TCtxPrevExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCtxAppend extends Ctx = Ctx,
-> = (
-  props: CtxFnOptions<TCtxPrev, TCtxPrevExposedKeys, TServerInputSchema>,
-) =>
-  | Promise<TCtxAppend>
-  | TCtxAppend
+> = (props: CtxFnOptions<TCtxPrev, TCtxPrevExposedKeys, TServerInputSchema>) => Promise<TCtxAppend> | TCtxAppend
 
 export type CtxFnOutput<TCtxFn extends CtxFn<any, any, any, any>> = Awaited<ReturnType<TCtxFn>>
 export type ForbiddenCtxExposedKeys = 'request' | 'input' | 'inputRaw' | 'data' | 'set' | 'execute' | 'ctx'
@@ -943,8 +946,10 @@ export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] exten
       : ShowError<`Forbidden to expose ctx keys: ${Extract<TExposedKeys, ForbiddenCtxExposedKeys> & string}`>
 export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any>> =
   TCtxFn extends CtxFn<any, any, any, infer TCtxAppend> ? TCtxAppend : never
-export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, any>> =
-  Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>
+export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, any>> = Extract<
+  keyof InferCtxFnOutputCtxAppend<TCtxFn>,
+  string
+>
 
 export type LoaderResponseFnOptions<
   TCtx extends Ctx = Ctx,
