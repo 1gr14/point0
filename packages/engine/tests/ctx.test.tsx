@@ -87,7 +87,7 @@ describe('ctx', () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
-      .ctx([{ x: 1 }])
+      .ctx({ x: 1 }, true)
       .loader(({ ctx, x }) => ({ ctx, x }))
       .page(({ data }) => ymlify(data))
     const { fetchPreview } = await createTestThings({ points: [root, page] })
@@ -104,7 +104,7 @@ describe('ctx', () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
-      .ctx([{ x: 1, y: 2 }, 'x'])
+      .ctx({ x: 1, y: 2 }, ['x'])
       .loader((o) => ({
         ctx: o.ctx,
         x: o.x,
@@ -129,7 +129,7 @@ describe('ctx', () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
-      .ctx(() => [{ x: 1 }])
+      .ctx(() => ({ x: 1 }), true)
       .loader(({ ctx, x }) => ({ ctx, x }))
       .page(({ data }) => ymlify(data))
     const { fetchPreview } = await createTestThings({ points: [root, page] })
@@ -146,11 +146,13 @@ describe('ctx', () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
-      .ctx(() => [{ x: 1, y: 2 }, 'x'])
+      .ctx(() => ({ x: 1, y: 2 }), ['x'])
       .loader((o) => ({
         ctx: o.ctx,
         x: o.x,
-        y: o.y ?? '❌',
+        y:
+          // @ts-expect-error -- y should nt exists
+          o.y ?? '❌',
       }))
       .page(({ data }) => ymlify(data))
     const { fetchPreview } = await createTestThings({ points: [root, page] })
@@ -164,10 +166,29 @@ describe('ctx', () => {
       "
     `)
   })
-})
 
-// new expoe style:
-// ctx({ x: 1, y: 2 }, true) → expose everything
-// ctx(() => ({ x: 1, y: 2 }), true) → expose everything
-// ctx({ x: 1, y: 2, z: 2 }, ['x', 'y']) → expose x and y
-// ctx(() => ({ x: 1, y: 2, z: 2 }), ['x', 'y']) → expose x and y
+  it('forbids exposing reserved keys', () => {
+    const root = createRoot()
+    const point = root.lets('page', 'home', '/')
+
+    // @ts-expect-error -- request is forbidden to expose
+    point.ctx({ request: 'x' }, true)
+    // @ts-expect-error -- input is forbidden to expose
+    point.ctx({ input: 'x' }, true)
+    // @ts-expect-error -- data is forbidden to expose
+    point.ctx({ data: 'x' }, true)
+    // @ts-expect-error -- set is forbidden to expose
+    point.ctx({ set: 'x' }, true)
+    // @ts-expect-error -- execute is forbidden to expose
+    point.ctx({ execute: 'x' }, true)
+    // @ts-expect-error -- ctx is forbidden to expose
+    point.ctx({ ctx: 'x' }, true)
+
+    // @ts-expect-error -- request is forbidden in explicit exposed keys
+    point.ctx({ request: 'x', ok: 1 }, ['request'])
+    // @ts-expect-error -- ctx is forbidden in explicit exposed keys
+    point.ctx(() => ({ ctx: 'x', ok: 1 }), ['ctx'])
+    // @ts-expect-error -- execute is forbidden in explicit exposed keys
+    point.ctx(() => ({ execute: 'x', ok: 1 }), ['execute'])
+  })
+})

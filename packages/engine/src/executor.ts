@@ -393,19 +393,22 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 set: effects.set,
                 point,
               })
-              if (Array.isArray(result)) {
-                const appendCtxExposedKeys = result.length > 1 ? (result.slice(1) as string[]) : Object.keys(result[0])
-                layers.forEach((layer) => {
-                  layer.ctxExposedKeys = [...new Set([...layer.ctxExposedKeys, ...appendCtxExposedKeys])]
-                  layer.ctx = { ...layer.ctx, ...result[0] }
-                  layer.ctxExposed = Object.fromEntries(layer.ctxExposedKeys.map((key) => [key, layer.ctx[key]]))
-                })
-              } else {
-                layers.forEach((layer) => {
-                  layer.ctx = { ...layer.ctx, ...result }
-                  layer.ctxExposed = Object.fromEntries(layer.ctxExposedKeys.map((key) => [key, layer.ctx[key]]))
-                })
-              }
+              const appendCtxExposedKeys = !serverExecuteAction.expose
+                ? []
+                : serverExecuteAction.expose === true
+                  ? Object.keys(result)
+                  : serverExecuteAction.expose
+              layers.forEach((layer) => {
+                layer.ctxExposedKeys = [...new Set([...layer.ctxExposedKeys, ...appendCtxExposedKeys])]
+                layer.ctx = { ...layer.ctx, ...result }
+                layer.ctxExposed = Object.fromEntries(layer.ctxExposedKeys.map((key) => [key, layer.ctx[key]]))
+              })
+              // } else {
+              //   layers.forEach((layer) => {
+              //     layer.ctx = { ...layer.ctx, ...result }
+              //     layer.ctxExposed = Object.fromEntries(layer.ctxExposedKeys.map((key) => [key, layer.ctx[key]]))
+              //   })
+              // }
               // this.serverExecuteActionsWithOutput.push({
               //   output: result,
               //   record: serverExecuteAction,

@@ -930,9 +930,7 @@ export type CtxFn<
   props: CtxFnOptions<TCtxPrev, TCtxPrevExposedKeys, TServerInputSchema>,
 ) =>
   | Promise<TCtxAppend>
-  | Promise<[TCtxAppend, ...Array<keyof TCtxAppend>]>
   | TCtxAppend
-  | [TCtxAppend, ...Array<keyof TCtxAppend>]
 
 export type CtxFnOutput<TCtxFn extends CtxFn<any, any, any, any>> = Awaited<ReturnType<TCtxFn>>
 export type ForbiddenCtxExposedKeys = 'request' | 'input' | 'inputRaw' | 'data' | 'set' | 'execute' | 'ctx'
@@ -946,11 +944,7 @@ export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] exten
 export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any>> =
   TCtxFn extends CtxFn<any, any, any, infer TCtxAppend> ? TCtxAppend : never
 export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, any>> =
-  CtxFnOutput<TCtxFn> extends [infer TCtx]
-    ? Extract<keyof TCtx, string>
-    : CtxFnOutput<TCtxFn> extends [Ctx, ...infer TCtxExposedKeys extends string[]]
-      ? TCtxExposedKeys[number]
-      : undefined
+  Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>
 
 export type LoaderResponseFnOptions<
   TCtx extends Ctx = Ctx,
@@ -1019,6 +1013,7 @@ export type ServerExecuteAction<
   ? {
       type: 'ctx'
       fn: CtxFn
+      expose?: true | string[]
       unstableId: number
     }
   : TType extends 'loader'

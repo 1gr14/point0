@@ -26,9 +26,9 @@ export const createIdeaMutation = client
       date: z.date(),
     }),
   )
-  .ctx([{ zz: 'ZZ' }])
-  .ctx([{ ooo: 'OOO' }])
-  .ctx([{ yy: 'YY', xx: 'XX' }, 'xx'])
+  .ctx(() => ({ zz: 'ZZ' }), true)
+  .ctx(() => ({ ooo: 'OOO' }), true)
+  .ctx(() => ({ yy: 'YY', xx: 'XX' }), ['xx'])
   .loader(async (o) => {
     return { ...o.input, xx: o.xx }
   })

@@ -122,7 +122,6 @@ import type {
   IfAnyThenElse,
   Infer,
   InferCtxFnOutputCtxAppend,
-  InferCtxFnOutputCtxExposedKeys,
   InputParsed,
   InputRaw,
   InputSchema,
@@ -2420,15 +2419,13 @@ export class Point0<
   // middlewares
 
   ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TServerInputSchema, Ctx>>(
-    ctxFn: TCtxFn &
-      AssertNoForbiddenCtxExposedKeys<InferCtxFnOutputCtxExposedKeys<TCtxFn>> &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
+    ctxFn: TCtxFn & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
-    AppendCtxExposedKeys<TCtxExposedKeys, InferCtxFnOutputCtxExposedKeys<TCtxFn>>,
+    TCtxExposedKeys,
     TServerLoaderOutput,
     TClientLoaderOutput,
     TMapperOutput,
@@ -2440,16 +2437,17 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  ctx<TAppendCtx extends Ctx>(
-    ctx: [TAppendCtx] &
-      AssertNoForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>> &
+  ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TServerInputSchema, Ctx>>(
+    ctxFn: TCtxFn &
+      AssertNoForbiddenCtxExposedKeys<Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>> &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
+    expose: true,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
-    AppendCtx<TCtx, TAppendCtx>,
-    AppendCtxExposedKeys<TCtxExposedKeys, Extract<keyof TAppendCtx, string>>,
+    AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
+    AppendCtxExposedKeys<TCtxExposedKeys, Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>>,
     TServerLoaderOutput,
     TClientLoaderOutput,
     TMapperOutput,
@@ -2461,16 +2459,18 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
-    ctx: [TAppendCtx, ...TAppendCtxExposedKeys[]] &
-      AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys> &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
+  ctx<
+    TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TServerInputSchema, Ctx>,
+    TCtxFnExposedKeys extends Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>,
+  >(
+    ctxFn: TCtxFn & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
+    expose: TCtxFnExposedKeys[] & AssertNoForbiddenCtxExposedKeys<TCtxFnExposedKeys>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
-    AppendCtx<TCtx, TAppendCtx>,
-    AppendCtxExposedKeys<TCtxExposedKeys, TAppendCtxExposedKeys>,
+    AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
+    AppendCtxExposedKeys<TCtxExposedKeys, TCtxFnExposedKeys>,
     TServerLoaderOutput,
     TClientLoaderOutput,
     TMapperOutput,
@@ -2501,7 +2501,49 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  ctx(ctxOrFn: CtxFn | Ctx | [Ctx, ...CtxExposedKeys[]]) {
+  ctx<TAppendCtx extends Ctx>(
+    ctx: TAppendCtx &
+      AssertNoForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>> &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
+    expose: true,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    AppendCtx<TCtx, TAppendCtx>,
+    AppendCtxExposedKeys<TCtxExposedKeys, Extract<keyof TAppendCtx, string>>,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
+    ctx: TAppendCtx & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
+    expose: TAppendCtxExposedKeys[] & AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    AppendCtx<TCtx, TAppendCtx>,
+    AppendCtxExposedKeys<TCtxExposedKeys, TAppendCtxExposedKeys>,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  ctx(ctxOrFn?: CtxFn | Ctx, expose?: true | string[]) {
     const ctxFn =
       typeof ctxOrFn === 'undefined' // in case if we shake ctx for client target
         ? () => ({})
@@ -2511,7 +2553,7 @@ export class Point0<
     return this._continue({
       _serverExecuteActions: [
         ...this._serverExecuteActions,
-        { type: 'ctx', fn: ctxFn, unstableId: Point0._getNextUnstableId() },
+        { type: 'ctx', fn: ctxFn, expose, unstableId: Point0._getNextUnstableId() },
       ] as never,
     }) as never
   }
@@ -3648,7 +3690,7 @@ export class Point0<
       _root: this as never as RootPoint,
       name: this.scope,
       _letsReadyPointType: undefined,
-    })
+    }) as never
   }
 
   plugin(): NicePluginReadyPoint<

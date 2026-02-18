@@ -39,12 +39,12 @@ describe('plugin', () => {
   it.concurrent('merges ctx with exposed keys', async () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
       .ctx(() => ({ plugin: 'ok1' }))
-      .ctx(() => [{ pluginExposed: 'ok9' }])
+      .ctx(() => ({ pluginExposed: 'ok9' }), true)
       .plugin()
     const root = Point0.lets('root', 'root')
       .ctx(() => ({ rootBefore: 'ok2' }))
       .use(plugin)
-      .ctx(() => [{ rootAfter: 'ok3' }])
+      .ctx(() => ({ rootAfter: 'ok3' }), true)
       .root()
     const page = root
       .lets('page', 'home', '/')
