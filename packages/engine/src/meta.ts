@@ -5,7 +5,7 @@ export type MetaItemPoint = {
   path: string
   line: number
   column: number
-  target: 'client' | 'server'
+  side: 'client' | 'server'
   scope: PointsScope
   type: ReadyPointType
   name: PointName
@@ -17,7 +17,7 @@ export type MetaItemFile = {
   what: 'file'
   path: string
   scope: string
-  target: 'client' | 'server'
+  side: 'client' | 'server'
   type: 'points' | 'routes' | 'entry' | 'engine'
 }
 

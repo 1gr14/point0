@@ -374,7 +374,7 @@ export class CompilerFile<THasContent extends boolean> {
 
   private _shakeForEnv:
     | {
-        target: 'client' | 'server' | false
+        side: 'client' | 'server' | false
         mode: NormalNodeEnv | false
         built: boolean
         scope: string | false
@@ -387,19 +387,19 @@ export class CompilerFile<THasContent extends boolean> {
       }
     | undefined = undefined
   shakeForEnv({
-    target,
+    side,
     scope,
     consts = undefined,
     built = false,
     mode,
   }: {
-    target: 'client' | 'server' | false
+    side: 'client' | 'server' | false
     scope: string | false
     mode: NormalNodeEnv | false
     consts?: CompilerEnvConsts | undefined
     built?: boolean | undefined
   }): {
-    target: 'client' | 'server' | false
+    side: 'client' | 'server' | false
     built: boolean
     scope: string | false
     mode: NormalNodeEnv | false
@@ -417,16 +417,16 @@ export class CompilerFile<THasContent extends boolean> {
     if (scope !== false) {
       consts.unshift({ POINT0_SCOPE: scope })
     }
-    if (target !== false) {
-      consts.unshift({ Target: target })
+    if (side !== false) {
+      consts.unshift({ Side: side })
     }
     let modified = false
     if (!this.content) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
     if (this._shakeForEnv) {
-      if (target !== false && this._shakeForEnv.target !== target) {
-        throw new Error(`Already shaked for target ${this._shakeForEnv.target}`)
+      if (side !== false && this._shakeForEnv.side !== side) {
+        throw new Error(`Already shaked for side ${this._shakeForEnv.side}`)
       }
       if (scope !== false && this._shakeForEnv.scope !== scope) {
         throw new Error(`Already shaked for scope ${this._shakeForEnv.scope}`)
@@ -438,10 +438,10 @@ export class CompilerFile<THasContent extends boolean> {
     }
     try {
       if (!this.content.includes('@point0/core') && !this.content.includes('_point0_env')) {
-        const resultTarget = target !== false ? target : 'client'
+        const resultSide = side !== false ? side : 'client'
         const resultScope = scope !== false ? scope : ''
         this._shakeForEnv = {
-          target: resultTarget,
+          side: resultSide,
           scope: resultScope,
           mode,
           consts,
@@ -516,34 +516,34 @@ export class CompilerFile<THasContent extends boolean> {
         MemberExpression: (p) => {
           const node = p.node
 
-          // Handle env.target.is.client, env.target.is.server
+          // Handle env.side is.client/is.server
           if (
-            target !== false &&
+            side !== false &&
             node.object.type === 'MemberExpression' &&
             node.object.object.type === 'MemberExpression' &&
             node.object.object.object.type === 'Identifier' &&
             (node.object.object.object.name === 'env' || node.object.object.object.name === '_point0_env') &&
             node.object.object.property.type === 'Identifier' &&
-            node.object.object.property.name === 'target' &&
+            node.object.object.property.name === 'side' &&
             node.object.property.type === 'Identifier' &&
             node.object.property.name === 'is'
           ) {
             if (node.property.type === 'Identifier') {
               const name = node.property.name
               if (name === 'client') {
-                p.replaceWith(makeBooleanLiteral(target === 'client'))
+                p.replaceWith(makeBooleanLiteral(side === 'client'))
                 modified = true
               } else if (name === 'server') {
-                p.replaceWith(makeBooleanLiteral(target === 'server'))
+                p.replaceWith(makeBooleanLiteral(side === 'server'))
                 modified = true
               } else if (name === 'ssr') {
-                // If target is client, ssr is always false
-                // If target is server, leave it as-is (it's a getter that returns SSR phase)
-                if (target === 'client') {
+                // If side is client, ssr is always false
+                // If side is server, leave it as-is (it's a getter that returns SSR phase)
+                if (side === 'client') {
                   p.replaceWith(makeBooleanLiteral(false))
                   modified = true
                 }
-                // Note: For server target, env.target.is.ssr is a getter, so we leave it as-is
+                // Note: For server side, env.side.is.ssr is a getter, so we leave it as-is
               }
             }
           }
@@ -667,33 +667,33 @@ export class CompilerFile<THasContent extends boolean> {
 
           const args = node.arguments as any[]
 
-          // Handle env.target.define.server(), env.target.define.client()
+          // Handle env.side define.server()/define.client()
           if (
-            target !== false &&
+            side !== false &&
             callee.object.type === 'MemberExpression' &&
             callee.object.object.type === 'MemberExpression' &&
             callee.object.object.object.type === 'Identifier' &&
             (callee.object.object.object.name === 'env' || callee.object.object.object.name === '_point0_env') &&
             callee.object.object.property.type === 'Identifier' &&
-            callee.object.object.property.name === 'target' &&
+            callee.object.object.property.name === 'side' &&
             callee.object.property.type === 'Identifier' &&
             callee.object.property.name === 'define'
           ) {
             if (callee.property.type === 'Identifier') {
               const name = callee.property.name
 
-              if (name === 'server' && target === 'client' && args.length > 0) {
+              if (name === 'server' && side === 'client' && args.length > 0) {
                 args[0] = makeUndefined()
                 modified = true
-              } else if (name === 'client' && target === 'server' && args.length > 0) {
+              } else if (name === 'client' && side === 'server' && args.length > 0) {
                 args[0] = makeUndefined()
                 modified = true
               }
             }
           }
-          // Handle env.target.define.unsafe.server(), env.target.define.unsafe.client()
+          // Handle env.side define.unsafe.server()/define.unsafe.client()
           else if (
-            target !== false &&
+            side !== false &&
             callee.object.type === 'MemberExpression' &&
             callee.object.object.type === 'MemberExpression' &&
             callee.object.object.object.type === 'MemberExpression' &&
@@ -701,7 +701,7 @@ export class CompilerFile<THasContent extends boolean> {
             (callee.object.object.object.object.name === 'env' ||
               callee.object.object.object.object.name === '_point0_env') &&
             callee.object.object.object.property.type === 'Identifier' &&
-            callee.object.object.object.property.name === 'target' &&
+            callee.object.object.object.property.name === 'side' &&
             callee.object.object.property.type === 'Identifier' &&
             callee.object.object.property.name === 'define' &&
             callee.object.property.type === 'Identifier' &&
@@ -710,10 +710,10 @@ export class CompilerFile<THasContent extends boolean> {
             if (callee.property.type === 'Identifier') {
               const name = callee.property.name
 
-              if (name === 'server' && target === 'client' && args.length > 0) {
+              if (name === 'server' && side === 'client' && args.length > 0) {
                 args[0] = makeUndefined()
                 modified = true
-              } else if (name === 'client' && target === 'server' && args.length > 0) {
+              } else if (name === 'client' && side === 'server' && args.length > 0) {
                 args[0] = makeUndefined()
                 modified = true
               }
@@ -783,20 +783,20 @@ export class CompilerFile<THasContent extends boolean> {
               }
             }
           }
-          // Handle env.target.define() with options object
+          // Handle env.side define() with options object
           else if (
-            target !== false &&
+            side !== false &&
             callee.object.type === 'MemberExpression' &&
             callee.object.object.type === 'Identifier' &&
             (callee.object.object.name === 'env' || callee.object.object.name === '_point0_env') &&
             callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'target' &&
+            callee.object.property.name === 'side' &&
             callee.property.type === 'Identifier' &&
             callee.property.name === 'define'
           ) {
             if (args.length > 0 && args[0].type === 'ObjectExpression') {
               const props = args[0].properties as any[]
-              if (target === 'client') {
+              if (side === 'client') {
                 // Find server property and replace with undefined
                 for (const prop of props) {
                   if (prop.key.type === 'Identifier' && prop.key.name === 'server' && prop.value) {
@@ -818,12 +818,12 @@ export class CompilerFile<THasContent extends boolean> {
         },
       })
 
-      this._shakeForEnv = { target, scope, mode, consts, built, errors, ok: true, modified }
+      this._shakeForEnv = { side, scope, mode, consts, built, errors, ok: true, modified }
       this.modified ||= modified
       return this._shakeForEnv
     } catch (e) {
       errors.push(e)
-      this._shakeForEnv = { target, scope, mode, consts, built, errors, ok: false, modified }
+      this._shakeForEnv = { side, scope, mode, consts, built, errors, ok: false, modified }
       return this._shakeForEnv
     }
   }

@@ -882,18 +882,18 @@ export class CompilerPoint<TValid extends boolean = any> {
   }
 
   private _shake = false
-  shakeMethods({ target }: { target: 'client' | 'server' }): void {
+  shakeMethods({ side }: { side: 'client' | 'server' }): void {
     if (this._shake) {
       return
     }
-    if (target === 'client') {
+    if (side === 'client') {
       this.shakeMethodsForClient()
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    } else if (target === 'server') {
+    } else if (side === 'server') {
       this.shakeMethodsForServer()
     } else {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`Invalid target: ${target}`)
+      throw new Error(`Invalid side: ${side}`)
     }
     this._shake = true
   }

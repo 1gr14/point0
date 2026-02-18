@@ -85,9 +85,9 @@ describe('FakeClient', () => {
     const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
     const page = root
       .lets('page', 'page')
-      .loader(() => ({ serverLoaderTargetName: env.target.name }))
-      .page(({ data }) => <div>Hello from {data.serverLoaderTargetName}</div>)
-    expect(env.target.name).toBe('server')
+      .loader(() => ({ serverLoaderSideName: env.side.name }))
+      .page(({ data }) => <div>Hello from {data.serverLoaderSideName}</div>)
+    expect(env.side.name).toBe('server')
     const points = [root, page] as const
     const engine = await Engine.create({
       compiler: false,
@@ -95,23 +95,23 @@ describe('FakeClient', () => {
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
     }).init()
-    expect(env.target.name).toBe('server')
+    expect(env.side.name).toBe('server')
     const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
     await fakeClient.run(async () => {
-      expect(env.target.name).toBe('client')
+      expect(env.side.name).toBe('client')
       const data = await page.fetch()
-      expect(env.target.name).toBe('client')
-      expect(data.serverLoaderTargetName).toBe('server')
+      expect(env.side.name).toBe('client')
+      expect(data.serverLoaderSideName).toBe('server')
     })
-    expect(env.target.name).toBe('server')
+    expect(env.side.name).toBe('server')
   })
 
   it.concurrent('respect cookies', async () => {
     const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'page')
-      .loader(() => ({ serverLoaderTargetName: env.target.name }))
-      .page(({ data }) => <div>Hello from {data.serverLoaderTargetName}</div>)
+      .loader(() => ({ serverLoaderSideName: env.side.name }))
+      .page(({ data }) => <div>Hello from {data.serverLoaderSideName}</div>)
     const cooka = CookiesStore.define({ name: 'z' })
     const mutation = root
       .lets('mutation', 'mutation')
@@ -123,7 +123,7 @@ describe('FakeClient', () => {
         }
       })
       .mutation()
-    expect(env.target.name).toBe('server')
+    expect(env.side.name).toBe('server')
     const points = [root, page, mutation] as const
     const engine = await Engine.create({
       compiler: false,
@@ -159,18 +159,18 @@ describe('FakeClient', () => {
       expect(cookies2[1].key).toBe('x')
       expect(cookies2[1].value).toBe('1')
     })
-    expect(env.target.name).toBe('server')
+    expect(env.side.name).toBe('server')
   })
 
   it.concurrent('execute page with loader and client loader', async () => {
     const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
     const page = root
       .lets('page', 'page')
-      .loader(() => ({ serverLoaderTargetName: env.target.name }))
-      .clientLoader(({ data }) => ({ ...data, clientLoaderTargetName: env.target.name }))
+      .loader(() => ({ serverLoaderSideName: env.side.name }))
+      .clientLoader(({ data }) => ({ ...data, clientLoaderSideName: env.side.name }))
       .page(({ data }) => (
         <div>
-          Hello from {data.serverLoaderTargetName} and {data.clientLoaderTargetName}
+          Hello from {data.serverLoaderSideName} and {data.clientLoaderSideName}
         </div>
       ))
     const points = [root, page] as const
@@ -181,15 +181,15 @@ describe('FakeClient', () => {
       clients: [{ scope: 'root', points }],
     }).init()
     const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
-    expect(env.target.name).toBe('server')
+    expect(env.side.name).toBe('server')
     await fakeClient.run(async () => {
-      expect(env.target.name).toBe('client')
+      expect(env.side.name).toBe('client')
       const data = await page.fetchQuery()
-      expect(env.target.name).toBe('client')
-      expect(data.serverLoaderTargetName).toBe('server')
-      expect(data.clientLoaderTargetName).toBe('client')
+      expect(env.side.name).toBe('client')
+      expect(data.serverLoaderSideName).toBe('server')
+      expect(data.clientLoaderSideName).toBe('client')
     })
-    expect(env.target.name).toBe('server')
+    expect(env.side.name).toBe('server')
   })
 
   it.concurrent('should render page with loader and client loader', async () => {
@@ -203,22 +203,22 @@ describe('FakeClient', () => {
     let counter = 0
     const mutation = root
       .lets('mutation', 'mutation')
-      .loader(() => ({ index: counter++, serverMutationTargetName: env.target.name }))
-      .clientLoader(({ data }) => ({ ...data, clientMutationTargetName: env.target.name }))
+      .loader(() => ({ index: counter++, serverMutationSideName: env.side.name }))
+      .clientLoader(({ data }) => ({ ...data, clientMutationSideName: env.side.name }))
       .mutation()
     const page = root
       .lets('page', 'page', '/')
-      .loader(() => ({ x: 1, serverLoaderTargetName: env.target.name }))
-      .clientLoader(({ data }) => ({ ...data, clientLoaderTargetName: env.target.name }))
+      .loader(() => ({ x: 1, serverLoaderSideName: env.side.name }))
+      .clientLoader(({ data }) => ({ ...data, clientLoaderSideName: env.side.name }))
       .page(({ data }) => {
         const inc = mutation.useMutation()
         return (
           <div>
-            <div id="pageTargetName">{env.target.name}</div>
-            <div id="serverLoaderTargetName">{data.serverLoaderTargetName}</div>
-            <div id="clientLoaderTargetName">{data.clientLoaderTargetName}</div>
-            <div id="serverMutationTargetName">{inc.data?.serverMutationTargetName || '-'}</div>
-            <div id="clientMutationTargetName">{inc.data?.clientMutationTargetName || '-'}</div>
+            <div id="pageSideName">{env.side.name}</div>
+            <div id="serverLoaderSideName">{data.serverLoaderSideName}</div>
+            <div id="clientLoaderSideName">{data.clientLoaderSideName}</div>
+            <div id="serverMutationSideName">{inc.data?.serverMutationSideName || '-'}</div>
+            <div id="clientMutationSideName">{inc.data?.clientMutationSideName || '-'}</div>
             <button
               onClick={() => {
                 inc.mutateAsync().catch((err: unknown) => {
@@ -257,7 +257,7 @@ describe('FakeClient', () => {
       state.viewer = ElementViewer.create(container)
       state.container = container
       await waitFor(() => {
-        expect(container.querySelector('#pageTargetName')?.textContent).toBe('client')
+        expect(container.querySelector('#pageSideName')?.textContent).toBe('client')
       })
       state.getButton = () => {
         const button = container.querySelector('button')
@@ -270,18 +270,18 @@ describe('FakeClient', () => {
       await waitFor(() => expect(button.textContent).toBe('Increment 0'))
       fireEvent.click(button)
       await waitFor(() => expect(button.textContent).toBe('Increment 1'))
-      //   expect(env.target.name).toBe('client')
+      //   expect(env.side.name).toBe('client')
       // })
-      // expect(env.target.name).toBe('server')
+      // expect(env.side.name).toBe('server')
       // await client.run(async ({ container, getButton, viewer }) => {
-      expect(env.target.name).toBe('client')
+      expect(env.side.name).toBe('client')
       // const button = getButton()
       fireEvent.click(button)
       await waitFor(() => expect(button.textContent).toBe('Increment 2'))
-      expect(container.querySelector('#serverLoaderTargetName')?.textContent).toBe('server')
-      expect(container.querySelector('#clientLoaderTargetName')?.textContent).toBe('client')
-      expect(container.querySelector('#serverMutationTargetName')?.textContent).toBe('server')
-      expect(container.querySelector('#clientMutationTargetName')?.textContent).toBe('client')
+      expect(container.querySelector('#serverLoaderSideName')?.textContent).toBe('server')
+      expect(container.querySelector('#clientLoaderSideName')?.textContent).toBe('client')
+      expect(container.querySelector('#serverMutationSideName')?.textContent).toBe('server')
+      expect(container.querySelector('#clientMutationSideName')?.textContent).toBe('client')
       const results = await fetchRecorder.waitFinishedResults({ pointType: 'mutation', variant: 'task' })
       expect(results).toHaveLength(3)
     })
@@ -293,8 +293,8 @@ describe('FakeClient', () => {
     const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'page')
-      .loader(() => ({ serverLoaderTargetName: env.target.name }))
-      .page(({ data }) => <div>Hello from {data.serverLoaderTargetName}</div>)
+      .loader(() => ({ serverLoaderSideName: env.side.name }))
+      .page(({ data }) => <div>Hello from {data.serverLoaderSideName}</div>)
     const mutation = root
       .lets('mutation', 'mutation')
       .loader(({ set, request }) => {
@@ -304,7 +304,7 @@ describe('FakeClient', () => {
         }
       })
       .mutation()
-    expect(env.target.name).toBe('server')
+    expect(env.side.name).toBe('server')
     const points = [root, page, mutation] as const
     const engine = await Engine.create({
       compiler: false,
@@ -327,7 +327,7 @@ describe('FakeClient', () => {
       expect(result.response.headers.get('x-point0-request-id')).toBe(result.data.serverRequestId)
       expect(result.response.headers.get('x-point0-client-request-id')).toBe(result.data.clientRequestId || null)
     })
-    expect(env.target.name).toBe('server')
+    expect(env.side.name).toBe('server')
   })
 
   // it('should render page with loader and client loader from ssr', async () => {
@@ -335,18 +335,18 @@ describe('FakeClient', () => {
   //   let counter = 0
   //   const mutation = root
   //     .lets('mutation', 'mutation')
-  //     .loader(() => ({ index: counter++, serverMutationTargetName: env.target.name }))
-  //     .clientLoader(({ data }) => ({ ...data, clientMutationTargetName: env.target.name }))
+  //     .loader(() => ({ index: counter++, serverMutationSideName: env.side.name }))
+  //     .clientLoader(({ data }) => ({ ...data, clientMutationSideName: env.side.name }))
   //     .mutation()
   //   const page = root
   //     .lets('page', 'page', '/')
-  //     .loader(() => ({ x: 1, serverLoaderTargetName: env.target.name }))
+  //     .loader(() => ({ x: 1, serverLoaderSideName: env.side.name }))
   //     .page(({ data }) => {
   //       const inc = mutation.useMutation()
   //       return (
   //         <div>
-  //           <div id="serverMutationTargetName">{inc.data?.serverMutationTargetName || '-'}</div>
-  //           <div id="clientMutationTargetName">{inc.data?.clientMutationTargetName || '-'}</div>
+  //           <div id="serverMutationSideName">{inc.data?.serverMutationSideName || '-'}</div>
+  //           <div id="clientMutationSideName">{inc.data?.clientMutationSideName || '-'}</div>
   //           <button
   //             onClick={() => {
   //               inc.mutateAsync().catch((err: unknown) => {
@@ -385,8 +385,8 @@ describe('FakeClient', () => {
   //   const bodyHtml = html.split(/<body>/)[1].split(/<\/body>/)[0]
   //   const ssScript = html.split(/<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">/)[1].split(/<\/script>/)[0]
   //   // console.log(headHtml, bodyHtml)
-  //   expect(html).toContain('<div id="serverMutationTargetName">-</div>')
-  //   expect(html).toContain('<div id="clientMutationTargetName">-</div>')
+  //   expect(html).toContain('<div id="serverMutationSideName">-</div>')
+  //   expect(html).toContain('<div id="clientMutationSideName">-</div>')
   //   await client.run(async () => {
   //     // Set the SSR HTML as initial page HTML
   //     // Parse the HTML and set up the document structure
@@ -428,8 +428,8 @@ describe('FakeClient', () => {
   //     await waitFor(() => expect(button.textContent).toBe('Increment 2'))
 
   //     // Verify mutation data after hydration
-  //     expect(container.querySelector('#serverMutationTargetName')?.textContent).toBe('server')
-  //     expect(container.querySelector('#clientMutationTargetName')?.textContent).toBe('client')
+  //     expect(container.querySelector('#serverMutationSideName')?.textContent).toBe('server')
+  //     expect(container.querySelector('#clientMutationSideName')?.textContent).toBe('client')
   //   })
 
   //   await client.destroy()
@@ -455,20 +455,20 @@ describe('FakeClient', () => {
   //         let counter = 0
   //         export const mutation = root
   //           .lets('mutation', 'mutation')
-  //           .loader(() => ({ index: counter++, serverMutationTargetName: env.target.name }))
-  //           .clientLoader(({ data }) => ({ ...data, clientMutationTargetName: env.target.name }))
+  //           .loader(() => ({ index: counter++, serverMutationSideName: env.side.name }))
+  //           .clientLoader(({ data }) => ({ ...data, clientMutationSideName: env.side.name }))
   //           .mutation()
   //         export const page = root
   //           .lets('page', 'page', '/')
-  //           .loader(() => ({ x: 1, serverLoaderTargetName: env.target.name }))
+  //           .loader(() => ({ x: 1, serverLoaderSideName: env.side.name }))
   //           .page(({ data }) => {
   //             const inc = mutation.useMutation()
   //             return (
   //               <div>
-  //                 <div id="pageTargetName">{env.target.name}</div>
-  //                 <div id="serverLoaderTargetName">{data.serverLoaderTargetName}</div>
-  //                 <div id="serverMutationTargetName">{inc.data?.serverMutationTargetName || '-'}</div>
-  //                 <div id="clientMutationTargetName">{inc.data?.clientMutationTargetName || '-'}</div>
+  //                 <div id="pageSideName">{env.side.name}</div>
+  //                 <div id="serverLoaderSideName">{data.serverLoaderSideName}</div>
+  //                 <div id="serverMutationSideName">{inc.data?.serverMutationSideName || '-'}</div>
+  //                 <div id="clientMutationSideName">{inc.data?.clientMutationSideName || '-'}</div>
   //                 <button
   //                   onClick={() => {
   //                     inc.mutateAsync().catch((err: unknown) => {
@@ -502,7 +502,7 @@ describe('FakeClient', () => {
   //           </QueryClientProvider>,
   //         )
   //         await waitFor(() => {
-  //           expect(container.querySelector('#pageTargetName')?.textContent).toBe('client')
+  //           expect(container.querySelector('#pageSideName')?.textContent).toBe('client')
   //         })
   //         const button = container.querySelector('button')
   //         assert(button)
@@ -510,10 +510,10 @@ describe('FakeClient', () => {
   //         await waitFor(() => expect(button.textContent).toBe('Increment 0'))
   //         fireEvent.click(button)
   //         await waitFor(() => expect(button.textContent).toBe('Increment 1'))
-  //         expect(container.querySelector('#serverLoaderTargetName')?.textContent).toBe('server')
-  //         expect(container.querySelector('#clientLoaderTargetName')?.textContent).toBe('client')
-  //         expect(container.querySelector('#serverMutationTargetName')?.textContent).toBe('server')
-  //         expect(container.querySelector('#clientMutationTargetName')?.textContent).toBe('client')
+  //         expect(container.querySelector('#serverLoaderSideName')?.textContent).toBe('server')
+  //         expect(container.querySelector('#clientLoaderSideName')?.textContent).toBe('client')
+  //         expect(container.querySelector('#serverMutationSideName')?.textContent).toBe('server')
+  //         expect(container.querySelector('#clientMutationSideName')?.textContent).toBe('client')
   //       })
   //     }),
   //   )
@@ -524,22 +524,22 @@ describe('FakeClient', () => {
   //   let counter = 0
   //   const mutation = root
   //     .lets('mutation', 'mutation')
-  //     .loader(() => ({ index: counter++, serverMutationTargetName: env.target.name }))
-  //     .clientLoader(({ data }) => ({ ...data, clientMutationTargetName: env.target.name }))
+  //     .loader(() => ({ index: counter++, serverMutationSideName: env.side.name }))
+  //     .clientLoader(({ data }) => ({ ...data, clientMutationSideName: env.side.name }))
   //     .mutation()
   //   const page = root
   //     .lets('page', 'page', '/')
-  //     .loader(() => ({ x: 1, serverLoaderTargetName: env.target.name }))
-  //     .clientLoader(({ data }) => ({ ...data, clientLoaderTargetName: env.target.name }))
+  //     .loader(() => ({ x: 1, serverLoaderSideName: env.side.name }))
+  //     .clientLoader(({ data }) => ({ ...data, clientLoaderSideName: env.side.name }))
   //     .page(({ data }) => {
   //       const inc = mutation.useMutation()
   //       return (
   //         <div>
-  //           <div id="pageTargetName">{env.target.name}</div>
-  //           <div id="serverLoaderTargetName">{data.serverLoaderTargetName}</div>
-  //           <div id="clientLoaderTargetName">{data.clientLoaderTargetName}</div>
-  //           <div id="serverMutationTargetName">{inc.data?.serverMutationTargetName || '-'}</div>
-  //           <div id="clientMutationTargetName">{inc.data?.clientMutationTargetName || '-'}</div>
+  //           <div id="pageSideName">{env.side.name}</div>
+  //           <div id="serverLoaderSideName">{data.serverLoaderSideName}</div>
+  //           <div id="clientLoaderSideName">{data.clientLoaderSideName}</div>
+  //           <div id="serverMutationSideName">{inc.data?.serverMutationSideName || '-'}</div>
+  //           <div id="clientMutationSideName">{inc.data?.clientMutationSideName || '-'}</div>
   //           <button
   //             onClick={() => {
   //               inc.mutateAsync().catch((err: unknown) => {
@@ -569,7 +569,7 @@ describe('FakeClient', () => {
   //   const html = await response.text()
   //   console.log(html)
   //   return
-  //   expect(html).toContain('pageTargetName')
+  //   expect(html).toContain('pageSideName')
   // })
 
   // it('should render page with loader and client loader', async () => {
@@ -628,7 +628,7 @@ describe('FakeClient', () => {
   //         mutations.forEach((mutation) => {
   //           // console.log('Mutation:', {
   //           //   type: mutation.type,
-  //           //   target: mutation.target,
+  //           //   side: mutation.side,
   //           //   addedNodes: Array.from(mutation.addedNodes).map((n) => n.textContent),
   //           //   removedNodes: Array.from(mutation.removedNodes).map((n) => n.textContent),
   //           //   attributeName: mutation.attributeName,

@@ -217,15 +217,15 @@ export class EngineClient<TInitialized extends boolean = boolean> {
   private setEnvVars({ nodeEnvFallback }: { nodeEnvFallback: NormalNodeEnv | undefined }): {
     NODE_ENV: NormalNodeEnv
     POINT0_SCOPE: PointsScope
-    POINT0_TARGET: 'client'
+    POINT0_SIDE: 'client'
   } {
     const NODE_ENV = normalizeAndValidateNodeEnv(nodeEnvFallback)
     const POINT0_SCOPE = this.scope
-    const POINT0_TARGET = 'client'
+    const POINT0_SIDE = 'client'
     this.envConsts.NODE_ENV = NODE_ENV
     this.envConsts.POINT0_SCOPE = POINT0_SCOPE
-    this.envConsts.POINT0_TARGET = POINT0_TARGET
-    return { NODE_ENV, POINT0_SCOPE, POINT0_TARGET }
+    this.envConsts.POINT0_SIDE = POINT0_SIDE
+    return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE }
   }
 
   async init({
@@ -328,7 +328,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     }
     return {
       scope: this.compiler.scope ? this.scope : false,
-      target: this.compiler.target ? 'client' : false,
+      side: this.compiler.side ? 'client' : false,
       mode: this.compiler.mode ? normalizeAndValidateNodeEnv() : false,
       // TODO:ASAP add env varsconsts here from engine options
       consts: this.compiler.consts,
@@ -464,7 +464,7 @@ Bun.serve({
     const viteDevServer = await createViteDevServer({
       viteConfig: this.viteConfig,
       scope: this.scope,
-      target: 'client',
+      side: 'client',
       hmrPort: this.hmrPort,
       mode: normalizeAndValidateNodeEnv(),
       envConsts: this.envConsts,
@@ -836,7 +836,7 @@ Bun.serve({
       const loadedViteConfig = await extractViteConfig({
         viteConfig: this.viteConfig,
         command: 'build',
-        target: 'client',
+        side: 'client',
         mode: NODE_ENV,
         scope: this.scope,
       })

@@ -29,7 +29,7 @@ export type FilesGeneratorOptions = {
 export type FilesGeneratorTaskPoints = {
   scope: string
   what: 'points'
-  target: 'client' | 'server'
+  side: 'client' | 'server'
   banner?: string | null
   file: string
   lazy?: boolean
@@ -107,7 +107,7 @@ export class FilesGenerator {
         file: nodePath.resolve(this.cwd, t.file),
       } satisfies FilesGeneratorTask
       if (task.what === 'points' && typeof task.lazy === 'undefined') {
-        task.lazy = task.target === 'client'
+        task.lazy = task.side === 'client'
       }
       return task
     })
@@ -631,16 +631,16 @@ export class FilesGenerator {
 
   private static shouldExistsInPointsFile({
     point,
-    target,
+    side,
   }: {
     point: CompilerPoint
-    target: 'client' | 'server'
+    side: 'client' | 'server'
   }): boolean {
     // if (point.type !== 'plugin' && point.type !== 'base' && point.exportName !== undefined && point.valid) {
     if (point.type === 'plugin' || point.type === 'base' || point.exportName === undefined || !point.valid) {
       return false
     }
-    if (target === 'client') {
+    if (side === 'client') {
       return point.type === 'page' || point.type === 'layout' || point.type === 'root'
     }
     return true
@@ -682,7 +682,7 @@ export class FilesGenerator {
 
   private emitLazyPointsFile(task: FilesGeneratorTaskPoints): string {
     const points = this.points.filter(
-      (p) => p.scope === task.scope && FilesGenerator.shouldExistsInPointsFile({ point: p, target: task.target }),
+      (p) => p.scope === task.scope && FilesGenerator.shouldExistsInPointsFile({ point: p, side: task.side }),
     ) as Array<CompilerPoint<true>>
     const lines: string[] = []
     if (task.banner) {
@@ -727,7 +727,7 @@ export class FilesGenerator {
 
   private emitReadyPointsFile(task: FilesGeneratorTaskPoints): string {
     const points = this.points.filter(
-      (p) => p.scope === task.scope && FilesGenerator.shouldExistsInPointsFile({ point: p, target: task.target }),
+      (p) => p.scope === task.scope && FilesGenerator.shouldExistsInPointsFile({ point: p, side: task.side }),
     ) as Array<CompilerPoint<true>>
 
     const lines: string[] = []

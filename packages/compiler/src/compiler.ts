@@ -8,7 +8,7 @@ import { Walker } from './walker.js'
 export type CompilerOptions = {
   routes?: Record<string, RoutesPretty<any>> | undefined
   mode?: NormalNodeEnv | false
-  target: 'client' | 'server' | false
+  side: 'client' | 'server' | false
   scope: string | false
   built?: boolean
   consts?: CompilerEnvConsts
@@ -21,7 +21,7 @@ export class Compiler {
   scope: string | false
   built: boolean
   mode: NormalNodeEnv | false
-  target: 'client' | 'server' | false
+  side: 'client' | 'server' | false
   consts: CompilerEnvConsts | undefined
   hmrFix: boolean
   walker: Walker
@@ -31,7 +31,7 @@ export class Compiler {
 
   constructor({
     filter,
-    target,
+    side,
     scope,
     consts,
     hmrFix,
@@ -41,7 +41,7 @@ export class Compiler {
     mode,
   }: {
     filter: RegExp
-    target: 'client' | 'server' | false
+    side: 'client' | 'server' | false
     scope: string | false
     consts: CompilerEnvConsts | undefined
     hmrFix: boolean
@@ -51,7 +51,7 @@ export class Compiler {
     mode: NormalNodeEnv | false
   }) {
     this.filter = filter
-    this.target = target
+    this.side = side
     this.scope = scope
     this.consts = consts
     this.hmrFix = hmrFix
@@ -62,13 +62,13 @@ export class Compiler {
   }
 
   static create(options: CompilerOptions) {
-    const { filter, target, scope, consts, hmrFix, routes, built, mode = process.env.NODE_ENV } = options
+    const { filter, side, scope, consts, hmrFix, routes, built, mode = process.env.NODE_ENV } = options
     if (mode !== false && (!mode || !normalNodeEnvs.includes(mode as NormalNodeEnv))) {
       throw new Error(`Invalid mode (NODE_ENV): "${mode}". Allowed values: production, development, test`)
     }
     return new Compiler({
       filter: filter ?? Compiler.defaultFilter,
-      target,
+      side,
       scope,
       consts,
       hmrFix: hmrFix ?? true,
@@ -87,7 +87,7 @@ export class Compiler {
     modified: boolean
     tryIndex: number
   } {
-    const target = this.target
+    const side = this.side
     const scope = this.scope
     const consts = this.consts
     const hmrFix = this.hmrFix
@@ -108,14 +108,14 @@ export class Compiler {
     }
     const cf = collectResult.file
     for (const point of collectResult.points) {
-      if (target) {
-        point.shakeMethods({ target })
+      if (side) {
+        point.shakeMethods({ side })
       }
       if (hmrFix) {
         point.addHmrFix()
       }
     }
-    cf.shakeForEnv({ target, scope, consts, built, mode })
+    cf.shakeForEnv({ side, scope, consts, built, mode })
     if (built) {
       cf.shakeForBuiltEngine()
     }

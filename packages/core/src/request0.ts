@@ -186,7 +186,7 @@ export class Request0<
   }
 
   static get(): Request0<boolean, InputSchema | UndefinedInputSchema> {
-    if (!_point0_env.target.is.server) {
+    if (!_point0_env.side.is.server) {
       throw new Error(
         'You can not get request0 not in server. Please call Request0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
       )

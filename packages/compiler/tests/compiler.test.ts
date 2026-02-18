@@ -44,7 +44,7 @@ describe('Compiler', () => {
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ target: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(1)
@@ -54,10 +54,10 @@ export const root = Point0.lets('root', 'root').root()
     )
 
     it.concurrent(
-      'respects target option - client',
+      'respects side option - client',
       helper(async ({ files: [file] }) => {
-        await file.write(`const env=require('@point0/core'); if (env.target.is.client) console.info('client')`)
-        const compiler = Compiler.create({ target: 'client', scope: 'test' })
+        await file.write(`const env=require('@point0/core'); if (env.side.is.client) console.info('client')`)
+        const compiler = Compiler.create({ side: 'client', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('if (true)')
@@ -65,10 +65,10 @@ export const root = Point0.lets('root', 'root').root()
     )
 
     it.concurrent(
-      'respects target option - server',
+      'respects side option - server',
       helper(async ({ files: [file] }) => {
-        await file.write(`const env=require('@point0/core'); if (env.target.is.server) console.info('server')`)
-        const compiler = Compiler.create({ target: 'server', scope: 'test' })
+        await file.write(`const env=require('@point0/core'); if (env.side.is.server) console.info('server')`)
+        const compiler = Compiler.create({ side: 'server', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('if (true)')
@@ -79,7 +79,7 @@ export const root = Point0.lets('root', 'root').root()
       'respects scope option',
       helper(async ({ files: [file] }) => {
         await file.write(`const env=require('@point0/core'); if (env.scope.is.test) console.info('test')`)
-        const compiler = Compiler.create({ target: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('if (true)')
@@ -90,7 +90,7 @@ export const root = Point0.lets('root', 'root').root()
       'respects consts option',
       helper(async ({ files: [file] }) => {
         await file.write(`const env=require('@point0/core'); if (env.vars.TEST_VAR) console.info('test')`)
-        const compiler = Compiler.create({ target: 'client', scope: 'test', consts: [{ TEST_VAR: true }] })
+        const compiler = Compiler.create({ side: 'client', scope: 'test', consts: [{ TEST_VAR: true }] })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('if (true)')
@@ -103,7 +103,7 @@ export const root = Point0.lets('root', 'root').root()
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFix: true })
+        const compiler = Compiler.create({ side: 'client', scope: 'test', hmrFix: true })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('._tail(() =>')
@@ -116,7 +116,7 @@ export const root = Point0.lets('root', 'root').root()
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFix: false })
+        const compiler = Compiler.create({ side: 'client', scope: 'test', hmrFix: false })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).not.toContain('._tail')
@@ -127,7 +127,7 @@ export const root = Point0.lets('root', 'root').root()
       'handles file with no points',
       helper(async ({ files: [file] }) => {
         await file.write(`console.info('hello')`)
-        const compiler = Compiler.create({ target: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(0)

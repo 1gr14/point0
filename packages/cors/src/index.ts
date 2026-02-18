@@ -22,7 +22,7 @@ export type CorsOptions = {
 }
 
 export const cors = (options: CorsOptions = {}): NicePristinePluginReadyPoint => {
-  if (env.target.is.client) {
+  if (env.side.is.client) {
     return Point0.lets('plugin', 'cors').plugin()
   }
 

@@ -992,7 +992,7 @@ export class Point0<
     callback: AnyEventerSubscriptionCallback | undefined = () => {},
   ) {
     const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
-    const subscriptions = names.map((name) => ({ name, callback, target: undefined }))
+    const subscriptions = names.map((name) => ({ name, callback, side: undefined }))
     return this._continue({
       _eventerSubscriptions: [...this._eventerSubscriptions, ...subscriptions],
     }) as never
@@ -1064,7 +1064,7 @@ export class Point0<
     callback: ServerEventerSubscriptionCallback | undefined = () => {},
   ) {
     const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
-    const subscriptions = names.map((name) => ({ name, callback, target: 'server' as const }))
+    const subscriptions = names.map((name) => ({ name, callback, side: 'server' as const }))
     return this._continue({
       _eventerSubscriptions: [...this._eventerSubscriptions, ...subscriptions],
     }) as never
@@ -1136,7 +1136,7 @@ export class Point0<
     callback: ClientEventerSubscriptionCallback | undefined = () => {},
   ) {
     const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
-    const subscriptions = names.map((name) => ({ name, callback, target: 'client' as const }))
+    const subscriptions = names.map((name) => ({ name, callback, side: 'client' as const }))
     return this._continue({
       _eventerSubscriptions: [...this._eventerSubscriptions, ...subscriptions],
     }) as never
@@ -1456,7 +1456,7 @@ export class Point0<
     TQueriesDefinitions
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutError for serverNoSsr target
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutError for serverNoSsr side
       _layoutErrorComponent: (layoutErrorComponent as never) || (() => null),
       // _layoutErrorComponent: this._applyComponentDisplayName(layoutErrorComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'LayoutError',
@@ -1483,7 +1483,7 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   > {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageError for serverNoSsr target
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageError for serverNoSsr side
     pageErrorComponent ||= () => null
     // this._applyComponentDisplayName(pageErrorComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'PageError',
@@ -1513,7 +1513,7 @@ export class Point0<
     TQueriesDefinitions
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentError for serverNoSsr target
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentError for serverNoSsr side
       _componentErrorComponent: (componentErrorComponent as never) || (() => null),
       // _componentErrorComponent: this._applyComponentDisplayName(componentErrorComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'ComponentError',
@@ -1541,7 +1541,7 @@ export class Point0<
     TQueriesDefinitions
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutLoading for serverNoSsr target
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutLoading for serverNoSsr side
       _layoutLoadingComponent: (layoutLoadingComponent as never) || (() => null),
       // _layoutLoadingComponent: this._applyComponentDisplayName(layoutLoadingComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'LayoutLoading',
@@ -1568,7 +1568,7 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   > {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageLoading for serverNoSsr target
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageLoading for serverNoSsr side
     pageLoadingComponent ||= () => null
     // this._applyComponentDisplayName(pageLoadingComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'PageLoading',
@@ -1598,10 +1598,10 @@ export class Point0<
     TQueriesDefinitions
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentLoading for serverNoSsr target
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentLoading for serverNoSsr side
       _componentLoadingComponent: (componentLoadingComponent as never) || (() => null),
       // _componentLoadingComponent: this._applyComponentDisplayName(
-      //   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentLoading for serverNoSsr target
+      //   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentLoading for serverNoSsr side
       //   (componentLoadingComponent as never) || (() => null),
       //   {
       //     suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'ComponentLoading',
@@ -2557,7 +2557,7 @@ export class Point0<
   >
   ctx(ctxOrFn?: CtxFn | Ctx, expose?: true | string[]) {
     const ctxFn =
-      typeof ctxOrFn === 'undefined' // in case if we shake ctx for client target
+      typeof ctxOrFn === 'undefined' // in case if we shake ctx for client side
         ? () => ({})
         : typeof ctxOrFn === 'function'
           ? ctxOrFn
@@ -2666,7 +2666,7 @@ export class Point0<
         {
           type: 'loader',
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          fn: clientLoaderFn || ((o: any) => o.data), // in case if we shake clientLoader for server without ssr target
+          fn: clientLoaderFn || ((o: any) => o.data), // in case if we shake clientLoader for server without ssr side
           unstableId: Point0._getNextUnstableId(),
         },
       ] as never,
@@ -2713,7 +2713,7 @@ export class Point0<
     >
   >
   mapper(mapperFn: MapperFn<any, any, any, any, any> | undefined) {
-    // in case if we shake mapper for server without ssr target
+    // in case if we shake mapper for server without ssr side
     mapperFn ||= ((o) => o.data) as MapperFn<any, any, any, any, any>
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
@@ -2911,7 +2911,7 @@ export class Point0<
     const [providedStatus, providedHead] = (() => {
       if (args.length === 2) {
         return args
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake head for server without ssr target
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake head for server without ssr side
       } else if (args.length === 1) {
         return ['success', args[0]]
       } else {
@@ -5181,7 +5181,7 @@ export class Point0<
   private static readonly nativeFetch = async (request: Request): Promise<Response> => await fetch(request)
 
   getFetchFn = (): FetchFn => {
-    if (_point0_env.target.is.server) {
+    if (_point0_env.side.is.server) {
       const __POINT0_FETCH_FN__ = _ssItems.__POINT0_FETCH_FN__.getWeak()
       if (!__POINT0_FETCH_FN__) {
         throw new Error(
@@ -5194,7 +5194,7 @@ export class Point0<
   }
 
   private modifyFetchRequestForServerIfRequired(fetchOptions: ReturnType<typeof this.getFetchServerOptions>): Request {
-    if (!_point0_env.target.is.server) {
+    if (!_point0_env.side.is.server) {
       return fetchOptions.request
     }
     const currentRequest0 = _ssItems.__POINT0_REQUEST0__.getWeak()
@@ -5270,7 +5270,7 @@ export class Point0<
       res = await fetchFn(fetchRequest)
       // Bubble up non-default status codes from nested server point fetches
       // to the current outer request (e.g. SSR page render request).
-      if (_point0_env.target.is.server) {
+      if (_point0_env.side.is.server) {
         const currentEffects = _ssItems.__POINT0_EFFECTS__.getWeak()
         if (typeof currentEffects?.status === 'undefined') {
           currentEffects?.set.status(res.status)
@@ -6241,7 +6241,7 @@ export class Point0<
       }
       this._emit('pointMutationStart', eventData)
       try {
-        if (_point0_env.target.is.server) {
+        if (_point0_env.side.is.server) {
           throw new Error(
             'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
           )
@@ -7882,9 +7882,9 @@ export class Point0<
   // }
 
   _emit<TName extends AnyEventerEvent['name']>(name: TName, data: Extract<AnyEventerEvent, { name: TName }>['data']) {
-    const event = { name, data, target: _point0_env.target.name } as AnyEventerEvent
+    const event = { name, data, side: _point0_env.side.name } as AnyEventerEvent
     for (const subscription of this._eventerSubscriptions) {
-      if (subscription.target && subscription.target !== event.target) {
+      if (subscription.side && subscription.side !== event.side) {
         continue
       }
       if (subscription.name !== '*' && subscription.name !== event.name) {

@@ -16,10 +16,10 @@ import type {
   QueryKey,
 } from './types.js'
 
-export type EventerTarget = 'client' | 'server'
+export type EventerSide = 'client' | 'server'
 
-export type EventerEvent<TTarget extends EventerTarget, TName extends string, TData extends object> = {
-  target: TTarget
+export type EventerEvent<TSide extends EventerSide, TName extends string, TData extends object> = {
+  side: TSide
   name: TName
   data: TData
 }
@@ -35,16 +35,16 @@ export type AnyEventerSubscriptionCallback<TName extends AnyEventerEvent['name']
 export type ServerEventerSubscriptionCallback<TName extends ServerEventerEvent['name'] | '*' = any> = (
   event: TName extends '*'
     ? ServerEventerEvent
-    : Omit<Extract<ServerEventerEvent, { name: TName }>, 'target'> & { target: 'server' },
+    : Omit<Extract<ServerEventerEvent, { name: TName }>, 'side'> & { side: 'server' },
 ) => void | Promise<void>
 export type ClientEventerSubscriptionCallback<TName extends ClientEventerEvent['name'] | '*' = any> = (
   event: TName extends '*'
     ? ClientEventerEvent
-    : Omit<Extract<ClientEventerEvent, { name: TName }>, 'target'> & { target: 'client' },
+    : Omit<Extract<ClientEventerEvent, { name: TName }>, 'side'> & { side: 'client' },
 ) => void | Promise<void>
 
 export type EventerSubscription<TName extends AnyEventerEvent['name'] | '*' = any> = {
-  target: EventerTarget | undefined
+  side: EventerSide | undefined
   name: TName
   callback: AnyEventerSubscriptionCallback<TName>
 }
@@ -379,11 +379,11 @@ export type AnyEventerEvent =
   | EventerEventEngineFetchSuccess
   | EventerEventEngineFetchError
 
-export type ClientEventerEvent = Extract<AnyEventerEvent, { target: 'client' | 'server' } | { target: 'client' }>
+export type ClientEventerEvent = Extract<AnyEventerEvent, { side: 'client' | 'server' } | { side: 'client' }>
 
-export type ServerEventerEvent = Extract<AnyEventerEvent, { target: 'client' | 'server' } | { target: 'server' }>
+export type ServerEventerEvent = Extract<AnyEventerEvent, { side: 'client' | 'server' } | { side: 'server' }>
 
-export type UniversalEventerEvent = Extract<AnyEventerEvent, { target: 'client' | 'server' }>
+export type UniversalEventerEvent = Extract<AnyEventerEvent, { side: 'client' | 'server' }>
 
 export const uniqEventerErrorEventNames = [
   'pointMutationError',

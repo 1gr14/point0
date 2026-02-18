@@ -730,7 +730,7 @@ export class Walker {
     nodePath: NodePath<Node>
     targetNode: Node
   }): NodePath<Node> | undefined {
-    // If this NodePath's node matches the target, return it
+    // If this NodePath's node equals the given node, return it
     if (nodePath.node === targetNode) {
       return nodePath
     }

@@ -241,7 +241,7 @@ export class CookiesStore {
   }
 
   static readonly serverCookieGetter: CookiesStoreGetter = ((...args: [name: string] | []) => {
-    if (!env.target.is.server) {
+    if (!env.side.is.server) {
       throw new Error('serverCookieGetter is only available on the server')
     }
     const request0 = Request0.get()
@@ -256,10 +256,10 @@ export class CookiesStore {
   }
 
   static set: CookiesStoreSetter = (cookieOptionsInput) => {
-    if (!env.target.is.server && cookieOptionsInput.httpOnly) {
+    if (!env.side.is.server && cookieOptionsInput.httpOnly) {
       throw new Error(`Cannot set cookie "${cookieOptionsInput.name}" from client: httpOnly cookies are server-only`)
     }
-    if (env.target.is.server) {
+    if (env.side.is.server) {
       CookiesStore.serverCookieSetter(cookieOptionsInput)
     } else {
       CookiesStore.clientCookieSetter(cookieOptionsInput)
@@ -267,7 +267,7 @@ export class CookiesStore {
   }
 
   static get: CookiesStoreGetter = ((...args: [name: string] | []) => {
-    if (env.target.is.server) {
+    if (env.side.is.server) {
       return args.length === 0 ? CookiesStore.serverCookieGetter() : CookiesStore.serverCookieGetter(...args)
     } else {
       return args.length === 0 ? CookiesStore.clientCookieGetter() : CookiesStore.clientCookieGetter(...args)
@@ -275,7 +275,7 @@ export class CookiesStore {
   }) as CookiesStoreGetter
 
   static refresh(): void {
-    if (env.target.is.server) {
+    if (env.side.is.server) {
       return
       // lets not throw to be able fullstack tests
       // throw new Error('refresh() is only available on the client')
@@ -321,7 +321,7 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
   }
 
   set(value: TValue) {
-    if (!env.target.is.server && this.cookieDefineOptions.httpOnly) {
+    if (!env.side.is.server && this.cookieDefineOptions.httpOnly) {
       throw new Error(
         `Cannot set cookie "${this.cookieDefineOptions.name}" from client: httpOnly cookies are server-only`,
       )
@@ -342,7 +342,7 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
   }
 
   delete() {
-    if (!env.target.is.server && this.cookieDefineOptions.httpOnly) {
+    if (!env.side.is.server && this.cookieDefineOptions.httpOnly) {
       throw new Error(
         `Cannot delete cookie "${this.cookieDefineOptions.name}" from client: httpOnly cookies are server-only`,
       )
@@ -351,7 +351,7 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
   }
 
   get(): TValue | TFallback {
-    if (!env.target.is.server && this.cookieDefineOptions.httpOnly) {
+    if (!env.side.is.server && this.cookieDefineOptions.httpOnly) {
       throw new Error(
         `Cannot get cookie "${this.cookieDefineOptions.name}" from client: httpOnly cookies are server-only`,
       )
@@ -381,7 +381,7 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
    * This will trigger all registered `use` hooks to update.
    */
   refresh(): void {
-    if (env.target.is.server) {
+    if (env.side.is.server) {
       return
       // lets not throw to be able fullstack tests
       // throw new Error('refresh() is only available on the client')
@@ -415,7 +415,7 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
    */
   use(onChange?: (value: TValue | TFallback) => void): TValue | TFallback {
     // On server, just return the current value
-    if (env.target.is.server) {
+    if (env.side.is.server) {
       return this.get()
     }
 

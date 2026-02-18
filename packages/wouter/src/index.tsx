@@ -579,7 +579,7 @@ export const Router = ({
   hook?: BaseLocationHook
 }): React.ReactElement => {
   const wouterRouterProps = useMemo(() => {
-    if (env.target.is.client) {
+    if (env.side.is.client) {
       return {}
     }
     if (!ssrLocation) {

@@ -20,43 +20,43 @@ describe('on', () => {
     const { render } = await createTestThings({ points: [root, page] })
     await render(page.route(), async ({ waitContent }) => {
       await waitContent('#page')
-      expect(events.map((e) => ({ name: e.name, target: e.target }))).toMatchInlineSnapshot(`
+      expect(events.map((e) => ({ name: e.name, side: e.side }))).toMatchInlineSnapshot(`
         [
           {
             "name": "pointQueryStart",
-            "target": "client",
+            "side": "client",
           },
           {
             "name": "pointFetchServerStart",
-            "target": "client",
+            "side": "client",
           },
           {
             "name": "engineFetchStart",
-            "target": "server",
+            "side": "server",
           },
           {
             "name": "engineFetchSettled",
-            "target": "server",
+            "side": "server",
           },
           {
             "name": "engineFetchSuccess",
-            "target": "server",
+            "side": "server",
           },
           {
             "name": "pointFetchServerSettled",
-            "target": "client",
+            "side": "client",
           },
           {
             "name": "pointFetchServerSuccess",
-            "target": "client",
+            "side": "client",
           },
           {
             "name": "pointQuerySettled",
-            "target": "client",
+            "side": "client",
           },
           {
             "name": "pointQuerySuccess",
-            "target": "client",
+            "side": "client",
           },
         ]
       `)
@@ -85,15 +85,15 @@ describe('on', () => {
     const { render } = await createTestThings({ points: [root, page] })
     await render(page.route(), async ({ waitContent }) => {
       await waitContent('#page')
-      expect(events.map((e) => ({ name: e.name, target: e.target }))).toMatchInlineSnapshot(`
+      expect(events.map((e) => ({ name: e.name, side: e.side }))).toMatchInlineSnapshot(`
         [
           {
             "name": "engineFetchStart",
-            "target": "server",
+            "side": "server",
           },
           {
             "name": "pointQuerySuccess",
-            "target": "client",
+            "side": "client",
           },
         ]
       `)
@@ -119,15 +119,15 @@ describe('on', () => {
     const { render } = await createTestThings({ points: [root, page] })
     await render(page.route(), async ({ waitContent }) => {
       await waitContent('#page')
-      expect(events.map((e) => ({ name: e.name, target: e.target }))).toMatchInlineSnapshot(`
+      expect(events.map((e) => ({ name: e.name, side: e.side }))).toMatchInlineSnapshot(`
         [
           {
             "name": "engineFetchStart",
-            "target": "server",
+            "side": "server",
           },
           {
             "name": "pointQuerySuccess",
-            "target": "client",
+            "side": "client",
           },
         ]
       `)
@@ -155,15 +155,15 @@ describe('on', () => {
     const { render } = await createTestThings({ points: [root, page] })
     await render(page.route(), async ({ waitContent }) => {
       await waitContent('error')
-      expect(events.map((e) => ({ name: e.name, target: e.target }))).toMatchInlineSnapshot(`
+      expect(events.map((e) => ({ name: e.name, side: e.side }))).toMatchInlineSnapshot(`
         [
           {
             "name": "engineFetchError",
-            "target": "server",
+            "side": "server",
           },
           {
             "name": "pointQueryError",
-            "target": "client",
+            "side": "client",
           },
         ]
       `)

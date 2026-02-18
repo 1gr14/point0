@@ -851,7 +851,7 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).root()
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.shakeMethods({ target: 'client' })
+          point.shakeMethods({ side: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').ctx().root()
@@ -868,7 +868,7 @@ export const root = Point0.lets('root', 'root').loader(() => ({ b: 2 })).root()
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.shakeMethods({ target: 'client' })
+          point.shakeMethods({ side: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').loader().root()
@@ -885,7 +885,7 @@ export const root = Point0.lets('root', 'root').loader(true).root()
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.shakeMethods({ target: 'client' })
+          point.shakeMethods({ side: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').loader(true).root()
@@ -902,7 +902,7 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() 
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.shakeMethods({ target: 'client' })
+          point.shakeMethods({ side: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').ctx().loader().root()
@@ -919,7 +919,7 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).ctx(() => 
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.shakeMethods({ target: 'client' })
+          point.shakeMethods({ side: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').ctx().ctx().root()
@@ -936,7 +936,7 @@ export const root = Point0.lets('root', 'root').loader(true).loader(() => ({ b: 
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.shakeMethods({ target: 'client' })
+          point.shakeMethods({ side: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').loader(true).loader().root()
@@ -954,7 +954,7 @@ export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.shakeMethods({ target: 'client' })
+          point.shakeMethods({ side: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').root()
@@ -969,7 +969,7 @@ export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(
       )
 
       it.concurrent(
-        'removes last arg from serverOn for client target and keeps on untouched',
+        'removes last arg from serverOn for client side and keeps on untouched',
         helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root')
@@ -979,7 +979,7 @@ export const root = Point0.lets('root', 'root')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.shakeMethods({ target: 'client' })
+          point.shakeMethods({ side: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root')
@@ -1010,7 +1010,7 @@ export const page = root.lets('page', 'page', '/')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.shakeMethods({ target: 'client' })
+          point.shakeMethods({ side: 'client' })
           expect(point.chainMethods.map((m) => `${m.name}: underSsr=${m.underSsr ? 'true' : 'false'}`))
             .toMatchInlineSnapshot(`
             [
@@ -1085,7 +1085,7 @@ export const page = root.lets('page', 'page', '/')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.shakeMethods({ target: 'client' })
+          point.shakeMethods({ side: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root')
@@ -1202,7 +1202,7 @@ export const page = root.lets('page', 'page', '/')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.shakeMethods({ target: 'server' })
+          point.shakeMethods({ side: 'server' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root')
@@ -1318,7 +1318,7 @@ export const page = root.lets('page', 'page', '/')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.shakeMethods({ target: 'server' })
+          point.shakeMethods({ side: 'server' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root')
@@ -1379,7 +1379,7 @@ export const page = root.lets('page', 'page', '/')
       )
 
       it.concurrent(
-        'removes last arg from clientOn for server target and keeps on untouched',
+        'removes last arg from clientOn for server side and keeps on untouched',
         helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root')
@@ -1389,7 +1389,7 @@ export const root = Point0.lets('root', 'root')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.shakeMethods({ target: 'server' })
+          point.shakeMethods({ side: 'server' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root')

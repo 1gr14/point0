@@ -4,14 +4,14 @@ import { createElement } from 'react'
 import { _point0_env } from './env.js'
 import { _ssItems } from './internals.js'
 
-const clientHead = _point0_env.target.is.client ? createHeadClient() : (undefined as never)
+const clientHead = _point0_env.side.is.client ? createHeadClient() : (undefined as never)
 
 export const UnheadProvider = ({
   children,
 }: {
   children: React.ReactNode
 }): React.ReactNode | Promise<React.ReactNode> => {
-  if (_point0_env.target.is.client) {
+  if (_point0_env.side.is.client) {
     return createElement(UnheadProviderClient, { head: clientHead, children })
   } else {
     return (async () => {

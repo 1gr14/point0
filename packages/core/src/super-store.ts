@@ -3,7 +3,7 @@ import type { ClientPlatform } from './env.types.js'
 
 // I do not know why, but it is only way to do it to work in bun and vite at the same time
 ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||=
-  process.env.POINT0_TARGET === 'client'
+  process.env.POINT0_SIDE === 'client'
     ? null
     : // eslint-disable-next-line @typescript-eslint/no-require-imports
       (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>)
@@ -136,7 +136,7 @@ export class SuperStore {
         serverGlobalState: undefined
       } {
     const fakeClient = this.getFakeClient()
-    if (process.env.POINT0_TARGET === 'client' && !fakeClient) {
+    if (process.env.POINT0_SIDE === 'client' && !fakeClient) {
       return {
         variant: 'client',
         clientState: this.clientGlobalState,
@@ -198,7 +198,7 @@ export class SuperStore {
 
   // getState(): SuperStoreState {
   //   const fakeClient = this.getFakeClient()
-  //   if (env.target.is.client && !fakeClient) {
+  //   if (env.side.is.client && !fakeClient) {
   //     return this.clientState
   //   } else {
   //     const serverStorage = this.serverStorage

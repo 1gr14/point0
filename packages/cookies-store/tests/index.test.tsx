@@ -128,7 +128,7 @@ describe('cookies-store', () => {
   })
 
   describe('define unit possibilities', () => {
-    // const originalPoint0Target = process.env.POINT0_TARGET
+    // const originalPoint0Side = process.env.POINT0_SIDE
     const originalClientGetter = CookiesStore.clientCookieGetter
     const originalClientSetter = CookiesStore.clientCookieSetter
     const originalTransformer = CookiesStore.transformer
@@ -139,7 +139,7 @@ describe('cookies-store', () => {
     let cookieState: Record<string, string>
 
     beforeEach(() => {
-      // process.env.POINT0_TARGET = 'client'
+      // process.env.POINT0_SIDE = 'client'
       // ;(globalThis as any).window = {}
       // ;(globalThis as any).document = {}
       // ;(globalThis as any).navigator = {}
@@ -164,9 +164,9 @@ describe('cookies-store', () => {
 
     afterEach(() => {
       // if (originalPoint0Target === undefined) {
-      //   delete process.env.POINT0_TARGET
+      //   delete process.env.POINT0_SIDE
       // } else {
-      //   process.env.POINT0_TARGET = originalPoint0Target
+      //   process.env.POINT0_SIDE = originalPoint0Side
       // }
       // ;(globalThis as any).document = originalDocument
       // ;(globalThis as any).window = originalWindow

@@ -63,15 +63,15 @@ describe('CompilerFile', () => {
   })
 
   describe('#shakeForEnv', () => {
-    describe('env.target.is', () => {
+    describe('env.side.is', () => {
       it.concurrent(
-        'env.target.is.server = true',
+        'env.side.is.server = true',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            if (env.target.is.server) console.info('server')
+            if (env.side.is.server) console.info('server')
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -83,13 +83,13 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.is.server = false',
+        'env.side.is.server = false',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            if (env.target.is.server) console.info('server')
+            if (env.side.is.server) console.info('server')
           })
-          cf.shakeForEnv({ target: 'client', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -101,13 +101,13 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.is.client = true',
+        'env.side.is.client = true',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            if (env.target.is.client) console.info('client')
+            if (env.side.is.client) console.info('client')
           })
-          cf.shakeForEnv({ target: 'client', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -119,13 +119,13 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.is.client = false',
+        'env.side.is.client = false',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrpsync(async () => {
             const { env } = await import('@point0/core')
-            if (env.target.is.client) console.info('client')
+            if (env.side.is.client) console.info('client')
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -137,13 +137,13 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.is.ssr = false when target is client',
+        'env.side.is.ssr = false when side is client',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            if (env.target.is.ssr) console.info('ssr')
+            if (env.side.is.ssr) console.info('ssr')
           })
-          cf.shakeForEnv({ target: 'client', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -155,17 +155,17 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.is.ssr not changed when target is server',
+        'env.side.is.ssr not changed when side is server',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrpsync(async () => {
             const { env } = await import('@point0/core')
-            if (env.target.is.ssr) console.info('ssr')
+            if (env.side.is.ssr) console.info('ssr')
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              if (env.target.is.ssr) console.info('ssr')
+              if (env.side.is.ssr) console.info('ssr')
               "
             `,
           )
@@ -173,14 +173,14 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.is.server = true (env imported from different source)',
+        'env.side.is.server = true (env imported from different source)',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             // @ts-expect-error - testing with non-existent module
             const { _point0_env } = await import('./custom-env.js')
-            if (_point0_env.target.is.server) console.info('server')
+            if (_point0_env.side.is.server) console.info('server')
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { _point0_env } = await import('./custom-env.js')
@@ -192,14 +192,14 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.is.client = true (env imported from different source)',
+        'env.side.is.client = true (env imported from different source)',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             // @ts-expect-error - testing with non-existent module
             const { _point0_env } = await import('@some/other-package')
-            if (_point0_env.target.is.client) console.info('client')
+            if (_point0_env.side.is.client) console.info('client')
           })
-          cf.shakeForEnv({ target: 'client', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { _point0_env } = await import('@some/other-package')
@@ -219,7 +219,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             if (env.built) console.info('built')
           })
-          cf.shakeForEnv({ target: 'client', scope: 'test', mode: 'development', built: true })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development', built: true })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -237,7 +237,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             if (env.built) console.info('built')
           })
-          cf.shakeForEnv({ target: 'client', scope: 'test', mode: 'development', built: false })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development', built: false })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -256,7 +256,7 @@ describe('CompilerFile', () => {
             const { _point0_env } = await import('./custom-env.js')
             if (_point0_env.built) console.info('built')
           })
-          cf.shakeForEnv({ target: 'client', scope: 'test', mode: 'development', built: true })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development', built: true })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { _point0_env } = await import('./custom-env.js')
@@ -268,19 +268,19 @@ describe('CompilerFile', () => {
       )
     })
 
-    describe('env.target.define', () => {
+    describe('env.side.define', () => {
       it.concurrent(
-        'env.target.define.server() - client target replaces value',
+        'env.side.define.server() - client side replaces value',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            console.info(env.target.define.server('server-value'))
+            console.info(env.side.define.server('server-value'))
           })
-          cf.shakeForEnv({ target: 'client', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.target.define.server(undefined))
+              console.info(env.side.define.server(undefined))
               "
             `,
           )
@@ -288,17 +288,17 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.define.server() - server target keeps value',
+        'env.side.define.server() - server side keeps value',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrpsync(async () => {
             const { env } = await import('@point0/core')
-            console.info(env.target.define.server('server-value'))
+            console.info(env.side.define.server('server-value'))
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.target.define.server('server-value'))
+              console.info(env.side.define.server('server-value'))
               "
             `,
           )
@@ -306,17 +306,17 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.define.client() - server target replaces value',
+        'env.side.define.client() - server side replaces value',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            console.info(env.target.define.client('client-value'))
+            console.info(env.side.define.client('client-value'))
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.target.define.client(undefined))
+              console.info(env.side.define.client(undefined))
               "
             `,
           )
@@ -324,17 +324,17 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.define.client() - client target keeps value',
+        'env.side.define.client() - client side keeps value',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrpsync(async () => {
             const { env } = await import('@point0/core')
-            console.info(env.target.define.client('client-value'))
+            console.info(env.side.define.client('client-value'))
           })
-          cf.shakeForEnv({ target: 'client', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.target.define.client('client-value'))
+              console.info(env.side.define.client('client-value'))
               "
             `,
           )
@@ -342,17 +342,17 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.define() with server option - client target replaces value',
+        'env.side.define() with server option - client side replaces value',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            console.info(env.target.define({ server: 'server-value', client: 'client-value' }))
+            console.info(env.side.define({ server: 'server-value', client: 'client-value' }))
           })
-          cf.shakeForEnv({ target: 'client', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.target.define({ server: undefined, client: 'client-value' }))
+              console.info(env.side.define({ server: undefined, client: 'client-value' }))
               "
             `,
           )
@@ -360,17 +360,17 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.define() with client option - server target replaces value',
+        'env.side.define() with client option - server side replaces value',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrpsync(async () => {
             const { env } = await import('@point0/core')
-            console.info(env.target.define({ server: 'server-value', client: 'client-value' }))
+            console.info(env.side.define({ server: 'server-value', client: 'client-value' }))
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.target.define({ server: 'server-value', client: undefined }))
+              console.info(env.side.define({ server: 'server-value', client: undefined }))
               "
             `,
           )
@@ -378,17 +378,17 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.define.unsafe.server() - client target replaces value',
+        'env.side.define.unsafe.server() - client side replaces value',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            console.info(env.target.define.unsafe.server('server-value'))
+            console.info(env.side.define.unsafe.server('server-value'))
           })
-          cf.shakeForEnv({ target: 'client', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.target.define.unsafe.server(undefined))
+              console.info(env.side.define.unsafe.server(undefined))
               "
             `,
           )
@@ -396,17 +396,17 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.define.unsafe.server() - server target keeps value',
+        'env.side.define.unsafe.server() - server side keeps value',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            console.info(env.target.define.unsafe.server('server-value'))
+            console.info(env.side.define.unsafe.server('server-value'))
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.target.define.unsafe.server('server-value'))
+              console.info(env.side.define.unsafe.server('server-value'))
               "
             `,
           )
@@ -414,17 +414,17 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.define.unsafe.client() - server target replaces value',
+        'env.side.define.unsafe.client() - server side replaces value',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            console.info(env.target.define.unsafe.client('client-value'))
+            console.info(env.side.define.unsafe.client('client-value'))
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.target.define.unsafe.client(undefined))
+              console.info(env.side.define.unsafe.client(undefined))
               "
             `,
           )
@@ -432,17 +432,17 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.define.unsafe.client() - client target keeps value',
+        'env.side.define.unsafe.client() - client side keeps value',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            console.info(env.target.define.unsafe.client('client-value'))
+            console.info(env.side.define.unsafe.client('client-value'))
           })
-          cf.shakeForEnv({ target: 'client', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.target.define.unsafe.client('client-value'))
+              console.info(env.side.define.unsafe.client('client-value'))
               "
             `,
           )
@@ -459,7 +459,7 @@ describe('CompilerFile', () => {
               const { env } = await import('@point0/core')
               if (env.scope.is.x) console.info('x')
             })
-            cf.shakeForEnv({ target: 'server', scope: 'x', mode: 'development' })
+            cf.shakeForEnv({ side: 'server', scope: 'x', mode: 'development' })
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { env } = await import('@point0/core')
@@ -477,7 +477,7 @@ describe('CompilerFile', () => {
               const { env } = await import('@point0/core')
               if (env.scope.is.x) console.info('x')
             })
-            cf.shakeForEnv({ target: 'server', scope: 'y', mode: 'development' })
+            cf.shakeForEnv({ side: 'server', scope: 'y', mode: 'development' })
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { env } = await import('@point0/core')
@@ -496,7 +496,7 @@ describe('CompilerFile', () => {
               const { _point0_env } = await import('./custom-env.js')
               if (_point0_env.scope.is.x) console.info('x')
             })
-            cf.shakeForEnv({ target: 'server', scope: 'x', mode: 'development' })
+            cf.shakeForEnv({ side: 'server', scope: 'x', mode: 'development' })
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { _point0_env } = await import('./custom-env.js')
@@ -515,7 +515,7 @@ describe('CompilerFile', () => {
               const { _point0_env } = await import('./custom-env.js')
               if (_point0_env.scope.is.x) console.info('x')
             })
-            cf.shakeForEnv({ target: 'server', scope: 'y', mode: 'development' })
+            cf.shakeForEnv({ side: 'server', scope: 'y', mode: 'development' })
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { _point0_env } = await import('./custom-env.js')
@@ -534,7 +534,7 @@ describe('CompilerFile', () => {
               const { _point0_env } = await import('@some/other-package')
               if (_point0_env.scope.is.x) console.info('x')
             })
-            cf.shakeForEnv({ target: 'server', scope: 'x', mode: 'development' })
+            cf.shakeForEnv({ side: 'server', scope: 'x', mode: 'development' })
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { _point0_env } = await import('@some/other-package')
@@ -553,7 +553,7 @@ describe('CompilerFile', () => {
               const { _point0_env } = await import('@some/other-package')
               if (_point0_env.scope.is.x) console.info('x')
             })
-            cf.shakeForEnv({ target: 'server', scope: 'y', mode: 'development' })
+            cf.shakeForEnv({ side: 'server', scope: 'y', mode: 'development' })
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { _point0_env } = await import('@some/other-package')
@@ -573,7 +573,7 @@ describe('CompilerFile', () => {
               const { env } = await import('@point0/core')
               console.info(env.scope.define.x('x-value'))
             })
-            cf.shakeForEnv({ target: 'server', scope: 'y', mode: 'development' })
+            cf.shakeForEnv({ side: 'server', scope: 'y', mode: 'development' })
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { env } = await import('@point0/core')
@@ -591,7 +591,7 @@ describe('CompilerFile', () => {
               const { env } = await import('@point0/core')
               console.info(env.scope.define.x('x-value'))
             })
-            cf.shakeForEnv({ target: 'server', scope: 'x', mode: 'development' })
+            cf.shakeForEnv({ side: 'server', scope: 'x', mode: 'development' })
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { env } = await import('@point0/core')
@@ -609,7 +609,7 @@ describe('CompilerFile', () => {
               const { env } = await import('@point0/core')
               console.info(env.scope.define({ x: 'x-value', y: 'y-value' }))
             })
-            cf.shakeForEnv({ target: 'server', scope: 'y', mode: 'development' })
+            cf.shakeForEnv({ side: 'server', scope: 'y', mode: 'development' })
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { env } = await import('@point0/core')
@@ -627,7 +627,7 @@ describe('CompilerFile', () => {
               const { env } = await import('@point0/core')
               console.info(env.scope.define({ x: 'x-value', y: 'y-value' }))
             })
-            cf.shakeForEnv({ target: 'server', scope: 'x', mode: 'development' })
+            cf.shakeForEnv({ side: 'server', scope: 'x', mode: 'development' })
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { env } = await import('@point0/core')
@@ -645,7 +645,7 @@ describe('CompilerFile', () => {
               const { env } = await import('@point0/core')
               console.info(env.scope.define.unsafe.x('x-value'))
             })
-            cf.shakeForEnv({ target: 'server', scope: 'y', mode: 'development' })
+            cf.shakeForEnv({ side: 'server', scope: 'y', mode: 'development' })
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { env } = await import('@point0/core')
@@ -663,7 +663,7 @@ describe('CompilerFile', () => {
               const { env } = await import('@point0/core')
               console.info(env.scope.define.unsafe.x('x-value'))
             })
-            cf.shakeForEnv({ target: 'server', scope: 'x', mode: 'development' })
+            cf.shakeForEnv({ side: 'server', scope: 'x', mode: 'development' })
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { env } = await import('@point0/core')
@@ -682,7 +682,7 @@ describe('CompilerFile', () => {
               const { _point0_env } = await import('./custom-env.js')
               console.info(_point0_env.scope.define.x('x-value'))
             })
-            cf.shakeForEnv({ target: 'server', scope: 'y', mode: 'development' })
+            cf.shakeForEnv({ side: 'server', scope: 'y', mode: 'development' })
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { _point0_env } = await import('./custom-env.js')
@@ -701,7 +701,7 @@ describe('CompilerFile', () => {
               const { _point0_env } = await import('@some/other-package')
               console.info(_point0_env.scope.define.x('x-value'))
             })
-            cf.shakeForEnv({ target: 'server', scope: 'x', mode: 'development' })
+            cf.shakeForEnv({ side: 'server', scope: 'x', mode: 'development' })
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { _point0_env } = await import('@some/other-package')
@@ -723,7 +723,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             console.info(env.vars.CUSTOM_VAR1)
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development', consts: ['CUSTOM_VAR1'] })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', consts: ['CUSTOM_VAR1'] })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -742,7 +742,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             console.info(env.vars.OTHER_VAR)
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development', consts: ['CUSTOM_VAR'] })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', consts: ['CUSTOM_VAR'] })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -761,7 +761,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             console.info(env.vars.UNDEFINED_VAR1)
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development', consts: ['UNDEFINED_VAR1'] })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', consts: ['UNDEFINED_VAR1'] })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -779,7 +779,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             console.info(env.vars.NODE_ENV)
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -801,7 +801,7 @@ describe('CompilerFile', () => {
             console.info(env.vars.SOMETHING_B1)
             console.info(env.vars.OTHER_VAR)
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development', consts: ['SOMETHING_*'] })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', consts: ['SOMETHING_*'] })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -825,7 +825,7 @@ describe('CompilerFile', () => {
             console.info(env.vars.CUSTOM_VAR)
           })
           cf.shakeForEnv({
-            target: 'server',
+            side: 'server',
             scope: 'test',
             mode: 'development',
             consts: [{ CUSTOM_VAR: 'forced-value' }],
@@ -849,7 +849,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             console.info(env.vars.NUM_VAR)
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development', consts: [{ NUM_VAR: 42 }] })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', consts: [{ NUM_VAR: 42 }] })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -869,7 +869,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             console.info(env.vars.BOOL_VAR)
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development', consts: [{ BOOL_VAR: true }] })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', consts: [{ BOOL_VAR: true }] })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -889,7 +889,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             console.info(env.vars.NULL_VAR)
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development', consts: [{ NULL_VAR: null }] })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', consts: [{ NULL_VAR: null }] })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -910,7 +910,7 @@ describe('CompilerFile', () => {
             console.info(env.vars.UNDEFINED_VAR)
           })
           cf.shakeForEnv({
-            target: 'server',
+            side: 'server',
             scope: 'test',
             mode: 'development',
             consts: [{ UNDEFINED_VAR: undefined }],
@@ -934,7 +934,7 @@ describe('CompilerFile', () => {
             console.info(env.vars.MULTI_VAR)
           })
           cf.shakeForEnv({
-            target: 'server',
+            side: 'server',
             scope: 'test',
             mode: 'development',
             consts: [{ MULTI_VAR: 'first' }, { MULTI_VAR: 'second' }],
@@ -958,7 +958,7 @@ describe('CompilerFile', () => {
             console.info(env.vars.MIXED_VAR)
           })
           cf.shakeForEnv({
-            target: 'server',
+            side: 'server',
             scope: 'test',
             mode: 'development',
             consts: ['MIXED_VAR', { MIXED_VAR: 'from-object' }],
@@ -984,7 +984,7 @@ describe('CompilerFile', () => {
             console.info(env.vars.MIXED_VAR2)
           })
           cf.shakeForEnv({
-            target: 'server',
+            side: 'server',
             scope: 'test',
             mode: 'development',
             consts: [{ MIXED_VAR2: 'from-object' }, 'MIXED_VAR2'],
@@ -1015,7 +1015,7 @@ describe('CompilerFile', () => {
             console.info(env.vars.NUM_VAR1)
           })
           cf.shakeForEnv({
-            target: 'server',
+            side: 'server',
             scope: 'test',
             mode: 'development',
             consts: [{ STR_VAR1: 'forced-str', NUM_VAR1: 999 }],
@@ -1042,7 +1042,7 @@ describe('CompilerFile', () => {
             const { _point0_env } = await import('./custom-env.js')
             console.info(_point0_env.vars.CUSTOM_VAR2)
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development', consts: ['CUSTOM_VAR2'] })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', consts: ['CUSTOM_VAR2'] })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { _point0_env } = await import('./custom-env.js')
@@ -1064,7 +1064,7 @@ describe('CompilerFile', () => {
             console.info(_point0_env.vars.CUSTOM_VAR3)
           })
           cf.shakeForEnv({
-            target: 'server',
+            side: 'server',
             scope: 'test',
             mode: 'development',
             consts: [{ CUSTOM_VAR3: 'forced-value' }],
@@ -1089,7 +1089,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             console.info(env.mode.name)
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'production' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'production' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -1107,7 +1107,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             if (env.mode.is.production) console.info('prod')
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'production' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'production' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -1125,7 +1125,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             if (env.mode.is.production) console.info('prod')
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -1143,7 +1143,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             if (env.mode.is.development) console.info('dev')
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -1161,7 +1161,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             if (env.mode.is.test) console.info('test')
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'test' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'test' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -1179,7 +1179,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             if (env.mode.is.test) console.info('test')
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'production' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'production' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -1198,7 +1198,7 @@ describe('CompilerFile', () => {
             const { _point0_env } = await import('./custom-env.js')
             console.info(_point0_env.mode.name)
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'production' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'production' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { _point0_env } = await import('./custom-env.js')
@@ -1217,7 +1217,7 @@ describe('CompilerFile', () => {
             const { _point0_env } = await import('@some/other-package')
             if (_point0_env.mode.is.production) console.info('prod')
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'production' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'production' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { _point0_env } = await import('@some/other-package')
@@ -1236,7 +1236,7 @@ describe('CompilerFile', () => {
             const { _point0_env } = await import('./custom-env.js')
             if (_point0_env.mode.is.development) console.info('dev')
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { _point0_env } = await import('./custom-env.js')
@@ -1250,19 +1250,19 @@ describe('CompilerFile', () => {
 
     describe('false values', () => {
       it.concurrent(
-        'env.target.is.* not hardcoded when target is false',
+        'env.side.is.* not hardcoded when side is false',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            if (env.target.is.client) console.info('client')
-            if (env.target.is.server) console.info('server')
+            if (env.side.is.client) console.info('client')
+            if (env.side.is.server) console.info('server')
           })
-          cf.shakeForEnv({ target: false, scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: false, scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              if (env.target.is.client) console.info('client')
-              if (env.target.is.server) console.info('server')
+              if (env.side.is.client) console.info('client')
+              if (env.side.is.server) console.info('server')
               "
             `,
           )
@@ -1270,19 +1270,19 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.target.define.* not hardcoded when target is false',
+        'env.side.define.* not hardcoded when side is false',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            console.info(env.target.define.client('client-value'))
-            console.info(env.target.define.server('server-value'))
+            console.info(env.side.define.client('client-value'))
+            console.info(env.side.define.server('server-value'))
           })
-          cf.shakeForEnv({ target: false, scope: 'test', mode: 'development' })
+          cf.shakeForEnv({ side: false, scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.target.define.client('client-value'))
-              console.info(env.target.define.server('server-value'))
+              console.info(env.side.define.client('client-value'))
+              console.info(env.side.define.server('server-value'))
               "
             `,
           )
@@ -1297,7 +1297,7 @@ describe('CompilerFile', () => {
             if (env.scope.is.x) console.info('x')
             if (env.scope.is.y) console.info('y')
           })
-          cf.shakeForEnv({ target: 'server', scope: false, mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: false, mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -1317,7 +1317,7 @@ describe('CompilerFile', () => {
             console.info(env.scope.define.x('x-value'))
             console.info(env.scope.define.y('y-value'))
           })
-          cf.shakeForEnv({ target: 'server', scope: false, mode: 'development' })
+          cf.shakeForEnv({ side: 'server', scope: false, mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -1336,7 +1336,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             console.info(env.mode.name)
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: false })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: false })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -1356,7 +1356,7 @@ describe('CompilerFile', () => {
             if (env.mode.is.development) console.info('dev')
             if (env.mode.is.test) console.info('test')
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: false })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: false })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -1376,7 +1376,7 @@ describe('CompilerFile', () => {
             const { env } = await import('@point0/core')
             console.info(env.vars.NODE_ENV)
           })
-          cf.shakeForEnv({ target: 'server', scope: 'test', mode: false })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: false })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
@@ -1392,15 +1392,15 @@ describe('CompilerFile', () => {
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            if (env.target.is.client) console.info('client')
+            if (env.side.is.client) console.info('client')
             if (env.scope.is.x) console.info('x')
             console.info(env.mode.name)
           })
-          cf.shakeForEnv({ target: false, scope: false, mode: false })
+          cf.shakeForEnv({ side: false, scope: false, mode: false })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              if (env.target.is.client) console.info('client')
+              if (env.side.is.client) console.info('client')
               if (env.scope.is.x) console.info('x')
               console.info(env.mode.name)
               "

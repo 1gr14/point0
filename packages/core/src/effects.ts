@@ -380,7 +380,7 @@ export class Effects {
   }
 
   static get(): Effects {
-    if (!_point0_env.target.is.server) {
+    if (!_point0_env.side.is.server) {
       throw new Error(
         'You can not get effects not in server. Please call Effects.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
       )

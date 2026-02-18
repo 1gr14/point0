@@ -24,7 +24,7 @@ export const getEnvVars = (): EnvVars => {
   }
   Object.assign(env, {
     NODE_ENV: processEnvHolder?.NODE_ENV,
-    TARGET: processEnvHolder?.POINT0_TARGET,
+    SIDE: processEnvHolder?.POINT0_SIDE,
     POINT0_SCOPE: processEnvHolder?.POINT0_SCOPE,
     POINT0_BUILT: processEnvHolder?.POINT0_BUILT,
     // in case if this vars was dfined by compiler
@@ -32,9 +32,9 @@ export const getEnvVars = (): EnvVars => {
   return env as EnvVars
 }
 
-// target
+// side
 
-const _isTargetClient = (): boolean => {
+const _isSideClient = (): boolean => {
   // Browser-like (DOM available)
   if (typeof window !== 'undefined' && typeof document !== 'undefined') return true
 
@@ -48,28 +48,28 @@ const _isTargetClient = (): boolean => {
   return false // Node.js, Bun, Deno, or other server runtimes
 }
 
-const isTargetClient = (): boolean => {
+const isSideClient = (): boolean => {
   if (superstore.isFakeClient()) {
     return true
   }
-  if (process.env.POINT0_TARGET) {
-    return process.env.POINT0_TARGET === 'client'
+  if (process.env.POINT0_SIDE) {
+    return process.env.POINT0_SIDE === 'client'
   }
-  return _isTargetClient()
+  return _isSideClient()
 }
 
 // in server it becomes const true, in client it becomes const false
-const isTargetServer = (): boolean => {
-  return !isTargetClient()
+const isSideServer = (): boolean => {
+  return !isSideClient()
 }
 
-const getTargetName = (): 'client' | 'server' => {
-  return isTargetClient() ? 'client' : 'server'
+const getSideName = (): 'client' | 'server' => {
+  return isSideClient() ? 'client' : 'server'
 }
 
-const isTargetSsr = (): false | true | 'prepass' | 'final' => {
+const isSideSsr = (): false | true | 'prepass' | 'final' => {
   // const ssr = SuperStore.getWeak<'prepass' | 'final' | undefined>('__POINT0_SSR_PHASE__')
-  if (isTargetClient()) {
+  if (isSideClient()) {
     return false
   }
   const getSsrPhase: unknown = (globalThis as any).__POINT0_GET_SSR_PHASE__
@@ -90,95 +90,95 @@ const isTargetSsr = (): false | true | 'prepass' | 'final' => {
   return true
 }
 
-function targetDefineUniversal<TServerResult>(options: { server: TServerResult }): TServerResult | undefined
-function targetDefineUniversal<TClientResult>(options: { client: TClientResult }): TClientResult | undefined
-function targetDefineUniversal<TClientResult, TServerResult>(options: {
+function sideDefineUniversal<TServerResult>(options: { server: TServerResult }): TServerResult | undefined
+function sideDefineUniversal<TClientResult>(options: { client: TClientResult }): TClientResult | undefined
+function sideDefineUniversal<TClientResult, TServerResult>(options: {
   client: TClientResult
   server: TServerResult
 }): TClientResult | TServerResult
-function targetDefineUniversal<TClientResult, TServerResult>(options: {
+function sideDefineUniversal<TClientResult, TServerResult>(options: {
   client?: TClientResult
   server?: TServerResult
 }): TClientResult | TServerResult | undefined {
-  if (isTargetClient()) {
+  if (isSideClient()) {
     return options.client
   }
   return options.server
 }
 
-type TargetDefineUnsafe = {
+type SideDefineUnsafe = {
   server: <T>(value: T) => T
   client: <T>(value: T) => T
 }
-type TargetDefineWithHelpers = typeof targetDefineUniversal & {
+type SideDefineWithHelpers = typeof sideDefineUniversal & {
   server: <T>(value: T) => T | undefined
   client: <T>(value: T) => T | undefined
-  unsafe: TargetDefineUnsafe
+  unsafe: SideDefineUnsafe
 }
 const defineServer = (value: any) => {
-  if (isTargetClient()) {
+  if (isSideClient()) {
     return undefined
   }
   return value
 }
 const defineClient = (value: any) => {
-  if (isTargetServer()) {
+  if (isSideServer()) {
     return undefined
   }
   return value
 }
-const targetDefineUnsafe = {
+const sideDefineUnsafe = {
   server: defineServer,
   client: defineClient,
 }
-const targetDefine = Object.assign(targetDefineUniversal, {
+const sideDefine = Object.assign(sideDefineUniversal, {
   server: defineServer,
   client: defineClient,
-  unsafe: targetDefineUnsafe,
+  unsafe: sideDefineUnsafe,
 })
 
-type TargetIsClient = {
+type SideIsClient = {
   readonly client: true
   readonly server: false
   readonly ssr: false
 }
-type TargetIsServer = {
+type SideIsServer = {
   readonly client: false
   readonly server: true
   readonly ssr: boolean | 'prepass' | 'final'
 }
-const targetIs = Object.defineProperties(
+const sideIs = Object.defineProperties(
   {},
   {
-    client: { get: isTargetClient },
-    server: { get: isTargetServer },
-    ssr: { get: isTargetSsr },
+    client: { get: isSideClient },
+    server: { get: isSideServer },
+    ssr: { get: isSideSsr },
   },
-) as TargetIsClient | TargetIsServer
+) as SideIsClient | SideIsServer
 
-export type EnvTargetClient = {
+export type EnvSideClient = {
   readonly name: 'client'
-  readonly is: TargetIsClient
-  readonly define: TargetDefineWithHelpers
+  readonly is: SideIsClient
+  readonly define: SideDefineWithHelpers
 }
 
-export type EnvTargetServer = {
+export type EnvSideServer = {
   readonly name: 'server'
-  readonly is: TargetIsServer
-  readonly define: TargetDefineWithHelpers
+  readonly is: SideIsServer
+  readonly define: SideDefineWithHelpers
 }
 
-export type EnvTarget = EnvTargetClient | EnvTargetServer
+export type EnvSide = EnvSideClient | EnvSideServer
 
-export const envTarget = Object.defineProperties(
+export const envSide = Object.defineProperties(
   {
-    is: targetIs,
-    define: targetDefine,
+    is: sideIs,
+    define: sideDefine,
   },
   {
-    name: { get: getTargetName },
+    name: { get: getSideName },
   },
-) as EnvTarget
+) as EnvSide
 
 // scope
 
@@ -339,7 +339,7 @@ type IsAny<T> = 0 extends 1 & T ? true : false
 export type Env<TVars = any, TScope extends string = string> = {
   readonly mode: EnvMode
   readonly vars: Readonly<EnvVars<TVars>>
-  readonly target: EnvTarget
+  readonly side: EnvSide
   readonly scope: EnvScope<IsAny<TScope> extends true ? string : TScope>
   readonly built: boolean
 }
@@ -347,7 +347,7 @@ export type Env<TVars = any, TScope extends string = string> = {
 export const env: Env = Object.defineProperties(
   {
     mode: envMode,
-    target: envTarget,
+    side: envSide,
     scope: envScope,
     built: false, // will be overridden by compiler in build phase
   },

@@ -55,7 +55,7 @@ export type EngineOptionsEnvParsed = Record<string, string | undefined>
 export type ExtractedViteConfig = import('vite').UserConfig
 export type ExtractViteConfigOptions = {
   command: 'serve' | 'build'
-  target: 'client' | 'server'
+  side: 'client' | 'server'
   mode: NormalNodeEnv
   scope: PointsScope
 }
@@ -74,14 +74,14 @@ export type EngineOptionsRoutes = () =>
   | RoutesPretty<any>
 
 export type EngineOptionsCompiler = {
-  target?: boolean
+  side?: boolean
   scope?: boolean
   mode?: boolean
   consts?: CompilerEnvConsts
   filter?: RegExp
 }
 export type EngineOptionsCompilerParsed = {
-  target: boolean
+  side: boolean
   scope: boolean
   consts: CompilerEnvConsts | undefined
   mode: boolean
@@ -110,7 +110,7 @@ export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   scope: PointsScope
   points?: PointsDefinitionSource<TRequiredCtx>
   generate?: Array<
-    Omit<FilesGeneratorTaskPoints, 'scope' | 'target'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'target'>
+    Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>
   >
   publicdir?: {
     source: EngineOptionsPublicdir
@@ -135,7 +135,7 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   // TODO: allow points collection
   points?: PointsDefinitionSource<TRequiredCtx>
   generate?: Array<
-    Omit<FilesGeneratorTaskPoints, 'scope' | 'target'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'target'>
+    Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>
   >
   app?: EngineOptionsAppComponent
   publicdir?: {
@@ -546,7 +546,7 @@ const parseEngineGeneralOptions = ({
               ...(generalOptions.compiler.consts ? { consts: generalOptions.compiler.consts } : {}),
               ...(generalOptions.compiler.filter ? { filter: generalOptions.compiler.filter } : {}),
               ...(generalOptions.compiler.scope !== undefined ? { scope: generalOptions.compiler.scope } : {}),
-              ...(generalOptions.compiler.target !== undefined ? { target: generalOptions.compiler.target } : {}),
+              ...(generalOptions.compiler.side !== undefined ? { side: generalOptions.compiler.side } : {}),
             }
   const result = {
     logger: generalOptions.logger || {
@@ -745,7 +745,7 @@ export const parseEngineServerOptions = ({
       : {}
   const serverOptionsCompilerRecord = typeof serverOptions.compiler === 'object' ? serverOptions.compiler : {}
   const mergedCompilerRecord = {
-    target: true,
+    side: true,
     scope: true,
     mode: true,
     filter: undefined,
@@ -769,7 +769,7 @@ export const parseEngineServerOptions = ({
       ? false
       : serverOptions.compiler === true
         ? {
-            target: true,
+            side: true,
             scope: true,
             mode: true,
             consts: mergedCompilerRecord.consts,
@@ -803,7 +803,7 @@ export const parseEngineServerOptions = ({
     generate: (serverOptions.generate ?? []).map((task) => ({
       ...task,
       scope: serverOptions.scope,
-      target: 'server',
+      side: 'server',
     })),
     banner: serverOptions.banner ?? null,
     viteConfig:
@@ -859,7 +859,7 @@ const parseEngineClientOptions = ({
       : {}
   const clientOptionsCompilerRecord = typeof clientOptions.compiler === 'object' ? clientOptions.compiler : {}
   const mergedCompilerRecord = {
-    target: true,
+    side: true,
     scope: true,
     mode: true,
     filter: undefined,
@@ -883,7 +883,7 @@ const parseEngineClientOptions = ({
       ? false
       : clientOptions.compiler === true
         ? {
-            target: true,
+            side: true,
             scope: true,
             mode: true,
             consts: mergedCompilerRecord.consts,
@@ -905,7 +905,7 @@ const parseEngineClientOptions = ({
     generate: (clientOptions.generate ?? []).map((task) => ({
       ...task,
       scope: clientOptions.scope,
-      target: 'client',
+      side: 'client',
     })),
     banner: clientOptions.banner ?? null,
     // pointsDistFile:

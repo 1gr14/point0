@@ -180,20 +180,20 @@ export class EngineServer<TInitialized extends boolean = boolean> {
   }: {
     nodeEnvFallback: NormalNodeEnv | undefined
     assignToProcessEnv: boolean
-  }): { NODE_ENV: NormalNodeEnv; POINT0_SCOPE: PointsScope; POINT0_TARGET: 'server' } {
+  }): { NODE_ENV: NormalNodeEnv; POINT0_SCOPE: PointsScope; POINT0_SIDE: 'server' } {
     const NODE_ENV = normalizeAndValidateNodeEnv(nodeEnvFallback)
     const POINT0_SCOPE = this.scope
-    const POINT0_TARGET = 'server'
+    const POINT0_SIDE = 'server'
     this.envConsts.NODE_ENV = NODE_ENV
     this.envConsts.POINT0_SCOPE = POINT0_SCOPE
-    this.envConsts.POINT0_TARGET = POINT0_TARGET
+    this.envConsts.POINT0_SIDE = POINT0_SIDE
     if (assignToProcessEnv) {
       for (const [envVarKey, envVarValue] of Object.entries({ ...this.envVars, ...this.envConsts })) {
         process.env[envVarKey] = envVarValue
         import.meta.env[envVarKey] = envVarValue
       }
     }
-    return { NODE_ENV, POINT0_SCOPE, POINT0_TARGET }
+    return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE }
   }
 
   async init({ engine }: { engine: Engine<RequiredCtx, true> }): Promise<EngineServer<true>> {
@@ -232,7 +232,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     }
     return {
       scope: this.compiler.scope ? this.scope : false,
-      target: this.compiler.target ? 'server' : false,
+      side: this.compiler.side ? 'server' : false,
       mode: this.compiler.mode ? normalizeAndValidateNodeEnv() : false,
       // TODO:ASAP add env varsconsts here from engine options
       consts: this.compiler.consts,
@@ -286,7 +286,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     const viteDevServer = await createViteDevServer({
       viteConfig: this.viteConfig,
       scope: this.scope,
-      target: 'server',
+      side: 'server',
       hmrPort: this.hmrPort,
       mode: normalizeAndValidateNodeEnv(),
       envConsts: this.envConsts,
@@ -734,7 +734,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       const loadedViteConfig = await extractViteConfig({
         viteConfig: this.viteConfig,
         command: 'build',
-        target: 'server',
+        side: 'server',
         mode: NODE_ENV,
         scope: this.scope,
       })

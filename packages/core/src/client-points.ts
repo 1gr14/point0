@@ -502,7 +502,7 @@ export class ClientPoints {
   }
 
   mount = () => {
-    if (_point0_env.target.is.server) {
+    if (_point0_env.side.is.server) {
       throw new Error('Client points can not be mounted on server')
     }
     _ssItems.__POINT0_CLIENT_POINTS__.set(this)
@@ -515,7 +515,7 @@ export class ClientPoints {
     const fakeClient = _getFakeClient()
     const clientPoints = fakeClient ? fakeClient.points : _ssItems.__POINT0_CLIENT_POINTS__.getWeak()
     if (!clientPoints) {
-      if (_point0_env.target.is.server) {
+      if (_point0_env.side.is.server) {
         throw new Error(
           'Client points not found if SuperStore. Looks like you call this fn outside of client context. You should call it only in components, hooks, functions, not in top of files without wrappers',
         )
