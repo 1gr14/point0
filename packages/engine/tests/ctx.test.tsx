@@ -165,3 +165,9 @@ describe('ctx', () => {
     `)
   })
 })
+
+// new expoe style:
+// ctx({ x: 1, y: 2 }, true) → expose everything
+// ctx(() => ({ x: 1, y: 2 }), true) → expose everything
+// ctx({ x: 1, y: 2, z: 2 }, ['x', 'y']) → expose x and y
+// ctx(() => ({ x: 1, y: 2, z: 2 }), ['x', 'y']) → expose x and y
