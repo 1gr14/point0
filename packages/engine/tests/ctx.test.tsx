@@ -28,7 +28,7 @@ describe('ctx', () => {
       .loader(({ ctx }) => ctx)
       .page(({ data }) => {
         expectTypeOf(data).toEqualTypeOf<{ x: number }>()
-        ymlify(data)
+        return ymlify(data)
       })
     const { fetchPreview } = await createTestThings({ points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -46,7 +46,7 @@ describe('ctx', () => {
       .loader(({ ctx }) => ctx)
       .page(({ data }) => {
         expectTypeOf(data).toEqualTypeOf<{ x: number }>()
-        ymlify(data)
+        return ymlify(data)
       })
     const { fetchPreview } = await createTestThings({ points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`

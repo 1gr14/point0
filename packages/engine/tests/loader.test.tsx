@@ -96,4 +96,12 @@ describe('loader', () => {
     const { response } = await fetchSsr(page)
     expect(response.status).toBe(200)
   })
+
+  it('forbids returning array as data', () => {
+    const root = createRoot()
+    root
+      .lets('page', 'home', '/')
+      // @ts-expect-error -- array is forbidden to return as data
+      .loader(() => [{ x: 1 }])
+  })
 })

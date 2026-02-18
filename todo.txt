@@ -52,9 +52,10 @@ try catch evertywhere in engine to show real error in real place
 
 
 === REFACTOING 3000 ===
-Префетч мод эврисынг не должен существовать, там хватает тру, и для сср это будет квериСтейтЭндКлиент, а для спа это просто сервер энд клиент
 __INPUT_RAW__ не хранить в стейте, а геж-то ещё хранить напримерв _state
+remove input from request
 test body really has raw body after request
+test onPrefetchPage and other prefetchModes
 В апп не передавать поинтсы, зачем они там
 --+
 Разобраться с эррор баундари для фронта
@@ -156,14 +157,6 @@ ssr can be not on root point, but client still can be ssr if it has ssr point, s
 Енв сплит, возвращает прокси, если сделать аксессуар к запрещёнке будет сровнуто назвать прокси
 В энв разрешить добавлять свои вилки с любым кастомным условием
 
-
-
-
-=== PLUGIN ===
-test ctx
-test onPrefetchPage and other prefetchModes
-? Так и дата может экстендить надо, зачем её переписывать то (так не красиво будет)
----
 
 
 
