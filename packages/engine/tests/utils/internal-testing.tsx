@@ -149,11 +149,17 @@ export const waitReturn = async <T = undefined,>(value?: T, timeout = 100): Prom
 }
 
 export const ymlify = (result: any) => {
-  return '\n' + YAML.stringify(result, undefined, 2) + '\n'
+  const yml = YAML.stringify(result, undefined, 2)
+  return '\n' + normalizeYmlKeys(yml) + '\n'
 }
 
 export const ymlifyline = (result: any) => {
-  return YAML.stringify(result, undefined, 2).split('\n').join(', ')
+  return normalizeYmlKeys(YAML.stringify(result, undefined, 2)).split('\n').join(', ')
+}
+
+const normalizeYmlKeys = (yml: string) => {
+  // Bun YAML may quote keys like "y". For test snapshots we keep keys unquoted.
+  return yml.replace(/(^\s*)"([^"\n]+)"(?=\s*:)/gm, '$1$2')
 }
 
 let isNotifyManagerBound = false

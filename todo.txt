@@ -160,8 +160,8 @@ ssr can be not on root point, but client still can be ssr if it has ssr point, s
 
 
 === PLUGIN ===
-forbid laoders in base and root also, on types also
-Префетч полиси тру и фалс как значения
+test ctx
+test onPrefetchPage and other prefetchModes
 ? Так и дата может экстендить надо, зачем её переписывать то (так не красиво будет)
 ---
 

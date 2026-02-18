@@ -138,6 +138,21 @@ export class HtmlView<TParsed extends boolean = any> {
           root = HtmlView.buildTreeItem(el)
           stack.push(root)
           el.onEndTag(() => {
+            // Preserve text-only content directly under #root (e.g. fragment output).
+            const rootNode = root
+            if (rootNode?.content !== undefined) {
+              const trimmed = rootNode.content.trim()
+              if (trimmed) {
+                rootNode.children.push({
+                  tag: '',
+                  id: undefined,
+                  classNames: [],
+                  content: trimmed,
+                  children: [],
+                })
+              }
+              rootNode.content = undefined
+            }
             insideRoot = false
             stack.pop()
           })
@@ -260,6 +275,19 @@ export class HtmlView<TParsed extends boolean = any> {
 
   private static formatTreeItemToString(item: HtmlTreeItem, indent = 0): string {
     const indentStr = '  '.repeat(indent)
+    const content = item.content || ''
+
+    // Empty tag means "plain text line" in previews.
+    if (item.tag === '') {
+      if (item.children.length > 0) {
+        const lines: string[] = [content ? `${indentStr}${content}` : indentStr]
+        for (const child of item.children) {
+          lines.push(HtmlView.formatTreeItemToString(child, indent + 1))
+        }
+        return lines.join('\n')
+      }
+      return content ? `${indentStr}${content}` : indentStr
+    }
 
     // Build the key: #id, .class1.class2, or tag
     // Special handling for TEXT nodes
@@ -275,7 +303,6 @@ export class HtmlView<TParsed extends boolean = any> {
     }
 
     // Format content
-    const content = item.content || ''
     const contentStr = content ? `: ${content}` : ':'
 
     // If there are children, format with nested structure

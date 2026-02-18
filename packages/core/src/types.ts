@@ -864,11 +864,14 @@ export type QueryMode = 'server' | 'client' | 'serverAndClient'
 export type PrefetchPagePolicy =
   | 'serverQuery'
   | 'clientQuery'
-  | 'serverClientQuery'
-  | 'queryClientDehydratedState'
-  | 'everything'
+  | 'serverAndClientQuery'
+  | 'ssrDehydratedState'
+  | 'ssrDehydratedStateAndClientQuery'
   | 'onPrefetchOnly'
   | 'none'
+  | false
+  | true
+export type NormalizedPrefetchPagePolicy = Exclude<PrefetchPagePolicy, boolean>
 
 // middlewares
 

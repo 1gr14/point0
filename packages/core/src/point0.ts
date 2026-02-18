@@ -154,6 +154,7 @@ import type {
   NiceRootStagePoint,
   NiceStagePoint,
   NormalizeQueryResultType,
+  NormalizedPrefetchPagePolicy,
   PartialUseInfiniteQueryOptions,
   PointName,
   PointType,
@@ -378,13 +379,26 @@ export class Point0<
   private readonly _polhPolicy: PrefetchPagePolicy | undefined
   private readonly _polhDuration: number | undefined
   private readonly _ponPolicy: PrefetchPagePolicy | undefined
+  private readonly _normalizePrefetchPagePolicy = (policy: PrefetchPagePolicy): NormalizedPrefetchPagePolicy => {
+    return !policy
+      ? 'none'
+      : policy === true
+        ? this._ssr
+          ? 'ssrDehydratedStateAndClientQuery'
+          : 'serverAndClientQuery'
+        : policy
+  }
   readonly _getPrefetchPagePolicy = (
     trigger: 'navigate' | 'linkHover' | undefined,
     fallback: PrefetchPagePolicy | undefined,
-  ) => (trigger === 'linkHover' ? this._polhPolicy : trigger === 'navigate' ? this._ponPolicy : fallback) ?? 'none'
+  ): NormalizedPrefetchPagePolicy => {
+    const policy =
+      (trigger === 'linkHover' ? this._polhPolicy : trigger === 'navigate' ? this._ponPolicy : fallback) ?? 'none'
+    return this._normalizePrefetchPagePolicy(policy)
+  }
   private readonly _onPrefetchMountableFns: OnPrefetchMountableFn[]
   get polh(): boolean | number {
-    return !this._polhPolicy || this._polhPolicy === 'none' ? false : (this._polhDuration ?? true)
+    return !this._polhPolicy ? false : (this._polhDuration ?? true)
   }
   private readonly _ProviderReactContext: Context<MountableSuccessData<TQueriesDefinitions, TMapperOutput>> | undefined
   private readonly _errorComponent: ErrorComponentType<DestinationComponentVariant> | undefined
@@ -2321,7 +2335,7 @@ export class Point0<
   }
 
   prefetchPageOnLinkHover(
-    policy: PrefetchPagePolicy | boolean,
+    policy: PrefetchPagePolicy,
     duration?: number,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
@@ -2341,18 +2355,17 @@ export class Point0<
     TQueriesDefinitions
   >
   prefetchPageOnLinkHover(
-    policy?: PrefetchPagePolicy | boolean, // in case if it was shaked for nossr server
+    policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
     duration?: number,
   ) {
-    const policyNormalized = typeof policy === 'boolean' ? (policy ? 'everything' : 'none') : policy
     return this._continue({
-      _polhPolicy: policyNormalized,
+      _polhPolicy: policy,
       _polhDuration: duration,
     }) as never
   }
 
   prefetchPageOnNavigate(
-    policy: PrefetchPagePolicy | boolean,
+    policy: PrefetchPagePolicy,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -2371,11 +2384,10 @@ export class Point0<
     TQueriesDefinitions
   >
   prefetchPageOnNavigate(
-    policy?: PrefetchPagePolicy | boolean, // in case if it was shaked for nossr server
+    policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
   ) {
-    const policyNormalized = typeof policy === 'boolean' ? (policy ? 'everything' : 'none') : policy
     return this._continue({
-      _ponPolicy: policyNormalized,
+      _ponPolicy: policy,
     }) as never
   }
 
@@ -3309,9 +3321,9 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
-      TPointType extends 'root' | 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'root' | 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'root' | 'base' ? TMapperOutput : UndefinedMapperOutput,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3321,10 +3333,10 @@ export class Point0<
         TClientInputSchema,
         RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
       >,
-      TPointType extends 'root' | 'base' ? TQueryResultType : UndefinedQueryResultType,
+      UndefinedQueryResultType,
       EmptyProps,
-      TPointType extends 'layout' ? EmptyProps : TInnerProps, // if it was layout we drop all wrappers so no inner props, else it was created form base or root so we keep wrappers
-      TPointType extends 'layout' ? [] : TQueriesDefinitions // same here
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
     >
   >
   lets<
@@ -3348,9 +3360,9 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
-      TPointType extends 'root' | 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'root' | 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'root' | 'base' ? TMapperOutput : UndefinedMapperOutput,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
       ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3360,10 +3372,10 @@ export class Point0<
         TClientInputSchema,
         RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
       >,
-      TPointType extends 'root' | 'base' ? TQueryResultType : UndefinedQueryResultType,
+      UndefinedQueryResultType,
       EmptyProps,
-      TPointType extends 'layout' ? EmptyProps : TInnerProps, // if it was layout we drop all wrappers so no inner props, else it was created form base or root so we keep wrappers
-      TPointType extends 'layout' ? [] : TQueriesDefinitions // same here
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
     >
   >
   lets<
@@ -3387,9 +3399,9 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
-      TPointType extends 'root' | 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'root' | 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'root' | 'base' ? TMapperOutput : UndefinedMapperOutput,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3399,10 +3411,10 @@ export class Point0<
         TClientInputSchema,
         RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
       >,
-      TPointType extends 'root' | 'base' ? TQueryResultType : UndefinedQueryResultType,
+      UndefinedQueryResultType,
       EmptyProps,
-      TPointType extends 'layout' ? EmptyProps : TInnerProps, // if it was layout we drop all wrappers so no inner props, else it was created form base or root so we keep wrappers
-      TPointType extends 'layout' ? [] : TQueriesDefinitions // same here
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
     >
   >
   lets<
@@ -3426,9 +3438,9 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
-      TPointType extends 'root' | 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'root' | 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
-      TPointType extends 'root' | 'base' ? TMapperOutput : UndefinedMapperOutput,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
       ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3438,10 +3450,10 @@ export class Point0<
         TClientInputSchema,
         RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
       >,
-      TPointType extends 'root' | 'base' ? TQueryResultType : UndefinedQueryResultType,
+      UndefinedQueryResultType,
       EmptyProps,
-      TPointType extends 'layout' ? EmptyProps : TInnerProps, // if it was layout we drop all wrappers so no inner props, else it was created form base or root so we keep wrappers
-      TPointType extends 'layout' ? [] : TQueriesDefinitions // same here
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
     >
   >
   lets<TNewOuterProps extends Props = EmptyProps>(
@@ -3452,16 +3464,16 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
-    TPointType extends 'root' | 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
-    TPointType extends 'root' | 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
-    TPointType extends 'root' | 'base' ? TMapperOutput : UndefinedMapperOutput,
+    UndefinedLoaderOutput,
+    UndefinedLoaderOutput,
+    UndefinedMapperOutput,
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    TPointType extends 'root' | 'base' ? TQueryResultType : UndefinedQueryResultType,
+    UndefinedQueryResultType,
     TNewOuterProps,
-    AppendProps<TInnerProps, TNewOuterProps>,
-    TQueriesDefinitions
+    TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
+    TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
   >
   lets<TNewOuterProps extends Props = EmptyProps>(
     ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'provider', pointName: string] : never[]
@@ -3471,16 +3483,16 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
-    TPointType extends 'root' | 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
-    TPointType extends 'root' | 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
-    TPointType extends 'root' | 'base' ? TMapperOutput : UndefinedMapperOutput,
+    UndefinedLoaderOutput,
+    UndefinedLoaderOutput,
+    UndefinedMapperOutput,
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    TPointType extends 'root' | 'base' ? TQueryResultType : UndefinedQueryResultType,
+    UndefinedQueryResultType,
     TNewOuterProps,
-    AppendProps<TInnerProps, TNewOuterProps>,
-    TQueriesDefinitions
+    TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
+    TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
   >
   lets<
     TNewLetsReadyPointType extends Exclude<ReadyPointType, 'page' | 'layout' | 'component' | 'provider'>,
@@ -3495,16 +3507,16 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TCtxExposedKeys,
-    TPointType extends 'root' | 'base' ? TServerLoaderOutput : UndefinedLoaderOutput,
-    TPointType extends 'root' | 'base' ? TClientLoaderOutput : UndefinedLoaderOutput,
-    TPointType extends 'root' | 'base' ? TMapperOutput : UndefinedMapperOutput,
+    UndefinedLoaderOutput,
+    UndefinedLoaderOutput,
+    UndefinedMapperOutput,
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    TPointType extends 'root' | 'base' ? TQueryResultType : UndefinedQueryResultType,
+    UndefinedQueryResultType,
     EmptyProps,
-    TInnerProps,
-    TQueriesDefinitions
+    TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+    TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
   >
   lets(...args: any[]) {
     const [letsReadyPointType, pointName, route] = args as [ReadyPointType, PointName, AnyRoute | string | undefined]
@@ -3554,16 +3566,10 @@ export class Point0<
           ]
 
     const serverExecuteActionsAll = [...this._serverExecuteActions, ...newInputExecuteAction]
-    const serverExecuteActionsSuitable =
-      this.type !== 'base' && this.type !== 'root'
-        ? serverExecuteActionsAll.filter((action) => action.type !== 'loader')
-        : serverExecuteActionsAll
+    const serverExecuteActionsSuitable = serverExecuteActionsAll.filter((action) => action.type !== 'loader')
 
     const clientExecuteActionsAll = [...this._clientExecuteActions, ...newInputExecuteAction]
-    const clientExecuteActionsSuitable =
-      this.type !== 'base' && this.type !== 'root'
-        ? clientExecuteActionsAll.filter((action) => action.type !== 'loader')
-        : clientExecuteActionsAll
+    const clientExecuteActionsSuitable = clientExecuteActionsAll.filter((action) => action.type !== 'loader')
 
     const mountActionsAll = [...this._mountActions]
     const mountActionsSuitable = this.type !== 'base' && this.type !== 'root' ? [] : mountActionsAll
@@ -6785,12 +6791,9 @@ export class Point0<
     const location = providedLocation ?? this.route.getLocation(this.route.flat(input))
 
     const queryClientDehydratedStateWasPrefetched = await (async () => {
-      if (policy === 'queryClientDehydratedState' || policy === 'everything') {
+      if (policy === 'ssrDehydratedState' || policy === 'ssrDehydratedStateAndClientQuery') {
         if (!this._root?._ssr) {
-          if (policy === 'queryClientDehydratedState') {
-            throw new Error('Query client dehydrated state can be prefetched only when ssr is enabled')
-          }
-          return false
+          throw new Error('Query client dehydrated state can be prefetched only when ssr is enabled')
         }
         await this._prefetchPageQueryClientDehydratedState({
           queryClient,
@@ -6803,7 +6806,7 @@ export class Point0<
       return false
     })()
 
-    if (policy === 'queryClientDehydratedState') {
+    if (policy === 'ssrDehydratedState') {
       this._emit('pointPrefetchPageSuccess', eventData)
       this._emit('pointPrefetchPageSettled', eventData)
       return
@@ -6828,14 +6831,18 @@ export class Point0<
         if (policy === 'onPrefetchOnly') {
           return []
         }
-        if (policy === 'everything' && !p._hasClientLoader() && queryClientDehydratedStateWasPrefetched) {
+        if (
+          policy === 'ssrDehydratedStateAndClientQuery' &&
+          !p._hasClientLoader() &&
+          queryClientDehydratedStateWasPrefetched
+        ) {
           return []
         }
         if (policy === 'clientQuery' && !p._hasClientLoader()) {
           return []
         }
         const mode =
-          policy === 'everything'
+          policy === 'ssrDehydratedStateAndClientQuery'
             ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step
               queryClientDehydratedStateWasPrefetched
               ? 'client'
@@ -6843,7 +6850,7 @@ export class Point0<
             : {
                 serverQuery: 'server' as const,
                 clientQuery: 'client' as const,
-                serverClientQuery: 'serverAndClient' as const,
+                serverAndClientQuery: 'serverAndClient' as const,
               }[policy]
         if (p._queryResultType === 'infiniteQuery') {
           return await p.prefetchInfiniteQuery(
@@ -6878,7 +6885,11 @@ export class Point0<
         if (policy === 'onPrefetchOnly') {
           return []
         }
-        if (policy === 'everything' && !p._hasClientLoader() && queryClientDehydratedStateWasPrefetched) {
+        if (
+          policy === 'ssrDehydratedStateAndClientQuery' &&
+          !p._hasClientLoader() &&
+          queryClientDehydratedStateWasPrefetched
+        ) {
           return []
         }
         if (policy === 'clientQuery' && !p._hasClientLoader()) {
@@ -6887,7 +6898,7 @@ export class Point0<
         // for self we get input, all others is layouts so we calculate its input by page
         const inputHere = p === (this as never as ReadyPoint) ? input : p._getUnsafeInputRawByLocation(location)
         const mode =
-          policy === 'everything'
+          policy === 'ssrDehydratedStateAndClientQuery'
             ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step
               queryClientDehydratedStateWasPrefetched
               ? 'client'
@@ -6895,7 +6906,7 @@ export class Point0<
             : {
                 serverQuery: 'server' as const,
                 clientQuery: 'client' as const,
-                serverClientQuery: 'serverAndClient' as const,
+                serverAndClientQuery: 'serverAndClient' as const,
               }[policy]
         if (p._queryResultType === 'infiniteQuery') {
           return await p.prefetchInfiniteQuery(inputHere as never, undefined, {
@@ -7043,7 +7054,7 @@ export class Point0<
     }
   }
 
-  private readonly _getMountable = (props: {
+  private readonly _Mountable = (props: {
     mountComponent:
       | LayoutSuccessComponentType<any, any, any, any>
       | PageSuccessComponentType<any, any, any, any>
@@ -7260,7 +7271,7 @@ export class Point0<
         location,
         pageStateManager,
         layers: _nextLayers,
-      } satisfies Parameters<typeof this._getMountable>[0]
+      } satisfies Parameters<typeof this._Mountable>[0]
       return {
         _nextPrev,
         _nextLayers,
@@ -7284,7 +7295,7 @@ export class Point0<
       switch (action.type) {
         case 'pluginStart': {
           const { _nextPrev, _nextLayers, _nextMountableProps } = getNextProps()
-          return this._getMountable({
+          return this._Mountable({
             ..._nextMountableProps,
             layers: [
               {
@@ -7306,7 +7317,7 @@ export class Point0<
         }
         case 'pluginEnd': {
           const { _nextLayers, _nextMountableProps } = getNextProps()
-          return this._getMountable({
+          return this._Mountable({
             ..._nextMountableProps,
             layers: _nextLayers.slice(1),
           })
@@ -7353,7 +7364,7 @@ export class Point0<
         case 'wrapper': {
           return React.createElement(action.Component, {
             ...mountState,
-            children: React.createElement(this._getMountable, _nextMountableProps),
+            children: React.createElement(this._Mountable, _nextMountableProps),
             LoadingComponent,
             ErrorComponent,
           })
@@ -7376,7 +7387,7 @@ export class Point0<
           // with query fn
           if (isQueryResult(result) || isQueryResultArray(result)) {
             const queries = Array.isArray(result) ? result : [result]
-            return React.createElement(this._getMountable, {
+            return React.createElement(this._Mountable, {
               ..._nextMountableProps,
               layers: _nextLayers.map((layer) => ({
                 ...layer,
@@ -7399,7 +7410,7 @@ export class Point0<
               error: result,
             })
           } else {
-            return React.createElement(this._getMountable, {
+            return React.createElement(this._Mountable, {
               ..._nextMountableProps,
               layers: _nextLayers.map((layer) => ({
                 ...layer,
@@ -7427,7 +7438,7 @@ export class Point0<
               )
             }
           })()
-          return React.createElement(this._getMountable, {
+          return React.createElement(this._Mountable, {
             ..._nextMountableProps,
             layers: _nextLayers.map((layer) => ({
               ...layer,
@@ -7447,7 +7458,7 @@ export class Point0<
               ? this.useInfiniteQuery(currentLayer.inputRaw as never)
               : this.useQuery(currentLayer.inputRaw as never)
           const queries = [queryResult]
-          return React.createElement(this._getMountable, {
+          return React.createElement(this._Mountable, {
             ..._nextMountableProps,
             layers: _nextLayers.map((layer) => ({
               ...layer,
@@ -7566,7 +7577,7 @@ export class Point0<
       }
     }, [this.name, inputRaw, prevLocation, status])
 
-    return this._getMountable({
+    return this._Mountable({
       layers: [
         {
           inputRaw,
@@ -7599,7 +7610,7 @@ export class Point0<
       return { inputRaw, restProps }
     }, [props])
 
-    return this._getMountable({
+    return this._Mountable({
       layers: [
         {
           inputRaw,
@@ -7636,7 +7647,7 @@ export class Point0<
       return { inputRaw, children, restProps }
     }, [props, location])
 
-    return this._getMountable({
+    return this._Mountable({
       layers: [
         {
           inputRaw,
@@ -7722,7 +7733,7 @@ export class Point0<
       return { inputRaw, children, restProps }
     }, [props])
 
-    return this._getMountable({
+    return this._Mountable({
       layers: [
         {
           inputRaw,

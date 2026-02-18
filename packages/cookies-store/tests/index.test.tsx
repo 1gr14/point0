@@ -366,7 +366,7 @@ describe('cookies-store', () => {
         expect(await tale()).toMatchInlineSnapshot(`
         "
         /
-          (Empty)
+          Loading...
 
           #page:
             #content: Hello, guest!
@@ -455,7 +455,7 @@ describe('cookies-store', () => {
         expect(await tale()).toMatchInlineSnapshot(`
         "
         /
-          (Empty)
+          Loading...
 
           #page:
             #content: Hello, guest!
@@ -545,7 +545,7 @@ describe('cookies-store', () => {
         expect(await tale()).toMatchInlineSnapshot(`
         "
         /
-          (Empty)
+          Loading...
 
           #page:
             #content: Hello, guest!
