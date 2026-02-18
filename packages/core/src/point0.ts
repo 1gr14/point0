@@ -88,6 +88,8 @@ import type {
   AppendCtx,
   AppendCtxExposedKeys,
   AssertInputSchemaNotWider,
+  AssertNoArrayReturn,
+  AssertNotFunction,
   AssertNoForbiddenCtxExposedKeys,
   AssertNoForbiddenMethodsIfNotSuitableStage,
   AssertRouteDefinitionInputExtends,
@@ -2419,7 +2421,9 @@ export class Point0<
   // middlewares
 
   ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TServerInputSchema, Ctx>>(
-    ctxFn: TCtxFn & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
+    ctxFn: TCtxFn &
+      AssertNoArrayReturn<Awaited<ReturnType<TCtxFn>>, 'Ctx fn should not return array'> &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -2439,6 +2443,7 @@ export class Point0<
   >
   ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TServerInputSchema, Ctx>>(
     ctxFn: TCtxFn &
+      AssertNoArrayReturn<Awaited<ReturnType<TCtxFn>>, 'Ctx fn should not return array'> &
       AssertNoForbiddenCtxExposedKeys<Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>> &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
     expose: true,
@@ -2463,7 +2468,9 @@ export class Point0<
     TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TServerInputSchema, Ctx>,
     TCtxFnExposedKeys extends Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>,
   >(
-    ctxFn: TCtxFn & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
+    ctxFn: TCtxFn &
+      AssertNoArrayReturn<Awaited<ReturnType<TCtxFn>>, 'Ctx fn should not return array'> &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
     expose: TCtxFnExposedKeys[] & AssertNoForbiddenCtxExposedKeys<TCtxFnExposedKeys>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
@@ -2483,7 +2490,9 @@ export class Point0<
     TQueriesDefinitions
   >
   ctx<TAppendCtx extends Ctx>(
-    ctx: TAppendCtx & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
+    ctx: TAppendCtx &
+      AssertNotFunction<TAppendCtx, 'Use ctx(fn) for function values'> &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -2503,6 +2512,7 @@ export class Point0<
   >
   ctx<TAppendCtx extends Ctx>(
     ctx: TAppendCtx &
+      AssertNotFunction<TAppendCtx, 'Use ctx(fn) for function values'> &
       AssertNoForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>> &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
     expose: true,
@@ -2524,7 +2534,9 @@ export class Point0<
     TQueriesDefinitions
   >
   ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
-    ctx: TAppendCtx & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
+    ctx: TAppendCtx &
+      AssertNotFunction<TAppendCtx, 'Use ctx(fn) for function values'> &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
     expose: TAppendCtxExposedKeys[] & AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
@@ -5256,6 +5268,14 @@ export class Point0<
       this._emit('pointFetchServerStart', _eventData)
 
       res = await fetchFn(fetchRequest)
+      // Bubble up non-default status codes from nested server point fetches
+      // to the current outer request (e.g. SSR page render request).
+      if (_point0_env.target.is.server) {
+        const currentEffects = _ssItems.__POINT0_EFFECTS__.getWeak()
+        if (typeof currentEffects?.status === 'undefined') {
+          currentEffects?.set.status(res.status)
+        }
+      }
       // TODO:ASAP create eventer
       // CookiesStore.refresh()
       if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {

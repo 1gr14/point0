@@ -499,14 +499,15 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           layers[0].data = undefined
         }
 
-        const status = effects.status ?? 200
-        effects.set.status(status)
+        // const status = effects.status ?? 200
+        // console.log('status', status)
+        // effects.set.status(status)
         return {
           ctx: layers[0].ctx,
           data: layers[0].data,
           response: layers[0].response,
           error: undefined,
-          status,
+          status: effects.status,
           output: layers[0].output,
           effects: effects.values,
           point,

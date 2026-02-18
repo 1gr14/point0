@@ -1,5 +1,6 @@
+import type { Prettify } from '@point0/core'
 import { Point0 } from '@point0/core'
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { createTestThings, ymlify } from './utils/internal-testing.js'
 
 describe('ctx', () => {
@@ -25,7 +26,10 @@ describe('ctx', () => {
       .lets('page', 'home', '/')
       .ctx({ x: 1 })
       .loader(({ ctx }) => ctx)
-      .page(({ data }) => ymlify(data))
+      .page(({ data }) => {
+        expectTypeOf(data).toEqualTypeOf<{ x: number }>()
+        ymlify(data)
+      })
     const { fetchPreview } = await createTestThings({ points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
@@ -40,7 +44,10 @@ describe('ctx', () => {
       .lets('page', 'home', '/')
       .ctx(() => ({ x: 1 }))
       .loader(({ ctx }) => ctx)
-      .page(({ data }) => ymlify(data))
+      .page(({ data }) => {
+        expectTypeOf(data).toEqualTypeOf<{ x: number }>()
+        ymlify(data)
+      })
     const { fetchPreview } = await createTestThings({ points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
@@ -56,7 +63,10 @@ describe('ctx', () => {
       .ctx(() => ({ x: 1 }))
       .ctx(({ ctx }) => ({ y: ctx.x + 1 }))
       .loader(({ ctx }) => ctx)
-      .page(({ data }) => ymlify(data))
+      .page(({ data }) => {
+        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ x: number; y: number }>()
+        return ymlify(data)
+      })
     const { fetchPreview } = await createTestThings({ points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
@@ -73,7 +83,10 @@ describe('ctx', () => {
       .ctx(() => ({ x: 1 }))
       .ctx(({ ctx }) => ({ y: ctx.x + 1, x: 999 }))
       .loader(({ ctx }) => ctx)
-      .page(({ data }) => ymlify(data))
+      .page(({ data }) => {
+        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ x: number; y: number }>()
+        return ymlify(data)
+      })
     const { fetchPreview } = await createTestThings({ points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
@@ -89,7 +102,10 @@ describe('ctx', () => {
       .lets('page', 'home', '/')
       .ctx({ x: 1 }, true)
       .loader(({ ctx, x }) => ({ ctx, x }))
-      .page(({ data }) => ymlify(data))
+      .page(({ data }) => {
+        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ ctx: { x: number }; x: number }>()
+        return ymlify(data)
+      })
     const { fetchPreview } = await createTestThings({ points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
@@ -112,7 +128,10 @@ describe('ctx', () => {
           // @ts-expect-error -- y should nt exists
           o.y ?? '❌',
       }))
-      .page(({ data }) => ymlify(data))
+      .page(({ data }) => {
+        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ ctx: { x: number; y: number }; x: number; y: any }>()
+        return ymlify(data)
+      })
     const { fetchPreview } = await createTestThings({ points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
@@ -131,7 +150,10 @@ describe('ctx', () => {
       .lets('page', 'home', '/')
       .ctx(() => ({ x: 1 }), true)
       .loader(({ ctx, x }) => ({ ctx, x }))
-      .page(({ data }) => ymlify(data))
+      .page(({ data }) => {
+        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ ctx: { x: number }; x: number }>()
+        return ymlify(data)
+      })
     const { fetchPreview } = await createTestThings({ points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
@@ -154,7 +176,10 @@ describe('ctx', () => {
           // @ts-expect-error -- y should nt exists
           o.y ?? '❌',
       }))
-      .page(({ data }) => ymlify(data))
+      .page(({ data }) => {
+        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ ctx: { x: number; y: number }; x: number; y: any }>()
+        return ymlify(data)
+      })
     const { fetchPreview } = await createTestThings({ points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
@@ -165,6 +190,13 @@ describe('ctx', () => {
       y: ❌
       "
     `)
+  })
+
+  it('forbids returning array as ctx', () => {
+    const root = createRoot()
+    const point = root.lets('page', 'home', '/')
+    // @ts-expect-error -- array is forbidden to return as ctx
+    point.ctx(() => [{ x: 1 }])
   })
 
   it('forbids exposing reserved keys', () => {

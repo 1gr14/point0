@@ -23,11 +23,6 @@ import type { Request0 } from './request0.js'
 
 // basic
 
-export type PlainObject<Value> = {
-  [K: string]: Value
-} & {
-  [K: number]: never
-}
 export type EmptyObject = Record<never, never>
 
 export type UndefinedMethod = undefined
@@ -39,16 +34,14 @@ export type UndefinedPointsScope = undefined
 export type UndefinedRoute = undefined
 export type RouteDefinition = string
 export type UndefinedRouteDefinition = undefined
-export type EmptyCtx = Record<never, never>
+export type EmptyCtx = EmptyObject
 export type UnknownCtx = Record<string, unknown>
 export type UndefinedCtx = undefined
 export type RequiredCtx = UnknownCtx | UndefinedCtx
 export type Ctx = UnknownCtx | EmptyCtx
 // export type Ctx = UnknownCtx
-export type EmptyData = Record<never, never>
-// Data payloads are object-like maps and should not be tuples/arrays.
-// Excluding iterable objects prevents `[status, data]` tuples from being inferred as plain data.
-export type UnknownData = Record<string, unknown> // & { readonly [Symbol.iterator]?: never }
+export type EmptyData = EmptyObject
+export type UnknownData = Record<string, unknown>
 export type UndefinedData = undefined
 export type Data = UnknownData | EmptyData
 // export type Data = UnknownData
@@ -453,11 +446,7 @@ export type MergeRecordValidationSchemas<
 //   S extends RecordValidationSchema ? (RequiredKeys<RecordValidationSchemaInput<S>> extends never ? false : true) : false
 
 export type HasRequiredKeysInValidationSchema<S extends RecordValidationSchema | undefined> =
-  S extends RecordValidationSchema
-    ? Record<never, never> extends RecordValidationSchemaInput<S>
-      ? false
-      : true
-    : false
+  S extends RecordValidationSchema ? (EmptyObject extends RecordValidationSchemaInput<S> ? false : true) : false
 
 export type IsInputOptional<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -530,19 +519,18 @@ export type AssertRouteDefinitionInputExtends<
 export type InputSchema = RecordValidationSchema
 export type UndefinedInputSchema = undefined
 export type InputParsed<TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema> =
-  TInputSchema extends RecordValidationSchema ? RecordValidationSchemaOutput<TInputSchema> : Record<never, never>
+  TInputSchema extends RecordValidationSchema ? RecordValidationSchemaOutput<TInputSchema> : EmptyObject
 export type InputsParsed<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = InputParsed<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
 export type InputRaw<TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema> =
-  TInputSchema extends RecordValidationSchema ? RecordValidationSchemaInput<TInputSchema> : Record<never, never>
+  TInputSchema extends RecordValidationSchema ? RecordValidationSchemaInput<TInputSchema> : EmptyObject
 export type InputsRaw<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = InputRaw<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
 type UndefinedIfEmptyObject<T> = IsEmptyObjectSpecial<T> extends true ? undefined : T
-// type UndefinedIfEmptyObject<T> = Record<never, never> extends T ? undefined : T
 export type InputsRawOrUndefined<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -632,7 +620,7 @@ export type ExposedCtx<TCtx extends Ctx, TCtxExposedKeys extends CtxExposedKeys 
     }
   : UndefinedCtx
 export type ExposedCtxOrEmpty<TCtx extends Ctx, TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys> =
-  ExposedCtx<TCtx, TCtxExposedKeys> extends undefined ? Record<never, never> : ExposedCtx<TCtx, TCtxExposedKeys>
+  ExposedCtx<TCtx, TCtxExposedKeys> extends undefined ? EmptyObject : ExposedCtx<TCtx, TCtxExposedKeys>
 export type CurrentRouteDefinition<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = TRouteDefinition extends RouteDefinition ? TRouteDefinition : string
@@ -714,6 +702,12 @@ export type RichFetchFn = (input: string | URL | Request, init?: RequestInit) =>
 export type ShowError<Message extends string> = {
   readonly __error__: Message
 } & Record<Message, Message>
+export type AssertNoArrayReturn<TValue, TMessage extends string> = TValue extends readonly unknown[]
+  ? ShowError<TMessage>
+  : unknown
+export type AssertNotFunction<TValue, TMessage extends string> = TValue extends (...args: any[]) => any
+  ? ShowError<TMessage>
+  : unknown
 export type WithError<TError, T> = unknown extends TError ? T : TError
 
 // '/' → '/'
@@ -901,7 +895,6 @@ export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends Lo
       response: TServerLoaderOutput extends Response ? TServerLoaderOutput : undefined
       effects: ResponseEffectsValues
       error: undefined
-      status: number
       output: TServerLoaderOutput
       point: ReadyPoint
     }
@@ -911,7 +904,6 @@ export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends Lo
       response: Response | UndefinedResponse
       effects: ResponseEffectsValues
       error: Error0
-      status: number
       output: LoaderOutput | UndefinedLoaderOutput
       point: ReadyPoint | undefined
     }
@@ -1148,7 +1140,7 @@ export type FetchServerDetailedOutput<TServerLoaderOutput extends LoaderOutput |
     }
   | {
       response: Response | undefined
-      data: Data | undefined
+      data: undefined
       output: undefined
       error: Error0
     }

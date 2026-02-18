@@ -154,7 +154,9 @@ export const ymlify = (result: any) => {
 }
 
 export const ymlifyline = (result: any) => {
-  return normalizeYmlKeys(YAML.stringify(result, undefined, 2)).split('\n').join(', ')
+  return normalizeYmlKeys(YAML.stringify(result, undefined, 2))
+    .split('\n')
+    .join(', ')
 }
 
 const normalizeYmlKeys = (yml: string) => {
@@ -270,6 +272,7 @@ type FetchSsr = <T extends AnyNiceRequestableReadyPoint>(
   queryClientQueriesKeys: string[]
   queryClientQueriesState: Record<string, { status: string; data: string | undefined; error: string | undefined }>
   queryClientQueriesPreview: string
+  response: Response
 }>
 type FetchTitle = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
@@ -601,6 +604,7 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
         queryClientDehydratedState,
         queryClientQueriesState,
         queryClientQueriesPreview,
+        response,
       } satisfies Awaited<ReturnType<FetchSsr>>
     })
   }) as unknown as FetchSsr

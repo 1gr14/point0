@@ -808,7 +808,7 @@ export class Fetcher {
       }
 
       if (executeResult.error) {
-        const response = toJsonErrorResponse(executeResult.error, executeResult.status)
+        const response = toJsonErrorResponse(executeResult.error, executeResult.effects.status ?? 500)
         return {
           ...partialResult,
           input,
@@ -846,7 +846,7 @@ export class Fetcher {
       // else we try to get endpoint json
       const response = new Response(executeResult.point._getTransformer().stringify(executeResult.output), {
         headers: { 'Content-Type': 'application/json' },
-        status: executeResult.status,
+        status: executeResult.effects.status ?? 200,
       })
       return {
         ...partialResult,
