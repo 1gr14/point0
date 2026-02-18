@@ -1,4 +1,4 @@
-import type { EmptyCtx, EmptyProps, MiddlewareFnOptionsBase, NicePluginReadyPoint } from '@point0/core'
+import type { MiddlewareFnOptionsBase, NicePristinePluginReadyPoint } from '@point0/core'
 import type { RequestMethod } from '@point0/core/request0'
 
 import { Point0, env } from '@point0/core'
@@ -21,25 +21,7 @@ export type CorsOptions = {
   preflight?: boolean
 }
 
-export const cors = (
-  options: CorsOptions = {},
-): NicePluginReadyPoint<
-  'plugin',
-  undefined,
-  EmptyCtx,
-  EmptyCtx,
-  undefined,
-  undefined,
-  undefined,
-  undefined,
-  undefined,
-  undefined,
-  undefined,
-  undefined,
-  EmptyProps,
-  EmptyProps,
-  []
-> => {
+export const cors = (options: CorsOptions = {}): NicePristinePluginReadyPoint => {
   if (env.target.is.client) {
     return Point0.lets('plugin', 'cors').plugin()
   }

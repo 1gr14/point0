@@ -87,8 +87,6 @@ import type {
   AnyPoint,
   AppendCtx,
   AppendCtxExposedKeys,
-  AssertCurrentCtxExtendsPluginRequiredCtx,
-  AssertCurrentInnerPropsExtendsPluginOuterProps,
   AssertInputSchemaNotWider,
   AssertNoForbiddenCtxExposedKeys,
   AssertNoForbiddenMethodsIfNotSuitableStage,
@@ -786,14 +784,14 @@ export class Point0<
     EmptyProps,
     []
   >
-  static lets<TRequiredCtx extends Ctx = EmptyCtx, TOuterProps extends Props = EmptyProps>(
+  static lets(
     pointType: 'plugin',
     pointName: string,
   ): NicePluginStagePoint<
     'coreStage',
     'plugin',
-    TRequiredCtx,
-    TRequiredCtx,
+    UndefinedCtx,
+    EmptyCtx,
     UndefinedCtxExposedKeys,
     UndefinedLoaderOutput,
     UndefinedLoaderOutput,
@@ -802,12 +800,15 @@ export class Point0<
     UndefinedRoute,
     UndefinedInputSchema,
     UndefinedQueryResultType,
-    TOuterProps,
-    TOuterProps,
+    EmptyProps,
+    EmptyProps,
     []
   >
   static lets(pointType: 'root' | 'plugin', pointName: string) {
     if (pointType === 'root') {
+      if (pointName === 'plugin') {
+        throw new Error('Cannot create root point with "plugin" scope, it is internally used name for plugin points')
+      }
       return new Point0({
         type: 'coreStage',
         scope: pointName,
@@ -1394,7 +1395,7 @@ export class Point0<
     // })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
       : []
     return this._continue({
       _mountActions: [
@@ -1405,6 +1406,7 @@ export class Point0<
           Component: errorComponent,
           variant: this._getDestinationComponentVariant(),
           unstableId: Point0._getNextUnstableId(),
+          ssr: this._ssr,
         },
       ],
       ...(this._isMountablePoint()
@@ -1627,7 +1629,7 @@ export class Point0<
     // })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
       : []
     return this._continue({
       _mountActions: [
@@ -1638,6 +1640,7 @@ export class Point0<
           Component: loadingComponent,
           variant: this._getDestinationComponentVariant(),
           unstableId: Point0._getNextUnstableId(),
+          ssr: this._ssr,
         },
       ],
       ...(this._isMountablePoint()
@@ -1692,7 +1695,7 @@ export class Point0<
   > {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
       : []
     return this._continue({
       _mountActions: [
@@ -1702,6 +1705,7 @@ export class Point0<
           type: 'wrapper',
           Component: wrapperComponent,
           unstableId: Point0._getNextUnstableId(),
+          ssr: this._ssr,
         },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
@@ -1923,7 +1927,7 @@ export class Point0<
   ) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
       : []
 
     // in case if we shake with for server without ssr
@@ -1960,6 +1964,7 @@ export class Point0<
             type: 'with',
             fn: withQueryFn,
             unstableId: Point0._getNextUnstableId(),
+            ssr: this._ssr,
           },
         ],
         ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
@@ -1976,6 +1981,7 @@ export class Point0<
           type: 'with',
           fn: withFn,
           unstableId: Point0._getNextUnstableId(),
+          ssr: this._ssr,
         },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
@@ -2059,7 +2065,7 @@ export class Point0<
   ) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
       : []
 
     // in case if we shake with for server without ssr
@@ -2087,6 +2093,7 @@ export class Point0<
           queryOptions,
           inputGetter: getInputFn,
           unstableId: Point0._getNextUnstableId(),
+          ssr: this._ssr,
         },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
@@ -2644,14 +2651,14 @@ export class Point0<
     mapperFn ||= ((o) => o.data) as MapperFn<any, any, any, any, any>
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
       : []
     return this._continue({
       // _sameQueryPoint: null,
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
-        { type: 'mapper', fn: mapperFn, unstableId: Point0._getNextUnstableId() },
+        { type: 'mapper', fn: mapperFn, unstableId: Point0._getNextUnstableId(), ssr: this._ssr },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
@@ -2874,7 +2881,7 @@ export class Point0<
     })()
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
       : []
     return this._continue({
       _mountActions: [
@@ -2886,9 +2893,10 @@ export class Point0<
                 type: 'globalHead' as const,
                 fn: headFn as GlobalHeadFn<any, any>,
                 unstableId: Point0._getNextUnstableId(),
+                ssr: this._ssr,
               },
             ]
-          : [{ type: 'head' as const, fn: headFn, unstableId: Point0._getNextUnstableId() }]),
+          : [{ type: 'head' as const, fn: headFn, unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]),
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
@@ -3531,6 +3539,9 @@ export class Point0<
     })()
     const scopes = letsReadyPointType === 'root' ? [pointName, ...this.scopes] : this.scopes
     const scope = letsReadyPointType === 'root' ? pointName : this.scope
+    if (letsReadyPointType === 'root' && pointName === 'plugin') {
+      throw new Error('Cannot create root point with "plugin" scope, it is internally used name for plugin points')
+    }
     const newInputExecuteAction =
       prevRoute === newRoute || !newRoute
         ? []
@@ -3557,7 +3568,7 @@ export class Point0<
     const mountActionsAll = [...this._mountActions]
     const mountActionsSuitable = this.type !== 'base' && this.type !== 'root' ? [] : mountActionsAll
     if (letsReadyPointType === 'component' || letsReadyPointType === 'provider') {
-      mountActionsSuitable.push({ type: 'selfProps', unstableId: Point0._getNextUnstableId() })
+      mountActionsSuitable.push({ type: 'selfProps', unstableId: Point0._getNextUnstableId(), ssr: this._ssr })
     }
 
     return this._continue({
@@ -3724,7 +3735,7 @@ export class Point0<
     // this._applyComponentDisplayName(page as React.ComponentType<any>, { suffix: 'PageInner' })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
       : []
     const point = this._continue({
       type: 'page',
@@ -3783,7 +3794,7 @@ export class Point0<
     // this._applyComponentDisplayName(component, { suffix: 'Inner' })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
       : []
     const point = this._continue({
       type: 'component',
@@ -3882,7 +3893,7 @@ export class Point0<
   layout(...args: any[]) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
       : []
     if (this._letsReadyPointType === 'layout') {
       const [layout = ({ children }: { children: Exclude<React.ReactNode, Promise<any>> }) => children] = args as [
@@ -4008,7 +4019,7 @@ export class Point0<
     const mapperFn = _mapperFn as MapperFn<any, any, any, any, any> | undefined
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
       : []
     const point = this._continue({
       type: 'provider',
@@ -4022,6 +4033,7 @@ export class Point0<
                 type: 'mapper' as const,
                 fn: mapperFn,
                 unstableId: Point0._getNextUnstableId(),
+                ssr: this._ssr,
               },
             ]
           : []),
@@ -4040,9 +4052,7 @@ export class Point0<
     plugin: T &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'use'> &
       AssertInputSchemaNotWider<T['Infer']['ServerInputSchema'], TServerInputSchema, TClientInputSchema> &
-      AssertInputSchemaNotWider<T['Infer']['ClientInputSchema'], TServerInputSchema, TClientInputSchema> &
-      AssertCurrentCtxExtendsPluginRequiredCtx<TCtx, T['Infer']['RequiredCtx']> &
-      AssertCurrentInnerPropsExtendsPluginOuterProps<TOuterProps, T['Infer']['OuterProps']>,
+      AssertInputSchemaNotWider<T['Infer']['ClientInputSchema'], TServerInputSchema, TClientInputSchema>,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -4074,17 +4084,55 @@ export class Point0<
   use(plugin: NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>) {
     const point = plugin.point
 
-    // if (this._ssr !== point._ssr) {
-    //   throw new Error(`Point ${this.toString()} and ${point.toString()} have different ssr settings`)
-    // }
+    // throw new Error(`Point ${this.toString()} and ${point.toString()} have different ssr settings`)
+    let pointMountActionsSsr = 'none' as 'none' | 'mash' | true | false
+    for (const mountAction of point._mountActions) {
+      if (mountAction.ssr) {
+        if (pointMountActionsSsr === true) {
+          // continue
+        } else if (pointMountActionsSsr === false) {
+          pointMountActionsSsr = 'mash'
+        } else if (pointMountActionsSsr === 'none') {
+          pointMountActionsSsr = true
+        } else {
+          // already mash
+        }
+      } else {
+        if (pointMountActionsSsr === false) {
+          // continue
+        } else if (pointMountActionsSsr === true) {
+          pointMountActionsSsr = 'mash'
+        } else if (pointMountActionsSsr === 'none') {
+          pointMountActionsSsr = false
+        } else {
+          // already mash
+        }
+      }
+    }
+
+    if (typeof pointMountActionsSsr === 'boolean' && this._ssr !== pointMountActionsSsr) {
+      throw new Error(
+        `Point ${this.toString()} and ${point.toString()} have different ssr settings, so you may loose mount actions in ssr mode`,
+      )
+    }
 
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
       : []
 
-    const pluginStart = { type: 'pluginStart' as const, name: point.name, unstableId: Point0._getNextUnstableId() }
-    const pluginEnd = { type: 'pluginEnd' as const, name: point.name, unstableId: Point0._getNextUnstableId() }
+    const pluginStart = {
+      type: 'pluginStart' as const,
+      name: point.name,
+      unstableId: Point0._getNextUnstableId(),
+      ssr: this._ssr,
+    }
+    const pluginEnd = {
+      type: 'pluginEnd' as const,
+      name: point.name,
+      unstableId: Point0._getNextUnstableId(),
+      ssr: this._ssr,
+    }
     const pluginStartServerAction = point._serverExecuteActions.length > 0 ? [pluginStart] : []
     const pluginEndServerAction = point._serverExecuteActions.length > 0 ? [pluginEnd] : []
     const pluginStartClientAction = point._clientExecuteActions.length > 0 ? [pluginStart] : []
@@ -4254,7 +4302,10 @@ export class Point0<
         type: 'finalStage',
         _queryResultType: 'query',
         _queryOptions: queryOptions,
-        _mountActions: [...this._mountActions, { type: 'selfQuery', unstableId: Point0._getNextUnstableId() }],
+        _mountActions: [
+          ...this._mountActions,
+          { type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr },
+        ],
       }) as never
     } else {
       // usual query final
@@ -4365,6 +4416,7 @@ export class Point0<
           {
             type: 'selfQuery',
             unstableId: Point0._getNextUnstableId(),
+            ssr: this._ssr,
           },
         ],
       }) as never

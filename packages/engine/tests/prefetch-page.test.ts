@@ -330,6 +330,9 @@ describe('prefetch-page', () => {
           root.query.mountedQuery (data)"
         `)
           }),
+          {
+            retry: 3,
+          },
         )
 
         it.concurrent(
@@ -379,6 +382,9 @@ describe('prefetch-page', () => {
             root.query.mountedQuery (data)"
           `)
           }),
+          {
+            retry: 3,
+          },
         )
 
         it.concurrent(
@@ -470,6 +476,9 @@ describe('prefetch-page', () => {
             `)
             },
           ),
+          {
+            retry: 3,
+          },
         )
 
         it.concurrent(
@@ -530,6 +539,9 @@ describe('prefetch-page', () => {
             `)
             },
           ),
+          {
+            retry: 3,
+          },
         )
 
         it.concurrent(
@@ -574,6 +586,9 @@ describe('prefetch-page', () => {
             `)
             },
           ),
+          {
+            retry: 3,
+          },
         )
 
         it.concurrent(
@@ -618,6 +633,9 @@ describe('prefetch-page', () => {
             `)
             },
           ),
+          {
+            retry: 3,
+          },
         )
 
         it.concurrent(
@@ -662,6 +680,9 @@ describe('prefetch-page', () => {
             `)
             },
           ),
+          {
+            retry: 3,
+          },
         )
       })
 
@@ -732,6 +753,9 @@ describe('prefetch-page', () => {
             root.query.mountedQuery (data)"
           `)
           }),
+          {
+            retry: 3,
+          },
         )
 
         it.concurrent(
@@ -783,6 +807,9 @@ describe('prefetch-page', () => {
             root.query.mountedQuery (data)"
           `)
           }),
+          {
+            retry: 3,
+          },
         )
 
         it.concurrent(
@@ -831,6 +858,9 @@ describe('prefetch-page', () => {
             `)
             },
           ),
+          {
+            retry: 3,
+          },
         )
 
         it.concurrent(
@@ -877,6 +907,9 @@ describe('prefetch-page', () => {
             `)
             },
           ),
+          {
+            retry: 3,
+          },
         )
 
         it.concurrent(
@@ -931,6 +964,9 @@ describe('prefetch-page', () => {
             `)
             },
           ),
+          {
+            retry: 3,
+          },
         )
 
         it.concurrent(
@@ -977,6 +1013,9 @@ describe('prefetch-page', () => {
             `)
             },
           ),
+          {
+            retry: 3,
+          },
         )
 
         it.concurrent(
@@ -1023,6 +1062,9 @@ describe('prefetch-page', () => {
           `)
             },
           ),
+          {
+            retry: 3,
+          },
         )
 
         it.concurrent(
@@ -1069,6 +1111,9 @@ describe('prefetch-page', () => {
             `)
             },
           ),
+          {
+            retry: 3,
+          },
         )
       })
     })

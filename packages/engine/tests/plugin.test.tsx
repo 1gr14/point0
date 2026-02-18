@@ -1,8 +1,8 @@
-import type { Prettify } from '@point0/core'
 import { Point0 } from '@point0/core'
+import type { Prettify } from '@point0/core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
-import { createTestThings, waitReturn, ymlify, ymlifyline } from './utils/internal-testing.js'
 import { z } from 'zod'
+import { createTestThings, ymlify, ymlifyline } from './utils/internal-testing.js'
 
 describe('plugin', () => {
   it.concurrent('merges ctx', async () => {
@@ -108,6 +108,7 @@ describe('plugin', () => {
 
   it.concurrent('merges props', async () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
+      .ssr(true)
       .with(() => {
         return { plugin: 'ok1' }
       })
@@ -134,13 +135,13 @@ describe('plugin', () => {
 
   it.concurrent('merges input', async () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
-      .input(z.object({ plugin: z.number() }))
+      .input(z.object({ plugin: z.number().transform((v) => v * 2) }))
       .plugin()
     const root = Point0.lets('root', 'root').ssr(true).baseurl('http://localhost/').root()
     const query = root
       .lets('query', 'test')
       .use(plugin)
-      .input(z.object({ query: z.number() }))
+      .input(z.object({ query: z.number().transform((v) => v * 3) }))
       .loader(({ input }) => {
         expectTypeOf<Prettify<typeof input>>().toEqualTypeOf<{ plugin: number; query: number }>()
         return input
@@ -148,13 +149,13 @@ describe('plugin', () => {
       .query()
     const page = root
       .lets('page', 'home', '/')
-      .with(query, { plugin: 123, query: 456 })
+      .with(query, { plugin: 100, query: 200 })
       .page(({ data }) => <div id="page">{ymlifyline(data)}</div>)
 
     const { fetchPreview } = await createTestThings({ points: [root, page, query] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
-      #page: plugin: 123, query: 456
+      #page: plugin: 200, query: 600
       "
     `)
   })
@@ -245,6 +246,7 @@ describe('plugin', () => {
 
   it.concurrent('not get outside props, but keep props inside', async () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
+      .ssr(true)
       .with(() => ({ plugin1: 'plugin1' }))
       .with(({ props }) => {
         expectTypeOf(props).toHaveProperty('plugin1')
@@ -293,9 +295,11 @@ describe('plugin', () => {
 
   it.concurrent('nested plugin props', async () => {
     const plugin1 = Point0.lets('plugin', 'test-plugin1')
+      .ssr(true)
       .with(() => ({ plugin1: 'plugin1' }))
       .plugin()
     const plugin2 = Point0.lets('plugin', 'test-plugin2')
+      .ssr(true)
       .use(plugin1)
       .with(({ props }) => ({ plugin2: 'plugin2', plugin21: props.plugin1 }))
       .plugin()
@@ -346,6 +350,38 @@ describe('plugin', () => {
       #page: plugin: 123, query: 456
       "
     `)
+  })
+
+  it.concurrent('forbidden different ssr settings when mount actions provided', async () => {
+    const pluginNoSsr = Point0.lets('plugin', 'test-plugin-no-ssr')
+      .with(() => ({ plugin: 'noSsr' }))
+      .plugin()
+    const pluginSsr = Point0.lets('plugin', 'test-plugin-ssr')
+      .ssr(true)
+      .with(() => ({ plugin: 'ssr' }))
+      .plugin()
+    const rootSsr = Point0.lets('root', 'root').ssr(true).baseurl('http://localhost/').root()
+    const rootNoSsr = Point0.lets('root', 'root').baseurl('http://localhost/').root()
+    expect(() =>
+      rootSsr
+        .lets('page', 'home', '/')
+        .use(pluginNoSsr)
+        .page(({ props }) => <div id="page">{ymlifyline(props)}</div>),
+    ).toThrow()
+    expect(() =>
+      rootNoSsr
+        .lets('page', 'home', '/')
+        .use(pluginSsr)
+        .page(({ props }) => <div id="page">{ymlifyline(props)}</div>),
+    ).toThrow()
+    rootSsr
+      .lets('page', 'home', '/')
+      .use(pluginSsr)
+      .page(({ props }) => <div id="page">{ymlifyline(props)}</div>)
+    rootNoSsr
+      .lets('page', 'home', '/')
+      .use(pluginNoSsr)
+      .page(({ props }) => <div id="page">{ymlifyline(props)}</div>)
   })
 
   // it.concurrent('merge error head', async () => {

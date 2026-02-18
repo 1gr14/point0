@@ -512,17 +512,6 @@ export type AssertInputSchemaNotWider<
       ? ShowError<`Last provided input schema is not assignable to current point client input schema`>
       : unknown
 
-export type AssertCurrentCtxExtendsPluginRequiredCtx<
-  TCurrentCtx extends Ctx,
-  TPluginRequiredCtx extends Ctx,
-> = TCurrentCtx extends TPluginRequiredCtx ? unknown : ShowError<`Plugin ctx is not assignable to current point ctx`>
-export type AssertCurrentInnerPropsExtendsPluginOuterProps<
-  TCurrentInnerProps extends Props,
-  TPluginOuterProps extends Props,
-> = TCurrentInnerProps extends TPluginOuterProps
-  ? unknown
-  : ShowError<`Plugin inner props is not assignable to current point inner props`>
-
 export type AssertRouteDefinitionInputExtends<
   TCurrentRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TNewRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
@@ -1509,8 +1498,8 @@ export type NiceBaseStagePoint<
   | 'clientInput'
   | 'sharedInput'
   | 'ctx'
-  | 'loader'
-  | 'clientLoader'
+  // | 'loader'
+  // | 'clientLoader'
   | 'mapper'
   | 'head'
   | 'scrollPosition'
@@ -2217,10 +2206,10 @@ export type NicePluginReadyPoint<
   'point' | 'type' | 'Infer'
 >
 
-export type NiceEmptyPluginReadyPoint = NicePluginReadyPoint<
+export type NicePristinePluginReadyPoint = NicePluginReadyPoint<
   'plugin',
-  undefined,
-  EmptyCtx,
+  UndefinedReadyPointType,
+  UndefinedCtx,
   EmptyCtx,
   UndefinedCtxExposedKeys,
   UndefinedLoaderOutput,
