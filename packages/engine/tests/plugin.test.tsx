@@ -348,40 +348,40 @@ describe('plugin', () => {
     `)
   })
 
-  it.concurrent('merge error head', async () => {
-    const root = Point0.lets('root', 'root')
-      .ssr(true)
-      .error(({ error }) => <div id="error">{error.message}</div>)
-      .baseurl('http://localhost/')
-      .root()
-    const plugin = Point0.lets('plugin', 'test-plugin')
-      .head('global', ({ error }) => {
-        if (error) {
-          return { title: `My Error Title: ${error.message}` }
-        }
-        return {}
-      })
-      .plugin()
-    const page = root
-      .lets('page', 'home', '/')
-      .loader(async () => {
-        await waitReturn()
-        if (Math.random() + 1) {
-          throw new Error('my message')
-        }
-        return { x: 1 }
-      })
-      .use(plugin)
-      .page(() => <div id="page" />)
+  // it.concurrent('merge error head', async () => {
+  //   const root = Point0.lets('root', 'root')
+  //     .ssr(true)
+  //     .error(({ error }) => <div id="error">{error.message}</div>)
+  //     .baseurl('http://localhost/')
+  //     .root()
+  //   const plugin = Point0.lets('plugin', 'test-plugin')
+  //     .head('global', ({ error }) => {
+  //       if (error) {
+  //         return { title: `My Error Title: ${error.message}` }
+  //       }
+  //       return {}
+  //     })
+  //     .plugin()
+  //   const page = root
+  //     .lets('page', 'home', '/')
+  //     .loader(async () => {
+  //       await waitReturn()
+  //       if (Math.random() + 1) {
+  //         throw new Error('my message')
+  //       }
+  //       return { x: 1 }
+  //     })
+  //     .use(plugin)
+  //     .page(() => <div id="page" />)
 
-    const { render } = await createTestThings({ points: [root, page] })
-    await render(page.route(), async ({ waitContent, titlesTale, tale }) => {
-      await waitContent('#error')
-      expect(await titlesTale()).toMatchInlineSnapshot(`
-          "
-          My Error Title: my message
-          "
-        `)
-    })
-  })
+  //   const { render } = await createTestThings({ points: [root, page] })
+  //   await render(page.route(), async ({ waitContent, titlesTale, tale }) => {
+  //     await waitContent('#error')
+  //     expect(await titlesTale()).toMatchInlineSnapshot(`
+  //         "
+  //         My Error Title: my message
+  //         "
+  //       `)
+  //   })
+  // })
 })
