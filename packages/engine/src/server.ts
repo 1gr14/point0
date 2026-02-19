@@ -14,7 +14,7 @@ import type { CompilerOptions } from '../../compiler/dist/compiler.js'
 import type { EngineClient } from './client.js'
 import type {
   EngineLogger,
-  EngineOptionsCompilerParsed,
+  EngineOptionsCompilerSpecificParsed,
   EngineOptionsEnvParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
@@ -65,7 +65,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
   envVars: EngineOptionsEnvParsed
   hmrPort: number | false
   fetcher: TInitialized extends true ? Fetcher : null
-  compiler: EngineOptionsCompilerParsed | false
+  compiler: EngineOptionsCompilerSpecificParsed | false
 
   private constructor(input: {
     initialized: TInitialized
@@ -88,7 +88,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     viteConfig: EngineOptionsViteConfig | null
     viteDevServer: ViteDevServer | null
     hmrPort: number | false
-    compiler: EngineOptionsCompilerParsed | false
+    compiler: EngineOptionsCompilerSpecificParsed | false
   }) {
     this.cwd = input.cwd
     this.scope = input.scope
@@ -143,7 +143,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     clients: EngineClient[]
     viteConfig: EngineOptionsViteConfig | null
     hmrPort: number | false
-    compiler: EngineOptionsCompilerParsed | false
+    compiler: EngineOptionsCompilerSpecificParsed | false
   }): EngineServer<false> {
     const publicdir = input.publicdir
       ? Publicdir.create({
@@ -234,6 +234,8 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       scope: this.compiler.scope ? this.scope : false,
       side: this.compiler.side ? 'server' : false,
       mode: this.compiler.mode ? normalizeAndValidateNodeEnv() : false,
+      runtime: this.compiler.runtime,
+      os: this.compiler.os,
       // TODO:ASAP add env varsconsts here from engine options
       consts: this.compiler.consts,
       filter: this.compiler.filter,

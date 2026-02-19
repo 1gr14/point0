@@ -17,7 +17,7 @@ import type { CompilerOptions } from '../../compiler/dist/compiler.js'
 import type {
   EngineLogger,
   EngineOptionsAppComponent,
-  EngineOptionsCompilerParsed,
+  EngineOptionsCompilerSpecificParsed,
   EngineOptionsEnvParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
@@ -59,7 +59,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
   domRootElementId: string
   port: number
   hmrPort: number | false
-  compiler: EngineOptionsCompilerParsed | false
+  compiler: EngineOptionsCompilerSpecificParsed | false
   viteConfig: EngineOptionsViteConfig | null
   index: number
   logger: EngineLogger
@@ -96,7 +96,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     domRootElementId: string
     port: number
     hmrPort: number | false
-    compiler: EngineOptionsCompilerParsed | false
+    compiler: EngineOptionsCompilerSpecificParsed | false
     viteConfig: EngineOptionsViteConfig | null
     index: number
     logger: EngineLogger
@@ -175,7 +175,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     envConsts: EngineOptionsEnvParsed
     engineFile: string | null
     viteConfig: EngineOptionsViteConfig | null
-    compiler: EngineOptionsCompilerParsed | false
+    compiler: EngineOptionsCompilerSpecificParsed | false
     server: EngineServer
   }): EngineClient<false> {
     const viteDevServer = null
@@ -330,6 +330,8 @@ export class EngineClient<TInitialized extends boolean = boolean> {
       scope: this.compiler.scope ? this.scope : false,
       side: this.compiler.side ? 'client' : false,
       mode: this.compiler.mode ? normalizeAndValidateNodeEnv() : false,
+      runtime: this.compiler.runtime,
+      os: this.compiler.os,
       // TODO:ASAP add env varsconsts here from engine options
       consts: this.compiler.consts,
       filter: this.compiler.filter,
