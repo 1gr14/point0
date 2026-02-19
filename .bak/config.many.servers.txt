@@ -2,7 +2,7 @@ import type { RoutesPretty } from '@devp0nt/route0'
 import type {
   AppComponent,
   AppComponentModule,
-  NormalNodeEnv,
+  NormalizedNodeEnv,
   PointsDefinitionSource,
   PointsScope,
   RequiredCtx,
@@ -51,7 +51,7 @@ export type ExtractedViteConfig = import('vite').UserConfig
 export type ExtractViteConfigOptions = {
   command: 'serve' | 'build'
   target: 'client' | 'server'
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   scope: PointsScope
 }
 export type ExtractViteConfigFn = (

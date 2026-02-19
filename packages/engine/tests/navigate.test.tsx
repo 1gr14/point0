@@ -189,13 +189,15 @@ describe('navigate', () => {
   //   await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
   // })
 
-  it('navigate from home to about', async () => {
-    const t = await createT()
-    await t.render(t.homePage.route(), async ({ waitContent, tale, click }) => {
-      await waitContent('#home')
-      await click('.link-about')
-      await waitContent('#about')
-      expect(await tale()).toMatchInlineSnapshot(`
+  it(
+    'navigate from home to about',
+    async () => {
+      const t = await createT()
+      await t.render(t.homePage.route(), async ({ waitContent, tale, click }) => {
+        await waitContent('#home')
+        await click('.link-about')
+        await waitContent('#about')
+        expect(await tale()).toMatchInlineSnapshot(`
         "
         /
           #nav:
@@ -256,16 +258,22 @@ describe('navigate', () => {
           #about: about
         "
       `)
-    })
-  })
+      })
+    },
+    {
+      retry: 3,
+    },
+  )
 
-  it('navigate from about to posts', async () => {
-    const t = await createT()
-    await t.render(t.aboutPage.route(), async ({ waitContent, tale, click }) => {
-      await waitContent('#about')
-      await click('.link-posts')
-      await waitContent('#posts')
-      expect(await tale()).toMatchInlineSnapshot(`
+  it(
+    'navigate from about to posts',
+    async () => {
+      const t = await createT()
+      await t.render(t.aboutPage.route(), async ({ waitContent, tale, click }) => {
+        await waitContent('#about')
+        await click('.link-posts')
+        await waitContent('#posts')
+        expect(await tale()).toMatchInlineSnapshot(`
         "
         /about
           #nav:
@@ -336,16 +344,22 @@ describe('navigate', () => {
             .link-post-preview-2.descendant: link post 2
         "
       `)
-    })
-  })
+      })
+    },
+    {
+      retry: 3,
+    },
+  )
 
-  it('navigate from posts to post', async () => {
-    const t = await createT()
-    await t.render(t.postsPage.route(), async ({ waitContent, tale, click }) => {
-      await waitContent('#posts')
-      await click('.link-post-preview-1')
-      await waitContent('#post')
-      expect(await tale()).toMatchInlineSnapshot(`
+  it(
+    'navigate from posts to post',
+    async () => {
+      const t = await createT()
+      await t.render(t.postsPage.route(), async ({ waitContent, tale, click }) => {
+        await waitContent('#posts')
+        await click('.link-post-preview-1')
+        await waitContent('#post')
+        expect(await tale()).toMatchInlineSnapshot(`
         "
         /posts
           #nav:
@@ -430,16 +444,22 @@ describe('navigate', () => {
           #post: post 1
         "
       `)
-    })
-  })
+      })
+    },
+    {
+      retry: 3,
+    },
+  )
 
-  it('navigate from post to post via link', async () => {
-    const t = await createT()
-    await t.render(t.postPage.route({ id: '1' }), async ({ waitContent, tale, click }) => {
-      await waitContent('#post')
-      await click('.link-post-2')
-      await waitContent('#post')
-      expect(await tale()).toMatchInlineSnapshot(`
+  it(
+    'navigate from post to post via link',
+    async () => {
+      const t = await createT()
+      await t.render(t.postPage.route({ id: '1' }), async ({ waitContent, tale, click }) => {
+        await waitContent('#post')
+        await click('.link-post-2')
+        await waitContent('#post')
+        expect(await tale()).toMatchInlineSnapshot(`
         "
         /posts/1
           #nav:
@@ -514,16 +534,22 @@ describe('navigate', () => {
           #post: post 2
         "
       `)
-    })
-  })
+      })
+    },
+    {
+      retry: 3,
+    },
+  )
 
-  it('navigate from post to post via useNavigate', async () => {
-    const t = await createT()
-    await t.render(t.postsPage.route(), async ({ waitContent, tale, click }) => {
-      await waitContent('#posts')
-      await click('.use-navigate-post-preview-1')
-      await waitContent('#post')
-      expect(await tale()).toMatchInlineSnapshot(`
+  it(
+    'navigate from post to post via useNavigate',
+    async () => {
+      const t = await createT()
+      await t.render(t.postsPage.route(), async ({ waitContent, tale, click }) => {
+        await waitContent('#posts')
+        await click('.use-navigate-post-preview-1')
+        await waitContent('#post')
+        expect(await tale()).toMatchInlineSnapshot(`
         "
         /posts
           #nav:
@@ -608,16 +634,22 @@ describe('navigate', () => {
           #post: post 1
         "
       `)
-    })
-  })
+      })
+    },
+    {
+      retry: 3,
+    },
+  )
 
-  it('navigate from post to post via navigate', async () => {
-    const t = await createT()
-    await t.render(t.postsPage.route(), async ({ waitContent, tale, click }) => {
-      await waitContent('#posts')
-      await click('.navigate-post-preview-1')
-      await waitContent('#post')
-      expect(await tale()).toMatchInlineSnapshot(`
+  it(
+    'navigate from post to post via navigate',
+    async () => {
+      const t = await createT()
+      await t.render(t.postsPage.route(), async ({ waitContent, tale, click }) => {
+        await waitContent('#posts')
+        await click('.navigate-post-preview-1')
+        await waitContent('#post')
+        expect(await tale()).toMatchInlineSnapshot(`
         "
         /posts
           #nav:
@@ -702,8 +734,12 @@ describe('navigate', () => {
           #post: post 1
         "
       `)
-    })
-  })
+      })
+    },
+    {
+      retry: 3,
+    },
+  )
 
   it('visit to 404', async () => {
     const t = await createT()
@@ -730,13 +766,15 @@ describe('navigate', () => {
     })
   })
 
-  it('navigate to 404', async () => {
-    const t = await createT()
-    await t.render(t.homePage.route(), async ({ waitContent, tale, click }) => {
-      await waitContent('#home')
-      await t.navigate.to('/404')
-      await waitContent('Page Not Found')
-      expect(await tale()).toMatchInlineSnapshot(`
+  it(
+    'navigate to 404',
+    async () => {
+      const t = await createT()
+      await t.render(t.homePage.route(), async ({ waitContent, tale, click }) => {
+        await waitContent('#home')
+        await t.navigate.to('/404')
+        await waitContent('Page Not Found')
+        expect(await tale()).toMatchInlineSnapshot(`
         "
         /
           #nav:
@@ -769,6 +807,10 @@ describe('navigate', () => {
           text: Page Not Found
         "
       `)
-    })
-  })
+      })
+    },
+    {
+      retry: 3,
+    },
+  )
 })

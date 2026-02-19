@@ -2,7 +2,7 @@ import { Route0, type AnyLocation } from '@devp0nt/route0'
 import type {
   AppComponent,
   InputParsed,
-  NormalNodeEnv,
+  NormalizedNodeEnv,
   PagePoint,
   PointsDefinitionSource,
   PointsScope,
@@ -214,8 +214,8 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     return client
   }
 
-  private setEnvVars({ nodeEnvFallback }: { nodeEnvFallback: NormalNodeEnv | undefined }): {
-    NODE_ENV: NormalNodeEnv
+  private setEnvVars({ nodeEnvFallback }: { nodeEnvFallback: NormalizedNodeEnv | undefined }): {
+    NODE_ENV: NormalizedNodeEnv
     POINT0_SCOPE: PointsScope
     POINT0_SIDE: 'client'
   } {
@@ -733,7 +733,7 @@ Bun.serve({
     bunBuildConfig?: EngineClientBuildConfigDefinition
     clean?: boolean
   }): Promise<string[] | null> {
-    if (env.built) {
+    if (env.build.was) {
       throw new Error('You can not build by built engine')
     } else {
       const { NODE_ENV } = this.setEnvVars({ nodeEnvFallback: 'production' })
@@ -775,6 +775,10 @@ Bun.serve({
           ]
         : []
 
+      const envConstsWithBuilt = {
+        ...this.envConsts,
+        POINT0_BUILT: 'true',
+      }
       const buildOutput = await Bun.build({
         target: 'browser',
         format: 'esm',
@@ -798,12 +802,11 @@ Bun.serve({
           // 'process.env.Target': JSON.stringify('client'),
           // 'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
           ...Object.fromEntries(
-            Object.entries(this.envConsts).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+            Object.entries(envConstsWithBuilt).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
           ),
           ...Object.fromEntries(
-            Object.entries(this.envConsts).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+            Object.entries(envConstsWithBuilt).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
           ),
-          'process.env.POINT0_BUILT': JSON.stringify('true'),
         },
       })
       return buildOutput.outputs.map((output) => output.path)
@@ -811,7 +814,7 @@ Bun.serve({
   }
 
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
-    if (env.built) {
+    if (env.build.was) {
       throw new Error('You can not build by built engine')
     } else {
       const { NODE_ENV } = this.setEnvVars({ nodeEnvFallback: 'production' })
@@ -871,6 +874,14 @@ Bun.serve({
           ]
         : []
 
+      const envConstsWithBuilt = {
+        ...this.envConsts,
+        POINT0_BUILT: 'true',
+      }
+      const envVarsWithBuild = {
+        ...this.envVars,
+        POINT0_BUILT: 'true',
+      }
       const config: ExtractedViteConfig = {
         ...loadedViteConfig,
         plugins: [...compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
@@ -914,13 +925,13 @@ Bun.serve({
           // },
 
           ...Object.fromEntries(
-            Object.entries(this.envVars).map(([key, value]) => [
+            Object.entries(envVarsWithBuild).map(([key, value]) => [
               `process.env.${key}`,
               `globalThis.__POINT0_ENV__.${key}`,
             ]),
           ),
           ...Object.fromEntries(
-            Object.entries(this.envConsts).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+            Object.entries(envConstsWithBuilt).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
           ),
 
           // 'process.env.POINT0_BUILT': JSON.stringify('true'),

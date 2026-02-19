@@ -1,6 +1,6 @@
 import type {
   FetcherFetchDetailedResult,
-  NormalNodeEnv,
+  NormalizedNodeEnv,
   PointsDefinitionSource,
   PointsScope,
   RequiredCtx,
@@ -178,9 +178,9 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     nodeEnvFallback,
     assignToProcessEnv,
   }: {
-    nodeEnvFallback: NormalNodeEnv | undefined
+    nodeEnvFallback: NormalizedNodeEnv | undefined
     assignToProcessEnv: boolean
-  }): { NODE_ENV: NormalNodeEnv; POINT0_SCOPE: PointsScope; POINT0_SIDE: 'server' } {
+  }): { NODE_ENV: NormalizedNodeEnv; POINT0_SCOPE: PointsScope; POINT0_SIDE: 'server' } {
     const NODE_ENV = normalizeAndValidateNodeEnv(nodeEnvFallback)
     const POINT0_SCOPE = this.scope
     const POINT0_SIDE = 'server'
@@ -202,7 +202,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     }
     this.setEnvVars({ assignToProcessEnv: true, nodeEnvFallback: undefined })
     const [points] = await Promise.all([
-      this.loadBunPlugins({ built: env.built }).then(async () => await this.readServerPoints()),
+      this.loadBunPlugins({ built: env.build.was }).then(async () => await this.readServerPoints()),
       this.publicdir ? this.publicdir.init() : Promise.resolve(),
     ])
     this.baseurl = (points?.baseurl ?? null) as TInitialized extends true ? string | null : undefined
@@ -256,7 +256,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     const compilerOptions = this.getCompilerOptions()
     const compilerPlugin = this.viteConfig // we inject vite compiler plugin in vite config
       ? []
-      : env.built || !compilerOptions
+      : env.build.was || !compilerOptions
         ? []
         : [
             await import('@point0/compiler/plugin/bun').then((module) =>
@@ -610,6 +610,10 @@ export class EngineServer<TInitialized extends boolean = boolean> {
       }
     })()
 
+    const envConstsWithBuilt = {
+      ...this.envConsts,
+      POINT0_BUILT: 'true',
+    }
     const injectedEnvs = {
       'process.env.POINT0_ENGINE_WAS_BUILT': JSON.stringify('true'),
       ...(POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED
@@ -619,10 +623,10 @@ export class EngineServer<TInitialized extends boolean = boolean> {
         ? { 'process.env.POINT0_ENGINE_CWD_AFTER_BUILD': JSON.stringify(POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED) }
         : {}),
       ...Object.fromEntries(
-        Object.entries(this.envConsts).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+        Object.entries(envConstsWithBuilt).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
       ),
       ...Object.fromEntries(
-        Object.entries(this.envConsts).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+        Object.entries(envConstsWithBuilt).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
       ),
     }
     const injectEnvsScript =
@@ -707,7 +711,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
   }
 
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
-    if (env.built) {
+    if (env.build.was) {
       throw new Error('You can not build by built engine')
     } else {
       const { NODE_ENV } = this.setEnvVars({ assignToProcessEnv: false, nodeEnvFallback: 'production' })

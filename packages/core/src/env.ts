@@ -1,9 +1,10 @@
-import type { EnvVars, NormalNodeEnv } from './env.types.js'
+import type { EnvVars, NormalizedNodeEnv } from './env.types.js'
 import { superstore } from './super-store.js'
+import type { IsAny } from './types.js'
 
 export type * from './env.types.js'
 
-export const normalNodeEnvs: NormalNodeEnv[] = ['production', 'development', 'test']
+export const normalNodeEnvs: NormalizedNodeEnv[] = ['production', 'development', 'test']
 
 // vars
 
@@ -335,21 +336,67 @@ const envMode = Object.defineProperties(
 
 // runtime
 
-export type EnvRuntimeName = 'browser' | 'reactNative' | 'nodejs' | 'bun' | 'deno' | 'worker' | 'unknown'
-export type EnvRuntime = {
-  readonly name: EnvRuntimeName
-  readonly is: {
-    readonly browser: boolean
-    readonly reactNative: boolean
-    readonly nodejs: boolean
-    readonly bun: boolean
-    readonly deno: boolean
-    readonly worker: boolean
-    readonly unknown: boolean
-  }
+export type EnvRuntimeName = 'browser' | 'reactNative' | 'nodejs' | 'bun' | 'deno' | 'worker'
+type RuntimeWithUnknown<T extends string, TAllowUnknown extends boolean> =
+  | T
+  | (TAllowUnknown extends true ? 'unknown' : never)
+type RuntimeDefineUnsafe<
+  TRuntime extends EnvRuntimeName = EnvRuntimeName,
+  TAllowUnknown extends boolean = true,
+> = Record<RuntimeWithUnknown<TRuntime, TAllowUnknown>, <T>(value: T) => T>
+type RuntimeDefineWithHelpers<
+  TRuntime extends EnvRuntimeName = EnvRuntimeName,
+  TAllowUnknown extends boolean = true,
+> = string extends TRuntime
+  ? {
+      <TResult>(options: Record<string, TResult>): TResult | undefined
+      <TResult>(options: Partial<Record<string, TResult>>): TResult | undefined
+    } & Record<string, <T>(value: T) => T | undefined> & {
+        unsafe: Record<string, <T>(value: T) => T>
+      }
+  : {
+      <TResult>(options: Record<RuntimeWithUnknown<TRuntime, TAllowUnknown>, TResult>): TResult
+      <TResult>(options: Partial<Record<RuntimeWithUnknown<TRuntime, TAllowUnknown>, TResult>>): TResult | undefined
+    } & Record<RuntimeWithUnknown<TRuntime, TAllowUnknown>, <T>(value: T) => T | undefined> & {
+        unsafe: RuntimeDefineUnsafe<TRuntime, TAllowUnknown>
+      }
+type EnvRuntimeKnown<TRuntime extends EnvRuntimeName | undefined> = Exclude<TRuntime, undefined> & EnvRuntimeName
+type EnvRuntimeWide = {
+  readonly name: EnvRuntimeName | undefined
+  readonly is: Record<EnvRuntimeName | 'unknown', boolean>
+  readonly define: RuntimeDefineWithHelpers<EnvRuntimeName>
 }
+type EnvRuntimeStrict<TRuntime extends EnvRuntimeName | undefined> =
+  | {
+      [K in EnvRuntimeKnown<TRuntime>]: {
+        readonly name: K
+        readonly is: undefined extends TRuntime
+          ? {
+              [P in EnvRuntimeKnown<TRuntime>]: P extends K ? true : false
+            } & {
+              readonly unknown: false
+            }
+          : {
+              [P in EnvRuntimeKnown<TRuntime>]: P extends K ? true : false
+            }
+        readonly define: RuntimeDefineWithHelpers<EnvRuntimeKnown<TRuntime>, undefined extends TRuntime ? true : false>
+      }
+    }[EnvRuntimeKnown<TRuntime>]
+  | (undefined extends TRuntime
+      ? {
+          readonly name: undefined
+          readonly is: {
+            [P in EnvRuntimeKnown<TRuntime>]: false
+          } & {
+            readonly unknown: true
+          }
+          readonly define: RuntimeDefineWithHelpers<EnvRuntimeKnown<TRuntime>, true>
+        }
+      : never)
+export type EnvRuntime<TRuntime extends EnvRuntimeName | undefined = EnvRuntimeName | undefined> =
+  EnvRuntimeName extends EnvRuntimeKnown<TRuntime> ? EnvRuntimeWide : EnvRuntimeStrict<TRuntime>
 
-const getRuntimeName = (): EnvRuntimeName => {
+const getRuntimeName = (): EnvRuntimeName | undefined => {
   const fakeClient = superstore.getFakeClient()
   if (fakeClient?.runtime) {
     return fakeClient.runtime
@@ -377,8 +424,51 @@ const getRuntimeName = (): EnvRuntimeName => {
   if (typeof process !== 'undefined' && (process as any).versions?.node) {
     return 'nodejs'
   }
-  return 'unknown'
+  return undefined
 }
+
+const getRuntimeKey = (): EnvRuntimeName | 'unknown' => {
+  const runtime = getRuntimeName()
+  if (!runtime) {
+    return 'unknown'
+  }
+  return runtime
+}
+
+function runtimeDefineUniversal(options: Record<string, any>) {
+  return options[getRuntimeKey()]
+}
+
+const runtimeDefineSpecific = (runtime: string) => (value: any) => {
+  if (getRuntimeKey() !== runtime) {
+    return undefined
+  }
+  return value
+}
+
+const runtimeDefineUnsafe = new Proxy(
+  {},
+  {
+    get(_, prop: string) {
+      return runtimeDefineSpecific(prop)
+    },
+  },
+)
+
+const runtimeDefine = new Proxy(runtimeDefineUniversal, {
+  apply(target, _thisArg, args: Parameters<typeof runtimeDefineUniversal>) {
+    return runtimeDefineUniversal(...args)
+  },
+  get(target, prop: string, receiver: any) {
+    if (Object.prototype.hasOwnProperty.call(runtimeDefineUniversal, prop)) {
+      return Reflect.get(runtimeDefineUniversal, prop, receiver)
+    }
+    if (prop === 'unsafe') {
+      return runtimeDefineUnsafe
+    }
+    return runtimeDefineSpecific(prop)
+  },
+})
 
 const envRuntimeIs = Object.defineProperties(
   {},
@@ -389,12 +479,13 @@ const envRuntimeIs = Object.defineProperties(
     bun: { get: () => getRuntimeName() === 'bun' },
     deno: { get: () => getRuntimeName() === 'deno' },
     worker: { get: () => getRuntimeName() === 'worker' },
-    unknown: { get: () => getRuntimeName() === 'unknown' },
+    unknown: { get: () => getRuntimeName() === undefined },
   },
 )
 const envRuntime = Object.defineProperties(
   {
     is: envRuntimeIs,
+    define: runtimeDefine,
   },
   {
     name: { get: getRuntimeName },
@@ -403,25 +494,69 @@ const envRuntime = Object.defineProperties(
 
 // os
 
-export type EnvOsName = 'ios' | 'android' | 'linux' | 'mac' | 'windows' | 'unknown'
-export type EnvOs = {
-  readonly name: EnvOsName
-  readonly is: {
-    readonly ios: boolean
-    readonly android: boolean
-    readonly linux: boolean
-    readonly mac: boolean
-    readonly windows: boolean
-    readonly unknown: boolean
-  }
+export type EnvOsName = 'ios' | 'android' | 'linux' | 'mac' | 'windows'
+type OsWithUnknown<T extends string, TAllowUnknown extends boolean> =
+  | T
+  | (TAllowUnknown extends true ? 'unknown' : never)
+type OsDefineUnsafe<TOs extends EnvOsName = EnvOsName, TAllowUnknown extends boolean = true> = Record<
+  OsWithUnknown<TOs, TAllowUnknown>,
+  <T>(value: T) => T
+>
+type OsDefineWithHelpers<TOs extends EnvOsName = EnvOsName, TAllowUnknown extends boolean = true> = string extends TOs
+  ? {
+      <TResult>(options: Record<string, TResult>): TResult | undefined
+      <TResult>(options: Partial<Record<string, TResult>>): TResult | undefined
+    } & Record<string, <T>(value: T) => T | undefined> & {
+        unsafe: Record<string, <T>(value: T) => T>
+      }
+  : {
+      <TResult>(options: Record<OsWithUnknown<TOs, TAllowUnknown>, TResult>): TResult
+      <TResult>(options: Partial<Record<OsWithUnknown<TOs, TAllowUnknown>, TResult>>): TResult | undefined
+    } & Record<OsWithUnknown<TOs, TAllowUnknown>, <T>(value: T) => T | undefined> & {
+        unsafe: OsDefineUnsafe<TOs, TAllowUnknown>
+      }
+type EnvOsKnown<TOs extends EnvOsName | undefined> = Exclude<TOs, undefined> & EnvOsName
+type EnvOsWide = {
+  readonly name: EnvOsName | undefined
+  readonly is: Record<EnvOsName | 'unknown', boolean>
+  readonly define: OsDefineWithHelpers<EnvOsName>
 }
+type EnvOsStrict<TOs extends EnvOsName | undefined> =
+  | {
+      [K in EnvOsKnown<TOs>]: {
+        readonly name: K
+        readonly is: undefined extends TOs
+          ? {
+              [P in EnvOsKnown<TOs>]: P extends K ? true : false
+            } & {
+              readonly unknown: false
+            }
+          : {
+              [P in EnvOsKnown<TOs>]: P extends K ? true : false
+            }
+        readonly define: OsDefineWithHelpers<EnvOsKnown<TOs>, undefined extends TOs ? true : false>
+      }
+    }[EnvOsKnown<TOs>]
+  | (undefined extends TOs
+      ? {
+          readonly name: undefined
+          readonly is: {
+            [P in EnvOsKnown<TOs>]: false
+          } & {
+            readonly unknown: true
+          }
+          readonly define: OsDefineWithHelpers<EnvOsKnown<TOs>, true>
+        }
+      : never)
+export type EnvOs<TOs extends EnvOsName | undefined = EnvOsName | undefined> =
+  EnvOsName extends EnvOsKnown<TOs> ? EnvOsWide : EnvOsStrict<TOs>
 
-const getOsName = (): EnvOsName => {
+const getOsName = (): EnvOsName | undefined => {
   if (process.env.POINT0_OS) {
     return process.env.POINT0_OS as EnvOsName
   }
 
-  const detectOsNameFromString = (value: string): EnvOsName => {
+  const detectOsNameFromString = (value: string): EnvOsName | undefined => {
     const lowerValue = value.toLowerCase()
     if (lowerValue.includes('android')) return 'android'
     if (
@@ -434,57 +569,141 @@ const getOsName = (): EnvOsName => {
     if (lowerValue.includes('win')) return 'windows'
     if (lowerValue.includes('darwin') || lowerValue.includes('mac')) return 'mac'
     if (lowerValue.includes('linux') || lowerValue.includes('x11')) return 'linux'
-    return 'unknown'
+    return undefined
   }
 
   if (typeof navigator !== 'undefined') {
     const userAgent = typeof navigator.userAgent === 'string' ? navigator.userAgent : ''
     const navigatorPlatform = typeof navigator.platform === 'string' ? navigator.platform : ''
     const fromNavigator = detectOsNameFromString(`${userAgent} ${navigatorPlatform}`.trim())
-    if (fromNavigator !== 'unknown') {
+    if (fromNavigator !== undefined) {
       return fromNavigator
     }
   }
   if (typeof process !== 'undefined' && typeof process.platform === 'string') {
     const fromProcess = detectOsNameFromString(process.platform)
-    if (fromProcess !== 'unknown') {
+    if (fromProcess !== undefined) {
       return fromProcess
     }
   }
-  return 'unknown'
+  return undefined
 }
 
-const envOsIs = Object.defineProperties(
+const getOsKey = (): EnvOsName | 'unknown' => {
+  const os = getOsName()
+  if (!os) {
+    return 'unknown'
+  }
+  return os
+}
+
+function osDefineUniversal(options: Record<string, any>) {
+  return options[getOsKey()]
+}
+
+const osDefineSpecific = (os: string) => (value: any) => {
+  if (getOsKey() !== os) {
+    return undefined
+  }
+  return value
+}
+
+const osDefineUnsafe = new Proxy(
   {},
   {
-    ios: { get: () => getOsName() === 'ios' },
-    android: { get: () => getOsName() === 'android' },
-    linux: { get: () => getOsName() === 'linux' },
-    mac: { get: () => getOsName() === 'mac' },
-    windows: { get: () => getOsName() === 'windows' },
-    unknown: { get: () => getOsName() === 'unknown' },
+    get(_, prop: string) {
+      return osDefineSpecific(prop)
+    },
+  },
+)
+
+const osDefine = new Proxy(osDefineUniversal, {
+  apply(target, _thisArg, args: Parameters<typeof osDefineUniversal>) {
+    return osDefineUniversal(...args)
+  },
+  get(target, prop: string, receiver: any) {
+    if (Object.prototype.hasOwnProperty.call(osDefineUniversal, prop)) {
+      return Reflect.get(osDefineUniversal, prop, receiver)
+    }
+    if (prop === 'unsafe') {
+      return osDefineUnsafe
+    }
+    return osDefineSpecific(prop)
+  },
+})
+
+const envOsIs = new Proxy(
+  {},
+  {
+    get(_, prop: string) {
+      if (prop === 'unknown') {
+        return getOsName() === undefined
+      }
+      return getOsName() === prop
+    },
   },
 )
 const envOs = Object.defineProperties(
   {
     is: envOsIs,
+    define: osDefine,
   },
   {
     name: { get: getOsName },
   },
 ) as never as EnvOs
 
+// build
+
+type BuildDefineWithHelpers = {
+  <TBefore>(options: { before: TBefore }): TBefore | undefined
+  <TAfter>(options: { after: TAfter }): TAfter | undefined
+  <TBefore, TAfter>(options: { before: TBefore; after: TAfter }): TBefore | TAfter
+}
+
+const getBuildWas = (): boolean => false
+
+const buildDefine = (<TBefore, TAfter>(options: { before?: TBefore; after?: TAfter }) => {
+  if (getBuildWas()) {
+    return options.after
+  }
+  return options.before
+}) as BuildDefineWithHelpers
+
+export type EnvBuild =
+  | {
+      readonly was: true
+      readonly define: BuildDefineWithHelpers
+    }
+  | {
+      readonly was: false
+      readonly define: BuildDefineWithHelpers
+    }
+
+const envBuild = Object.defineProperties(
+  {
+    define: buildDefine,
+  },
+  {
+    was: { get: getBuildWas },
+  },
+) as never as EnvBuild
+
 // final
 
-type IsAny<T> = 0 extends 1 & T ? true : false
-export type Env<TVars = any, TScope extends string = string> = {
+export type Env<
+  TVars = any,
+  TScope extends string = string,
+  TRuntime extends EnvRuntimeName | undefined = EnvRuntimeName | undefined,
+  TOs extends EnvOsName | undefined = EnvOsName | undefined,
+> = {
   readonly mode: EnvMode
-  readonly runtime: EnvRuntime
-  readonly os: EnvOs
+  readonly runtime: EnvRuntime<IsAny<TRuntime> extends true ? EnvRuntimeName | undefined : TRuntime>
+  readonly os: EnvOs<IsAny<TOs> extends true ? EnvOsName | undefined : TOs>
   readonly vars: Readonly<EnvVars<TVars>>
   readonly side: EnvSide
   readonly scope: EnvScope<IsAny<TScope> extends true ? string : TScope>
-  readonly built: boolean
+  readonly build: EnvBuild
 }
 
 export const env: Env = Object.defineProperties(
@@ -494,7 +713,7 @@ export const env: Env = Object.defineProperties(
     os: envOs,
     side: envSide,
     scope: envScope,
-    built: false, // will be overridden by compiler in build phase
+    build: envBuild, // can be statically shaken by compiler
   },
   {
     vars: { get: getEnvVars },

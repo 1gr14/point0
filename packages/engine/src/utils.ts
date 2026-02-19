@@ -1,4 +1,4 @@
-import type { PointsScope, NormalNodeEnv } from '@point0/core'
+import type { PointsScope, NormalizedNodeEnv } from '@point0/core'
 import type { BuildConfig, BunPlugin } from 'bun'
 import { plugin } from 'bun'
 import * as nodeFsSync from 'node:fs'
@@ -194,7 +194,7 @@ export const removeLikeJsExtension = (path: string) => {
 // build config
 
 export type EngineServerBuildConfigDefinitionFnOptions = {
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   side: 'server'
 }
 export type EngineServerBuildConfigDefinitionFn = (
@@ -203,7 +203,7 @@ export type EngineServerBuildConfigDefinitionFn = (
 export type EngineServerBuildConfigDefinition = EngineServerBuildConfigDefinitionFn | Partial<BuildConfig>
 
 export type EngineClientBuildConfigDefinitionFnOptions = {
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   side: 'client'
 }
 export type EngineClientBuildConfigDefinitionFn = (
@@ -212,7 +212,7 @@ export type EngineClientBuildConfigDefinitionFn = (
 export type EngineClientBuildConfigDefinition = EngineClientBuildConfigDefinitionFn | Partial<BuildConfig>
 
 export type BunBuildConfigDefinitionFnOptions = {
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   side: 'client' | 'server'
   scope: PointsScope
 }
@@ -227,7 +227,7 @@ export const executeEngineServerBuildConfig = async ({
   bunPlugins,
   scope,
 }: {
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   bunBuildConfig: EngineServerBuildConfigDefinition
   bunPlugins: EngineServerPluginsDefinition
   scope: PointsScope
@@ -247,7 +247,7 @@ export const extractEngineClientBuildConfig = async ({
   bunPlugins,
   scope,
 }: {
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   bunBuildConfig: EngineClientBuildConfigDefinition
   bunPlugins: EngineClientPluginsDefinition
   scope: PointsScope
@@ -268,7 +268,7 @@ export const extractBunBuildConfig = async ({
   bunPlugins,
   scope,
 }: {
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   side: 'client' | 'server'
   bunBuildConfig: BunBuildConfigDefinition
   bunPlugins: BunPluginsDefinition
@@ -286,7 +286,7 @@ export const extractBunBuildConfig = async ({
 // plugins
 
 export type EngineServerPluginsDefinitionFnOptions = {
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   command: 'serve' | 'build'
   side: 'server'
 }
@@ -296,7 +296,7 @@ export type EngineServerPluginsDefinitionFn = (
 export type EngineServerPluginsDefinition = EngineServerPluginsDefinitionFn | Array<BunPlugin | string>
 
 export type EngineClientPluginsDefinitionFnOptions = {
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   command: 'serve' | 'build'
   side: 'client'
 }
@@ -306,7 +306,7 @@ export type EngineClientPluginsDefinitionFn = (
 export type EngineClientPluginsDefinition = EngineClientPluginsDefinitionFn | Array<BunPlugin | string>
 
 export type BunPluginsDefinitionFnOptions = {
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   command: 'serve' | 'build'
   side: 'client' | 'server'
   scope: PointsScope
@@ -322,7 +322,7 @@ export const extractEngineServerPlugins = async ({
   bunPlugins,
   scope,
 }: {
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   command: 'serve' | 'build'
   bunPlugins: EngineServerPluginsDefinition
   scope: PointsScope
@@ -342,7 +342,7 @@ export const extractEngineClientPlugins = async ({
   bunPlugins,
   scope,
 }: {
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   command: 'serve' | 'build'
   bunPlugins: EngineClientPluginsDefinition
   scope: PointsScope
@@ -363,7 +363,7 @@ export const extractBunPlugins = async ({
   side,
   scope,
 }: {
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   command: 'serve' | 'build'
   bunPlugins: BunPluginsDefinition
   side: 'client' | 'server'
@@ -389,7 +389,7 @@ export const extractEngineClientDevPluginsStrings = async ({
   errorOnNotString,
 }: {
   cwd: string
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   command: 'serve' | 'build'
   bunPlugins: EngineClientPluginsDefinition
   errorOnNotString: string
@@ -454,7 +454,7 @@ export const extractViteConfig = async ({
   viteConfig: EngineOptionsViteConfig
   command: 'serve' | 'build'
   side: 'client' | 'server'
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   scope: PointsScope
 }): Promise<ExtractedViteConfig> => {
   return typeof viteConfig === 'function'
@@ -486,10 +486,10 @@ export const createViteDevServer = async ({
   side: 'client' | 'server'
   hmrPort: number | false
   envConsts?: EngineOptionsEnvParsed | EngineOptionsEnvParsed
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   root: string | undefined
 }): Promise<ViteDevServer> => {
-  if (env.built) {
+  if (env.build.was) {
     throw new Error('You can not serve by dev client with built engine')
   } else {
     if (!viteConfig) {
@@ -664,18 +664,18 @@ export const withAsyncRetries: WithAsyncRetriesFn = (
   }
 }
 
-export const normalizeAndValidateNodeEnv = (fallback?: NormalNodeEnv): NormalNodeEnv => {
-  const validValues: NormalNodeEnv[] = ['production', 'development', 'test']
+export const normalizeAndValidateNodeEnv = (fallback?: NormalizedNodeEnv): NormalizedNodeEnv => {
+  const validValues: NormalizedNodeEnv[] = ['production', 'development', 'test']
   const nodeEnv = process.env.NODE_ENV
   if (!nodeEnv && fallback) {
     process.env.NODE_ENV = fallback
     return fallback
   }
-  if (!nodeEnv || !validValues.includes(nodeEnv as NormalNodeEnv)) {
+  if (!nodeEnv || !validValues.includes(nodeEnv as NormalizedNodeEnv)) {
     throw new Error(`Invalid process.env.NODE_ENV: ${nodeEnv}. Allowed values: ${validValues.join(', ')}`)
   }
   process.env.NODE_ENV = nodeEnv
-  return nodeEnv as NormalNodeEnv
+  return nodeEnv as NormalizedNodeEnv
 }
 
 export const isAsyncFn = (fn: unknown): fn is (...args: any[]) => Promise<any> =>

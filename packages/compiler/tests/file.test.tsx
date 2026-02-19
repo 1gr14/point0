@@ -211,13 +211,13 @@ describe('CompilerFile', () => {
       )
     })
 
-    describe('env.built', () => {
+    describe('env.build', () => {
       it.concurrent(
-        'env.built = true',
+        'env.build.was = true',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            if (env.built) console.info('built')
+            if (env.build.was) console.info('built')
           })
           cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development', built: true })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
@@ -231,11 +231,11 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.built = false',
+        'env.build.was = false',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            if (env.built) console.info('built')
+            if (env.build.was) console.info('built')
           })
           cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development', built: false })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
@@ -249,18 +249,46 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.built = true (env imported from different source)',
+        'env.build.was = true (env imported from different source)',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             // @ts-expect-error - testing with non-existent module
             const { _point0_env } = await import('./custom-env.js')
-            if (_point0_env.built) console.info('built')
+            if (_point0_env.build.was) console.info('built')
           })
           cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development', built: true })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { _point0_env } = await import('./custom-env.js')
               if (true) console.info('built')
+              "
+            `,
+          )
+        }),
+      )
+
+      it.concurrent(
+        'env.build.define() prunes before when built',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(
+              env.build.define({
+                before: 'before-value',
+                after: 'after-value',
+              }),
+            )
+          })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development', built: true })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info(
+                env.build.define({
+                  before: undefined,
+                  after: 'after-value',
+                }),
+              )
               "
             `,
           )
@@ -1248,6 +1276,210 @@ describe('CompilerFile', () => {
       )
     })
 
+    describe('env.runtime', () => {
+      it(
+        'env.runtime.name replaced with runtime parameter',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(env.runtime.name)
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', runtime: 'bun' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info('bun')
+              "
+            `,
+          )
+        }),
+      )
+
+      it(
+        'env.runtime.is.browser = true when runtime is browser',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            if (env.runtime.is.browser) console.info('browser')
+          })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development', runtime: 'browser' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              if (true) console.info('browser')
+              "
+            `,
+          )
+        }),
+      )
+
+      it(
+        'env.runtime.is.nodejs = false when runtime is browser',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            if (env.runtime.is.nodejs) console.info('node')
+          })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development', runtime: 'browser' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              if (false) console.info('node')
+              "
+            `,
+          )
+        }),
+      )
+
+      it(
+        'env.runtime.define.browser() replaced with undefined when runtime is bun',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(env.runtime.define.browser('browser-value'))
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', runtime: 'bun' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info(env.runtime.define.browser(undefined))
+              "
+            `,
+          )
+        }),
+      )
+
+      it(
+        'env.runtime.define() options pruned by runtime',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(
+              env.runtime.define({
+                browser: 'browser-value',
+                bun: 'bun-value',
+              }),
+            )
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', runtime: 'bun' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info(
+                env.runtime.define({
+                  browser: undefined,
+                  bun: 'bun-value',
+                }),
+              )
+              "
+            `,
+          )
+        }),
+      )
+    })
+
+    describe('env.os', () => {
+      it(
+        'env.os.name replaced with os parameter',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(env.os.name)
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', os: 'linux' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info('linux')
+              "
+            `,
+          )
+        }),
+      )
+
+      it(
+        'env.os.is.windows = true when os is windows',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            if (env.os.is.windows) console.info('win')
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', os: 'windows' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              if (true) console.info('win')
+              "
+            `,
+          )
+        }),
+      )
+
+      it(
+        'env.os.is.mac = false when os is linux',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            if (env.os.is.mac) console.info('mac')
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', os: 'linux' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              if (false) console.info('mac')
+              "
+            `,
+          )
+        }),
+      )
+
+      it(
+        'env.os.define.ios() replaced with undefined when os is linux',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(env.os.define.ios('ios-value'))
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', os: 'linux' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info(env.os.define.ios(undefined))
+              "
+            `,
+          )
+        }),
+      )
+
+      it(
+        'env.os.define() options pruned by os',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(
+              env.os.define({
+                windows: 'win-value',
+                linux: 'linux-value',
+              }),
+            )
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', os: 'linux' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info(
+                env.os.define({
+                  windows: undefined,
+                  linux: 'linux-value',
+                }),
+              )
+              "
+            `,
+          )
+        }),
+      )
+    })
+
     describe('false values', () => {
       it.concurrent(
         'env.side.is.* not hardcoded when side is false',
@@ -1395,14 +1627,18 @@ describe('CompilerFile', () => {
             if (env.side.is.client) console.info('client')
             if (env.scope.is.x) console.info('x')
             console.info(env.mode.name)
+            console.info(env.runtime.name)
+            console.info(env.os.name)
           })
-          cf.shakeForEnv({ side: false, scope: false, mode: false })
+          cf.shakeForEnv({ side: false, scope: false, mode: false, runtime: false, os: false })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
               if (env.side.is.client) console.info('client')
               if (env.scope.is.x) console.info('x')
               console.info(env.mode.name)
+              console.info(env.runtime.name)
+              console.info(env.os.name)
               "
             `,
           )

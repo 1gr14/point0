@@ -1,5 +1,5 @@
 import type { RoutesPretty } from '@devp0nt/route0'
-import { normalNodeEnvs, type NormalNodeEnv } from '@point0/core'
+import { normalNodeEnvs, type EnvOsName, type EnvRuntimeName, type NormalizedNodeEnv } from '@point0/core'
 import type { CompilerFile } from './file.js'
 import { CompilerPoint } from './point.js'
 import type { CompilerEnvConsts } from './utils.js'
@@ -7,7 +7,9 @@ import { Walker } from './walker.js'
 
 export type CompilerOptions = {
   routes?: Record<string, RoutesPretty<any>> | undefined
-  mode?: NormalNodeEnv | false
+  mode?: NormalizedNodeEnv | false
+  runtime?: EnvRuntimeName | false
+  os?: EnvOsName | false
   side: 'client' | 'server' | false
   scope: string | false
   built?: boolean
@@ -20,7 +22,9 @@ export class Compiler {
   filter: RegExp
   scope: string | false
   built: boolean
-  mode: NormalNodeEnv | false
+  mode: NormalizedNodeEnv | false
+  runtime: EnvRuntimeName | false
+  os: EnvOsName | false
   side: 'client' | 'server' | false
   consts: CompilerEnvConsts | undefined
   hmrFix: boolean
@@ -39,6 +43,8 @@ export class Compiler {
     routes,
     built,
     mode,
+    runtime,
+    os,
   }: {
     filter: RegExp
     side: 'client' | 'server' | false
@@ -48,7 +54,9 @@ export class Compiler {
     walker: Walker
     routes: Record<string, RoutesPretty<any>> | undefined
     built: boolean
-    mode: NormalNodeEnv | false
+    mode: NormalizedNodeEnv | false
+    runtime: EnvRuntimeName | false
+    os: EnvOsName | false
   }) {
     this.filter = filter
     this.side = side
@@ -59,11 +67,24 @@ export class Compiler {
     this.routes = routes
     this.built = built
     this.mode = mode
+    this.runtime = runtime
+    this.os = os
   }
 
   static create(options: CompilerOptions) {
-    const { filter, side, scope, consts, hmrFix, routes, built, mode = process.env.NODE_ENV } = options
-    if (mode !== false && (!mode || !normalNodeEnvs.includes(mode as NormalNodeEnv))) {
+    const {
+      filter,
+      side,
+      scope,
+      consts,
+      hmrFix,
+      routes,
+      built,
+      mode = process.env.NODE_ENV,
+      runtime = false,
+      os = false,
+    } = options
+    if (mode !== false && (!mode || !normalNodeEnvs.includes(mode as NormalizedNodeEnv))) {
       throw new Error(`Invalid mode (NODE_ENV): "${mode}". Allowed values: production, development, test`)
     }
     return new Compiler({
@@ -75,7 +96,9 @@ export class Compiler {
       walker: new Walker({ routes }),
       routes,
       built: built ?? false,
-      mode: mode as NormalNodeEnv | false,
+      mode: mode as NormalizedNodeEnv | false,
+      runtime,
+      os,
     })
   }
 
@@ -93,6 +116,8 @@ export class Compiler {
     const hmrFix = this.hmrFix
     const built = this.built
     const mode = this.mode
+    const runtime = this.runtime
+    const os = this.os
     const errors: unknown[] = []
     const collectResult = this.walker.collectPointsFromFile({ file, content })
     errors.push(...collectResult.errors)
@@ -115,7 +140,7 @@ export class Compiler {
         point.addHmrFix()
       }
     }
-    cf.shakeForEnv({ side, scope, consts, built, mode })
+    cf.shakeForEnv({ side, scope, consts, built, mode, runtime, os })
     if (built) {
       cf.shakeForBuiltEngine()
     }

@@ -2,7 +2,7 @@ import type { RoutesPretty } from '@devp0nt/route0'
 import type {
   AppComponent,
   AppComponentModule,
-  NormalNodeEnv,
+  NormalizedNodeEnv,
   PointsDefinitionSource,
   PointsScope,
   RequiredCtx,
@@ -56,7 +56,7 @@ export type ExtractedViteConfig = import('vite').UserConfig
 export type ExtractViteConfigOptions = {
   command: 'serve' | 'build'
   side: 'client' | 'server'
-  mode: NormalNodeEnv
+  mode: NormalizedNodeEnv
   scope: PointsScope
 }
 export type ExtractViteConfigFn = (
@@ -109,9 +109,7 @@ export type EngineGeneralOptions = {
 export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   scope: PointsScope
   points?: PointsDefinitionSource<TRequiredCtx>
-  generate?: Array<
-    Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>
-  >
+  generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
   publicdir?: {
     source: EngineOptionsPublicdir
     outdir: string
@@ -134,9 +132,7 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   // TODO: allow empty points
   // TODO: allow points collection
   points?: PointsDefinitionSource<TRequiredCtx>
-  generate?: Array<
-    Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>
-  >
+  generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
   app?: EngineOptionsAppComponent
   publicdir?: {
     source: EngineOptionsPublicdir

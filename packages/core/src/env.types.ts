@@ -1,6 +1,6 @@
 import type { IsAny } from './index.js'
 
-export type NormalNodeEnv = 'production' | 'development' | 'test'
+export type NormalizedNodeEnv = 'production' | 'development' | 'test'
 export type Side = 'client' | 'server'
 
 export type ClientRuntime = 'browser' | 'reactNative'

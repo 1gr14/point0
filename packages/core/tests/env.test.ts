@@ -1,12 +1,17 @@
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
-import type { Env } from '../src/index.js'
+import type { Env, EnvOsName, EnvRuntimeName } from '../src/index.js'
 
-const init = async <TVars = any, TScope extends string = string>(options: {
+const init = async <
+  TVars = any,
+  TScope extends string = string,
+  TRuntime extends EnvRuntimeName | undefined = EnvRuntimeName | undefined,
+  TOs extends EnvOsName | undefined = EnvOsName | undefined,
+>(options: {
   vars?: Record<string, string | boolean | number>
   ssr?: 'prepass' | 'final' | boolean
   side: 'client' | 'server'
   scope?: string
-}): Promise<Env<TVars, TScope>> => {
+}): Promise<Env<TVars, TScope, TRuntime, TOs>> => {
   const { vars, ssr, side, scope } = options
   if (side === 'client') {
     ;(globalThis as any).window = {}
@@ -549,7 +554,7 @@ describe('env', () => {
   describe('env.runtime', () => {
     it('should have runtime.name and runtime.is object', async () => {
       const env = await init({ side: 'server' })
-      expect(typeof env.runtime.name).toBe('string')
+      expect(['string', 'undefined']).toContain(typeof env.runtime.name)
       expect(typeof env.runtime.is).toBe('object')
       expect(typeof env.runtime.is.browser).toBe('boolean')
       expect(typeof env.runtime.is.reactNative).toBe('boolean')
@@ -558,6 +563,10 @@ describe('env', () => {
       expect(typeof env.runtime.is.deno).toBe('boolean')
       expect(typeof env.runtime.is.worker).toBe('boolean')
       expect(typeof env.runtime.is.unknown).toBe('boolean')
+      expect(typeof env.runtime.define).toBe('function')
+      expect(typeof env.runtime.define.unsafe).toBe('object')
+      expect(typeof env.runtime.define.browser).toBe('function')
+      expect(typeof env.runtime.define.unknown).toBe('function')
     })
 
     it('should detect browser runtime on client', async () => {
@@ -565,12 +574,137 @@ describe('env', () => {
       expect(env.runtime.name).toBe('browser')
       expect(env.runtime.is.browser).toBe(true)
     })
+
+    describe('env.runtime.name', () => {
+      it('should be discriminated with strict runtime types when provided', async () => {
+        const env = await init<any, string, 'browser' | 'bun'>({ side: 'server', vars: { POINT0_RUNTIME: 'browser' } })
+        expect(env.runtime.name).toBe('browser')
+        expectTypeOf<typeof env.runtime.name>().toEqualTypeOf<'browser' | 'bun'>()
+        if (env.runtime.name === 'browser') {
+          expectTypeOf<typeof env.runtime.name>().toEqualTypeOf<'browser'>()
+        } else {
+          expectTypeOf<typeof env.runtime.name>().toEqualTypeOf<'bun'>()
+        }
+      })
+    })
+
+    describe('env.runtime.is', () => {
+      it('should return true for current runtime from env override', async () => {
+        const env = await init({ side: 'server', vars: { POINT0_RUNTIME: 'nodejs' } })
+        expect(env.runtime.is.nodejs).toBe(true)
+        expect(env.runtime.is.browser).toBe(false)
+        expect(env.runtime.is.unknown).toBe(false)
+      })
+
+      it('should have scope-like discrimination for strict runtime generic', async () => {
+        const env = await init<any, string, 'browser' | 'bun'>({ side: 'server', vars: { POINT0_RUNTIME: 'browser' } })
+        expect(env.runtime.is.browser).toBe(true)
+        expect(env.runtime.is.bun).toBe(false)
+        expectTypeOf<typeof env.runtime.is.browser>().toEqualTypeOf<boolean>()
+        expectTypeOf<typeof env.runtime.is.bun>().toEqualTypeOf<boolean>()
+        if (env.runtime.is.bun) {
+          expectTypeOf<typeof env.runtime.is.bun>().toEqualTypeOf<true>()
+          expectTypeOf<typeof env.runtime.is.browser>().toEqualTypeOf<false>()
+        } else {
+          expectTypeOf<typeof env.runtime.is.bun>().toEqualTypeOf<false>()
+          expectTypeOf<typeof env.runtime.is.browser>().toEqualTypeOf<true>()
+        }
+      })
+
+      it('correlates in types with name when strict runtime generic includes undefined', async () => {
+        const env = await init<any, string, 'browser' | 'bun' | undefined>({
+          side: 'server',
+          vars: { POINT0_RUNTIME: 'browser' },
+        })
+        expectTypeOf<typeof env.runtime.name>().toEqualTypeOf<'browser' | 'bun' | undefined>()
+        expectTypeOf<typeof env.runtime.is.browser>().toEqualTypeOf<boolean>()
+        expectTypeOf<typeof env.runtime.is.bun>().toEqualTypeOf<boolean>()
+        expectTypeOf<typeof env.runtime.is.unknown>().toEqualTypeOf<boolean>()
+        if (env.runtime.name === 'browser') {
+          expectTypeOf<typeof env.runtime.is.browser>().toEqualTypeOf<true>()
+          expectTypeOf<typeof env.runtime.is.bun>().toEqualTypeOf<false>()
+          expectTypeOf<typeof env.runtime.is.unknown>().toEqualTypeOf<false>()
+        } else if (env.runtime.name === 'bun') {
+          expectTypeOf<typeof env.runtime.is.browser>().toEqualTypeOf<false>()
+          expectTypeOf<typeof env.runtime.is.bun>().toEqualTypeOf<true>()
+          expectTypeOf<typeof env.runtime.is.unknown>().toEqualTypeOf<false>()
+        } else {
+          expectTypeOf<typeof env.runtime.is.browser>().toEqualTypeOf<false>()
+          expectTypeOf<typeof env.runtime.is.bun>().toEqualTypeOf<false>()
+          expectTypeOf<typeof env.runtime.is.unknown>().toEqualTypeOf<true>()
+        }
+      })
+    })
+
+    describe('env.runtime.define()', () => {
+      it('should return value for current runtime', async () => {
+        const env = await init({ side: 'server', vars: { POINT0_RUNTIME: 'nodejs' } })
+        const result = env.runtime.define({
+          nodejs: 'node-value' as const,
+          browser: 'browser-value' as const,
+          unknown: 'unknown-value' as const,
+        })
+        expectTypeOf<typeof result>().toEqualTypeOf<'node-value' | 'browser-value' | 'unknown-value' | undefined>()
+        expect(result).toBe('node-value')
+      })
+
+      it('should return value with strict types when strict runtime generic is provided', async () => {
+        const env = await init<any, string, 'browser' | 'bun'>({ side: 'server', vars: { POINT0_RUNTIME: 'browser' } })
+        const result = env.runtime.define({
+          browser: 'browser-value' as const,
+          bun: 'bun-value' as const,
+        })
+        expectTypeOf<typeof result>().toEqualTypeOf<'browser-value' | 'bun-value'>()
+        expect(result).toBe('browser-value')
+      })
+
+      it('should throw type when incorrect runtime name provided for strict runtime generic', async () => {
+        const env = await init<any, string, 'browser' | 'bun'>({ side: 'server', vars: { POINT0_RUNTIME: 'browser' } })
+        const result = env.runtime.define({
+          browser: 'browser-value' as const,
+          bun: 'bun-value' as const,
+          // @ts-expect-error - incorrect runtime key
+          nodejs: 'node-value' as const,
+        })
+        expect(result).toBe('browser-value')
+        const result2 = env.runtime.define({
+          browser: 'browser-value' as const,
+          bun: 'bun-value' as const,
+          // @ts-expect-error - unknown is not allowed without undefined in runtime generic
+          unknown: 'unknown-value' as const,
+        })
+        expect(result2).toBe('browser-value')
+      })
+    })
+
+    describe('env.runtime.define.browser()', () => {
+      it('should return value on browser and undefined on other runtime', async () => {
+        const envBrowser = await init({ side: 'server', vars: { POINT0_RUNTIME: 'browser' } })
+        const resultBrowser = envBrowser.runtime.define.browser('browser-value')
+        expectTypeOf<typeof resultBrowser>().toEqualTypeOf<'browser-value' | undefined>()
+        expect(resultBrowser).toBe('browser-value')
+
+        const envBun = await init({ side: 'server', vars: { POINT0_RUNTIME: 'bun' } })
+        const resultBun = envBun.runtime.define.browser('browser-value')
+        expectTypeOf<typeof resultBun>().toEqualTypeOf<'browser-value' | undefined>()
+        expect(resultBun).toBeUndefined()
+      })
+    })
+
+    describe('env.runtime.define.unsafe.browser()', () => {
+      it('should return value type without undefined, but runtime may be undefined', async () => {
+        const env = await init({ side: 'server', vars: { POINT0_RUNTIME: 'bun' } })
+        const result = env.runtime.define.unsafe.browser('browser-value')
+        expectTypeOf<typeof result>().toEqualTypeOf<'browser-value'>()
+        expect(result).toBeUndefined()
+      })
+    })
   })
 
   describe('env.os', () => {
     it('should have os.name and os.is object', async () => {
       const env = await init({ side: 'server' })
-      expect(typeof env.os.name).toBe('string')
+      expect(['string', 'undefined']).toContain(typeof env.os.name)
       expect(typeof env.os.is).toBe('object')
       expect(typeof env.os.is.ios).toBe('boolean')
       expect(typeof env.os.is.android).toBe('boolean')
@@ -578,13 +712,165 @@ describe('env', () => {
       expect(typeof env.os.is.mac).toBe('boolean')
       expect(typeof env.os.is.windows).toBe('boolean')
       expect(typeof env.os.is.unknown).toBe('boolean')
+      expect(typeof env.os.define).toBe('function')
+      expect(typeof env.os.define.unsafe).toBe('object')
+      expect(typeof env.os.define.ios).toBe('function')
+      expect(typeof env.os.define.unknown).toBe('function')
+    })
+
+    describe('env.os.name', () => {
+      it('should be discriminated with strict os types when provided', async () => {
+        const env = await init<any, string, EnvRuntimeName | undefined, 'ios' | 'android'>({
+          side: 'server',
+          vars: { POINT0_OS: 'ios' },
+        })
+        expect(env.os.name).toBe('ios')
+        expectTypeOf<typeof env.os.name>().toEqualTypeOf<'ios' | 'android'>()
+        if (env.os.name === 'ios') {
+          expectTypeOf<typeof env.os.name>().toEqualTypeOf<'ios'>()
+        } else {
+          expectTypeOf<typeof env.os.name>().toEqualTypeOf<'android'>()
+        }
+      })
+    })
+
+    describe('env.os.is', () => {
+      it('should return true for current os from env override', async () => {
+        const env = await init({ side: 'server', vars: { POINT0_OS: 'linux' } })
+        expect(env.os.is.linux).toBe(true)
+        expect(env.os.is.mac).toBe(false)
+        expect(env.os.is.unknown).toBe(false)
+      })
+
+      it('should have scope-like discrimination for strict os generic', async () => {
+        const env = await init<any, string, EnvRuntimeName | undefined, 'ios' | 'android'>({
+          side: 'server',
+          vars: { POINT0_OS: 'ios' },
+        })
+        expect(env.os.is.ios).toBe(true)
+        expect(env.os.is.android).toBe(false)
+        expectTypeOf<typeof env.os.name>().toEqualTypeOf<'ios' | 'android'>()
+        expectTypeOf<typeof env.os.is.ios>().toEqualTypeOf<boolean>()
+        expectTypeOf<typeof env.os.is.android>().toEqualTypeOf<boolean>()
+        if (env.os.is.android) {
+          expectTypeOf<typeof env.os.is.android>().toEqualTypeOf<true>()
+          expectTypeOf<typeof env.os.is.ios>().toEqualTypeOf<false>()
+        } else {
+          expectTypeOf<typeof env.os.is.android>().toEqualTypeOf<false>()
+          expectTypeOf<typeof env.os.is.ios>().toEqualTypeOf<true>()
+        }
+      })
+
+      it('correlates in types with name when strict os generic is provided', async () => {
+        const env = await init<any, string, EnvRuntimeName | undefined, 'ios' | 'android' | undefined>({
+          side: 'server',
+          vars: { POINT0_OS: 'ios' },
+        })
+        expectTypeOf<typeof env.os.name>().toEqualTypeOf<'ios' | 'android' | undefined>()
+        expectTypeOf<typeof env.os.is.ios>().toEqualTypeOf<boolean>()
+        expectTypeOf<typeof env.os.is.android>().toEqualTypeOf<boolean>()
+        expectTypeOf<typeof env.os.is.unknown>().toEqualTypeOf<boolean>()
+        if (env.os.name === 'ios') {
+          expectTypeOf<typeof env.os.is.ios>().toEqualTypeOf<true>()
+          expectTypeOf<typeof env.os.is.android>().toEqualTypeOf<false>()
+          expectTypeOf<typeof env.os.is.unknown>().toEqualTypeOf<false>()
+        } else if (env.os.name === 'android') {
+          expectTypeOf<typeof env.os.is.ios>().toEqualTypeOf<false>()
+          expectTypeOf<typeof env.os.is.android>().toEqualTypeOf<true>()
+          expectTypeOf<typeof env.os.is.unknown>().toEqualTypeOf<false>()
+        } else {
+          expectTypeOf<typeof env.os.is.ios>().toEqualTypeOf<false>()
+          expectTypeOf<typeof env.os.is.android>().toEqualTypeOf<false>()
+          expectTypeOf<typeof env.os.is.unknown>().toEqualTypeOf<true>()
+        }
+      })
+    })
+
+    describe('env.os.define()', () => {
+      it('should return value for current os', async () => {
+        const env = await init({ side: 'server', vars: { POINT0_OS: 'windows' } })
+        const result = env.os.define({
+          windows: 'win-value' as const,
+          linux: 'linux-value' as const,
+          unknown: 'unknown-value' as const,
+        })
+        expectTypeOf<typeof result>().toEqualTypeOf<'win-value' | 'linux-value' | 'unknown-value' | undefined>()
+        expect(result).toBe('win-value')
+      })
+
+      it('should return value with strict types when strict os generic is provided', async () => {
+        const env = await init<any, string, EnvRuntimeName | undefined, 'ios' | 'android'>({
+          side: 'server',
+          vars: { POINT0_OS: 'ios' },
+        })
+        const result = env.os.define({
+          ios: 'ios-value' as const,
+          android: 'android-value' as const,
+        })
+        expectTypeOf<typeof result>().toEqualTypeOf<'ios-value' | 'android-value'>()
+        expect(result).toBe('ios-value')
+      })
+
+      it('should throw type when incorrect os name provided for strict os generic', async () => {
+        const env = await init<any, string, EnvRuntimeName | undefined, 'ios' | 'android'>({
+          side: 'server',
+          vars: { POINT0_OS: 'ios' },
+        })
+        const result = env.os.define({
+          ios: 'ios-value' as const,
+          android: 'android-value' as const,
+          // @ts-expect-error - incorrect os key
+          linux: 'linux-value' as const,
+        })
+        expect(result).toBe('ios-value')
+        const result2 = env.os.define({
+          ios: 'ios-value' as const,
+          android: 'android-value' as const,
+          // @ts-expect-error - unknown is not allowed without undefined in os generic
+          unknown: 'unknown-value' as const,
+        })
+        expect(result2).toBe('ios-value')
+      })
+    })
+
+    describe('env.os.define.ios()', () => {
+      it('should return value on ios and undefined on other os', async () => {
+        const envIos = await init({ side: 'server', vars: { POINT0_OS: 'ios' } })
+        const resultIos = envIos.os.define.ios('ios-value')
+        expectTypeOf<typeof resultIos>().toEqualTypeOf<'ios-value' | undefined>()
+        expect(resultIos).toBe('ios-value')
+
+        const envLinux = await init({ side: 'server', vars: { POINT0_OS: 'linux' } })
+        const resultLinux = envLinux.os.define.ios('ios-value')
+        expectTypeOf<typeof resultLinux>().toEqualTypeOf<'ios-value' | undefined>()
+        expect(resultLinux).toBeUndefined()
+      })
+    })
+
+    describe('env.os.define.unsafe.ios()', () => {
+      it('should return value type without undefined, but runtime may be undefined', async () => {
+        const env = await init({ side: 'server', vars: { POINT0_OS: 'linux' } })
+        const result = env.os.define.unsafe.ios('ios-value')
+        expectTypeOf<typeof result>().toEqualTypeOf<'ios-value'>()
+        expect(result).toBeUndefined()
+      })
     })
   })
 
-  describe('env.built', () => {
-    it('should be false by default', async () => {
+  describe('env.build', () => {
+    it('should have build.was false by default', async () => {
       const env = await init({ side: 'server' })
-      expect(env.built).toBe(false)
+      expect(env.build.was).toBe(false)
+    })
+
+    it('should define before value when not built', async () => {
+      const env = await init({ side: 'server' })
+      const result = env.build.define({
+        before: 'before-value' as const,
+        after: 'after-value' as const,
+      })
+      expectTypeOf<typeof result>().toEqualTypeOf<'before-value' | 'after-value'>()
+      expect(result).toBe('before-value')
     })
   })
 
@@ -598,6 +884,7 @@ describe('env', () => {
       expect(env.scope).toBeDefined()
       expect(env.runtime).toBeDefined()
       expect(env.os).toBeDefined()
+      expect(env.build).toBeDefined()
     })
   })
 
