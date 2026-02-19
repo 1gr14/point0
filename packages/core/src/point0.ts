@@ -4575,6 +4575,7 @@ export class Point0<
       useMutation: point.useMutation.bind(point),
       fetch: point.fetch.bind(point),
       getFetchServerOptions: point.getFetchServerOptions.bind(point),
+      fetchServerDetailed: point.fetchServerDetailed.bind(point),
       fetchServer: point.fetchServer.bind(point),
       fetchQuery: point.fetchQuery.bind(point),
       fetchInfiniteQuery: point.fetchInfiniteQuery.bind(point),

@@ -11,7 +11,7 @@ export const normalNodeEnvs: NormalizedNodeEnv[] = ['production', 'development',
 export const getEnvVars = (): EnvVars => {
   const env = Object.create(null)
   const processEnvHolder = (() => {
-    if (typeof globalThis !== 'undefined') {
+    if (typeof globalThis !== 'undefined' && isSideClient()) {
       const point0EnvVars = (globalThis as any).__POINT0_ENV_VARS__
       const point0EnvConsts = (globalThis as any).__POINT0_ENV_CONSTS__
       if (point0EnvVars || point0EnvConsts) {

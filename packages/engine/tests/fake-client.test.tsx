@@ -10,7 +10,7 @@ import { FakeClient } from '../src/fake-client.js'
 // import { PlaywrightBrowser } from './utils/playwright.js'
 // import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 // import { TestProjectFactory } from './utils/project.js'
-import { getFakeBrowserGlobals } from './utils/internal-testing.js'
+import { getFakeBrowserGlobals, ymlify } from './utils/internal-testing.js'
 import { ElementViewer } from './utils/element-viewer.js'
 import { FetchRecorder } from './utils/fetch-recorder.js'
 
@@ -104,6 +104,60 @@ describe('FakeClient', () => {
       expect(data.serverLoaderSideName).toBe('server')
     })
     expect(env.side.name).toBe('server')
+  })
+
+  it.concurrent('uses scoped client env vars in fake client globals', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const page = root
+      .lets('page', 'page')
+      .loader(() => ({
+        POINT0_CLIENT_ENV_ONLY: env.vars.POINT0_CLIENT_ENV_ONLY,
+        POINT0_SERVER_ENV_ONLY: env.vars.POINT0_SERVER_ENV_ONLY,
+        POINT0_SHARED_ENV: env.vars.POINT0_SHARED_ENV,
+      }))
+      .page(({ data }) => ymlify(data))
+    const points = [root, page] as const
+    const prevProcessEnvValues: Record<string, any> = {
+      POINT0_CLIENT_ENV_ONLY: process.env.POINT0_CLIENT_ENV_ONLY,
+      POINT0_SERVER_ENV_ONLY: process.env.POINT0_SERVER_ENV_ONLY,
+      POINT0_SHARED_ENV: process.env.POINT0_SHARED_ENV,
+    }
+    // process.env.POINT0_CLIENT_ENV_ONLY = 'point0_client_env_only'
+    process.env.POINT0_SERVER_ENV_ONLY = 'point0_server_env_only'
+    process.env.POINT0_SHARED_ENV = 'point0_shared_env'
+
+    try {
+      const engine = await Engine.create({
+        compiler: false,
+        file: import.meta.url,
+        server: { scope: 'root', points },
+        clients: [
+          {
+            scope: 'root',
+            points,
+            env: {
+              vars: ['POINT0_SHARED_ENV', { POINT0_CLIENT_ENV_ONLY: 'point0_client_env_only' }],
+            },
+          },
+        ],
+      }).init()
+      const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
+      await fakeClient.run(async () => {
+        expect(env.side.name).toBe('client')
+        expect(env.vars.POINT0_CLIENT_ENV_ONLY).toBe('point0_client_env_only')
+        expect(env.vars.POINT0_SERVER_ENV_ONLY).toBe(undefined)
+        expect(env.vars.POINT0_SHARED_ENV).toBe('point0_shared_env')
+        const result = await page.fetchServerDetailed()
+        assert(result.data)
+        expect(result.data.POINT0_CLIENT_ENV_ONLY).toBe(undefined)
+        expect(result.data.POINT0_SERVER_ENV_ONLY).toBe('point0_server_env_only')
+        expect(result.data.POINT0_SHARED_ENV).toBe('point0_shared_env')
+      })
+    } finally {
+      for (const [key, value] of Object.entries(prevProcessEnvValues)) {
+        process.env[key] = value
+      }
+    }
   })
 
   it.concurrent('respect cookies', async () => {

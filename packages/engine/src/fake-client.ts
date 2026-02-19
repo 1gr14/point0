@@ -279,7 +279,16 @@ export class FakeClient<TState extends FakeClientState = any> {
       cookieSetter,
       cookieGetter,
     })
-    for (const [key, value] of Object.entries(globals)) {
+    const globalsWithClientEnv = {
+      ...globals,
+      __POINT0_ENV_VARS__: {
+        ...client.envVars,
+      },
+      __POINT0_ENV_CONSTS__: {
+        ...client.envConsts,
+      },
+    }
+    for (const [key, value] of Object.entries(globalsWithClientEnv)) {
       GlobalThisItemProxy.create(fakeClient, key, value)
     }
     return fakeClient as unknown as FakeClient<TState>
