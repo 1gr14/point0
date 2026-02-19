@@ -3,6 +3,6 @@ import type { IsAny } from './index.js'
 export type NormalNodeEnv = 'production' | 'development' | 'test'
 export type Side = 'client' | 'server'
 
-export type ClientPlatform = 'browser' | 'react-native'
+export type ClientRuntime = 'browser' | 'reactNative'
 type AnyAnvVars = Record<string, string | undefined | boolean | number | null>
 export type EnvVars<TVars = any> = IsAny<TVars> extends true ? AnyAnvVars : TVars

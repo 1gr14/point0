@@ -333,11 +333,154 @@ const envMode = Object.defineProperties(
   },
 ) as never as EnvMode
 
+// runtime
+
+export type EnvRuntimeName = 'browser' | 'reactNative' | 'nodejs' | 'bun' | 'deno' | 'worker' | 'unknown'
+export type EnvRuntime = {
+  readonly name: EnvRuntimeName
+  readonly is: {
+    readonly browser: boolean
+    readonly reactNative: boolean
+    readonly nodejs: boolean
+    readonly bun: boolean
+    readonly deno: boolean
+    readonly worker: boolean
+    readonly unknown: boolean
+  }
+}
+
+const getRuntimeName = (): EnvRuntimeName => {
+  const fakeClient = superstore.getFakeClient()
+  if (fakeClient?.runtime) {
+    return fakeClient.runtime
+  }
+  if (process.env.POINT0_RUNTIME) {
+    return process.env.POINT0_RUNTIME as EnvRuntimeName
+  }
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
+    return 'reactNative'
+  }
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    return 'browser'
+  }
+  const workerGlobalScope = (globalThis as any).WorkerGlobalScope
+  if (typeof workerGlobalScope !== 'undefined' && typeof self !== 'undefined' && self instanceof workerGlobalScope) {
+    return 'worker'
+  }
+  if (typeof (globalThis as any).Bun !== 'undefined') {
+    return 'bun'
+  }
+  if (typeof (globalThis as any).Deno !== 'undefined') {
+    return 'deno'
+  }
+  if (typeof process !== 'undefined' && (process as any).versions?.node) {
+    return 'nodejs'
+  }
+  return 'unknown'
+}
+
+const envRuntimeIs = Object.defineProperties(
+  {},
+  {
+    browser: { get: () => getRuntimeName() === 'browser' },
+    reactNative: { get: () => getRuntimeName() === 'reactNative' },
+    nodejs: { get: () => getRuntimeName() === 'nodejs' },
+    bun: { get: () => getRuntimeName() === 'bun' },
+    deno: { get: () => getRuntimeName() === 'deno' },
+    worker: { get: () => getRuntimeName() === 'worker' },
+    unknown: { get: () => getRuntimeName() === 'unknown' },
+  },
+)
+const envRuntime = Object.defineProperties(
+  {
+    is: envRuntimeIs,
+  },
+  {
+    name: { get: getRuntimeName },
+  },
+) as never as EnvRuntime
+
+// os
+
+export type EnvOsName = 'ios' | 'android' | 'linux' | 'mac' | 'windows' | 'unknown'
+export type EnvOs = {
+  readonly name: EnvOsName
+  readonly is: {
+    readonly ios: boolean
+    readonly android: boolean
+    readonly linux: boolean
+    readonly mac: boolean
+    readonly windows: boolean
+    readonly unknown: boolean
+  }
+}
+
+const getOsName = (): EnvOsName => {
+  if (process.env.POINT0_OS) {
+    return process.env.POINT0_OS as EnvOsName
+  }
+
+  const detectOsNameFromString = (value: string): EnvOsName => {
+    const lowerValue = value.toLowerCase()
+    if (lowerValue.includes('android')) return 'android'
+    if (
+      lowerValue.includes('iphone') ||
+      lowerValue.includes('ipad') ||
+      lowerValue.includes('ipod') ||
+      lowerValue.includes('ios')
+    )
+      return 'ios'
+    if (lowerValue.includes('win')) return 'windows'
+    if (lowerValue.includes('darwin') || lowerValue.includes('mac')) return 'mac'
+    if (lowerValue.includes('linux') || lowerValue.includes('x11')) return 'linux'
+    return 'unknown'
+  }
+
+  if (typeof navigator !== 'undefined') {
+    const userAgent = typeof navigator.userAgent === 'string' ? navigator.userAgent : ''
+    const navigatorPlatform = typeof navigator.platform === 'string' ? navigator.platform : ''
+    const fromNavigator = detectOsNameFromString(`${userAgent} ${navigatorPlatform}`.trim())
+    if (fromNavigator !== 'unknown') {
+      return fromNavigator
+    }
+  }
+  if (typeof process !== 'undefined' && typeof process.platform === 'string') {
+    const fromProcess = detectOsNameFromString(process.platform)
+    if (fromProcess !== 'unknown') {
+      return fromProcess
+    }
+  }
+  return 'unknown'
+}
+
+const envOsIs = Object.defineProperties(
+  {},
+  {
+    ios: { get: () => getOsName() === 'ios' },
+    android: { get: () => getOsName() === 'android' },
+    linux: { get: () => getOsName() === 'linux' },
+    mac: { get: () => getOsName() === 'mac' },
+    windows: { get: () => getOsName() === 'windows' },
+    unknown: { get: () => getOsName() === 'unknown' },
+  },
+)
+const envOs = Object.defineProperties(
+  {
+    is: envOsIs,
+  },
+  {
+    name: { get: getOsName },
+  },
+) as never as EnvOs
+
 // final
 
 type IsAny<T> = 0 extends 1 & T ? true : false
 export type Env<TVars = any, TScope extends string = string> = {
   readonly mode: EnvMode
+  readonly runtime: EnvRuntime
+  readonly os: EnvOs
   readonly vars: Readonly<EnvVars<TVars>>
   readonly side: EnvSide
   readonly scope: EnvScope<IsAny<TScope> extends true ? string : TScope>
@@ -347,6 +490,8 @@ export type Env<TVars = any, TScope extends string = string> = {
 export const env: Env = Object.defineProperties(
   {
     mode: envMode,
+    runtime: envRuntime,
+    os: envOs,
     side: envSide,
     scope: envScope,
     built: false, // will be overridden by compiler in build phase

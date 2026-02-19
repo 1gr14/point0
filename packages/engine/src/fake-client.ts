@@ -1,4 +1,4 @@
-import type { ClientPoints, PointsScope, RichFetchFn } from '@point0/core'
+import type { ClientPoints, ClientRuntime, PointsScope, RichFetchFn } from '@point0/core'
 import { _getSsItemsWithRestErrors, _ssRunWithServerStorageState, superstore, generateId } from '@point0/core'
 import fetchCookie from 'fetch-cookie'
 import { CookieJar } from 'tough-cookie'
@@ -99,6 +99,7 @@ export type FakeClientState = {
 export class FakeClient<TState extends FakeClientState = any> {
   id: string
   scope: PointsScope
+  runtime: ClientRuntime
   client: EngineClient<true>
   points: ClientPoints
   engine: Engine<any, true>
@@ -119,6 +120,7 @@ export class FakeClient<TState extends FakeClientState = any> {
     engine,
     client,
     points,
+    runtime,
     id,
     scope,
     state,
@@ -136,6 +138,7 @@ export class FakeClient<TState extends FakeClientState = any> {
     engine: Engine<any, true>
     client: EngineClient<true>
     points: ClientPoints
+    runtime: ClientRuntime
     id: string
     scope: PointsScope
     state: TState
@@ -153,6 +156,7 @@ export class FakeClient<TState extends FakeClientState = any> {
     this.engine = engine
     this.client = client
     this.points = points
+    this.runtime = runtime
     this.id = id
     this.scope = scope
     this.state = state
@@ -261,6 +265,7 @@ export class FakeClient<TState extends FakeClientState = any> {
       client: client as EngineClient<true>,
       id,
       scope,
+      runtime: 'browser',
       points,
       jar,
       fetch,

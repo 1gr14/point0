@@ -271,7 +271,7 @@ describe('SuperStore', () => {
 
     const withFakeClient = (fn: () => void) => {
       return () => {
-        ss.runWithServerStorageState({ __POINT0_FAKE_CLIENT__: { id: '123', scope: 'root', platform: 'browser' } }, fn)
+        ss.runWithServerStorageState({ __POINT0_FAKE_CLIENT__: { id: '123', scope: 'root', runtime: 'browser' } }, fn)
       }
     }
 

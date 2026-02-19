@@ -1,5 +1,5 @@
 /* eslint-disable import/first */
-import type { ClientPlatform } from './env.types.js'
+import type { ClientRuntime } from './env.types.js'
 
 // I do not know why, but it is only way to do it to work in bun and vite at the same time
 ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||=
@@ -512,7 +512,7 @@ export class SuperStore {
     }
   }
 
-  getFakeClient(): { id: string; scope: PointsScope; platform: ClientPlatform; fetch: FetchFn } | undefined {
+  getFakeClient(): { id: string; scope: PointsScope; runtime: ClientRuntime; fetch: FetchFn } | undefined {
     if (!this.serverStorage) {
       return undefined
     }

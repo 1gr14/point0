@@ -546,6 +546,41 @@ describe('env', () => {
     })
   })
 
+  describe('env.runtime', () => {
+    it('should have runtime.name and runtime.is object', async () => {
+      const env = await init({ side: 'server' })
+      expect(typeof env.runtime.name).toBe('string')
+      expect(typeof env.runtime.is).toBe('object')
+      expect(typeof env.runtime.is.browser).toBe('boolean')
+      expect(typeof env.runtime.is.reactNative).toBe('boolean')
+      expect(typeof env.runtime.is.nodejs).toBe('boolean')
+      expect(typeof env.runtime.is.bun).toBe('boolean')
+      expect(typeof env.runtime.is.deno).toBe('boolean')
+      expect(typeof env.runtime.is.worker).toBe('boolean')
+      expect(typeof env.runtime.is.unknown).toBe('boolean')
+    })
+
+    it('should detect browser runtime on client', async () => {
+      const env = await init({ side: 'client' })
+      expect(env.runtime.name).toBe('browser')
+      expect(env.runtime.is.browser).toBe(true)
+    })
+  })
+
+  describe('env.os', () => {
+    it('should have os.name and os.is object', async () => {
+      const env = await init({ side: 'server' })
+      expect(typeof env.os.name).toBe('string')
+      expect(typeof env.os.is).toBe('object')
+      expect(typeof env.os.is.ios).toBe('boolean')
+      expect(typeof env.os.is.android).toBe('boolean')
+      expect(typeof env.os.is.linux).toBe('boolean')
+      expect(typeof env.os.is.mac).toBe('boolean')
+      expect(typeof env.os.is.windows).toBe('boolean')
+      expect(typeof env.os.is.unknown).toBe('boolean')
+    })
+  })
+
   describe('env.built', () => {
     it('should be false by default', async () => {
       const env = await init({ side: 'server' })
@@ -561,6 +596,8 @@ describe('env', () => {
       expect(env.vars).toBeDefined()
       expect(env.side).toBeDefined()
       expect(env.scope).toBeDefined()
+      expect(env.runtime).toBeDefined()
+      expect(env.os).toBeDefined()
     })
   })
 
