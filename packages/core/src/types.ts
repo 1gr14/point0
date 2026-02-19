@@ -171,18 +171,31 @@ export type NormalizeQueryResultType<
 export type AnyPoint<
   TPointType extends PointType = PointType,
   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType = UndefinedReadyPointType,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TRequiredCtx extends RequiredCtx = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TCtx extends Ctx = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TCtxExposedKeys extends CtxExposedKeys = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TOuterProps extends Props = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TInnerProps extends Props = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TQueriesDefinitions extends QueriesDefinitions = any,
 > = Point0<
   TPointType,
@@ -204,17 +217,29 @@ export type AnyPoint<
 
 export type RootPoint<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TCtx extends Ctx = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TCtxExposedKeys extends CtxExposedKeys = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TOuterProps extends Props = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TInnerProps extends Props = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TQueriesDefinitions extends QueriesDefinitions = any,
 > = AnyPoint<
   'root',
@@ -235,18 +260,31 @@ export type RootPoint<
 >
 
 export type PluginPoint<
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TRequiredCtx extends RequiredCtx = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TCtx extends Ctx = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TCtxExposedKeys extends CtxExposedKeys = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TOuterProps extends Props = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TInnerProps extends Props = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic
   TQueriesDefinitions extends QueriesDefinitions = any,
 > = AnyPoint<
   'plugin',

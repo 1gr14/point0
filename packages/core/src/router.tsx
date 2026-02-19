@@ -50,7 +50,10 @@ export type RouterPageStateInitial = {
   loading: undefined
   initial: true
 }
-export type RouterPageState<TStatus extends 'success' | 'loading' | 'error' | 'initial' = any> = IfAnyThenElse<
+export type RouterPageState<
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional TStatus
+  TStatus extends 'success' | 'loading' | 'error' | 'initial' = any,
+> = IfAnyThenElse<
   TStatus,
   RouterPageStateSuccess | RouterPageStateLoading | RouterPageStateError,
   TStatus extends 'success'
@@ -345,6 +348,7 @@ export const useIsNavigating = (): boolean => {
 //   }, [ctx.status, ctx.error, isNavigating])
 // }
 
+// biome-ignore lint/suspicious/noExplicitAny: Navigate fn signature varies by adapter
 export function _wrapUseNavigate<T extends () => (to: string, ...args: any[]) => any>(
   useAdapterNavigate: T,
 ): () => (...args: Parameters<ReturnType<T>>) => Promise<{ location: AnyLocation; error: Error0 | undefined }> {
@@ -389,6 +393,7 @@ export function _wrapUseNavigate<T extends () => (to: string, ...args: any[]) =>
   }
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: Navigate fn signature varies by adapter
 export function _wrapNavigate<T extends (to: string, ...args: any[]) => any>(
   adapterNavigate: T,
 ): (...args: Parameters<T>) => Promise<{ location: AnyLocation; error: Error0 | undefined }> {
@@ -412,6 +417,7 @@ export function _wrapNavigate<T extends (to: string, ...args: any[]) => any>(
         trigger: 'navigate',
       })
       routerContext.setStatus('transitioning')
+      // biome-ignore lint/suspicious/noExplicitAny: Spread adapter-specific args
       await adapterNavigate(...(args as [string, ...any[]]))
       routerContext.setStatus('idle')
       routerContext.setNextLocation(null)
@@ -420,6 +426,7 @@ export function _wrapNavigate<T extends (to: string, ...args: any[]) => any>(
       const error0 = Error0.from(error)
       routerContext.setError(error0)
       routerContext.setStatus('transitioning')
+      // biome-ignore lint/suspicious/noExplicitAny: Spread adapter-specific args
       await adapterNavigate(...(args as [string, ...any[]]))
       routerContext.setStatus('idle')
       routerContext.setNextLocation(null)

@@ -14,6 +14,7 @@ export function mergeHeaders(base?: HeadersInit, ...extras: Array<HeadersInit | 
   return merged
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: Plain object values are untyped
 export function isPlainObject(obj: unknown): obj is Record<string, any> {
   return !!obj && typeof obj === 'object' && !Array.isArray(obj)
 }

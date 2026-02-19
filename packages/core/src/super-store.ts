@@ -557,6 +557,7 @@ export class SuperStore {
   }
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: Default generics for flexible item types
 export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
   superstore: SuperStore
   name: string
@@ -630,29 +631,36 @@ export type SuperStoreServerStorage = AsyncLocalStorage<SuperStoreState>
 export type SuperStoreState = { [key: string]: unknown }
 
 export type ProxyResult<TItems extends Record<string, AnyNiceSuperStoreItem>> = {
+  // biome-ignore lint/suspicious/noExplicitAny: infer extracts TValue, second param unused
   [K in keyof TItems]: TItems[K] extends AnyNiceSuperStoreItem<infer TValue, any> ? TValue : never
 }
 
 export type SuperStoreItemsValues<TItems extends Record<string, AnyNiceSuperStoreItem>> = {
+  // biome-ignore lint/suspicious/noExplicitAny: infer extracts TValue, second param unused
   [K in keyof TItems]: TItems[K] extends AnyNiceSuperStoreItem<infer TValue, any> ? TValue : never
 }
 
 export type SuperStoreItemsValuesOrErrors<TItems extends Record<string, AnyNiceSuperStoreItem>> = {
+  // biome-ignore lint/suspicious/noExplicitAny: infer extracts TValue, second param unused
   [K in keyof TItems]: TItems[K] extends AnyNiceSuperStoreItem<infer TValue, any> ? TValue | Error : never
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: Default generics for flexible item types
 export type NiceSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
   'get' | 'getWeak' | 'set' | 'config'
 >
+// biome-ignore lint/suspicious/noExplicitAny: Default generics for flexible item types
 export type NiceUnsettableRedefinableSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
   'get' | 'getWeak' | 'redefine' | 'config'
 >
+// biome-ignore lint/suspicious/noExplicitAny: Default generics for flexible item types
 export type NiceReadonlySuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
   'get' | 'getWeak' | 'config'
 >
+// biome-ignore lint/suspicious/noExplicitAny: Default generics for flexible item types
 export type AnyNiceSuperStoreItem<TValue = any, TDehydratedValue = any> =
   | NiceSuperStoreItem<TValue, TDehydratedValue>
   | NiceUnsettableRedefinableSuperStoreItem<TValue, TDehydratedValue>
