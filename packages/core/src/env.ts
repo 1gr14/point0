@@ -706,6 +706,7 @@ const envBuild = Object.defineProperties(
 // final
 
 export type Env<
+  // biome-ignore lint/suspicious/noExplicitAny: Default for unspecified env vars type
   TVars = any,
   TScope extends string = string,
   TRuntime extends EnvRuntimeName | undefined = EnvRuntimeName | undefined,

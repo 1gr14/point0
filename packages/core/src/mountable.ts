@@ -38,6 +38,7 @@ import type {
   UndefinedRouteDefinition,
 } from './types.js'
 
+// biome-ignore lint/suspicious/noExplicitAny: Props accept arbitrary key-value pairs
 export type Props = Record<string, any>
 export type UndefinedProps = undefined
 export type EmptyProps = Record<never, never>
@@ -72,7 +73,9 @@ export type QueryDefinition<TQueryResultType extends QueryResultType, TQueriedDa
   type: TQueryResultType
   data: TQueriedData // it is infinite data in infinite data case
 }
+// biome-ignore lint/suspicious/noExplicitAny: Generic query/result types for definitions
 export type QueriesDefinitions = Array<QueryDefinition<any, any>>
+// biome-ignore lint/suspicious/noExplicitAny: Generic extraction from QueryDefinition
 export type QueryByDefinition<TQueryDefinition extends QueryDefinition<any, any>> = TQueryDefinition extends {
   type: infer TQueryResultType
   data: infer TQueriedData
@@ -83,6 +86,7 @@ export type QueryByDefinition<TQueryDefinition extends QueryDefinition<any, any>
       ? UseInfiniteQueryResult<TQueriedData, Error0>
       : never
   : never
+// biome-ignore lint/suspicious/noExplicitAny: Generic extraction from QueryDefinition
 export type SuccessQueryByDefinition<TQueryDefinition extends QueryDefinition<any, any>> = TQueryDefinition extends {
   type: infer TQueryResultType
   data: infer TQueriedData
@@ -94,14 +98,17 @@ export type SuccessQueryByDefinition<TQueryDefinition extends QueryDefinition<an
       : never
   : never
 export type QueryDefinitionByQuery<TQueryResult extends UseQueryOrInfiniteQueryResult> =
+  // biome-ignore lint/suspicious/noExplicitAny: infer TData from UseInfiniteQueryResult
   TQueryResult extends UseInfiniteQueryResult<any, any>
     ? QueryDefinition<'infiniteQuery', QueryDataByResult<TQueryResult>>
-    : TQueryResult extends UseQueryResult<any, any>
+    : // biome-ignore lint/suspicious/noExplicitAny: infer TData from UseQueryResult
+      TQueryResult extends UseQueryResult<any, any>
       ? QueryDefinition<'query', QueryDataByResult<TQueryResult>>
       : never
 type Q2D<T> = T extends UseQueryOrInfiniteQueryResult ? QueryDefinitionByQuery<T> : never
 export type QueriesDefinitionsByQueries<TQueries extends QueriesResults> = IfAnyThenElse<
   TQueries,
+  // biome-ignore lint/suspicious/noExplicitAny: IfAnyThenElse fallback when TQueries is any
   any,
   TQueries extends readonly [infer Q1, infer Q2, infer Q3, infer Q4, infer Q5]
     ? [Q2D<Q1>, Q2D<Q2>, Q2D<Q3>, Q2D<Q4>, Q2D<Q5>]
@@ -115,9 +122,12 @@ export type QueriesDefinitionsByQueries<TQueries extends QueriesResults> = IfAny
             ? [Q2D<Q1>]
             : []
 >
-type D2Q<T> = T extends QueryDefinition<any, any> ? QueryByDefinition<T> : never
+type D2Q<T> =
+  // biome-ignore lint/suspicious/noExplicitAny: Maps QueryDefinition to Query
+  T extends QueryDefinition<any, any> ? QueryByDefinition<T> : never
 export type QueriesByDefinitions<TQueriesDefinitions extends QueriesDefinitions> = IfAnyThenElse<
   TQueriesDefinitions,
+  // biome-ignore lint/suspicious/noExplicitAny: IfAnyThenElse fallback
   any,
   TQueriesDefinitions extends readonly [infer Q1, infer Q2, infer Q3, infer Q4, infer Q5]
     ? [D2Q<Q1>, D2Q<Q2>, D2Q<Q3>, D2Q<Q4>, D2Q<Q5>]
@@ -131,9 +141,12 @@ export type QueriesByDefinitions<TQueriesDefinitions extends QueriesDefinitions>
             ? [D2Q<Q1>]
             : []
 >
-type D2SQ<T> = T extends QueryDefinition<any, any> ? SuccessQueryByDefinition<T> : never
+type D2SQ<T> =
+  // biome-ignore lint/suspicious/noExplicitAny: Maps to SuccessQueryByDefinition
+  T extends QueryDefinition<any, any> ? SuccessQueryByDefinition<T> : never
 export type SuccessQueriesDefinitions<TQueriesDefinitions extends QueriesDefinitions> = IfAnyThenElse<
   TQueriesDefinitions,
+  // biome-ignore lint/suspicious/noExplicitAny: IfAnyThenElse fallback
   any,
   TQueriesDefinitions extends readonly [infer Q1, infer Q2, infer Q3, infer Q4, infer Q5]
     ? [D2SQ<Q1>, D2SQ<Q2>, D2SQ<Q3>, D2SQ<Q4>, D2SQ<Q5>]
@@ -186,14 +199,20 @@ type CleanQueryData<TData> =
     : never
 export type QueryDataByResult<TQueryResult extends UseQueryOrInfiniteQueryResult> = IfAnyThenElse<
   TQueryResult,
+  // biome-ignore lint/suspicious/noExplicitAny: IfAnyThenElse fallback
   any,
+  // biome-ignore lint/suspicious/noExplicitAny: infer TData from UseInfiniteQueryResult
   TQueryResult extends UseInfiniteQueryResult<infer TData, any>
     ? CleanQueryData<TData>
-    : TQueryResult extends UseQueryResult<infer TData, any>
+    : // biome-ignore lint/suspicious/noExplicitAny: infer TData from UseQueryResult
+      TQueryResult extends UseQueryResult<infer TData, any>
       ? CleanQueryData<TData>
       : Data
 >
-export type QueryDataByDefinition<TQueryDefinition extends QueryDefinition<any, any>> = TQueryDefinition extends {
+export type QueryDataByDefinition<
+  TQueryDefinition extends // biome-ignore lint/suspicious/noExplicitAny: Generic extraction of data from definition
+  QueryDefinition<any, any>,
+> = TQueryDefinition extends {
   data: infer TData
 }
   ? TData extends Data
@@ -240,11 +259,14 @@ export type MountableSuccessData<
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = IfAnyThenElse<
   TQueriesDefinitions | TMapperOutput,
+  // biome-ignore lint/suspicious/noExplicitAny: IfAnyThenElse fallback
   any,
   TMapperOutput extends MapperOutput
     ? TMapperOutput
-    : TQueriesDefinitions extends [infer Q1, ...any[]]
-      ? Q1 extends QueryDefinition<any, any>
+    : // biome-ignore lint/suspicious/noExplicitAny: Rest param + QueryDefinition generic extraction
+      TQueriesDefinitions extends [infer Q1, ...any[]]
+      ? // biome-ignore lint/suspicious/noExplicitAny: Generic extraction from QueryDefinition
+        Q1 extends QueryDefinition<any, any>
         ? QueryDataByDefinition<Q1>
         : EmptyData
       : EmptyData
@@ -373,9 +395,12 @@ export type WrapperComponentProps<
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput> & {
-  children: Exclude<React.ReactNode, Promise<any>> | undefined
-} & WithErrorAndLoadingComponents
+> =
+  // biome-ignore lint/suspicious/noExplicitAny: MountableState accepts any status
+  MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput> & {
+    // biome-ignore lint/suspicious/noExplicitAny: React.ReactNode excludes Promise
+    children: Exclude<React.ReactNode, Promise<any>> | undefined
+  } & WithErrorAndLoadingComponents
 export type WrapperComponentType<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
@@ -383,13 +408,14 @@ export type WrapperComponentType<
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = (
   options: WrapperComponentProps<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
-) => Exclude<React.ReactNode, Promise<any>>
+) => Exclude<React.ReactNode, Promise<any>> // biome-ignore lint/suspicious/noExplicitAny: React.ReactNode excludes Promise
 
 export type WithFnOptions<
   TLocation extends AnyLocation = AnyLocation,
   TInnerProps extends Props = Props,
   TQueriesDefinitions extends QueriesDefinitions = QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+  // biome-ignore lint/suspicious/noExplicitAny: MountableState status generic
 > = MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
 export type WithFn<
   TLocation extends AnyLocation = AnyLocation,
@@ -409,20 +435,32 @@ export type WithQueryFn<
   TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults = UseQueryOrInfiniteQueryResult | QueriesResults,
 > = (options: WithFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>) => TNewQueries
 
-export type RelatedQueryOptions<TLocation extends AnyLocation = any, TOuterProps extends Props = any> = {
+export type RelatedQueryOptions<
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional Location
+  TLocation extends AnyLocation = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional Props
+  TOuterProps extends Props = any,
+> = {
   location: TLocation
 } & WithOuterPropsIfExists<TOuterProps>
-export type RelatedQueryInputGetter<TPoint extends { point: AnyPoint }, TLocation extends AnyLocation = any> = (
-  options: RelatedQueryOptions<TLocation>,
-) => TPoint['point']['Infer']['InputRawOrUndefined']
+export type RelatedQueryInputGetter<
+  TPoint extends { point: AnyPoint },
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional Location
+  TLocation extends AnyLocation = any,
+> = (options: RelatedQueryOptions<TLocation>) => TPoint['point']['Infer']['InputRawOrUndefined']
 
 export type OnPrefetchMountableFnOptions<
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional Location
   TLocation extends AnyLocation | undefined = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional Props
   TOuterProps extends Props = any,
 > = WithOuterPropsIfExists<TOuterProps> & WithLocationIfExists<TLocation>
-export type OnPrefetchMountableFn<TLocation extends AnyLocation | undefined = any, TOuterProps extends Props = any> = (
-  options: OnPrefetchMountableFnOptions<TLocation, TOuterProps>,
-) => Promise<void> | void
+export type OnPrefetchMountableFn<
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional Location
+  TLocation extends AnyLocation | undefined = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional Props
+  TOuterProps extends Props = any,
+> = (options: OnPrefetchMountableFnOptions<TLocation, TOuterProps>) => Promise<void> | void
 
 // export type LightQueryFnOptions<TLocation extends AnyLocation> = { location: TLocation }
 // export type LightQueryFn<
@@ -438,10 +476,15 @@ export type HeadFnOptions<
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableState<TStatus, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
 export type HeadFn<
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional status
   TStatus extends 'loading' | 'error' | 'success' = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional Location
   TLocation extends AnyLocation = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional Props
   TInnerProps extends Props = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional QueriesDefinitions
   TQueriesDefinitions extends QueriesDefinitions = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional MapperOutput
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
 > = (
   options: HeadFnOptions<TStatus, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
@@ -452,7 +495,9 @@ export type GlobalHeadFnOptions<
   TLocation extends AnyLocation,
 > = RouterPageState<TStatus> & { location: TLocation }
 export type GlobalHeadFn<
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional status
   TStatus extends 'loading' | 'error' | 'success' | 'initial' = any,
+  // biome-ignore lint/suspicious/noExplicitAny: Default generic for optional Location
   TLocation extends AnyLocation = any,
 > = (options: GlobalHeadFnOptions<TStatus, TLocation>) => ResolvableHead | string
 
@@ -533,6 +578,7 @@ export type PageSuccessComponentType<
 export type UndefinedSuccessPageComponent = undefined
 
 export type LayoutExtraInnerProps = {
+  // biome-ignore lint/suspicious/noExplicitAny: React.ReactNode excludes Promise
   children: Exclude<React.ReactNode, Promise<any>>
 }
 export type LayoutLocation<TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition> =
@@ -554,6 +600,7 @@ export type LayoutSuccessComponentType<
 export type UndefinedLayoutSuccessComponent = undefined
 
 export type ProviderExtraInnerProps = {
+  // biome-ignore lint/suspicious/noExplicitAny: React.ReactNode excludes Promise
   children: Exclude<React.ReactNode, Promise<any>>
 }
 export type ProviderLocation = AnyLocation
@@ -605,7 +652,7 @@ export type MountableSelfChildrenFn<
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = (
   options: SuccessComponentProps<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput> & TExtraInnerProps,
-) => Exclude<React.ReactNode, Promise<any>>
+) => Exclude<React.ReactNode, Promise<any>> // biome-ignore lint/suspicious/noExplicitAny: React.ReactNode excludes Promise
 
 export type MountableSelfProps<
   TLocation extends AnyLocation,
@@ -849,6 +896,7 @@ export type MountAction<
       type: 'relatedQuery'
       point: AnyPoint
       inputGetter: RelatedQueryInputGetter<{ point: AnyPoint }>
+      // biome-ignore lint/suspicious/noExplicitAny: Generic query options for any point
       queryOptions: ExtraUseInfiniteQueryOptions<any> | ExtraUseQueryOptions
       unstableId: number
       ssr: boolean
@@ -858,6 +906,7 @@ export type MountAction<
     : TType extends 'wrapper'
       ? {
           type: 'wrapper'
+          // biome-ignore lint/suspicious/noExplicitAny: Generic wrapper accepts any Location/Props/Queries/Mapper
           Component: WrapperComponentType<any, any, any, any>
           unstableId: number
           ssr: boolean
@@ -865,16 +914,35 @@ export type MountAction<
       : TType extends 'with'
         ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number; ssr: boolean }
         : TType extends 'mapper'
-          ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number; ssr: boolean }
+          ? {
+              type: 'mapper'
+              // biome-ignore lint/suspicious/noExplicitAny: Generic MapperFn params
+              fn: MapperFn<any, any, any, any, any>
+              unstableId: number
+              ssr: boolean
+            }
           : TType extends 'selfProps'
             ? { type: 'selfProps'; unstableId: number; ssr: boolean }
             : TType extends 'head'
-              ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number; ssr: boolean }
+              ? {
+                  type: 'head'
+                  // biome-ignore lint/suspicious/noExplicitAny: Generic HeadFn params
+                  fn: HeadFn<any, any, any, any, any>
+                  unstableId: number
+                  ssr: boolean
+                }
               : TType extends 'globalHead'
-                ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number; ssr: boolean }
+                ? {
+                    type: 'globalHead'
+                    // biome-ignore lint/suspicious/noExplicitAny: Generic GlobalHeadFn params
+                    fn: GlobalHeadFn<any, any>
+                    unstableId: number
+                    ssr: boolean
+                  }
                 : TType extends 'errorComponent'
                   ? {
                       type: 'errorComponent'
+                      // biome-ignore lint/suspicious/noExplicitAny: ErrorComponent accepts any error props
                       Component: ErrorComponentType<any>
                       variant: DestinationComponentVariant | undefined
                       unstableId: number
@@ -883,6 +951,7 @@ export type MountAction<
                   : TType extends 'loadingComponent'
                     ? {
                         type: 'loadingComponent'
+                        // biome-ignore lint/suspicious/noExplicitAny: LoadingComponent accepts any props
                         Component: LoadingComponentType<any>
                         variant: DestinationComponentVariant | undefined
                         unstableId: number
@@ -911,6 +980,7 @@ export type WithSelfQueryIfShouldBeFinalized<
   TQueriesDefinitions extends QueriesDefinitions,
 > = IfAnyThenElse<
   TQueriesDefinitions | TPointType | TServerLoaderOutput | TClientLoaderOutput | TPointType,
+  // biome-ignore lint/suspicious/noExplicitAny: IfAnyThenElse fallback
   any,
   IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
     ? [
@@ -925,13 +995,20 @@ export type MergeQueries<
   TNewQueriesDefinitions extends QueriesDefinitions,
 > = IfAnyThenElse<
   TQueriesDefinitions | TNewQueriesDefinitions,
+  // biome-ignore lint/suspicious/noExplicitAny: IfAnyThenElse fallback
   any,
   [...TQueriesDefinitions, ...TNewQueriesDefinitions]
 >
 export type AppendQueries<
   TQueriesDefinitions extends QueriesDefinitions,
+  // biome-ignore lint/suspicious/noExplicitAny: Generic QueryDefinition
   TNewQueryDefinition extends QueryDefinition<any, any>,
-> = IfAnyThenElse<TQueriesDefinitions | TNewQueryDefinition, any, [...TQueriesDefinitions, TNewQueryDefinition]>
+> = IfAnyThenElse<
+  TQueriesDefinitions | TNewQueryDefinition,
+  // biome-ignore lint/suspicious/noExplicitAny: IfAnyThenElse fallback
+  any,
+  [...TQueriesDefinitions, TNewQueryDefinition]
+>
 
 // export type AssertMountableQueryFinalization<
 //   TPointType extends PointType,
