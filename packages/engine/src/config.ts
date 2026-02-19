@@ -119,6 +119,7 @@ export type EngineGeneralOptions = {
   generte?: Array<Omit<FilesGeneratorTaskMeta, 'scopes'>>
   logger?: EngineLogger
   portPolicy?: PortPolicy
+  serveRetries?: number
   itWasBuilt?: boolean
   cwdAfterBuild?: string
   cwdBeforeBuild?: string
@@ -153,6 +154,7 @@ export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   banner?: string
   hmrPort?: number | string | boolean
   portPolicy?: PortPolicy
+  serveRetries?: number
 }
 
 export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
@@ -172,6 +174,7 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   port?: number | string
   hmrPort?: number | string | boolean
   portPolicy?: PortPolicy
+  serveRetries?: number
   bunBuildConfig?: EngineClientBuildConfigDefinition
   bunPlugins?: EngineClientPluginsDefinition
   viteConfig?: EngineOptionsViteConfig
@@ -350,6 +353,7 @@ export type EngineGeneralOptionsParsed = {
   bunBuildConfig: BunBuildConfigDefinition | null
   bunPlugins: BunPluginsDefinition | null
   portPolicy: PortPolicy | null
+  serveRetries: number | null
 }
 export type EngineClientOptionsParsed = {
   scope: PointsScope
@@ -379,6 +383,7 @@ export type EngineClientOptionsParsed = {
     outdir: string
   } | null
   portPolicy: PortPolicy
+  serveRetries: number
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
@@ -404,6 +409,7 @@ export type EngineServerOptionsParsed = {
   compiler: EngineOptionsCompilerSpecificParsed | false
   hmrPort: number | false
   portPolicy: PortPolicy
+  serveRetries: number
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -624,6 +630,7 @@ const parseEngineGeneralOptions = ({
         ? generalOptions.buildWatchGlob
         : [generalOptions.buildWatchGlob],
     portPolicy: generalOptions.portPolicy ?? null,
+    serveRetries: generalOptions.serveRetries ?? null,
   }
 }
 
@@ -844,6 +851,7 @@ export const parseEngineServerOptions = ({
     })),
     banner: serverOptions.banner ?? null,
     portPolicy: serverOptions.portPolicy ?? generalOptionsParsed.portPolicy ?? 'simple',
+    serveRetries: serverOptions.serveRetries ?? generalOptionsParsed.serveRetries ?? 0,
     viteConfig:
       typeof serverOptions.viteConfig === 'string'
         ? toFinalPath({
@@ -1005,6 +1013,7 @@ const parseEngineClientOptions = ({
     bunPlugins: clientOptions.bunPlugins ?? [],
     engineFile: generalOptionsParsed.engineFile,
     portPolicy: clientOptions.portPolicy ?? generalOptionsParsed.portPolicy ?? 'simple',
+    serveRetries: clientOptions.serveRetries ?? generalOptionsParsed.serveRetries ?? 0,
   }
 }
 

@@ -38,6 +38,7 @@ import {
   isAsyncFn,
   normalizeAndValidateNodeEnv,
   resolveTempDirPath,
+  withRetries,
 } from './utils.js'
 
 export class EngineClient<TPrepared extends boolean = boolean> {
@@ -61,6 +62,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
   port: number
   hmrPort: number | false
   portPolicy: PortPolicy
+  serveRetries: number
   compiler: EngineOptionsCompilerSpecificParsed | false
   viteConfig: EngineOptionsViteConfig | null
   index: number
@@ -99,6 +101,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     port: number
     hmrPort: number | false
     portPolicy: PortPolicy
+    serveRetries: number
     compiler: EngineOptionsCompilerSpecificParsed | false
     viteConfig: EngineOptionsViteConfig | null
     index: number
@@ -128,6 +131,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     this.port = input.port
     this.hmrPort = input.hmrPort
     this.portPolicy = input.portPolicy
+    this.serveRetries = input.serveRetries
     this.compiler = input.compiler
     this.viteConfig = input.viteConfig
     this.index = input.index
@@ -174,6 +178,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     port: number
     hmrPort: number | false
     portPolicy: PortPolicy
+    serveRetries: number
     index: number
     logger: EngineLogger
     envVars: EngineOptionsEnvParsed
@@ -497,46 +502,48 @@ Bun.serve({
       throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
     }
     const srcIndexHtmlContent = await Bun.file(this.indexHtml).text()
-    const bunViteDevServer = Bun.serve({
-      port: this.port,
-      development: {
-        console: false,
-        hmr: false, // vite provides it own hmr
-      },
-      fetch: async (request) => {
-        const location = Route0.getLocation(request.url)
-        if (location.pathname === '/index.html') {
-          const originalIndexHtml = await viteDevServer.transformIndexHtml(request.url, srcIndexHtmlContent)
-          return new Response(originalIndexHtml, {
-            headers: {
-              'Content-Type': 'text/html',
-            },
+    const bunViteDevServer = withRetries(this.serveRetries, () =>
+      Bun.serve({
+        port: this.port,
+        development: {
+          console: false,
+          hmr: false, // vite provides it own hmr
+        },
+        fetch: async (request) => {
+          const location = Route0.getLocation(request.url)
+          if (location.pathname === '/index.html') {
+            const originalIndexHtml = await viteDevServer.transformIndexHtml(request.url, srcIndexHtmlContent)
+            return new Response(originalIndexHtml, {
+              headers: {
+                'Content-Type': 'text/html',
+              },
+            })
+          }
+          const middlewareResponse = await this.fetchViteDevServerMiddleware({
+            request,
           })
-        }
-        const middlewareResponse = await this.fetchViteDevServerMiddleware({
-          request,
-        })
-        if (middlewareResponse) {
-          return middlewareResponse
-        }
-        if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
-          return new Response('__NO_RESPONSE__', {
-            headers: {
-              'Content-Type': 'text/plain',
-            },
-            status: 404,
+          if (middlewareResponse) {
+            return middlewareResponse
+          }
+          if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
+            return new Response('__NO_RESPONSE__', {
+              headers: {
+                'Content-Type': 'text/plain',
+              },
+              status: 404,
+            })
+          }
+          const forwardedHeaders = new Headers(request.headers)
+          forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client-Server', 'true')
+          const res = await fetch(`http://localhost:${this.server.port}${location.pathname}${location.search}`, {
+            method: request.method,
+            headers: forwardedHeaders,
+            body: request.body,
           })
-        }
-        const forwardedHeaders = new Headers(request.headers)
-        forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client-Server', 'true')
-        const res = await fetch(`http://localhost:${this.server.port}${location.pathname}${location.search}`, {
-          method: request.method,
-          headers: forwardedHeaders,
-          body: request.body,
-        })
-        return res
-      },
-    })
+          return res
+        },
+      }),
+    )()
     this.logger.info(`${this.scope} client dev server started`)
     return { bunViteDevServer, viteDevServer }
   }
