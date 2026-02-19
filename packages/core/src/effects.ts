@@ -132,7 +132,6 @@ export class Effects {
     }
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: Accepts Headers, Record, or [string, string] overload
   private _setHeaders(...args: any[]): void {
     if (args.length === 1) {
       const arg = args[0]
@@ -151,7 +150,6 @@ export class Effects {
     }
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: Accepts single CookieOptionsInput or spread
   private _setCookies(...args: any[]): void {
     if (args.length === 1) {
       const cookieOptions = args[0] as Omit<CookieOptionsInput, 'value'> & { value?: string }

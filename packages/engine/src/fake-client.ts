@@ -107,7 +107,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
   runtime: ClientRuntime
   client: EngineClient<true>
   points: ClientPoints
-  // biome-ignore lint/suspicious/noExplicitAny: Engine state type must stay flexible for FakeClient
+
   engine: Engine<any, true>
   state: TState
   jar: CookieJar
@@ -141,7 +141,6 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     cookieSetter,
     cookieGetter,
   }: {
-    // biome-ignore lint/suspicious/noExplicitAny: Engine state type must stay flexible for FakeClient
     engine: Engine<any, true>
     client: EngineClient<true>
     points: ClientPoints
@@ -268,7 +267,6 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     //   // throw new Error('Points for fake client not provided')
     // }
     const fakeClient = new FakeClient({
-      // biome-ignore lint/suspicious/noExplicitAny: Engine state generic must stay flexible for FakeClient
       engine: engine as Engine<any, true>,
       client: client as EngineClient<true>,
       id,

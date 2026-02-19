@@ -31,13 +31,12 @@ import { toAbsPath, toJsExtension } from './utils.js'
 // TODO:ASAP add tests
 
 export type EngineLogger = {
-  // biome-ignore lint/suspicious/noExplicitAny: ok
   info: (message: string, meta?: Record<string, any>) => void
-  // biome-ignore lint/suspicious/noExplicitAny: ok
+
   error: (error: unknown, meta?: Record<string, any>) => void
-  // biome-ignore lint/suspicious/noExplicitAny: ok
+
   warn: (message: string, meta?: Record<string, any>) => void
-  // biome-ignore lint/suspicious/noExplicitAny: ok
+
   debug: (message: string, meta?: Record<string, any>) => void
 }
 

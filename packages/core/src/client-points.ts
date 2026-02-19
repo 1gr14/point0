@@ -279,10 +279,8 @@ export class ClientPoints {
   // prefetching
 
   private static readonly prefetchLazyComponent = async (
-    // biome-ignore lint/suspicious/noExplicitAny: Lazy component API varies (React internals, preload)
     component: React.ComponentType<any> | React.LazyExoticComponent<React.ComponentType<any>> | undefined,
   ): Promise<void> => {
-    // biome-ignore lint/suspicious/noExplicitAny: Access _init/_payload/preload from lazy components
     const anyComp = component as any
     if (!anyComp) return
     try {
@@ -314,7 +312,7 @@ export class ClientPoints {
         point: ReadyPoint | (() => Promise<ReadyPoint>)
         name: PointName
         type: PointType
-        // biome-ignore lint/suspicious/noExplicitAny: FC accepts any props for page component
+
         FC: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
         pageLocation: ExactLocation
         layouts: string[]
@@ -550,7 +548,7 @@ export type PagesTreeRecord = {
     pageName: PointName
     pageRoute: AnyRoute
     pagePoint: PagePoint | (() => Promise<PagePoint>)
-    // biome-ignore lint/suspicious/noExplicitAny: Page component accepts any props
+
     Page: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
   }>
   nested: undefined | PagesTreeRecord[]

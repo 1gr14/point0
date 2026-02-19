@@ -8,7 +8,6 @@ import { CompilerFile } from './file.js'
 import { CompilerPoint } from './point.js'
 import { FileResolver } from './resolver.js'
 
-// biome-ignore lint/suspicious/noExplicitAny: ok
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
   : typeof traverseType

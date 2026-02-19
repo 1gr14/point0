@@ -77,11 +77,7 @@ export const useSimpleNavigate = _wrapUseNavigate(_useNativeNavigate)
 //   return navigate0
 // }
 
-export const createNavigate = <
-  TRoutes extends RoutesPretty,
-  // biome-ignore lint/suspicious/noExplicitAny: ok
-  TNavigate extends (to: string, ...rest: any[]) => any,
->(
+export const createNavigate = <TRoutes extends RoutesPretty, TNavigate extends (to: string, ...rest: any[]) => any>(
   routes: TRoutes,
   navigate: TNavigate,
 ) => {
@@ -130,7 +126,6 @@ type Tail<T extends readonly unknown[]> = T extends readonly [unknown, ...infer 
 
 export const createUseNavigate = <
   TRoutes extends RoutesPretty,
-  // biome-ignore lint/suspicious/noExplicitAny: ok
   TUseNavigate extends () => (to: string, ...args: any[]) => any = typeof useSimpleNavigate,
 >(
   routes: TRoutes,
@@ -175,7 +170,7 @@ export const createUseNavigate = <
     //   to: { to: string },
     //   ...rest: Tail<Parameters<ReturnType<TUseNavigate>>>
     // ): Promise<{ location: AnyLocation; error: Error0 | undefined }>
-    // biome-ignore lint/suspicious/noExplicitAny: ok
+
     async function useNavigate0(...args: any[]) {
       const { to, rest } = ((): { to: string; rest: Tail<Parameters<ReturnType<TUseNavigate>>> } => {
         if (typeof args[0] === 'string') {

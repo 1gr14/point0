@@ -29,24 +29,22 @@ export type EventerEmitFn = <TName extends AnyEventerEvent['name']>(
   data: Extract<AnyEventerEvent, { name: TName }>['data'],
 ) => void
 
-// biome-ignore lint/suspicious/noExplicitAny: Default generic for wildcard subscription
 export type AnyEventerSubscriptionCallback<TName extends AnyEventerEvent['name'] | '*' = any> = (
   event: TName extends '*' ? AnyEventerEvent : Extract<AnyEventerEvent, { name: TName }>,
 ) => void | Promise<void>
-// biome-ignore lint/suspicious/noExplicitAny: Default generic for wildcard subscription
+
 export type ServerEventerSubscriptionCallback<TName extends ServerEventerEvent['name'] | '*' = any> = (
   event: TName extends '*'
     ? ServerEventerEvent
     : Omit<Extract<ServerEventerEvent, { name: TName }>, 'side'> & { side: 'server' },
 ) => void | Promise<void>
-// biome-ignore lint/suspicious/noExplicitAny: Default generic for wildcard subscription
+
 export type ClientEventerSubscriptionCallback<TName extends ClientEventerEvent['name'] | '*' = any> = (
   event: TName extends '*'
     ? ClientEventerEvent
     : Omit<Extract<ClientEventerEvent, { name: TName }>, 'side'> & { side: 'client' },
 ) => void | Promise<void>
 
-// biome-ignore lint/suspicious/noExplicitAny: Default generic for wildcard subscription
 export type EventerSubscription<TName extends AnyEventerEvent['name'] | '*' = any> = {
   side: EventerSide | undefined
   name: TName
@@ -65,7 +63,6 @@ export type EventerEventPointFetchServerStart = EventerEvent<
 export type EventerEventPointFetchServerSettled = EventerEvent<
   'client' | 'server',
   'pointFetchServerSettled',
-  // biome-ignore lint/suspicious/noExplicitAny: Generic output for any point type
   FetchServerDetailedOutput<any> & {
     input: InputRaw
     point: AnyNiceReadyPoint
@@ -74,7 +71,6 @@ export type EventerEventPointFetchServerSettled = EventerEvent<
 export type EventerEventPointFetchServerSuccess = EventerEvent<
   'client' | 'server',
   'pointFetchServerSuccess',
-  // biome-ignore lint/suspicious/noExplicitAny: Generic output for any point type
   Extract<FetchServerDetailedOutput<any>, { error: undefined }> & {
     input: InputRaw
     point: AnyNiceReadyPoint
@@ -83,7 +79,6 @@ export type EventerEventPointFetchServerSuccess = EventerEvent<
 export type EventerEventPointFetchServerError = EventerEvent<
   'client' | 'server',
   'pointFetchServerError',
-  // biome-ignore lint/suspicious/noExplicitAny: Generic output for any point type
   Extract<FetchServerDetailedOutput<any>, { error: Error0 }> & {
     input: InputRaw
     point: AnyNiceReadyPoint

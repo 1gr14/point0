@@ -420,7 +420,7 @@ const getRuntimeName = (): EnvRuntimeName | undefined => {
   if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     return 'browser'
   }
-  // biome-ignore lint/suspicious/noExplicitAny: WorkerGlobalScope for instanceof check, env-dependent
+
   const workerGlobalScope = (globalThis as any).WorkerGlobalScope
   if (typeof workerGlobalScope !== 'undefined' && typeof self !== 'undefined' && self instanceof workerGlobalScope) {
     return 'worker'
@@ -706,7 +706,6 @@ const envBuild = Object.defineProperties(
 // final
 
 export type Env<
-  // biome-ignore lint/suspicious/noExplicitAny: Default for unspecified env vars type
   TVars = any,
   TScope extends string = string,
   TRuntime extends EnvRuntimeName | undefined = EnvRuntimeName | undefined,

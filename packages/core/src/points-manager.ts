@@ -42,7 +42,6 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     points: TPoints,
   ): PointsManager<
     false,
-    // biome-ignore lint/suspicious/noExplicitAny: infer extracts TRequiredCtx from existing manager
     TPoints extends PointsManager<any, infer TRequiredCtx>
       ? TRequiredCtx
       : TPoints extends PointsDefinition<infer TRequiredCtx>
