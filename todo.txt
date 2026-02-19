@@ -194,8 +194,6 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 
 
 === FAKE CLIENT ===
-Сделать чтобы в фейк глобал при попытке делете Глобал по ключу это нормально работало
-При создании фейк клиента энвы должны подставляться из настроек клиента энжины
 check if env can be boolean or number, lets not have it
 
 
