@@ -110,7 +110,7 @@ export class ElementViewer {
     if (typeof url === 'string') {
       try {
         url = new URL(url)
-      } catch (error) {
+      } catch {
         url = new URL(`http://localhost${url}`)
       }
     }

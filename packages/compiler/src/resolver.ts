@@ -107,7 +107,7 @@ export class FileResolver {
       // TypeScript's resolver might return a path even if the file doesn't exist yet
       // (e.g., for .d.ts files or when resolving path aliases)
       return resolvedFileName || undefined
-    } catch (error) {
+    } catch {
       // Silently fail - TypeScript resolution might not work in all cases
       return undefined
     }

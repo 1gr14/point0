@@ -270,7 +270,7 @@ export class PlaywrightPage {
             }
           }
         }
-      } catch (e) {}
+      } catch {}
       return {
         method: request.method,
         path: PlaywrightPage.prettifyUrl(request.url),
@@ -486,7 +486,7 @@ export class PlaywrightPage {
     // Wait for network idle first
     try {
       await this.original.waitForLoadState('networkidle', { timeout: maxWaitTime })
-    } catch (e) {}
+    } catch {}
 
     const startTimestamp = Date.now()
     while (true) {

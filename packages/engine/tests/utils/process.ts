@@ -75,7 +75,7 @@ export class TestProcess {
     if (force) {
       try {
         this.process.kill(signal)
-      } catch (error) {}
+      } catch {}
     } else {
       this.process.kill(signal)
     }

@@ -18,7 +18,7 @@ async function* getAllFiles(dirPath: string): AsyncGenerator<string> {
         yield fullPath
       }
     }
-  } catch (error) {
+  } catch {
     // Ignore errors (e.g., permission denied, not a directory)
   }
 }

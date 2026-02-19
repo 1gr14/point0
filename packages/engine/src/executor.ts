@@ -238,8 +238,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })()
 
     return await this.withServerGlobalState(async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
-      const { parsedInput, inputError } = await (async () => {
+      // we parse input step by step, so we do not need initial parse result
+      const { inputError } = await (async () => {
         if (!point) {
           // we will throw 404 later, so input unused
           return { parsedInput: {}, inputError: undefined }
@@ -527,7 +527,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             effects: effects.values,
             point,
           }
-        } catch (error2) {
+        } catch {
           const error0 = Error0.from(error)
           const status = error0.httpStatus ?? 500
           effects.set.status(status)

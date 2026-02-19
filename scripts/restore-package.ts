@@ -13,6 +13,6 @@ try {
   writeFileSync(packageJsonPath, backup)
   unlinkSync(backupPath)
   console.info('✓ Restored original package.json')
-} catch (error) {
+} catch {
   console.warn('No backup found, skipping restore')
 }

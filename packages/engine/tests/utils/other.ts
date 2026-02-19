@@ -93,7 +93,7 @@ const _waitPortFree = async (port: number, timeout = 1000) => {
       wasBusy = true
       socket.end() // Close our successful connection
       await new Promise((resolve) => setTimeout(resolve, 50)) // Wait and try again
-    } catch (e) {
+    } catch {
       // If it throws, the port is likely free!
       if (wasBusy) {
         await new Promise((resolve) => setTimeout(resolve, 50)) // Wait a little for lucky chance
@@ -136,7 +136,7 @@ export const getDirFilesContent = async (dir: string): Promise<string> => {
       try {
         const contents = await Bun.file(nodePath.join(dir, file)).text()
         return contents
-      } catch (error) {
+      } catch {
         return ''
       }
     }),

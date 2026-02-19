@@ -4874,8 +4874,8 @@ export class Point0<
     let currentClientData: Data | undefined = serverData
     let currentClientResponse: Response | undefined = serverResponse
     let currentClientOutput: Data | Response | undefined = serverResponse ?? serverData
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result. We do it to not even start loaders if input invalid
-    const { parsedInput, inputError } = (() => {
+    // we parse input step by step, so we do not need initial parse result. We do it to not even start loaders if input invalid
+    const { inputError } = (() => {
       const result = this.parseClientInputSafe(input)
       if (!result.success) {
         return { parsedInput: {}, inputError: result.error }

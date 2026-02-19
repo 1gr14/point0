@@ -47,7 +47,7 @@ describe('env', () => {
       delete (globalThis as any).window
       delete (globalThis as any).document
       delete (globalThis as any).navigator
-    } catch (error) {
+    } catch {
       // console.error(error)
     }
   })

@@ -62,7 +62,7 @@
       },
       "correctness": {
         // "noUnusedFunctionParameters": "off",
-        "noUnusedVariables": "off",
+        // "noUnusedVariables": "off",
         "useParseIntRadix": "off",
         "noUnusedImports": "off",
         "noUnusedPrivateClassMembers": "off"
