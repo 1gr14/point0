@@ -113,23 +113,33 @@ export const windowScrollPositionGetter: ScrollPositionGetter = () => {
   }
   const doc = document.documentElement
   const body = document.body
-  const x = window.pageXOffset !== undefined ? window.pageXOffset : doc.scrollLeft || body.scrollLeft || 0
-  const y = window.pageYOffset !== undefined ? window.pageYOffset : doc.scrollTop || body.scrollTop || 0
+  // thanks oxc
+  const x =
+    (window.pageXOffset as number | undefined) !== undefined
+      ? window.pageXOffset
+      : doc.scrollLeft || body.scrollLeft || 0
+  // thanks oxc
+  const y =
+    (window.pageYOffset as number | undefined) !== undefined ? window.pageYOffset : doc.scrollTop || body.scrollTop || 0
   return { x, y }
 }
 
 export const windowScrollPositionSetter: ScrollPositionSetter = ({ x, y }: { x: number; y: number }) => {
+  // oxlint-disable-next-line typescript/no-unnecessary-condition
+  x ??= 0
+  // oxlint-disable-next-line typescript/no-unnecessary-condition
+  y ??= 0
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return
   }
   if (typeof window.scrollTo === 'function') {
-    window.scrollTo(x ?? 0, y ?? 0)
+    window.scrollTo(x, y)
     return
   }
   const doc = document.documentElement
   const body = document.body
-  doc.scrollLeft = body.scrollLeft = x ?? 0
-  doc.scrollTop = body.scrollTop = y ?? 0
+  doc.scrollLeft = body.scrollLeft = x
+  doc.scrollTop = body.scrollTop = y
 }
 
 export const getWindowScrollPositionGetterByElementGetter = (elementGetter: () => HTMLElement | null) => {

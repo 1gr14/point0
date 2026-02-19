@@ -191,7 +191,7 @@ export class CompilerFile<THasContent extends boolean> {
       }
     })()
     // oxlint-disable-next-line typescript/no-unnecessary-condition
-    if (stats.mtimeMs === this.mtime && this.content) {
+    if (stats.mtimeMs === (this.mtime as number) && this.content) {
       return this as CompilerFile<true>
     }
     // const cf = new CompilerFile({
@@ -230,8 +230,7 @@ export class CompilerFile<THasContent extends boolean> {
       return this as CompilerFile<true>
     }
     const stats = nodeFsSync.statSync(this.abs)
-    // oxlint-disable-next-line typescript/no-unnecessary-condition
-    if (stats.mtimeMs === this.mtime && this.content) {
+    if (stats.mtimeMs === (this.mtime as number) && this.content) {
       return this as CompilerFile<true>
     }
     // const cf = new CompilerFile({

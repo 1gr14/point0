@@ -127,6 +127,7 @@ export class Fetcher {
     if (
       !inputRawNotTransformed ||
       typeof inputRawNotTransformed !== 'object' ||
+      // oxlint-disable-next-line typescript/no-unnecessary-condition
       Array.isArray(inputRawNotTransformed)
     ) {
       throw new Error(`Invalid body point input: must be an object, got ${typeof inputRawNotTransformed}`)
@@ -1002,7 +1003,7 @@ export class Fetcher {
         // throw finishSymbol
       }
 
-      const mw = middlewares[i]
+      const mw = middlewares.at(i)
       if (!mw) {
         throw new Error('Middleware is undefined')
       }
@@ -1115,6 +1116,7 @@ export class Fetcher {
       }
     }
 
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     if (prepareFetchResult.taskPointResult) {
       const fetchTaskPointResult = await this.fetchTaskPoint({
         root: prepareFetchResult.taskPointResult.root,

@@ -86,10 +86,14 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     return PointsManager.createFromDefinition(source) as never
   }
 
-  private static isRootRecord(
-    record: NormalizedPointsCollectionRecord | undefined,
-  ): record is NormalizedPointsCollectionRecord {
-    return typeof record === 'object' && 'type' in record && record.type === 'root' && 'point' in record.point
+  private static isRootRecord(record: unknown): record is NormalizedPointsCollectionRecord {
+    return (
+      typeof record === 'object' &&
+      record !== null &&
+      'type' in record &&
+      record.type === 'root' &&
+      'point' in (record as never as { point: NormalizedPointsCollectionRecord }).point
+    )
   }
 
   async load(force?: boolean): Promise<PointsManager<true, TRequiredCtx>> {
@@ -199,7 +203,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   getRoots(): RootPoint[] {
     const roots: RootPoint[] = []
     for (const record of this.collection) {
-      if (PointsManager.isRootRecord(record)) {
+      if (PointsManager.isRootRecord(record as unknown)) {
         roots.push(record.point as RootPoint)
       }
     }

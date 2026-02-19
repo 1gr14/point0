@@ -138,7 +138,7 @@ export class Walker {
   }
   getRouteByScope(scope: string, routeKey: string): AnyRoute | undefined {
     const routes = this.getRoutesByScope(scope)
-    return (routes as Record<string, AnyRoute>)?.[routeKey]
+    return routes?.[routeKey]
   }
 
   async readManyAsync({ files }: { files: string[]; fresh: boolean }): Promise<Array<CompilerFile<true>>> {

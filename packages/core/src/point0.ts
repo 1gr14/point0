@@ -830,7 +830,8 @@ export class Point0<
         _letsReadyPointType: 'root',
         name: pointName,
       }) as never
-    } else if (pointType === 'plugin') {
+      // thanks oxc
+    } else if ((pointType as string) === 'plugin') {
       return new Point0({
         type: 'coreStage',
         scope: 'plugin',
@@ -1099,7 +1100,8 @@ export class Point0<
       throw new Error('Cannot create root point with "plugin" scope, it is internally used name for plugin points')
     }
     const newInputExecuteAction =
-      prevRoute === newRoute || !newRoute
+      // thanks oxc
+      (prevRoute as unknown) === newRoute || !newRoute
         ? []
         : [
             {
@@ -1774,9 +1776,10 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
+  >
+  layoutError(layoutErrorComponent: ErrorComponentType<any> | undefined) {
     return this._continue({
-      _layoutErrorComponent: (layoutErrorComponent as never) || (() => null),
+      _layoutErrorComponent: layoutErrorComponent || (() => null),
       // _layoutErrorComponent: this._applyComponentDisplayName(layoutErrorComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'LayoutError',
       // }),
@@ -1801,13 +1804,13 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
-    pageErrorComponent ||= () => null
+  >
+  pageError(pageErrorComponent: ErrorComponentType<any> | undefined) {
     // this._applyComponentDisplayName(pageErrorComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'PageError',
     // })
     return this._continue({
-      _pageErrorComponent: pageErrorComponent as never,
+      _pageErrorComponent: pageErrorComponent || (() => null),
     }) as never
   }
 
@@ -1829,9 +1832,10 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
+  >
+  componentError(componentErrorComponent: ErrorComponentType<any> | undefined) {
     return this._continue({
-      _componentErrorComponent: (componentErrorComponent as never) || (() => null),
+      _componentErrorComponent: componentErrorComponent || (() => null),
       // _componentErrorComponent: this._applyComponentDisplayName(componentErrorComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'ComponentError',
       // }),
@@ -1856,9 +1860,10 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
+  >
+  layoutLoading(layoutLoadingComponent: LoadingComponentType<any> | undefined) {
     return this._continue({
-      _layoutLoadingComponent: (layoutLoadingComponent as never) || (() => null),
+      _layoutLoadingComponent: layoutLoadingComponent || (() => null),
       // _layoutLoadingComponent: this._applyComponentDisplayName(layoutLoadingComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'LayoutLoading',
       // }),
@@ -1883,13 +1888,13 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
-    pageLoadingComponent ||= () => null
+  >
+  pageLoading(pageLoadingComponent: LoadingComponentType<any> | undefined) {
     // this._applyComponentDisplayName(pageLoadingComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'PageLoading',
     // })
     return this._continue({
-      _pageLoadingComponent: pageLoadingComponent as never,
+      _pageLoadingComponent: pageLoadingComponent || (() => null),
     }) as never
   }
 
@@ -1911,9 +1916,10 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
+  >
+  componentLoading(componentLoadingComponent: LoadingComponentType<any> | undefined) {
     return this._continue({
-      _componentLoadingComponent: (componentLoadingComponent as never) || (() => null),
+      _componentLoadingComponent: componentLoadingComponent || (() => null),
       // _componentLoadingComponent: this._applyComponentDisplayName(
       //   (componentLoadingComponent as never) || (() => null),
       //   {
@@ -2625,7 +2631,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
+  >
+  onPrefetchPage(fn: OnPrefetchMountableFn | undefined) {
     return this._continue<
       TPointType,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -2643,7 +2650,7 @@ export class Point0<
       TInnerProps,
       TQueriesDefinitions
     >({
-      _onPrefetchMountableFns: [...this._onPrefetchMountableFns, (fn ?? (() => undefined)) as never],
+      _onPrefetchMountableFns: [...this._onPrefetchMountableFns, fn || (() => undefined)],
     }) as never
   }
 
@@ -2977,7 +2984,7 @@ export class Point0<
         ...this._clientExecuteActions,
         {
           type: 'loader',
-          fn: clientLoaderFn || ((o: any) => o.data), // in case if we shake clientLoader for server without ssr side
+          fn: clientLoaderFn,
           unstableId: Point0._getNextUnstableId(),
         },
       ] as never,
@@ -3222,7 +3229,8 @@ export class Point0<
     const [providedStatus, providedHead] = (() => {
       if (args.length === 2) {
         return args
-      } else if (args.length === 1) {
+        // thanks oxc
+      } else if ((args.length as number) === 1) {
         return ['success', args[0]]
       } else {
         return ['universal', () => ({})]
@@ -7426,6 +7434,7 @@ export class Point0<
             )
           }
           const isQueryResultArray = (result: any): result is QueriesResults => {
+            // oxlint-disable-next-line typescript/no-unnecessary-condition
             return Array.isArray(result) && result.every(isQueryResult)
           }
 

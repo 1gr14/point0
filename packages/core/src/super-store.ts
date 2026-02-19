@@ -360,7 +360,7 @@ export class SuperStore {
       // }
       // // server only
       // return states.serverStorageState
-      // biome-ignore lint/nursery/noUnnecessaryConditions: ok
+      // oxlint-disable-next-line typescript/no-unnecessary-condition
       switch (policy) {
         case 'clientOnly': {
           if (states.variant === 'server') {
@@ -393,6 +393,7 @@ export class SuperStore {
           throw new Error(`Invalid policy: ${policy}`)
       }
     })()
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     if (!result) {
       throw new Error(`State not found for item policy "${policy}". It is a critical bug, please report it`)
     }

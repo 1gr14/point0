@@ -316,8 +316,7 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
    * Check if this cookie is httpOnly (server-only).
    */
   isHttpOnly(): THttpOnly {
-    // oxlint-disable-next-line typescript/no-unnecessary-condition
-    return (this.cookieDefineOptions.httpOnly === true) as THttpOnly
+    return ((this.cookieDefineOptions.httpOnly as boolean) === true) as THttpOnly
   }
 
   set(value: TValue) {
@@ -450,8 +449,7 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
         if (newStringified !== prevOriginalValueRef.current) {
           const newValue = this.get()
           setValue(newValue)
-          // oxlint-disable-next-line typescript/no-unnecessary-condition
-          if (onChangeRef.current && prevValueRef.current !== newValue) {
+          if (onChangeRef.current && (prevValueRef.current as unknown) !== newValue) {
             onChangeRef.current(newValue)
           }
           prevValueRef.current = newValue

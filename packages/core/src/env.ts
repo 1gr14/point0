@@ -21,21 +21,23 @@ export const getEnvVars = (): EnvVars => {
         }
       }
     }
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     if (typeof process !== 'undefined' && process.env) {
       return process.env
     }
     return {}
   })()
+  // oxlint-disable-next-line typescript/no-unnecessary-condition
   if (processEnvHolder) {
     Object.assign(env, processEnvHolder)
+    Object.assign(env, {
+      NODE_ENV: processEnvHolder.NODE_ENV,
+      SIDE: processEnvHolder.POINT0_SIDE,
+      POINT0_SCOPE: processEnvHolder.POINT0_SCOPE,
+      POINT0_BUILT: processEnvHolder.POINT0_BUILT,
+      // in case if this vars was dfined by compiler
+    })
   }
-  Object.assign(env, {
-    NODE_ENV: processEnvHolder?.NODE_ENV,
-    SIDE: processEnvHolder?.POINT0_SIDE,
-    POINT0_SCOPE: processEnvHolder?.POINT0_SCOPE,
-    POINT0_BUILT: processEnvHolder?.POINT0_BUILT,
-    // in case if this vars was dfined by compiler
-  })
   return env as EnvVars
 }
 

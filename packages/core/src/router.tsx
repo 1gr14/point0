@@ -182,7 +182,7 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
     location: AnyLocation
     addHashToLocation: boolean
   } => {
-    const fallbackLocation = locationByAdapter ?? routerCtx.currentLocation
+    const fallbackLocation = (locationByAdapter as AnyLocation | undefined) ?? routerCtx.currentLocation
     if (args.length === 0) {
       return { route: undefined, location: fallbackLocation, addHashToLocation: routerCtx.addHashToLocation }
     }

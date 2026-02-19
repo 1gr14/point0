@@ -485,7 +485,7 @@ export const createViteDevServer = async ({
   scope: PointsScope
   side: 'client' | 'server'
   hmrPort: number | false
-  envConsts?: EngineOptionsEnvParsed  
+  envConsts?: EngineOptionsEnvParsed
   mode: NormalizedNodeEnv
   root: string | undefined
 }): Promise<ViteDevServer> => {
@@ -568,7 +568,7 @@ export const createViteDevServer = async ({
 export const readableStreamToString = async (readableStream: ReadableStream): Promise<string> => {
   const chunks: Uint8Array[] = []
   const reader = readableStream.getReader()
-  // biome-ignore lint/nursery/noUnnecessaryConditions: ok
+  // oxlint-disable-next-line typescript/no-unnecessary-condition
   while (true) {
     const { done, value } = await reader.read()
     if (done) break

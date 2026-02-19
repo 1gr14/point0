@@ -49,7 +49,7 @@ export class ServerPoints {
   }
 
   private readonly throwIfNotReady = (): void => {
-    if (!this.manager.ready) {
+    if (!this.manager.ready as boolean) {
       throw new Error('Points are not ready')
     }
   }

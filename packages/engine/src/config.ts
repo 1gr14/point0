@@ -1053,7 +1053,8 @@ const parseEngineClientOptions = ({
 
 export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {
   const { server: serverOptions, clients: clientsOptionsRaw, ...generalOptions } = options
-  const clientsOptions = clientsOptionsRaw?.flatMap((clientOptions) => (clientOptions ? [clientOptions] : [])) ?? []
+  // const clientsOptions = clientsOptionsRaw?.flatMap((clientOptions) => (clientOptions ? [clientOptions] : [])) ?? []
+  const clientsOptions = clientsOptionsRaw ?? []
   const generalOptionsParsed = parseEngineGeneralOptions({
     generalOptions,
     serverOptions,

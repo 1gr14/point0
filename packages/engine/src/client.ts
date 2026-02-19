@@ -974,6 +974,7 @@ Bun.serve({
       const outputFiles: string[] = []
       for (const rollupOutput of rollupOutputs) {
         if ('output' in rollupOutput) {
+          // oxlint-disable-next-line typescript/no-unnecessary-condition
           const chunks = Array.isArray(rollupOutput.output) ? rollupOutput.output : []
           for (const chunk of chunks) {
             if ('fileName' in chunk && typeof chunk.fileName === 'string') {

@@ -307,9 +307,9 @@ export class FilesGenerator {
         const result = await getter()
         if (isRoutesObject(result)) {
           this.routes[scope] = result
-        } else if ('default' in result && isRoutesObject(result.default)) {
+        } else if ('default' in result && isRoutesObject(result.default as unknown)) {
           this.routes[scope] = result.default
-        } else if ('routes' in result && isRoutesObject(result.routes)) {
+        } else if ('routes' in result && isRoutesObject(result.routes as unknown)) {
           this.routes[scope] = result.routes
         } else {
           throw new Error(`Invalid routes instance for scope ${scope}`)

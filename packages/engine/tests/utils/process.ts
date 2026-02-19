@@ -111,7 +111,7 @@ export class TestProcess {
   async waitOutput(text: string | string[], timeout = 5000): Promise<string> {
     const startTime = Date.now()
     const texts = Array.isArray(text) ? text : [text]
-    // biome-ignore lint/nursery/noUnnecessaryConditions: ok
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     while (true) {
       const output = this.output
       const result = TestProcess.isOutputMatchesMany(output, texts)

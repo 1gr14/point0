@@ -319,7 +319,6 @@ describe('FakeClient', () => {
         return button
       }
       const button = state.getButton()
-      assert(button)
       fireEvent.click(button)
       await waitFor(() => expect(button.textContent).toBe('Increment 0'))
       fireEvent.click(button)

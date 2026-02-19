@@ -154,6 +154,7 @@ export class PlaywrightPage {
 
       const notify = () => {
         // Check if documentElement is available yet
+        // oxlint-disable-next-line typescript/no-unnecessary-condition
         if (!document.documentElement) return
 
         const currentHtml = document.documentElement.outerHTML
@@ -171,6 +172,7 @@ export class PlaywrightPage {
       })
 
       const start = () => {
+        // oxlint-disable-next-line typescript/no-unnecessary-condition
         if (document.documentElement) {
           // 1. Start observing immediately
           observer.observe(document.documentElement, {
@@ -400,7 +402,7 @@ export class PlaywrightPage {
       return
     }
     const startTime = Date.now()
-    // biome-ignore lint/nursery/noUnnecessaryConditions: ok
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     while (true) {
       if (Date.now() - startTime > timeout) {
         throw new Error(`Timeout waiting for content: ${search} within ${timeout}ms. Current tale: ${this.tale}`)
@@ -426,7 +428,7 @@ export class PlaywrightPage {
 
   async waitNoContent(search: string, timeout = 2000): Promise<void> {
     const startTime = Date.now()
-    // biome-ignore lint/nursery/noUnnecessaryConditions: ok
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     while (true) {
       if (Date.now() - startTime > timeout) {
         throw new Error(`Timeout waiting for no content: ${search} within ${timeout}ms`)
@@ -442,7 +444,7 @@ export class PlaywrightPage {
 
   async waitLog(search: string, timeout = 2000, fromNow = false): Promise<void> {
     const startTime = Date.now()
-    // biome-ignore lint/nursery/noUnnecessaryConditions: ok
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     while (true) {
       if (Date.now() - startTime > timeout) {
         throw new Error(`Timeout waiting for log: ${search} within ${timeout}ms`)
@@ -490,7 +492,7 @@ export class PlaywrightPage {
     } catch {}
 
     const startTimestamp = Date.now()
-    // biome-ignore lint/nursery/noUnnecessaryConditions: ok
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     while (true) {
       const elapsed = Date.now() - startTimestamp
       if (elapsed > maxWaitTime) {

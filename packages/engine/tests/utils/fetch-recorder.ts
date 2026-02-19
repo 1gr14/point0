@@ -57,7 +57,7 @@ export class FetchRecorder {
       return results as never
     }
     return results.filter((record) => {
-      if (filter.variant && record.result.variant !== filter.variant) {
+      if (filter.variant && record.result.variant !== (filter.variant as FetchRecorderVariant)) {
         return false
       }
       if (filter.scope && record.result.scope !== filter.scope) {
@@ -92,7 +92,7 @@ export class FetchRecorder {
     const wait = async () => {
       return await new Promise((resolve) => setTimeout(resolve, 10))
     }
-    // biome-ignore lint/nursery/noUnnecessaryConditions: ok
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     while (true) {
       if (Date.now() - startTime > maxDuration) {
         throw new Error('Timeout waiting for fetch recorder to be stable')
