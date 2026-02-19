@@ -84,14 +84,12 @@ export class SuperStore {
 
   private resetClientGlobalState(): void {
     for (const key of Object.keys(this.clientGlobalState)) {
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete this.clientGlobalState[key]
     }
   }
 
   private resetServerGlobalState(): void {
     for (const key of Object.keys(this.serverGlobalState)) {
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete this.serverGlobalState[key]
     }
   }
@@ -199,7 +197,6 @@ export class SuperStore {
   //   if (fakeClientState) {
   //     return fakeClientState
   //   }
-  //   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   //   if (serverStorageState) {
   //     return serverStorageState
   //   }
@@ -391,13 +388,10 @@ export class SuperStore {
           }
           return states.serverGlobalState
         }
-        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         default:
-          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           throw new Error(`Invalid policy: ${policy}`)
       }
     })()
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!result) {
       throw new Error(`State not found for item policy "${policy}". It is a critical bug, please report it`)
     }
@@ -553,7 +547,6 @@ export class SuperStore {
     if (!serverStorageState.__POINT0_FAKE_CLIENTS_STATE__) {
       return
     }
-    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     delete (serverStorageState.__POINT0_FAKE_CLIENTS_STATE__ as SuperStoreState)[fakeClient.id]
   }
 }

@@ -830,7 +830,6 @@ export class Point0<
         _letsReadyPointType: 'root',
         name: pointName,
       }) as never
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (pointType === 'plugin') {
       return new Point0({
         type: 'coreStage',
@@ -840,7 +839,6 @@ export class Point0<
         name: pointName,
       }) as never
     } else {
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Invalid point type: ${pointType}`)
     }
   }
@@ -1312,7 +1310,6 @@ export class Point0<
   >
   on(
     name: AnyEventerEvent['name'] | 'error' | '*' | Array<AnyEventerEvent['name']>,
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
     callback: AnyEventerSubscriptionCallback | undefined = () => {},
   ) {
     const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
@@ -1384,7 +1381,6 @@ export class Point0<
   >
   serverOn(
     name: ServerEventerEvent['name'] | 'error' | '*' | Array<ServerEventerEvent['name']>,
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
     callback: ServerEventerSubscriptionCallback | undefined = () => {},
   ) {
     const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
@@ -1456,7 +1452,6 @@ export class Point0<
   >
   clientOn(
     name: ClientEventerEvent['name'] | 'error' | '*' | Array<ClientEventerEvent['name']>,
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
     callback: ClientEventerSubscriptionCallback | undefined = () => {},
   ) {
     const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
@@ -1780,7 +1775,6 @@ export class Point0<
     TQueriesDefinitions
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutError for serverNoSsr side
       _layoutErrorComponent: (layoutErrorComponent as never) || (() => null),
       // _layoutErrorComponent: this._applyComponentDisplayName(layoutErrorComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'LayoutError',
@@ -1807,7 +1801,6 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   > {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageError for serverNoSsr side
     pageErrorComponent ||= () => null
     // this._applyComponentDisplayName(pageErrorComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'PageError',
@@ -1837,7 +1830,6 @@ export class Point0<
     TQueriesDefinitions
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentError for serverNoSsr side
       _componentErrorComponent: (componentErrorComponent as never) || (() => null),
       // _componentErrorComponent: this._applyComponentDisplayName(componentErrorComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'ComponentError',
@@ -1865,7 +1857,6 @@ export class Point0<
     TQueriesDefinitions
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutLoading for serverNoSsr side
       _layoutLoadingComponent: (layoutLoadingComponent as never) || (() => null),
       // _layoutLoadingComponent: this._applyComponentDisplayName(layoutLoadingComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'LayoutLoading',
@@ -1892,7 +1883,6 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   > {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageLoading for serverNoSsr side
     pageLoadingComponent ||= () => null
     // this._applyComponentDisplayName(pageLoadingComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'PageLoading',
@@ -1922,10 +1912,8 @@ export class Point0<
     TQueriesDefinitions
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentLoading for serverNoSsr side
       _componentLoadingComponent: (componentLoadingComponent as never) || (() => null),
       // _componentLoadingComponent: this._applyComponentDisplayName(
-      //   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentLoading for serverNoSsr side
       //   (componentLoadingComponent as never) || (() => null),
       //   {
       //     suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'ComponentLoading',
@@ -2654,7 +2642,6 @@ export class Point0<
       TInnerProps,
       TQueriesDefinitions
     >({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
       _onPrefetchMountableFns: [...this._onPrefetchMountableFns, (fn ?? (() => undefined)) as never],
     }) as never
   }
@@ -2989,7 +2976,6 @@ export class Point0<
         ...this._clientExecuteActions,
         {
           type: 'loader',
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           fn: clientLoaderFn || ((o: any) => o.data), // in case if we shake clientLoader for server without ssr side
           unstableId: Point0._getNextUnstableId(),
         },
@@ -3235,7 +3221,6 @@ export class Point0<
     const [providedStatus, providedHead] = (() => {
       if (args.length === 2) {
         return args
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake head for server without ssr side
       } else if (args.length === 1) {
         return ['success', args[0]]
       } else {
@@ -4927,7 +4912,6 @@ export class Point0<
           }
           break
         }
-        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         default: {
           throw new Error(`Unknown client extend fn type: ${(clientExecuteAction as any).type}`)
         }
@@ -7020,7 +7004,6 @@ export class Point0<
       // pageStateManager.setPageState(pageState)
     }, [pageState.status, pageState.error?.message])
     for (const { action, state } of prevMountActions) {
-      // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
       switch (action.type) {
         case 'head': {
           const headFnResult = action.fn(state)
@@ -7353,7 +7336,6 @@ export class Point0<
         layer.prev.nextMountActions.shift()
       })
 
-      // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
       switch (action.type) {
         case 'pluginStart': {
           const { _nextPrev, _nextLayers, _nextMountableProps } = getNextProps()
@@ -7853,7 +7835,6 @@ export class Point0<
   //   if (keys == null) {
   //     // no keys — return full context
   //     return useContextSelector(this._ProviderReactContext, (ctx) => {
-  //       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   //       if (!ctx) throw new Error('useValue must be used within a Provider.')
   //       return ctx
   //     })
@@ -7862,7 +7843,6 @@ export class Point0<
   //   if (Array.isArray(keys)) {
   //     // multiple keys — build a memoized object
   //     return useContextSelector(this._ProviderReactContext, (ctx) => {
-  //       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   //       if (!ctx) throw new Error('useValue must be used within a Provider.')
   //       const picked = {} as any
   //       for (const key of keys) {
@@ -7874,7 +7854,6 @@ export class Point0<
 
   //   // single key
   //   return useContextSelector(this._ProviderReactContext, (ctx) => {
-  //     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   //     if (!ctx) throw new Error('useValue must be used within a Provider.')
   //     return ctx[keys]
   //   })

@@ -469,7 +469,6 @@ describe('playwright', () => {
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
         await page.waitContent('Never Changes', 300)
-        // eslint-disable-next-line @typescript-eslint/await-thenable
         await expect(page.waitContent('But Maybe Changes', 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
           "
@@ -530,7 +529,6 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-        // eslint-disable-next-line @typescript-eslint/await-thenable
         await expect(page.waitNoContent('Always Present', 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
           "
@@ -601,7 +599,6 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-        // eslint-disable-next-line @typescript-eslint/await-thenable
         await expect(page.waitContentSequence(['Changed', '!Will Not Disappear'], 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
           "

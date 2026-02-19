@@ -889,11 +889,9 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     }
     if (side === 'client') {
       this.shakeMethodsForClient()
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (side === 'server') {
       this.shakeMethodsForServer()
     } else {
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Invalid side: ${side}`)
     }
     this._shake = true

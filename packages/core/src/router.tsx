@@ -182,7 +182,6 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
     location: AnyLocation
     addHashToLocation: boolean
   } => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     const fallbackLocation = locationByAdapter ?? routerCtx.currentLocation
     if (args.length === 0) {
       return { route: undefined, location: fallbackLocation, addHashToLocation: routerCtx.addHashToLocation }

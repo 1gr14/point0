@@ -74,7 +74,6 @@ describe('env', () => {
     })
 
     it('should have wide type if generic not provided', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const env = await init({ side: 'server' })
       expectTypeOf<typeof env.vars>().toEqualTypeOf<Readonly<Record<string, string | undefined>>>()
     })

@@ -24,7 +24,6 @@ import { HtmlView } from './html-view.js'
 //   })
 //   // Get all enumerable properties from window
 //   const globals: Record<string, any> = {}
-//   // eslint-disable-next-line guard-for-in
 //   for (const key in window) {
 //     globals[key] = (window as any)[key]
 //   }

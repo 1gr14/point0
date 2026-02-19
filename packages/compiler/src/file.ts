@@ -727,7 +727,6 @@ export class CompilerFile<THasContent extends boolean> {
               } else if (desiredValue === null) {
                 p.replaceWith(makeNullLiteral())
                 modified = true
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
               } else if (desiredValue === undefined) {
                 p.replaceWith(makeUndefined())
                 modified = true

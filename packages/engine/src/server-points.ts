@@ -49,7 +49,6 @@ export class ServerPoints {
   }
 
   private readonly throwIfNotReady = (): void => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!this.manager.ready) {
       throw new Error('Points are not ready')
     }

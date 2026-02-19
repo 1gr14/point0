@@ -629,7 +629,6 @@ describe('SuperStore', () => {
         const first = superstore.define('first', () => 'string', 'serverOnlyStorage')
         const second = superstore.define('second', () => 123, 'serverOnlyStorage')
         const third = superstore.define<number | string | undefined>('third', () => 123, 'serverOnlyStorage')
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const items = { first, second, third }
         // const proxy = superstore.proxy(items)
         const run = superstore.createTypedRunWithServerStorageState<typeof items>()

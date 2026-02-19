@@ -376,11 +376,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               //       ex.output.length > 1 ? (ex.output.slice(1) as string[]) : Object.keys(ex.output[0])
               //     currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
               //     currentCtx = { ...currentCtx, ...ex.output[0] }
-              //     // eslint-disable-next-line @typescript-eslint/no-loop-func
               //     currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
               //   } else {
               //     currentCtx = { ...currentCtx, ...ex.output }
-              //     // eslint-disable-next-line @typescript-eslint/no-loop-func
               //     currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
               //   }
               // } else {
@@ -484,7 +482,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               // }
               break
             }
-            // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
             default:
               throw new Error(`Unknown extend function type: ${(serverExecuteAction as any).type}`)
           }

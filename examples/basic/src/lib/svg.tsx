@@ -33,6 +33,5 @@ export const Svg = ({ src, ...props }: { src: string } & React.SVGProps<SVGSVGEl
   // --- 3. Execute inner content ---
   const inner = trimmed.replace(/^<svg[^>]*>/i, '').replace(/<\/svg>$/i, '')
 
-  // biome-ignore lint/security/noDangerouslySetInnerHtml: ok
   return <svg {...attrs} {...props} dangerouslySetInnerHTML={{ __html: inner }} />
 }

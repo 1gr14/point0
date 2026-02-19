@@ -21,7 +21,6 @@ export const getEnvVars = (): EnvVars => {
         }
       }
     }
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (typeof process !== 'undefined' && process.env) {
       return process.env
     }
@@ -47,7 +46,6 @@ const _isSideClient = (): boolean => {
   if (typeof window !== 'undefined' && typeof document !== 'undefined') return true
 
   // React Native
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') return true
 
   // Electron renderer process
@@ -413,7 +411,6 @@ const getRuntimeName = (): EnvRuntimeName | undefined => {
   if (process.env.POINT0_RUNTIME) {
     return process.env.POINT0_RUNTIME as EnvRuntimeName
   }
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
     return 'reactNative'
   }

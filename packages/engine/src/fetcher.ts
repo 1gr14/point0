@@ -999,12 +999,10 @@ export class Fetcher {
       if (i === middlewares.length) {
         isMiddleware = false
         return await finalHandler()
-        // // eslint-disable-next-line @typescript-eslint/only-throw-error
         // throw finishSymbol
       }
 
       const mw = middlewares[i]
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!mw) {
         throw new Error('Middleware is undefined')
       }
@@ -1117,7 +1115,6 @@ export class Fetcher {
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (prepareFetchResult.taskPointResult) {
       const fetchTaskPointResult = await this.fetchTaskPoint({
         root: prepareFetchResult.taskPointResult.root,

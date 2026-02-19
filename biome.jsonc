@@ -52,6 +52,9 @@
   },
   "linter": {
     "enabled": true,
+    "domains": {
+      "types": "all"
+    },
     "rules": {
       "nursery": {
         "noFloatingPromises": "error",

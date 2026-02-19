@@ -683,7 +683,6 @@ describe('prefetch-page', () => {
         })
 
         afterAll(async () => {
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           await tp?.cleanup({ files: !preserve, processes: true, ports: true })
         })
 

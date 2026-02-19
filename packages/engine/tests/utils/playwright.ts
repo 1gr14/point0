@@ -154,7 +154,6 @@ export class PlaywrightPage {
 
       const notify = () => {
         // Check if documentElement is available yet
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!document.documentElement) return
 
         const currentHtml = document.documentElement.outerHTML
@@ -172,7 +171,6 @@ export class PlaywrightPage {
       })
 
       const start = () => {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (document.documentElement) {
           // 1. Start observing immediately
           observer.observe(document.documentElement, {

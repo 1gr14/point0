@@ -113,9 +113,7 @@ export const windowScrollPositionGetter: ScrollPositionGetter = () => {
   }
   const doc = document.documentElement
   const body = document.body
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const x = window.pageXOffset !== undefined ? window.pageXOffset : doc.scrollLeft || body.scrollLeft || 0
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const y = window.pageYOffset !== undefined ? window.pageYOffset : doc.scrollTop || body.scrollTop || 0
   return { x, y }
 }
@@ -125,15 +123,12 @@ export const windowScrollPositionSetter: ScrollPositionSetter = ({ x, y }: { x: 
     return
   }
   if (typeof window.scrollTo === 'function') {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     window.scrollTo(x ?? 0, y ?? 0)
     return
   }
   const doc = document.documentElement
   const body = document.body
-  // eslint-disable-next-line no-multi-assign, @typescript-eslint/no-unnecessary-condition
   doc.scrollLeft = body.scrollLeft = x ?? 0
-  // eslint-disable-next-line no-multi-assign, @typescript-eslint/no-unnecessary-condition
   doc.scrollTop = body.scrollTop = y ?? 0
 }
 

@@ -52,7 +52,6 @@ describe('cookies-store', () => {
         get() {
           return cookie
         },
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
         set() {},
       })
       try {
