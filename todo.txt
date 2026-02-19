@@ -193,10 +193,6 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 
 
 
-=== FAKE CLIENT ===
-check if env can be boolean or number, lets not have it
-
-
 
 === ENGINE ===
 И из файла поинтсов как раз для этого и нужно в том числеэкспортировать и тайпед поинты объектом судя по всему
@@ -204,7 +200,6 @@ check if env can be boolean or number, lets not have it
 Причём экспортировать тайпед объект с полными именами поинтсов в ключах, плюс отдельно экспортировать рут, плюс отдельно готовый массив, как комбинацию всего этого
 Поинтсы импортировать из файла опционально сразу в обёртке
 +++
-Разобраться, зачем вообще клиенту поинтсы в энжине
 try engine dev with usual dev process wothout manual restarting
 Компилер пусть в энжинеэвйт импорт заменить на просто импорт и прямую передачу поинтов чтобы бан хмр заработал
 killPort: true for engine, and remove withRetries for server starting

@@ -1,21 +1,22 @@
 import type { RoutesPretty } from '@devp0nt/route0'
+import { prependAndDeappendSlash } from '@point0/core'
 import type {
   AppComponent,
   AppComponentModule,
+  EnvOsName,
+  EnvRuntimeName,
   NormalizedNodeEnv,
   PointsDefinitionSource,
   PointsScope,
   RequiredCtx,
-  EnvRuntimeName,
-  EnvOsName,
 } from '@point0/core'
-import { prependAndDeappendSlash } from '@point0/core'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { normalizeEnvConsts, type CompilerEnvConsts } from '../../compiler/dist/utils.js'
 import type { FilesGeneratorTaskMeta, FilesGeneratorTaskPoints, FilesGeneratorTaskRoutes } from './generator.js'
 import type { PublicdirDefinition } from './publicdir.js'
+import { toAbsPath, toJsExtension } from './utils.js'
 import type {
   BunBuildConfigDefinition,
   BunPluginsDefinition,
@@ -24,7 +25,6 @@ import type {
   EngineServerBuildConfigDefinition,
   EngineServerPluginsDefinition,
 } from './utils.js'
-import { toAbsPath, toJsExtension } from './utils.js'
 
 // TODO:ASAP transform to class
 // TODO:ASAP allow predefined config mutable, which can be pased to Engine.create or in EngineOptions
@@ -112,10 +112,13 @@ export type EngineOptionsCompilerSpecificParsed = {
   filter: RegExp | undefined
 }
 
+export type PortPolicy = 'kill' | 'auto' | 'simple'
+
 export type EngineGeneralOptions = {
   file: string
   generte?: Array<Omit<FilesGeneratorTaskMeta, 'scopes'>>
   logger?: EngineLogger
+  portPolicy?: PortPolicy
   itWasBuilt?: boolean
   cwdAfterBuild?: string
   cwdBeforeBuild?: string
@@ -149,6 +152,7 @@ export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   routes?: EngineOptionsRoutes
   banner?: string
   hmrPort?: number | string | boolean
+  portPolicy?: PortPolicy
 }
 
 export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
@@ -167,6 +171,7 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   env?: { vars?: EngineOptionsEnvWide; consts?: EngineOptionsEnvWide }
   port?: number | string
   hmrPort?: number | string | boolean
+  portPolicy?: PortPolicy
   bunBuildConfig?: EngineClientBuildConfigDefinition
   bunPlugins?: EngineClientPluginsDefinition
   viteConfig?: EngineOptionsViteConfig
@@ -344,6 +349,7 @@ export type EngineGeneralOptionsParsed = {
   viteConfig: EngineOptionsViteConfig | null
   bunBuildConfig: BunBuildConfigDefinition | null
   bunPlugins: BunPluginsDefinition | null
+  portPolicy: PortPolicy | null
 }
 export type EngineClientOptionsParsed = {
   scope: PointsScope
@@ -372,6 +378,7 @@ export type EngineClientOptionsParsed = {
     source: PublicdirDefinition
     outdir: string
   } | null
+  portPolicy: PortPolicy
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
@@ -396,6 +403,7 @@ export type EngineServerOptionsParsed = {
   viteConfig: EngineOptionsViteConfig | null
   compiler: EngineOptionsCompilerSpecificParsed | false
   hmrPort: number | false
+  portPolicy: PortPolicy
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -615,6 +623,7 @@ const parseEngineGeneralOptions = ({
       : Array.isArray(generalOptions.buildWatchGlob)
         ? generalOptions.buildWatchGlob
         : [generalOptions.buildWatchGlob],
+    portPolicy: generalOptions.portPolicy ?? null,
   }
 }
 
@@ -834,6 +843,7 @@ export const parseEngineServerOptions = ({
       side: 'server',
     })),
     banner: serverOptions.banner ?? null,
+    portPolicy: serverOptions.portPolicy ?? generalOptionsParsed.portPolicy ?? 'simple',
     viteConfig:
       typeof serverOptions.viteConfig === 'string'
         ? toFinalPath({
@@ -994,6 +1004,7 @@ const parseEngineClientOptions = ({
     bunBuildConfig: clientOptions.bunBuildConfig ?? {},
     bunPlugins: clientOptions.bunPlugins ?? [],
     engineFile: generalOptionsParsed.engineFile,
+    portPolicy: clientOptions.portPolicy ?? generalOptionsParsed.portPolicy ?? 'simple',
   }
 }
 

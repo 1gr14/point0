@@ -18,6 +18,7 @@ import type {
   EngineOptionsEnvParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
+  PortPolicy,
 } from './config.js'
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
@@ -46,6 +47,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
   engineFile: string | null
   cwdBeforeBuild: string
   port: number
+  portPolicy: PortPolicy
   clients: TInitialized extends true ? Array<EngineClient<true>> : EngineClient[]
   logger: EngineLogger
   entry: Record<string, string> | null
@@ -76,6 +78,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     engineFile: string | null
     cwdBeforeBuild: string
     port: number
+    portPolicy: PortPolicy
     logger: EngineLogger
     clients: EngineClient[]
     envConsts: EngineOptionsEnvParsed
@@ -116,6 +119,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     this.viteConfig = input.viteConfig
     this.viteDevServer = input.viteDevServer
     this.hmrPort = input.hmrPort
+    this.portPolicy = input.portPolicy
     this.compiler = input.compiler
     this.baseurl = undefined as TInitialized extends true ? string | null : undefined
     this.fetcher = null as TInitialized extends true ? Fetcher : null
@@ -143,6 +147,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     clients: EngineClient[]
     viteConfig: EngineOptionsViteConfig | null
     hmrPort: number | false
+    portPolicy: PortPolicy
     compiler: EngineOptionsCompilerSpecificParsed | false
   }): EngineServer<false> {
     const publicdir = input.publicdir

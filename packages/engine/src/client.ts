@@ -21,6 +21,7 @@ import type {
   EngineOptionsEnvParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
+  PortPolicy,
 } from './config.js'
 import type { Executor } from './executor.js'
 import type { PublicdirDefinition } from './publicdir.js'
@@ -59,6 +60,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
   domRootElementId: string
   port: number
   hmrPort: number | false
+  portPolicy: PortPolicy
   compiler: EngineOptionsCompilerSpecificParsed | false
   viteConfig: EngineOptionsViteConfig | null
   index: number
@@ -96,6 +98,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     domRootElementId: string
     port: number
     hmrPort: number | false
+    portPolicy: PortPolicy
     compiler: EngineOptionsCompilerSpecificParsed | false
     viteConfig: EngineOptionsViteConfig | null
     index: number
@@ -124,6 +127,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     this.domRootElementId = input.domRootElementId
     this.port = input.port
     this.hmrPort = input.hmrPort
+    this.portPolicy = input.portPolicy
     this.compiler = input.compiler
     this.viteConfig = input.viteConfig
     this.index = input.index
@@ -169,6 +173,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     domRootElementId: string
     port: number
     hmrPort: number | false
+    portPolicy: PortPolicy
     index: number
     logger: EngineLogger
     envVars: EngineOptionsEnvParsed
