@@ -506,6 +506,36 @@ export class CompilerFile<THasContent extends boolean> {
           type: 'NullLiteral',
         }) as any
 
+      const makeThrowingArrowFunction = (message: string) =>
+        ({
+          type: 'ArrowFunctionExpression',
+          id: null,
+          generator: false,
+          async: false,
+          params: [],
+          body: {
+            type: 'BlockStatement',
+            body: [
+              {
+                type: 'ThrowStatement',
+                argument: {
+                  type: 'NewExpression',
+                  callee: {
+                    type: 'Identifier',
+                    name: 'Error',
+                  },
+                  arguments: [
+                    {
+                      type: 'StringLiteral',
+                      value: message,
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        }) as any
+
       const checkReplaceVar = (
         varName: string,
         processEnvValue: string | number | boolean | null | undefined,
@@ -771,8 +801,50 @@ export class CompilerFile<THasContent extends boolean> {
             return undefined
           }
 
-          // Handle env.side define.server()/define.client()
+          // Handle superstore hydrate and dehydrate
           if (
+            side !== false &&
+            callee.object.type === 'Identifier' &&
+            callee.object.name === 'superstore' &&
+            callee.property.type === 'Identifier' &&
+            callee.property.name === 'define' &&
+            args.length > 2 &&
+            args[2]?.type === 'ObjectExpression'
+          ) {
+            const ssrConfig = args[2]
+            const hasHydrate = ssrConfig.properties.some(
+              (prop: any) =>
+                prop.type === 'ObjectProperty' &&
+                prop.key.type === 'Identifier' &&
+                prop.key.name === 'hydrate' &&
+                prop.value,
+            )
+            const hasDehydrate = ssrConfig.properties.some(
+              (prop: any) =>
+                prop.type === 'ObjectProperty' &&
+                prop.key.type === 'Identifier' &&
+                prop.key.name === 'dehydrate' &&
+                prop.value,
+            )
+
+            if (hasHydrate && hasDehydrate) {
+              for (const prop of ssrConfig.properties as any[]) {
+                if (prop.type !== 'ObjectProperty' || prop.key.type !== 'Identifier' || !prop.value) {
+                  continue
+                }
+                if (side === 'server' && prop.key.name === 'hydrate') {
+                  prop.value = makeThrowingArrowFunction('Not available on server')
+                  modified = true
+                } else if (side === 'client' && prop.key.name === 'dehydrate') {
+                  prop.value = makeThrowingArrowFunction('Not available on client')
+                  modified = true
+                }
+              }
+            }
+          }
+
+          // Handle env.side define.server()/define.client()
+          else if (
             side !== false &&
             callee.object.type === 'MemberExpression' &&
             callee.object.object.type === 'MemberExpression' &&

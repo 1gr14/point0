@@ -281,31 +281,31 @@ export class SuperStore {
     return item
   }
 
-  proxy<TItems extends Record<string, AnyNiceSuperStoreItem>>(items: TItems): ProxyResult<TItems> {
-    const proxy = new Proxy(
-      {},
-      {
-        get(target, prop) {
-          if (typeof prop !== 'string') {
-            return undefined
-          }
-          return items[prop].get()
-        },
-        set(target, prop, value) {
-          if (typeof prop !== 'string') {
-            return false
-          }
-          const item = items[prop]
-          if ('set' in item && typeof item.set === 'function') {
-            item.set(value)
-            return true
-          }
-          throw new Error(`Cannot set value to item "${prop}"`)
-        },
-      },
-    ) as ProxyResult<TItems>
-    return proxy
-  }
+  // proxy<TItems extends Record<string, AnyNiceSuperStoreItem>>(items: TItems): ProxyResult<TItems> {
+  //   const proxy = new Proxy(
+  //     {},
+  //     {
+  //       get(target, prop) {
+  //         if (typeof prop !== 'string') {
+  //           return undefined
+  //         }
+  //         return items[prop].get()
+  //       },
+  //       set(target, prop, value) {
+  //         if (typeof prop !== 'string') {
+  //           return false
+  //         }
+  //         const item = items[prop]
+  //         if ('set' in item && typeof item.set === 'function') {
+  //           item.set(value)
+  //           return true
+  //         }
+  //         throw new Error(`Cannot set value to item "${prop}"`)
+  //       },
+  //     },
+  //   ) as ProxyResult<TItems>
+  //   return proxy
+  // }
 
   createTypedRunWithServerStorageState<TItems extends Record<string, AnyNiceSuperStoreItem>>(): <TResult>(
     serverStorageState: SuperStoreItemsValuesOrErrors<TItems>,
@@ -607,7 +607,6 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
 }
 
 export const superstore = SuperStore.instance
-export const ss = SuperStore.instance
 
 export type SuperStoreItemPolicy =
   | 'clientServerIsolated'

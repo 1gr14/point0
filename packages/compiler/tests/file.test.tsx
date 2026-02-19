@@ -495,6 +495,84 @@ describe('CompilerFile', () => {
       )
     })
 
+    describe('superstore.define ssr config', () => {
+      it.concurrent(
+        'server side replaces hydrate with unavailable throw',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { superstore } = await import('@point0/core')
+            superstore.define('x', () => 'value', {
+              dehydrate: (value) => value,
+              hydrate: (dehydratedValue) => dehydratedValue,
+            })
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { superstore } = await import('@point0/core')
+              superstore.define('x', () => 'value', {
+                dehydrate: (value) => value,
+                hydrate: () => {
+                  throw new Error('Not available on server')
+                },
+              })
+              "
+            `,
+          )
+        }),
+      )
+
+      it.concurrent(
+        'client side replaces dehydrate with unavailable throw',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { superstore } = await import('@point0/core')
+            superstore.define('x', () => 'value', {
+              dehydrate: (value) => value,
+              hydrate: (dehydratedValue) => dehydratedValue,
+            })
+          })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { superstore } = await import('@point0/core')
+              superstore.define('x', () => 'value', {
+                dehydrate: () => {
+                  throw new Error('Not available on client')
+                },
+                hydrate: (dehydratedValue) => dehydratedValue,
+              })
+              "
+            `,
+          )
+        }),
+      )
+
+      it.concurrent(
+        'side false keeps both dehydrate and hydrate unchanged',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { superstore } = await import('@point0/core')
+            superstore.define('x', () => 'value', {
+              dehydrate: (value) => value,
+              hydrate: (dehydratedValue) => dehydratedValue,
+            })
+          })
+          cf.shakeForEnv({ side: false, scope: 'test', mode: 'development' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { superstore } = await import('@point0/core')
+              superstore.define('x', () => 'value', {
+                dehydrate: (value) => value,
+                hydrate: (dehydratedValue) => dehydratedValue,
+              })
+              "
+            `,
+          )
+        }),
+      )
+    })
+
     describe('env.scope', () => {
       describe('env.scope.is', () => {
         it.concurrent(

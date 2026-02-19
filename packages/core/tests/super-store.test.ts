@@ -242,19 +242,19 @@ describe('SuperStore', () => {
       })
     })
 
-    describe('proxy', () => {
-      it('ok', () => {
-        const first = superstore.define('first', () => 'string', 'clientOnly')
-        const second = superstore.define('second', () => 123, 'clientOnly')
-        const third = superstore.define<number | string>('third', () => 123, 'clientOnly')
-        const proxy = superstore.proxy({ first, second, third })
-        expect(proxy.first).toBe('string')
-        expect(proxy.second).toBe(123)
-        expect(proxy.third).toBe(123)
-        proxy.third = 'x'
-        expect(proxy.third).toBe('x')
-      })
-    })
+    // describe('proxy', () => {
+    //   it('ok', () => {
+    //     const first = superstore.define('first', () => 'string', 'clientOnly')
+    //     const second = superstore.define('second', () => 123, 'clientOnly')
+    //     const third = superstore.define<number | string>('third', () => 123, 'clientOnly')
+    //     const proxy = superstore.proxy({ first, second, third })
+    //     expect(proxy.first).toBe('string')
+    //     expect(proxy.second).toBe(123)
+    //     expect(proxy.third).toBe(123)
+    //     proxy.third = 'x'
+    //     expect(proxy.third).toBe('x')
+    //   })
+    // })
   })
 
   describe('fakeClient', () => {
@@ -541,22 +541,22 @@ describe('SuperStore', () => {
       )
     })
 
-    describe('proxy', () => {
-      it(
-        'ok',
-        withFakeClient(() => {
-          const first = superstore.define('first', () => 'string', 'clientOnly')
-          const second = superstore.define('second', () => 123, 'clientOnly')
-          const third = superstore.define<number | string>('third', () => 123, 'clientOnly')
-          const proxy = superstore.proxy({ first, second, third })
-          expect(proxy.first).toBe('string')
-          expect(proxy.second).toBe(123)
-          expect(proxy.third).toBe(123)
-          proxy.third = 'x'
-          expect(proxy.third).toBe('x')
-        }),
-      )
-    })
+    // describe('proxy', () => {
+    //   it(
+    //     'ok',
+    //     withFakeClient(() => {
+    //       const first = superstore.define('first', () => 'string', 'clientOnly')
+    //       const second = superstore.define('second', () => 123, 'clientOnly')
+    //       const third = superstore.define<number | string>('third', () => 123, 'clientOnly')
+    //       const proxy = superstore.proxy({ first, second, third })
+    //       expect(proxy.first).toBe('string')
+    //       expect(proxy.second).toBe(123)
+    //       expect(proxy.third).toBe(123)
+    //       proxy.third = 'x'
+    //       expect(proxy.third).toBe('x')
+    //     }),
+    //   )
+    // })
   })
 
   describe('server', () => {
@@ -629,13 +629,14 @@ describe('SuperStore', () => {
         const first = superstore.define('first', () => 'string', 'serverOnlyStorage')
         const second = superstore.define('second', () => 123, 'serverOnlyStorage')
         const third = superstore.define<number | string | undefined>('third', () => 123, 'serverOnlyStorage')
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const items = { first, second, third }
-        const proxy = superstore.proxy(items)
+        // const proxy = superstore.proxy(items)
         const run = superstore.createTypedRunWithServerStorageState<typeof items>()
         run({ first: 'string2', second: 456, third: undefined }, () => {
-          expect(proxy.first).toBe('string2')
-          expect(proxy.second).toBe(456)
-          expect(proxy.third).toBeUndefined()
+          expect(first.get()).toBe('string2')
+          expect(second.get()).toBe(456)
+          expect(third.get()).toBeUndefined()
         })
       })
     })
