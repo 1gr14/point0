@@ -7,7 +7,7 @@ import { CookiesStore } from '../src/index.js'
 
 describe('cookies-store', () => {
   let fakeClient: Awaited<ReturnType<typeof createTestThings>>['client']
-  const inClient = (fn: () => any) => {
+  const inClient = (fn: () => void | Promise<void>) => {
     return async () => {
       await fakeClient.run(async () => {
         await fn()

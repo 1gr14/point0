@@ -1,7 +1,6 @@
 import prettier from 'prettier'
 
-// biome-ignore lint/suspicious/noExplicitAny: ok
-export const toText = async (fn: string | (() => any)): Promise<string> => {
+export const toText = async (fn: string | (() => void)): Promise<string> => {
   const code = typeof fn === 'string' ? fn.trim() : extractFunctionBody(fn)
 
   return await prettier.format(code, {
@@ -12,8 +11,7 @@ export const toText = async (fn: string | (() => any)): Promise<string> => {
   })
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: ok
-const extractFunctionBody = (fn: () => any): string => {
+const extractFunctionBody = (fn: () => void): string => {
   const src = fn.toString().trim()
 
   // async () => { ... } | () => { ... } | function () { ... }

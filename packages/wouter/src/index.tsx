@@ -299,10 +299,8 @@ const _getWouterLinkProps = (
     replace,
     ...rest
   } = props as LinkProps & {
-    // biome-ignore lint/suspicious/noExplicitAny: ok
-    onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => any
-    // biome-ignore lint/suspicious/noExplicitAny: ok
-    onMouseLeave?: (e: React.MouseEvent<HTMLAnchorElement>) => any
+    onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => void
+    onMouseLeave?: (e: React.MouseEvent<HTMLAnchorElement>) => void
   }
   const navigate = useSimpleNavigate()
   const finalTo = to || href || '#'

@@ -31,10 +31,10 @@ import { toAbsPath, toJsExtension } from './utils.js'
 // TODO:ASAP add tests
 
 export type EngineLogger = {
-  info: (message: string, meta?: Record<string, any>) => any
-  error: (error: unknown, meta?: Record<string, any>) => any
-  warn: (message: string, meta?: Record<string, any>) => any
-  debug: (message: string, meta?: Record<string, any>) => any
+  info: (message: string, meta?: Record<string, any>) => void
+  error: (error: unknown, meta?: Record<string, any>) => void
+  warn: (message: string, meta?: Record<string, any>) => void
+  debug: (message: string, meta?: Record<string, any>) => void
 }
 
 export type EngineOptionsPublicdir =

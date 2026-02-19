@@ -189,7 +189,7 @@ const getTale = (page: PlaywrightPage, mark: string) => {
     .replaceAll(`/${mark}`, '/')
 }
 
-type ItFn = (done: (err?: unknown) => any) => any
+type ItFn = (done: (err?: unknown) => void) => void | Promise<void>
 
 let preventFinalFilesCleanup = false
 function wrp(
@@ -199,7 +199,7 @@ function wrp(
     mode: 'dev' | 'build'
     bundler: 'bun' | 'vite'
   },
-  callback: ({ mark }: { mark: string }) => any,
+  callback: ({ mark }: { mark: string }) => void | Promise<void>,
 ): ItFn {
   const mark = toMark(options.prefetchPageOnLinkHover, options.prefetchPageOnNavigate)
   return async () => {

@@ -5,12 +5,14 @@ setDefaultTimeout(10000)
 
 let browser: PlaywrightBrowser
 
-type ItFn = (done: (err?: unknown) => any) => any
+type ItFn = (done: (err?: unknown) => void) => void | Promise<void>
 
-function wrp(url: string, callback: (page: PlaywrightPage) => any): ItFn
-function wrp(callback: (page: PlaywrightPage) => any): ItFn
+function wrp(url: string, callback: (page: PlaywrightPage) => void | Promise<void>): ItFn
+function wrp(callback: (page: PlaywrightPage) => void | Promise<void>): ItFn
 function wrp(
-  ...args: [callback: (page: PlaywrightPage) => any] | [url: string, callback: (page: PlaywrightPage) => any]
+  ...args:
+    | [callback: (page: PlaywrightPage) => void | Promise<void>]
+    | [url: string, callback: (page: PlaywrightPage) => void | Promise<void>]
 ): ItFn {
   const [url, callback] = args.length === 1 ? [undefined, args[0]] : args
   return async () => {

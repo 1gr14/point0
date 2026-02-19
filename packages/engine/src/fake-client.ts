@@ -91,7 +91,9 @@ class GlobalThisItemProxy {
   }
 }
 
-export type FakeClientCallback<TState extends FakeClientState = FakeClientState> = (state: TState) => any
+export type FakeClientCallback<TState extends FakeClientState = FakeClientState> = (
+  state: TState,
+) => void | Promise<void>
 export type FakeClientState = {
   [key: string]: unknown
 }

@@ -361,7 +361,9 @@ export const createTestThings = async ({
     callback?: (state: TestThingsState) => TResult,
   ): Promise<TResult>
   async function render(
-    ...args: [callback?: (state: TestThingsState) => any] | [path: string, callback?: (state: TestThingsState) => any]
+    ...args:
+      | [callback?: (state: TestThingsState) => unknown]
+      | [path: string, callback?: (state: TestThingsState) => unknown]
   ): Promise<any> {
     const [path = '/', callback = () => undefined] =
       typeof args[0] === 'string' ? [args[0], args[1]] : [undefined, args[0]]
@@ -635,4 +637,4 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
 }
 
 export type TestThings = Awaited<ReturnType<typeof createTestThings>>
-export type ItFn = (done: (err?: unknown) => any) => any
+export type ItFn = (done: (err?: unknown) => void) => void | Promise<void>

@@ -10,8 +10,8 @@ type TestFile = Bun.BunFile & {
   basename: string
   importpath: string
   cf: CompilerFile<false>
-  wrp: (content: string | (() => any)) => Promise<CompilerFile<true>>
-  wrpsync: (content: string | (() => any)) => Promise<CompilerFile<true>>
+  wrp: (content: string | (() => void)) => Promise<CompilerFile<true>>
+  wrpsync: (content: string | (() => void)) => Promise<CompilerFile<true>>
 }
 
 const tempDir = nodePath.join(__dirname, 'temp/file')
@@ -23,13 +23,13 @@ const prepareRandomFile = (walker: Walker): TestFile => {
   const cf: CompilerFile<false> = CompilerFile.create({ walker, file: path })
   const bunFile = Bun.file(path)
   // write, read, parse
-  const wrp = async (content: string | (() => any)) => {
+  const wrp = async (content: string | (() => void)) => {
     await bunFile.write(await toText(content))
     await cf.readAsync(true)
     cf.assertHasContent()
     return cf
   }
-  const wrpsync = async (content: string | (() => any)) => {
+  const wrpsync = async (content: string | (() => void)) => {
     await bunFile.write(await toText(content))
     cf.readSync(true)
     cf.assertHasContent()
@@ -38,7 +38,10 @@ const prepareRandomFile = (walker: Walker): TestFile => {
   return Object.assign(bunFile, { path, basename, importpath, cf, wrp, wrpsync })
 }
 
-const helper = (callback: ({ files }: { files: TestFile[] }) => any, preserve = false) => {
+const helper = (
+  callback: ({ files }: { files: TestFile[] }) => void | Promise<void>,
+  preserve = false,
+) => {
   return async () => {
     const walker = new Walker({ routes: undefined })
     const files = Array.from({ length: 11 }, () => prepareRandomFile(walker))

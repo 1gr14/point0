@@ -17,7 +17,7 @@ export type UseOnNavigateFn = (options: {
   prevLocation: AnyLocation
   nextLocation: AnyLocation
   // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-}) => void | (() => any)
+}) => void | (() => void)
 export type UseOnNavigateDetailedFn = (options: {
   prevLocation: AnyLocation
   nextLocation: AnyLocation
@@ -251,7 +251,7 @@ export const useOnNavigate = (fn: UseOnNavigateFn) => {
 
   const prevLocationRef = useRef(ctx.currentLocation)
   const nextLocationRef = useRef(ctx.nextLocation)
-  const cleanupFnRef = useRef<(() => any) | null>(null)
+  const cleanupFnRef = useRef<(() => void) | null>(null)
   const [isNavigating, setIsNavigating] = useState(false)
 
   useEffect(() => {

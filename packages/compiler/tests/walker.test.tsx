@@ -16,11 +16,14 @@ const prepareRandomFile = () => {
     path,
     basename,
     importpath,
-    write: async (content: string | (() => any)) => await Bun.write(path, await toText(content)),
+    write: async (content: string | (() => void)) => await Bun.write(path, await toText(content)),
   })
 }
 
-const helper = (callback: ({ files, walker }: { files: TestFile[]; walker: Walker }) => any, preserve = false) => {
+const helper = (
+  callback: ({ files, walker }: { files: TestFile[]; walker: Walker }) => void | Promise<void>,
+  preserve = false,
+) => {
   return async () => {
     const walker = new Walker({ routes: undefined })
     const files = Array.from({ length: 11 }, prepareRandomFile)

@@ -23,7 +23,7 @@ export const waitResponse = async (
   url: string,
   status: number | number[] | 'ok' | 'bad',
   limit = 3000,
-  onError?: (error: unknown) => any,
+  onError?: (error: unknown) => void | Promise<void>,
 ): Promise<Response> => {
   const startTime = Date.now()
   const isTimeout = () => Date.now() - startTime > limit

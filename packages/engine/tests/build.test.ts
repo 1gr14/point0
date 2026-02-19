@@ -11,20 +11,22 @@ const tpf = TestProjectFactory.create({
   portsRange: [3100, 3199],
 })
 
-type ItFn = (done: (err?: unknown) => any) => any
+type ItFn = (done: (err?: unknown) => void) => void | Promise<void>
 
 let preventFinalFilesCleanup = false
 function wrp(
   options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
-  callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
+  callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>,
 ): ItFn
-function wrp(callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any): ItFn
+function wrp(
+  callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>,
+): ItFn
 function wrp(
   ...args:
-    | [callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any]
+    | [callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>]
     | [
         options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
-        callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
+        callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>,
       ]
 ): ItFn {
   const [options, callback] = args.length === 1 ? [{}, args[0]] : args

@@ -15,7 +15,10 @@ const prepareRandomFile = () => {
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: ok
-const helper = (callback: ({ files }: { files: TestFile[] }) => any, preserve = false) => {
+const helper = (
+  callback: ({ files }: { files: TestFile[] }) => void | Promise<void>,
+  preserve = false,
+) => {
   return async () => {
     const files = Array.from({ length: 11 }, prepareRandomFile)
     try {
