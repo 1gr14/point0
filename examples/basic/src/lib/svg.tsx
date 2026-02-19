@@ -19,7 +19,6 @@ export const Svg = ({ src, ...props }: { src: string } & React.SVGProps<SVGSVGEl
   const attrRegex = /(\S+)=["']([^"']*)["']/g
 
   let match: RegExpExecArray | null
-  // biome-ignore lint/suspicious/noAssignInExpressions: ok
   while ((match = attrRegex.exec(attrsString))) {
     const rawName = match[1]
     const rawValue = match[2]

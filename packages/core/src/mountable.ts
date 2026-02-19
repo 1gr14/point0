@@ -50,16 +50,16 @@ export type AppendProps<TPrevProps extends Props, TAppendProps extends Props> = 
 
 export type WithOuterPropsIfExists<TOuterProps extends Props> =
   IsEmptyObject<TOuterProps> extends true
-    ? // biome-ignore lint/complexity/noBannedTypes: ok, becouse used as output type, not input type
+    ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
       {}
     : { props: TOuterProps }
 export type WithLocationIfExists<TLocation extends AnyLocation | undefined> = TLocation extends undefined
-  ? // biome-ignore lint/complexity/noBannedTypes: ok, becouse used as output type, not input type
+  ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     {}
   : { location: TLocation }
 
 type RequiredKeys<T> = {
-  // biome-ignore lint/complexity/noBannedTypes: ok
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   [K in keyof T]-?: {} extends Pick<T, K> ? never : K
 }[keyof T]
 
@@ -72,9 +72,7 @@ export type QueryDefinition<TQueryResultType extends QueryResultType, TQueriedDa
   type: TQueryResultType
   data: TQueriedData // it is infinite data in infinite data case
 }
-
 export type QueriesDefinitions = Array<QueryDefinition<any, any>>
-
 export type QueryByDefinition<TQueryDefinition extends QueryDefinition<any, any>> = TQueryDefinition extends {
   type: infer TQueryResultType
   data: infer TQueriedData
@@ -85,7 +83,6 @@ export type QueryByDefinition<TQueryDefinition extends QueryDefinition<any, any>
       ? UseInfiniteQueryResult<TQueriedData, Error0>
       : never
   : never
-
 export type SuccessQueryByDefinition<TQueryDefinition extends QueryDefinition<any, any>> = TQueryDefinition extends {
   type: infer TQueryResultType
   data: infer TQueriedData
@@ -516,7 +513,7 @@ export type GlobalHeadFn<
 //   TOuterProps extends Props = any,
 // > = React.ComponentType<MountableOuterComponentProps<TClientInputSchema, TOuterProps>>
 
-// biome-ignore lint/complexity/noBannedTypes: ok, becouse used as output type, not input type
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type PageExtraInnerProps = {}
 export type PageLocation<TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition> = ExactLocation<
   CurrentRouteDefinition<TRouteDefinition>
@@ -572,7 +569,7 @@ export type ProviderSuccessComponentType<
 > = React.ComponentType<ProviderSuccessComponentProps<TInnerProps, TQueriesDefinitions, TMapperOutput>>
 export type UndefinedProviderSuccessComponent = undefined
 
-// biome-ignore lint/complexity/noBannedTypes: ok, becouse used as output type, not input type
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type ComponentExtraInnerProps = {}
 export type ComponentLocation = AnyLocation
 export type ComponentSuccessComponentProps<
@@ -852,7 +849,6 @@ export type MountAction<
       type: 'relatedQuery'
       point: AnyPoint
       inputGetter: RelatedQueryInputGetter<{ point: AnyPoint }>
-
       queryOptions: ExtraUseInfiniteQueryOptions<any> | ExtraUseQueryOptions
       unstableId: number
       ssr: boolean
@@ -862,7 +858,6 @@ export type MountAction<
     : TType extends 'wrapper'
       ? {
           type: 'wrapper'
-
           Component: WrapperComponentType<any, any, any, any>
           unstableId: number
           ssr: boolean
@@ -870,35 +865,16 @@ export type MountAction<
       : TType extends 'with'
         ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number; ssr: boolean }
         : TType extends 'mapper'
-          ? {
-              type: 'mapper'
-
-              fn: MapperFn<any, any, any, any, any>
-              unstableId: number
-              ssr: boolean
-            }
+          ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number; ssr: boolean }
           : TType extends 'selfProps'
             ? { type: 'selfProps'; unstableId: number; ssr: boolean }
             : TType extends 'head'
-              ? {
-                  type: 'head'
-
-                  fn: HeadFn<any, any, any, any, any>
-                  unstableId: number
-                  ssr: boolean
-                }
+              ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number; ssr: boolean }
               : TType extends 'globalHead'
-                ? {
-                    type: 'globalHead'
-
-                    fn: GlobalHeadFn<any, any>
-                    unstableId: number
-                    ssr: boolean
-                  }
+                ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number; ssr: boolean }
                 : TType extends 'errorComponent'
                   ? {
                       type: 'errorComponent'
-
                       Component: ErrorComponentType<any>
                       variant: DestinationComponentVariant | undefined
                       unstableId: number
@@ -907,7 +883,6 @@ export type MountAction<
                   : TType extends 'loadingComponent'
                     ? {
                         type: 'loadingComponent'
-
                         Component: LoadingComponentType<any>
                         variant: DestinationComponentVariant | undefined
                         unstableId: number

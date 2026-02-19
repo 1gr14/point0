@@ -2,6 +2,8 @@ import type { AsyncLocalStorage } from 'node:async_hooks'
 import type { ClientRuntime } from './env.types.js'
 import type { DataTransformer, DataTransformerExtended, FetchFn, PointsScope } from './types.js'
 
+import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
+
 type SuperStoreGlobals = {
   __POINT0_SUPER_STORE_SERVER_STORAGE__?: AsyncLocalStorage<Record<string, unknown>> | null
   __POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__?: Record<string, unknown>
@@ -13,11 +15,10 @@ type SuperStoreGlobals = {
 ;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||=
   process.env.POINT0_SIDE === 'client'
     ? null
-    : (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<Record<string, unknown>>)
+    : // eslint-disable-next-line @typescript-eslint/no-require-imports
+      (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<Record<string, unknown>>)
 ;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ ||= {}
 ;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ ||= {}
-
-import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
 export class SuperStore {
   static instance: SuperStore =
@@ -84,12 +85,14 @@ export class SuperStore {
 
   private resetClientGlobalState(): void {
     for (const key of Object.keys(this.clientGlobalState)) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete this.clientGlobalState[key]
     }
   }
 
   private resetServerGlobalState(): void {
     for (const key of Object.keys(this.serverGlobalState)) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete this.serverGlobalState[key]
     }
   }
@@ -388,10 +391,13 @@ export class SuperStore {
           }
           return states.serverGlobalState
         }
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         default:
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           throw new Error(`Invalid policy: ${policy}`)
       }
     })()
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!result) {
       throw new Error(`State not found for item policy "${policy}". It is a critical bug, please report it`)
     }
@@ -547,6 +553,7 @@ export class SuperStore {
     if (!serverStorageState.__POINT0_FAKE_CLIENTS_STATE__) {
       return
     }
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     delete (serverStorageState.__POINT0_FAKE_CLIENTS_STATE__ as SuperStoreState)[fakeClient.id]
   }
 }

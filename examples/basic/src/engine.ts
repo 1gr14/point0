@@ -2,7 +2,7 @@ import { Engine } from '@point0/engine'
 export const engine = Engine.create({
   file: import.meta.url,
   pointsGlob: ['**/*.{ts,tsx}'],
-  portPolicy: 'auto',
+  portPolicy: 'kill',
   server: {
     scope: 'client',
     port: 3000,

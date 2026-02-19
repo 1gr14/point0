@@ -1,5 +1,3 @@
-import * as nodeFs from 'node:fs/promises'
-import * as nodePath from 'node:path'
 import type {
   FetcherFetchDetailedResult,
   NormalizedNodeEnv,
@@ -9,6 +7,8 @@ import type {
 } from '@point0/core'
 import { env, getHostnameOrNull, prependAndDeappendSlash } from '@point0/core'
 import type { BunPlugin } from 'bun'
+import * as nodeFs from 'node:fs/promises'
+import * as nodePath from 'node:path'
 import type { ViteDevServer } from 'vite'
 import type { CompilerOptions } from '../../compiler/dist/compiler.js'
 import type { EngineClient } from './client.js'

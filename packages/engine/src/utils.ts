@@ -1,13 +1,13 @@
-import * as nodeFsSync from 'node:fs'
-import * as nodePath from 'node:path'
-import type { NormalizedNodeEnv, PointsScope } from '@point0/core'
-import { env } from '@point0/core'
+import type { PointsScope, NormalizedNodeEnv } from '@point0/core'
 import type { BuildConfig, BunPlugin } from 'bun'
 import { plugin } from 'bun'
+import * as nodeFsSync from 'node:fs'
+import * as nodePath from 'node:path'
 import type { Options as RetryOptions } from 'p-retry'
 import pRetry from 'p-retry'
 import type { ViteDevServer } from 'vite'
 import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, ExtractedViteConfig } from './config.js'
+import { env } from '@point0/core'
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
   if (!path) {
@@ -568,7 +568,6 @@ export const createViteDevServer = async ({
 export const readableStreamToString = async (readableStream: ReadableStream): Promise<string> => {
   const chunks: Uint8Array[] = []
   const reader = readableStream.getReader()
-  // biome-ignore lint/nursery/noUnnecessaryConditions: ok
   while (true) {
     const { done, value } = await reader.read()
     if (done) break

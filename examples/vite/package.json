@@ -1,7 +1,7 @@
 {
   "name": "@point0/example-vite",
-  "private": true,
   "version": "1.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "point0 dev",
@@ -13,16 +13,16 @@
     "typesgo": "tsgo --noEmit"
   },
   "dependencies": {
+    "@devp0nt/route0": "catalog:",
+    "@point0/compiler": "workspace:*",
     "@point0/core": "workspace:*",
     "@point0/engine": "workspace:*",
-    "@point0/wouter": "workspace:*",
     "@point0/react-dom": "workspace:*",
-    "@point0/compiler": "workspace:*",
-    "@devp0nt/route0": "^1.0.0-next.60",
-    "superjson": "^2.2.5",
+    "@point0/wouter": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "superjson": "^2.2.5"
   },
   "devDependencies": {
     "@svgr/core": "^8.1.0",

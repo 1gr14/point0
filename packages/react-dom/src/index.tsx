@@ -28,11 +28,11 @@ export function mount(
   clientPoints.mount()
   const __POINT0_DEHYDRATED_SUPER_STORE__ =
     typeof window !== 'undefined' &&
-    typeof (
+    (
       window as unknown as {
         __POINT0_DEHYDRATED_SUPER_STORE__: string | undefined
       }
-    )?.__POINT0_DEHYDRATED_SUPER_STORE__
+    ).__POINT0_DEHYDRATED_SUPER_STORE__
   if (__POINT0_DEHYDRATED_SUPER_STORE__) {
     superstore.prepare(__POINT0_DEHYDRATED_SUPER_STORE__, clientPoints.transformer)
   }

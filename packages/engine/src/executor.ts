@@ -31,9 +31,9 @@ import type {
   UnknownCtx,
   UnknownData,
 } from '@point0/core'
+import type { Request0 } from '@point0/core/request0'
 import { _ssItems, _ssRunWithServerStorageState } from '@point0/core'
 import { Effects } from '@point0/core/effects'
-import type { Request0 } from '@point0/core/request0'
 import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
 import { dehydrate } from '@tanstack/react-query'
 import { createHead } from '@unhead/react/server'
@@ -238,8 +238,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })()
 
     return await this.withServerGlobalState(async () => {
-      // we parse input step by step, so we do not need initial parse result
-      const { inputError } = await (async () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
+      const { parsedInput, inputError } = await (async () => {
         if (!point) {
           // we will throw 404 later, so input unused
           return { parsedInput: {}, inputError: undefined }
@@ -376,9 +376,11 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               //       ex.output.length > 1 ? (ex.output.slice(1) as string[]) : Object.keys(ex.output[0])
               //     currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
               //     currentCtx = { ...currentCtx, ...ex.output[0] }
+              //     // eslint-disable-next-line @typescript-eslint/no-loop-func
               //     currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
               //   } else {
               //     currentCtx = { ...currentCtx, ...ex.output }
+              //     // eslint-disable-next-line @typescript-eslint/no-loop-func
               //     currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
               //   }
               // } else {
@@ -482,6 +484,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               // }
               break
             }
+            // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
             default:
               throw new Error(`Unknown extend function type: ${(serverExecuteAction as any).type}`)
           }
@@ -524,7 +527,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             effects: effects.values,
             point,
           }
-        } catch {
+        } catch (error2) {
           const error0 = Error0.from(error)
           const status = error0.httpStatus ?? 500
           effects.set.status(status)
@@ -700,7 +703,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   async getQueryClientReadyDehydratedState(): Promise<DehydratedState> {
     const result = await this.withServerGlobalState(async () => {
       const dehydratedState = dehydrate(_ssItems.__POINT0_QUERY_CLIENT__.get(), {
-        shouldDehydrateQuery: (_query) => {
+        shouldDehydrateQuery: (query) => {
           // This will include all queries, including failed ones
           return true
         },

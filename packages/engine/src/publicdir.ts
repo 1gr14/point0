@@ -1,8 +1,8 @@
+import { prependAndDeappendSlash } from '@point0/core'
+import type { PointsScope } from '@point0/core'
+import type { Request0 } from '@point0/core/request0'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import type { PointsScope } from '@point0/core'
-import { prependAndDeappendSlash } from '@point0/core'
-import type { Request0 } from '@point0/core/request0'
 import type { EngineClient } from './client.js'
 import type { EngineServer } from './server.js'
 import { withError } from './utils.js'
@@ -18,7 +18,7 @@ async function* getAllFiles(dirPath: string): AsyncGenerator<string> {
         yield fullPath
       }
     }
-  } catch {
+  } catch (error) {
     // Ignore errors (e.g., permission denied, not a directory)
   }
 }

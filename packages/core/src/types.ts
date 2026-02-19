@@ -439,6 +439,7 @@ export type MergeRecordValidationSchemas<
 >
 
 // type RequiredKeys<T> = {
+//   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 //   [K in keyof T]-?: {} extends Pick<T, K> ? never : K
 // }[keyof T]
 // export type HasRequiredKeysInValidationSchema<S extends RecordValidationSchema | undefined> =
@@ -1162,7 +1163,6 @@ export type AppComponentModule = { default: AppComponent }
 
 export type DataTransformer = {
   serialize: (data: any) => any
-
   deserialize: (data: any) => any
 }
 export type DataTransformerExtended = {
