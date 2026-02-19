@@ -753,6 +753,23 @@ export class CompilerFile<THasContent extends boolean> {
           if (callee.type !== 'MemberExpression') return
 
           const args = node.arguments as any[]
+          const replaceWithFinalValue = (value: any) => {
+            p.replaceWith(value ?? makeUndefined())
+            modified = true
+          }
+          const getObjectPropertyValue = (objectExpression: any, key: string) => {
+            const props = objectExpression.properties as any[]
+            for (const prop of props) {
+              if (prop.type !== 'ObjectProperty') continue
+              if (prop.key.type === 'Identifier' && prop.key.name === key) {
+                return prop.value
+              }
+              if (prop.key.type === 'StringLiteral' && prop.key.value === key) {
+                return prop.value
+              }
+            }
+            return undefined
+          }
 
           // Handle env.side define.server()/define.client()
           if (
@@ -820,10 +837,7 @@ export class CompilerFile<THasContent extends boolean> {
             callee.property.type === 'Identifier'
           ) {
             const runtimeName = callee.property.name
-            if (runtime !== runtimeName && args.length > 0) {
-              args[0] = makeUndefined()
-              modified = true
-            }
+            replaceWithFinalValue(runtime === runtimeName ? args[0] : undefined)
           }
           // Handle env.runtime.define.unsafe.X() - replace with value if runtime matches, undefined otherwise
           else if (
@@ -843,10 +857,7 @@ export class CompilerFile<THasContent extends boolean> {
             callee.property.type === 'Identifier'
           ) {
             const runtimeName = callee.property.name
-            if (runtime !== runtimeName && args.length > 0) {
-              args[0] = makeUndefined()
-              modified = true
-            }
+            replaceWithFinalValue(runtime === runtimeName ? args[0] : undefined)
           }
           // Handle env.runtime.define() with options object
           else if (
@@ -860,13 +871,7 @@ export class CompilerFile<THasContent extends boolean> {
             callee.property.name === 'define'
           ) {
             if (args.length > 0 && args[0].type === 'ObjectExpression') {
-              const props = args[0].properties as any[]
-              for (const prop of props) {
-                if (prop.key.type === 'Identifier' && prop.key.name !== runtime && prop.value) {
-                  prop.value = makeUndefined()
-                  modified = true
-                }
-              }
+              replaceWithFinalValue(getObjectPropertyValue(args[0], runtime))
             }
           }
           // Handle env.os.define.X() - replace with value if os matches, undefined otherwise
@@ -883,10 +888,7 @@ export class CompilerFile<THasContent extends boolean> {
             callee.property.type === 'Identifier'
           ) {
             const osName = callee.property.name
-            if (os !== osName && args.length > 0) {
-              args[0] = makeUndefined()
-              modified = true
-            }
+            replaceWithFinalValue(os === osName ? args[0] : undefined)
           }
           // Handle env.os.define.unsafe.X() - replace with value if os matches, undefined otherwise
           else if (
@@ -906,10 +908,7 @@ export class CompilerFile<THasContent extends boolean> {
             callee.property.type === 'Identifier'
           ) {
             const osName = callee.property.name
-            if (os !== osName && args.length > 0) {
-              args[0] = makeUndefined()
-              modified = true
-            }
+            replaceWithFinalValue(os === osName ? args[0] : undefined)
           }
           // Handle env.os.define() with options object
           else if (
@@ -923,13 +922,7 @@ export class CompilerFile<THasContent extends boolean> {
             callee.property.name === 'define'
           ) {
             if (args.length > 0 && args[0].type === 'ObjectExpression') {
-              const props = args[0].properties as any[]
-              for (const prop of props) {
-                if (prop.key.type === 'Identifier' && prop.key.name !== os && prop.value) {
-                  prop.value = makeUndefined()
-                  modified = true
-                }
-              }
+              replaceWithFinalValue(getObjectPropertyValue(args[0], os))
             }
           }
           // Handle env.scope.define.X() - replace with value if scope matches, undefined otherwise
@@ -946,10 +939,7 @@ export class CompilerFile<THasContent extends boolean> {
             callee.property.type === 'Identifier'
           ) {
             const scopeName = callee.property.name
-            if (scope !== scopeName && args.length > 0) {
-              args[0] = makeUndefined()
-              modified = true
-            }
+            replaceWithFinalValue(scope === scopeName ? args[0] : undefined)
           }
           // Handle env.scope.define.unsafe.X() - replace with value if scope matches, undefined otherwise
           else if (
@@ -969,10 +959,7 @@ export class CompilerFile<THasContent extends boolean> {
             callee.property.type === 'Identifier'
           ) {
             const scopeName = callee.property.name
-            if (scope !== scopeName && args.length > 0) {
-              args[0] = makeUndefined()
-              modified = true
-            }
+            replaceWithFinalValue(scope === scopeName ? args[0] : undefined)
           }
           // Handle env.scope.define() with options object
           else if (
@@ -986,14 +973,7 @@ export class CompilerFile<THasContent extends boolean> {
             callee.property.name === 'define'
           ) {
             if (args.length > 0 && args[0].type === 'ObjectExpression') {
-              const props = args[0].properties as any[]
-              // Replace all properties that don't match the current scope with undefined
-              for (const prop of props) {
-                if (prop.key.type === 'Identifier' && prop.key.name !== scope && prop.value) {
-                  prop.value = makeUndefined()
-                  modified = true
-                }
-              }
+              replaceWithFinalValue(getObjectPropertyValue(args[0], scope))
             }
           }
           // Handle env.side define() with options object
@@ -1039,22 +1019,7 @@ export class CompilerFile<THasContent extends boolean> {
             callee.property.name === 'define'
           ) {
             if (args.length > 0 && args[0].type === 'ObjectExpression') {
-              const props = args[0].properties as any[]
-              if (built) {
-                for (const prop of props) {
-                  if (prop.key.type === 'Identifier' && prop.key.name === 'before' && prop.value) {
-                    prop.value = makeUndefined()
-                    modified = true
-                  }
-                }
-              } else {
-                for (const prop of props) {
-                  if (prop.key.type === 'Identifier' && prop.key.name === 'after' && prop.value) {
-                    prop.value = makeUndefined()
-                    modified = true
-                  }
-                }
-              }
+              replaceWithFinalValue(getObjectPropertyValue(args[0], built ? 'after' : 'before'))
             }
           }
         },

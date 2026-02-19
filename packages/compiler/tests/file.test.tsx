@@ -283,12 +283,29 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(
-                env.build.define({
-                  before: undefined,
-                  after: 'after-value',
-                }),
-              )
+              console.info('after-value')
+              "
+            `,
+          )
+        }),
+      )
+
+      it.concurrent(
+        'env.build.define() with only before option becomes undefined when built',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(
+              env.build.define({
+                before: 123,
+              }),
+            )
+          })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development', built: true })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info(undefined)
               "
             `,
           )
@@ -605,7 +622,7 @@ describe('CompilerFile', () => {
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { env } = await import('@point0/core')
-                console.info(env.scope.define.x(undefined))
+                console.info(undefined)
                 "
               `,
             )
@@ -623,7 +640,7 @@ describe('CompilerFile', () => {
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { env } = await import('@point0/core')
-                console.info(env.scope.define.x('x-value'))
+                console.info('x-value')
                 "
               `,
             )
@@ -641,7 +658,7 @@ describe('CompilerFile', () => {
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { env } = await import('@point0/core')
-                console.info(env.scope.define({ x: undefined, y: 'y-value' }))
+                console.info('y-value')
                 "
               `,
             )
@@ -659,7 +676,7 @@ describe('CompilerFile', () => {
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { env } = await import('@point0/core')
-                console.info(env.scope.define({ x: 'x-value', y: undefined }))
+                console.info('x-value')
                 "
               `,
             )
@@ -677,7 +694,7 @@ describe('CompilerFile', () => {
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { env } = await import('@point0/core')
-                console.info(env.scope.define.unsafe.x(undefined))
+                console.info(undefined)
                 "
               `,
             )
@@ -695,7 +712,7 @@ describe('CompilerFile', () => {
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { env } = await import('@point0/core')
-                console.info(env.scope.define.unsafe.x('x-value'))
+                console.info('x-value')
                 "
               `,
             )
@@ -714,7 +731,7 @@ describe('CompilerFile', () => {
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { _point0_env } = await import('./custom-env.js')
-                console.info(_point0_env.scope.define.x(undefined))
+                console.info(undefined)
                 "
               `,
             )
@@ -733,7 +750,7 @@ describe('CompilerFile', () => {
             expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
               `
                 "const { _point0_env } = await import('@some/other-package')
-                console.info(_point0_env.scope.define.x('x-value'))
+                console.info('x-value')
                 "
               `,
             )
@@ -1342,7 +1359,7 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.runtime.define.browser(undefined))
+              console.info(undefined)
               "
             `,
           )
@@ -1365,12 +1382,43 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(
-                env.runtime.define({
-                  browser: undefined,
-                  bun: 'bun-value',
-                }),
-              )
+              console.info('bun-value')
+              "
+            `,
+          )
+        }),
+      )
+
+      it(
+        'env.runtime.define.unsafe.browser() replaced with undefined when runtime is bun',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(env.runtime.define.unsafe.browser('browser-value'))
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', runtime: 'bun' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info(undefined)
+              "
+            `,
+          )
+        }),
+      )
+
+      it(
+        'env.runtime.define.unsafe.bun() keeps value when runtime is bun',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(env.runtime.define.unsafe.bun('bun-value'))
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', runtime: 'bun' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info('bun-value')
               "
             `,
           )
@@ -1444,7 +1492,7 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.os.define.ios(undefined))
+              console.info(undefined)
               "
             `,
           )
@@ -1467,12 +1515,43 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(
-                env.os.define({
-                  windows: undefined,
-                  linux: 'linux-value',
-                }),
-              )
+              console.info('linux-value')
+              "
+            `,
+          )
+        }),
+      )
+
+      it(
+        'env.os.define.unsafe.ios() replaced with undefined when os is linux',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(env.os.define.unsafe.ios('ios-value'))
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', os: 'linux' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info(undefined)
+              "
+            `,
+          )
+        }),
+      )
+
+      it(
+        'env.os.define.unsafe.linux() keeps value when os is linux',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(env.os.define.unsafe.linux('linux-value'))
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', os: 'linux' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info('linux-value')
               "
             `,
           )
