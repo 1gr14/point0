@@ -889,9 +889,11 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     }
     if (side === 'client') {
       this.shakeMethodsForClient()
+      // oxlint-disable-next-line typescript/no-unnecessary-condition
     } else if (side === 'server') {
       this.shakeMethodsForServer()
     } else {
+      // oxlint-disable-next-line typescript/restrict-template-expressions
       throw new Error(`Invalid side: ${side}`)
     }
     this._shake = true
@@ -952,7 +954,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       },
       generator: false,
       async: arrowFn.async || false,
-      params: arrowFn.params || [],
+      params: arrowFn.params,
       body,
     }
 

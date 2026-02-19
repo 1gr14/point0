@@ -5,13 +5,16 @@ import { CompilerFile } from '../src/file.js'
 import { Walker } from '../src/walker.js'
 import { toText } from './utils.js'
 
+type Awaitable<T> = T | Promise<T>
+type WrapCallback = () => Awaitable<void>
+
 type TestFile = Bun.BunFile & {
   path: string
   basename: string
   importpath: string
   cf: CompilerFile<false>
-  wrp: (content: string | (() => void)) => Promise<CompilerFile<true>>
-  wrpsync: (content: string | (() => void)) => Promise<CompilerFile<true>>
+  wrp: (content: string | WrapCallback) => Promise<CompilerFile<true>>
+  wrpsync: (content: string | WrapCallback) => Promise<CompilerFile<true>>
 }
 
 const tempDir = nodePath.join(__dirname, 'temp/file')
@@ -23,13 +26,13 @@ const prepareRandomFile = (walker: Walker): TestFile => {
   const cf: CompilerFile<false> = CompilerFile.create({ walker, file: path })
   const bunFile = Bun.file(path)
   // write, read, parse
-  const wrp = async (content: string | (() => void)) => {
+  const wrp = async (content: string | WrapCallback) => {
     await bunFile.write(await toText(content))
     await cf.readAsync(true)
     cf.assertHasContent()
     return cf
   }
-  const wrpsync = async (content: string | (() => void)) => {
+  const wrpsync = async (content: string | WrapCallback) => {
     await bunFile.write(await toText(content))
     cf.readSync(true)
     cf.assertHasContent()
@@ -38,7 +41,7 @@ const prepareRandomFile = (walker: Walker): TestFile => {
   return Object.assign(bunFile, { path, basename, importpath, cf, wrp, wrpsync })
 }
 
-const helper = (callback: ({ files }: { files: TestFile[] }) => void | Promise<void>, preserve = false) => {
+const helper = (callback: ({ files }: { files: TestFile[] }) => Awaitable<void>, preserve = false) => {
   return async () => {
     const walker = new Walker({ routes: undefined })
     const files = Array.from({ length: 11 }, () => prepareRandomFile(walker))

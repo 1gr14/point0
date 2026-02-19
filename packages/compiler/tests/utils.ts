@@ -1,6 +1,9 @@
 import prettier from 'prettier'
 
-export const toText = async (fn: string | (() => void)): Promise<string> => {
+type Awaitable<T> = T | Promise<T>
+type StringifiableFn = () => Awaitable<void>
+
+export const toText = async (fn: string | StringifiableFn): Promise<string> => {
   const code = typeof fn === 'string' ? fn.trim() : extractFunctionBody(fn)
 
   return await prettier.format(code, {
@@ -11,7 +14,7 @@ export const toText = async (fn: string | (() => void)): Promise<string> => {
   })
 }
 
-const extractFunctionBody = (fn: () => void): string => {
+const extractFunctionBody = (fn: StringifiableFn): string => {
   const src = fn.toString().trim()
 
   // async () => { ... } | () => { ... } | function () { ... }

@@ -732,10 +732,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const relatedQueriesDehydratedState = await this.getQueryClientReadyDehydratedState()
       const queryClient = _ssItems.__POINT0_QUERY_CLIENT__.get()
       const { queryKey, ...restOptions } = prefetchPageQueryOptions
-      queryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
+      queryClient.setQueryDefaults(queryKey, {
         ...(restOptions as any),
       })
-      queryClient.setQueryData(prefetchPageQueryOptions.queryKey, {
+      queryClient.setQueryData(queryKey, {
         dehydratedState: relatedQueriesDehydratedState,
       })
     })

@@ -259,8 +259,11 @@ type NavLinkClassNameProps = {
   unmatchedClassName?: string
   className?:
     | string
+    | undefined
+    | null
+    | false
     | ((state: NavLinkStateOptions) => string | undefined)
-    | Partial<Record<'default' | NavLinkStateType, string | undefined>>
+    | Partial<Record<'default' | NavLinkStateType, string | null | false | undefined>>
 }
 
 type NavLinkAsChildProps = AsChildProps<

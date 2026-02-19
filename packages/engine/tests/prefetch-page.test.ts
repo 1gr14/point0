@@ -280,7 +280,8 @@ describe('prefetch-page', () => {
         })
 
         afterAll(async () => {
-          tp?.cleanup({ files: !preserve, processes: true, ports: true })
+          // oxlint-disable-next-line typescript/no-unnecessary-condition
+          void tp?.cleanup({ files: !preserve, processes: true, ports: true })
         })
 
         it.concurrent(
@@ -683,6 +684,7 @@ describe('prefetch-page', () => {
         })
 
         afterAll(async () => {
+          // oxlint-disable-next-line typescript/no-unnecessary-condition
           await tp?.cleanup({ files: !preserve, processes: true, ports: true })
         })
 

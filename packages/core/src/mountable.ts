@@ -935,7 +935,7 @@ export type WithSelfQueryIfShouldBeFinalized<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TQueriesDefinitions extends QueriesDefinitions,
 > = IfAnyThenElse<
-  TQueriesDefinitions | TPointType | TServerLoaderOutput | TClientLoaderOutput | TPointType,
+  TQueriesDefinitions | TPointType | TServerLoaderOutput | TClientLoaderOutput  ,
   any,
   IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
     ? [

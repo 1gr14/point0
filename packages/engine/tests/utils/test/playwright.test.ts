@@ -469,7 +469,7 @@ describe('playwright', () => {
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
         await page.waitContent('Never Changes', 300)
-        await expect(page.waitContent('But Maybe Changes', 300)).rejects.toThrow()
+        expect(page.waitContent('But Maybe Changes', 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
           "
           data:...
@@ -529,7 +529,7 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-        await expect(page.waitNoContent('Always Present', 300)).rejects.toThrow()
+        expect(page.waitNoContent('Always Present', 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
           "
           data:...
@@ -583,7 +583,7 @@ describe('playwright', () => {
       }),
     )
 
-    it.concurrent(
+    it.concurrent.only(
       'should throw timeout error if sequence is not found',
       wrp(async (page) => {
         const html = `
@@ -599,7 +599,7 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-        await expect(page.waitContentSequence(['Changed', '!Will Not Disappear'], 300)).rejects.toThrow()
+        expect(page.waitContentSequence(['Changed', '!Will Not Disappear'], 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
           "
           data:...

@@ -389,6 +389,7 @@ export class SuperStore {
           return states.serverGlobalState
         }
         default:
+          // oxlint-disable-next-line typescript/restrict-template-expressions
           throw new Error(`Invalid policy: ${policy}`)
       }
     })()
@@ -495,20 +496,17 @@ export class SuperStore {
     return dehydrated
   }
 
-  stringify(transformer?: DataTransformerExtended | false | undefined): string {
+  stringify(transformer?: DataTransformerExtended | false): string {
     return this.getSuitableTransformer(transformer).stringify(this.dehydrate()) as string
   }
 
-  parse(dehydratedString: string, transformer?: DataTransformerExtended | false | undefined): Record<string, unknown> {
+  parse(dehydratedString: string, transformer?: DataTransformerExtended | false): Record<string, unknown> {
     return this.getSuitableTransformer(transformer).parse(dehydratedString)
   }
 
-  prepare(dehydrated: string, transformer?: DataTransformerExtended | false | undefined): void
-  prepare(dehydrated: Record<string, unknown>, transformer?: DataTransformerExtended | false | undefined): void
-  prepare(
-    dehydrated: Record<string, unknown> | string,
-    transformer?: DataTransformerExtended | false | undefined,
-  ): void {
+  prepare(dehydrated: string, transformer?: DataTransformerExtended | false): void
+  prepare(dehydrated: Record<string, unknown>, transformer?: DataTransformerExtended | false): void
+  prepare(dehydrated: Record<string, unknown> | string, transformer?: DataTransformerExtended | false): void {
     if (typeof dehydrated === 'string') {
       dehydrated = this.parse(dehydrated, transformer)
     }

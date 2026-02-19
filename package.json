@@ -1,26 +1,44 @@
 {
   "name": "point0",
   "version": "0.1.0",
+  "homepage": "https://github.com/devp0nt/point0#readme",
+  "bugs": {
+    "url": "https://github.com/devp0nt/point0/issues"
+  },
   "license": "MIT",
   "author": {
     "name": "Sergei Dmitriev",
     "url": "https://p0nt.dev"
   },
-  "homepage": "https://github.com/devp0nt/point0#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/devp0nt/point0.git"
   },
-  "bugs": {
-    "url": "https://github.com/devp0nt/point0/issues"
+  "workspaces": {
+    "packages": [
+      "packages/**",
+      "examples/**"
+    ],
+    "catalog": {
+      "react": "^19.0.0",
+      "react-dom": "^19.0.0",
+      "@tanstack/react-query": "^5.0.0",
+      "@devp0nt/error0": "^1.0.0-next.38",
+      "@devp0nt/route0": "^1.0.0-next.61",
+      "@unhead/react": "^2.1.2",
+      "zod": "^4.0.0"
+    }
   },
-  "type": "module",
   "files": [
     "packages/**/dist/**/*",
     "packages/**/src/**/*",
     "README.md",
     "LICENSE"
   ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "bun run build:watch",
     "build": "bun --filter '@point0/core' build && bun --filter '@point0/compiler' build && bun --filter '@point0/engine' build && bun --filter '@point0/react-dom' build && bun --filter '@point0/wouter' build && bun --filter '@point0/cookies-store' build",
@@ -35,17 +53,18 @@
     "types": "bun --filter '**' types",
     "typesgo": "bun --filter '**' typesgo",
     "lint": "bun run lint:fix .",
-    "lint:base": "biome check --files-ignore-unknown=true",
-    "lint:fix": "bun run lint:base --write",
+    "lint:base": "oxlint .",
+    "lint:type-aware": "oxlint . --type-aware",
+    "lint:type-check": "oxlint . --type-aware --type-check",
+    "lint:fix": "bun run lint:type-aware --fix",
     "format": "bun run format:fix .",
-    "format:base": "biome format --files-ignore-unknown=true",
-    "format:fix": "bun run format:base --write",
+    "format:base": "oxfmt . --check",
+    "format:fix": "oxfmt . --write",
     "pack:dist": "bun --filter './packages/**' pack:dist",
     "prepare": "husky",
     "clean": "rimraf packages/*/dist && rimraf packages-dist-npm && rimraf node_modules/.cache"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.2",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@semantic-release/changelog": "^6.0.3",
@@ -56,30 +75,15 @@
     "execa": "^9.6.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.1",
+    "oxfmt": "^0.33.0",
+    "oxlint": "^1.48.0",
+    "oxlint-tsgolint": "^0.14.0",
     "rimraf": "^6.0.1",
     "semantic-release": "^24.2.8",
     "zod": "catalog:"
   },
-  "workspaces": {
-    "packages": [
-      "packages/**",
-      "examples/**"
-    ],
-    "catalog": {
-      "react": "^19.0.0",
-      "react-dom": "^19.0.0",
-      "@tanstack/react-query": "^5.0.0",
-      "@devp0nt/error0": "^1.0.0-next.38",
-      "@devp0nt/route0": "^1.0.0-next.60",
-      "@unhead/react": "^2.1.2",
-      "zod": "^4.0.0"
-    }
-  },
   "engines": {
-    "node": ">=18.0.0",
-    "bun": ">=1.0.0"
-  },
-  "publishConfig": {
-    "access": "public"
+    "bun": ">=1.0.0",
+    "node": ">=18.0.0"
   }
 }

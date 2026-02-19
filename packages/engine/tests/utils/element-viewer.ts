@@ -206,7 +206,7 @@ export class ElementViewer {
     const notChangedDuringMsIsStable = 150
 
     const startTimestamp = Date.now()
-    // biome-ignore lint/nursery/noUnnecessaryConditions: ok
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     while (true) {
       const elapsed = Date.now() - startTimestamp
       if (elapsed > maxWaitTime) {

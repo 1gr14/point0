@@ -485,7 +485,7 @@ export const createViteDevServer = async ({
   scope: PointsScope
   side: 'client' | 'server'
   hmrPort: number | false
-  envConsts?: EngineOptionsEnvParsed | EngineOptionsEnvParsed
+  envConsts?: EngineOptionsEnvParsed  
   mode: NormalizedNodeEnv
   root: string | undefined
 }): Promise<ViteDevServer> => {

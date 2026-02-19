@@ -253,7 +253,7 @@ const Page = () => {
                 const decoder = new TextDecoder()
                 let result = ''
 
-                // biome-ignore lint/nursery/noUnnecessaryConditions: ok
+                // oxlint-disable-next-line typescript/no-unnecessary-condition
                 while (true) {
                   const { done, value } = await reader.read()
                   if (done) break

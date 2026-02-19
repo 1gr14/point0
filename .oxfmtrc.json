@@ -1,0 +1,36 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "singleQuote": true,
+  "semi": false,
+  "printWidth": 120,
+  "trailingComma": "all",
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/dist-test/**",
+    "**/dist-npm/**",
+    "**/packages-dist-npm/**",
+    "**/.cache/**",
+    "**/.husky/**",
+    "**/.git/**",
+    "**/temp/**",
+    "**/engine/tests/template/**",
+    "**/templates/**",
+    "**/points.lazy.ts",
+    "**/points.ready.ts",
+    "**/points.ts",
+    "**/wouter-routes.tsx",
+    "**/.bak/**"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "*.jsonc",
+        "*.json"
+      ],
+      "options": {
+        "trailingComma": "none"
+      }
+    }
+  ]
+}

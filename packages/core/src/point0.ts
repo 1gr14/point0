@@ -361,7 +361,7 @@ export class Point0<
   readonly _serverExecuteActions: ServerExecuteAction[]
   private readonly _clientExecuteActions: ClientExecuteAction[]
   private readonly _mountActions: MountAction[]
-  private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
+  private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[]) => any)
   readonly route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
   private readonly _page: PageSuccessComponentType<any, any, any, any> | UndefinedSuccessPageComponent
   private readonly _component: ComponentSuccessComponentType<any, any, any> | UndefinedComponentSuccessComponent
@@ -839,6 +839,7 @@ export class Point0<
         name: pointName,
       }) as never
     } else {
+      // oxlint-disable-next-line typescript/restrict-template-expressions
       throw new Error(`Invalid point type: ${pointType}`)
     }
   }
@@ -3975,7 +3976,7 @@ export class Point0<
       _ProviderReactContext: createContext<MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
         null as never,
       ) as never,
-      _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
+      _useValue: (point: AnyPoint, keys?: string | string[]) => {
         if (!point._ProviderReactContext) {
           throw new Error('ProviderReactContext not found on point: ' + point.name)
         }
@@ -4858,7 +4859,7 @@ export class Point0<
     let currentClientData: Data | undefined = serverData
     let currentClientResponse: Response | undefined = serverResponse
     let currentClientOutput: Data | Response | undefined = serverResponse ?? serverData
-    // biome-ignore lint/correctness/noUnusedVariables: we parse input step by step, so we do not need initial parse result. We do it to not even start loaders if input invalid
+    // oxlint-disable-next-line no-unused-vars
     const { parsedInput, inputError } = (() => {
       const result = this.parseClientInputSafe(input)
       if (!result.success) {
@@ -4936,7 +4937,7 @@ export class Point0<
   }
 
   private _getSelfLocationByAnotherLocationOrInput(
-    location?: AnyLocation | undefined,
+    location?: AnyLocation,
     input?: InputRaw<TClientInputSchema>,
   ): AnyLocation {
     const route = this.route
@@ -6278,7 +6279,7 @@ export class Point0<
   }
 
   useMutation = (
-    mutationOptions?: MutationOptions | undefined,
+    mutationOptions?: MutationOptions,
     options?: { fetchOptions?: FetchOptions | undefined },
   ): UseMutationResult<
     FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
@@ -6861,7 +6862,7 @@ export class Point0<
     const allRelatedPoints = [this as never as ReadyPoint, ...this._layouts]
     const uniqRelatedPoints = [...new Set<AnyPoint>(allRelatedPoints)]
     const uniqPrefetchFns = [
-      ...new Set<OnPrefetchMountableFn>([...uniqRelatedPoints.flatMap((p) => p._onPrefetchMountableFns)]),
+      ...new Set<OnPrefetchMountableFn>(uniqRelatedPoints.flatMap((p) => p._onPrefetchMountableFns)),
     ]
     const allRelatedQueries = allRelatedPoints.flatMap((p) => p._mountActions.filter((a) => a.type === 'relatedQuery'))
 

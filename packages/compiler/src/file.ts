@@ -190,6 +190,7 @@ export class CompilerFile<THasContent extends boolean> {
         throw new Error(`Failed to read file ${this.abs}: ${(e as Error).message}`, { cause: e })
       }
     })()
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     if (stats.mtimeMs === this.mtime && this.content) {
       return this as CompilerFile<true>
     }
@@ -229,6 +230,7 @@ export class CompilerFile<THasContent extends boolean> {
       return this as CompilerFile<true>
     }
     const stats = nodeFsSync.statSync(this.abs)
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     if (stats.mtimeMs === this.mtime && this.content) {
       return this as CompilerFile<true>
     }
@@ -727,6 +729,7 @@ export class CompilerFile<THasContent extends boolean> {
               } else if (desiredValue === null) {
                 p.replaceWith(makeNullLiteral())
                 modified = true
+                // oxlint-disable-next-line typescript/no-unnecessary-condition
               } else if (desiredValue === undefined) {
                 p.replaceWith(makeUndefined())
                 modified = true
@@ -788,7 +791,7 @@ export class CompilerFile<THasContent extends boolean> {
 
             if (hasHydrate && hasDehydrate) {
               for (const prop of ssrConfig.properties) {
-                if (prop.type !== 'ObjectProperty' || prop.key.type !== 'Identifier' || !prop.value) {
+                if (prop.type !== 'ObjectProperty' || prop.key.type !== 'Identifier') {
                   continue
                 }
                 if (side === 'server' && prop.key.name === 'hydrate') {
@@ -1023,12 +1026,7 @@ export class CompilerFile<THasContent extends boolean> {
               if (side === 'client') {
                 // Find server property and replace with undefined
                 for (const prop of props) {
-                  if (
-                    prop.type === 'ObjectProperty' &&
-                    prop.key.type === 'Identifier' &&
-                    prop.key.name === 'server' &&
-                    prop.value
-                  ) {
+                  if (prop.type === 'ObjectProperty' && prop.key.type === 'Identifier' && prop.key.name === 'server') {
                     prop.value = makeUndefined()
                     modified = true
                   }
@@ -1036,12 +1034,7 @@ export class CompilerFile<THasContent extends boolean> {
               } else {
                 // Find client property and replace with undefined
                 for (const prop of props) {
-                  if (
-                    prop.type === 'ObjectProperty' &&
-                    prop.key.type === 'Identifier' &&
-                    prop.key.name === 'client' &&
-                    prop.value
-                  ) {
+                  if (prop.type === 'ObjectProperty' && prop.key.type === 'Identifier' && prop.key.name === 'client') {
                     prop.value = makeUndefined()
                     modified = true
                   }
@@ -1102,12 +1095,12 @@ export class CompilerFile<THasContent extends boolean> {
     }
 
     try {
-      const makeObjectExpression = (): t.ObjectExpression => t.objectExpression([])
+      const makeObjectExpression = () => t.objectExpression([])
 
-      const makeArrayExpression = (): t.ArrayExpression => t.arrayExpression([])
+      const makeArrayExpression = () => t.arrayExpression([])
 
       const processObjectExpression = (objExpr: ObjectExpression): void => {
-        if (objExpr.type !== 'ObjectExpression') return
+        // if (objExpr.type !== 'ObjectExpression') return
 
         const propertiesToReplace = [
           { name: 'viteConfig', value: makeObjectExpression() },
@@ -1122,7 +1115,7 @@ export class CompilerFile<THasContent extends boolean> {
               prop.type === 'ObjectProperty' && prop.key.type === 'Identifier' && prop.key.name === propToReplace.name,
           )
 
-          if (propIndex !== -1 && propToReplace.value) {
+          if (propIndex !== -1) {
             const prop = objExpr.properties[propIndex]
             if (prop.type === 'ObjectProperty') {
               prop.value = propToReplace.value
@@ -1133,7 +1126,7 @@ export class CompilerFile<THasContent extends boolean> {
 
         // Recursively process nested objects (server, clients array elements, etc.)
         for (const prop of objExpr.properties) {
-          if (prop.type === 'ObjectProperty' && prop.value) {
+          if (prop.type === 'ObjectProperty') {
             if (prop.value.type === 'ObjectExpression') {
               processObjectExpression(prop.value)
             } else if (prop.value.type === 'ArrayExpression') {

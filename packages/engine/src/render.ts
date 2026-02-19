@@ -308,9 +308,7 @@ export async function getReadableStreamWithWrapper({
       createElement(App, {
         points: clientPoints,
       }),
-      {
-        ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
-      },
+      (clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
     )
 
     // Snapshot AFTER render started, in the same state scope

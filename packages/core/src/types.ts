@@ -1868,7 +1868,7 @@ export type NiceLayoutStagePoint<
   | 'Infer'
   | 'query'
   | 'infiniteQuery'
-  | 'pageQueryOptions'
+   
   | 'layoutQueryOptions'
 >
 

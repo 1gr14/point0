@@ -19,7 +19,7 @@
     "@point0/wouter": "workspace:*",
     "@point0/react-dom": "workspace:*",
     "@point0/compiler": "workspace:*",
-    "@devp0nt/route0": "^1.0.0-next.60",
+    "@devp0nt/route0": "^1.0.0-next.61",
     "superjson": "^2.2.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
