@@ -111,6 +111,7 @@ const Page = () => {
                 const decoder = new TextDecoder()
                 let result = ''
 
+                // biome-ignore lint/nursery/noUnnecessaryConditions: ok
                 while (true) {
                   const { done, value } = await reader.read()
                   if (done) break

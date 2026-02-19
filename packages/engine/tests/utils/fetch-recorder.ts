@@ -92,6 +92,7 @@ export class FetchRecorder {
     const wait = async () => {
       return await new Promise((resolve) => setTimeout(resolve, 10))
     }
+    // biome-ignore lint/nursery/noUnnecessaryConditions: ok
     while (true) {
       if (Date.now() - startTime > maxDuration) {
         throw new Error('Timeout waiting for fetch recorder to be stable')

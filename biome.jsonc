@@ -53,6 +53,10 @@
   "linter": {
     "enabled": true,
     "rules": {
+      "nursery": {
+        "noFloatingPromises": "error",
+        "noUnnecessaryConditions": "error"
+      },
       "recommended": true,
       "a11y": {
         "noLabelWithoutControl": "off",

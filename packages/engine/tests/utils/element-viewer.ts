@@ -149,6 +149,7 @@ export class ElementViewer {
 
   async waitNoContent(search: string, timeout = 2000): Promise<void> {
     const startTime = Date.now()
+    // biome-ignore lint/nursery/noUnnecessaryConditions: ok
     while (true) {
       if (Date.now() - startTime > timeout) {
         throw new Error(`Timeout waiting for no content: ${search} within ${timeout}ms`)
@@ -168,6 +169,7 @@ export class ElementViewer {
       return
     }
     const startTime = Date.now()
+    // biome-ignore lint/nursery/noUnnecessaryConditions: ok
     while (true) {
       if (Date.now() - startTime > timeout) {
         throw new Error(`Timeout waiting for content: ${search} within ${timeout}ms`)
@@ -204,6 +206,7 @@ export class ElementViewer {
     const notChangedDuringMsIsStable = 150
 
     const startTimestamp = Date.now()
+    // biome-ignore lint/nursery/noUnnecessaryConditions: ok
     while (true) {
       const elapsed = Date.now() - startTimestamp
       if (elapsed > maxWaitTime) {

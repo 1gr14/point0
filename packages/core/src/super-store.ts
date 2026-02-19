@@ -363,6 +363,7 @@ export class SuperStore {
       // }
       // // server only
       // return states.serverStorageState
+      // biome-ignore lint/nursery/noUnnecessaryConditions: ok
       switch (policy) {
         case 'clientOnly': {
           if (states.variant === 'server') {

@@ -568,6 +568,7 @@ export const createViteDevServer = async ({
 export const readableStreamToString = async (readableStream: ReadableStream): Promise<string> => {
   const chunks: Uint8Array[] = []
   const reader = readableStream.getReader()
+  // biome-ignore lint/nursery/noUnnecessaryConditions: ok
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
