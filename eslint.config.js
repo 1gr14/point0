@@ -51,8 +51,8 @@ export default defineConfig([
           argsIgnorePattern: '^_',
         },
       ],
-      '@typescript-eslint/no-unnecessary-condition': ['error'],
-      '@typescript-eslint/restrict-template-expressions': ['error'],
+      '@typescript-eslint/no-unnecessary-condition': ['error'], // slow rule
+      '@typescript-eslint/restrict-template-expressions': ['error'], // slow rule
       '@typescript-eslint/switch-exhaustiveness-check': ['error'],
       // overrides for enabled recommended rules
       '@typescript-eslint/no-namespace': 'off',
