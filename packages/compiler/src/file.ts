@@ -21,12 +21,12 @@ import type { CompilerPoint } from './point.js'
 import { type CompilerEnvConsts, normalizeEnvConsts } from './utils.js'
 import type { Walker } from './walker.js'
 
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+// biome-ignore lint/suspicious/noExplicitAny: ok
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
   : typeof traverseType
 
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+// biome-ignore lint/suspicious/noExplicitAny: ok
 const babelGenerator = ((generatorModule as any).default ?? generatorModule) as typeof generatorModule extends {
   default: infer T
 }
