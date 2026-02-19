@@ -26,10 +26,15 @@ export function mount(
 
   const clientPoints = ClientPoints.createFromDefintion(points)
   clientPoints.mount()
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  if (typeof window !== 'undefined' && typeof (window as any)?.__POINT0_DEHYDRATED_SUPER_STORE__ !== 'undefined') {
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    superstore.prepare((window as any).__POINT0_DEHYDRATED_SUPER_STORE__, clientPoints.transformer)
+  const __POINT0_DEHYDRATED_SUPER_STORE__ =
+    typeof window !== 'undefined' &&
+    typeof (
+      window as unknown as {
+        __POINT0_DEHYDRATED_SUPER_STORE__: string | undefined
+      }
+    )?.__POINT0_DEHYDRATED_SUPER_STORE__
+  if (__POINT0_DEHYDRATED_SUPER_STORE__) {
+    superstore.prepare(__POINT0_DEHYDRATED_SUPER_STORE__, clientPoints.transformer)
   }
   const appElement = createElement(App, {
     points: clientPoints,

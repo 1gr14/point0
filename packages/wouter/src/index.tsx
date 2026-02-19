@@ -46,7 +46,7 @@ const _useNativeNavigate = () => {
 export const useSimpleNavigate = _wrapUseNavigate(_useNativeNavigate)
 
 // export const createNavigate = <
-//   TRoutes extends RoutesPretty<any>,
+//   TRoutes extends RoutesPretty,
 //   TNavigate extends (to: string, ...rest: any[]) => any,
 // >(
 //   routes: TRoutes,
@@ -78,8 +78,7 @@ export const useSimpleNavigate = _wrapUseNavigate(_useNativeNavigate)
 // }
 
 export const createNavigate = <
-  // biome-ignore lint/suspicious/noExplicitAny: ok
-  TRoutes extends RoutesPretty<any>,
+  TRoutes extends RoutesPretty,
   // biome-ignore lint/suspicious/noExplicitAny: ok
   TNavigate extends (to: string, ...rest: any[]) => any,
 >(
@@ -131,8 +130,7 @@ export const createNavigate = <
 type Tail<T extends readonly unknown[]> = T extends readonly [any, ...infer R] ? R : never
 
 export const createUseNavigate = <
-  // biome-ignore lint/suspicious/noExplicitAny: ok
-  TRoutes extends RoutesPretty<any>,
+  TRoutes extends RoutesPretty,
   // biome-ignore lint/suspicious/noExplicitAny: ok
   TUseNavigate extends () => (to: string, ...args: any[]) => any = typeof useSimpleNavigate,
 >(
@@ -448,8 +446,7 @@ export const SimpleLink = (props: LinkProps) => {
 }
 
 export const createLink = <
-  // biome-ignore lint/suspicious/noExplicitAny: ok
-  TRoutes extends RoutesPretty<any>,
+  TRoutes extends RoutesPretty,
   TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
 >(
   routes: TRoutes,
@@ -510,8 +507,7 @@ export const createLink = <
 }
 
 export const createNavLink = <
-  // biome-ignore lint/suspicious/noExplicitAny: ok
-  TRoutes extends RoutesPretty<any>,
+  TRoutes extends RoutesPretty,
   TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
 >(
   routes: TRoutes,

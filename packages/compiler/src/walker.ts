@@ -129,10 +129,10 @@ export class Walker {
 
   // <scope, Routes>
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  readonly routes: Record<string, RoutesPretty<any>>
+  readonly routes: Record<string, RoutesPretty>
 
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  constructor({ routes }: { routes: Record<string, RoutesPretty<any>> | undefined }) {
+  constructor({ routes }: { routes: Record<string, RoutesPretty> | undefined }) {
     this.routes = routes ?? {}
   }
 

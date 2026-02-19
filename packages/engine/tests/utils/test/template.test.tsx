@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
 import { afterAll, describe, expect, it } from 'bun:test'
 import type { Engine } from '../../../src/engine.js'
 import type { TestProject, TestProjectFactoryCreateProjectOptions } from '../project.js'
@@ -16,9 +15,7 @@ function wrp(
   options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
   callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>,
 ): ItFn
-function wrp(
-  callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>,
-): ItFn
+function wrp(callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>): ItFn
 function wrp(
   ...args:
     | [callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>]

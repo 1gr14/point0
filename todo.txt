@@ -67,6 +67,8 @@ Remove comments, unusde code, unused types (except core/point0.ts and core/types
 В поинтах сделать проверку в момент летс или криэйт, либо энжина должна быть инициализирована, либо это должен быть клиент
 --+
 types.ts file thet reexport only needed types
+hide github repos from devp0nt that deprecated
+biome to route0
 Routes<any> shoudl be y default so really any routes suitable to Routes
 store each point location to normalize errors messages for example in No route or id provided for this point
 refactor types names and order and any points, etc any things. Поправляя эни попробовать отказаться от ифэни в пользу стринг экстендс

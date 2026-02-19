@@ -256,8 +256,8 @@ describe('cookies-store', () => {
         const data = CookiesStore.define<{ role: string }>({
           name: 'data',
           transformer: {
-            serialize: (value: unknown) => ({ wrapped: value }),
-            deserialize: (value: any) => value.wrapped,
+            serialize: (value) => ({ wrapped: value }),
+            deserialize: (value) => value.wrapped,
           },
         })
         data.set({ role: 'admin' })

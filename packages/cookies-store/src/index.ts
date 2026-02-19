@@ -207,7 +207,7 @@ export class CookiesStore {
   ): Omit<CookiesStoreItem<TValue, undefined, true>, 'use' | 'refresh'>
 
   // implementation
-  static define(options: CookieDefineOptions<boolean, DataTransformer | 'auto' | boolean, any> | string) {
+  static define(options: CookieDefineOptions<boolean, DataTransformer | 'auto' | boolean, unknown> | string) {
     const transformerPolicy =
       typeof options === 'string'
         ? 'auto'
@@ -228,14 +228,14 @@ export class CookiesStore {
           : CookiesStore.transformer
     const cookieDefineOptions = typeof options === 'string' ? { name: options } : options
     const fallback = typeof options === 'string' ? undefined : options.fallback
-    const item = new CookiesStoreItem<any, any, any>({
+    const item = new CookiesStoreItem({
       cookieDefineOptions,
       transformerPolicy,
       transformer,
       fallback,
     })
     CookiesStore.items.add(item)
-    return item
+    return item as never
   }
 
   static readonly serverCookieGetter: CookiesStoreGetter = ((...args: [name: string] | []) => {

@@ -31,9 +31,13 @@ import { toAbsPath, toJsExtension } from './utils.js'
 // TODO:ASAP add tests
 
 export type EngineLogger = {
+  // biome-ignore lint/suspicious/noExplicitAny: ok
   info: (message: string, meta?: Record<string, any>) => void
+  // biome-ignore lint/suspicious/noExplicitAny: ok
   error: (error: unknown, meta?: Record<string, any>) => void
+  // biome-ignore lint/suspicious/noExplicitAny: ok
   warn: (message: string, meta?: Record<string, any>) => void
+  // biome-ignore lint/suspicious/noExplicitAny: ok
   debug: (message: string, meta?: Record<string, any>) => void
 }
 
@@ -72,8 +76,8 @@ export type EngineOptionsViteConfig =
 
 export type EngineOptionsAppComponent = (() => Promise<AppComponent | AppComponentModule>) | AppComponent
 export type EngineOptionsRoutes = () =>
-  | Promise<RoutesPretty<any> | { routes: RoutesPretty<any> } | { default: RoutesPretty<any> }>
-  | RoutesPretty<any>
+  | Promise<RoutesPretty | { routes: RoutesPretty } | { default: RoutesPretty }>
+  | RoutesPretty
 
 export type EngineOptionsCompilerGeneral = {
   side?: boolean

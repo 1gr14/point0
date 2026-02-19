@@ -1156,7 +1156,9 @@ export type AppComponentModule = { default: AppComponent }
 // data transformer
 
 export type DataTransformer = {
+  // biome-ignore lint/suspicious/noExplicitAny: <ok>
   serialize: (data: any) => any
+  // biome-ignore lint/suspicious/noExplicitAny: <ok>
   deserialize: (data: any) => any
 }
 export type DataTransformerExtended = {

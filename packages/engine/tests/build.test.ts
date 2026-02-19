@@ -18,9 +18,7 @@ function wrp(
   options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
   callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>,
 ): ItFn
-function wrp(
-  callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>,
-): ItFn
+function wrp(callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>): ItFn
 function wrp(
   ...args:
     | [callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>]

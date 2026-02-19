@@ -6,8 +6,7 @@ import type { CompilerEnvConsts } from './utils.js'
 import { Walker } from './walker.js'
 
 export type CompilerOptions = {
-  // biome-ignore lint/suspicious/noExplicitAny: ok
-  routes?: Record<string, RoutesPretty<any>> | undefined
+  routes?: Record<string, RoutesPretty> | undefined
   mode?: NormalizedNodeEnv | false
   runtime?: EnvRuntimeName | false
   os?: EnvOsName | false
@@ -30,8 +29,7 @@ export class Compiler {
   consts: CompilerEnvConsts | undefined
   hmrFix: boolean
   walker: Walker
-  // biome-ignore lint/suspicious/noExplicitAny: ok
-  routes: Record<string, RoutesPretty<any>> | undefined
+  routes: Record<string, RoutesPretty> | undefined
 
   static defaultFilter = /^(?!.*node_modules\/(?!.*point0)).*\.[cm]?[jt]sx?$/
 
@@ -54,8 +52,7 @@ export class Compiler {
     consts: CompilerEnvConsts | undefined
     hmrFix: boolean
     walker: Walker
-    // biome-ignore lint/suspicious/noExplicitAny: ok
-    routes: Record<string, RoutesPretty<any>> | undefined
+    routes: Record<string, RoutesPretty> | undefined
     built: boolean
     mode: NormalizedNodeEnv | false
     runtime: EnvRuntimeName | false

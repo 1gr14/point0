@@ -65,8 +65,8 @@ export type EngineOptionsViteConfig =
 
 export type EngineOptionsAppComponent = (() => Promise<AppComponent | AppComponentModule>) | AppComponent
 export type EngineOptionsRoutes = () =>
-  | Promise<RoutesPretty<any> | { routes: RoutesPretty<any> } | { default: RoutesPretty<any> }>
-  | RoutesPretty<any>
+  | Promise<RoutesPretty | { routes: RoutesPretty } | { default: RoutesPretty }>
+  | RoutesPretty
 
 export type EngineOptionsCompiler = {
   target?: boolean
