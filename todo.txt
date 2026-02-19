@@ -48,6 +48,7 @@ Error0
 Логгер может принимать как готовый логгер, так и функцию разруливающую логи принимающую левел категорию аргументы
 normzliae all errors texts everyhere with point name and path to point where it was defined
 try catch evertywhere in engine to show real error in real place
+biome (check async checker)
 --+
 __INPUT_RAW__ не хранить в стейте, а геж-то ещё хранить напримерв _state
 remove input from request
@@ -174,14 +175,13 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 
 
 === SUPERSTORE ===
-we should have transformer.set() transformer.get(), os apply to everything if no transformer defined specially (use in points and cookies-store)
-Суперстор клнфигур позволяет передать туда трансформер, по умолчанию там глобальный трансформер
-Проверить что асунк стор не попадает в билд клиента
 Из суперстора при статическом анализе при нахождении деидрейт вырезать это для клиента а гидрейт вырезать для сервера
+Выпилить вообще прокси, оно потом будет в проксифай
+? Суперстор клнфигур позволяет передать туда трансформер, по умолчанию там глобальный трансформер
+? we should have transformer.set() transformer.get(), os apply to everything if no transformer defined specially (use in points and cookies-store)
 ? superstore getStates just return all states, but everywhere we can just use getState(policy)
 ? В симплифай можно передать как объект с готовыми переменными, так и объект с настройками
 ? Не симплифай а мэни
-↑ Выпилить вообще прокси, оно потом будет в проксифай
 ---
 ? Пусть суперстор дефайн будет отложенным и сохраняется до поры в глобалзыс, при ините уже установятся значения
 ? Энв должен также говорить нам клиент фейковый или нет

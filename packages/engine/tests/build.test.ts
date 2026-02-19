@@ -225,6 +225,10 @@ describe('build', () => {
         expect(serverFilesContent.includes('Access-Control-Allow-Origin')).toBe(true)
         expect(clientFilesContent.includes('Access-Control-Allow-Origin')).toBe(false)
 
+        // check for superstore pruning
+        expect(serverFilesContent.includes('async_hooks')).toBe(true)
+        expect(clientFilesContent.includes('async_hooks')).toBe(false)
+
         tp.spawn(['bun', 'run', 'start'])
         expect(engine.server.port).toBeNumber()
         expect(engine.clients[0].port).toBeNumber()
