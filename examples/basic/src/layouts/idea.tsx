@@ -4,7 +4,7 @@ import { generalLayout } from './general'
 
 export const ideaLayout = generalLayout
   .lets('layout', 'idea', '/ideas/:id')
-  .loader(async ({ ctx, input: { id }, data }) => {
+  .loader(async ({ ctx, input: { id } }) => {
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
       where: { id: parseInt(id) },
     })

@@ -422,7 +422,7 @@ describe('Walker', () => {
 
     it.concurrent(
       'can recognize nested points in different files, when base was imported, renamed twice, exported',
-      helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
+      helper(async ({ files: [f0, f1, f2], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
                       export const root = Point0.lets('root', 'root').ctx({}).loader(() => ({})).root()                      
         `)

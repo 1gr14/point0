@@ -23,7 +23,7 @@ describe('page', () => {
 
   it('simple', async () => {
     const root = createRoot()
-    const page = root.lets('page', 'home', '/').page(({ data }) => <div id="page">x=nothing</div>)
+    const page = root.lets('page', 'home', '/').page(() => <div id="page">x=nothing</div>)
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
@@ -48,9 +48,7 @@ describe('page', () => {
 
   it('page param', async () => {
     const root = createRoot()
-    const page = root
-      .lets('page', 'home', '/:x')
-      .page(({ data, location }) => <div id="page">x={location.params.x}</div>)
+    const page = root.lets('page', 'home', '/:x').page(({ location }) => <div id="page">x={location.params.x}</div>)
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
     await render(page.route({ x: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
@@ -590,7 +588,7 @@ describe('page', () => {
       })
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
-    await render(page.route(), async ({ waitContent, tale, click }) => {
+    await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#error')
       expect(await tale()).toMatchInlineSnapshot(`
         "
@@ -625,7 +623,7 @@ describe('page', () => {
           {children}
         </div>
       ))
-      .page(({ data, queries }) => <div id="page">x={data.x}</div>)
+      .page(({ data }) => <div id="page">x={data.x}</div>)
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
@@ -800,7 +798,7 @@ describe('page', () => {
     const page = root
       .lets('page', 'home')
       .with(query)
-      .page(({ data, location }) => <div id="page">x={data.x}</div>)
+      .page(({ data }) => <div id="page">x={data.x}</div>)
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
     await render(page.route(), async ({ waitContent, tale }) => {
@@ -920,7 +918,7 @@ describe('page', () => {
       .with(({ location }) => {
         return query.useQuery({ y: +location.params.y })
       })
-      .page(({ data, location, queries }) => (
+      .page(({ data, location }) => (
         <div id="page">
           x={data.x} y={location.params.y}
         </div>
@@ -965,7 +963,7 @@ describe('page', () => {
       .with(() => {
         return [query1.useQuery(), query2.useQuery()] as const
       })
-      .page(({ data, location, queries, props }) => (
+      .page(({ data, queries }) => (
         <div id="page">
           x={data.x}, y={queries[1].data.y}
         </div>
@@ -1298,7 +1296,7 @@ describe('page', () => {
     const page = root
       .lets('page', 'home')
       .relatedQuery(query)
-      .page(({ data, location }) => <div id="page">x={data.x}</div>)
+      .page(({ data }) => <div id="page">x={data.x}</div>)
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page, query] })
     await render(page.route(), async ({ waitContent, tale }) => {

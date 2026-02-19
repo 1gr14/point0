@@ -3,7 +3,7 @@ import { routes } from '../lib/routes'
 
 export const empty = client
   .lets('page', 'empty', routes.empty)
-  .loader(({ input }) => {
+  .loader(() => {
     return {
       title: 'Empty',
     }

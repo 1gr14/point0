@@ -384,7 +384,7 @@ export class FilesGenerator {
         return true
       }),
     )
-    const tasksToWrite = tasks.filter((task, index) => hasChanges[index])
+    const tasksToWrite = tasks.filter((_task, index) => hasChanges[index])
     if (!tasksToWrite.length) {
       return { written: false }
     }

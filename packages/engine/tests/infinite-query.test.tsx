@@ -427,7 +427,7 @@ describe('infinityQuery', () => {
     const q = root
       .lets('query', 'test')
       .sharedInput(z.object({ y: z.number() }))
-      .loader(({ data }) => ({ z: 3 }))
+      .loader(() => ({ z: 3 }))
       .clientLoader(({ input }) => ({ x: input.y * 2 }))
       .query()
     const page = root.lets('page', 'home', '/').page(() => {

@@ -73,7 +73,7 @@ describe('head', () => {
     const page = root
       .lets('page', 'home', '/')
       .loader(async () => await waitReturn({ x: 1 }))
-      .head('universal', ({ loading, status }) => {
+      .head('universal', ({ loading }) => {
         return { title: loading ? 'Loading...' : 'Ready' }
       })
       .page(() => <div id="page" />)
@@ -95,7 +95,7 @@ describe('head', () => {
   it('loading by universal head before query not show loading state (becouse it depends on current chain state)', async () => {
     const page = root
       .lets('page', 'home', '/')
-      .head('universal', ({ loading, status }) => {
+      .head('universal', ({ loading }) => {
         return { title: loading ? 'Loading...' : 'Ready' }
       })
       .loader(async () => await waitReturn({ x: 1 }))
@@ -117,7 +117,7 @@ describe('head', () => {
   it('loading by global head before query show loading state (becouse it depend on global page state', async () => {
     const page = root
       .lets('page', 'home', '/')
-      .head('global', ({ loading, status }) => {
+      .head('global', ({ loading }) => {
         return { title: loading ? 'Loading...' : 'Ready' }
       })
       .loader(async () => await waitReturn({ x: 1 }))
@@ -141,7 +141,7 @@ describe('head', () => {
     const page = root
       .lets('page', 'home', '/')
       .loader(async () => await waitReturn({ x: 1 }))
-      .head('universal', ({ loading, status }) => {
+      .head('universal', ({ loading }) => {
         return { title: loading ? 'Loading...' : 'Ready' }
       })
       .head(({ data }) => `x=${data.x}`)
@@ -164,7 +164,7 @@ describe('head', () => {
   it('head can override global head', async () => {
     const page = root
       .lets('page', 'home', '/')
-      .head('global', ({ loading, initial, error, status }) => {
+      .head('global', ({ loading, initial, error }) => {
         return {
           title: loading ? 'Loading...' : initial ? 'Initial...' : error ? `My Error Title: ${error.message}` : 'Ready',
         }
@@ -229,7 +229,7 @@ describe('head', () => {
   it('loading by global head show error', async () => {
     const page = root
       .lets('page', 'home', '/')
-      .head('global', ({ loading, error, initial, status }) => {
+      .head('global', ({ loading, error, initial }) => {
         return loading ? 'Loading...' : initial ? 'Initial...' : error ? `My Error Title: ${error.message}` : 'Ready'
       })
       .loader(async () => {

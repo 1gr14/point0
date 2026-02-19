@@ -5206,7 +5206,7 @@ export class Point0<
     }
     const originalRequest = currentRequest0.original
     const updatedHeaders = new Headers(originalRequest.headers)
-    updatedHeaders.forEach((value, key) => {
+    updatedHeaders.forEach((_value, key) => {
       if (key.startsWith('x-point0-')) {
         updatedHeaders.delete(key)
       }
@@ -7007,7 +7007,7 @@ export class Point0<
 
   private static readonly _usePrevHeadsAndSetPageState = ({
     pageState,
-    pageStateManager,
+    pageStateManager: _pageStateManager,
     prevMountActions,
   }: {
     pageState: RouterPageState

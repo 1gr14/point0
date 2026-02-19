@@ -185,7 +185,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     points: NormalizedPointsCollection | ReadyPointsCollection,
   ): Promise<{ readyPoints: ReadyPointsCollection; errors: unknown[] }> {
     const results = await Promise.allSettled(
-      points.map(async (record, index) => {
+      points.map(async (record) => {
         const pointPromise = typeof record.point === 'function' ? record.point() : record.point
         return (await pointPromise).point
       }),

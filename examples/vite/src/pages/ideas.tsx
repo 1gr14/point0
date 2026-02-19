@@ -7,7 +7,7 @@ import { routes } from '../lib/routes.js'
 export const ideasPage = generalLayout
   .lets('page', 'ideas')
   .input(z.object({ page: z.coerce.number().default(0) }))
-  .loader(async ({ ctx, data, input }) => {
+  .loader(async ({ ctx, input }) => {
     const ideasCount = await ctx.prisma.idea.count()
     const page = input.page
     const limit = 2
@@ -24,7 +24,7 @@ export const ideasPage = generalLayout
     initialPageParam: 0,
     pageParamFromInput: 'page',
   })
-  .head('success', ({ data, queries }) => {
+  .head('success', ({ data }) => {
     return `${data.pages[0].ideasCount} ideas`
   })
   .page(({ data, queries: [query] }) => {

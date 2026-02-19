@@ -484,7 +484,6 @@ const isFileURL = (str: string): boolean => {
 const parseEngineGeneralOptions = ({
   generalOptions,
   serverOptions,
-  clientsOptions,
 }: {
   generalOptions: EngineGeneralOptions
   serverOptions: EngineServerOptions
@@ -737,7 +736,6 @@ const toFinalPath = <T extends string | null | undefined>({
 
 export const parseEngineServerOptions = ({
   serverOptions,
-  clientsOptions,
   generalOptionsParsed,
 }: {
   serverOptions: EngineServerOptions

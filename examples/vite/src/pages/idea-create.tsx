@@ -27,7 +27,7 @@ export const createIdeaMutation = client
 
 export const generateIdeaMutation = client
   .lets('mutation', 'generateIdea')
-  .loader(async ({ input, ctx }) => {
+  .loader(async () => {
     const stream = new ReadableStream({
       async start(controller) {
         const text = 'i'.repeat(100) // 100 symbols

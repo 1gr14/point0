@@ -46,7 +46,7 @@ const helper = (
 ) => {
   return async () => {
     const dir = prepareRandomTempDir()
-    const files = Array.from({ length: 11 }, (_, i) => prepareRandomFile(dir))
+    const files = Array.from({ length: 11 }, () => prepareRandomFile(dir))
     const fixPaths = (content: string) => {
       for (const [index, file] of files.entries()) {
         content = content.replaceAll(file.basename, `file${index}`)
@@ -209,7 +209,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
 
     it(
       'generates lazy points file, and log errors for invalid points',
-      helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, logger, getLastLogFirstArg, getLogs }) => {
+      helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, logger, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
 export const page = root.lets('page', 'mypage')

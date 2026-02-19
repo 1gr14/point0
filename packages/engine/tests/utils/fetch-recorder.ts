@@ -15,7 +15,7 @@ export class FetchRecorder {
   private constructor({ limit, enabled }: { limit: number; enabled: boolean }) {
     this.limit = limit
     this.records = []
-    this.enabled = true
+    this.enabled = enabled
   }
 
   static create({ limit, enabled }: { limit: number; enabled?: boolean }): FetchRecorder {
@@ -87,7 +87,7 @@ export class FetchRecorder {
     return this.getFinishedResults(filter) as never
   }
 
-  async waitStable(minDuration = 100, maxDuration = 1000): Promise<void> {
+  async waitStable(minDuration = 100, maxDuration = 2000): Promise<void> {
     const startTime = Date.now()
     const wait = async () => {
       return await new Promise((resolve) => setTimeout(resolve, 10))

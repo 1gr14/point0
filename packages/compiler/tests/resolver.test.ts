@@ -209,7 +209,7 @@ describe('FileResolver', () => {
 
     it.concurrent(
       'handles non-relative import without containingFile',
-      helper(async ({ tempDir }) => {
+      helper(async () => {
         const resolved = FileResolver.detectExistingFilePathByImportPath({
           importPath: '@point0/core',
         })

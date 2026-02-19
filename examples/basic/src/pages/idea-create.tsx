@@ -29,15 +29,15 @@ export const createIdeaMutation = client
   .ctx(() => ({ zz: 'ZZ' }), true)
   .ctx(() => ({ ooo: 'OOO' }), true)
   .ctx(() => ({ yy: 'YY', xx: 'XX' }), ['xx'])
-  .loader(async (o) => {
-    return { ...o.input, xx: o.xx }
+  .loader(async ({ input, xx }) => {
+    return { ...input, xx }
   })
   .input(
     z.object({
       description: z.string().min(1).max(100),
     }),
   )
-  .loader(async ({ input, data }) => {
+  .loader(async ({ data }) => {
     return { ...data }
   })
   .input(
@@ -45,7 +45,7 @@ export const createIdeaMutation = client
       content: z.string().min(1).max(1000),
     }),
   )
-  .loader(async ({ input, data, execute }) => {
+  .loader(async ({ data, execute }) => {
     const result = await execute(BestIdeaComponent, { x: 22, y: 2 })
     console.info('testCookie', testCookie.get())
     testCookie.set(Math.random().toString())
@@ -81,7 +81,7 @@ export const createIdeaMutation = client
 
 export const generateIdeaMutation = client
   .lets('mutation', 'generateIdea')
-  .loader(async ({ input, ctx, set, request }) => {
+  .loader(async ({ set, request }) => {
     testCookie.set(Math.random().toString())
     console.info('request from ip', request.from.ip)
     set.headers('X-Y', 'zxczxc')
@@ -106,7 +106,7 @@ export const generateIdeaMutation = client
 
 export const clientFnMutation = client
   .lets('mutation', 'clientFnMutation')
-  .clientLoader(async ({ input, data }) => {
+  .clientLoader(async () => {
     return new Response('HELLO!', {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     })
@@ -115,7 +115,7 @@ export const clientFnMutation = client
 
 export const clientFnMutationX = client
   .lets('mutation', 'clientFnMutation')
-  .loader(async ({ input, data }) => {
+  .loader(async () => {
     return new Response('HELLO!', {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     })
@@ -124,7 +124,7 @@ export const clientFnMutationX = client
 
 export const clientFn2Mutation = client
   .lets('mutation', 'clientFn2Mutation')
-  .loader(async ({ input, ctx }) => {
+  .loader(async () => {
     const stream = new ReadableStream({
       async start(controller) {
         const text = 'o'.repeat(100) // 100 symbols
@@ -141,10 +141,10 @@ export const clientFn2Mutation = client
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     })
   })
-  .clientLoader(async ({ input, data }) => {
+  .clientLoader(async () => {
     return { x: 123 }
   })
-  .clientLoader(async ({ input, data }) => {
+  .clientLoader(async () => {
     return new Response('HELLO!', {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     })

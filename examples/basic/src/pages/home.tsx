@@ -40,7 +40,7 @@ export const BestIdeaComponent = client
       mult: input.x * input.y,
     }
   })
-  .loader(async ({ ctx, input, data }) => ({
+  .loader(async ({ data }) => ({
     ...data,
     // clDD: ctx.clC,
     slDate: new Date(),
@@ -105,13 +105,13 @@ export default generalLayout
     title: 'IdeaNick Forever!',
     titleTemplate: null,
   })
-  .loading((o) => {
+  .loading(() => {
     return <div>Loading...</div>
   })
   // .loader()
   // .page(function X({ location }) {
   // .page(Z)
-  .page(({ location }) => {
+  .page(() => {
     const [state, setState] = useState(someVar.get())
     const [state2, setState2] = useState(0)
     useEffect(() => {

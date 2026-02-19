@@ -141,7 +141,7 @@ export class Walker {
     return (routes as any)?.[routeKey]
   }
 
-  async readManyAsync({ files, fresh }: { files: string[]; fresh: boolean }): Promise<Array<CompilerFile<true>>> {
+  async readManyAsync({ files }: { files: string[]; fresh: boolean }): Promise<Array<CompilerFile<true>>> {
     return await Promise.all(
       files.map(async (file) => await CompilerFile.readAsync({ walker: this, file, fresh: false })),
     )

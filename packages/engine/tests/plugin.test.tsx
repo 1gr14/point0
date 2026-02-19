@@ -93,7 +93,7 @@ describe('plugin', () => {
     const page = root
       .lets('page', 'home', '/')
       .ctx(() => ({ page: 'ok4' }))
-      .loader(({ ctx, request }) => ({
+      .loader(({ request }) => ({
         x: request.state.x,
       }))
       .page()

@@ -20,7 +20,6 @@
       "!**/temp",
       "!**/engine/tests/template",
       "!**/templates",
-      "!**/point0.config.js",
       "!**/points.lazy.ts",
       "!**/points.ready.ts",
       "!**/points.ts",

@@ -74,7 +74,7 @@ describe('loader', () => {
         return ymlify(data)
       })
     const { render, fetchSsr } = await createTestThings({ points: [root, page] })
-    await render(page.route(), async ({ waitContent, tale, click }) => {
+    await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#error')
       expect(await tale()).toMatchInlineSnapshot(`
         "
@@ -99,7 +99,7 @@ describe('loader', () => {
       .loader(() => [201, { x: 1 }])
       .mutation()
     const { render } = await createTestThings({ points: [root, mutation] })
-    await render(page.route(), async ({ waitContent, tale, click }) => {
+    await render(page.route(), async () => {
       const result = await mutation.fetchServerDetailed()
       expect(result.response?.status).toBe(201)
       expect(result.data?.x).toBe(1)
@@ -118,7 +118,7 @@ describe('loader', () => {
       })
       .mutation()
     const { render } = await createTestThings({ points: [root, mutation, page] })
-    await render(page.route(), async ({ waitContent, tale, click }) => {
+    await render(page.route(), async () => {
       const result = await mutation.fetchServerDetailed()
       expect(result.response?.status).toBe(410)
     })

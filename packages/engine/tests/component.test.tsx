@@ -226,7 +226,7 @@ describe('component', () => {
       .lets('component', 'stats')
       .sharedInput<{ id: string }>()
       .loader(({ input }) => ({ x: input.id }))
-      .wrapper(({ children, queries, location }) => (
+      .wrapper(({ children, queries }) => (
         <div id="wrapper">
           <div id="query-status">{queries.map((q) => q.status).join(', ') || 'undefined'}</div>
           {children}

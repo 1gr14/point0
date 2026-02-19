@@ -1,6 +1,6 @@
 import { client } from './client'
 
-export const clientCtx1 = client.lets('provider', 'testClientCtx1').provider(({ data }) => {
+export const clientCtx1 = client.lets('provider', 'testClientCtx1').provider(() => {
   return {
     test: 123,
     shmest: '234',
@@ -27,7 +27,7 @@ export const clientCtx2 = client
 
 export const clientCtx3 = client
   .lets('provider', 'testClientCtx3')
-  .loader(async ({ ctx, data }) => {
+  .loader(async ({ ctx }) => {
     const ideas = await ctx.prisma.idea.findMany()
     return { ideasCount: ideas.length, env: ctx.env.NODE_ENV }
   })

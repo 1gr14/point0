@@ -205,7 +205,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared ex
               })
 
           let processes = start()
-          this.onPointFileChange((event, path, points) => {
+          this.onPointFileChange((_event, _path, _points) => {
             processes.forEach((p) => {
               p.kill('SIGKILL')
             })

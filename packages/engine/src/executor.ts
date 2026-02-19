@@ -703,7 +703,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   async getQueryClientReadyDehydratedState(): Promise<DehydratedState> {
     const result = await this.withServerGlobalState(async () => {
       const dehydratedState = dehydrate(_ssItems.__POINT0_QUERY_CLIENT__.get(), {
-        shouldDehydrateQuery: (query) => {
+        shouldDehydrateQuery: (_query) => {
           // This will include all queries, including failed ones
           return true
         },

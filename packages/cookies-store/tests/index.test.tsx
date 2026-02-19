@@ -308,7 +308,7 @@ describe('cookies-store', () => {
           return { success: true }
         })
         .mutation({
-          onSuccess: (data) => {
+          onSuccess: () => {
             void queryClient.get().refetchQueries()
           },
           onError: (error) => {
@@ -395,7 +395,7 @@ describe('cookies-store', () => {
           return { success: true }
         })
         .mutation({
-          onSuccess: (data) => {
+          onSuccess: () => {
             void queryClient.get().refetchQueries()
           },
           onError: (error) => {
@@ -484,7 +484,7 @@ describe('cookies-store', () => {
           return { success: true }
         })
         .mutation({
-          onSuccess: (data) => {
+          onSuccess: () => {
             void queryClient.get().refetchQueries()
           },
           onError: (error) => {

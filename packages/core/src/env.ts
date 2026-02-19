@@ -233,10 +233,10 @@ const scopeDefineUnsafe = new Proxy(
 )
 
 const scopeDefine = new Proxy(scopeDefineUniversal, {
-  apply(target, _thisArg, args: Parameters<typeof scopeDefineUniversal>) {
+  apply(_target, _thisArg, args: Parameters<typeof scopeDefineUniversal>) {
     return scopeDefineUniversal(...args)
   },
-  get(target, prop: string, receiver: any) {
+  get(_target, prop: string, receiver: any) {
     if (Object.hasOwn(scopeDefineUniversal, prop)) {
       return Reflect.get(scopeDefineUniversal, prop, receiver)
     }
@@ -463,10 +463,10 @@ const runtimeDefineUnsafe = new Proxy(
 )
 
 const runtimeDefine = new Proxy(runtimeDefineUniversal, {
-  apply(target, _thisArg, args: Parameters<typeof runtimeDefineUniversal>) {
+  apply(_target, _thisArg, args: Parameters<typeof runtimeDefineUniversal>) {
     return runtimeDefineUniversal(...args)
   },
-  get(target, prop: string, receiver: any) {
+  get(_target, prop: string, receiver: any) {
     if (Object.hasOwn(runtimeDefineUniversal, prop)) {
       return Reflect.get(runtimeDefineUniversal, prop, receiver)
     }
@@ -625,10 +625,10 @@ const osDefineUnsafe = new Proxy(
 )
 
 const osDefine = new Proxy(osDefineUniversal, {
-  apply(target, _thisArg, args: Parameters<typeof osDefineUniversal>) {
+  apply(_target, _thisArg, args: Parameters<typeof osDefineUniversal>) {
     return osDefineUniversal(...args)
   },
-  get(target, prop: string, receiver: any) {
+  get(_target, prop: string, receiver: any) {
     if (Object.hasOwn(osDefineUniversal, prop)) {
       return Reflect.get(osDefineUniversal, prop, receiver)
     }

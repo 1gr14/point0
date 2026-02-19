@@ -96,11 +96,11 @@ describe('midleware', () => {
 
   it.concurrent('change headers', async () => {
     const root = Point0.lets('root', 'root')
-      .middleware(async ({ request, set, next }) => {
+      .middleware(async ({ set, next }) => {
         set.headers('y', '3')
         return await next()
       })
-      .middleware(async ({ request, set, next }) => {
+      .middleware(async ({ set, next }) => {
         set.headers('z', '4')
         const result = await next()
         set.headers('y', 'NEVER')
@@ -130,11 +130,11 @@ describe('midleware', () => {
 
   it.concurrent('return custom response', async () => {
     const root = Point0.lets('root', 'root')
-      .middleware(async ({ request, set, next }) => {
+      .middleware(async ({ set, next }) => {
         set.headers('y', '3')
         return await next()
       })
-      .middleware(async ({ request, set, next }) => {
+      .middleware(async () => {
         return new Response('custom response')
       })
       .ssr(true)
@@ -155,11 +155,11 @@ describe('midleware', () => {
 
   it.concurrent('throws error', async () => {
     const root = Point0.lets('root', 'root')
-      .middleware(async ({ request, set, next }) => {
+      .middleware(async ({ set, next }) => {
         set.headers('y', '3')
         return await next()
       })
-      .middleware(async ({ request, set, next }) => {
+      .middleware(async () => {
         throw new Error('custom error')
       })
       .ssr(true)
@@ -182,11 +182,11 @@ describe('midleware', () => {
 
   it.concurrent('override final response', async () => {
     const root = Point0.lets('root', 'root')
-      .middleware(async ({ request, set, next }) => {
+      .middleware(async ({ set, next }) => {
         set.headers('y', '3')
         return await next()
       })
-      .middleware(async ({ request, set, next }) => {
+      .middleware(async ({ next }) => {
         const result = await next()
         if (result.variant === 'page') {
           return new Response('overriden page response', { status: 200 })
@@ -214,7 +214,7 @@ describe('midleware', () => {
   it.concurrent('applied only to specific point', async () => {
     const calledMiddlewres: string[] = []
     const root = Point0.lets('root', 'root')
-      .middleware(async ({ request, set, next }) => {
+      .middleware(async ({ next }) => {
         calledMiddlewres.push('root')
         return await next()
       })
@@ -223,19 +223,19 @@ describe('midleware', () => {
       .root()
     const page1 = root
       .lets('page', 'home1', '/home1')
-      .middleware(async ({ request, set, next }) => {
+      .middleware(async ({ next }) => {
         calledMiddlewres.push('page1')
         return await next()
       })
-      .loader(({ set }) => ({ x: 1 }))
+      .loader(() => ({ x: 1 }))
       .page(({ data }) => <div id="page1">x={data.x}</div>)
     const page2 = root
       .lets('page', 'home2', '/home2')
-      .middleware(async ({ request, set, next }) => {
+      .middleware(async ({ next }) => {
         calledMiddlewres.push('page2')
         return await next()
       })
-      .loader(({ set }) => ({ y: 2 }))
+      .loader(() => ({ y: 2 }))
       .page(({ data }) => <div id="page2">y={data.y}</div>)
 
     const { fetchPreview, fetchesTale, fetchRecorder } = await createTestThings({ points: [root, page1, page2] })

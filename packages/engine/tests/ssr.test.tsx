@@ -6,7 +6,7 @@ import { createTestThings } from './utils/internal-testing.js'
 describe('ssr', () => {
   it.concurrent('page without loader', async () => {
     const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()
-    const page = root.lets('page', 'home', '/').page(({ data }) => <div id="page">x</div>)
+    const page = root.lets('page', 'home', '/').page(() => <div id="page">x</div>)
     const { fetchSsr } = await createTestThings({ points: [root, page] })
     const result = await fetchSsr(page)
     expect(result.preview).toMatchInlineSnapshot(`

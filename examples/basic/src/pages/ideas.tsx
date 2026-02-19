@@ -6,7 +6,7 @@ import { generalLayout } from '../layouts/general.js'
 export const ideasPage = generalLayout
   .lets('page', 'ideas')
   .input(z.object({ page: z.coerce.number().default(0) }))
-  .loader(async ({ ctx, data, input }) => {
+  .loader(async ({ ctx, input }) => {
     const ideasCount = await ctx.prisma.idea.count()
     const page = input.page
     const limit = 2
@@ -15,7 +15,7 @@ export const ideasPage = generalLayout
     // await new Promise((resolve) => setTimeout(resolve, 1000))
     return [201, { ideas, ideasCount, env: ctx.env.NODE_ENV, nextCursor }]
   })
-  .loader(async ({ data, set }) => {
+  .loader(async ({ data }) => {
     return { ...data, amazing: '123', ideas: data.ideas.map((idea) => ({ ...idea, amazing: '234' })) }
   })
   .infiniteQuery({
@@ -30,7 +30,7 @@ export const ideasPage = generalLayout
     }
   })
   // .flatter('ideas')
-  .head(({ data, queries }) => {
+  .head(({ data }) => {
     return `${data.original.pages[0].ideasCount} ideas`
   })
   .page(({ data, queries: [query] }) => {

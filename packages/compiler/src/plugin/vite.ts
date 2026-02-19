@@ -13,7 +13,7 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
   return {
     name: 'point0-compiler',
     enforce: 'pre',
-    transform(code, id, options) {
+    transform(code, id) {
       const [filepath] = id.split('?', 1)
       if (!compiler.filter.test(filepath)) return null
       const result = compiler.compile({

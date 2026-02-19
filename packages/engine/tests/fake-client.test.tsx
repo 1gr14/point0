@@ -351,7 +351,7 @@ describe('FakeClient', () => {
       .page(({ data }) => <div>Hello from {data.serverLoaderSideName}</div>)
     const mutation = root
       .lets('mutation', 'mutation')
-      .loader(({ set, request }) => {
+      .loader(({ request }) => {
         return {
           serverRequestId: request.id,
           clientRequestId: request.headers['x-point0-client-request-id'],

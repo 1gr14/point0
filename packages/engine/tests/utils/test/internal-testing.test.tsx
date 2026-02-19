@@ -17,7 +17,7 @@ describe('internal-testing', () => {
       .prefetchPageOnLinkHover(false)
       .loading(() => <div id="loading">...</div>)
       .root()
-    const page = root.lets('page', 'home', '/').page(({ data }) => (
+    const page = root.lets('page', 'home', '/').page(() => (
       <div id="home">
         <h1>Home Page</h1>
         <SimpleLink id="link" to={'/news'}>

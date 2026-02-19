@@ -692,7 +692,7 @@ Bun.serve({
 </html>`
   }
 
-  async getOriginalIndexHtml(url: string): Promise<string> {
+  async getOriginalIndexHtml(_url: string): Promise<string> {
     if (!this.isPrepared()) {
       throw new Error('Client is not prepared')
     }
@@ -950,7 +950,7 @@ Bun.serve({
           // },
 
           ...Object.fromEntries(
-            Object.entries(envVarsWithBuild).map(([key, value]) => [
+            Object.entries(envVarsWithBuild).map(([key]) => [
               `process.env.${key}`,
               `globalThis.__POINT0_ENV_VARS__.${key}`,
             ]),

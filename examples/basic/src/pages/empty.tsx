@@ -44,7 +44,7 @@ export const empty = client
     )
   })
 
-export const sharedEmptyPage = client.lets('page', 'sharedEmpty', Route0.create('/sharedEmpty2')).page(({ data }) => {
+export const sharedEmptyPage = client.lets('page', 'sharedEmpty', Route0.create('/sharedEmpty2')).page(() => {
   return (
     <div>
       Shared Empty

@@ -743,7 +743,7 @@ describe('navigate', () => {
 
   it('visit to 404', async () => {
     const t = await createT()
-    await t.render(t.homePage.route() + '404', async ({ waitContent, tale, click }) => {
+    await t.render(t.homePage.route() + '404', async ({ waitContent, tale }) => {
       await waitContent('Page Not Found')
       expect(await tale()).toMatchInlineSnapshot(`
         "
@@ -770,7 +770,7 @@ describe('navigate', () => {
     'navigate to 404',
     async () => {
       const t = await createT()
-      await t.render(t.homePage.route(), async ({ waitContent, tale, click }) => {
+      await t.render(t.homePage.route(), async ({ waitContent, tale }) => {
         await waitContent('#home')
         await t.navigate.to('/404')
         await waitContent('Page Not Found')

@@ -7,15 +7,15 @@ describe('on', () => {
   it.concurrent('*', async () => {
     const events: AnyEventerEvent[] = []
     const root = Point0.lets('root', 'root')
-      .on('*', (event) => {
-        events.push(event)
+      .on('*', (e) => {
+        events.push(e)
       })
       .baseurl('http://localhost/')
       .ssr(true)
       .root()
     const page = root
       .lets('page', 'home', '/')
-      .loader(({ request }) => ({ x: 1 }))
+      .loader(() => ({ x: 1 }))
       .page(({ data }) => <div id="page">x={data.x}</div>)
     const { render } = await createTestThings({ points: [root, page] })
     await render(page.route(), async ({ waitContent }) => {
@@ -66,21 +66,21 @@ describe('on', () => {
   it.concurrent('name', async () => {
     const events: AnyEventerEvent[] = []
     const root = Point0.lets('root', 'root')
-      .on('engineFetchStart', (event) => {
-        events.push(event)
+      .on('engineFetchStart', (e) => {
+        events.push(e)
       })
-      .on('pointQuerySuccess', (event) => {
-        events.push(event)
+      .on('pointQuerySuccess', (e) => {
+        events.push(e)
       })
-      .on('pointMutationStart', (event) => {
-        events.push(event)
+      .on('pointMutationStart', (e) => {
+        events.push(e)
       })
       .baseurl('http://localhost/')
       .ssr(true)
       .root()
     const page = root
       .lets('page', 'home', '/')
-      .loader(({ request }) => ({ x: 1 }))
+      .loader(() => ({ x: 1 }))
       .page(({ data }) => <div id="page">x={data.x}</div>)
     const { render } = await createTestThings({ points: [root, page] })
     await render(page.route(), async ({ waitContent }) => {
@@ -103,18 +103,18 @@ describe('on', () => {
   it.concurrent('[name, name]', async () => {
     const events: AnyEventerEvent[] = []
     const root = Point0.lets('root', 'root')
-      .on('engineFetchStart', (event) => {
-        events.push(event)
+      .on('engineFetchStart', (e) => {
+        events.push(e)
       })
-      .on(['pointQuerySuccess', 'pointInfiniteQuerySuccess', 'pointMutationSuccess'], (event) => {
-        events.push(event)
+      .on(['pointQuerySuccess', 'pointInfiniteQuerySuccess', 'pointMutationSuccess'], (e) => {
+        events.push(e)
       })
       .baseurl('http://localhost/')
       .ssr(true)
       .root()
     const page = root
       .lets('page', 'home', '/')
-      .loader(({ request }) => ({ x: 1 }))
+      .loader(() => ({ x: 1 }))
       .page(({ data }) => <div id="page">x={data.x}</div>)
     const { render } = await createTestThings({ points: [root, page] })
     await render(page.route(), async ({ waitContent }) => {
@@ -137,15 +137,15 @@ describe('on', () => {
   it.concurrent('error', async () => {
     const events: AnyEventerEvent[] = []
     const root = Point0.lets('root', 'root')
-      .on('error', (event) => {
-        events.push(event)
+      .on('error', (e) => {
+        events.push(e)
       })
       .baseurl('http://localhost/')
       .ssr(true)
       .root()
     const page = root
       .lets('page', 'home', '/')
-      .loader(({ request }) => {
+      .loader(() => {
         if (Math.random() + 1) {
           throw new Error('test error')
         }

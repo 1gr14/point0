@@ -47,7 +47,7 @@ export const engine = Engine.create({
       },
       outdir: '../dist/client',
       // viteConfig: '../vite.config.ts',
-      viteConfig: (o) => ({
+      viteConfig: () => ({
         plugins: [
           react(),
           svgr(),

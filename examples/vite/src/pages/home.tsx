@@ -52,7 +52,7 @@ export default generalLayout
     title: 'IdeaNick Forever!',
     titleTemplate: null,
   })
-  .page(({ location }) => {
+  .page(() => {
     const [state, setState] = useState(someVar.get())
     const [state2, setState2] = useState(0)
     useEffect(() => {
