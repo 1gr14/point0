@@ -124,11 +124,14 @@ const traverse = ((traverseModule as any).default ?? traverseModule) as typeof t
 //
 
 export class Walker {
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   readonly files = new Map<string, CompilerFile<any>>()
 
   // <scope, Routes>
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   readonly routes: Record<string, RoutesPretty<any>>
 
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   constructor({ routes }: { routes: Record<string, RoutesPretty<any>> | undefined }) {
     this.routes = routes ?? {}
   }
@@ -138,6 +141,7 @@ export class Walker {
   }
   getRouteByScope(scope: string, routeKey: string): AnyRoute | undefined {
     const routes = this.getRoutesByScope(scope)
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     return (routes as any)?.[routeKey]
   }
 
@@ -157,6 +161,7 @@ export class Walker {
     | {
         points: CompilerPoint[]
         errors: unknown[]
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
         file: CompilerFile<any> | undefined
         ok: false
       } {

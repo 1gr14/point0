@@ -62,18 +62,17 @@
       },
       "correctness": {},
       "complexity": {
-        "noStaticOnlyClass": "off",
-        "useIndexOf": "off"
+        "noStaticOnlyClass": "off"
       },
       "security": {
-        "noDangerouslySetInnerHtml": "off"
+        // "noDangerouslySetInnerHtml": "off"
       },
       "style": {
         "useTemplate": "off"
       },
       "suspicious": {
-        "noAssignInExpressions": "off",
-        "noExplicitAny": "off",
+        // "noAssignInExpressions": "off",
+        // "noExplicitAny": "off",
         "noTemplateCurlyInString": "off",
         "useAdjacentOverloadSignatures": "off",
         "noConfusingVoidType": "off",

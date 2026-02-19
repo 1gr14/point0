@@ -19,6 +19,7 @@ export const Svg = ({ src, ...props }: { src: string } & React.SVGProps<SVGSVGEl
   const attrRegex = /(\S+)=["']([^"']*)["']/g
 
   let match: RegExpExecArray | null
+  // biome-ignore lint/suspicious/noAssignInExpressions: ok
   while ((match = attrRegex.exec(attrsString))) {
     const rawName = match[1]
     const rawValue = match[2]
@@ -32,5 +33,6 @@ export const Svg = ({ src, ...props }: { src: string } & React.SVGProps<SVGSVGEl
   // --- 3. Execute inner content ---
   const inner = trimmed.replace(/^<svg[^>]*>/i, '').replace(/<\/svg>$/i, '')
 
+  // biome-ignore lint/security/noDangerouslySetInnerHtml: ok
   return <svg {...attrs} {...props} dangerouslySetInnerHTML={{ __html: inner }} />
 }

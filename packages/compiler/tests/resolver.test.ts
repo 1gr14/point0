@@ -11,7 +11,7 @@ const prepareRandomTempDir = () => {
   return tempDir
 }
 
-const helper = (callback: ({ tempDir }: { tempDir: string }) => any) => {
+const helper = (callback: ({ tempDir }: { tempDir: string }) => void | Promise<void>) => {
   return async () => {
     // Clear cache before each test to avoid interference between concurrent tests
     FileResolver.clearCache()

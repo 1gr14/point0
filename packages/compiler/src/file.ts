@@ -5,17 +5,28 @@ import babel from '@babel/parser'
 import type traverseType from '@babel/traverse'
 import type { NodePath } from '@babel/traverse'
 import traverseModule from '@babel/traverse'
-import type { File, Node } from '@babel/types'
+import type {
+  Expression,
+  File,
+  Node,
+  ObjectExpression,
+  ObjectMethod,
+  ObjectProperty,
+  SpreadElement,
+} from '@babel/types'
+import * as t from '@babel/types'
 import type { EnvOsName, EnvRuntimeName, NormalizedNodeEnv } from '@point0/core'
 import prettier from 'prettier'
 import type { CompilerPoint } from './point.js'
 import { type CompilerEnvConsts, normalizeEnvConsts } from './utils.js'
 import type { Walker } from './walker.js'
 
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
   : typeof traverseType
 
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 const babelGenerator = ((generatorModule as any).default ?? generatorModule) as typeof generatorModule extends {
   default: infer T
 }
@@ -477,64 +488,22 @@ export class CompilerFile<THasContent extends boolean> {
         return this._shakeForEnv
       }
 
-      const makeUndefined = () =>
-        ({
-          type: 'Identifier',
-          name: 'undefined',
-        }) as any
+      const makeUndefined = (): t.Identifier => t.identifier('undefined')
 
-      const makeStringLiteral = (value: string) =>
-        ({
-          type: 'StringLiteral',
-          value,
-        }) as any
+      const makeStringLiteral = (value: string): t.StringLiteral => t.stringLiteral(value)
 
-      const makeBooleanLiteral = (value: boolean) =>
-        ({
-          type: 'BooleanLiteral',
-          value,
-        }) as any
+      const makeBooleanLiteral = (value: boolean): t.BooleanLiteral => t.booleanLiteral(value)
 
-      const makeNumericLiteral = (value: number) =>
-        ({
-          type: 'NumericLiteral',
-          value,
-        }) as any
+      const makeNumericLiteral = (value: number): t.NumericLiteral => t.numericLiteral(value)
 
-      const makeNullLiteral = () =>
-        ({
-          type: 'NullLiteral',
-        }) as any
+      const makeNullLiteral = (): t.NullLiteral => t.nullLiteral()
 
-      const makeThrowingArrowFunction = (message: string) =>
-        ({
-          type: 'ArrowFunctionExpression',
-          id: null,
-          generator: false,
-          async: false,
-          params: [],
-          body: {
-            type: 'BlockStatement',
-            body: [
-              {
-                type: 'ThrowStatement',
-                argument: {
-                  type: 'NewExpression',
-                  callee: {
-                    type: 'Identifier',
-                    name: 'Error',
-                  },
-                  arguments: [
-                    {
-                      type: 'StringLiteral',
-                      value: message,
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        }) as any
+      const makeThrowingArrowFunction = (message: string): t.ArrowFunctionExpression =>
+        t.arrowFunctionExpression(
+          [],
+          t.blockStatement([t.throwStatement(t.newExpression(t.identifier('Error'), [t.stringLiteral(message)]))]),
+          false,
+        )
 
       const checkReplaceVar = (
         varName: string,
@@ -782,13 +751,14 @@ export class CompilerFile<THasContent extends boolean> {
 
           if (callee.type !== 'MemberExpression') return
 
-          const args = node.arguments as any[]
+          const args = node.arguments
+          // biome-ignore lint/suspicious/noExplicitAny: ok
           const replaceWithFinalValue = (value: any) => {
             p.replaceWith(value ?? makeUndefined())
             modified = true
           }
-          const getObjectPropertyValue = (objectExpression: any, key: string) => {
-            const props = objectExpression.properties as any[]
+          const getObjectPropertyValue = (objectExpression: ObjectExpression, key: string) => {
+            const props = objectExpression.properties
             for (const prop of props) {
               if (prop.type !== 'ObjectProperty') continue
               if (prop.key.type === 'Identifier' && prop.key.name === key) {
@@ -813,22 +783,22 @@ export class CompilerFile<THasContent extends boolean> {
           ) {
             const ssrConfig = args[2]
             const hasHydrate = ssrConfig.properties.some(
-              (prop: any) =>
+              (prop) =>
                 prop.type === 'ObjectProperty' &&
                 prop.key.type === 'Identifier' &&
                 prop.key.name === 'hydrate' &&
                 prop.value,
             )
             const hasDehydrate = ssrConfig.properties.some(
-              (prop: any) =>
+              (prop: ObjectMethod | ObjectProperty | SpreadElement) =>
                 prop.type === 'ObjectProperty' &&
                 prop.key.type === 'Identifier' &&
                 prop.key.name === 'dehydrate' &&
-                prop.value,
+                !!prop.value,
             )
 
             if (hasHydrate && hasDehydrate) {
-              for (const prop of ssrConfig.properties as any[]) {
+              for (const prop of ssrConfig.properties) {
                 if (prop.type !== 'ObjectProperty' || prop.key.type !== 'Identifier' || !prop.value) {
                   continue
                 }
@@ -1060,11 +1030,16 @@ export class CompilerFile<THasContent extends boolean> {
             callee.property.name === 'define'
           ) {
             if (args.length > 0 && args[0].type === 'ObjectExpression') {
-              const props = args[0].properties as any[]
+              const props = args[0].properties
               if (side === 'client') {
                 // Find server property and replace with undefined
                 for (const prop of props) {
-                  if (prop.key.type === 'Identifier' && prop.key.name === 'server' && prop.value) {
+                  if (
+                    prop.type === 'ObjectProperty' &&
+                    prop.key.type === 'Identifier' &&
+                    prop.key.name === 'server' &&
+                    prop.value
+                  ) {
                     prop.value = makeUndefined()
                     modified = true
                   }
@@ -1072,7 +1047,12 @@ export class CompilerFile<THasContent extends boolean> {
               } else {
                 // Find client property and replace with undefined
                 for (const prop of props) {
-                  if (prop.key.type === 'Identifier' && prop.key.name === 'client' && prop.value) {
+                  if (
+                    prop.type === 'ObjectProperty' &&
+                    prop.key.type === 'Identifier' &&
+                    prop.key.name === 'client' &&
+                    prop.value
+                  ) {
                     prop.value = makeUndefined()
                     modified = true
                   }
@@ -1133,19 +1113,11 @@ export class CompilerFile<THasContent extends boolean> {
     }
 
     try {
-      const makeObjectExpression = () =>
-        ({
-          type: 'ObjectExpression',
-          properties: [],
-        }) as any
+      const makeObjectExpression = (): t.ObjectExpression => t.objectExpression([])
 
-      const makeArrayExpression = () =>
-        ({
-          type: 'ArrayExpression',
-          elements: [],
-        }) as any
+      const makeArrayExpression = (): t.ArrayExpression => t.arrayExpression([])
 
-      const processObjectExpression = (objExpr: any): void => {
+      const processObjectExpression = (objExpr: ObjectExpression): void => {
         if (objExpr.type !== 'ObjectExpression') return
 
         const propertiesToReplace = [
@@ -1157,13 +1129,16 @@ export class CompilerFile<THasContent extends boolean> {
         // Process properties in this object
         for (const propToReplace of propertiesToReplace) {
           const propIndex = objExpr.properties.findIndex(
-            (prop: any) =>
+            (prop: ObjectMethod | ObjectProperty | SpreadElement) =>
               prop.type === 'ObjectProperty' && prop.key.type === 'Identifier' && prop.key.name === propToReplace.name,
           )
 
           if (propIndex !== -1 && propToReplace.value) {
-            objExpr.properties[propIndex].value = propToReplace.value
-            modified = true
+            const prop = objExpr.properties[propIndex]
+            if (prop.type === 'ObjectProperty') {
+              prop.value = propToReplace.value
+              modified = true
+            }
           }
         }
 

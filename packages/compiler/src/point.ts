@@ -17,6 +17,7 @@ import {
 import type { CompilerFile } from './file.js'
 import type { Walker } from './walker.js'
 
+// biome-ignore lint/suspicious/noExplicitAny: ok
 export class CompilerPoint<TValid extends boolean = any> {
   readonly walker: Walker
   file: CompilerFile<true>
@@ -800,7 +801,7 @@ export class CompilerPoint<TValid extends boolean = any> {
         type: 'ObjectExpression' as const,
         properties: [],
       },
-    } as any
+    }
     nodePath.node.arguments.push(replacementArg)
     this.file.modified = true
   }
@@ -929,13 +930,14 @@ export class CompilerPoint<TValid extends boolean = any> {
       return
     }
 
-    const arrowFn = firstArg as any
+    const arrowFn = firstArg
     const functionName = this.generateUniqueIdentifier(toPascalCase(functionNameBase))
 
     let body = arrowFn.body
     if (body.type !== 'BlockStatement') {
       body = {
         type: 'BlockStatement' as const,
+        directives: [],
         body: [
           {
             type: 'ReturnStatement' as const,
@@ -971,6 +973,7 @@ export class CompilerPoint<TValid extends boolean = any> {
         const parentNode = parentDecl.node
         let parentIndex = -1
 
+        // biome-ignore lint/complexity/useIndexOf: ok
         parentIndex = program.body.findIndex((stmt) => stmt === parentNode)
 
         if (parentIndex === -1) {
@@ -989,7 +992,7 @@ export class CompilerPoint<TValid extends boolean = any> {
         }
 
         if (parentIndex !== -1) {
-          program.body.splice(parentIndex, 0, functionDeclaration as any)
+          program.body.splice(parentIndex, 0, functionDeclaration)
           this.file.modified = true
         }
       }
@@ -998,7 +1001,7 @@ export class CompilerPoint<TValid extends boolean = any> {
     nodePath.node.arguments[0] = {
       type: 'Identifier' as const,
       name: functionName,
-    } as any
+    }
     this.file.modified = true
   }
 
@@ -1097,6 +1100,7 @@ export class CompilerPoint<TValid extends boolean = any> {
     }
 
     // Replace the original last method call node with the new one that has ._tail() chained
+    // biome-ignore lint/suspicious/noExplicitAny: ok
     lastMethod.nodePath.replaceWith(hmrCallExpression as any)
     this.file.modified = true
     this._addHmrFix = true

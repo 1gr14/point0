@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
 import { afterAll, describe, expect, it } from 'bun:test'
 import type { Engine } from '../../../src/engine.js'
 import type { TestProject, TestProjectFactoryCreateProjectOptions } from '../project.js'

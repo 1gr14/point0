@@ -14,6 +14,7 @@ const prepareRandomFile = () => {
   return Object.assign(Bun.file(path), { path, basename, importpath })
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: ok
 const helper = (callback: ({ files }: { files: TestFile[] }) => any, preserve = false) => {
   return async () => {
     const files = Array.from({ length: 11 }, prepareRandomFile)

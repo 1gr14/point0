@@ -5,6 +5,7 @@ import * as ts from 'typescript'
 export class FileResolver {
   // Cache for TypeScript compiler options per directory
   // Value can be: ParsedCommandLine, null (no tsconfig found), or undefined (not checked yet)
+  // biome-ignore lint/suspicious/noExplicitAny: ok
   private static readonly tsConfigCache = new Map<string, any>()
 
   /**

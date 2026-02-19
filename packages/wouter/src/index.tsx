@@ -78,7 +78,9 @@ export const useSimpleNavigate = _wrapUseNavigate(_useNativeNavigate)
 // }
 
 export const createNavigate = <
+  // biome-ignore lint/suspicious/noExplicitAny: ok
   TRoutes extends RoutesPretty<any>,
+  // biome-ignore lint/suspicious/noExplicitAny: ok
   TNavigate extends (to: string, ...rest: any[]) => any,
 >(
   routes: TRoutes,
@@ -125,10 +127,13 @@ export const createNavigate = <
   }
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: ok
 type Tail<T extends readonly unknown[]> = T extends readonly [any, ...infer R] ? R : never
 
 export const createUseNavigate = <
+  // biome-ignore lint/suspicious/noExplicitAny: ok
   TRoutes extends RoutesPretty<any>,
+  // biome-ignore lint/suspicious/noExplicitAny: ok
   TUseNavigate extends () => (to: string, ...args: any[]) => any = typeof useSimpleNavigate,
 >(
   routes: TRoutes,
@@ -173,6 +178,7 @@ export const createUseNavigate = <
     //   to: { to: string },
     //   ...rest: Tail<Parameters<ReturnType<TUseNavigate>>>
     // ): Promise<{ location: AnyLocation; error: Error0 | undefined }>
+    // biome-ignore lint/suspicious/noExplicitAny: ok
     async function useNavigate0(...args: any[]) {
       const { to, rest } = ((): { to: string; rest: Tail<Parameters<ReturnType<TUseNavigate>>> } => {
         if (typeof args[0] === 'string') {
@@ -293,7 +299,9 @@ const _getWouterLinkProps = (
     replace,
     ...rest
   } = props as LinkProps & {
+    // biome-ignore lint/suspicious/noExplicitAny: ok
     onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => any
+    // biome-ignore lint/suspicious/noExplicitAny: ok
     onMouseLeave?: (e: React.MouseEvent<HTMLAnchorElement>) => any
   }
   const navigate = useSimpleNavigate()
@@ -442,6 +450,7 @@ export const SimpleLink = (props: LinkProps) => {
 }
 
 export const createLink = <
+  // biome-ignore lint/suspicious/noExplicitAny: ok
   TRoutes extends RoutesPretty<any>,
   TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
 >(
@@ -466,6 +475,7 @@ export const createLink = <
     to?: string
     href?: string
     route?: string
+    // biome-ignore lint/suspicious/noExplicitAny: ok
     input?: Record<string, any>
   }): React.ReactElement {
     const {
@@ -474,6 +484,7 @@ export const createLink = <
       to: providedTo,
       href: providedHref,
       ...rest
+      // biome-ignore lint/suspicious/noExplicitAny: ok
     } = props as typeof props & { input?: Record<string, any>; to?: string; href?: string }
     const finalTo = useMemo(() => {
       if (providedTo !== undefined) {
@@ -494,12 +505,14 @@ export const createLink = <
       }
       return route.flat(input)
     }, [routeName, JSON.stringify(input), providedTo, providedHref])
+    // biome-ignore lint/suspicious/noExplicitAny: ok
     return <SimpleLink {...(rest as any)} to={finalTo} />
   }
   return Link0
 }
 
 export const createNavLink = <
+  // biome-ignore lint/suspicious/noExplicitAny: ok
   TRoutes extends RoutesPretty<any>,
   TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
 >(
@@ -525,6 +538,7 @@ export const createNavLink = <
     to?: string
     href?: string
     route?: string
+    // biome-ignore lint/suspicious/noExplicitAny: ok
     input?: Record<string, any>
   }): React.ReactElement {
     const {
@@ -533,6 +547,7 @@ export const createNavLink = <
       to: providedTo,
       href: providedHref,
       ...rest
+      // biome-ignore lint/suspicious/noExplicitAny: ok
     } = props as typeof props & { input?: Record<string, any>; to?: string; href?: string }
     const finalTo = useMemo(() => {
       if (providedTo !== undefined) {
@@ -553,6 +568,7 @@ export const createNavLink = <
       }
       return route.flat(input)
     }, [routeName, JSON.stringify(input), providedTo, providedHref])
+    // biome-ignore lint/suspicious/noExplicitAny: ok
     return <SimpleNavLink {...(rest as any)} to={finalTo} />
   }
   return NavLink0
