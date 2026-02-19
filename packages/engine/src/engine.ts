@@ -19,13 +19,13 @@ import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
 
-export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized extends boolean = boolean> {
-  clients: TInitialized extends true ? Array<EngineClient<true>> : EngineClient[]
-  server: TInitialized extends true ? EngineServer<true> : EngineServer<false>
-  publicdirs: TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
+export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared extends boolean = boolean> {
+  clients: TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
+  server: TPrepared extends true ? EngineServer<true> : EngineServer<false>
+  publicdirs: TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
   logger: EngineLogger
   generator: FilesGenerator
-  initialized: TInitialized
+  prepared: TPrepared
 
   private readonly __POINT0_ENGINE__ = true as const
 
@@ -33,16 +33,16 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     clients: EngineClient[]
     server: EngineServer
     logger: EngineLogger
-    initialized: TInitialized
+    prepared: TPrepared
     generator: FilesGenerator
     publicdirs: Array<Publicdir<false>>
   }) {
-    this.clients = input.clients as TInitialized extends true ? Array<EngineClient<true>> : EngineClient[]
-    this.server = input.server as TInitialized extends true ? EngineServer<true> : EngineServer<false>
+    this.clients = input.clients as TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
+    this.server = input.server as TPrepared extends true ? EngineServer<true> : EngineServer<false>
     this.logger = input.logger
-    this.initialized = input.initialized
+    this.prepared = input.prepared
     this.generator = input.generator
-    this.publicdirs = input.publicdirs as TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
+    this.publicdirs = input.publicdirs as TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
   }
 
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
@@ -95,28 +95,28 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       clients,
       server,
       logger: parsedOptions.general.logger,
-      initialized: false,
+      prepared: false,
       generator,
       publicdirs,
     })
   }
 
-  // async init(): Promise<Engine<true>> {
-  async init(options?: { preventClientDevServers?: boolean }): Promise<Engine<TRequiredCtx, true>> {
+  // async prepare(): Promise<Engine<true>> {
+  async prepare(options?: { preventClientDevServers?: boolean }): Promise<Engine<TRequiredCtx, true>> {
     const { preventClientDevServers } = options ?? {}
-    if (this.isInitialized()) {
+    if (this.isPrepared()) {
       return this as Engine<TRequiredCtx, true>
     }
 
-    await this.server.init({ engine: this as Engine<TRequiredCtx, true> })
+    await this.server.prepare({ engine: this as Engine<TRequiredCtx, true> })
     await Promise.all(
       this.clients.map(async (client) => {
-        return await client.init({
+        return await client.prepare({
           preventDevServer: preventClientDevServers,
         })
       }),
     )
-    this.initialized = true as never
+    this.prepared = true as never
 
     return this as Engine<TRequiredCtx, true>
   }
@@ -129,8 +129,8 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     )
   }
 
-  isInitialized(): this is Engine<TRequiredCtx, true> {
-    return !!this.initialized
+  isPrepared(): this is Engine<TRequiredCtx, true> {
+    return !!this.prepared
   }
 
   toEntryPath({ entry, cwd = process.cwd() }: { entry: string; cwd?: string }): string {
@@ -221,8 +221,8 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       const clientsDevSevers = this.serveClientDevServers()
       await Promise.all([generatorWatchProcess, ...serverEntryProcesses, clientsDevSevers])
     } else {
-      // when we init, we create also start clientDevServers
-      await Promise.all([generatorWatchProcess, this.init()])
+      // when we prepare, we create and also start clientDevServers
+      await Promise.all([generatorWatchProcess, this.prepare()])
     }
   }
 
@@ -240,12 +240,12 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
         ]
   ): Promise<void> {
     const { requiredCtx } = args[0] ?? {}
-    if (!this.isInitialized()) {
+    if (!this.isPrepared()) {
       throw new Error(
-        'Engine is not initialized. Please call await engine.init() first. And do it in each server entrypoint file, strongly before any other import',
+        'Engine is not prepared. Please call await engine.prepare() first. And do it in each server entrypoint file, strongly before any other import',
       )
     }
-    this.server.serve({ requiredCtx })
+    await this.server.serve({ requiredCtx })
   }
 
   async dispose(): Promise<void> {
@@ -262,8 +262,8 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       ? [request: Request, options?: { requiredCtx?: TRequiredCtx }]
       : [request: Request, options: { requiredCtx: TRequiredCtx }]
   ): Promise<FetcherFetchDetailedResult> {
-    if (!this.isInitialized()) {
-      throw new Error('Engine is not initialized. Please call await engine.init() first.')
+    if (!this.isPrepared()) {
+      throw new Error('Engine is not prepared. Please call await engine.prepare() first.')
     }
     const request = args[0]
     const { requiredCtx } = args[1] ?? {}
@@ -302,7 +302,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       await this.generator.sync({ logOnNotWritten: false })
     }
 
-    // const intializedEngine = await this.init()
+    // const preparedEngine = await this.prepare()
 
     if (clean) {
       await Promise.all([

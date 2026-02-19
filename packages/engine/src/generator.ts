@@ -31,7 +31,7 @@ export type FilesGeneratorTaskPoints = {
   what: 'points'
   side: 'client' | 'server'
   banner?: string | null
-  file: string
+  outfile: string
   lazy?: boolean
 }
 
@@ -39,14 +39,14 @@ export type FilesGeneratorTaskRoutes = {
   scope: string
   what: 'routes'
   banner?: string | null
-  file: string
+  outfile: string
 }
 
 export type FilesGeneratorTaskMeta = {
   scopes: string[]
   what: 'meta'
   banner?: string | null
-  file: string
+  outfile: string
 }
 
 export type FilesGeneratorTask = FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes | FilesGeneratorTaskMeta
@@ -104,7 +104,7 @@ export class FilesGenerator {
       const task = {
         ...t,
         banner: [this.banner, t.banner].filter(Boolean).join('\n') || null,
-        file: nodePath.resolve(this.cwd, t.file),
+        outfile: nodePath.resolve(this.cwd, t.outfile),
       } satisfies FilesGeneratorTask
       if (task.what === 'points' && typeof task.lazy === 'undefined') {
         task.lazy = task.side === 'client'
@@ -123,7 +123,7 @@ export class FilesGenerator {
     this.routes = {}
 
     this.watchDir = this.globInclude.length > 0 ? getDirByPaths({ paths: this.globInclude }) : process.cwd()
-    this.watchIgnore = [...this.globExclude, ...this.tasks.map((t) => t.file)].flatMap((p) => p || [])
+    this.watchIgnore = [...this.globExclude, ...this.tasks.map((t) => t.outfile)].flatMap((p) => p || [])
     this.watchPatterns = [...this.globInclude]
   }
 
@@ -334,21 +334,21 @@ export class FilesGenerator {
     if (task.what === 'points' && task.lazy) {
       tasks.push({
         content: this.emitLazyPointsFile(task),
-        outputAbs: task.file,
+        outputAbs: task.outfile,
         tempOutputAbs: nodePath.join(this.tempDir, `${task.what}.${generateId()}.lazy.ts`),
       })
     }
     if (task.what === 'points' && !task.lazy) {
       tasks.push({
         content: this.emitReadyPointsFile(task),
-        outputAbs: task.file,
+        outputAbs: task.outfile,
         tempOutputAbs: nodePath.join(this.tempDir, `${task.what}.${generateId()}.ready.ts`),
       })
     }
     if (task.what === 'routes') {
       tasks.push({
         content: this.emitRoutesPointsFile(task),
-        outputAbs: task.file,
+        outputAbs: task.outfile,
         tempOutputAbs: nodePath.join(this.tempDir, `${task.scope}.${generateId()}.routes.ts`),
       })
     }
@@ -478,7 +478,7 @@ export class FilesGenerator {
       if (point.exportName === undefined) {
         return []
       }
-      const importPath = FilesGenerator.toRelativeJsImportPath(task.file, point.file.abs)
+      const importPath = FilesGenerator.toRelativeJsImportPath(task.outfile, point.file.abs)
       const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
       const renamedExportName =
         point.type === 'root'
@@ -715,7 +715,7 @@ export class FilesGenerator {
       lines.push(
         ...this.emitLazyPointCollectionRecord({
           imported,
-          file: task.file,
+          file: task.outfile,
         }),
       )
     }

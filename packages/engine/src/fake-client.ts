@@ -201,8 +201,8 @@ export class FakeClient<TState extends FakeClientState = any> {
     cookieGetter?: CookiesStoreGetter | undefined
     state?: TState | undefined
   }): FakeClient<TState> {
-    if (!engine.initialized) {
-      throw new Error('Engine is not initialized')
+    if (!engine.prepared) {
+      throw new Error('Engine is not prepared')
     }
     const client = engine.clients.find((client) => client.scope === scope)
     if (!client) {

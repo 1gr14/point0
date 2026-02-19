@@ -12,7 +12,7 @@ const general = {
     'src/fetcher.ts',
     'src/generator.ts',
     'src/index.ts',
-    'src/kill-port.ts',
+    'src/port.ts',
     'src/meta.ts',
     'src/publicdir.ts',
     'src/render.ts',

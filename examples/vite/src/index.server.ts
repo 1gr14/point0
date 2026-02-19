@@ -1,6 +1,6 @@
 import { engine } from './engine.js'
 
-await engine.init()
+await engine.prepare()
 await engine.serve({
   requiredCtx: undefined,
 })

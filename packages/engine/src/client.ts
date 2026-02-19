@@ -24,6 +24,7 @@ import type {
   PortPolicy,
 } from './config.js'
 import type { Executor } from './executor.js'
+import { resolvePortByPolicy } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
 import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
@@ -37,19 +38,18 @@ import {
   isAsyncFn,
   normalizeAndValidateNodeEnv,
   resolveTempDirPath,
-  withRetries,
 } from './utils.js'
 
-export class EngineClient<TInitialized extends boolean = boolean> {
+export class EngineClient<TPrepared extends boolean = boolean> {
   cwd: string
   scope: PointsScope
   engineFile: string | null
   // pointsDistFile: string | null
   pointsProvided: PointsDefinitionSource | null
-  points: TInitialized extends true ? ClientPoints | null : undefined
-  ssr: TInitialized extends true ? boolean : undefined
+  points: TPrepared extends true ? ClientPoints | null : undefined
+  ssr: TPrepared extends true ? boolean : undefined
   appProvided: EngineOptionsAppComponent | null
-  App: TInitialized extends true ? AppComponent | null : undefined
+  App: TPrepared extends true ? AppComponent | null : undefined
   // appDistFile: string | null
   // TODO: baseurl get from root point, and remove from config
   baseurl: string | null
@@ -67,7 +67,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
   logger: EngineLogger
   envVars: EngineOptionsEnvParsed
   envConsts: EngineOptionsEnvParsed
-  publicdir: TInitialized extends true ? Publicdir<true> | null : Publicdir<false> | null
+  publicdir: TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
   outdir: string | null
   bunBuildConfig: EngineClientBuildConfigDefinition
   bunPlugins: EngineClientPluginsDefinition
@@ -78,11 +78,11 @@ export class EngineClient<TInitialized extends boolean = boolean> {
   viteDevServer: ViteDevServer | true | null
   bunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
   bunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
-  initialized: TInitialized
+  prepared: TPrepared
 
   private constructor(input: {
     scope: PointsScope
-    initialized: TInitialized
+    prepared: TPrepared
     cwd: string
     // pointsDistFile: string | null
     pointsProvided: PointsDefinitionSource | null
@@ -114,7 +114,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     this.scope = input.scope
     this.cwd = input.cwd
     // this.pointsDistFile = input.pointsDistFile
-    this.points = null as TInitialized extends true ? ClientPoints | null : undefined
+    this.points = null as TPrepared extends true ? ClientPoints | null : undefined
     this.pointsProvided = input.pointsProvided
     this.appProvided = input.appProvided
     // this.appDistFile = input.appDistFile
@@ -138,7 +138,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     this.envConsts = {
       ...input.envConsts,
     }
-    this.publicdir = input.publicdir as TInitialized extends true ? Publicdir<true> | null : Publicdir<false> | null
+    this.publicdir = input.publicdir as TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
     this.outdir = input.outdir
     this.bunBuildConfig = input.bunBuildConfig
     this.bunPlugins = input.bunPlugins
@@ -148,10 +148,10 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     this.bunNativeDevServer = input.bunNativeDevServer
     this.bunViteDevServer = input.bunViteDevServer
     this.server = input.server
-    this.initialized = input.initialized
+    this.prepared = input.prepared
     this.engineFile = input.engineFile
-    this.ssr = undefined as TInitialized extends true ? boolean : undefined
-    this.App = undefined as TInitialized extends true ? AppComponent | null : undefined
+    this.ssr = undefined as TPrepared extends true ? boolean : undefined
+    this.App = undefined as TPrepared extends true ? AppComponent | null : undefined
   }
 
   static create(input: {
@@ -209,7 +209,7 @@ export class EngineClient<TInitialized extends boolean = boolean> {
       bunViteDevServer,
       // clientBunDevBuilder,
       // serverBunDevBuilder,
-      initialized: false,
+      prepared: false,
     })
 
     if (publicdir) {
@@ -233,13 +233,13 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE }
   }
 
-  async init({
+  async prepare({
     preventDevServer = process.env.POINT0_PREVENT_CLIENT_DEV_SERVER === 'true',
   }: {
     // if we run server entries separately, then we we will run in another processes client dev server once
     preventDevServer?: boolean
   }): Promise<EngineClient<true>> {
-    if (this.isInitialized()) {
+    if (this.isPrepared()) {
       return this as EngineClient<true>
     }
     this.setEnvVars({ nodeEnvFallback: undefined })
@@ -269,21 +269,21 @@ export class EngineClient<TInitialized extends boolean = boolean> {
 
     await this.readAppComponent()
 
-    this.ssr = (points?.ssr ?? false) as TInitialized extends true ? boolean : undefined
+    this.ssr = (points?.ssr ?? false) as TPrepared extends true ? boolean : undefined
 
     if (this.publicdir) {
       this.publicdir.hostname = getHostnameOrNull(this.baseurl)
-      await this.publicdir.init()
+      await this.publicdir.prepare()
     }
 
     this.distIndexHtmlContent =
       process.env.NODE_ENV === 'production' && this.indexHtml ? await Bun.file(this.indexHtml).text() : null
-    this.initialized = true as never
+    this.prepared = true as never
     return this as EngineClient<true>
   }
 
-  isInitialized(): this is EngineClient<true> {
-    return !!this.initialized
+  isPrepared(): this is EngineClient<true> {
+    return !!this.prepared
   }
 
   async readClientPoints(): Promise<ClientPoints | null> {
@@ -291,21 +291,21 @@ export class EngineClient<TInitialized extends boolean = boolean> {
       return null
     }
     const points = await ClientPoints.createFromSource(this.pointsProvided)
-    this.points = points as TInitialized extends true ? ClientPoints | null : undefined
+    this.points = points as TPrepared extends true ? ClientPoints | null : undefined
     return points
   }
 
   async readAppComponent(): Promise<AppComponent | null> {
     if (!this.appProvided) {
-      this.App = null as TInitialized extends true ? AppComponent | null : undefined
+      this.App = null as TPrepared extends true ? AppComponent | null : undefined
       return null
     }
     const defaultOrApp = isAsyncFn(this.appProvided) ? await this.appProvided() : this.appProvided
     if ('default' in defaultOrApp && typeof defaultOrApp.default === 'function') {
-      this.App = defaultOrApp.default as TInitialized extends true ? AppComponent | null : undefined
+      this.App = defaultOrApp.default as TPrepared extends true ? AppComponent | null : undefined
       return defaultOrApp.default
     }
-    this.App = defaultOrApp as TInitialized extends true ? AppComponent | null : undefined
+    this.App = defaultOrApp as TPrepared extends true ? AppComponent | null : undefined
     return defaultOrApp as AppComponent | null
   }
 
@@ -350,6 +350,10 @@ export class EngineClient<TInitialized extends boolean = boolean> {
     if (!this.engineFile) {
       throw new Error(`Engine file path is not provided for client "${this.scope}"`)
     }
+    this.port = await resolvePortByPolicy({
+      port: this.port,
+      portPolicy: this.portPolicy,
+    })
     const tempDir = resolveTempDirPath(['client-bun-dev-server', `${this.scope}-${this.port}`])
     const pluginsStrings = await extractEngineClientDevPluginsStrings({
       cwd: this.cwd,
@@ -468,6 +472,10 @@ Bun.serve({
     if (!this.viteConfig) {
       throw new Error(`Vite config not found for client "${this.scope}"`)
     }
+    this.port = await resolvePortByPolicy({
+      port: this.port,
+      portPolicy: this.portPolicy,
+    })
     const viteDevServer = await createViteDevServer({
       viteConfig: this.viteConfig,
       scope: this.scope,
@@ -489,55 +497,53 @@ Bun.serve({
       throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
     }
     const srcIndexHtmlContent = await Bun.file(this.indexHtml).text()
-    const bunViteDevServer = withRetries(process.env.NODE_ENV === 'test' ? 99 : 5, () =>
-      Bun.serve({
-        port: this.port,
-        development: {
-          console: false,
-          hmr: false, // vite provides it own hmr
-        },
-        fetch: async (request) => {
-          const location = Route0.getLocation(request.url)
-          if (location.pathname === '/index.html') {
-            const originalIndexHtml = await viteDevServer.transformIndexHtml(request.url, srcIndexHtmlContent)
-            return new Response(originalIndexHtml, {
-              headers: {
-                'Content-Type': 'text/html',
-              },
-            })
-          }
-          const middlewareResponse = await this.fetchViteDevServerMiddleware({
-            request,
+    const bunViteDevServer = Bun.serve({
+      port: this.port,
+      development: {
+        console: false,
+        hmr: false, // vite provides it own hmr
+      },
+      fetch: async (request) => {
+        const location = Route0.getLocation(request.url)
+        if (location.pathname === '/index.html') {
+          const originalIndexHtml = await viteDevServer.transformIndexHtml(request.url, srcIndexHtmlContent)
+          return new Response(originalIndexHtml, {
+            headers: {
+              'Content-Type': 'text/html',
+            },
           })
-          if (middlewareResponse) {
-            return middlewareResponse
-          }
-          if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
-            return new Response('__NO_RESPONSE__', {
-              headers: {
-                'Content-Type': 'text/plain',
-              },
-              status: 404,
-            })
-          }
-          const forwardedHeaders = new Headers(request.headers)
-          forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client-Server', 'true')
-          const res = await fetch(`http://localhost:${this.server.port}${location.pathname}${location.search}`, {
-            method: request.method,
-            headers: forwardedHeaders,
-            body: request.body,
+        }
+        const middlewareResponse = await this.fetchViteDevServerMiddleware({
+          request,
+        })
+        if (middlewareResponse) {
+          return middlewareResponse
+        }
+        if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
+          return new Response('__NO_RESPONSE__', {
+            headers: {
+              'Content-Type': 'text/plain',
+            },
+            status: 404,
           })
-          return res
-        },
-      }),
-    )()
+        }
+        const forwardedHeaders = new Headers(request.headers)
+        forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client-Server', 'true')
+        const res = await fetch(`http://localhost:${this.server.port}${location.pathname}${location.search}`, {
+          method: request.method,
+          headers: forwardedHeaders,
+          body: request.body,
+        })
+        return res
+      },
+    })
     this.logger.info(`${this.scope} client dev server started`)
     return { bunViteDevServer, viteDevServer }
   }
 
   async dispose(): Promise<void> {
-    if (!this.isInitialized()) {
-      throw new Error('Client is not initialized')
+    if (!this.isPrepared()) {
+      throw new Error('Client is not prepared')
     }
     if (this.bunNativeDevServer && typeof this.bunNativeDevServer !== 'boolean') {
       this.bunNativeDevServer.kill()
@@ -680,8 +686,8 @@ Bun.serve({
   }
 
   async getOriginalIndexHtml(url: string): Promise<string> {
-    if (!this.isInitialized()) {
-      throw new Error('Client is not initialized')
+    if (!this.isPrepared()) {
+      throw new Error('Client is not prepared')
     }
     if (this.indexHtml === '__POINT0_TEST_INDEX_HTML__') {
       return this.getTestIndexHtml()
@@ -713,8 +719,8 @@ Bun.serve({
   }
 
   async getAppComponentForce(): Promise<AppComponent> {
-    if (!this.isInitialized()) {
-      throw new Error('Client is not initialized')
+    if (!this.isPrepared()) {
+      throw new Error('Client is not prepared')
     }
     if (!this.App) {
       throw new Error(`App not provided for client "${this.scope}"`)

@@ -280,7 +280,7 @@ describe('prefetch-page', () => {
         })
 
         afterAll(async () => {
-          void tp.cleanup({ files: !preserve, processes: true, ports: true })
+          void tp?.cleanup({ files: !preserve, processes: true, ports: true })
         })
 
         it.concurrent(

@@ -54,9 +54,9 @@
       "types": "./dist/generator.d.ts",
       "import": "./dist/generator.js"
     },
-    "./kill-port": {
-      "types": "./dist/kill-port.d.ts",
-      "import": "./dist/kill-port.js"
+    "./port": {
+      "types": "./dist/port.d.ts",
+      "import": "./dist/port.js"
     },
     "./meta": {
       "types": "./dist/meta.d.ts",

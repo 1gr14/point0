@@ -9,7 +9,7 @@ export const engine = Engine.create({
     generate: [
       {
         what: 'points',
-        file: './lib/points.server.ts',
+        outfile: './lib/points.server.ts',
       },
     ],
     outdir: '../dist/server',
@@ -27,11 +27,11 @@ export const engine = Engine.create({
       generate: [
         {
           what: 'points',
-          file: './lib/points.client.ts',
+          outfile: './lib/points.client.ts',
         },
         {
           what: 'routes',
-          file: './lib/routes.ts',
+          outfile: './lib/routes.ts',
         },
       ],
       indexHtml: './index.html',

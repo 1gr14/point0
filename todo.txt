@@ -202,12 +202,9 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 +++
 try engine dev with usual dev process wothout manual restarting
 Компилер пусть в энжинеэвйт импорт заменить на просто импорт и прямую передачу поинтов чтобы бан хмр заработал
-killPort: true for engine, and remove withRetries for server starting
-detect if client servable via server or not, and then do or not fetchPoint
-Бэйзурл в конфиг и убедиться что нул значение считаем за сьютобол
-У клиента и у пабликдира клиента есть свойство сервед, и если оно включено то мы сервим клиента через сервера, с также а дев моде сервер через клиента, иначе не сервим
-Не инит а препаре, потому что инит это другое
-В генерейт не файл а оутфайл в настройках
+detect if client servable via server or not, and then do or not fetchPoint (server: true)
+Из сютобол как функция в энжину для распределения запросов плюс тесты на это
+Настройка в паюликдире линк тру, тогда не будет добавлена в оутдир, а будет использована как есть
 +++
 cli inspect by filepath how this file and in which place come to files via cli command
 check bun compiler, and vite compiler creates correct sourcemaps

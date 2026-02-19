@@ -2,6 +2,7 @@ import { Engine } from '@point0/engine'
 export const engine = Engine.create({
   file: import.meta.url,
   pointsGlob: ['**/*.{ts,tsx}'],
+  portPolicy: 'auto',
   server: {
     scope: 'client',
     port: 3000,
@@ -9,7 +10,7 @@ export const engine = Engine.create({
     generate: [
       {
         what: 'points',
-        file: './lib/points.ready.ts',
+        outfile: './lib/points.ready.ts',
       },
     ],
     points: async () => await import('./lib/points.ready'),
@@ -26,11 +27,11 @@ export const engine = Engine.create({
       generate: [
         {
           what: 'points',
-          file: './lib/points.lazy.ts',
+          outfile: './lib/points.lazy.ts',
         },
         {
           what: 'routes',
-          file: './lib/routes.generated.ts',
+          outfile: './lib/routes.generated.ts',
         },
       ],
       // pointsModuleType: 'ready',

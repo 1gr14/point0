@@ -94,7 +94,7 @@ describe('FakeClient', () => {
       file: import.meta.url,
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
-    }).init()
+    }).prepare()
     expect(env.side.name).toBe('server')
     const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
     await fakeClient.run(async () => {
@@ -140,7 +140,7 @@ describe('FakeClient', () => {
             },
           },
         ],
-      }).init()
+      }).prepare()
       const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
       await fakeClient.run(async () => {
         expect(env.side.name).toBe('client')
@@ -184,7 +184,7 @@ describe('FakeClient', () => {
       file: import.meta.url,
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
-    }).init()
+    }).prepare()
     const client = FakeClient.create({
       engine,
       scope: 'root',
@@ -233,7 +233,7 @@ describe('FakeClient', () => {
       file: import.meta.url,
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
-    }).init()
+    }).prepare()
     const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
     expect(env.side.name).toBe('server')
     await fakeClient.run(async () => {
@@ -291,7 +291,7 @@ describe('FakeClient', () => {
       file: import.meta.url,
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
-    }).init()
+    }).prepare()
     const client = FakeClient.create<{
       container: HTMLElement
       getButton: () => HTMLButtonElement
@@ -365,7 +365,7 @@ describe('FakeClient', () => {
       file: import.meta.url,
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
-    }).init()
+    }).prepare()
     const client = FakeClient.create({
       engine,
       scope: 'root',

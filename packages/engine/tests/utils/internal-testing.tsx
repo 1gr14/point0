@@ -332,7 +332,7 @@ export const createTestThings = async ({
     server: { scope: 'root', points },
     clients: [{ scope: 'root', points, indexHtml: '__POINT0_TEST_INDEX_HTML__', app }],
     ...engineOptions,
-  }).init({ preventClientDevServers })
+  }).prepare({ preventClientDevServers })
   const client = FakeClient.create<TestThingsState>({
     engine,
     scope: 'root',

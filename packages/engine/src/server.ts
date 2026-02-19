@@ -22,6 +22,7 @@ import type {
 } from './config.js'
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
+import { resolvePortByPolicy } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
 import { ServerPoints } from './server-points.js'
@@ -35,30 +36,29 @@ import {
   loadBunPlugins,
   normalizeAndValidateNodeEnv,
   validateEntrypoints,
-  withRetries,
 } from './utils.js'
 
-export class EngineServer<TInitialized extends boolean = boolean> {
+export class EngineServer<TPrepared extends boolean = boolean> {
   scope: PointsScope
   cwd: string
-  points: TInitialized extends true ? ServerPoints | null : undefined
+  points: TPrepared extends true ? ServerPoints | null : undefined
   pointsProvided: PointsDefinitionSource | null
   itWasBuilt: boolean
   engineFile: string | null
   cwdBeforeBuild: string
   port: number
   portPolicy: PortPolicy
-  clients: TInitialized extends true ? Array<EngineClient<true>> : EngineClient[]
+  clients: TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
   logger: EngineLogger
   entry: Record<string, string> | null
-  publicdir: TInitialized extends true ? Publicdir<true> | null : Publicdir<false> | null
+  publicdir: TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
   // it is collection of server itself public dir and all its clients public dirs
-  publicdirs: TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
+  publicdirs: TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
   outdir: string | null
   bunBuildConfig: EngineServerBuildConfigDefinition
   bunPlugins: EngineServerPluginsDefinition
-  baseurl: TInitialized extends true ? string | null : undefined
-  initialized: TInitialized
+  baseurl: TPrepared extends true ? string | null : undefined
+  prepared: TPrepared
   bunPluginsLoaded = false
   bunServer: Bun.Server<unknown> | undefined
   viteConfig: EngineOptionsViteConfig | null
@@ -66,11 +66,11 @@ export class EngineServer<TInitialized extends boolean = boolean> {
   envConsts: EngineOptionsEnvParsed
   envVars: EngineOptionsEnvParsed
   hmrPort: number | false
-  fetcher: TInitialized extends true ? Fetcher : null
+  fetcher: TPrepared extends true ? Fetcher : null
   compiler: EngineOptionsCompilerSpecificParsed | false
 
   private constructor(input: {
-    initialized: TInitialized
+    prepared: TPrepared
     cwd: string
     scope: PointsScope
     pointsProvided: PointsDefinitionSource | null
@@ -96,7 +96,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     this.cwd = input.cwd
     this.scope = input.scope
     this.pointsProvided = input.pointsProvided
-    this.points = undefined as TInitialized extends true ? ServerPoints : undefined
+    this.points = undefined as TPrepared extends true ? ServerPoints : undefined
     this.itWasBuilt = process.env.POINT0_ENGINE_WAS_BUILT
       ? process.env.POINT0_ENGINE_WAS_BUILT === 'true'
       : input.itWasBuilt
@@ -107,22 +107,22 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     this.envVars = input.envVars
     this.cwdBeforeBuild = process.env.POINT0_ENGINE_CWD_BEFORE_BUILD ?? input.cwdBeforeBuild
     this.port = input.port
-    this.clients = input.clients as TInitialized extends true ? Array<EngineClient<true>> : EngineClient[]
+    this.clients = input.clients as TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
     this.logger = input.logger
     this.entry = input.entry
-    this.publicdir = input.publicdir as TInitialized extends true ? Publicdir<true> | null : Publicdir<false> | null
-    this.publicdirs = [] as unknown as TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
+    this.publicdir = input.publicdir as TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
+    this.publicdirs = [] as unknown as TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
     this.outdir = input.outdir
     this.bunBuildConfig = input.bunBuildConfig
     this.bunPlugins = input.bunPlugins
-    this.initialized = input.initialized
+    this.prepared = input.prepared
     this.viteConfig = input.viteConfig
     this.viteDevServer = input.viteDevServer
     this.hmrPort = input.hmrPort
     this.portPolicy = input.portPolicy
     this.compiler = input.compiler
-    this.baseurl = undefined as TInitialized extends true ? string | null : undefined
-    this.fetcher = null as TInitialized extends true ? Fetcher : null
+    this.baseurl = undefined as TPrepared extends true ? string | null : undefined
+    this.fetcher = null as TPrepared extends true ? Fetcher : null
   }
 
   static create(input: {
@@ -166,7 +166,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     const server = new EngineServer<false>({
       ...input,
       publicdir,
-      initialized: false,
+      prepared: false,
       viteDevServer,
     })
     if (publicdir) {
@@ -175,8 +175,8 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     return server
   }
 
-  isInitialized(): this is EngineServer<true> {
-    return !!this.initialized
+  isPrepared(): this is EngineServer<true> {
+    return !!this.prepared
   }
 
   private setEnvVars({
@@ -201,21 +201,21 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE }
   }
 
-  async init({ engine }: { engine: Engine<RequiredCtx, true> }): Promise<EngineServer<true>> {
-    if (this.isInitialized()) {
+  async prepare({ engine }: { engine: Engine<RequiredCtx, true> }): Promise<EngineServer<true>> {
+    if (this.isPrepared()) {
       return this as EngineServer<true>
     }
     this.setEnvVars({ assignToProcessEnv: true, nodeEnvFallback: undefined })
     const [points] = await Promise.all([
       this.loadBunPlugins({ built: env.build.was }).then(async () => await this.readServerPoints()),
-      this.publicdir ? this.publicdir.init() : Promise.resolve(),
+      this.publicdir ? this.publicdir.prepare() : Promise.resolve(),
     ])
-    this.baseurl = (points?.baseurl ?? null) as TInitialized extends true ? string | null : undefined
+    this.baseurl = (points?.baseurl ?? null) as TPrepared extends true ? string | null : undefined
     if (this.publicdir) {
       this.publicdir.hostname = getHostnameOrNull(this.baseurl)
     }
-    this.initialized = true as never
-    this.fetcher = Fetcher.create({ engine, server: this as EngineServer<true> }) as TInitialized extends true
+    this.prepared = true as never
+    this.fetcher = Fetcher.create({ engine, server: this as EngineServer<true> }) as TPrepared extends true
       ? Fetcher
       : null
     return this as EngineServer<true>
@@ -227,7 +227,7 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     }
     const points = await ServerPoints.createFromSource(this.pointsProvided)
     await points.load()
-    this.points = points as TInitialized extends true ? ServerPoints | null : undefined
+    this.points = points as TPrepared extends true ? ServerPoints | null : undefined
     return points
   }
 
@@ -402,133 +402,135 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     return undefined // this mean that we did not find any dev client proxy response, and should continue to fetch point
   }
 
-  serve({ requiredCtx }: { requiredCtx: RequiredCtx }): void {
-    if (!this.isInitialized()) {
-      throw new Error('Server is not initialized')
+  async serve({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
+    if (!this.isPrepared()) {
+      throw new Error('Server is not prepared')
     }
-    this.bunServer = withRetries(process.env.NODE_ENV === 'test' ? 99 : 5, () =>
-      Bun.serve({
-        port: this.port,
-        fetch: async (request, bunServer) => {
-          const devClientsProxyResponse = await this.fetchDevClientsProxy({ request, bunServer })
-          if (devClientsProxyResponse) {
-            return devClientsProxyResponse.response
-          }
+    this.port = await resolvePortByPolicy({
+      port: this.port,
+      portPolicy: this.portPolicy,
+    })
+    this.bunServer = Bun.serve({
+      port: this.port,
+      fetch: async (request, bunServer) => {
+        const devClientsProxyResponse = await this.fetchDevClientsProxy({ request, bunServer })
+        if (devClientsProxyResponse) {
+          return devClientsProxyResponse.response
+        }
 
-          const result = await this.fetchDetailed({ request, requiredCtx, bunServer })
+        const result = await this.fetchDetailed({ request, requiredCtx, bunServer })
 
-          // Add CORS headers in dev mode for requests from localhost with client ports (for vite development)
-          // TODO: remove it, we now just forward from client to server
-          // if (process.env.NODE_ENV !== 'production') {
-          //   const origin = request.headers.get('origin')
-          //   if (origin) {
-          //     const originUrl = new URL(origin)
-          //     // Check if origin is localhost and port matches any client port
-          //     const isLocalhostClient =
-          //       originUrl.hostname === 'localhost' &&
-          //       this.clients.some((client) => originUrl.port === String(client.port))
+        // Add CORS headers in dev mode for requests from localhost with client ports (for vite development)
+        // TODO: remove it, we now just forward from client to server
+        // if (process.env.NODE_ENV !== 'production') {
+        //   const origin = request.headers.get('origin')
+        //   if (origin) {
+        //     const originUrl = new URL(origin)
+        //     // Check if origin is localhost and port matches any client port
+        //     const isLocalhostClient =
+        //       originUrl.hostname === 'localhost' &&
+        //       this.clients.some((client) => originUrl.port === String(client.port))
 
-          //     if (isLocalhostClient) {
-          //       // Handle preflight OPTIONS requests
-          //       if (request.method === 'OPTIONS') {
-          //         const requestedHeaders = request.headers.get('Access-Control-Request-Headers')
-          //         return new Response(null, {
-          //           status: 204,
-          //           headers: {
-          //             'Access-Control-Allow-Origin': origin,
-          //             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-          //             'Access-Control-Allow-Headers': requestedHeaders || '*',
-          //             'Access-Control-Allow-Credentials': 'true',
-          //             'Access-Control-Max-Age': '86400',
-          //           },
-          //         })
-          //       }
+        //     if (isLocalhostClient) {
+        //       // Handle preflight OPTIONS requests
+        //       if (request.method === 'OPTIONS') {
+        //         const requestedHeaders = request.headers.get('Access-Control-Request-Headers')
+        //         return new Response(null, {
+        //           status: 204,
+        //           headers: {
+        //             'Access-Control-Allow-Origin': origin,
+        //             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+        //             'Access-Control-Allow-Headers': requestedHeaders || '*',
+        //             'Access-Control-Allow-Credentials': 'true',
+        //             'Access-Control-Max-Age': '86400',
+        //           },
+        //         })
+        //       }
 
-          //       // Add CORS headers to the response
-          //       const newHeaders = new Headers(response.headers)
-          //       newHeaders.set('Access-Control-Allow-Origin', origin)
-          //       newHeaders.set('Access-Control-Allow-Credentials', 'true')
-          //       // Expose all response headers (can't use * with credentials, so list them)
-          //       const exposedHeaders: string[] = []
-          //       response.headers.forEach((_, key) => {
-          //         exposedHeaders.push(key)
-          //       })
-          //       if (exposedHeaders.length > 0) {
-          //         newHeaders.set('Access-Control-Expose-Headers', exposedHeaders.join(', '))
-          //       }
+        //       // Add CORS headers to the response
+        //       const newHeaders = new Headers(response.headers)
+        //       newHeaders.set('Access-Control-Allow-Origin', origin)
+        //       newHeaders.set('Access-Control-Allow-Credentials', 'true')
+        //       // Expose all response headers (can't use * with credentials, so list them)
+        //       const exposedHeaders: string[] = []
+        //       response.headers.forEach((_, key) => {
+        //         exposedHeaders.push(key)
+        //       })
+        //       if (exposedHeaders.length > 0) {
+        //         newHeaders.set('Access-Control-Expose-Headers', exposedHeaders.join(', '))
+        //       }
 
-          //       return new Response(response.body, {
-          //         status: response.status,
-          //         statusText: response.statusText,
-          //         headers: newHeaders,
-          //       })
-          //     }
-          //   }
-          // }
+        //       return new Response(response.body, {
+        //         status: response.status,
+        //         statusText: response.statusText,
+        //         headers: newHeaders,
+        //       })
+        //     }
+        //   }
+        // }
 
-          return result.response
-        },
-        websocket: {
-          open(ws) {
-            if (process.env.NODE_ENV !== 'production') {
-              // Only proxy WebSocket connections that have a wsUrl (Bun dev server connections)
-              const data = ws.data as unknown as { wsUrl?: string; upstream?: WebSocket }
-              if (!data.wsUrl) {
-                return
-              }
+        return result.response
+      },
+      websocket: {
+        open(ws) {
+          if (process.env.NODE_ENV !== 'production') {
+            // Only proxy WebSocket connections that have a wsUrl (Bun dev server connections)
+            const data = ws.data as { wsUrl?: string; upstream?: WebSocket }
+            if (!data.wsUrl) {
+              return
+            }
 
-              // Connect to upstream WebSocket when client connects
-              const upstream = new WebSocket(data.wsUrl)
+            // Connect to upstream WebSocket when client connects
+            const upstream = new WebSocket(data.wsUrl)
 
-              upstream.onopen = () => {
-                // Store upstream reference in ws data
-                data.upstream = upstream
-              }
-
-              upstream.onmessage = (event) => {
-                // Forward messages from upstream to client
-                ws.send(event.data)
-              }
-
-              upstream.onclose = () => {
-                ws.close()
-              }
-
-              upstream.onerror = () => {
-                ws.close()
-              }
-
-              // Store upstream for later use
+            upstream.onopen = () => {
+              // Store upstream reference in ws data
               data.upstream = upstream
             }
-          },
-          message(ws, message) {
-            // Forward messages from client to upstream (only for proxied connections)
-            if (process.env.NODE_ENV !== 'production') {
-              const data = ws.data as unknown as { upstream?: WebSocket }
-              if (data.upstream?.readyState === WebSocket.OPEN) {
-                data.upstream.send(message)
-              }
+
+            upstream.onmessage = (event) => {
+              // Forward messages from upstream to client
+              ws.send(event.data)
             }
-          },
-          close(ws) {
-            if (process.env.NODE_ENV !== 'production') {
-              // Clean up upstream connection when client disconnects
-              const data = ws.data as unknown as { upstream?: WebSocket }
-              if (data.upstream) {
-                data.upstream.close()
-              }
+
+            upstream.onclose = () => {
+              ws.close()
             }
-          },
+
+            upstream.onerror = () => {
+              ws.close()
+            }
+
+            // Store upstream for later use
+            data.upstream = upstream
+          }
         },
-      }),
-    )()
+        message(ws, message) {
+          // Forward messages from client to upstream (only for proxied connections)
+          if (process.env.NODE_ENV !== 'production') {
+            const data = ws.data as { upstream?: WebSocket }
+            if (data.upstream?.readyState === WebSocket.OPEN) {
+              data.upstream.send(message)
+            }
+          }
+        },
+        close(ws) {
+          if (process.env.NODE_ENV !== 'production') {
+            // Clean up upstream connection when client disconnects
+            const data = ws.data as { upstream?: WebSocket }
+            if (data.upstream) {
+              data.upstream.close()
+            }
+          }
+        },
+      },
+    })
   }
 
   async dispose(options?: { closeViteDevServer?: boolean }): Promise<void> {
     const { closeViteDevServer = false } = options ?? {}
-    if (!this.isInitialized()) {
-      throw new Error('Server is not initialized')
+    if (!this.isPrepared()) {
+      throw new Error('Server is not prepared')
     }
     if (this.bunServer) {
       await this.bunServer.stop()
@@ -862,8 +864,8 @@ export class EngineServer<TInitialized extends boolean = boolean> {
     requiredCtx: RequiredCtx
     bunServer?: Bun.Server<unknown>
   }): Promise<FetcherFetchDetailedResult> {
-    if (!this.isInitialized()) {
-      throw new Error('Server is not initialized')
+    if (!this.isPrepared()) {
+      throw new Error('Server is not prepared')
     }
     return await this.fetcher.fetchDetailed({ request, requiredCtx, bunServer })
   }

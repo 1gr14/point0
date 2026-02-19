@@ -24,11 +24,11 @@ export const engine = Engine.create({
       generate: [
         {
           what: 'points',
-          file: './lib/points.ts',
+          outfile: './lib/points.ts',
         },
         {
           what: 'routes',
-          file: './lib/routes.generated.ts',
+          outfile: './lib/routes.generated.ts',
         },
       ],
       routes: async () => await import('./lib/routes').then((m) => m.routes),

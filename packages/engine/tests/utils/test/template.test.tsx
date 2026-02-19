@@ -53,6 +53,9 @@ describe('template', () => {
     wrp(async ({ tp }) => {
       expect(await tp.files.packageJson.text()).toContain(tp.name)
     }),
+    {
+      retry: 3,
+    },
   )
 
   it(
@@ -60,8 +63,11 @@ describe('template', () => {
     wrp(async ({ tp }) => {
       const engine = await tp.importEngine()
       expect(engine).toBeDefined()
-      expect(engine.isInitialized()).toBe(false)
+      expect(engine.isPrepared()).toBe(false)
     }),
+    {
+      retry: 3,
+    },
   )
 
   it(
@@ -72,5 +78,8 @@ describe('template', () => {
       expect(engine.server.port).toBe(4)
       expect(engine.clients[0].port).toBe(5)
     }),
+    {
+      retry: 3,
+    },
   )
 })

@@ -1,6 +1,6 @@
-import type { PointsScope } from '@point0/core'
-import { Request0 } from '@point0/core/request0'
 import { prependAndDeappendSlash } from '@point0/core'
+import type { PointsScope } from '@point0/core'
+import type { Request0 } from '@point0/core/request0'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { EngineClient } from './client.js'
@@ -27,33 +27,33 @@ export type PublicdirDefinition = Array<[string, string | Response | (() => Resp
 export type PublicdirFileDefinition = string | Response | (() => Response | Promise<Response>)
 export type PublicdirFilesDefinition = Map<string, PublicdirFileDefinition>
 
-export class Publicdir<TInitialized extends boolean = boolean> {
+export class Publicdir<TPrepared extends boolean = boolean> {
   hostname: string | null
   source: PublicdirDefinition
   // <fileRoutePath, fileAbsPath | fileResponseOrFn>
   files: PublicdirFilesDefinition
   outdir: string | null
-  server: TInitialized extends true ? EngineServer<true> | null : EngineServer<false> | null
-  client: TInitialized extends true ? EngineClient<true> | null : EngineClient<false> | null
-  initialized: TInitialized
+  server: TPrepared extends true ? EngineServer<true> | null : EngineServer<false> | null
+  client: TPrepared extends true ? EngineClient<true> | null : EngineClient<false> | null
+  prepared: TPrepared
 
   scope: PointsScope
 
   private constructor(input: {
-    initialized: TInitialized
+    prepared: TPrepared
     hostname: string | null
     source: PublicdirDefinition
     scope: PointsScope
     outdir: string | null
-    server: TInitialized extends true ? EngineServer<true> | null : EngineServer<false> | null
-    client: TInitialized extends true ? EngineClient<true> | null : EngineClient<false> | null
+    server: TPrepared extends true ? EngineServer<true> | null : EngineServer<false> | null
+    client: TPrepared extends true ? EngineClient<true> | null : EngineClient<false> | null
   }) {
     this.hostname = input.hostname
     this.source = input.source
     this.files = new Map<string, PublicdirFileDefinition>()
     this.scope = input.scope
     this.outdir = input.outdir
-    this.initialized = input.initialized
+    this.prepared = input.prepared
     this.server = input.server
     this.client = input.client
   }
@@ -68,23 +68,23 @@ export class Publicdir<TInitialized extends boolean = boolean> {
   }): Publicdir<false> {
     return new Publicdir<false>({
       ...input,
-      initialized: false,
+      prepared: false,
       server: input.server,
       client: input.client,
     })
   }
 
-  async init(): Promise<Publicdir<true>> {
-    if (this.isInitialized()) {
+  async prepare(): Promise<Publicdir<true>> {
+    if (this.isPrepared()) {
       return this as Publicdir<true>
     }
     await this.loadFiles()
-    this.initialized = true as never
+    this.prepared = true as never
     return this as Publicdir<true>
   }
 
-  isInitialized(): this is Publicdir<true> {
-    return !!this.initialized
+  isPrepared(): this is Publicdir<true> {
+    return !!this.prepared
   }
 
   async loadFiles(): Promise<void> {
@@ -113,8 +113,8 @@ export class Publicdir<TInitialized extends boolean = boolean> {
   }
 
   async fetch({ request }: { request: Request0 }): Promise<Response | undefined> {
-    if (!this.isInitialized()) {
-      throw new Error('Publicdir is not initialized')
+    if (!this.isPrepared()) {
+      throw new Error('Publicdir is not prepared')
     }
 
     if (this.hostname && request.location.hostname !== this.hostname) {
@@ -147,7 +147,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
   }
 
   async build(options?: { clean?: boolean }): Promise<string[] | null> {
-    await this.init()
+    await this.prepare()
 
     const outdir = this.outdir
     if (!outdir) {
