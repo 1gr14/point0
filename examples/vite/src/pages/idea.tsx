@@ -18,7 +18,7 @@ export const ideaPage = ideaLayout
     // it excutes on server, but defined in client file,
     // prisma will never come her on client, becouse of dead code optimization on build
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
-      where: { id: parseInt(input.id) },
+      where: { id: +input.id },
     })
     return { idea }
   })

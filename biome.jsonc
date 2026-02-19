@@ -63,7 +63,7 @@
       "correctness": {
         // "noUnusedFunctionParameters": "off",
         // "noUnusedVariables": "off",
-        "useParseIntRadix": "off",
+        // "useParseIntRadix": "off",
         "noUnusedImports": "off",
         "noUnusedPrivateClassMembers": "off"
       },
