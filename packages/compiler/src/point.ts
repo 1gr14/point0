@@ -750,32 +750,32 @@ export class CompilerPoint<TValid extends boolean = any> {
     }
   }
 
-  private replaceLastArgWithArrowFnReturnNull({ nodePath }: { nodePath: NodePath<Node> }): void {
-    if (nodePath.node.type !== 'CallExpression') {
-      return
-    }
-    if (nodePath.node.callee.type !== 'MemberExpression') {
-      return
-    }
-    if (nodePath.node.callee.property.type !== 'Identifier') {
-      return
-    }
-    if (nodePath.node.arguments.length === 0) {
-      return
-    }
-    nodePath.node.arguments[nodePath.node.arguments.length - 1] = {
-      type: 'ArrowFunctionExpression' as const,
-      id: null,
-      generator: false,
-      async: false,
-      expression: true,
-      params: [],
-      body: {
-        type: 'NullLiteral' as const,
-      },
-    } as any
-    this.file.modified = true
-  }
+  // private replaceLastArgWithArrowFnReturnNull({ nodePath }: { nodePath: NodePath<Node> }): void {
+  //   if (nodePath.node.type !== 'CallExpression') {
+  //     return
+  //   }
+  //   if (nodePath.node.callee.type !== 'MemberExpression') {
+  //     return
+  //   }
+  //   if (nodePath.node.callee.property.type !== 'Identifier') {
+  //     return
+  //   }
+  //   if (nodePath.node.arguments.length === 0) {
+  //     return
+  //   }
+  //   nodePath.node.arguments[nodePath.node.arguments.length - 1] = {
+  //     type: 'ArrowFunctionExpression' as const,
+  //     id: null,
+  //     generator: false,
+  //     async: false,
+  //     expression: true,
+  //     params: [],
+  //     body: {
+  //       type: 'NullLiteral' as const,
+  //     },
+  //   } as any
+  //   this.file.modified = true
+  // }
 
   private replaceAllArgsWithArrowFnReturnEmptyObject({ nodePath }: { nodePath: NodePath<Node> }): void {
     if (nodePath.node.type !== 'CallExpression') {

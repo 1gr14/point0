@@ -207,7 +207,6 @@ import {
   isContainsBinary,
   mergeHeaders,
   toExtendedTransformer,
-  toPascalCase,
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
@@ -421,8 +420,8 @@ export class Point0<
   private readonly _loadingComponent: LoadingComponentType<any> | undefined
   private readonly _pageLoadingComponent: LoadingComponentType<any> | undefined
   private readonly _componentLoadingComponent: LoadingComponentType<any> | undefined
-  private readonly _getComponentLoadingComponent = () =>
-    this._componentLoadingComponent ?? Point0.DefaultLoadingComponent
+  // private readonly _getComponentLoadingComponent = () =>
+  //   this._componentLoadingComponent ?? Point0.DefaultLoadingComponent
   X: TPointType extends 'layout'
     ? LayoutSelfType<
         TRouteDefinition,
@@ -4600,23 +4599,23 @@ export class Point0<
     })
   }
 
-  private static _isReadyPointType(pointType: PointType): boolean {
-    return (
-      pointType === 'root' ||
-      pointType === 'base' ||
-      pointType === 'page' ||
-      pointType === 'layout' ||
-      pointType === 'plugin' ||
-      pointType === 'query' ||
-      pointType === 'infiniteQuery' ||
-      pointType === 'mutation' ||
-      pointType === 'component' ||
-      pointType === 'provider'
-    )
-  }
-  private _isReadyPoint(): boolean {
-    return Point0._isReadyPointType(this.type)
-  }
+  // private static _isReadyPointType(pointType: PointType): boolean {
+  //   return (
+  //     pointType === 'root' ||
+  //     pointType === 'base' ||
+  //     pointType === 'page' ||
+  //     pointType === 'layout' ||
+  //     pointType === 'plugin' ||
+  //     pointType === 'query' ||
+  //     pointType === 'infiniteQuery' ||
+  //     pointType === 'mutation' ||
+  //     pointType === 'component' ||
+  //     pointType === 'provider'
+  //   )
+  // }
+  // private _isReadyPoint(): boolean {
+  //   return Point0._isReadyPointType(this.type)
+  // }
   private static _isQueryableReadyPointType(pointType: PointType): boolean {
     return (
       pointType === 'query' ||
@@ -4655,32 +4654,32 @@ export class Point0<
       provider: 'page' as const,
     }[this.type as MountablePointType]
   }
-  private _getLoadingComponent(): LoadingComponentType<any> {
-    const variant = this._getDestinationComponentVariant()
-    return (
-      this._loadingComponent ??
-      (variant
-        ? ({
-            page: this._pageLoadingComponent,
-            component: this._componentLoadingComponent,
-            layout: this._layoutLoadingComponent,
-          }[variant] ?? Point0.DefaultLoadingComponent)
-        : Point0.DefaultLoadingComponent)
-    )
-  }
-  private _getErrorComponent(): ErrorComponentType<any> {
-    const variant = this._getDestinationComponentVariant()
-    return (
-      this._errorComponent ??
-      (variant
-        ? ({
-            page: this._pageErrorComponent,
-            component: this._componentErrorComponent,
-            layout: this._layoutErrorComponent,
-          }[variant] ?? Point0.DefaultErrorComponent)
-        : Point0.DefaultErrorComponent)
-    )
-  }
+  // private _getLoadingComponent(): LoadingComponentType<any> {
+  //   const variant = this._getDestinationComponentVariant()
+  //   return (
+  //     this._loadingComponent ??
+  //     (variant
+  //       ? ({
+  //           page: this._pageLoadingComponent,
+  //           component: this._componentLoadingComponent,
+  //           layout: this._layoutLoadingComponent,
+  //         }[variant] ?? Point0.DefaultLoadingComponent)
+  //       : Point0.DefaultLoadingComponent)
+  //   )
+  // }
+  // private _getErrorComponent(): ErrorComponentType<any> {
+  //   const variant = this._getDestinationComponentVariant()
+  //   return (
+  //     this._errorComponent ??
+  //     (variant
+  //       ? ({
+  //           page: this._pageErrorComponent,
+  //           component: this._componentErrorComponent,
+  //           layout: this._layoutErrorComponent,
+  //         }[variant] ?? Point0.DefaultErrorComponent)
+  //       : Point0.DefaultErrorComponent)
+  //   )
+  // }
 
   _hasServerLoader(): boolean {
     return this._serverExecuteActions.length > 0 && this._serverExecuteActions.some((fn) => fn.type === 'loader')
@@ -4690,28 +4689,28 @@ export class Point0<
     return this._clientExecuteActions.length > 0 && this._clientExecuteActions.some((fn) => fn.type === 'loader')
   }
 
-  private _hasClientAsyncLoader(): boolean {
-    return (
-      this._clientExecuteActions.length > 0 &&
-      this._clientExecuteActions.some((fn) => fn.type === 'loader' && fn.fn.constructor.name === 'AsyncFunction')
-    )
-  }
+  // private _hasClientAsyncLoader(): boolean {
+  //   return (
+  //     this._clientExecuteActions.length > 0 &&
+  //     this._clientExecuteActions.some((fn) => fn.type === 'loader' && fn.fn.constructor.name === 'AsyncFunction')
+  //   )
+  // }
 
-  private _getRouteForce(): CallableRoute<NonNullable<TRouteDefinition>> {
-    if (!this.route) {
-      throw new Error(`No client route provided for this point. Name: ${this.name}.`)
-    }
-    return this.route as CallableRoute<NonNullable<TRouteDefinition>>
-  }
+  // private _getRouteForce(): CallableRoute<NonNullable<TRouteDefinition>> {
+  //   if (!this.route) {
+  //     throw new Error(`No client route provided for this point. Name: ${this.name}.`)
+  //   }
+  //   return this.route as CallableRoute<NonNullable<TRouteDefinition>>
+  // }
 
-  private _generateComponentDisplayName(options?: {
-    index?: number | undefined
-    prefix?: string
-    suffix?: string
-  }): string {
-    const { index, prefix, suffix } = options ?? {}
-    return toPascalCase([prefix, this.name, suffix, index].filter(Boolean).join('_'))
-  }
+  // private _generateComponentDisplayName(options?: {
+  //   index?: number | undefined
+  //   prefix?: string
+  //   suffix?: string
+  // }): string {
+  //   const { index, prefix, suffix } = options ?? {}
+  //   return toPascalCase([prefix, this.name, suffix, index].filter(Boolean).join('_'))
+  // }
 
   // private _applyComponentDisplayName<TComponent extends React.ComponentType<any>>(
   //   component: TComponent,
