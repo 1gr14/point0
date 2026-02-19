@@ -3,7 +3,7 @@ import { Point0, queryClient } from '@point0/core'
 import superjson from 'superjson'
 import * as z from 'zod'
 import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
-import { CookiesStore } from '../src/index.js'
+import { CookiesStore, type CookiesStoreGetter } from '../src/index.js'
 
 describe('cookies-store', () => {
   let fakeClient: Awaited<ReturnType<typeof createTestThings>>['client']
@@ -40,7 +40,7 @@ describe('cookies-store', () => {
         if (originalCookieDescriptor) {
           Object.defineProperty(document, 'cookie', originalCookieDescriptor)
         } else {
-          delete (document as any).cookie
+          delete (document as unknown as Record<string, unknown>).cookie
         }
       }
     }
@@ -61,7 +61,7 @@ describe('cookies-store', () => {
         if (originalCookieDescriptor) {
           Object.defineProperty(document, 'cookie', originalCookieDescriptor)
         } else {
-          delete (document as any).cookie
+          delete (document as unknown as Record<string, unknown>).cookie
         }
       }
     }
@@ -151,7 +151,7 @@ describe('cookies-store', () => {
             return { ...cookieState }
           }
           return cookieState[name]
-        }) as any,
+        }) as CookiesStoreGetter | undefined,
         clientCookieSetter: (options) => {
           cookieState[options.name] = options.value
         },

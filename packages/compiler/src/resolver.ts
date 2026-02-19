@@ -5,8 +5,7 @@ import * as ts from 'typescript'
 export class FileResolver {
   // Cache for TypeScript compiler options per directory
   // Value can be: ParsedCommandLine, null (no tsconfig found), or undefined (not checked yet)
-  // biome-ignore lint/suspicious/noExplicitAny: ok
-  private static readonly tsConfigCache = new Map<string, any>()
+  private static readonly tsConfigCache = new Map<string, ts.ParsedCommandLine | null>()
 
   /**
    * Clears the TypeScript config cache.
@@ -21,7 +20,7 @@ export class FileResolver {
    * Searches up the directory tree to find the nearest tsconfig.json.
    * Returns null if TypeScript is not available or no tsconfig is found.
    */
-  private static getTsConfigForDirectory({ dir }: { dir: string }): { options: any } | null {
+  private static getTsConfigForDirectory({ dir }: { dir: string }): ts.ParsedCommandLine | null {
     // Check cache first
     if (FileResolver.tsConfigCache.has(dir)) {
       return FileResolver.tsConfigCache.get(dir) ?? null

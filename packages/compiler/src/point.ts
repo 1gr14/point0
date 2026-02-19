@@ -17,8 +17,7 @@ import {
 import type { CompilerFile } from './file.js'
 import type { Walker } from './walker.js'
 
-// biome-ignore lint/suspicious/noExplicitAny: ok
-export class CompilerPoint<TValid extends boolean = any> {
+export class CompilerPoint<TValid extends boolean = boolean> {
   readonly walker: Walker
   file: CompilerFile<true>
   // readonly exportName: TValid extends true ? string : string | undefined
@@ -1100,8 +1099,7 @@ export class CompilerPoint<TValid extends boolean = any> {
     }
 
     // Replace the original last method call node with the new one that has ._tail() chained
-    // biome-ignore lint/suspicious/noExplicitAny: ok
-    lastMethod.nodePath.replaceWith(hmrCallExpression as any)
+    lastMethod.nodePath.replaceWith(hmrCallExpression as unknown as Node)
     this.file.modified = true
     this._addHmrFix = true
   }

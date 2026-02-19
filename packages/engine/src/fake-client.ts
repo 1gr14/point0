@@ -71,7 +71,10 @@ class GlobalThisItemProxy {
         fakeClientValue: value,
         // Keep a stable fallback for globals that don't exist in Node/Bun by default
         // (e.g. window/document) to avoid async callbacks crashing outside fake-client context.
-        originalValue: typeof (globalThis as any)[key] === 'undefined' ? undefined : (globalThis as any)[key],
+        originalValue:
+          typeof (globalThis as unknown as Record<string, unknown>)[key] === 'undefined'
+            ? undefined
+            : (globalThis as unknown as Record<string, unknown>)[key],
       })
     }
     item.fakeClientsValues.set(fakeClient.id, value)
@@ -85,7 +88,7 @@ class GlobalThisItemProxy {
       })
     } else {
       GlobalThisItemProxy.items.forEach((item) => {
-        ;(globalThis as any)[item.key] = item.originalValue
+        ;(globalThis as unknown as Record<string, unknown>)[item.key] = item.originalValue
       })
     }
   }
@@ -98,12 +101,13 @@ export type FakeClientState = {
   [key: string]: unknown
 }
 
-export class FakeClient<TState extends FakeClientState = any> {
+export class FakeClient<TState extends FakeClientState = FakeClientState> {
   id: string
   scope: PointsScope
   runtime: ClientRuntime
   client: EngineClient<true>
   points: ClientPoints
+  // biome-ignore lint/suspicious/noExplicitAny: Engine state type must stay flexible for FakeClient
   engine: Engine<any, true>
   state: TState
   jar: CookieJar
@@ -137,6 +141,7 @@ export class FakeClient<TState extends FakeClientState = any> {
     cookieSetter,
     cookieGetter,
   }: {
+    // biome-ignore lint/suspicious/noExplicitAny: Engine state type must stay flexible for FakeClient
     engine: Engine<any, true>
     client: EngineClient<true>
     points: ClientPoints
@@ -191,7 +196,7 @@ export class FakeClient<TState extends FakeClientState = any> {
   }: {
     engine: Engine
     scope: PointsScope
-    globals: Record<string, any>
+    globals: Record<string, unknown>
     points?: ClientPoints
     onRunStartOutside?: FakeClientCallback<TState> | undefined
     onRunStartInside?: FakeClientCallback<TState> | undefined
@@ -263,6 +268,7 @@ export class FakeClient<TState extends FakeClientState = any> {
     //   // throw new Error('Points for fake client not provided')
     // }
     const fakeClient = new FakeClient({
+      // biome-ignore lint/suspicious/noExplicitAny: Engine state generic must stay flexible for FakeClient
       engine: engine as Engine<any, true>,
       client: client as EngineClient<true>,
       id,
@@ -291,7 +297,7 @@ export class FakeClient<TState extends FakeClientState = any> {
       },
     }
     for (const [key, value] of Object.entries(globalsWithClientEnv)) {
-      GlobalThisItemProxy.create(fakeClient, key, value)
+      GlobalThisItemProxy.create(fakeClient as unknown as FakeClient<FakeClientState>, key, value)
     }
     return fakeClient as unknown as FakeClient<TState>
   }

@@ -137,7 +137,7 @@ export class CookiesStore {
   static transformer: DataTransformerExtended = blankDataTransformerExtended
   static clientCookieGetter: CookiesStoreGetter = CookiesStore.clientDocumentCookieGetter
   static clientCookieSetter: CookiesStoreSetter = CookiesStore.clientDocumentCookieSetter
-  static readonly items = new Set<CookiesStoreItem<any, any, any>>()
+  static readonly items = new Set<CookiesStoreItem<unknown, unknown, boolean>>()
 
   static configure(options?: {
     clientCookieGetter?: CookiesStoreGetter
@@ -288,7 +288,7 @@ export class CookiesStore {
 }
 
 class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
-  private readonly cookieDefineOptions: CookieDefineOptions<THttpOnly, any, TFallback>
+  private readonly cookieDefineOptions: CookieDefineOptions<THttpOnly, DataTransformer | 'auto' | boolean, TFallback>
   private readonly fallback: TFallback
   private readonly transformerPolicy: 'auto' | boolean
   private readonly transformer: DataTransformerExtended
@@ -300,7 +300,7 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
     transformer,
     fallback,
   }: {
-    cookieDefineOptions: CookieDefineOptions<THttpOnly, any, TFallback>
+    cookieDefineOptions: CookieDefineOptions<THttpOnly, DataTransformer | 'auto' | boolean, TFallback>
     transformerPolicy: 'auto' | boolean
     transformer: DataTransformerExtended
     fallback: TFallback

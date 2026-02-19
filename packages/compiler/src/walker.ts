@@ -8,6 +8,7 @@ import { CompilerFile } from './file.js'
 import { CompilerPoint } from './point.js'
 import { FileResolver } from './resolver.js'
 
+// biome-ignore lint/suspicious/noExplicitAny: ok
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
   : typeof traverseType
@@ -124,14 +125,11 @@ const traverse = ((traverseModule as any).default ?? traverseModule) as typeof t
 //
 
 export class Walker {
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  readonly files = new Map<string, CompilerFile<any>>()
+  readonly files = new Map<string, CompilerFile<boolean>>()
 
   // <scope, Routes>
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   readonly routes: Record<string, RoutesPretty>
 
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   constructor({ routes }: { routes: Record<string, RoutesPretty> | undefined }) {
     this.routes = routes ?? {}
   }
@@ -141,8 +139,7 @@ export class Walker {
   }
   getRouteByScope(scope: string, routeKey: string): AnyRoute | undefined {
     const routes = this.getRoutesByScope(scope)
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    return (routes as any)?.[routeKey]
+    return (routes as Record<string, AnyRoute>)?.[routeKey]
   }
 
   async readManyAsync({ files }: { files: string[]; fresh: boolean }): Promise<Array<CompilerFile<true>>> {
@@ -161,8 +158,7 @@ export class Walker {
     | {
         points: CompilerPoint[]
         errors: unknown[]
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-        file: CompilerFile<any> | undefined
+        file: CompilerFile<boolean> | undefined
         ok: false
       } {
     const points: CompilerPoint[] = []

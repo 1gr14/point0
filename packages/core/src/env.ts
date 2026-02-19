@@ -12,8 +12,8 @@ export const getEnvVars = (): EnvVars => {
   const env = Object.create(null)
   const processEnvHolder = (() => {
     if (typeof globalThis !== 'undefined' && isSideClient()) {
-      const point0EnvVars = (globalThis as any).__POINT0_ENV_VARS__
-      const point0EnvConsts = (globalThis as any).__POINT0_ENV_CONSTS__
+      const point0EnvVars = (globalThis as unknown as Record<string, unknown>).__POINT0_ENV_VARS__
+      const point0EnvConsts = (globalThis as unknown as Record<string, unknown>).__POINT0_ENV_CONSTS__
       if (point0EnvVars || point0EnvConsts) {
         return {
           ...(point0EnvVars ?? {}),
@@ -51,7 +51,7 @@ const _isSideClient = (): boolean => {
   if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') return true
 
   // Electron renderer process
-  if (typeof process !== 'undefined' && (process as any).type === 'renderer') return true
+  if (typeof process !== 'undefined' && (process as unknown as { type?: string }).type === 'renderer') return true
 
   return false // Node.js, Bun, Deno, or other server runtimes
 }
@@ -80,7 +80,7 @@ const isSideSsr = (): false | true | 'prepass' | 'final' => {
   if (isSideClient()) {
     return false
   }
-  const getSsrPhase: unknown = (globalThis as any).__POINT0_GET_SSR_PHASE__
+  const getSsrPhase: unknown = (globalThis as unknown as Record<string, unknown>).__POINT0_GET_SSR_PHASE__
   // TODO: maybe check import.meta.env.SSR ot something like vite provides? We do not need it for point0, so I think it does not needed
   if (typeof getSsrPhase !== 'function') {
     return false
@@ -123,13 +123,13 @@ type SideDefineWithHelpers = typeof sideDefineUniversal & {
   client: <T>(value: T) => T | undefined
   unsafe: SideDefineUnsafe
 }
-const defineServer = (value: any) => {
+const defineServer = <T>(value: T): T | undefined => {
   if (isSideClient()) {
     return undefined
   }
   return value
 }
-const defineClient = (value: any) => {
+const defineClient = <T>(value: T): T | undefined => {
   if (isSideServer()) {
     return undefined
   }
@@ -213,16 +213,18 @@ type ScopeDefineWithHelpers<TScopes extends string = string> = string extends TS
         unsafe: ScopeDefineUnsafe<TScopes>
       }
 
-function scopeDefineUniversal(options: Record<string, any>) {
+function scopeDefineUniversal(options: Record<string, unknown>) {
   return options[getScopeName()]
 }
 
-const scopeDefineSpecific = (scope: string) => (value: any) => {
-  if (getScopeName() !== scope) {
-    return undefined
+const scopeDefineSpecific =
+  (scope: string) =>
+  <T>(value: T): T | undefined => {
+    if (getScopeName() !== scope) {
+      return undefined
+    }
+    return value
   }
-  return value
-}
 const scopeDefineUnsafe = new Proxy(
   {},
   {
@@ -236,7 +238,7 @@ const scopeDefine = new Proxy(scopeDefineUniversal, {
   apply(_target, _thisArg, args: Parameters<typeof scopeDefineUniversal>) {
     return scopeDefineUniversal(...args)
   },
-  get(_target, prop: string, receiver: any) {
+  get(_target, prop: string, receiver: unknown) {
     if (Object.hasOwn(scopeDefineUniversal, prop)) {
       return Reflect.get(scopeDefineUniversal, prop, receiver)
     }
@@ -418,17 +420,18 @@ const getRuntimeName = (): EnvRuntimeName | undefined => {
   if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     return 'browser'
   }
+  // biome-ignore lint/suspicious/noExplicitAny: WorkerGlobalScope for instanceof check, env-dependent
   const workerGlobalScope = (globalThis as any).WorkerGlobalScope
   if (typeof workerGlobalScope !== 'undefined' && typeof self !== 'undefined' && self instanceof workerGlobalScope) {
     return 'worker'
   }
-  if (typeof (globalThis as any).Bun !== 'undefined') {
+  if (typeof (globalThis as unknown as Record<string, unknown>).Bun !== 'undefined') {
     return 'bun'
   }
-  if (typeof (globalThis as any).Deno !== 'undefined') {
+  if (typeof (globalThis as unknown as Record<string, unknown>).Deno !== 'undefined') {
     return 'deno'
   }
-  if (typeof process !== 'undefined' && (process as any).versions?.node) {
+  if (typeof process !== 'undefined' && (process as unknown as { versions?: { node?: string } }).versions?.node) {
     return 'nodejs'
   }
   return undefined
@@ -442,16 +445,18 @@ const getRuntimeKey = (): EnvRuntimeName | 'unknown' => {
   return runtime
 }
 
-function runtimeDefineUniversal(options: Record<string, any>) {
+function runtimeDefineUniversal(options: Record<string, unknown>) {
   return options[getRuntimeKey()]
 }
 
-const runtimeDefineSpecific = (runtime: string) => (value: any) => {
-  if (getRuntimeKey() !== runtime) {
-    return undefined
+const runtimeDefineSpecific =
+  (runtime: string) =>
+  <T>(value: T): T | undefined => {
+    if (getRuntimeKey() !== runtime) {
+      return undefined
+    }
+    return value
   }
-  return value
-}
 
 const runtimeDefineUnsafe = new Proxy(
   {},
@@ -466,7 +471,7 @@ const runtimeDefine = new Proxy(runtimeDefineUniversal, {
   apply(_target, _thisArg, args: Parameters<typeof runtimeDefineUniversal>) {
     return runtimeDefineUniversal(...args)
   },
-  get(_target, prop: string, receiver: any) {
+  get(_target, prop: string, receiver: unknown) {
     if (Object.hasOwn(runtimeDefineUniversal, prop)) {
       return Reflect.get(runtimeDefineUniversal, prop, receiver)
     }
@@ -604,16 +609,18 @@ const getOsKey = (): EnvOsName | 'unknown' => {
   return os
 }
 
-function osDefineUniversal(options: Record<string, any>) {
+function osDefineUniversal(options: Record<string, unknown>) {
   return options[getOsKey()]
 }
 
-const osDefineSpecific = (os: string) => (value: any) => {
-  if (getOsKey() !== os) {
-    return undefined
+const osDefineSpecific =
+  (os: string) =>
+  <T>(value: T): T | undefined => {
+    if (getOsKey() !== os) {
+      return undefined
+    }
+    return value
   }
-  return value
-}
 
 const osDefineUnsafe = new Proxy(
   {},
@@ -628,7 +635,7 @@ const osDefine = new Proxy(osDefineUniversal, {
   apply(_target, _thisArg, args: Parameters<typeof osDefineUniversal>) {
     return osDefineUniversal(...args)
   },
-  get(_target, prop: string, receiver: any) {
+  get(_target, prop: string, receiver: unknown) {
     if (Object.hasOwn(osDefineUniversal, prop)) {
       return Reflect.get(osDefineUniversal, prop, receiver)
     }

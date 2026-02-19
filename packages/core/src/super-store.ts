@@ -1,19 +1,27 @@
+import type { AsyncLocalStorage } from 'node:async_hooks'
 import type { ClientRuntime } from './env.types.js'
+import type { DataTransformer, DataTransformerExtended, FetchFn, PointsScope } from './types.js'
+
+type SuperStoreGlobals = {
+  __POINT0_SUPER_STORE_SERVER_STORAGE__?: AsyncLocalStorage<Record<string, unknown>> | null
+  __POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__?: Record<string, unknown>
+  __POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__?: Record<string, unknown>
+  __POINT0_SUPER_STORE_INSTANCE__?: SuperStore
+}
 
 // I do not know why, but it is only way to do it to work in bun and vite at the same time
-;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||=
+;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||=
   process.env.POINT0_SIDE === 'client'
     ? null
-    : (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>)
-;(globalThis as any).__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ ||= {}
-;(globalThis as any).__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ ||= {}
+    : (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<Record<string, unknown>>)
+;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ ||= {}
+;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ ||= {}
 
-import type { AsyncLocalStorage } from 'node:async_hooks'
-import type { DataTransformer, DataTransformerExtended, FetchFn, PointsScope } from './types.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
 export class SuperStore {
-  static instance: SuperStore = (globalThis as any).__POINT0_SUPER_STORE_INSTANCE__ || new SuperStore()
+  static instance: SuperStore =
+    (globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_INSTANCE__ || new SuperStore()
 
   // per client
   private readonly _prepared = new Map<string, Map<string, unknown>>()
@@ -32,11 +40,14 @@ export class SuperStore {
 
   items = new Map<string, SuperStoreItem>()
 
-  serverStorage: SuperStoreServerStorage | undefined = (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__
+  serverStorage: SuperStoreServerStorage | undefined =
+    (globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_SERVER_STORAGE__ ?? undefined
 
-  clientGlobalState: SuperStoreState = (globalThis as any).__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__
+  clientGlobalState: SuperStoreState =
+    (globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ ?? {}
 
-  serverGlobalState: SuperStoreState = (globalThis as any).__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__
+  serverGlobalState: SuperStoreState =
+    (globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ ?? {}
 
   transformer: DataTransformerExtended | undefined | false
 
@@ -86,8 +97,9 @@ export class SuperStore {
   }
 
   fixServerStorage(AsyncLocalStorageClass: typeof AsyncLocalStorage): void {
-    ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||= new AsyncLocalStorageClass()
-    this.serverStorage = (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__
+    const globals = globalThis as unknown as SuperStoreGlobals
+    globals.__POINT0_SUPER_STORE_SERVER_STORAGE__ ||= new AsyncLocalStorageClass()
+    this.serverStorage = globals.__POINT0_SUPER_STORE_SERVER_STORAGE__
   }
 
   setTransformer(transformer: DataTransformer | false): void {
@@ -223,26 +235,26 @@ export class SuperStore {
     ...args:
       | [
           name: string,
-          init: () => any,
+          init: () => unknown,
           ssr: {
-            dehydrate: (value: any) => any
-            hydrate: (dehydratedValue: any, init: () => any) => any
+            dehydrate: (value: unknown) => unknown
+            hydrate: (dehydratedValue: unknown, init: () => unknown) => unknown
           },
         ]
-      | [name: string, init: () => any, policy: SuperStoreItemPolicy]
+      | [name: string, init: () => unknown, policy: SuperStoreItemPolicy]
   ): {
     name: string
-    init: () => any
+    init: () => unknown
     policy: SuperStoreItemPolicy
-    dehydrate: (value: any) => any
-    hydrate: (dehydratedValue: any, init: () => any) => any
+    dehydrate: (value: unknown) => unknown
+    hydrate: (dehydratedValue: unknown, init: () => unknown) => unknown
   } {
     if (typeof args[2] === 'string') {
       return {
         name: args[0],
         init: args[1],
-        dehydrate: (value: any) => value,
-        hydrate: (value: any) => value,
+        dehydrate: (value: unknown) => value,
+        hydrate: (value: unknown) => value,
         policy: args[2],
       }
     }
@@ -267,7 +279,7 @@ export class SuperStore {
     },
   ): NiceSuperStoreItem<TValue, TDehydratedValue>
   define<TValue>(key: string, init: () => TValue, policy: SuperStoreItemPolicy): NiceSuperStoreItem<TValue, TValue>
-  define(...args: Parameters<typeof this._parseDefineArgs>): any {
+  define(...args: Parameters<typeof this._parseDefineArgs>): SuperStoreItem {
     const { name, init, policy, dehydrate, hydrate } = this._parseDefineArgs(...args)
     // it brokes hmr
     // const exItem = this.items.get(name)

@@ -126,8 +126,7 @@ export const createNavigate = <
   }
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: ok
-type Tail<T extends readonly unknown[]> = T extends readonly [any, ...infer R] ? R : never
+type Tail<T extends readonly unknown[]> = T extends readonly [unknown, ...infer R] ? R : never
 
 export const createUseNavigate = <
   TRoutes extends RoutesPretty,
@@ -470,8 +469,7 @@ export const createLink = <
     to?: string
     href?: string
     route?: string
-    // biome-ignore lint/suspicious/noExplicitAny: ok
-    input?: Record<string, any>
+    input?: Record<string, unknown>
   }): React.ReactElement {
     const {
       route: routeName,
@@ -479,8 +477,7 @@ export const createLink = <
       to: providedTo,
       href: providedHref,
       ...rest
-      // biome-ignore lint/suspicious/noExplicitAny: ok
-    } = props as typeof props & { input?: Record<string, any>; to?: string; href?: string }
+    } = props as typeof props & { input?: Record<string, unknown>; to?: string; href?: string }
     const finalTo = useMemo(() => {
       if (providedTo !== undefined) {
         return providedTo
@@ -500,8 +497,7 @@ export const createLink = <
       }
       return route.flat(input)
     }, [routeName, JSON.stringify(input), providedTo, providedHref])
-    // biome-ignore lint/suspicious/noExplicitAny: ok
-    return <SimpleLink {...(rest as any)} to={finalTo} />
+    return <SimpleLink {...(rest as Record<string, unknown>)} to={finalTo} />
   }
   return Link0
 }
@@ -532,8 +528,7 @@ export const createNavLink = <
     to?: string
     href?: string
     route?: string
-    // biome-ignore lint/suspicious/noExplicitAny: ok
-    input?: Record<string, any>
+    input?: Record<string, unknown>
   }): React.ReactElement {
     const {
       route: routeName,
@@ -541,8 +536,7 @@ export const createNavLink = <
       to: providedTo,
       href: providedHref,
       ...rest
-      // biome-ignore lint/suspicious/noExplicitAny: ok
-    } = props as typeof props & { input?: Record<string, any>; to?: string; href?: string }
+    } = props as typeof props & { input?: Record<string, unknown>; to?: string; href?: string }
     const finalTo = useMemo(() => {
       if (providedTo !== undefined) {
         return providedTo
@@ -562,8 +556,7 @@ export const createNavLink = <
       }
       return route.flat(input)
     }, [routeName, JSON.stringify(input), providedTo, providedHref])
-    // biome-ignore lint/suspicious/noExplicitAny: ok
-    return <SimpleNavLink {...(rest as any)} to={finalTo} />
+    return <SimpleNavLink {...(rest as Record<string, unknown>)} to={finalTo} />
   }
   return NavLink0
 }

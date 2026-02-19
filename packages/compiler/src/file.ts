@@ -5,15 +5,7 @@ import babel from '@babel/parser'
 import type traverseType from '@babel/traverse'
 import type { NodePath } from '@babel/traverse'
 import traverseModule from '@babel/traverse'
-import type {
-  Expression,
-  File,
-  Node,
-  ObjectExpression,
-  ObjectMethod,
-  ObjectProperty,
-  SpreadElement,
-} from '@babel/types'
+import type { File, Node, ObjectExpression, ObjectMethod, ObjectProperty, SpreadElement } from '@babel/types'
 import * as t from '@babel/types'
 import type { EnvOsName, EnvRuntimeName, NormalizedNodeEnv } from '@point0/core'
 import prettier from 'prettier'
@@ -26,7 +18,7 @@ const traverse = ((traverseModule as any).default ?? traverseModule) as typeof t
   ? T
   : typeof traverseType
 
-// biome-ignore lint/suspicious/noExplicitAny: ok
+// biome-ignore lint/suspicious/noExplicitAny: ok - ESM/CJS interop same as traverse
 const babelGenerator = ((generatorModule as any).default ?? generatorModule) as typeof generatorModule extends {
   default: infer T
 }
@@ -752,8 +744,7 @@ export class CompilerFile<THasContent extends boolean> {
           if (callee.type !== 'MemberExpression') return
 
           const args = node.arguments
-          // biome-ignore lint/suspicious/noExplicitAny: ok
-          const replaceWithFinalValue = (value: any) => {
+          const replaceWithFinalValue = (value: Node | undefined) => {
             p.replaceWith(value ?? makeUndefined())
             modified = true
           }
