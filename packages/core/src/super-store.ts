@@ -1,12 +1,10 @@
-/* eslint-disable import/first */
 import type { ClientRuntime } from './env.types.js'
 
 // I do not know why, but it is only way to do it to work in bun and vite at the same time
 ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||=
   process.env.POINT0_SIDE === 'client'
     ? null
-    : // eslint-disable-next-line @typescript-eslint/no-require-imports
-      (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>)
+    : (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>)
 ;(globalThis as any).__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ ||= {}
 ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ ||= {}
 

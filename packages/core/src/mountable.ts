@@ -50,16 +50,16 @@ export type AppendProps<TPrevProps extends Props, TAppendProps extends Props> = 
 
 export type WithOuterPropsIfExists<TOuterProps extends Props> =
   IsEmptyObject<TOuterProps> extends true
-    ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    ? // biome-ignore lint/complexity/noBannedTypes: ok, becouse used as output type, not input type
       {}
     : { props: TOuterProps }
 export type WithLocationIfExists<TLocation extends AnyLocation | undefined> = TLocation extends undefined
-  ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  ? // biome-ignore lint/complexity/noBannedTypes: ok, becouse used as output type, not input type
     {}
   : { location: TLocation }
 
 type RequiredKeys<T> = {
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  // biome-ignore lint/complexity/noBannedTypes: ok
   [K in keyof T]-?: {} extends Pick<T, K> ? never : K
 }[keyof T]
 
@@ -513,7 +513,7 @@ export type GlobalHeadFn<
 //   TOuterProps extends Props = any,
 // > = React.ComponentType<MountableOuterComponentProps<TClientInputSchema, TOuterProps>>
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+// biome-ignore lint/complexity/noBannedTypes: ok, becouse used as output type, not input type
 export type PageExtraInnerProps = {}
 export type PageLocation<TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition> = ExactLocation<
   CurrentRouteDefinition<TRouteDefinition>
@@ -569,7 +569,7 @@ export type ProviderSuccessComponentType<
 > = React.ComponentType<ProviderSuccessComponentProps<TInnerProps, TQueriesDefinitions, TMapperOutput>>
 export type UndefinedProviderSuccessComponent = undefined
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+// biome-ignore lint/complexity/noBannedTypes: ok, becouse used as output type, not input type
 export type ComponentExtraInnerProps = {}
 export type ComponentLocation = AnyLocation
 export type ComponentSuccessComponentProps<

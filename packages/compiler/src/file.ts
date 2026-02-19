@@ -83,7 +83,7 @@ export class CompilerFile<THasContent extends boolean> {
       abs: file,
       content,
       mtime: contentProvided ? 0 : undefined,
-      rtime: new Date().getTime(),
+      rtime: Date.now(),
       modified: false,
       walker,
       points: new Set(),
@@ -205,7 +205,7 @@ export class CompilerFile<THasContent extends boolean> {
     const result = this as CompilerFile<true>
     result.content = await nodeFs.readFile(this.abs, 'utf8')
     result.mtime = stats.mtimeMs
-    result.rtime = new Date().getTime()
+    result.rtime = Date.now()
     return result
   }
   private readonly _readAsyncPendingPromises = new Map<string, Promise<CompilerFile<true>>>()
@@ -242,7 +242,7 @@ export class CompilerFile<THasContent extends boolean> {
     const result = this as CompilerFile<true>
     result.content = nodeFsSync.readFileSync(this.abs, 'utf8')
     result.mtime = stats.mtimeMs
-    result.rtime = new Date().getTime()
+    result.rtime = Date.now()
     return result
   }
 
