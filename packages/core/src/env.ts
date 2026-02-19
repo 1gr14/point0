@@ -21,19 +21,18 @@ export const getEnvVars = (): EnvVars => {
         }
       }
     }
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (typeof process !== 'undefined' && process.env) {
       return process.env
     }
     return {}
   })()
-  if (processEnvHolder) {
-    Object.assign(env, processEnvHolder)
-  }
+  Object.assign(env, processEnvHolder)
   Object.assign(env, {
-    NODE_ENV: processEnvHolder?.NODE_ENV,
-    SIDE: processEnvHolder?.POINT0_SIDE,
-    POINT0_SCOPE: processEnvHolder?.POINT0_SCOPE,
-    POINT0_BUILT: processEnvHolder?.POINT0_BUILT,
+    NODE_ENV: processEnvHolder.NODE_ENV,
+    SIDE: processEnvHolder.POINT0_SIDE,
+    POINT0_SCOPE: processEnvHolder.POINT0_SCOPE,
+    POINT0_BUILT: processEnvHolder.POINT0_BUILT,
     // in case if this vars was dfined by compiler
   })
   return env as EnvVars

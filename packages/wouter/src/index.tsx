@@ -9,13 +9,6 @@ import {
   Route0,
   type RoutesPretty,
 } from '@devp0nt/route0'
-import type {
-  NormalizedLazyPointsCollectionRecord,
-  PagesTree,
-  ReadyPointsCollectionRecord,
-  RouterStatus,
-  UseAdapterLocationFn,
-} from '@point0/core'
 import {
   _ssItems,
   _wrapNavigate,
@@ -26,9 +19,15 @@ import {
   RouterContextProvider,
   useLocation,
 } from '@point0/core'
-import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
+import type {
+  NormalizedLazyPointsCollectionRecord,
+  PagesTree,
+  ReadyPointsCollectionRecord,
+  RouterStatus,
+  UseAdapterLocationFn,
+} from '@point0/core'
 import React, { Fragment, useCallback, useMemo, useRef } from 'react'
-import type { BaseLocationHook, HookNavigationOptions, NavigationalProps } from 'wouter'
+import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
 import {
   Route,
   Switch,
@@ -37,6 +36,7 @@ import {
   Link as WouterLink,
   Router as WouterRouter,
 } from 'wouter'
+import type { BaseLocationHook, HookNavigationOptions, NavigationalProps } from 'wouter'
 import type { BrowserLocationHook } from 'wouter/use-browser-location'
 
 const _useNativeNavigate = () => {
@@ -251,16 +251,17 @@ export type NavLinkStateOptions =
       descendant: false
       unmatched: true
     }
+type StringOrFalsy = string | undefined | null | false
 type NavLinkClassNameProps = {
-  exactClassName?: string
-  sameClassName?: string
-  ancestorClassName?: string
-  descendantClassName?: string
-  unmatchedClassName?: string
+  exactClassName?: StringOrFalsy
+  sameClassName?: StringOrFalsy
+  ancestorClassName?: StringOrFalsy
+  descendantClassName?: StringOrFalsy
+  unmatchedClassName?: StringOrFalsy
   className?:
-    | string
-    | ((state: NavLinkStateOptions) => string | undefined)
-    | Partial<Record<'default' | NavLinkStateType, string | undefined>>
+    | StringOrFalsy
+    | ((state: NavLinkStateOptions) => StringOrFalsy)
+    | Partial<Record<'default' | NavLinkStateType, StringOrFalsy>>
 }
 
 type NavLinkAsChildProps = AsChildProps<

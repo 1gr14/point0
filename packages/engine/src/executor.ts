@@ -484,7 +484,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               // }
               break
             }
-            // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+
             default:
               throw new Error(`Unknown extend function type: ${(serverExecuteAction as any).type}`)
           }
@@ -527,7 +527,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             effects: effects.values,
             point,
           }
-        } catch (error2) {
+        } catch {
           const error0 = Error0.from(error)
           const status = error0.httpStatus ?? 500
           effects.set.status(status)
@@ -703,7 +703,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   async getQueryClientReadyDehydratedState(): Promise<DehydratedState> {
     const result = await this.withServerGlobalState(async () => {
       const dehydratedState = dehydrate(_ssItems.__POINT0_QUERY_CLIENT__.get(), {
-        shouldDehydrateQuery: (query) => {
+        shouldDehydrateQuery: (_query) => {
           // This will include all queries, including failed ones
           return true
         },
@@ -735,10 +735,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const relatedQueriesDehydratedState = await this.getQueryClientReadyDehydratedState()
       const queryClient = _ssItems.__POINT0_QUERY_CLIENT__.get()
       const { queryKey, ...restOptions } = prefetchPageQueryOptions
-      queryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
+      queryClient.setQueryDefaults(queryKey, {
         ...(restOptions as any),
       })
-      queryClient.setQueryData(prefetchPageQueryOptions.queryKey, {
+      queryClient.setQueryData(queryKey, {
         dehydratedState: relatedQueriesDehydratedState,
       })
     })

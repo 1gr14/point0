@@ -85,14 +85,12 @@ export class SuperStore {
 
   private resetClientGlobalState(): void {
     for (const key of Object.keys(this.clientGlobalState)) {
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete this.clientGlobalState[key]
     }
   }
 
   private resetServerGlobalState(): void {
     for (const key of Object.keys(this.serverGlobalState)) {
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete this.serverGlobalState[key]
     }
   }
@@ -363,7 +361,6 @@ export class SuperStore {
       // }
       // // server only
       // return states.serverStorageState
-      // biome-ignore lint/nursery/noUnnecessaryConditions: ok
       switch (policy) {
         case 'clientOnly': {
           if (states.variant === 'server') {
@@ -391,7 +388,7 @@ export class SuperStore {
           }
           return states.serverGlobalState
         }
-        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+
         default:
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           throw new Error(`Invalid policy: ${policy}`)
@@ -553,7 +550,7 @@ export class SuperStore {
     if (!serverStorageState.__POINT0_FAKE_CLIENTS_STATE__) {
       return
     }
-    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+
     delete (serverStorageState.__POINT0_FAKE_CLIENTS_STATE__ as SuperStoreState)[fakeClient.id]
   }
 }

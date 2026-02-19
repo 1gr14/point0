@@ -92,7 +92,7 @@ export class FetchRecorder {
     const wait = async () => {
       return await new Promise((resolve) => setTimeout(resolve, 10))
     }
-    // biome-ignore lint/nursery/noUnnecessaryConditions: ok
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     while (true) {
       if (Date.now() - startTime > maxDuration) {
         throw new Error('Timeout waiting for fetch recorder to be stable')

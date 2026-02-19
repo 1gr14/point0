@@ -120,7 +120,7 @@ export class Fetcher {
       }
       try {
         return await request.original.json()
-      } catch (error) {
+      } catch {
         return {}
       }
     })()

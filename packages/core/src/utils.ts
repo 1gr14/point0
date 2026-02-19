@@ -2,10 +2,7 @@ import type { DehydratedState } from '@tanstack/react-query'
 import type { DataTransformer, DataTransformerExtended, ScrollPositionGetter, ScrollPositionSetter } from './types.js'
 import { stringify } from 'safe-stable-stringify'
 
-export function mergeHeaders(
-  base?: HeadersInit,
-  ...extras: Array<HeadersInit | undefined>
-): Headers {
+export function mergeHeaders(base?: HeadersInit, ...extras: Array<HeadersInit | undefined>): Headers {
   const merged = new Headers(base)
   for (const extra of extras) {
     if (!extra) continue
@@ -124,20 +121,21 @@ export const windowScrollPositionGetter: ScrollPositionGetter = () => {
 }
 
 export const windowScrollPositionSetter: ScrollPositionSetter = ({ x, y }: { x: number; y: number }) => {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  x ??= 0
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  y ??= 0
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return
   }
   if (typeof window.scrollTo === 'function') {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    window.scrollTo(x ?? 0, y ?? 0)
+    window.scrollTo(x, y)
     return
   }
   const doc = document.documentElement
   const body = document.body
-  // eslint-disable-next-line no-multi-assign, @typescript-eslint/no-unnecessary-condition
-  doc.scrollLeft = body.scrollLeft = x ?? 0
-  // eslint-disable-next-line no-multi-assign, @typescript-eslint/no-unnecessary-condition
-  doc.scrollTop = body.scrollTop = y ?? 0
+  doc.scrollLeft = body.scrollLeft = x
+  doc.scrollTop = body.scrollTop = y
 }
 
 export const getWindowScrollPositionGetterByElementGetter = (elementGetter: () => HTMLElement | null) => {

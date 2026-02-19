@@ -1,8 +1,7 @@
-// ESLint flat config using eslint-config-love
-import love from 'eslint-config-love'
 import prettier from 'eslint-config-prettier'
 import { defineConfig } from 'eslint/config'
 import noOnlyTests from 'eslint-plugin-no-only-tests'
+import tseslint from 'typescript-eslint'
 
 export default defineConfig([
   // Global ignores to keep linting fast and avoid vendor/build dirs
@@ -28,11 +27,16 @@ export default defineConfig([
       '.commitlintrc.js',
     ],
   },
+  ...tseslint.configs.recommended,
   {
-    ...love,
     files: ['**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx'],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
-      ...(love.rules ?? {}),
       '@typescript-eslint/only-throw-error': [
         'error',
         {
@@ -41,12 +45,20 @@ export default defineConfig([
       ],
       '@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
       curly: ['error', 'all'],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+        },
+      ],
+      '@typescript-eslint/no-unnecessary-condition': ['error'],
+      '@typescript-eslint/restrict-template-expressions': ['error'],
+      '@typescript-eslint/switch-exhaustiveness-check': ['error'],
 
       // disable
       '@typescript-eslint/no-confusing-void-expression': 'off',
       '@typescript-eslint/no-extraneous-class': 'off',
       '@typescript-eslint/non-nullable-type-assertion-style': 'off',
-      'eslint-comments/no-unlimited-disable': 'off',
       'max-depth': 'off',
       'no-control-regex': 'off',
       '@typescript-eslint/max-params': 'off',
@@ -59,7 +71,6 @@ export default defineConfig([
       'no-negated-condition': 'off',
       'no-param-reassign': 'off',
       'arrow-body-style': 'off',
-      'promise/avoid-new': 'off',
       complexity: 'off',
       'no-plusplus': 'off',
       'max-nested-callbacks': 'off',
@@ -87,7 +98,6 @@ export default defineConfig([
       '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/no-unsafe-call': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
-      'eslint-comments/require-description': 'off',
       '@typescript-eslint/no-unsafe-type-assertion': 'off',
       '@typescript-eslint/no-unsafe-argument': 'off',
     },

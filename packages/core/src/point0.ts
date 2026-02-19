@@ -987,7 +987,7 @@ export class Point0<
   >
   on(
     name: AnyEventerEvent['name'] | 'error' | '*' | Array<AnyEventerEvent['name']>,
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
+
     callback: AnyEventerSubscriptionCallback | undefined = () => {},
   ) {
     const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
@@ -1059,7 +1059,7 @@ export class Point0<
   >
   serverOn(
     name: ServerEventerEvent['name'] | 'error' | '*' | Array<ServerEventerEvent['name']>,
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
+
     callback: ServerEventerSubscriptionCallback | undefined = () => {},
   ) {
     const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
@@ -1131,7 +1131,7 @@ export class Point0<
   >
   clientOn(
     name: ClientEventerEvent['name'] | 'error' | '*' | Array<ClientEventerEvent['name']>,
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
+
     callback: ClientEventerSubscriptionCallback | undefined = () => {},
   ) {
     const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
@@ -4927,7 +4927,7 @@ export class Point0<
           }
           break
         }
-        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+
         default: {
           throw new Error(`Unknown client extend fn type: ${(clientExecuteAction as any).type}`)
         }
@@ -7006,6 +7006,7 @@ export class Point0<
 
   private static readonly _usePrevHeadsAndSetPageState = ({
     pageState,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     pageStateManager,
     prevMountActions,
   }: {

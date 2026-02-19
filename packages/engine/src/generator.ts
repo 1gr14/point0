@@ -368,7 +368,7 @@ export class FilesGenerator {
           const currentContent = await (async () => {
             try {
               return await nodeFs.readFile(task.outputAbs, 'utf8')
-            } catch (e) {
+            } catch {
               return undefined
             }
           })()
