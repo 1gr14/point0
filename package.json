@@ -34,7 +34,7 @@
     "test:watch": "bun --filter '**' test:watch",
     "types": "bun --filter '**' types",
     "typesgo": "bun --filter '**' typesgo",
-    "lint": "bun run lint:fix .",
+    "lint": "cross-env NODE_OPTIONS='--max-old-space-size=8192' bun run lint:fix .",
     "lint:base": "eslint --cache --cache-location node_modules/.cache/eslint/.eslintcache",
     "lint:fix": "bun run lint:base --fix",
     "format": "bun run format:fix .",

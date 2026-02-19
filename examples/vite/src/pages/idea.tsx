@@ -1,7 +1,6 @@
-import { Link } from '@/lib/navigate'
-import { useState } from 'react'
-import { ideaLayout } from '../layouts/idea.js'
-import type { Ctx } from '../lib/client.js'
+import { Link } from '@/lib/navigate';
+import { useState } from 'react';
+import { ideaLayout } from '../layouts/idea.js';
 
 // const getIdea = async (ctx: Ctx, id: number) => {
 //   const idea = await ctx.prisma.idea.findUniqueOrThrow({
