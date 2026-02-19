@@ -11,8 +11,15 @@ export const normalNodeEnvs: NormalizedNodeEnv[] = ['production', 'development',
 export const getEnvVars = (): EnvVars => {
   const env = Object.create(null)
   const processEnvHolder = (() => {
-    if (typeof globalThis !== 'undefined' && (globalThis as any).__POINT0_ENV__) {
-      return (globalThis as any).__POINT0_ENV__
+    if (typeof globalThis !== 'undefined') {
+      const point0EnvVars = (globalThis as any).__POINT0_ENV_VARS__
+      const point0EnvConsts = (globalThis as any).__POINT0_ENV_CONSTS__
+      if (point0EnvVars || point0EnvConsts) {
+        return {
+          ...(point0EnvVars ?? {}),
+          ...(point0EnvConsts ?? {}),
+        }
+      }
     }
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (typeof process !== 'undefined' && process.env) {

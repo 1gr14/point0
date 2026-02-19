@@ -155,19 +155,69 @@ export function addEnvToDocumentHtml({
   envVars?: Record<string, string | number | boolean | undefined>
   envConsts?: Record<string, string | number | boolean | undefined>
 }): string {
-  const env = { ...envVars, ...envConsts }
-  const jsonCompatibleEnv = JSON.parse(JSON.stringify(env)) as Record<string, string | number | boolean>
+  const htmlWithConsts = addEnvConstsToDocumentHtml({ html, envConsts })
+  return addEnvVarsToDocumentHtml({ html: htmlWithConsts, envVars })
+}
+
+function toJsonCompatibleEnv(
+  env?: Record<string, string | number | boolean | undefined>,
+): Record<string, string | number | boolean> {
+  return JSON.parse(JSON.stringify(env ?? {})) as Record<string, string | number | boolean>
+}
+
+function upsertHeadScript({ html, id, scriptBody }: { html: string; id: string; scriptBody: string }): string {
+  const pattern = new RegExp(`<script\\s+id=["']${id}["'][^>]*>[\\s\\S]*?<\\/script>`, 'i')
+  const scriptTag = `<script id="${id}" type="text/javascript">
+${scriptBody}
+</script>`
+  if (pattern.test(html)) {
+    return html.replace(pattern, scriptTag)
+  }
   return prependHeadElement({
-    content: `<script id="__POINT0_ENV__" type="text/javascript">
-  const __POINT0_ENV__ = ${uneval(jsonCompatibleEnv)};
-  window.__POINT0_ENV__ = __POINT0_ENV__;
+    content: scriptTag,
+    html,
+  })
+}
+
+export function addEnvVarsToDocumentHtml({
+  html,
+  envVars,
+}: {
+  html: string
+  envVars?: Record<string, string | number | boolean | undefined>
+}): string {
+  const jsonCompatibleEnvVars = toJsonCompatibleEnv(envVars)
+  return upsertHeadScript({
+    id: '__POINT0_ENV_VARS__',
+    html,
+    scriptBody: `const __POINT0_ENV_VARS__ = ${uneval(jsonCompatibleEnvVars)};
+  window.__POINT0_ENV_VARS__ = __POINT0_ENV_VARS__;
   window.process = window.process || {};
-  window.process.env = { ...(window.process.env || {}), ...__POINT0_ENV__ };
+  window.process.env = { ...(window.process.env || {}), ...__POINT0_ENV_VARS__, ...(window.__POINT0_ENV_CONSTS__ || {}) };
   window.import = window.import || {};
   window.import.meta = window.import.meta || {};
-  window.import.meta.env = { ...(window.import.meta.env || {}), ...__POINT0_ENV__ };
-</script>`,
+  window.import.meta.env = { ...(window.import.meta.env || {}), ...__POINT0_ENV_VARS__, ...(window.__POINT0_ENV_CONSTS__ || {}) };`,
+  })
+}
+
+export function addEnvConstsToDocumentHtml({
+  html,
+  envConsts,
+}: {
+  html: string
+  envConsts?: Record<string, string | number | boolean | undefined>
+}): string {
+  const jsonCompatibleEnvConsts = toJsonCompatibleEnv(envConsts)
+  return upsertHeadScript({
+    id: '__POINT0_ENV_CONSTS__',
     html,
+    scriptBody: `const __POINT0_ENV_CONSTS__ = ${uneval(jsonCompatibleEnvConsts)};
+  window.__POINT0_ENV_CONSTS__ = __POINT0_ENV_CONSTS__;
+  window.process = window.process || {};
+  window.process.env = { ...(window.process.env || {}), ...__POINT0_ENV_CONSTS__ };
+  window.import = window.import || {};
+  window.import.meta = window.import.meta || {};
+  window.import.meta.env = { ...(window.import.meta.env || {}), ...__POINT0_ENV_CONSTS__ };`,
   })
 }
 

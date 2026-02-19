@@ -25,7 +25,7 @@ import type {
 import type { Executor } from './executor.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
-import { addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
+import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
 import type { EngineServer } from './server.js'
 import type { EngineClientBuildConfigDefinition, EngineClientPluginsDefinition } from './utils.js'
 import {
@@ -809,6 +809,11 @@ Bun.serve({
           ),
         },
       })
+      await this.injectBuildEnvConstsToDistIndexHtml({
+        indexHtml: buildPaths.indexHtml,
+        outdir: buildPaths.outdir,
+        envConsts: envConstsWithBuilt,
+      })
       return buildOutput.outputs.map((output) => output.path)
     }
   }
@@ -919,7 +924,7 @@ Bun.serve({
 
           // 'process.env': {
           //   ...Object.fromEntries(
-          //     Object.entries(this.envVars).map(([key, value]) => [key, `globalThis.__POINT0_ENV__['${key}']`]),
+          //     Object.entries(this.envVars).map(([key, value]) => [key, `globalThis.__POINT0_ENV_VARS__['${key}']`]),
           //   ),
           //   ...Object.fromEntries(Object.entries(this.envConsts).map(([key, value]) => [key, JSON.stringify(value)])),
           // },
@@ -927,7 +932,7 @@ Bun.serve({
           ...Object.fromEntries(
             Object.entries(envVarsWithBuild).map(([key, value]) => [
               `process.env.${key}`,
-              `globalThis.__POINT0_ENV__.${key}`,
+              `globalThis.__POINT0_ENV_VARS__.${key}`,
             ]),
           ),
           ...Object.fromEntries(
@@ -939,6 +944,11 @@ Bun.serve({
       }
 
       const buildResult = await viteBuild(config)
+      await this.injectBuildEnvConstsToDistIndexHtml({
+        indexHtml: buildPaths.indexHtml,
+        outdir: buildPaths.outdir,
+        envConsts: envConstsWithBuilt,
+      })
 
       const rollupOutputs = Array.isArray(buildResult) ? buildResult : [buildResult]
       const outputFiles: string[] = []
@@ -953,6 +963,29 @@ Bun.serve({
         }
       }
       return outputFiles
+    }
+  }
+
+  private async injectBuildEnvConstsToDistIndexHtml({
+    indexHtml,
+    outdir,
+    envConsts,
+  }: {
+    indexHtml: string
+    outdir: string
+    envConsts: EngineOptionsEnvParsed
+  }): Promise<void> {
+    const indexHtmlDistPath = nodePath.join(outdir, nodePath.basename(indexHtml))
+    if (!(await Bun.file(indexHtmlDistPath).exists())) {
+      return
+    }
+    const distIndexHtmlContent = await Bun.file(indexHtmlDistPath).text()
+    const distIndexHtmlWithConsts = addEnvConstsToDocumentHtml({
+      html: distIndexHtmlContent,
+      envConsts,
+    })
+    if (distIndexHtmlWithConsts !== distIndexHtmlContent) {
+      await Bun.write(indexHtmlDistPath, distIndexHtmlWithConsts)
     }
   }
 

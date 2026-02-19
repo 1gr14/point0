@@ -252,27 +252,6 @@ describe('head', () => {
           "
         `)
     })
-    // expect((await fetchView(page)).html).toMatchInlineSnapshot(`
-    //   "<!DOCTYPE html>
-    //     <html lang="en">
-    //     <head><script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">
-    //            window.__POINT0_DEHYDRATED_SUPER_STORE__ = "{\\"__POINT0_QUERY_CLIENT__\\":{\\"mutations\\":[],\\"queries\\":[{\\"dehydratedAt\\":1770284839664,\\"queryHash\\":\\"[\\\\\\"point0\\\\\\",\\\\\\"root\\\\\\",\\\\\\"page\\\\\\",\\\\\\"home\\\\\\",\\\\\\"server\\\\\\",\\\\\\"finite\\\\\\",\\\\\\"{}\\\\\\",\\\\\\"queryClientDehydratedState\\\\\\"]\\",\\"queryKey\\":[\\"point0\\",\\"root\\",\\"page\\",\\"home\\",\\"server\\",\\"finite\\",\\"{}\\",\\"queryClientDehydratedState\\"],\\"state\\":{\\"data\\":{\\"dehydratedState\\":{\\"mutations\\":[],\\"queries\\":[{\\"dehydratedAt\\":1770284839663,\\"queryHash\\":\\"[\\\\\\"point0\\\\\\",\\\\\\"root\\\\\\",\\\\\\"page\\\\\\",\\\\\\"home\\\\\\",\\\\\\"server\\\\\\",\\\\\\"finite\\\\\\",\\\\\\"{}\\\\\\",\\\\\\"data\\\\\\"]\\",\\"queryKey\\":[\\"point0\\",\\"root\\",\\"page\\",\\"home\\",\\"server\\",\\"finite\\",\\"{}\\",\\"data\\"],\\"state\\":{\\"dataUpdateCount\\":0,\\"dataUpdatedAt\\":0,\\"error\\":{\\"__I_AM_ERROR_0\\":true,\\"expected\\":false,\\"httpStatus\\":500,\\"message\\":\\"my message\\",\\"meta\\":{},\\"stack\\":\\"Error: my message\\\\n    at \\\\u003Canonymous\\\\u003E (/Users/iserdmi/cc/opensource/devp0nt/point0/packages/engine/tests/head.test.tsx:229:21)\\\\n    at processTicksAndRejections (native:7:39)\\"},\\"errorUpdateCount\\":1,\\"errorUpdatedAt\\":1770284839662,\\"fetchFailureCount\\":1,\\"fetchFailureReason\\":{\\"__I_AM_ERROR_0\\":true,\\"expected\\":false,\\"httpStatus\\":500,\\"message\\":\\"my message\\",\\"meta\\":{},\\"stack\\":\\"Error: my message\\\\n    at \\\\u003Canonymous\\\\u003E (/Users/iserdmi/cc/opensource/devp0nt/point0/packages/engine/tests/head.test.tsx:229:21)\\\\n    at processTicksAndRejections (native:7:39)\\"},\\"fetchMeta\\":null,\\"fetchStatus\\":\\"idle\\",\\"isInvalidated\\":true,\\"status\\":\\"error\\"}}]}},\\"dataUpdateCount\\":1,\\"dataUpdatedAt\\":1770284839663,\\"error\\":null,\\"errorUpdateCount\\":0,\\"errorUpdatedAt\\":0,\\"fetchFailureCount\\":0,\\"fetchFailureReason\\":null,\\"fetchMeta\\":null,\\"fetchStatus\\":\\"idle\\",\\"isInvalidated\\":false,\\"status\\":\\"success\\"}}]},\\"__POINT0_SSR_LOCATION__\\":{\\"abs\\":true,\\"children\\":false,\\"exact\\":true,\\"hash\\":\\"\\",\\"host\\":\\"example.com\\",\\"hostname\\":\\"example.com\\",\\"href\\":\\"https://example.com/\\",\\"hrefRel\\":\\"/\\",\\"origin\\":\\"https://example.com\\",\\"params\\":{},\\"parent\\":false,\\"pathname\\":\\"/\\",\\"route\\":\\"/\\",\\"search\\":\\"\\",\\"searchParams\\":{}}}";
-    //          </script><script id="__POINT0_ENV__" type="text/javascript">
-    //     const __POINT0_ENV__ = {"NODE_ENV":"test"};
-    //     window.process = window.process || {};
-    //     window.process.env = { ...(window.process.env || {}), ...__POINT0_ENV__ };
-    //     window.import = window.import || {};
-    //     window.import.meta = window.import.meta || {};
-    //     window.import.meta.env = { ...(window.import.meta.env || {}), ...__POINT0_ENV__ };
-    //   </script>
-    //     <meta charset="utf-8">
-    //   <meta name="viewport" content="width=device-width, initial-scale=1">
-    //   <title>Initial...</title></head>
-    //     <body>
-    //       <div id="root"><div id="loading">...</div></div>
-    //     </body>
-    //   </html>"
-    // `)
     expect(await fetchTitle(page)).toMatchInlineSnapshot(`"Loading..."`)
   })
 })

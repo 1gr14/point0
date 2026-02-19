@@ -90,7 +90,8 @@ describe('build', () => {
         expect(html).toContain('<div>My Cool Page')
         expect(html).toContain('VAR1')
         expect(html).toContain('CONST1')
-        expect(html).toContain('__POINT0_ENV__')
+        expect(html).toContain('__POINT0_ENV_VARS__')
+        expect(html).toContain('__POINT0_ENV_CONSTS__')
         const page = await tp.gotoServer('/')
         await page.stable
         expect(page.tale).toMatchInlineSnapshot(`
@@ -130,7 +131,8 @@ describe('build', () => {
         await tp.waitStarted()
         const response = await tp.fetchServer('/')
         const html = await response.text()
-        expect(html).toContain('__POINT0_ENV__')
+        expect(html).toContain('__POINT0_ENV_VARS__')
+        expect(html).toContain('__POINT0_ENV_CONSTS__')
         expect(html).not.toContain('<div>My Cool Page')
         const page = await tp.gotoServer('/')
         await page.stable
@@ -229,7 +231,8 @@ describe('build', () => {
         await tp.waitStarted()
         const response = await tp.fetchServer('/4')
         const html = await response.text()
-        expect(html).toContain('__POINT0_ENV__')
+        expect(html).toContain('__POINT0_ENV_VARS__')
+        expect(html).toContain('__POINT0_ENV_CONSTS__')
         expect(html).toContain('<div>MY_SERVER_ONLY6</div>')
         const page = await tp.gotoServer('/3')
         await page.stable
