@@ -16,8 +16,7 @@ export type UseNavigateFn = (href: string) => never | Promise<never>
 export type UseOnNavigateFn = (options: {
   prevLocation: AnyLocation
   nextLocation: AnyLocation
-  // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-}) => void | (() => void)
+}) => undefined | (() => void)
 export type UseOnNavigateDetailedFn = (options: {
   prevLocation: AnyLocation
   nextLocation: AnyLocation

@@ -209,7 +209,7 @@ export class CompilerFile<THasContent extends boolean> {
     result.rtime = Date.now()
     return result
   }
-  private readonly _readAsyncPendingPromises = new Map<string, Promise<CompilerFile<true>>>()
+  // biome-ignore lint/suspicious/useAdjacentOverloadSignatures: ok
   async readAsync(fresh: boolean): Promise<CompilerFile<true>> {
     const pendingPromise = this._readAsyncPendingPromises.get(this.abs)
     if (pendingPromise) {
@@ -222,6 +222,7 @@ export class CompilerFile<THasContent extends boolean> {
     this._readAsyncPendingPromises.set(this.abs, newPromise)
     return await newPromise
   }
+  private readonly _readAsyncPendingPromises = new Map<string, Promise<CompilerFile<true>>>()
 
   readSync(fresh: boolean): CompilerFile<true> {
     if (this.content && !fresh) {

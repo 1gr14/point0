@@ -40,7 +40,7 @@ export const waitResponse = async (
         ? Array.from({ length: 100 }, (_, i) => 200 + i)
         : Array.from({ length: 200 }, (_, i) => 400 + i)
       : [status]
-  let response
+  let response: Response | undefined
   while (true) {
     if (isTimeout()) {
       const err = new Error(

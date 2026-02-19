@@ -36,10 +36,6 @@ export class HtmlView<TParsed extends boolean = any> {
     return instance
   }
 
-  static async parseMany(htmls: string[] | HtmlView[]): Promise<Array<HtmlView<true>>> {
-    return await Promise.all(htmls.map(async (h) => await HtmlView.parse(h)))
-  }
-
   async parse(): Promise<HtmlView<true>> {
     if (this.parsed) {
       return this as HtmlView<true>
@@ -48,6 +44,10 @@ export class HtmlView<TParsed extends boolean = any> {
     this.preview = (await HtmlView.htmlToPreview(this.html)) as TParsed extends true ? string : undefined
     this.parsed = true as TParsed extends true ? true : false
     return this as HtmlView<true>
+  }
+
+  static async parseMany(htmls: string[] | HtmlView[]): Promise<Array<HtmlView<true>>> {
+    return await Promise.all(htmls.map(async (h) => await HtmlView.parse(h)))
   }
 
   hasContent(search: string): boolean {

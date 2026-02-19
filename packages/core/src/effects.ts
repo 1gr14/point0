@@ -353,13 +353,13 @@ export class Effects {
           cookie.domain = part.substring(7).trim()
         } else if (lowerPart.startsWith('max-age=')) {
           const maxAge = parseInt(part.substring(8).trim(), 10)
-          if (!isNaN(maxAge)) {
+          if (!Number.isNaN(maxAge)) {
             cookie.maxAge = maxAge
           }
         } else if (lowerPart.startsWith('expires=')) {
           const expiresStr = part.substring(8).trim()
           const expiresDate = new Date(expiresStr)
-          if (!isNaN(expiresDate.getTime())) {
+          if (!Number.isNaN(expiresDate.getTime())) {
             cookie.expires = expiresDate
           }
         } else if (lowerPart.startsWith('samesite=')) {

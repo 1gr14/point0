@@ -110,7 +110,9 @@ export class Request0<
     // Also collect IPs from headers (Bun's requestIP is prioritized as ips[0])
     const forwardedFor = original.headers.get('x-forwarded-for')
     if (forwardedFor) {
-      forwardedFor.split(',').forEach((ip) => ipsSet.add(ip.trim()))
+      forwardedFor.split(',').forEach((ip) => {
+        ipsSet.add(ip.trim())
+      })
     }
     const realIp = original.headers.get('x-real-ip')
     if (realIp) {

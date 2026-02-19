@@ -535,6 +535,12 @@ export type InputsRawOrUndefined<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = UndefinedIfEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
+// biome-ignore lint/suspicious/noConfusingVoidType: VERY IMPORTANT TO KEEP IT
+type UndefinedOrVoidIfEmptyObject<T> = IsEmptyObjectSpecial<T> extends true ? undefined | void : T
+export type InputsRawOrUndefinedOrVoid<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = UndefinedOrVoidIfEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
 export type IsInputsEmpty<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -544,17 +550,17 @@ export type IsInputsSchemasDefined<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = TServerInputSchema extends InputSchema ? true : TClientInputSchema extends InputSchema ? true : false
-export type InputRawMaybeOptional<
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> =
-  IsInputOptional<TInputSchema> extends true
-    ? // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-      InputRaw<TInputSchema> | undefined | void
-    : InputRaw<TInputSchema>
-export type InputsRawMaybeOptional<
-  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = InputRawMaybeOptional<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+// export type InputRawMaybeOptional<
+//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+// > =
+//   IsInputOptional<TInputSchema> extends true
+//     ? // biome-ignore lint/suspicious/noConfusingVoidType: VERY IMPORTANT TO KEEP IT
+//       InputRaw<TInputSchema> | undefined | void
+//     : InputRaw<TInputSchema>
+// export type InputsRawMaybeOptional<
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+// > = InputRawMaybeOptional<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
 export type InputRawUnknown = Record<string, unknown>
 export type InputParseResult<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,

@@ -66,6 +66,7 @@ Remove comments, unusde code, unused types (except core/point0.ts and core/types
 При обнаружении поинта, который при своей инициализации не наблюдает над собой компилера судя по процесс енв, он должен сделать консоль варн что мол компилер забыли включить или импортнули его в энжине незаконно без асунк импорта, это можно отключить
 В поинтах сделать проверку в момент летс или криэйт, либо энжина должна быть инициализирована, либо это должен быть клиент
 --+
+try for input have void type or undefined, than we can avoid using ...args IsInputOptional...
 types.ts file thet reexport only needed types
 hide github repos from devp0nt that deprecated
 biome to route0

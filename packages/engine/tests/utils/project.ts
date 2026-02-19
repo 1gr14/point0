@@ -70,6 +70,51 @@ export class TestProject {
     return await new TestProject(options).init()
   }
 
+  async init() {
+    await this.createTempDir()
+    await this.copyTemplateToTempDir()
+    await this.replace(this.files.packageJson, 'test-project-name', this.name)
+    await this.replace(this.files.engine, '// port: server,', `port: ${this.serverPort},`)
+    await this.replace(
+      this.files.engine,
+      '// hmrPort: server,',
+      `hmrPort: ${typeof this.serverHmrPort === 'number' ? this.serverHmrPort : 'false'},`,
+    )
+    await this.replace(this.files.engine, '// port: client,', `port: ${this.clientPort},`)
+    await this.replace(
+      this.files.engine,
+      '// hmrPort: client,',
+      `hmrPort: ${typeof this.clientHmrPort === 'number' ? this.clientHmrPort : 'false'},`,
+    )
+    if (!this.ssr) {
+      await this.replace(this.files.root, '.ssr(true)', '// .ssr(true)')
+    }
+    if (this.prefetchPageOnNavigate !== false) {
+      await this.replace(
+        this.files.root,
+        '.prefetchPageOnNavigate(false)',
+        `.prefetchPageOnNavigate('${this.prefetchPageOnNavigate}')`,
+      )
+    }
+    if (this.prefetchPageOnLinkHover !== false) {
+      await this.replace(
+        this.files.root,
+        '.prefetchPageOnLinkHover(false)',
+        `.prefetchPageOnLinkHover('${this.prefetchPageOnLinkHover}')`,
+      )
+    }
+    if (!this.superjson) {
+      await this.replace(this.files.root, '.transformer(superjson)', '// .transformer(superjson)')
+    }
+    await this.write(this.files.dotenv, await Bun.file(this.paths.dotenvSource).text())
+    if (this.vite) {
+      await this.replace(this.files.engine, `// viteConfig: '../vite.config.ts',`, `viteConfig: '../vite.config.ts',`)
+      await this.replace(this.files.packageJson, './dist/server/index.server.js', './dist/server/main.js')
+      await this.replace(this.files.indexHtml, '"./index.client.ts"', '"/index.client.ts"')
+    }
+    return this
+  }
+
   resolve(...paths: string[]) {
     return nodePath.resolve(this.dir, ...paths)
   }
@@ -252,51 +297,6 @@ export class TestProject {
   //   }
   //   throw new Error('WebSocket failed to become ready')
   // }
-
-  async init() {
-    await this.createTempDir()
-    await this.copyTemplateToTempDir()
-    await this.replace(this.files.packageJson, 'test-project-name', this.name)
-    await this.replace(this.files.engine, '// port: server,', `port: ${this.serverPort},`)
-    await this.replace(
-      this.files.engine,
-      '// hmrPort: server,',
-      `hmrPort: ${typeof this.serverHmrPort === 'number' ? this.serverHmrPort : 'false'},`,
-    )
-    await this.replace(this.files.engine, '// port: client,', `port: ${this.clientPort},`)
-    await this.replace(
-      this.files.engine,
-      '// hmrPort: client,',
-      `hmrPort: ${typeof this.clientHmrPort === 'number' ? this.clientHmrPort : 'false'},`,
-    )
-    if (!this.ssr) {
-      await this.replace(this.files.root, '.ssr(true)', '// .ssr(true)')
-    }
-    if (this.prefetchPageOnNavigate !== false) {
-      await this.replace(
-        this.files.root,
-        '.prefetchPageOnNavigate(false)',
-        `.prefetchPageOnNavigate('${this.prefetchPageOnNavigate}')`,
-      )
-    }
-    if (this.prefetchPageOnLinkHover !== false) {
-      await this.replace(
-        this.files.root,
-        '.prefetchPageOnLinkHover(false)',
-        `.prefetchPageOnLinkHover('${this.prefetchPageOnLinkHover}')`,
-      )
-    }
-    if (!this.superjson) {
-      await this.replace(this.files.root, '.transformer(superjson)', '// .transformer(superjson)')
-    }
-    await this.write(this.files.dotenv, await Bun.file(this.paths.dotenvSource).text())
-    if (this.vite) {
-      await this.replace(this.files.engine, `// viteConfig: '../vite.config.ts',`, `viteConfig: '../vite.config.ts',`)
-      await this.replace(this.files.packageJson, './dist/server/index.server.js', './dist/server/main.js')
-      await this.replace(this.files.indexHtml, '"./index.client.ts"', '"/index.client.ts"')
-    }
-    return this
-  }
 
   private _engine: Engine | undefined
   async importEngine(fresh = false): Promise<Engine> {

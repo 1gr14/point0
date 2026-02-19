@@ -116,7 +116,7 @@ export class CookiesStore {
       if (attributes.expires) {
         const expiresDate =
           attributes.expires instanceof Date ? attributes.expires : new Date(String(attributes.expires))
-        if (!isNaN(expiresDate.getTime())) {
+        if (!Number.isNaN(expiresDate.getTime())) {
           parts.push(`Expires=${expiresDate.toUTCString()}`)
         }
       }
@@ -130,6 +130,7 @@ export class CookiesStore {
         parts.push('Partitioned')
       }
 
+      // biome-ignore lint/suspicious/noDocumentCookie: ok
       document.cookie = parts.join('; ')
     }
   }
