@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
+import assert from 'node:assert'
 import { fireEvent, render, waitFor } from '@testing-library/react/pure.js'
 import { ElementViewer } from '../element-viewer.js'
 import { getFakeBrowserGlobals, getOriginalValuesOfFakeBrowserGlobals } from '../internal-testing.js'
-import assert from 'node:assert'
 
 setDefaultTimeout(10000)
 

@@ -1,11 +1,8 @@
 import type { DehydratedState } from '@tanstack/react-query'
-import type { DataTransformer, DataTransformerExtended, ScrollPositionGetter, ScrollPositionSetter } from './types.js'
 import { stringify } from 'safe-stable-stringify'
+import type { DataTransformer, DataTransformerExtended, ScrollPositionGetter, ScrollPositionSetter } from './types.js'
 
-export function mergeHeaders(
-  base?: HeadersInit,
-  ...extras: Array<HeadersInit | undefined>
-): Headers {
+export function mergeHeaders(base?: HeadersInit, ...extras: Array<HeadersInit | undefined>): Headers {
   const merged = new Headers(base)
   for (const extra of extras) {
     if (!extra) continue

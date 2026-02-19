@@ -1,6 +1,6 @@
-import { Point0 } from '@point0/core'
-import type { Prettify } from '@point0/core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
+import type { Prettify } from '@point0/core'
+import { Point0 } from '@point0/core'
 import { z } from 'zod'
 import { createTestThings, ymlify, ymlifyline } from './utils/internal-testing.js'
 

@@ -1,8 +1,8 @@
-import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
+import { Point0 } from '@point0/core'
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { createTestThings } from './utils/internal-testing.js'
-import { useEffect, useState } from 'react'
 
 describe('page', () => {
   const createRoot = () =>

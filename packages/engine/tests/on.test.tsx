@@ -1,6 +1,6 @@
+import { describe, expect, it } from 'bun:test'
 import type { AnyEventerEvent } from '@point0/core'
 import { Point0 } from '@point0/core'
-import { describe, expect, it } from 'bun:test'
 import { createTestThings } from './utils/internal-testing.js'
 
 describe('on', () => {

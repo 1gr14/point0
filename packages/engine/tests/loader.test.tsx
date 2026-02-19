@@ -1,8 +1,8 @@
-import { Point0 } from '@point0/core'
-import type { Prettify } from '@point0/core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
-import { createTestThings, ymlify } from './utils/internal-testing.js'
 import { Error0 } from '@devp0nt/error0'
+import type { Prettify } from '@point0/core'
+import { Point0 } from '@point0/core'
+import { createTestThings, ymlify } from './utils/internal-testing.js'
 
 describe('loader', () => {
   const createRoot = () =>

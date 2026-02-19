@@ -1,6 +1,7 @@
 // import { useNavigate } from '@/lib/routes.js'
-import { ideaLayout } from '../layouts/idea.js'
+
 import { useEffect } from 'react'
+import { ideaLayout } from '../layouts/idea.js'
 export const ideaNewsPage = ideaLayout
   .lets('page', 'ideaNews', 'news')
   .prefetchPageOnLinkHover(true, 2000)

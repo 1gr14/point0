@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
-import { PlaywrightBrowser } from './utils/playwright.js'
 import type { PlaywrightPage } from './utils/playwright.js'
-import { TestProjectFactory } from './utils/project.js'
+import { PlaywrightBrowser } from './utils/playwright.js'
 import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
+import { TestProjectFactory } from './utils/project.js'
 
 setDefaultTimeout(20000)
 

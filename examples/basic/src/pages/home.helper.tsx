@@ -1,5 +1,5 @@
-import { client } from '@/lib/client'
 import { useEffect, useState } from 'react'
+import { client } from '@/lib/client'
 
 export const ExternalHelperComponent = () => {
   const [state, setState] = useState(0)

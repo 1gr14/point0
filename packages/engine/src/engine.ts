@@ -1,15 +1,15 @@
+import nodeFs from 'node:fs'
+import nodePath from 'node:path'
+import { pathToFileURL } from 'node:url'
 import type {
   AnyNiceReadyPoint,
   AnyPoint,
+  EventerEmitFn,
   FetcherFetchDetailedResult,
   PointsScope,
   RequiredCtx,
   UndefinedCtx,
-  EventerEmitFn,
 } from '@point0/core'
-import nodeFs from 'node:fs'
-import nodePath from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { EngineClient } from './client.js'
 import type { EngineLogger, EngineOptions } from './config.js'
 import { parseEngineOptions } from './config.js'
@@ -360,14 +360,20 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared ex
   async generate({
     logOnNotWritten = true,
     silent,
-  }: { logOnNotWritten?: boolean; silent?: boolean } = {}): Promise<FileGeneratorProcessResult> {
+  }: {
+    logOnNotWritten?: boolean
+    silent?: boolean
+  } = {}): Promise<FileGeneratorProcessResult> {
     return await this.generator.sync({ logOnNotWritten, silent })
   }
 
   async generateWatch({
     logOnNotWritten = false,
     sync = true,
-  }: { logOnNotWritten?: boolean; sync?: boolean } = {}): Promise<void> {
+  }: {
+    logOnNotWritten?: boolean
+    sync?: boolean
+  } = {}): Promise<void> {
     if (sync) {
       void this.generator.sync({ logOnNotWritten }).catch((error: unknown) => {
         console.error(error)

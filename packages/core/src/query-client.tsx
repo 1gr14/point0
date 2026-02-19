@@ -1,12 +1,12 @@
+import type { DehydratedState } from '@tanstack/react-query'
 import {
-  QueryClient,
   dehydrate,
   hydrate,
+  QueryClient,
   QueryClientProvider as QueryClientProviderOriginal,
 } from '@tanstack/react-query'
 import type { NiceUnsettableRedefinableSuperStoreItem } from './super-store.js'
 import { superstore } from './super-store.js'
-import type { DehydratedState } from '@tanstack/react-query'
 
 export const queryClient = superstore.define<QueryClient, DehydratedState>(
   '__POINT0_QUERY_CLIENT__',

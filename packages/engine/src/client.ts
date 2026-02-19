@@ -1,4 +1,6 @@
-import { Route0, type AnyLocation } from '@devp0nt/route0'
+import * as nodeFs from 'node:fs/promises'
+import * as nodePath from 'node:path'
+import { type AnyLocation, Route0 } from '@devp0nt/route0'
 import type {
   AppComponent,
   InputParsed,
@@ -9,8 +11,6 @@ import type {
 } from '@point0/core'
 import { ClientPoints, env, getBasepathOrNull, getHostnameOrNull } from '@point0/core'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
-import * as nodeFs from 'node:fs/promises'
-import * as nodePath from 'node:path'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
 import type { CompilerOptions } from '../../compiler/dist/compiler.js'
@@ -636,8 +636,8 @@ Bun.serve({
     }
     const { req, res } = toReqRes(request)
     let nextCalled = false
-    let nextError: any = undefined
-    let nextResolve: (() => void) | undefined = undefined
+    let nextError: any
+    let nextResolve: (() => void) | undefined
 
     const nextPromise = new Promise<undefined>((resolve, reject) => {
       nextResolve = () => {

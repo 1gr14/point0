@@ -1,13 +1,13 @@
 import {
   blankDataTransformerExtended,
+  type DataTransformer,
+  type DataTransformerExtended,
   env,
   Point0,
   toExtendedTransformer,
-  type DataTransformer,
-  type DataTransformerExtended,
 } from '@point0/core'
-import { Effects } from '@point0/core/effects'
 import type { CookieOptionsInput } from '@point0/core/effects'
+import { Effects } from '@point0/core/effects'
 import { Request0 } from '@point0/core/request0'
 import { useEffect, useRef, useState } from 'react'
 
@@ -75,9 +75,7 @@ export class CookiesStore {
       const rawValue = cookie.slice(separatorIndex + 1)
       try {
         cookies[decodeURIComponent(rawName)] = decodeCookieValue(rawValue)
-      } catch {
-        continue
-      }
+      } catch {}
     }
     return cookies
   }
@@ -280,7 +278,7 @@ export class CookiesStore {
       // lets not throw to be able fullstack tests
       // throw new Error('refresh() is only available on the client')
     }
-    this.items.forEach((item) => {
+    CookiesStore.items.forEach((item) => {
       // Skip httpOnly cookies as they are server-only
       if (!item.isHttpOnly()) {
         item.refresh()

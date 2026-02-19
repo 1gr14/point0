@@ -1,10 +1,10 @@
-import { Route0, Routes } from '@devp0nt/route0'
 import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
+import { Route0, Routes } from '@devp0nt/route0'
+import type { CompilerPoint } from '../src/point.js'
 import { Walker } from '../src/walker.js'
 import { toText } from './utils.js'
-import type { CompilerPoint } from '../src/point.js'
 
 type TestFile = Bun.BunFile & { path: string; basename: string; importpath: string }
 
@@ -1011,8 +1011,9 @@ export const page = root.lets('page', 'page', '/')
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.shakeMethods({ side: 'client' })
-          expect(point.chainMethods.map((m) => `${m.name}: underSsr=${m.underSsr ? 'true' : 'false'}`))
-            .toMatchInlineSnapshot(`
+          expect(
+            point.chainMethods.map((m) => `${m.name}: underSsr=${m.underSsr ? 'true' : 'false'}`),
+          ).toMatchInlineSnapshot(`
             [
               "root: underSsr=false",
               "iamNotUnderSsrByDefault: underSsr=false",

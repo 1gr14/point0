@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import * as z from 'zod'
-import { generalLayout } from '../layouts/general.js'
 import { Link } from '@/lib/navigate'
+import { generalLayout } from '../layouts/general.js'
 
 export const ideasPage = generalLayout
   .lets('page', 'ideas')

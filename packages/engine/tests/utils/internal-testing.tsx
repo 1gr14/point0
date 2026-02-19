@@ -1,21 +1,21 @@
-import type { AnyNiceRequestableReadyPoint, AppComponent, ReadyPoint, PointsDefinition } from '@point0/core'
-import { queryClient as point0QueryClient, QueryClientProvider, UnheadProvider } from '@point0/core'
-import { Router, RouterRoutes } from '@point0/wouter'
-import { Window } from 'happy-dom'
 import assert from 'node:assert'
 import nodePath from 'node:path'
-import { Engine } from '../../src/engine.js'
-import { FakeClient } from '../../src/fake-client.js'
-import { ElementViewer } from './element-viewer.js'
-import { HtmlView } from './html-view.js'
+import { CookiesStore } from '@point0/cookies-store'
+import type { AnyNiceRequestableReadyPoint, AppComponent, PointsDefinition, ReadyPoint } from '@point0/core'
+import { queryClient as point0QueryClient, QueryClientProvider, UnheadProvider } from '@point0/core'
+import { Router, RouterRoutes } from '@point0/wouter'
 // import { AsyncLocalStorage } from 'node:async_hooks'
 import { notifyManager } from '@tanstack/query-core'
 import type { DehydratedState, QueryClient } from '@tanstack/react-query'
 import * as rtl from '@testing-library/react/pure.js'
-import { FetchRecorder } from './fetch-recorder.js'
 import { YAML } from 'bun'
-import { CookiesStore } from '@point0/cookies-store'
+import { Window } from 'happy-dom'
 import type { EngineOptions } from '../../src/config.js'
+import { Engine } from '../../src/engine.js'
+import { FakeClient } from '../../src/fake-client.js'
+import { ElementViewer } from './element-viewer.js'
+import { FetchRecorder } from './fetch-recorder.js'
+import { HtmlView } from './html-view.js'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -143,7 +143,7 @@ export const withFakeBrowserGlobals = async <TResult,>(fn: () => Promise<TResult
   }
 }
 
-export const waitReturn = async <T = undefined,>(value?: T, timeout = 100): Promise<T> => {
+export const waitReturn = async <T = undefined>(value?: T, timeout = 100): Promise<T> => {
   await new Promise((resolve) => setTimeout(resolve, timeout))
   return value as T
 }
@@ -437,14 +437,14 @@ export const createTestThings = async ({
 
         // Override history.pushState to catch programmatic navigation
         const originalPushState = window.history.pushState.bind(window.history)
-        window.history.pushState = function (...args: Parameters<typeof originalPushState>) {
+        window.history.pushState = (...args: Parameters<typeof originalPushState>) => {
           originalPushState(...args)
           updateViewerUrl()
         }
 
         // Override history.replaceState to catch programmatic navigation
         const originalReplaceState = window.history.replaceState.bind(window.history)
-        window.history.replaceState = function (...args: Parameters<typeof originalReplaceState>) {
+        window.history.replaceState = (...args: Parameters<typeof originalReplaceState>) => {
           originalReplaceState(...args)
           updateViewerUrl()
         }

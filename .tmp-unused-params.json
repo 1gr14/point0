@@ -1,0 +1,1480 @@
+{
+  "summary": {
+    "changed": 0,
+    "unchanged": 193,
+    "matches": 0,
+    "errors": 3,
+    "warnings": 129,
+    "infos": 0,
+    "skipped": 0,
+    "suggestedFixesSkipped": 0,
+    "diagnosticsNotPrinted": 0
+  },
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/layouts/idea.tsx",
+        "start": { "line": 7, "column": 40 },
+        "end": { "line": 7, "column": 44 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/lib/client-ctx.ts",
+        "start": { "line": 3, "column": 81 },
+        "end": { "line": 3, "column": 85 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/lib/client-ctx.ts",
+        "start": { "line": 30, "column": 25 },
+        "end": { "line": 30, "column": 29 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/empty.tsx",
+        "start": { "line": 47, "column": 107 },
+        "end": { "line": 47, "column": 111 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/home.tsx",
+        "start": { "line": 43, "column": 20 },
+        "end": { "line": 43, "column": 23 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/home.tsx",
+        "start": { "line": 43, "column": 25 },
+        "end": { "line": 43, "column": 30 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/home.tsx",
+        "start": { "line": 108, "column": 13 },
+        "end": { "line": 108, "column": 14 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/home.tsx",
+        "start": { "line": 114, "column": 12 },
+        "end": { "line": 114, "column": 20 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea-create.tsx",
+        "start": { "line": 109, "column": 26 },
+        "end": { "line": 109, "column": 31 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea-create.tsx",
+        "start": { "line": 40, "column": 20 },
+        "end": { "line": 40, "column": 25 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea-create.tsx",
+        "start": { "line": 48, "column": 20 },
+        "end": { "line": 48, "column": 25 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea-create.tsx",
+        "start": { "line": 84, "column": 20 },
+        "end": { "line": 84, "column": 25 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea-create.tsx",
+        "start": { "line": 84, "column": 27 },
+        "end": { "line": 84, "column": 30 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea-create.tsx",
+        "start": { "line": 109, "column": 33 },
+        "end": { "line": 109, "column": 37 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea-create.tsx",
+        "start": { "line": 118, "column": 20 },
+        "end": { "line": 118, "column": 25 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea-create.tsx",
+        "start": { "line": 118, "column": 27 },
+        "end": { "line": 118, "column": 31 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea-create.tsx",
+        "start": { "line": 127, "column": 20 },
+        "end": { "line": 127, "column": 25 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea-create.tsx",
+        "start": { "line": 127, "column": 27 },
+        "end": { "line": 127, "column": 30 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea-create.tsx",
+        "start": { "line": 144, "column": 26 },
+        "end": { "line": 144, "column": 31 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea-create.tsx",
+        "start": { "line": 144, "column": 33 },
+        "end": { "line": 144, "column": 37 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea-create.tsx",
+        "start": { "line": 147, "column": 26 },
+        "end": { "line": 147, "column": 31 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea-create.tsx",
+        "start": { "line": 147, "column": 33 },
+        "end": { "line": 147, "column": 37 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/idea.tsx",
+        "start": { "line": 25, "column": 32 },
+        "end": { "line": 25, "column": 40 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/ideas.tsx",
+        "start": { "line": 21, "column": 26 },
+        "end": { "line": 21, "column": 29 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/ideas.tsx",
+        "start": { "line": 40, "column": 18 },
+        "end": { "line": 40, "column": 25 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/basic/src/pages/ideas.tsx",
+        "start": { "line": 9, "column": 25 },
+        "end": { "line": 9, "column": 29 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/vite/src/engine.ts",
+        "start": { "line": 50, "column": 20 },
+        "end": { "line": 50, "column": 21 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/vite/src/layouts/idea.tsx",
+        "start": { "line": 7, "column": 40 },
+        "end": { "line": 7, "column": 44 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/vite/src/lib/client-ctx.ts",
+        "start": { "line": 3, "column": 81 },
+        "end": { "line": 3, "column": 85 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/vite/src/lib/client-ctx.ts",
+        "start": { "line": 13, "column": 25 },
+        "end": { "line": 13, "column": 29 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/vite/src/lib/client-ctx.ts",
+        "start": { "line": 26, "column": 25 },
+        "end": { "line": 26, "column": 29 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/vite/src/pages/empty.tsx",
+        "start": { "line": 6, "column": 14 },
+        "end": { "line": 6, "column": 19 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/vite/src/pages/home.tsx",
+        "start": { "line": 55, "column": 12 },
+        "end": { "line": 55, "column": 20 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/vite/src/pages/idea-create.tsx",
+        "start": { "line": 30, "column": 20 },
+        "end": { "line": 30, "column": 25 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/vite/src/pages/idea-create.tsx",
+        "start": { "line": 30, "column": 27 },
+        "end": { "line": 30, "column": 30 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/vite/src/pages/ideas.tsx",
+        "start": { "line": 34, "column": 29 },
+        "end": { "line": 34, "column": 36 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "examples/vite/src/pages/ideas.tsx",
+        "start": { "line": 10, "column": 25 },
+        "end": { "line": 10, "column": 29 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/compiler/src/plugin/vite.ts",
+        "start": { "line": 16, "column": 25 },
+        "end": { "line": 16, "column": 32 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/compiler/src/walker.ts",
+        "start": { "line": 144, "column": 32 },
+        "end": { "line": 144, "column": 37 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/compiler/tests/resolver.test.ts",
+        "start": { "line": 212, "column": 23 },
+        "end": { "line": 212, "column": 30 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/compiler/tests/walker.test.tsx",
+        "start": { "line": 443, "column": 43 },
+        "end": { "line": 443, "column": 45 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/compiler/tests/walker.test.tsx",
+        "start": { "line": 443, "column": 47 },
+        "end": { "line": 443, "column": 49 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/compiler/tests/walker.test.tsx",
+        "start": { "line": 443, "column": 51 },
+        "end": { "line": 443, "column": 53 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/compiler/tests/walker.test.tsx",
+        "start": { "line": 443, "column": 55 },
+        "end": { "line": 443, "column": 57 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/compiler/tests/walker.test.tsx",
+        "start": { "line": 443, "column": 59 },
+        "end": { "line": 443, "column": 61 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/compiler/tests/walker.test.tsx",
+        "start": { "line": 443, "column": 63 },
+        "end": { "line": 443, "column": 65 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/compiler/tests/walker.test.tsx",
+        "start": { "line": 443, "column": 67 },
+        "end": { "line": 443, "column": 69 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/compiler/tests/walker.test.tsx",
+        "start": { "line": 443, "column": 71 },
+        "end": { "line": 443, "column": 74 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/cookies-store/tests/index.test.tsx",
+        "start": { "line": 328, "column": 23 },
+        "end": { "line": 328, "column": 27 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/cookies-store/tests/index.test.tsx",
+        "start": { "line": 417, "column": 23 },
+        "end": { "line": 417, "column": 27 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/cookies-store/tests/index.test.tsx",
+        "start": { "line": 508, "column": 23 },
+        "end": { "line": 508, "column": 27 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/core/src/env.ts",
+        "start": { "line": 234, "column": 9 },
+        "end": { "line": 234, "column": 15 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/core/src/env.ts",
+        "start": { "line": 237, "column": 7 },
+        "end": { "line": 237, "column": 13 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/core/src/env.ts",
+        "start": { "line": 463, "column": 9 },
+        "end": { "line": 463, "column": 15 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/core/src/env.ts",
+        "start": { "line": 466, "column": 7 },
+        "end": { "line": 466, "column": 13 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/core/src/env.ts",
+        "start": { "line": 625, "column": 9 },
+        "end": { "line": 625, "column": 15 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/core/src/env.ts",
+        "start": { "line": 628, "column": 7 },
+        "end": { "line": 628, "column": 13 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/core/src/point0.ts",
+        "start": { "line": 7244, "column": 5 },
+        "end": { "line": 7244, "column": 21 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/core/src/point0.ts",
+        "start": { "line": 5365, "column": 29 },
+        "end": { "line": 5365, "column": 34 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/core/src/points-manager.ts",
+        "start": { "line": 188, "column": 33 },
+        "end": { "line": 188, "column": 38 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/src/client.ts",
+        "start": { "line": 697, "column": 30 },
+        "end": { "line": 697, "column": 33 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/src/client.ts",
+        "start": { "line": 959, "column": 57 },
+        "end": { "line": 959, "column": 62 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/src/config.ts",
+        "start": { "line": 487, "column": 3 },
+        "end": { "line": 487, "column": 17 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/src/config.ts",
+        "start": { "line": 744, "column": 3 },
+        "end": { "line": 744, "column": 17 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/src/engine.ts",
+        "start": { "line": 208, "column": 35 },
+        "end": { "line": 208, "column": 40 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/src/engine.ts",
+        "start": { "line": 208, "column": 42 },
+        "end": { "line": 208, "column": 46 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/src/engine.ts",
+        "start": { "line": 208, "column": 48 },
+        "end": { "line": 208, "column": 54 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/src/executor.ts",
+        "start": { "line": 715, "column": 32 },
+        "end": { "line": 715, "column": 37 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/src/generator.ts",
+        "start": { "line": 389, "column": 40 },
+        "end": { "line": 389, "column": 44 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/component.test.tsx",
+        "start": { "line": 239, "column": 38 },
+        "end": { "line": 239, "column": 46 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/fake-client.test.tsx",
+        "start": { "line": 381, "column": 18 },
+        "end": { "line": 381, "column": 21 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/generator.test.ts",
+        "start": { "line": 54, "column": 50 },
+        "end": { "line": 54, "column": 51 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/generator.test.ts",
+        "start": { "line": 217, "column": 77 },
+        "end": { "line": 217, "column": 95 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/head.test.tsx",
+        "start": { "line": 82, "column": 38 },
+        "end": { "line": 82, "column": 44 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/head.test.tsx",
+        "start": { "line": 106, "column": 38 },
+        "end": { "line": 106, "column": 44 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/head.test.tsx",
+        "start": { "line": 130, "column": 35 },
+        "end": { "line": 130, "column": 41 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/head.test.tsx",
+        "start": { "line": 156, "column": 38 },
+        "end": { "line": 156, "column": 44 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/head.test.tsx",
+        "start": { "line": 181, "column": 51 },
+        "end": { "line": 181, "column": 57 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/head.test.tsx",
+        "start": { "line": 250, "column": 51 },
+        "end": { "line": 250, "column": 57 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/infinite-query.test.tsx",
+        "start": { "line": 443, "column": 18 },
+        "end": { "line": 443, "column": 22 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/loader.test.tsx",
+        "start": { "line": 83, "column": 60 },
+        "end": { "line": 83, "column": 65 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/loader.test.tsx",
+        "start": { "line": 108, "column": 41 },
+        "end": { "line": 108, "column": 52 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/loader.test.tsx",
+        "start": { "line": 108, "column": 54 },
+        "end": { "line": 108, "column": 58 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/loader.test.tsx",
+        "start": { "line": 108, "column": 60 },
+        "end": { "line": 108, "column": 65 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/loader.test.tsx",
+        "start": { "line": 129, "column": 41 },
+        "end": { "line": 129, "column": 52 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/loader.test.tsx",
+        "start": { "line": 129, "column": 54 },
+        "end": { "line": 129, "column": 58 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/loader.test.tsx",
+        "start": { "line": 129, "column": 60 },
+        "end": { "line": 129, "column": 65 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 174, "column": 37 },
+        "end": { "line": 174, "column": 40 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 174, "column": 28 },
+        "end": { "line": 174, "column": 35 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 174, "column": 42 },
+        "end": { "line": 174, "column": 46 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 201, "column": 28 },
+        "end": { "line": 201, "column": 35 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 205, "column": 28 },
+        "end": { "line": 205, "column": 35 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 205, "column": 37 },
+        "end": { "line": 205, "column": 40 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 237, "column": 28 },
+        "end": { "line": 237, "column": 35 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 237, "column": 37 },
+        "end": { "line": 237, "column": 40 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 246, "column": 28 },
+        "end": { "line": 246, "column": 35 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 246, "column": 37 },
+        "end": { "line": 246, "column": 40 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 250, "column": 18 },
+        "end": { "line": 250, "column": 21 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 254, "column": 28 },
+        "end": { "line": 254, "column": 35 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 254, "column": 37 },
+        "end": { "line": 254, "column": 40 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 258, "column": 18 },
+        "end": { "line": 258, "column": 21 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 101, "column": 28 },
+        "end": { "line": 101, "column": 35 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 105, "column": 28 },
+        "end": { "line": 105, "column": 35 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 141, "column": 28 },
+        "end": { "line": 141, "column": 35 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 145, "column": 28 },
+        "end": { "line": 145, "column": 35 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 145, "column": 37 },
+        "end": { "line": 145, "column": 40 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 145, "column": 42 },
+        "end": { "line": 145, "column": 46 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/middleware.test.tsx",
+        "start": { "line": 170, "column": 28 },
+        "end": { "line": 170, "column": 35 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/mutation.test.tsx",
+        "start": { "line": 258, "column": 18 },
+        "end": { "line": 258, "column": 22 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/navigate.test.tsx",
+        "start": { "line": 758, "column": 76 },
+        "end": { "line": 758, "column": 81 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/navigate.test.tsx",
+        "start": { "line": 785, "column": 70 },
+        "end": { "line": 785, "column": 75 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/on.test.tsx",
+        "start": { "line": 148, "column": 18 },
+        "end": { "line": 148, "column": 25 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/on.test.tsx",
+        "start": { "line": 18, "column": 18 },
+        "end": { "line": 18, "column": 25 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/on.test.tsx",
+        "start": { "line": 83, "column": 18 },
+        "end": { "line": 83, "column": 25 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/on.test.tsx",
+        "start": { "line": 117, "column": 18 },
+        "end": { "line": 117, "column": 25 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/page.test.tsx",
+        "start": { "line": 55, "column": 16 },
+        "end": { "line": 55, "column": 20 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/page.test.tsx",
+        "start": { "line": 26, "column": 57 },
+        "end": { "line": 26, "column": 61 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/page.test.tsx",
+        "start": { "line": 620, "column": 60 },
+        "end": { "line": 620, "column": 65 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/page.test.tsx",
+        "start": { "line": 655, "column": 22 },
+        "end": { "line": 655, "column": 29 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/page.test.tsx",
+        "start": { "line": 838, "column": 22 },
+        "end": { "line": 838, "column": 30 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/page.test.tsx",
+        "start": { "line": 964, "column": 32 },
+        "end": { "line": 964, "column": 39 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/page.test.tsx",
+        "start": { "line": 1011, "column": 22 },
+        "end": { "line": 1011, "column": 30 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/page.test.tsx",
+        "start": { "line": 1011, "column": 41 },
+        "end": { "line": 1011, "column": 46 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/page.test.tsx",
+        "start": { "line": 1352, "column": 22 },
+        "end": { "line": 1352, "column": 30 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/plugin.test.tsx",
+        "start": { "line": 96, "column": 18 },
+        "end": { "line": 96, "column": 21 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/query.test.tsx",
+        "start": { "line": 279, "column": 18 },
+        "end": { "line": 279, "column": 22 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/ssr.test.tsx",
+        "start": { "line": 9, "column": 57 },
+        "end": { "line": 9, "column": 61 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/utils/fetch-recorder.ts",
+        "start": { "line": 15, "column": 32 },
+        "end": { "line": 15, "column": 39 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "warning",
+      "message": "This parameter is unused.",
+      "category": "lint/correctness/noUnusedFunctionParameters",
+      "location": {
+        "path": "packages/engine/tests/utils/test/internal-testing.test.tsx",
+        "start": { "line": 20, "column": 57 },
+        "end": { "line": 20, "column": 61 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "error",
+      "message": "Code formatting aborted due to parsing errors. To format code with errors, enable the 'formatter.formatWithErrors' option.",
+      "category": "format",
+      "location": {
+        "path": ".tmp-unused-params.json",
+        "start": { "line": 0, "column": 0 },
+        "end": { "line": 0, "column": 0 }
+      },
+      "advices": []
+    },
+    {
+      "severity": "error",
+      "message": "Expected an array, an object, or a literal but instead found the end of the file.",
+      "category": "parse",
+      "location": {
+        "path": ".tmp-unused-params.json",
+        "start": { "line": 1, "column": 1 },
+        "end": { "line": 1, "column": 1 }
+      },
+      "advices": [
+        {
+          "start": { "line": 1, "column": 1 },
+          "end": { "line": 1, "column": 1 },
+          "text": "Expected an array, an object, or a literal here."
+        }
+      ]
+    },
+    {
+      "severity": "error",
+      "message": "Expected an array, an object, or a literal but instead found the end of the file.",
+      "category": "parse",
+      "location": {
+        "path": ".tmp-unused-params.json",
+        "start": { "line": 1, "column": 1 },
+        "end": { "line": 1, "column": 1 }
+      },
+      "advices": [
+        {
+          "start": { "line": 1, "column": 1 },
+          "end": { "line": 1, "column": 1 },
+          "text": "Expected an array, an object, or a literal here."
+        }
+      ]
+    }
+  ],
+  "command": "check"
+}

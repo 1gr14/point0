@@ -1,12 +1,12 @@
 import { Error0 } from '@devp0nt/error0'
 import {
-  Route0,
   type AnyLocation,
   type AnyRoute,
   type ExtractRoute,
   type ExtractRoutesKeys,
   type FlatInputWithHash,
   type HasParams,
+  Route0,
   type RoutesPretty,
 } from '@devp0nt/route0'
 import type {
@@ -28,6 +28,7 @@ import {
 } from '@point0/core'
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
 import React, { Fragment, useCallback, useMemo, useRef } from 'react'
+import type { BaseLocationHook, HookNavigationOptions, NavigationalProps } from 'wouter'
 import {
   Route,
   Switch,
@@ -36,8 +37,6 @@ import {
   Link as WouterLink,
   Router as WouterRouter,
 } from 'wouter'
-
-import type { BaseLocationHook, HookNavigationOptions, NavigationalProps } from 'wouter'
 import type { BrowserLocationHook } from 'wouter/use-browser-location'
 
 const _useNativeNavigate = () => {

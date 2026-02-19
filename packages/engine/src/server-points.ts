@@ -2,6 +2,7 @@ import type { AnyRoute } from '@devp0nt/route0'
 import type {
   DataTransformerExtended,
   LayoutPoint,
+  MiddlewareFn,
   PagePoint,
   PointName,
   PointsDefinition,
@@ -10,7 +11,6 @@ import type {
   PointType,
   ReadyPoint,
   RootPoint,
-  MiddlewareFn,
 } from '@point0/core'
 import { PointsManager } from '@point0/core'
 

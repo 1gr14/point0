@@ -1,5 +1,5 @@
-import { Link } from '@/lib/navigate'
 import { useIsNavigating } from '@point0/core'
+import { Link } from '@/lib/navigate'
 import { client } from '../lib/client'
 import { routes } from '../lib/routes'
 

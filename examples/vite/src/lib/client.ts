@@ -1,6 +1,6 @@
 import { Point0 } from '@point0/core'
-import { prisma } from './prisma.js'
 import superjson from 'superjson'
+import { prisma } from './prisma.js'
 
 export const client = Point0.lets('root', 'client')
   .ssr(true)

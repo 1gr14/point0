@@ -1,7 +1,7 @@
-import { chromium, type Browser, type Page } from 'playwright'
+import type { FetchServerOutputType, PointName, PointsScope, ReadyPointType } from '@point0/core'
+import { type Browser, chromium, type Page } from 'playwright'
 import { HtmlView } from './html-view.js'
 import { throwOnHelperLogFnCalling } from './other.js'
-import type { FetchServerOutputType, PointName, PointsScope, ReadyPointType } from '@point0/core'
 
 export interface PlaywrightBrowserInitOptions {
   headless?: boolean

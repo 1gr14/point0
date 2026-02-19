@@ -18,9 +18,9 @@ import type {
   LayoutPoint,
   MiddlewareFn,
   PagePoint,
-  PrefetchPagePolicy,
   PointName,
   PointType,
+  PrefetchPagePolicy,
   ReadyPoint,
   ReadyPointType,
 } from './types.js'

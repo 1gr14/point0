@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import React from 'react'
-import { Point0 } from '../src/point0.js'
 import { ClientPoints } from '../src/client-points.js'
+import { Point0 } from '../src/point0.js'
 
 // TODO: move all tests to separate files in test dir and refactor it
 

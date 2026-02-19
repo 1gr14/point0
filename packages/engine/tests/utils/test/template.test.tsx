@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'bun:test'
+import type { Engine } from '../../../src/engine.js'
 import type { TestProject, TestProjectFactoryCreateProjectOptions } from '../project.js'
 import { TestProjectFactory } from '../project.js'
-import type { Engine } from '../../../src/engine.js'
 
 const tpf = TestProjectFactory.create({
   namespace: 'template',

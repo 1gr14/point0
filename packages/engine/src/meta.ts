@@ -1,4 +1,4 @@
-import type { ReadyPointType, PointName, PointsScope } from '@point0/core'
+import type { PointName, PointsScope, ReadyPointType } from '@point0/core'
 
 export type MetaItemPoint = {
   what: 'point'

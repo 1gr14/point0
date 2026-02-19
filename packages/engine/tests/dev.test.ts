@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { Engine } from '../src/engine.js'
+import { throwOnBundlersLengthNot2 } from './utils/other.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
 import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 import { TestProjectFactory } from './utils/project.js'
-import { throwOnBundlersLengthNot2 } from './utils/other.js'
 
 setDefaultTimeout(20000)
 

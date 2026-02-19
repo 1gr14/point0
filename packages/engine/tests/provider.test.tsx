@@ -1,5 +1,5 @@
-import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
+import { Point0 } from '@point0/core'
 import React from 'react'
 import { z } from 'zod'
 import { createTestThings } from './utils/internal-testing.js'

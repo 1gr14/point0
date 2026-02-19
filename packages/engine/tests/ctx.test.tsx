@@ -1,6 +1,6 @@
+import { describe, expect, expectTypeOf, it } from 'bun:test'
 import type { Prettify } from '@point0/core'
 import { Point0 } from '@point0/core'
-import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { createTestThings, ymlify } from './utils/internal-testing.js'
 
 describe('ctx', () => {

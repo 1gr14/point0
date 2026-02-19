@@ -237,7 +237,7 @@ const scopeDefine = new Proxy(scopeDefineUniversal, {
     return scopeDefineUniversal(...args)
   },
   get(target, prop: string, receiver: any) {
-    if (Object.prototype.hasOwnProperty.call(scopeDefineUniversal, prop)) {
+    if (Object.hasOwn(scopeDefineUniversal, prop)) {
       return Reflect.get(scopeDefineUniversal, prop, receiver)
     }
     if (prop === 'unsafe') {
@@ -467,7 +467,7 @@ const runtimeDefine = new Proxy(runtimeDefineUniversal, {
     return runtimeDefineUniversal(...args)
   },
   get(target, prop: string, receiver: any) {
-    if (Object.prototype.hasOwnProperty.call(runtimeDefineUniversal, prop)) {
+    if (Object.hasOwn(runtimeDefineUniversal, prop)) {
       return Reflect.get(runtimeDefineUniversal, prop, receiver)
     }
     if (prop === 'unsafe') {
@@ -629,7 +629,7 @@ const osDefine = new Proxy(osDefineUniversal, {
     return osDefineUniversal(...args)
   },
   get(target, prop: string, receiver: any) {
-    if (Object.prototype.hasOwnProperty.call(osDefineUniversal, prop)) {
+    if (Object.hasOwn(osDefineUniversal, prop)) {
       return Reflect.get(osDefineUniversal, prop, receiver)
     }
     if (prop === 'unsafe') {

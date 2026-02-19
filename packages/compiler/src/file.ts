@@ -1,16 +1,16 @@
+import * as nodeFsSync from 'node:fs'
+import * as nodeFs from 'node:fs/promises'
 import generatorModule from '@babel/generator'
 import babel from '@babel/parser'
 import type traverseType from '@babel/traverse'
 import type { NodePath } from '@babel/traverse'
-import type { Node, File } from '@babel/types'
 import traverseModule from '@babel/traverse'
-import * as nodeFs from 'node:fs/promises'
-import * as nodeFsSync from 'node:fs'
-import prettier from 'prettier'
-import { normalizeEnvConsts, type CompilerEnvConsts } from './utils.js'
-import type { Walker } from './walker.js'
-import type { CompilerPoint } from './point.js'
+import type { File, Node } from '@babel/types'
 import type { EnvOsName, EnvRuntimeName, NormalizedNodeEnv } from '@point0/core'
+import prettier from 'prettier'
+import type { CompilerPoint } from './point.js'
+import { type CompilerEnvConsts, normalizeEnvConsts } from './utils.js'
+import type { Walker } from './walker.js'
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T

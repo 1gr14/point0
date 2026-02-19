@@ -1,7 +1,7 @@
-import { Point0 } from '@point0/core'
+import { describe, expect, expectTypeOf, it } from 'bun:test'
 // import '@testing-library/jest-dom'
 import { Route0 } from '@devp0nt/route0'
-import { describe, expect, expectTypeOf, it } from 'bun:test'
+import { Point0 } from '@point0/core'
 
 describe('route', () => {
   const root = Point0.lets('root', 'root').root()

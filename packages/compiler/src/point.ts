@@ -1,18 +1,19 @@
+import * as nodeFsPath from 'node:path'
 import type { NodePath } from '@babel/traverse'
 import type { Node } from '@babel/types'
 import type { AnyRoute } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import {
-  type ReadyPointType,
+  deappendSlash,
+  dedupeSlashes,
+  deprependSlash,
+  getBasepathOrNull,
   type PointName,
   type PointsScope,
-  getBasepathOrNull,
-  deappendSlash,
-  deprependSlash,
   prependAndDeappendSlash,
+  type ReadyPointType,
+  toPascalCase,
 } from '@point0/core'
-import { dedupeSlashes, toPascalCase } from '@point0/core'
-import * as nodeFsPath from 'node:path'
 import type { CompilerFile } from './file.js'
 import type { Walker } from './walker.js'
 

@@ -1,5 +1,5 @@
 import type { RoutesPretty } from '@devp0nt/route0'
-import { normalNodeEnvs, type EnvOsName, type EnvRuntimeName, type NormalizedNodeEnv } from '@point0/core'
+import { type EnvOsName, type EnvRuntimeName, type NormalizedNodeEnv, normalNodeEnvs } from '@point0/core'
 import type { CompilerFile } from './file.js'
 import { CompilerPoint } from './point.js'
 import type { CompilerEnvConsts } from './utils.js'

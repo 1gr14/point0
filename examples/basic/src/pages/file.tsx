@@ -1,7 +1,7 @@
-import { client } from '@/lib/client'
-import * as z from 'zod'
-import { useState } from 'react'
 import nodePath from 'node:path'
+import { useState } from 'react'
+import * as z from 'zod'
+import { client } from '@/lib/client'
 
 export const filePage = client.lets('page', 'file').page(() => {
   const uploadFile = uploadFileMutation.useMutation()

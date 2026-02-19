@@ -1,7 +1,7 @@
-import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
-import { createTestThings } from './utils/internal-testing.js'
+import { Point0 } from '@point0/core'
 import z from 'zod'
+import { createTestThings } from './utils/internal-testing.js'
 
 describe('mutation', () => {
   const createRoot = () =>

@@ -1,5 +1,6 @@
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
+import type { PrefetchPagePolicy } from '@point0/core'
 import type { Engine } from '../../src/engine.js'
 import type { FileGeneratorProcessResult } from '../../src/generator.js'
 import { killPort } from '../../src/port.js'
@@ -7,7 +8,6 @@ import { getDirFilesContent, throwOnHelperLogFnCalling, waitPortFree } from './o
 import type { PlaywrightPage } from './playwright.js'
 import { PlaywrightBrowser } from './playwright.js'
 import { TestProcess } from './process.js'
-import type { PrefetchPagePolicy } from '@point0/core'
 
 const testTemplateDir = nodePath.resolve(__dirname, '..', 'template')
 const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')

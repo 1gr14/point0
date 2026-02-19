@@ -1,6 +1,6 @@
+import { useIsNavigating } from '@point0/core'
 import { testCookie } from '@/lib/cookies'
 import { Link } from '@/lib/navigate'
-import { useIsNavigating } from '@point0/core'
 import { client } from '../lib/client'
 import { routes } from '../lib/routes'
 

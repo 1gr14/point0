@@ -191,7 +191,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
       }),
     )
     const rawPoints = results.filter((r) => r.status === 'fulfilled').map((r) => r.value)
-    const readyPoints = this.rawPointsCollectionToReadyPointsCollection(rawPoints)
+    const readyPoints = PointsManager.rawPointsCollectionToReadyPointsCollection(rawPoints)
     const errors = results.filter((r) => r.status === 'rejected').map((r) => r.reason)
     return { readyPoints, errors }
   }

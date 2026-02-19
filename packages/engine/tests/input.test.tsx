@@ -1,7 +1,7 @@
-import type { InputParsed, Prettify } from '@point0/core'
-import { Point0 } from '@point0/core'
 // import '@testing-library/jest-dom'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
+import type { InputParsed, Prettify } from '@point0/core'
+import { Point0 } from '@point0/core'
 import { z } from 'zod'
 import { createTestThings, ymlify } from './utils/internal-testing.js'
 
@@ -77,27 +77,25 @@ describe('input', () => {
     `)
   })
 
-  it.concurrent(
-    'available in mutation loader by input schema definition, and empty object in clientLoader',
-    async () => {
-      const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()
-      const mutation = root
-        .lets('mutation', 'test')
-        .input(z.object({ id: z.number() }))
-        .loader(({ input }) => {
-          return { loader: { input } }
-        })
-        .clientLoader(({ input, data }) => {
-          expectTypeOf<typeof input>().toEqualTypeOf<Record<never, never>>()
-          return { clientLoader: { input }, ...data }
-        })
-        .mutation()
-      expectTypeOf<Prettify<typeof mutation.Infer.InputRaw>>().toEqualTypeOf<{ id: number }>()
-      expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<false>()
-      expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<{ id: number }>()
-      const { loadPointYml } = await createTestThings({ points: [root, mutation] })
-      const result = await loadPointYml(mutation, { id: 123 })
-      expect(result).toMatchInlineSnapshot(`
+  it.concurrent('available in mutation loader by input schema definition, and empty object in clientLoader', async () => {
+    const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()
+    const mutation = root
+      .lets('mutation', 'test')
+      .input(z.object({ id: z.number() }))
+      .loader(({ input }) => {
+        return { loader: { input } }
+      })
+      .clientLoader(({ input, data }) => {
+        expectTypeOf<typeof input>().toEqualTypeOf<Record<never, never>>()
+        return { clientLoader: { input }, ...data }
+      })
+      .mutation()
+    expectTypeOf<Prettify<typeof mutation.Infer.InputRaw>>().toEqualTypeOf<{ id: number }>()
+    expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<false>()
+    expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<{ id: number }>()
+    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const result = await loadPointYml(mutation, { id: 123 })
+    expect(result).toMatchInlineSnapshot(`
       "
       clientLoader: 
         input: 
@@ -107,8 +105,7 @@ describe('input', () => {
           id: 123
       "
     `)
-    },
-  )
+  })
 
   it.concurrent('works with unions', async () => {
     const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()

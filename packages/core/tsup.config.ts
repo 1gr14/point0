@@ -1,5 +1,5 @@
-import { defineConfig, type Options } from 'tsup'
 import { fixImportsPlugin } from 'esbuild-fix-imports-plugin'
+import { defineConfig, type Options } from 'tsup'
 
 const general = {
   entry: [

@@ -1,6 +1,6 @@
-import { Point0 } from '@point0/core'
 // import '@testing-library/jest-dom'
 import { describe, expect, it } from 'bun:test'
+import { Point0 } from '@point0/core'
 // import { PlaywrightBrowser } from './utils/playwright.js'
 // import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 // import { TestProjectFactory } from './utils/project.js'

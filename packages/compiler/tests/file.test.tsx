@@ -2,8 +2,8 @@ import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { CompilerFile } from '../src/file.js'
-import { toText } from './utils.js'
 import { Walker } from '../src/walker.js'
+import { toText } from './utils.js'
 
 type TestFile = Bun.BunFile & {
   path: string

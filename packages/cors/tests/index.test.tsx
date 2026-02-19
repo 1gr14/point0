@@ -1,7 +1,7 @@
-import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
-import { cors } from '../src/index.js'
+import { Point0 } from '@point0/core'
 import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
+import { cors } from '../src/index.js'
 
 // inspired by https://github.com/elysiajs/elysia-cors/tree/main
 // thanks a lot, SaltyAom https://p0nt.dev/
