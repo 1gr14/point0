@@ -2,7 +2,10 @@ import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bu
 import type { Engine } from '../src/engine.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
 import { TestProjectTwoClientFactory } from './utils/project.two-clients.js'
-import type { TestProjectFactoryCreateProjectOptions, TestProjectTwoClient } from './utils/project.two-clients.js'
+import type {
+  TestProjectTwoClientFactoryCreateProjectOptions,
+  TestProjectTwoClient,
+} from './utils/project.two-clients.js'
 
 setDefaultTimeout(20000)
 
@@ -15,7 +18,7 @@ type ItFn = (done: (err?: unknown) => void) => void | Promise<void>
 
 let preventFinalFilesCleanup = false
 function wrp(
-  options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
+  options: TestProjectTwoClientFactoryCreateProjectOptions & { preserve?: boolean },
   callback: ({ tp, engine }: { tp: TestProjectTwoClient; engine: Engine }) => void | Promise<void>,
 ): ItFn {
   const { preserve = false, ...tpOptions } = options

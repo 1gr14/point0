@@ -1,7 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { PlaywrightPage } from './utils/playwright.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
-import type { TestProjectOneClient, TestProjectFactoryCreateProjectOptions } from './utils/project.one-client.js'
+import type {
+  TestProjectOneClient,
+  TestProjectOneClientFactoryCreateProjectOptions,
+} from './utils/project.one-client.js'
 import { TestProjectOneClientFactory } from './utils/project.one-client.js'
 
 setDefaultTimeout(20000)
@@ -194,7 +197,7 @@ type ItFn = (done: (err?: unknown) => void) => void | Promise<void>
 let preventFinalFilesCleanup = false
 function wrp(
   options: Required<
-    Pick<TestProjectFactoryCreateProjectOptions, 'prefetchPageOnLinkHover' | 'prefetchPageOnNavigate'>
+    Pick<TestProjectOneClientFactoryCreateProjectOptions, 'prefetchPageOnLinkHover' | 'prefetchPageOnNavigate'>
   > & {
     mode: 'dev' | 'build'
     bundler: 'bun' | 'vite'
@@ -212,7 +215,7 @@ function wrp(
 }
 
 const initTestProject = async (
-  options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean; mode: 'dev' | 'build' },
+  options: TestProjectOneClientFactoryCreateProjectOptions & { preserve?: boolean; mode: 'dev' | 'build' },
 ) => {
   const { preserve = false, mode, ...tpOptions } = options
   if (preserve) {

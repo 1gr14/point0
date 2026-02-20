@@ -1,7 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { Engine } from '../src/engine.js'
 import { throwOnBundlersLengthNot2 } from './utils/other.js'
-import type { TestProjectOneClient, TestProjectFactoryCreateProjectOptions } from './utils/project.one-client.js'
+import type {
+  TestProjectOneClient,
+  TestProjectOneClientFactoryCreateProjectOptions,
+} from './utils/project.one-client.js'
 import { TestProjectOneClientFactory } from './utils/project.one-client.js'
 
 setDefaultTimeout(15000)
@@ -15,7 +18,7 @@ type ItFn = (done: (err?: unknown) => void) => void | Promise<void>
 
 let preventFinalFilesCleanup = false
 function wrp(
-  options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
+  options: TestProjectOneClientFactoryCreateProjectOptions & { preserve?: boolean },
   callback: ({ tp, engine }: { tp: TestProjectOneClient; engine: Engine }) => void | Promise<void>,
 ): ItFn
 function wrp(callback: ({ tp, engine }: { tp: TestProjectOneClient; engine: Engine }) => void | Promise<void>): ItFn
@@ -23,7 +26,7 @@ function wrp(
   ...args:
     | [callback: ({ tp, engine }: { tp: TestProjectOneClient; engine: Engine }) => void | Promise<void>]
     | [
-        options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
+        options: TestProjectOneClientFactoryCreateProjectOptions & { preserve?: boolean },
         callback: ({ tp, engine }: { tp: TestProjectOneClient; engine: Engine }) => void | Promise<void>,
       ]
 ): ItFn {

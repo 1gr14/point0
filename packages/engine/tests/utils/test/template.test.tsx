@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'bun:test'
 import type { Engine } from '../../../src/engine.js'
-import type { TestProject, TestProjectFactoryCreateProjectOptions } from '../project.js'
 import { TestProjectOneClientFactory } from '../project.one-client.js'
+import type { TestProjectOneClient, TestProjectOneClientFactoryCreateProjectOptions } from '../project.one-client.js'
 
 const tpf = TestProjectOneClientFactory.create({
   namespace: 'template',
@@ -12,16 +12,16 @@ type ItFn = (done: (err?: unknown) => void) => void | Promise<void>
 
 let preventFinalFilesCleanup = false
 function wrp(
-  options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
-  callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>,
+  options: TestProjectOneClientFactoryCreateProjectOptions & { preserve?: boolean },
+  callback: ({ tp, engine }: { tp: TestProjectOneClient; engine: Engine }) => void | Promise<void>,
 ): ItFn
-function wrp(callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>): ItFn
+function wrp(callback: ({ tp, engine }: { tp: TestProjectOneClient; engine: Engine }) => void | Promise<void>): ItFn
 function wrp(
   ...args:
-    | [callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>]
+    | [callback: ({ tp, engine }: { tp: TestProjectOneClient; engine: Engine }) => void | Promise<void>]
     | [
-        options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
-        callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => void | Promise<void>,
+        options: TestProjectOneClientFactoryCreateProjectOptions & { preserve?: boolean },
+        callback: ({ tp, engine }: { tp: TestProjectOneClient; engine: Engine }) => void | Promise<void>,
       ]
 ): ItFn {
   const [options, callback] = args.length === 1 ? [{}, args[0]] : args

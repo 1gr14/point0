@@ -66,7 +66,7 @@ export class TestProjectOneClient {
     this.tpf = options.tpf
   }
 
-  static async init(options: TestProjectCreateOptions) {
+  static async init(options: TestProjectOneClientCreateOptions) {
     return await new TestProjectOneClient(options).init()
   }
 
@@ -354,7 +354,7 @@ export class TestProjectOneClient {
   }
 }
 
-export type TestProjectGeneralOptions = {
+export type TestProjectOneClientGeneralOptions = {
   ssr: boolean
   superjson: boolean
   vite: boolean
@@ -365,7 +365,7 @@ export type TestProjectGeneralOptions = {
   prefetchPageOnLinkHover: false | PrefetchPagePolicy
 }
 
-export type TestProjectCreateOptions = Omit<TestProjectGeneralOptions, 'serverHmr' | 'clientHmr'> & {
+export type TestProjectOneClientCreateOptions = Omit<TestProjectOneClientGeneralOptions, 'serverHmr' | 'clientHmr'> & {
   index: number
   tpf: TestProjectOneClientFactory
   serverPort: number
@@ -375,16 +375,16 @@ export type TestProjectCreateOptions = Omit<TestProjectGeneralOptions, 'serverHm
   browser: PlaywrightBrowser | undefined
 }
 
-export type TestProjectFactoryCreateSelfOptions = Partial<TestProjectGeneralOptions> & {
+export type TestProjectOneClientFactoryCreateSelfOptions = Partial<TestProjectOneClientGeneralOptions> & {
   namespace: string
   portsRange: [number, number]
   browser?: PlaywrightBrowser
 }
 
-export type TestProjectFactoryCreateProjectOptions = Partial<TestProjectGeneralOptions>
+export type TestProjectOneClientFactoryCreateProjectOptions = Partial<TestProjectOneClientGeneralOptions>
 
 export class TestProjectOneClientFactory {
-  defaultOptions: TestProjectGeneralOptions
+  defaultOptions: TestProjectOneClientGeneralOptions
   namespace: string
   instances: TestProjectOneClient[] = []
   portsRange: [number, number]
@@ -396,7 +396,7 @@ export class TestProjectOneClientFactory {
     portsRange,
     browser,
   }: {
-    defaultOptions: Partial<TestProjectGeneralOptions>
+    defaultOptions: Partial<TestProjectOneClientGeneralOptions>
     namespace: string
     portsRange: [number, number]
     browser: PlaywrightBrowser | undefined
@@ -417,11 +417,11 @@ export class TestProjectOneClientFactory {
     this.browser = browser
   }
 
-  static create({ namespace, portsRange, browser, ...defaultOptions }: TestProjectFactoryCreateSelfOptions) {
+  static create({ namespace, portsRange, browser, ...defaultOptions }: TestProjectOneClientFactoryCreateSelfOptions) {
     return new TestProjectOneClientFactory({ defaultOptions, namespace, portsRange, browser })
   }
 
-  create(options: TestProjectFactoryCreateProjectOptions = {}) {
+  create(options: TestProjectOneClientFactoryCreateProjectOptions = {}) {
     const serverPort = this.getNextFreePort()
     const serverHmrPort =
       options.serverHmr === false
@@ -462,7 +462,7 @@ export class TestProjectOneClientFactory {
     this.browser = await PlaywrightBrowser.init()
   }
 
-  async init(options: TestProjectFactoryCreateProjectOptions = {}) {
+  async init(options: TestProjectOneClientFactoryCreateProjectOptions = {}) {
     return await this.create(options).init()
   }
 

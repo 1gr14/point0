@@ -107,7 +107,7 @@ export class TestProjectTwoClient {
     this.tpf = options.tpf
   }
 
-  static async init(options: TestProjectCreateOptions) {
+  static async init(options: TestProjectTwoClientCreateOptions) {
     return await new TestProjectTwoClient(options).init()
   }
 
@@ -482,7 +482,7 @@ export class TestProjectTwoClient {
   }
 }
 
-export type TestProjectGeneralOptions = {
+export type TestProjectTwoClientGeneralOptions = {
   ssr1: boolean
   ssr2: boolean
   superjson1: boolean
@@ -504,7 +504,10 @@ export type TestProjectGeneralOptions = {
   basepath2: string | false
 }
 
-export type TestProjectCreateOptions = Omit<TestProjectGeneralOptions, 'serverHmr' | 'client1Hmr' | 'client2Hmr'> & {
+export type TestProjectTwoClientCreateOptions = Omit<
+  TestProjectTwoClientGeneralOptions,
+  'serverHmr' | 'client1Hmr' | 'client2Hmr'
+> & {
   index: number
   tpf: TestProjectTwoClientFactory
   serverPort: number
@@ -516,16 +519,16 @@ export type TestProjectCreateOptions = Omit<TestProjectGeneralOptions, 'serverHm
   browser: PlaywrightBrowser | undefined
 }
 
-export type TestProjectFactoryCreateSelfOptions = Partial<TestProjectGeneralOptions> & {
+export type TestProjectTwoClientFactoryCreateSelfOptions = Partial<TestProjectTwoClientGeneralOptions> & {
   namespace: string
   portsRange: [number, number]
   browser?: PlaywrightBrowser
 }
 
-export type TestProjectFactoryCreateProjectOptions = Partial<TestProjectGeneralOptions>
+export type TestProjectTwoClientFactoryCreateProjectOptions = Partial<TestProjectTwoClientGeneralOptions>
 
 export class TestProjectTwoClientFactory {
-  defaultOptions: TestProjectGeneralOptions
+  defaultOptions: TestProjectTwoClientGeneralOptions
   namespace: string
   instances: TestProjectTwoClient[] = []
   portsRange: [number, number]
@@ -537,7 +540,7 @@ export class TestProjectTwoClientFactory {
     portsRange,
     browser,
   }: {
-    defaultOptions: Partial<TestProjectGeneralOptions>
+    defaultOptions: Partial<TestProjectTwoClientGeneralOptions>
     namespace: string
     portsRange: [number, number]
     browser: PlaywrightBrowser | undefined
@@ -569,11 +572,11 @@ export class TestProjectTwoClientFactory {
     this.browser = browser
   }
 
-  static create({ namespace, portsRange, browser, ...defaultOptions }: TestProjectFactoryCreateSelfOptions) {
+  static create({ namespace, portsRange, browser, ...defaultOptions }: TestProjectTwoClientFactoryCreateSelfOptions) {
     return new TestProjectTwoClientFactory({ defaultOptions, namespace, portsRange, browser })
   }
 
-  create(options: TestProjectFactoryCreateProjectOptions = {}) {
+  create(options: TestProjectTwoClientFactoryCreateProjectOptions = {}) {
     const serverPort = this.getNextFreePort()
     const serverHmrPort =
       options.serverHmr === false
@@ -625,7 +628,7 @@ export class TestProjectTwoClientFactory {
     this.browser = await PlaywrightBrowser.init()
   }
 
-  async init(options: TestProjectFactoryCreateProjectOptions = {}) {
+  async init(options: TestProjectTwoClientFactoryCreateProjectOptions = {}) {
     return await this.create(options).init()
   }
 
