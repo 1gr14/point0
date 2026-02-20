@@ -1,5 +1,5 @@
 import type { PointsDefinition } from '@point0/core'
-import { root as root_0 } from './root.js'
+import { root2 as root_0 } from './root.second.js'
 export default [
   root_0,
 ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
