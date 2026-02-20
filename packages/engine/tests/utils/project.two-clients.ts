@@ -9,7 +9,7 @@ import type { PlaywrightPage } from './playwright.js'
 import { PlaywrightBrowser } from './playwright.js'
 import { TestProcess } from './process.js'
 
-const testTemplateDir = nodePath.resolve(__dirname, '..', 'templates', 'one-client')
+const testTemplateDir = nodePath.resolve(__dirname, '..', 'templates', 'two-clients')
 const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')
 const localhost = `http://localhost`
 // const localhost = `http://127.0.0.1`
@@ -32,6 +32,8 @@ export class TestProjectTwoClient {
   serverHmrPort: number | false
   client1HmrPort: number | false
   client2HmrPort: number | false
+  baseurl1: string | true | false
+  baseurl2: string | true | false
   processes: TestProcess[] = []
   ports: number[] = []
   prefetchPageOnNavigate1: false | PrefetchPagePolicy
@@ -55,6 +57,8 @@ export class TestProjectTwoClient {
     serverHmrPort: number | false
     client1HmrPort: number | false
     client2HmrPort: number | false
+    baseurl1: string | true | false
+    baseurl2: string | true | false
     prefetchPageOnNavigate1: false | PrefetchPagePolicy
     prefetchPageOnLinkHover1: false | PrefetchPagePolicy
     prefetchPageOnNavigate2: false | PrefetchPagePolicy
@@ -69,6 +73,8 @@ export class TestProjectTwoClient {
     this.dir = nodePath.resolve(testsGeneralTempDir, options.tpf.namespace, this.name)
     this.ssr1 = options.ssr1
     this.ssr2 = options.ssr2
+    this.baseurl1 = options.baseurl1
+    this.baseurl2 = options.baseurl2
     this.prefetchPageOnNavigate1 = options.prefetchPageOnNavigate1
     this.prefetchPageOnLinkHover1 = options.prefetchPageOnLinkHover1
     this.prefetchPageOnNavigate2 = options.prefetchPageOnNavigate2
@@ -125,7 +131,7 @@ export class TestProjectTwoClient {
       await this.replace(this.files.root1, '.ssr(true)', '// .ssr(true)')
     }
     if (!this.ssr2) {
-      await this.replace(this.files.root, '.ssr(true)', '// .ssr(true)')
+      await this.replace(this.files.root2, '.ssr(true)', '// .ssr(true)')
     }
     if (this.prefetchPageOnNavigate1 !== false) {
       await this.replace(
@@ -155,6 +161,12 @@ export class TestProjectTwoClient {
         `.prefetchPageOnLinkHover('${this.prefetchPageOnLinkHover2}')`,
       )
     }
+    const baseurl1 =
+      this.baseurl1 === true ? `http://localhost:${this.client1Port}` : this.baseurl1 === false ? false : this.baseurl1
+    await this.replace(this.files.root1, `.baseurl('/')`, baseurl1 ? `.baseurl('${baseurl1}')` : '')
+    const baseurl2 =
+      this.baseurl2 === true ? `http://localhost:${this.client2Port}` : this.baseurl2 === false ? false : this.baseurl2
+    await this.replace(this.files.root2, `.baseurl('/')`, baseurl2 ? `.baseurl('${baseurl2}')` : '')
     if (!this.superjson1) {
       await this.replace(this.files.root1, '.transformer(superjson)', '// .transformer(superjson)')
     }
@@ -187,20 +199,20 @@ export class TestProjectTwoClient {
       dist: this.resolve('dist'),
       public: this.resolve('public'),
       root: this.resolve('src', 'lib', 'root.tsx'),
-      root1: this.resolve('src', 'lib', 'root.first.tsx'),
-      root2: this.resolve('src', 'lib', 'root.second.tsx'),
-      routes1: this.resolve('src', 'lib', 'routes.first.ts'),
-      routes2: this.resolve('src', 'lib', 'routes.second.ts'),
-      pointsClient1: this.resolve('src', 'lib', 'points.first.client.ts'),
-      pointsClient2: this.resolve('src', 'lib', 'points.second.client.ts'),
+      root1: this.resolve('src', 'lib', 'root1.tsx'),
+      root2: this.resolve('src', 'lib', 'root2.tsx'),
+      routes1: this.resolve('src', 'lib', 'routes1.ts'),
+      routes2: this.resolve('src', 'lib', 'routes2.ts'),
+      pointsClient1: this.resolve('src', 'lib', 'points1.ts'),
+      pointsClient2: this.resolve('src', 'lib', 'points2.ts'),
       pointsServer: this.resolve('src', 'lib', 'points.server.ts'),
       app: this.resolve('src', 'app.tsx'),
       engine: this.resolve('src', 'engine.ts'),
-      indexClient1: this.resolve('src', 'index.first.client.ts'),
-      indexClient2: this.resolve('src', 'index.second.client.ts'),
+      indexClient1: this.resolve('src', 'index1.ts'),
+      indexClient2: this.resolve('src', 'index2.ts'),
       indexServer: this.resolve('src', 'index.server.ts'),
-      indexHtml1: this.resolve('src', 'index.first.html'),
-      indexHtml2: this.resolve('src', 'index.second.html'),
+      indexHtml1: this.resolve('src', 'index1.html'),
+      indexHtml2: this.resolve('src', 'index2.html'),
       packageJson: this.resolve('package.json'),
       tsconfigJson: this.resolve('tsconfig.json'),
       dotenv: this.resolve('.env'),
@@ -465,6 +477,8 @@ export type TestProjectGeneralOptions = {
   prefetchPageOnNavigate2: false | PrefetchPagePolicy
   prefetchPageOnLinkHover1: false | PrefetchPagePolicy
   prefetchPageOnLinkHover2: false | PrefetchPagePolicy
+  baseurl1: string | true | false
+  baseurl2: string | true | false
 }
 
 export type TestProjectCreateOptions = Omit<TestProjectGeneralOptions, 'serverHmr' | 'client1Hmr' | 'client2Hmr'> & {
@@ -521,6 +535,8 @@ export class TestProjectTwoClientFactory {
       prefetchPageOnLinkHover1: false,
       prefetchPageOnNavigate2: false,
       prefetchPageOnLinkHover2: false,
+      baseurl1: false,
+      baseurl2: false,
       ...defaultOptions,
     }
     this.namespace = namespace

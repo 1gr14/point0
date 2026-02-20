@@ -1,6 +1,6 @@
 import { createLink, createNavigate, createNavLink, createUseNavigate } from '@point0/wouter'
 import { navigate as nativeNavigate } from 'wouter/use-browser-location'
-import { routes } from './routes'
+import { routes } from './routes2'
 
 export const Link = createLink(routes)
 export const NavLink = createNavLink(routes)

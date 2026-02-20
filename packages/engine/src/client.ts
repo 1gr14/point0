@@ -387,27 +387,27 @@ Bun.serve({
   port: ${this.port},
   routes: {
     '/index.html': indexHtml,
-  },
-  fetch: async (request) => {
-    if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
-      return new Response('__NO_RESPONSE__', {
-        headers: {
-          'Content-Type': 'text/plain',
+    '/*': async (request) => {
+      if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
+        return new Response('__NO_RESPONSE__', {
+          headers: {
+            'Content-Type': 'text/plain',
+          },
+          status: 404,
+        })
+      }
+      const url = new URL(request.url)
+      const forwardedHeaders = new Headers(request.headers)
+      forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client-Server', 'true')
+      return await fetch(
+        \`http://localhost:${this.server.port}\${url.pathname}\${url.search}\`,
+        {
+          method: request.method,
+          headers: forwardedHeaders,
+          body: request.body,
         },
-        status: 404,
-      })
-    }
-    const url = new URL(request.url)
-    const forwardedHeaders = new Headers(request.headers)
-    forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client-Server', 'true')
-    return await fetch(
-      \`http://localhost:${this.server.port}\${url.pathname}\${url.search}\`,
-      {
-        method: request.method,
-        headers: forwardedHeaders,
-        body: request.body,
-      },
-    )
+      )
+    },
   },
 });
 `
@@ -425,7 +425,7 @@ Bun.serve({
         NODE_ENV: process.env.NODE_ENV,
       },
     })
-    this.logger.info(`${this.scope} client dev server started`)
+    this.logger.info(`${this.scope} client dev server started on port ${this.port}`)
     this.bunNativeDevServer = childProcess
     return childProcess
 
@@ -544,7 +544,7 @@ Bun.serve({
         },
       }),
     )()
-    this.logger.info(`${this.scope} client dev server started`)
+    this.logger.info(`${this.scope} client dev server started on port ${this.port}`)
     return { bunViteDevServer, viteDevServer }
   }
 

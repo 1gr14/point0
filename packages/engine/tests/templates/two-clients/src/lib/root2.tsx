@@ -4,6 +4,7 @@ import superjson from 'superjson'
 export const root2 = root
   .lets('root', 'second')
   .ssr(true)
+  .baseurl('/')
   .transformer(superjson)
   .prefetchPageOnNavigate(false)
   .prefetchPageOnLinkHover(false)
