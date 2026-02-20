@@ -91,8 +91,8 @@ describe('FakeClient', () => {
     const engine = await Engine.create({
       compiler: false,
       file: import.meta.url,
-      server: { scope: 'root', baseurl: 'http://localhost', points },
-      clients: [{ scope: 'root', baseurl: 'http://localhost', points }],
+      server: { scope: 'root', points },
+      clients: [{ scope: 'root', points }],
     }).prepare()
     expect(env.side.name).toBe('server')
     const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
@@ -129,7 +129,7 @@ describe('FakeClient', () => {
       const engine = await Engine.create({
         compiler: false,
         file: import.meta.url,
-        server: { scope: 'root', baseurl: 'http://localhost', points },
+        server: { scope: 'root', points },
         clients: [
           {
             scope: 'root',
@@ -181,8 +181,8 @@ describe('FakeClient', () => {
     const engine = await Engine.create({
       compiler: false,
       file: import.meta.url,
-      server: { scope: 'root', baseurl: 'http://localhost', points },
-      clients: [{ scope: 'root', baseurl: 'http://localhost', points }],
+      server: { scope: 'root', points },
+      clients: [{ scope: 'root', points }],
     }).prepare()
     const client = FakeClient.create({
       engine,
@@ -230,8 +230,8 @@ describe('FakeClient', () => {
     const engine = await Engine.create({
       compiler: false,
       file: import.meta.url,
-      server: { scope: 'root', baseurl: 'http://localhost', points },
-      clients: [{ scope: 'root', baseurl: 'http://localhost', points }],
+      server: { scope: 'root', points },
+      clients: [{ scope: 'root', points }],
     }).prepare()
     const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
     expect(env.side.name).toBe('server')
@@ -288,8 +288,8 @@ describe('FakeClient', () => {
     const engine = await Engine.create({
       compiler: false,
       file: import.meta.url,
-      server: { scope: 'root', baseurl: 'http://localhost', points },
-      clients: [{ scope: 'root', baseurl: 'http://localhost', points }],
+      server: { scope: 'root', points },
+      clients: [{ scope: 'root', points }],
     }).prepare()
     const client = FakeClient.create<{
       container: HTMLElement
@@ -362,8 +362,8 @@ describe('FakeClient', () => {
     const engine = await Engine.create({
       compiler: false,
       file: import.meta.url,
-      server: { scope: 'root', baseurl: 'http://localhost', points },
-      clients: [{ scope: 'root', baseurl: 'http://localhost', points }],
+      server: { scope: 'root', points },
+      clients: [{ scope: 'root', points }],
     }).prepare()
     const client = FakeClient.create({
       engine,
@@ -423,8 +423,8 @@ describe('FakeClient', () => {
   //   const engine = await Engine.create({
   //     compiler: false,
   //     file: import.meta.url,
-  //     server: { scope: 'root', baseurl: 'http://localhost', points },
-  //     clients: [{ scope: 'root', baseurl: 'http://localhost', points, indexHtml: '__POINT0_TEST_INDEX_HTML__', app: App }],
+  //     server: { scope: 'root', points },
+  //     clients: [{ scope: 'root', points, indexHtml: '__POINT0_TEST_INDEX_HTML__', app: App }],
   //   }).init({ preventClientDevServers: true })
   //   const client = FakeClient.create({
   //     engine,
@@ -609,8 +609,8 @@ describe('FakeClient', () => {
   //   const engine = await Engine.init({
   //     compiler: false,
   //     file: import.meta.url,
-  //     server: { scope: 'root', baseurl: 'http://localhost', points },
-  //     clients: [{ scope: 'root', baseurl: 'http://localhost', points }],
+  //     server: { scope: 'root', points },
+  //     clients: [{ scope: 'root', points }],
   //   })
   //   const client = FakeClient.create({
   //     engine,

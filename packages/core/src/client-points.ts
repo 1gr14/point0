@@ -28,7 +28,6 @@ import type {
 export class ClientPoints {
   manager: PointsManager
 
-  baseurl: string | null
   basepath: string
   host: string | null
   ssr: boolean
@@ -46,7 +45,6 @@ export class ClientPoints {
     routesHash,
     pagesTreeSource,
     pagesTree,
-    baseurl,
     basepath,
     host,
     ssr,
@@ -58,7 +56,6 @@ export class ClientPoints {
     routesHash: string
     pagesTreeSource: PagesTreeSource
     pagesTree: PagesTree
-    baseurl: string | null
     basepath: string
     host: string | null
     ssr: boolean
@@ -70,7 +67,6 @@ export class ClientPoints {
     this.routesHash = routesHash
     this.pagesTreeSource = pagesTreeSource
     this.pagesTree = pagesTree
-    this.baseurl = baseurl
     this.basepath = basepath
     this.host = host
     this.ssr = ssr
@@ -97,7 +93,6 @@ export class ClientPoints {
     const pagesTree = ClientPoints.toPagesTree({ points: manager.collection, pagesTreeSource })
     const routesHash = routes._.pathsOrdering.join(',')
 
-    const baseurl = null
     const basepath = root._basepath ?? '/'
     const host = null
     const ssr = root._ssr
@@ -110,7 +105,6 @@ export class ClientPoints {
       routesHash,
       pagesTreeSource,
       pagesTree,
-      baseurl,
       basepath,
       host,
       ssr,
@@ -466,19 +460,14 @@ export class ClientPoints {
   }
 
   static isPageLocationSuitable = ({
-    baseurl,
     host,
     basepath,
     pageLocation,
   }: {
-    baseurl: string | null
     host: string | null
     basepath: string | null
     pageLocation: AnyLocation
   }): boolean => {
-    if (baseurl === null) {
-      return false
-    }
     if (host && pageLocation.host && pageLocation.host !== host) {
       return false
     }
@@ -495,7 +484,6 @@ export class ClientPoints {
   }
   isPageLocationSuitable = ({ pageLocation }: { pageLocation: AnyLocation }): boolean => {
     return ClientPoints.isPageLocationSuitable({
-      baseurl: this.baseurl,
       host: this.host,
       basepath: this.basepath,
       pageLocation,

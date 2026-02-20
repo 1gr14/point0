@@ -35,35 +35,35 @@ export type ParsedUrl = {
   urlStr: string
 }
 
-export const getOriginOrNull = (baseurl: string | null | undefined): string | null => {
-  if (!baseurl) {
-    return null
-  }
-  if (/^https?:\/\//.test(baseurl)) {
-    return new URL(baseurl).origin
-  }
-  return null
-}
+// export const getOriginFromBaseurlOrNull = (baseurl: string | null | undefined): string | null => {
+//   if (!baseurl) {
+//     return null
+//   }
+//   if (/^https?:\/\//.test(baseurl)) {
+//     return new URL(baseurl).origin
+//   }
+//   return null
+// }
 
-export const getHostOrNull = (baseurl: string | null | undefined): string | null => {
-  if (!baseurl) {
-    return null
-  }
-  if (/^https?:\/\//.test(baseurl)) {
-    return new URL(baseurl).host
-  }
-  return null
-}
+// export const getHostOrNull = (baseurl: string | null | undefined): string | null => {
+//   if (!baseurl) {
+//     return null
+//   }
+//   if (/^https?:\/\//.test(baseurl)) {
+//     return new URL(baseurl).host
+//   }
+//   return null
+// }
 
-export const getBasepathOrNull = (baseurl: string | null | undefined): string | null => {
-  if (!baseurl) {
-    return null
-  }
-  if (/^https?:\/\//.test(baseurl)) {
-    return new URL(baseurl).pathname
-  }
-  return baseurl
-}
+// export const getBasepathOrNull = (baseurl: string | null | undefined): string | null => {
+//   if (!baseurl) {
+//     return null
+//   }
+//   if (/^https?:\/\//.test(baseurl)) {
+//     return new URL(baseurl).pathname
+//   }
+//   return baseurl
+// }
 
 export const dedupeSlashes = (path: string) => {
   return path.replace(/\/\/+/g, '/')

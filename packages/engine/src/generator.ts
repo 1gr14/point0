@@ -1,7 +1,7 @@
 import type { RoutesPretty } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
 import { CompilerPoint, END_POINT_TYPES, Walker } from '@point0/compiler'
-import { getOriginOrNull, generateId } from '@point0/core'
+import { generateId } from '@point0/core'
 import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
@@ -40,7 +40,7 @@ export type FilesGeneratorTaskRoutes = {
   what: 'routes'
   banner?: string | null
   outfile: string
-  baseurl?: string | null
+  origin?: string | null
 }
 
 export type FilesGeneratorTaskMeta = {
@@ -889,14 +889,14 @@ export class FilesGenerator {
       throw new Error(`Root point not found for scope ${task.scope}`)
     }
 
-    const baseurlString = !task.baseurl
+    const originString = !task.origin
       ? undefined
-      : task.baseurl.startsWith('process.env.') || task.baseurl.startsWith('import.meta.env.')
-        ? task.baseurl
-        : getOriginOrNull(task.baseurl)
-          ? `'${getOriginOrNull(task.baseurl)}'`
-          : undefined
-    const baseurlSuffix = baseurlString ? `, { baseurl: ${baseurlString} }` : ''
+      : task.origin.startsWith('process.env.') ||
+          task.origin.startsWith('import.meta.env.') ||
+          task.origin.startsWith('`')
+        ? task.origin
+        : `'${task.origin}'`
+    const originSuffix = originString ? `, { origin: ${originString} }` : ''
 
     const pagePoints = points.flatMap((p) =>
       p.type === 'page' && p.route ? [{ name: p.name, route: p.route.definition }] : [],
@@ -906,9 +906,9 @@ export class FilesGenerator {
       for (const p of pagePoints) {
         lines.push(`  '${p.name}': '${p.route}',`)
       }
-      lines.push(`}${baseurlSuffix})`)
+      lines.push(`}${originSuffix})`)
     } else {
-      lines.push(`export const routes = Routes.create({}${baseurlSuffix})`)
+      lines.push(`export const routes = Routes.create({}${originSuffix})`)
     }
     lines.push(``)
 

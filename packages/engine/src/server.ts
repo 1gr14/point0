@@ -5,7 +5,7 @@ import type {
   PointsScope,
   RequiredCtx,
 } from '@point0/core'
-import { env, getHostOrNull, prependAndDeappendSlash } from '@point0/core'
+import { env, prependAndDeappendSlash } from '@point0/core'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -59,8 +59,7 @@ export class EngineServer<TPrepared extends boolean = boolean> {
   outdir: string | null
   bunBuildConfig: EngineServerBuildConfigDefinition
   bunPlugins: EngineServerPluginsDefinition
-  // baseurl is for publicdir only
-  baseurl: string | null
+  host: string | null
   prepared: TPrepared
   bunPluginsLoaded = false
   bunServer: Bun.Server<unknown> | undefined
@@ -92,7 +91,7 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
-    baseurl: string | null
+    host: string | null
     viteConfig: EngineOptionsViteConfig | null
     viteDevServer: ViteDevServer | null
     hmrPort: number | false
@@ -127,7 +126,7 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     this.hmrPort = input.hmrPort
     this.portPolicy = input.portPolicy
     this.compiler = input.compiler
-    this.baseurl = input.baseurl
+    this.host = input.host
     this.fetcher = null as TPrepared extends true ? Fetcher : null
   }
 
@@ -140,7 +139,7 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     itWasBuilt: boolean
     port: number
     entry: Record<string, string> | null
-    baseurl: string | null
+    host: string | null
     publicdir: {
       source: PublicdirDefinition
       outdir: string
@@ -160,7 +159,7 @@ export class EngineServer<TPrepared extends boolean = boolean> {
   }): EngineServer<false> {
     const publicdir = input.publicdir
       ? Publicdir.create({
-          host: null,
+          host: input.host,
           source: input.publicdir.source,
           outdir: input.publicdir.outdir,
           scope: input.scope,
@@ -214,13 +213,10 @@ export class EngineServer<TPrepared extends boolean = boolean> {
       return this as EngineServer<true>
     }
     this.setEnvVars({ assignToProcessEnv: true, nodeEnvFallback: undefined })
-    const [points] = await Promise.all([
+    await Promise.all([
       this.loadBunPlugins({ built: env.build.was }).then(async () => await this.readServerPoints()),
       this.publicdir ? this.publicdir.prepare() : Promise.resolve(),
     ])
-    if (this.publicdir) {
-      this.publicdir.host = getHostOrNull(this.baseurl)
-    }
     this.prepared = true as never
     this.fetcher = Fetcher.create({ engine, server: this as EngineServer<true> }) as TPrepared extends true
       ? Fetcher

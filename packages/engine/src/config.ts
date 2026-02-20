@@ -140,7 +140,7 @@ export type EngineGeneralOptions = {
 export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   scope: PointsScope
   points?: PointsDefinitionSource<TRequiredCtx>
-  baseurl?: string | null
+  host?: string | null
   generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
   publicdir?: {
     source: EngineOptionsPublicdir
@@ -166,7 +166,7 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   // TODO: allow empty points
   // TODO: allow points collection
   points?: PointsDefinitionSource<TRequiredCtx>
-  baseurl?: string | null
+  host?: string | null
   generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
   app?: EngineOptionsAppComponent
   publicdir?: {
@@ -364,7 +364,7 @@ export type EngineClientOptionsParsed = {
   scope: PointsScope
   engineFile: string
   pointsProvided: PointsDefinitionSource | null
-  baseurl: string | null
+  host: string | null
   banner: string | null
   generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
   routesProvided: EngineOptionsRoutes | null
@@ -394,7 +394,7 @@ export type EngineClientOptionsParsed = {
 export type EngineServerOptionsParsed = {
   scope: PointsScope
   pointsProvided: PointsDefinitionSource | null
-  baseurl: string | null
+  host: string | null
   banner: string | null
   generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
   routesProvided: EngineOptionsRoutes | null
@@ -835,7 +835,7 @@ export const parseEngineServerOptions = ({
   return {
     scope: serverOptions.scope,
     pointsProvided: serverOptions.points ?? null,
-    baseurl: serverOptions.baseurl ?? null,
+    host: serverOptions.host ?? null,
     port,
     hmrPort,
     outdir,
@@ -855,12 +855,6 @@ export const parseEngineServerOptions = ({
         ...task,
         scope: serverOptions.scope,
         side: 'server' as const,
-      }
-      if (task.what === 'routes') {
-        return {
-          ...baseTask,
-          baseurl: task.baseurl ?? serverOptions.baseurl ?? null,
-        }
       }
       return baseTask
     }),
@@ -967,19 +961,13 @@ const parseEngineClientOptions = ({
     scope: clientOptions.scope,
     compiler,
     pointsProvided: clientOptions.points ?? null,
-    baseurl: clientOptions.baseurl ?? null,
+    host: clientOptions.host ?? null,
     routesProvided: clientOptions.routes ?? null,
     generate: (clientOptions.generate ?? []).map((task) => {
       const baseTask = {
         ...task,
         scope: clientOptions.scope,
         side: 'client' as const,
-      }
-      if (task.what === 'routes') {
-        return {
-          ...baseTask,
-          baseurl: task.baseurl ?? clientOptions.baseurl ?? null,
-        }
       }
       return baseTask
     }),

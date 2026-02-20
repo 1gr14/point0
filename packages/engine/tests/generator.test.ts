@@ -385,7 +385,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
     )
 
     it.concurrent(
-      'generates routes file with baseurl without path as string',
+      'generates routes file with origin without path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, logger }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
@@ -400,7 +400,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
               scope: 'myroot',
               what: 'routes',
               outfile: routesFile.path,
-              baseurl: 'https://example.com',
+              origin: 'https://example.com',
             },
           ],
           logger,
@@ -415,14 +415,14 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
 
           export const routes = Routes.create({
             'mypage': '/news',
-          }, { baseurl: 'https://example.com' })
+          }, { origin: 'https://example.com' })
           "
         `)
       }),
     )
 
     it.concurrent(
-      'generates routes file with baseurl with path as string',
+      'generates routes file with origin with path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, logger }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').basepath('/my/path').root()
@@ -437,7 +437,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
               scope: 'myroot',
               what: 'routes',
               outfile: routesFile.path,
-              baseurl: 'https://example.com/my/path',
+              origin: 'https://example.com',
             },
           ],
           logger,
@@ -452,14 +452,14 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
 
           export const routes = Routes.create({
             'mypage': '/my/path/news',
-          }, { baseurl: 'https://example.com' })
+          }, { origin: 'https://example.com' })
           "
         `)
       }),
     )
 
     it.concurrent(
-      'generates routes file with baseurl with extra path as string',
+      'generates routes file with origin with extra path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, logger }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').basepath('/my/path').root()
@@ -474,7 +474,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
               scope: 'myroot',
               what: 'routes',
               outfile: routesFile.path,
-              baseurl: 'https://example.com',
+              origin: 'https://example.com',
             },
           ],
           logger,
@@ -489,14 +489,14 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
 
           export const routes = Routes.create({
             'mypage': '/my/path/news',
-          }, { baseurl: 'https://example.com' })
+          }, { origin: 'https://example.com' })
           "
         `)
       }),
     )
 
     it.concurrent(
-      'generates routes file with baseurl with path and extra path as string',
+      'generates routes file with origin with path and extra path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, logger }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').basepath('/my/path/extra/path').root()
@@ -511,7 +511,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
               scope: 'myroot',
               what: 'routes',
               outfile: routesFile.path,
-              baseurl: 'https://example.com/my/path',
+              origin: 'https://example.com',
             },
           ],
           logger,
@@ -526,14 +526,14 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
 
           export const routes = Routes.create({
             'mypage': '/my/path/extra/path/news',
-          }, { baseurl: 'https://example.com' })
+          }, { origin: 'https://example.com' })
           "
         `)
       }),
     )
 
     it.concurrent(
-      'generates routes file with baseurl as process.env.BASE_URL',
+      'generates routes file with origin as process.env.BASE_URL',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, logger }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
@@ -548,7 +548,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
               scope: 'myroot',
               what: 'routes',
               outfile: routesFile.path,
-              baseurl: 'process.env.BASE_URL',
+              origin: 'process.env.BASE_URL',
             },
           ],
           logger,
@@ -563,14 +563,14 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
 
           export const routes = Routes.create({
             'mypage': '/news',
-          }, { baseurl: process.env.BASE_URL })
+          }, { origin: process.env.BASE_URL })
           "
         `)
       }),
     )
 
     it.concurrent(
-      'generates routes file with baseurl as process.env.BASE_URL and extra path as string',
+      'generates routes file with origin as process.env.BASE_URL and extra path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, logger }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').basepath('/extra/path').root()
@@ -585,7 +585,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
               scope: 'myroot',
               what: 'routes',
               outfile: routesFile.path,
-              baseurl: 'process.env.BASE_URL',
+              origin: 'process.env.BASE_URL',
             },
           ],
           logger,
@@ -600,7 +600,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
 
           export const routes = Routes.create({
             'mypage': '/extra/path/news',
-          }, { baseurl: process.env.BASE_URL })
+          }, { origin: process.env.BASE_URL })
           "
         `)
       }),

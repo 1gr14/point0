@@ -86,8 +86,8 @@ export class TestProjectOneClient {
       '// hmrPort: client,',
       `hmrPort: ${typeof this.clientHmrPort === 'number' ? this.clientHmrPort : 'false'},`,
     )
-    // await this.replace(this.files.engine, '// baseurl: server,', `baseurl: '${localhost}:${this.serverPort}',`)
-    // await this.replace(this.files.engine, '// baseurl: client,', `baseurl: '${localhost}:${this.clientPort}',`)
+    // await this.replace(this.files.engine, '// host: server,', `host: 'localhost:${this.serverPort}',`)
+    // await this.replace(this.files.engine, '// host: client,', `host: 'localhost:${this.clientPort}',`)
     if (!this.ssr) {
       await this.replace(this.files.root, '.ssr(true)', '// .ssr(true)')
     }

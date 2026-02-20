@@ -32,8 +32,10 @@ export class TestProjectTwoClient {
   serverHmrPort: number | false
   client1HmrPort: number | false
   client2HmrPort: number | false
-  baseurl1: string | true | false
-  baseurl2: string | true | false
+  host1: string | true | false
+  host2: string | true | false
+  basepath1: string | true | false
+  basepath2: string | true | false
   processes: TestProcess[] = []
   ports: number[] = []
   prefetchPageOnNavigate1: false | PrefetchPagePolicy
@@ -57,8 +59,10 @@ export class TestProjectTwoClient {
     serverHmrPort: number | false
     client1HmrPort: number | false
     client2HmrPort: number | false
-    baseurl1: string | true | false
-    baseurl2: string | true | false
+    host1: string | true | false
+    host2: string | true | false
+    basepath1: string | true | false
+    basepath2: string | true | false
     prefetchPageOnNavigate1: false | PrefetchPagePolicy
     prefetchPageOnLinkHover1: false | PrefetchPagePolicy
     prefetchPageOnNavigate2: false | PrefetchPagePolicy
@@ -73,8 +77,10 @@ export class TestProjectTwoClient {
     this.dir = nodePath.resolve(testsGeneralTempDir, options.tpf.namespace, this.name)
     this.ssr1 = options.ssr1
     this.ssr2 = options.ssr2
-    this.baseurl1 = options.baseurl1
-    this.baseurl2 = options.baseurl2
+    this.host1 = options.host1
+    this.host2 = options.host2
+    this.basepath1 = options.basepath1
+    this.basepath2 = options.basepath2
     this.prefetchPageOnNavigate1 = options.prefetchPageOnNavigate1
     this.prefetchPageOnLinkHover1 = options.prefetchPageOnLinkHover1
     this.prefetchPageOnNavigate2 = options.prefetchPageOnNavigate2
@@ -110,7 +116,7 @@ export class TestProjectTwoClient {
     await this.copyTemplateToTempDir()
     await this.replace(this.files.packageJson, 'test-two-clients', this.name)
     await this.replace(this.files.engine, '// port: server,', `port: ${this.serverPort},`)
-    // await this.replace(this.files.engine, '// baseurl: server,', `baseurl: '${localhost}:${this.serverPort}',`)
+    // await this.replace(this.files.engine, '// host: server,', `host: 'localhost:${this.serverPort}',`)
     await this.replace(
       this.files.engine,
       '// hmrPort: server,',
@@ -162,27 +168,27 @@ export class TestProjectTwoClient {
         `.prefetchPageOnLinkHover('${this.prefetchPageOnLinkHover2}')`,
       )
     }
-    const baseurl1 =
-      this.baseurl1 === true ? `http://localhost:${this.client1Port}` : this.baseurl1 === false ? null : this.baseurl1
-    const baseurl2 =
-      this.baseurl2 === true ? `http://localhost:${this.client2Port}` : this.baseurl2 === false ? null : this.baseurl2
-
-    const basepath1 =
-      typeof baseurl1 === 'string' ? (baseurl1.startsWith('http') ? new URL(baseurl1).pathname || '/' : baseurl1) : '/'
-    const basepath2 =
-      typeof baseurl2 === 'string' ? (baseurl2.startsWith('http') ? new URL(baseurl2).pathname || '/' : baseurl2) : '/'
-
-    if (basepath1 && basepath1 !== '/') {
-      await this.replace(this.files.root1, `.basepath('/')`, `.basepath('${basepath1}')`)
+    const host1 = this.host1 === true ? `localhost:${this.client1Port}` : this.host1 === false ? null : this.host1
+    const host2 = this.host2 === true ? `localhost:${this.client2Port}` : this.host2 === false ? null : this.host2
+    if (host1) {
+      await this.replace(this.files.engine, `// host: client1,`, `host: '${host1}',`)
     }
-    if (basepath2 && basepath2 !== '/') {
-      await this.replace(this.files.root2, `.basepath('/')`, `.basepath('${basepath2}')`)
+    if (host2) {
+      await this.replace(this.files.engine, `// host: client2,`, `host: '${host2}',`)
     }
-    if (baseurl1) {
-      await this.replace(this.files.engine, `// baseurl: client1,`, `baseurl: '${baseurl1}',`)
+    if (this.basepath1) {
+      await this.replace(
+        this.files.root1,
+        `// .basepath('/')`,
+        `.basepath('${this.basepath1 === true ? '/' : this.basepath1}')`,
+      )
     }
-    if (baseurl2) {
-      await this.replace(this.files.engine, `// baseurl: client2,`, `baseurl: '${baseurl2}',`)
+    if (this.basepath2) {
+      await this.replace(
+        this.files.root2,
+        `// .basepath('/')`,
+        `.basepath('${this.basepath2 === true ? '/' : this.basepath2}')`,
+      )
     }
     if (!this.superjson1) {
       await this.replace(this.files.root1, '.transformer(superjson)', '// .transformer(superjson)')
@@ -197,11 +203,11 @@ export class TestProjectTwoClient {
     }
     if (this.vite1) {
       await this.replace(this.files.engine, `// viteConfig1: '../vite.config.ts',`, `viteConfig: '../vite.config.ts',`)
-      await this.replace(this.files.indexHtml1, '"./index.first.client.ts"', '"/index.first.client.ts"')
+      await this.replace(this.files.indexHtml1, '"./index1.ts"', '"/index1.ts"')
     }
     if (this.vite2) {
       await this.replace(this.files.engine, `// viteConfig2: '../vite.config.ts',`, `viteConfig: '../vite.config.ts',`)
-      await this.replace(this.files.indexHtml2, '"./index.second.client.ts"', '"/index.second.client.ts"')
+      await this.replace(this.files.indexHtml2, '"./index2.ts"', '"/index2.ts"')
     }
     return this
   }
@@ -492,8 +498,10 @@ export type TestProjectGeneralOptions = {
   prefetchPageOnNavigate2: false | PrefetchPagePolicy
   prefetchPageOnLinkHover1: false | PrefetchPagePolicy
   prefetchPageOnLinkHover2: false | PrefetchPagePolicy
-  baseurl1: string | true | false
-  baseurl2: string | true | false
+  host1: string | true | false
+  host2: string | true | false
+  basepath1: string | false
+  basepath2: string | false
 }
 
 export type TestProjectCreateOptions = Omit<TestProjectGeneralOptions, 'serverHmr' | 'client1Hmr' | 'client2Hmr'> & {
@@ -550,8 +558,10 @@ export class TestProjectTwoClientFactory {
       prefetchPageOnLinkHover1: false,
       prefetchPageOnNavigate2: false,
       prefetchPageOnLinkHover2: false,
-      baseurl1: false,
-      baseurl2: false,
+      host1: false,
+      host2: false,
+      basepath1: false,
+      basepath2: false,
       ...defaultOptions,
     }
     this.namespace = namespace
