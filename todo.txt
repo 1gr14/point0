@@ -205,6 +205,7 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 detect if client servable via server or not, and then do or not fetchPoint (serve: true)
 Если лиент не сервится то и запросы его к нему же не перенаправлять на сервер
 Настройка в паюликдире линк тру, тогда не будет добавлена в оутдир, а будет использована как есть
+baseurl не должен храниться в поинте. он должен быть в энжине и динамическим
 +++
 try engine dev with usual dev process wothout manual restarting
 Компилер пусть в энжинеэвйт импорт заменить на просто импорт и прямую передачу поинтов чтобы бан хмр заработал
