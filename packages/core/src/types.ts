@@ -1245,7 +1245,7 @@ export type MiddlewareFnOptions = {
   set: ResponseEffectsSetHelper
   point: AnyNiceReadyPoint | undefined
   scope: PointsScope
-  variant: 'task' | 'page' | 'unknown' | 'publicdir' | 'options'
+  variant: 'task' | 'page' | 'unknown' | 'publicdir' | 'options' | 'redirect'
   next: MiddlewareNextFn
 }
 export type MiddlewareFnOptionsBase = Omit<MiddlewareFnOptions, 'next'>

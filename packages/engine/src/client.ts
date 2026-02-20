@@ -9,7 +9,7 @@ import type {
   PointsDefinitionSource,
   PointsScope,
 } from '@point0/core'
-import { ClientPoints, env, getBasepathOrNull, getHostnameOrNull } from '@point0/core'
+import { ClientPoints, env, getBasepathOrNull, getHostOrNull } from '@point0/core'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
@@ -55,7 +55,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
   // TODO: baseurl get from root point, and remove from config
   baseurl: string | null
   basepath: string | null
-  hostname: string | null
+  host: string | null
   indexHtml: string | null
   // indexHtmlDistFile: string | null
   domRootElementId: string
@@ -123,7 +123,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     // this.appDistFile = input.appDistFile
     this.baseurl = null
     this.basepath = null
-    this.hostname = null
+    this.host = null
     this.indexHtml = input.indexHtml
     // this.indexHtmlDistFile = input.indexHtmlDistFile
     this.distIndexHtmlContent = input.distIndexHtmlContent
@@ -194,7 +194,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
 
     const publicdir = input.publicdir
       ? Publicdir.create({
-          hostname: null,
+          host: null,
           source: input.publicdir.source,
           outdir: input.publicdir.outdir,
           scope: input.scope,
@@ -270,14 +270,14 @@ export class EngineClient<TPrepared extends boolean = boolean> {
 
     this.baseurl = points?.baseurl ?? null
     this.basepath = getBasepathOrNull(this.baseurl)
-    this.hostname = getHostnameOrNull(this.baseurl)
+    this.host = getHostOrNull(this.baseurl)
 
     await this.readAppComponent()
 
     this.ssr = (points?.ssr ?? false) as TPrepared extends true ? boolean : undefined
 
     if (this.publicdir) {
-      this.publicdir.hostname = getHostnameOrNull(this.baseurl)
+      this.publicdir.host = getHostOrNull(this.baseurl)
       await this.publicdir.prepare()
     }
 
@@ -317,7 +317,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
   isPageLocationSuitable = ({ pageLocation }: { pageLocation: AnyLocation }): boolean => {
     return ClientPoints.isPageLocationSuitable({
       baseurl: this.baseurl,
-      hostname: this.hostname,
+      host: this.host,
       basepath: this.basepath,
       pageLocation,
     })
@@ -387,27 +387,27 @@ Bun.serve({
   port: ${this.port},
   routes: {
     '/index.html': indexHtml,
-    '/*': async (request) => {
-      if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
-        return new Response('__NO_RESPONSE__', {
-          headers: {
-            'Content-Type': 'text/plain',
-          },
-          status: 404,
-        })
-      }
-      const url = new URL(request.url)
-      const forwardedHeaders = new Headers(request.headers)
-      forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client-Server', 'true')
-      return await fetch(
-        \`http://localhost:${this.server.port}\${url.pathname}\${url.search}\`,
-        {
-          method: request.method,
-          headers: forwardedHeaders,
-          body: request.body,
+  },
+  fetch: async (request) => {
+    if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
+      return new Response('__NO_RESPONSE__', {
+        headers: {
+          'Content-Type': 'text/plain',
         },
-      )
-    },
+        status: 404,
+      })
+    }
+    const url = new URL(request.url)
+    const forwardedHeaders = new Headers(request.headers)
+    forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client', '${this.scope}')
+    return await fetch(
+      \`http://localhost:${this.server.port}\${url.pathname}\${url.search}\`,
+      {
+        method: request.method,
+        headers: forwardedHeaders,
+        body: request.body,
+      },
+    )
   },
 });
 `
@@ -534,7 +534,7 @@ Bun.serve({
             })
           }
           const forwardedHeaders = new Headers(request.headers)
-          forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client-Server', 'true')
+          forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client', this.scope)
           const res = await fetch(`http://localhost:${this.server.port}${location.pathname}${location.search}`, {
             method: request.method,
             headers: forwardedHeaders,

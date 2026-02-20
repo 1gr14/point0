@@ -45,12 +45,12 @@ export const getOriginOrNull = (baseurl: string | null | undefined): string | nu
   return null
 }
 
-export const getHostnameOrNull = (baseurl: string | null | undefined): string | null => {
+export const getHostOrNull = (baseurl: string | null | undefined): string | null => {
   if (!baseurl) {
     return null
   }
   if (/^https?:\/\//.test(baseurl)) {
-    return new URL(baseurl).hostname
+    return new URL(baseurl).host
   }
   return null
 }

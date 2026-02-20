@@ -206,6 +206,7 @@ detect if client servable via server or not, and then do or not fetchPoint (serv
 Если лиент не сервится то и запросы его к нему же не перенаправлять на сервер
 Из сютобол как функция в энжину для распределения запросов плюс тесты на это
 Настройка в паюликдире линк тру, тогда не будет добавлена в оутдир, а будет использована как есть
+after build client rename index1html to indexhtml
 +++
 try engine dev with usual dev process wothout manual restarting
 Компилер пусть в энжинеэвйт импорт заменить на просто импорт и прямую передачу поинтов чтобы бан хмр заработал

@@ -5,7 +5,7 @@ import type {
   PointsScope,
   RequiredCtx,
 } from '@point0/core'
-import { env, getHostnameOrNull, prependAndDeappendSlash } from '@point0/core'
+import { env, getHostOrNull, prependAndDeappendSlash } from '@point0/core'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -157,7 +157,7 @@ export class EngineServer<TPrepared extends boolean = boolean> {
   }): EngineServer<false> {
     const publicdir = input.publicdir
       ? Publicdir.create({
-          hostname: null,
+          host: null,
           source: input.publicdir.source,
           outdir: input.publicdir.outdir,
           scope: input.scope,
@@ -217,7 +217,7 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     ])
     this.baseurl = (points?.baseurl ?? null) as TPrepared extends true ? string | null : undefined
     if (this.publicdir) {
-      this.publicdir.hostname = getHostnameOrNull(this.baseurl)
+      this.publicdir.host = getHostOrNull(this.baseurl)
     }
     this.prepared = true as never
     this.fetcher = Fetcher.create({ engine, server: this as EngineServer<true> }) as TPrepared extends true
@@ -380,11 +380,16 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     if (process.env.NODE_ENV === 'production') {
       return undefined
     }
-    if (request.headers.get('X-Point0-Forwarded-From-Dev-Client-Server') === 'true') {
+    const forwardedFromClientScope = request.headers.get('X-Point0-Forwarded-From-Dev-Client')
+    if (forwardedFromClientScope) {
       return undefined
     }
-    bunServer ??= this.bunServer
+    // const client = this.clients.find((client) => client.scope === clientScope)
+    // if (!client) {
+    //   throw new Error(`Client "${clientScope}" not found in server "${this.scope}"`)
+    // }
     for (const client of this.clients) {
+      bunServer ??= this.bunServer
       // it is provided when we serve via bun, if we serve via elysia, then elysia manages websocket by itself
       if (bunServer) {
         const bunDevServerUpgradeWebSocketResult = await client.upgradeProxyBunDevServerWebSocket({

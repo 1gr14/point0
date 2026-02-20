@@ -1,8 +1,9 @@
-import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0nt/route0'
 import { Route0, Routes } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
-import { _point0_env, appendSlash, getBasepathOrNull, getHostnameOrNull } from './index.js'
+import { _point0_env, appendSlash, getBasepathOrNull, getHostOrNull } from './index.js'
 import { _getFakeClient, _ssItems } from './internals.js'
+import { PointsManager } from './points-manager.js'
 import type {
   NormalizedLazyPointsCollection,
   NormalizedLazyPointsCollectionRecord,
@@ -12,7 +13,6 @@ import type {
   ReadyPointsCollection,
   ReadyPointsCollectionRecord,
 } from './points-manager.js'
-import { PointsManager } from './points-manager.js'
 import type {
   DataTransformerExtended,
   LayoutPoint,
@@ -30,7 +30,7 @@ export class ClientPoints {
 
   baseurl: string | null
   basepath: string | null
-  hostname: string | null
+  host: string | null
   ssr: boolean
   middlewares: MiddlewareFn[]
   transformer: DataTransformerExtended
@@ -48,7 +48,7 @@ export class ClientPoints {
     pagesTree,
     baseurl,
     basepath,
-    hostname,
+    host,
     ssr,
     middlewares,
     transformer,
@@ -60,7 +60,7 @@ export class ClientPoints {
     pagesTree: PagesTree
     baseurl: string | null
     basepath: string | null
-    hostname: string | null
+    host: string | null
     ssr: boolean
     middlewares: MiddlewareFn[]
     transformer: DataTransformerExtended
@@ -72,7 +72,7 @@ export class ClientPoints {
     this.pagesTree = pagesTree
     this.baseurl = baseurl
     this.basepath = basepath
-    this.hostname = hostname
+    this.host = host
     this.ssr = ssr
     this.middlewares = middlewares
     this.transformer = transformer
@@ -99,7 +99,7 @@ export class ClientPoints {
 
     const baseurl = root._baseurl || null
     const basepath = getBasepathOrNull(baseurl)
-    const hostname = getHostnameOrNull(baseurl)
+    const host = getHostOrNull(baseurl)
     const ssr = root._ssr
     const middlewares = root._middlewares
     const transformer = root._getTransformer()
@@ -112,7 +112,7 @@ export class ClientPoints {
       pagesTree,
       baseurl,
       basepath,
-      hostname,
+      host,
       ssr,
       middlewares,
       transformer,
@@ -467,19 +467,19 @@ export class ClientPoints {
 
   static isPageLocationSuitable = ({
     baseurl,
-    hostname,
+    host,
     basepath,
     pageLocation,
   }: {
     baseurl: string | null
-    hostname: string | null
+    host: string | null
     basepath: string | null
     pageLocation: AnyLocation
   }): boolean => {
     if (baseurl === null) {
       return false
     }
-    if (hostname && pageLocation.hostname && pageLocation.hostname !== hostname) {
+    if (host && pageLocation.host && pageLocation.host !== host) {
       return false
     }
     if (basepath) {
@@ -496,7 +496,7 @@ export class ClientPoints {
   isPageLocationSuitable = ({ pageLocation }: { pageLocation: AnyLocation }): boolean => {
     return ClientPoints.isPageLocationSuitable({
       baseurl: this.baseurl,
-      hostname: this.hostname,
+      host: this.host,
       basepath: this.basepath,
       pageLocation,
     })

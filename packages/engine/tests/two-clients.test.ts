@@ -1,5 +1,5 @@
-import type { Engine } from '../src/engine.js'
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
+import type { Engine } from '../src/engine.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
 import { TestProjectTwoClientFactory } from './utils/project.two-clients.js'
 import type { TestProjectFactoryCreateProjectOptions, TestProjectTwoClient } from './utils/project.two-clients.js'
@@ -37,6 +37,8 @@ function wrp(
   }
 }
 
+const modes = ['dev', 'build']
+
 describe('two-clients', () => {
   beforeAll(async () => {
     await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
@@ -49,16 +51,16 @@ describe('two-clients', () => {
   })
 
   it(
-    'serve two spa client on different baseurls as full root urls',
+    'serve two ssr clients on different baseurls as full root urls',
     wrp(
       {
-        ssr1: false,
-        ssr2: false,
+        ssr1: true,
+        ssr2: true,
         baseurl1: true,
         baseurl2: true,
-        preserve: true,
+        // preserve: true,
       },
-      async ({ tp, engine }) => {
+      async ({ tp }) => {
         await tp.write(
           'src/client1.tsx',
           `import { root1 } from './lib/root1.js'
@@ -74,27 +76,33 @@ describe('two-clients', () => {
         tp.spawn(['bun', 'run', 'dev'])
         await tp.waitStarted()
 
-        // server return first client by default
+        // server return nothing becouse request not matches no one base url
         const response = await tp.fetchServer('/')
-        const html = await response.text()
-        expect(html).toContain('__POINT0_ENV_VARS__')
-        expect(html).toContain('__POINT0_ENV_CONSTS__')
-        expect(html).toContain('Client')
-        expect(html).toContain('VARX')
-        expect(html).toContain('CONSTX')
-        expect(html).toContain('FIRST_VAR')
-        expect(html).toContain('FIRST_CONST')
-        expect(html).not.toContain('SECOND_VAR')
-        expect(html).not.toContain('SECOND_CONST')
+        const json = await response.json()
+        expect(response.status).toBe(404)
+        expect(json).toMatchObject({
+          message: 'Not Found',
+        })
 
         // first client return itsefl becouse of base url
-        const page = await tp.gotoClient1('/')
-        expect(page.tale).toMatchInlineSnapshot(`
+        const page1 = await tp.gotoClient1('/')
+        expect(page1.tale).toMatchInlineSnapshot(`
         "
         /
           div: First Client
           "
         `)
+        const response1 = await tp.fetchClient1('/')
+        const html1 = await response1.text()
+        expect(html1).toContain('__POINT0_ENV_VARS__')
+        expect(html1).toContain('__POINT0_ENV_CONSTS__')
+        expect(html1).toContain('Client')
+        expect(html1).toContain('VARX')
+        expect(html1).toContain('CONSTX')
+        expect(html1).toContain('FIRST_VAR')
+        expect(html1).toContain('FIRST_CONST')
+        expect(html1).not.toContain('SECOND_VAR')
+        expect(html1).not.toContain('SECOND_CONST')
 
         // second client return itself becouse of base url
         const page2 = await tp.gotoClient2('/')
@@ -104,13 +112,133 @@ describe('two-clients', () => {
           div: Second Client
           "
         `)
+        const response2 = await tp.fetchClient2('/')
+        const html2 = await response2.text()
+        expect(html2).toContain('__POINT0_ENV_VARS__')
+        expect(html2).toContain('__POINT0_ENV_CONSTS__')
+        expect(html2).toContain('Client')
+        expect(html2).toContain('VARX')
+        expect(html2).toContain('CONSTX')
+        expect(html2).not.toContain('FIRST_VAR')
+        expect(html2).not.toContain('FIRST_CONST')
+        expect(html2).toContain('SECOND_VAR')
+        expect(html2).toContain('SECOND_CONST')
 
-        // const publicDirResponse = await tp.fetchServer('/hello.txt')
-        // const publicDirText = await publicDirResponse.text()
-        // expect(publicDirText).toBe('Hi!')
-        // const publicDirResponse1 = await tp.fetchClient1('/hello.txt')
-        // const publicDirText1 = await publicDirResponse1.text()
-        // expect(publicDirText1).toBe('Hi!')
+        expect(await tp.fetchServer('/hello.txt').then((r) => r.text())).toContain('Not Found')
+
+        expect(await tp.fetchClient1('/hello.txt').then((r) => r.text())).toBe('Hello, from first client!')
+
+        expect(await tp.fetchClient2('/hello.txt').then((r) => r.text())).toBe('Hello, from second client!')
+
+        expect(await tp.fetchClient1('/first.txt').then((r) => r.text())).toBe('first')
+
+        expect(await tp.fetchClient2('/second.txt').then((r) => r.text())).toBe('second')
+
+        expect(await tp.fetchClient2('/first.txt').then((r) => r.text())).toContain('Not Found')
+
+        expect(await tp.fetchClient1('/second.txt').then((r) => r.text())).toContain('Not Found')
+      },
+    ),
+    {
+      retry: 3,
+    },
+  )
+
+  it.only(
+    'serve two ssr clients on same host but different paths',
+    wrp(
+      {
+        ssr1: true,
+        ssr2: true,
+        baseurl1: '/',
+        baseurl2: '/second',
+        preserve: true,
+      },
+      async ({ tp }) => {
+        await tp.write(
+          'src/client1.tsx',
+          `import { root1 } from './lib/root1.js'
+          export const page = root1.lets('page', 'home', '/').page(() => <div>First Client</div>)
+          `,
+        )
+        await tp.write(
+          'src/client2.tsx',
+          `import { root2 } from './lib/root2.js'
+          export const page = root2.lets('page', 'home', '/').page(() => <div>Second Client</div>)
+          `,
+        )
+        tp.spawn(['bun', 'run', 'dev'])
+        await tp.waitStarted()
+
+        // server return nothing becouse request not matches no one base url
+        const page01 = await tp.gotoServer('/')
+        expect(page01.tale).toMatchInlineSnapshot(`
+        "
+        /
+          div: First Client
+          "
+        `)
+        const page02 = await tp.gotoServer('/second')
+        expect(page02.tale).toMatchInlineSnapshot(`
+        "
+        /
+          div: Second Client
+          "
+        `)
+
+        // first client return itsefl becouse of base url
+        const page1 = await tp.gotoClient1('/')
+        expect(page1.tale).toMatchInlineSnapshot(`
+        "
+        /
+          div: First Client
+          "
+        `)
+        const response1 = await tp.fetchClient1('/')
+        const html1 = await response1.text()
+        expect(html1).toContain('__POINT0_ENV_VARS__')
+        expect(html1).toContain('__POINT0_ENV_CONSTS__')
+        expect(html1).toContain('Client')
+        expect(html1).toContain('VARX')
+        expect(html1).toContain('CONSTX')
+        expect(html1).toContain('FIRST_VAR')
+        expect(html1).toContain('FIRST_CONST')
+        expect(html1).not.toContain('SECOND_VAR')
+        expect(html1).not.toContain('SECOND_CONST')
+
+        // second client return itself becouse of base url
+        const page2 = await tp.gotoClient2('/second')
+        expect(page2.tale).toMatchInlineSnapshot(`
+        "
+        /
+          div: Second Client
+          "
+        `)
+        const response2 = await tp.fetchClient2('/second')
+        const html2 = await response2.text()
+        expect(html2).toContain('__POINT0_ENV_VARS__')
+        expect(html2).toContain('__POINT0_ENV_CONSTS__')
+        expect(html2).toContain('Client')
+        expect(html2).toContain('VARX')
+        expect(html2).toContain('CONSTX')
+        expect(html2).not.toContain('FIRST_VAR')
+        expect(html2).not.toContain('FIRST_CONST')
+        expect(html2).toContain('SECOND_VAR')
+        expect(html2).toContain('SECOND_CONST')
+
+        expect(await tp.fetchServer('/hello.txt').then((r) => r.text())).toContain('Not Found')
+
+        expect(await tp.fetchClient1('/hello.txt').then((r) => r.text())).toBe('Hello, from first client!')
+
+        expect(await tp.fetchClient2('/hello.txt').then((r) => r.text())).toBe('Hello, from second client!')
+
+        expect(await tp.fetchClient1('/first.txt').then((r) => r.text())).toBe('first')
+
+        expect(await tp.fetchClient2('/second.txt').then((r) => r.text())).toBe('second')
+
+        expect(await tp.fetchClient2('/first.txt').then((r) => r.text())).toContain('Not Found')
+
+        expect(await tp.fetchClient1('/second.txt').then((r) => r.text())).toContain('Not Found')
       },
     ),
     {

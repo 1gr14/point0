@@ -28,7 +28,7 @@ export type PublicdirFileDefinition = string | Response | (() => Response | Prom
 export type PublicdirFilesDefinition = Map<string, PublicdirFileDefinition>
 
 export class Publicdir<TPrepared extends boolean = boolean> {
-  hostname: string | null
+  host: string | null
   source: PublicdirDefinition
   // <fileRoutePath, fileAbsPath | fileResponseOrFn>
   files: PublicdirFilesDefinition
@@ -41,14 +41,14 @@ export class Publicdir<TPrepared extends boolean = boolean> {
 
   private constructor(input: {
     prepared: TPrepared
-    hostname: string | null
+    host: string | null
     source: PublicdirDefinition
     scope: PointsScope
     outdir: string | null
     server: TPrepared extends true ? EngineServer<true> | null : EngineServer<false> | null
     client: TPrepared extends true ? EngineClient<true> | null : EngineClient<false> | null
   }) {
-    this.hostname = input.hostname
+    this.host = input.host
     this.source = input.source
     this.files = new Map<string, PublicdirFileDefinition>()
     this.scope = input.scope
@@ -59,7 +59,7 @@ export class Publicdir<TPrepared extends boolean = boolean> {
   }
 
   static create(input: {
-    hostname: string | null
+    host: string | null
     source: PublicdirDefinition
     scope: PointsScope
     outdir: string | null
@@ -117,7 +117,7 @@ export class Publicdir<TPrepared extends boolean = boolean> {
       throw new Error('Publicdir is not prepared')
     }
 
-    if (this.hostname && request.location.hostname !== this.hostname) {
+    if (this.host && request.location.host !== this.host) {
       return undefined
     }
     const fileAbsPathOrResponseOrFn = this.files.get(request.location.pathname)
@@ -203,5 +203,5 @@ export class Publicdir<TPrepared extends boolean = boolean> {
     return await Promise.all(fileOperations)
   }
 
-  // TODO: add static checkConflicts(publicdirs: Publicdir[]): throw error if same files paths are used in different public dirs with same hostname
+  // TODO: add static checkConflicts(publicdirs: Publicdir[]): throw error if same files paths are used in different public dirs with same host
 }

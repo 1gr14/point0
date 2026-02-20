@@ -233,32 +233,25 @@ export class Fetcher {
       effects.set.headers('x-point0-client-request-id', request.headers['x-point0-client-request-id'])
     }
 
-    // if (request.method === 'options') {
-    //   return {
-    //     scope: this.server.scope,
-    //     request,
-    //     effects,
-    //     middlewares: [],
-    //     middlewareOptions: {
-    //       request,
-    //       set: effects.set,
-    //       point: undefined,
-    //       scope: this.server.scope,
-    //       variant: 'unknown',
-    //     },
-    //     publicdirResult: undefined,
-    //     taskPointResult: undefined,
-    //     pagePointResult: undefined,
-    //     actionPointResult: undefined,
-    //     errorResult: new Error0('OPTIONS request must be handled by middleware before point execution', {
-    //       httpStatus: 500,
-    //       meta: {
-    //         method: request.original.method,
-    //         url: request.original.url,
-    //       },
-    //     }),
-    //   }
-    // }
+    const redirectToDifferentDevClientIfNotThatPort = (scope: string): Response | undefined => {
+      const currentPort = Number(request.location.port)
+      if (Number.isNaN(currentPort)) {
+        return undefined
+      }
+      const thatClient = this.engine.clients.find((c) => c.scope === scope)
+      if (!thatClient) {
+        return undefined
+      }
+      if (thatClient.port !== currentPort) {
+        return new Response('Redirecting to different dev client', {
+          status: 302,
+          headers: {
+            Location: `http://localhost:${thatClient.port}${request.location.pathname}${request.location.search}`,
+          },
+        })
+      }
+      return undefined
+    }
 
     for (const publicdir of this.server.publicdirs) {
       const staticResponse = await publicdir.fetch({ request })
@@ -285,6 +278,7 @@ export class Fetcher {
           actionPointResult: undefined,
           errorResult: undefined,
           optionsResult: undefined,
+          redirectResult: undefined,
         }
       }
     }
@@ -312,6 +306,7 @@ export class Fetcher {
           actionPointResult: undefined,
           errorResult: undefined,
           optionsResult: undefined,
+          redirectResult: undefined,
         }
       }
     }
@@ -344,6 +339,7 @@ export class Fetcher {
             httpStatus: 404,
           }),
           optionsResult: undefined,
+          redirectResult: undefined,
         }
       } else {
         return {
@@ -364,6 +360,7 @@ export class Fetcher {
           actionPointResult: undefined,
           errorResult: undefined,
           optionsResult: undefined,
+          redirectResult: undefined,
         }
       }
     }
@@ -373,6 +370,9 @@ export class Fetcher {
     const foundExactPage = await (async () => {
       for (const client of this.engine.clients) {
         if (!client.points) {
+          continue
+        }
+        if (client.host && pageLocation.host !== client.host) {
           continue
         }
         const found = await client.points.loadPage({ location: pageLocation })
@@ -387,6 +387,29 @@ export class Fetcher {
       return undefined
     })()
     if (foundExactPage) {
+      const redirectResponse = redirectToDifferentDevClientIfNotThatPort(foundExactPage.page.scope)
+      if (redirectResponse) {
+        return {
+          scope: foundExactPage.page.scope,
+          request,
+          effects,
+          middlewares: [],
+          middlewareOptions: {
+            request,
+            set: effects.set,
+            point: undefined,
+            scope: foundExactPage.page.scope,
+            variant: 'redirect',
+          },
+          publicdirResult: undefined,
+          taskPointResult: undefined,
+          pagePointResult: undefined,
+          actionPointResult: undefined,
+          errorResult: undefined,
+          optionsResult: undefined,
+          redirectResult: { response: redirectResponse },
+        }
+      }
       return {
         scope: foundExactPage.client.scope,
         request,
@@ -409,6 +432,7 @@ export class Fetcher {
         actionPointResult: undefined,
         errorResult: undefined,
         optionsResult: undefined,
+        redirectResult: undefined,
       }
     }
 
@@ -425,6 +449,29 @@ export class Fetcher {
       return undefined
     })()
     if (foundSuitableClient) {
+      const redirectResponse = redirectToDifferentDevClientIfNotThatPort(foundSuitableClient.scope)
+      if (redirectResponse) {
+        return {
+          scope: foundSuitableClient.scope,
+          request,
+          effects,
+          middlewares: [],
+          middlewareOptions: {
+            request,
+            set: effects.set,
+            point: undefined,
+            scope: foundSuitableClient.scope,
+            variant: 'redirect',
+          },
+          publicdirResult: undefined,
+          taskPointResult: undefined,
+          pagePointResult: undefined,
+          actionPointResult: undefined,
+          errorResult: undefined,
+          optionsResult: undefined,
+          redirectResult: { response: redirectResponse },
+        }
+      }
       return {
         scope: foundSuitableClient.scope,
         request,
@@ -447,6 +494,7 @@ export class Fetcher {
         actionPointResult: undefined,
         errorResult: undefined,
         optionsResult: undefined,
+        redirectResult: undefined,
       }
     }
 
@@ -468,6 +516,7 @@ export class Fetcher {
       actionPointResult: undefined,
       errorResult: new Error0(`Not Found`, { httpStatus: 404 }),
       optionsResult: undefined,
+      redirectResult: undefined,
     }
   }
 
@@ -1117,7 +1166,6 @@ export class Fetcher {
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (prepareFetchResult.taskPointResult) {
       const fetchTaskPointResult = await this.fetchTaskPoint({
         root: prepareFetchResult.taskPointResult.root,
@@ -1131,6 +1179,14 @@ export class Fetcher {
       return {
         ...fetchTaskPointResult,
         variant: 'task',
+      }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (prepareFetchResult.redirectResult) {
+      return {
+        ...fetchTaskPointResult,
+        variant: 'redirect',
       }
     }
 
@@ -1278,6 +1334,7 @@ export type PrepareFetchResult =
       actionPointResult: undefined
       errorResult: undefined
       optionsResult: undefined
+      redirectResult: undefined
     }
   | {
       scope: PointsScope
@@ -1291,6 +1348,7 @@ export type PrepareFetchResult =
       actionPointResult: undefined
       errorResult: undefined
       optionsResult: undefined
+      redirectResult: undefined
     }
   | {
       scope: PointsScope
@@ -1308,6 +1366,21 @@ export type PrepareFetchResult =
       actionPointResult: undefined
       errorResult: undefined
       optionsResult: undefined
+      redirectResult: undefined
+    }
+  | {
+      scope: PointsScope
+      request: Request0
+      effects: Effects
+      middlewares: MiddlewareFn[]
+      middlewareOptions: MiddlewareFnOptionsBase
+      publicdirResult: undefined
+      taskPointResult: undefined
+      pagePointResult: undefined
+      actionPointResult: undefined
+      errorResult: undefined
+      optionsResult: undefined
+      redirectResult: { response: Response }
     }
   | {
       scope: PointsScope
@@ -1321,6 +1394,7 @@ export type PrepareFetchResult =
       actionPointResult: undefined
       errorResult: Error0
       optionsResult: undefined
+      redirectResult: Response | undefined
     }
 // export type FetcherFetchDetailedResultGeneral = {
 //   response: Response | undefined
