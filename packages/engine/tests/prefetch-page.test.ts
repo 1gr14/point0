@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { PlaywrightPage } from './utils/playwright.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
-import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
-import { TestProjectFactory } from './utils/project.js'
+import type { TestProjectOneClient, TestProjectFactoryCreateProjectOptions } from './utils/project.one-client.js'
+import { TestProjectFactory } from './utils/project.one-client.js'
 
 setDefaultTimeout(20000)
 
@@ -110,7 +110,7 @@ const pageWithNoneTsx = (mark: string) => `import { layout } from './layout.js'
 export const withNonePage = layout.lets('page', 'withNone_${mark}', '/with-none').page(() => <div id="with-none">none</div>)
 `
 
-async function writePages(tp: TestProject) {
+async function writePages(tp: TestProjectOneClient) {
   const polhs = [false, true]
   const pons = [false, true]
 
@@ -130,7 +130,7 @@ async function writePages(tp: TestProject) {
 }
 
 async function navigatePages(
-  tp: TestProject,
+  tp: TestProjectOneClient,
   hover: number,
   mark: string,
 ): Promise<{ tale: string; requestsTale: string; page: PlaywrightPage }> {
@@ -266,7 +266,7 @@ describe('prefetch-page', () => {
   describe.each(bundlers as ['bun', 'vite'])('%s', (bundler) => {
     describe.each(modes as ['dev', 'build'])('%s', (mode) => {
       describe('ssr', () => {
-        let tp: TestProject
+        let tp: TestProjectOneClient
         const preserve = false
 
         beforeAll(async () => {
@@ -670,7 +670,7 @@ describe('prefetch-page', () => {
       })
 
       describe('spa', () => {
-        let tp: TestProject
+        let tp: TestProjectOneClient
         const preserve = false
 
         beforeAll(async () => {

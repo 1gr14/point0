@@ -2,8 +2,8 @@
 import { describe, expect, it } from 'bun:test'
 import { Point0 } from '@point0/core'
 // import { PlaywrightBrowser } from './utils/playwright.js'
-// import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
-// import { TestProjectFactory } from './utils/project.js'
+// import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.one-client.js'
+// import { TestProjectFactory } from './utils/project.one-client.js'
 import { SimpleLink } from '@point0/wouter'
 import { createTestThings, waitReturn } from '../internal-testing.js'
 

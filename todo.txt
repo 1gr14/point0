@@ -44,11 +44,13 @@ launch
 
 
 === REFACTOING 3000 ===
+В еслинт проверить флоатинг промис
+Убедиться что если моунтаблы сбрасываются, то они не сбрасываются после рута и бейза
++++
 Error0
 Логгер может принимать как готовый логгер, так и функцию разруливающую логи принимающую левел категорию аргументы
 normzliae all errors texts everyhere with point name and path to point where it was defined
 try catch evertywhere in engine to show real error in real place
-biome (check async checker)
 --+
 __INPUT_RAW__ не хранить в стейте, а геж-то ещё хранить напримерв _state
 remove input from request
@@ -57,7 +59,7 @@ test onPrefetchPage and other prefetchModes
 В апп не передавать поинтсы, зачем они там
 --+
 Разобраться с эррор баундари для фронта
-bun watcher, not parcel watcher
+? bun watcher, not parcel watcher
 ? html transformer not regex hack
 Роутес не оверрай а клон, чтобы все склонирвать с нужным абс, а абс можно не тру а строку передать
 --+
@@ -69,7 +71,6 @@ Remove comments, unusde code, unused types (except core/point0.ts and core/types
 try for input have void type or undefined, than we can avoid using ...args IsInputOptional...
 types.ts file thet reexport only needed types
 hide github repos from devp0nt that deprecated
-biome to route0
 Routes<any> shoudl be y default so really any routes suitable to Routes
 store each point location to normalize errors messages for example in No route or id provided for this point
 refactor types names and order and any points, etc any things. Поправляя эни попробовать отказаться от ифэни в пользу стринг экстендс
@@ -168,6 +169,7 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 --+
 ? В энв добавить скоупес.хэз.такой-то, Энв скоупес хэз, и скоупес массив, эна скруп нэймс
 ? В енв дефайн разрешить первым аргументом вставить строку с названием скоупа или наоборот таргета, чтобы объявить например именно для клиентского того-то такого-то скоупа
+? В енвы реально добавить хелперы, там нужен порт клиента
 ---
 Ена таргет из сервер клиент дополнительно
 Ена таргет из фейк клиент дополнительно
@@ -200,6 +202,7 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 
 === ENGINE ===
 detect if client servable via server or not, and then do or not fetchPoint (serve: true)
+Если лиент не сервится то и запросы его к нему же не перенаправлять на сервер
 Из сютобол как функция в энжину для распределения запросов плюс тесты на это
 Настройка в паюликдире линк тру, тогда не будет добавлена в оутдир, а будет использована как есть
 +++
@@ -394,6 +397,7 @@ redirect as point method which will be applied to both client and server
 
 === MCP ===
 --?
+Летс тэгс название группы тегов описание группы тегов, и там тег тег тег где также имя и опционально описание тега в группе
 Дефайн тегс они будут использоваться в мете, но вероятно их лучше прямо на руте задефайнить, чтобы можно было типизировано объявлять на местах
 Метафайл надо статически генерировать и мсп по нему не нужно, оно просто существует и всё мсп через команды терминала
 .inspect() с положением каждого отдельного компонента
@@ -553,6 +557,12 @@ throwOnBundlersLengthNot2 → to eslintplugin
 ? В элемент вьюер добавить не урл а экшон и туда может прописать
 ? В проджект тестах рут вручную везде прописывать, и реоганизовать папки
 ? При ините тест прожекта проводить клинап
+
+
+
+=== PLUGIN ===
+---
+В юз добавить экстёрнал кткс, экстёрнал пропс
 
 
 

@@ -9,12 +9,12 @@ import type { PlaywrightPage } from './playwright.js'
 import { PlaywrightBrowser } from './playwright.js'
 import { TestProcess } from './process.js'
 
-const testTemplateDir = nodePath.resolve(__dirname, '..', 'template')
+const testTemplateDir = nodePath.resolve(__dirname, '..', 'templates', 'one-client')
 const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')
 const localhost = `http://localhost`
 // const localhost = `http://127.0.0.1`
 
-export class TestProject {
+export class TestProjectOneClient {
   dir: string
   name: string
   index: number
@@ -67,7 +67,7 @@ export class TestProject {
   }
 
   static async init(options: TestProjectCreateOptions) {
-    return await new TestProject(options).init()
+    return await new TestProjectOneClient(options).init()
   }
 
   async init() {
@@ -384,7 +384,7 @@ export type TestProjectFactoryCreateProjectOptions = Partial<TestProjectGeneralO
 export class TestProjectFactory {
   defaultOptions: TestProjectGeneralOptions
   namespace: string
-  instances: TestProject[] = []
+  instances: TestProjectOneClient[] = []
   portsRange: [number, number]
   browser: PlaywrightBrowser | undefined
 
@@ -438,7 +438,7 @@ export class TestProjectFactory {
           : this.defaultOptions.clientHmr
             ? this.getNextFreePort()
             : false
-    const tp = new TestProject({
+    const tp = new TestProjectOneClient({
       ...this.defaultOptions,
       ...options,
       serverPort,

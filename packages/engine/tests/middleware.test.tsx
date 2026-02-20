@@ -2,13 +2,12 @@
 import { describe, expect, it } from 'bun:test'
 import { Point0 } from '@point0/core'
 // import { PlaywrightBrowser } from './utils/playwright.js'
-// import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
-// import { TestProjectFactory } from './utils/project.js'
+// import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.one-client.js'
+// import { TestProjectFactory } from './utils/project.one-client.js'
 import { createTestThings } from './utils/internal-testing.js'
 
 // const tpf = TestProjectFactory.create({
 //   namespace: 'test-client',
-//   portsRange: [3300, 3399],
 // })
 
 // type ItFn = (done: (err?: unknown) => any) => any
