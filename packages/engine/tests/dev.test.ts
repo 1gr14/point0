@@ -3,11 +3,11 @@ import type { Engine } from '../src/engine.js'
 import { throwOnBundlersLengthNot2 } from './utils/other.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
 import type { TestProjectOneClient, TestProjectFactoryCreateProjectOptions } from './utils/project.one-client.js'
-import { TestProjectFactory } from './utils/project.one-client.js'
+import { TestProjectOneClientFactory } from './utils/project.one-client.js'
 
 setDefaultTimeout(20000)
 
-const tpf = TestProjectFactory.create({
+const tpf = TestProjectOneClientFactory.create({
   namespace: 'dev',
   portsRange: [3200, 3299],
 })

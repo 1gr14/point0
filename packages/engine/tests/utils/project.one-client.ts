@@ -30,7 +30,7 @@ export class TestProjectOneClient {
   ports: number[] = []
   prefetchPageOnNavigate: false | PrefetchPagePolicy
   prefetchPageOnLinkHover: false | PrefetchPagePolicy
-  tpf: TestProjectFactory
+  tpf: TestProjectOneClientFactory
 
   constructor(options: {
     index: number
@@ -43,7 +43,7 @@ export class TestProjectOneClient {
     clientHmrPort: number | false
     prefetchPageOnNavigate: false | PrefetchPagePolicy
     prefetchPageOnLinkHover: false | PrefetchPagePolicy
-    tpf: TestProjectFactory
+    tpf: TestProjectOneClientFactory
     fixedId: boolean
   }) {
     this.index = options.index
@@ -365,7 +365,7 @@ export type TestProjectGeneralOptions = {
 
 export type TestProjectCreateOptions = Omit<TestProjectGeneralOptions, 'serverHmr' | 'clientHmr'> & {
   index: number
-  tpf: TestProjectFactory
+  tpf: TestProjectOneClientFactory
   serverPort: number
   clientPort: number
   serverHmrPort: number | false
@@ -381,7 +381,7 @@ export type TestProjectFactoryCreateSelfOptions = Partial<TestProjectGeneralOpti
 
 export type TestProjectFactoryCreateProjectOptions = Partial<TestProjectGeneralOptions>
 
-export class TestProjectFactory {
+export class TestProjectOneClientFactory {
   defaultOptions: TestProjectGeneralOptions
   namespace: string
   instances: TestProjectOneClient[] = []
@@ -416,7 +416,7 @@ export class TestProjectFactory {
   }
 
   static create({ namespace, portsRange, browser, ...defaultOptions }: TestProjectFactoryCreateSelfOptions) {
-    return new TestProjectFactory({ defaultOptions, namespace, portsRange, browser })
+    return new TestProjectOneClientFactory({ defaultOptions, namespace, portsRange, browser })
   }
 
   create(options: TestProjectFactoryCreateProjectOptions = {}) {

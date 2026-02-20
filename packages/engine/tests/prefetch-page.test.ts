@@ -2,11 +2,11 @@ import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bu
 import type { PlaywrightPage } from './utils/playwright.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
 import type { TestProjectOneClient, TestProjectFactoryCreateProjectOptions } from './utils/project.one-client.js'
-import { TestProjectFactory } from './utils/project.one-client.js'
+import { TestProjectOneClientFactory } from './utils/project.one-client.js'
 
 setDefaultTimeout(20000)
 
-const tpf = TestProjectFactory.create({
+const tpf = TestProjectOneClientFactory.create({
   namespace: 'prefetch-page',
   portsRange: [3400, 3499],
 })

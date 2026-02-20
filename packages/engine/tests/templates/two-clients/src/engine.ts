@@ -22,20 +22,20 @@ export const engine = Engine.create({
   clients: [
     {
       scope: 'first',
-      app: async () => await import('./app.first'),
-      points: async () => await import('./lib/points.first.client'),
-      routes: async () => await import('./lib/routes.first'),
+      app: async () => await import('./app1'),
+      points: async () => await import('./lib/points1'),
+      routes: async () => await import('./lib/routes1'),
       generate: [
         {
           what: 'points',
-          outfile: './lib/points.first.client.ts',
+          outfile: './lib/points1.ts',
         },
         {
           what: 'routes',
-          outfile: './lib/routes.first.client.ts',
+          outfile: './lib/routes1.ts',
         },
       ],
-      indexHtml: './index.first.html',
+      indexHtml: './index1.html',
       outdir: '../dist/client/first',
       publicdir: { source: '../public1', outdir: '../dist/client/first' },
       env: {
@@ -48,20 +48,20 @@ export const engine = Engine.create({
     },
     {
       scope: 'second',
-      app: async () => await import('./app.second'),
-      points: async () => await import('./lib/points.second.client'),
-      routes: async () => await import('./lib/routes.second'),
+      app: async () => await import('./app2'),
+      points: async () => await import('./lib/points2'),
+      routes: async () => await import('./lib/routes2'),
       generate: [
         {
           what: 'points',
-          outfile: './lib/points.second.client.ts',
+          outfile: './lib/points2.ts',
         },
         {
           what: 'routes',
-          outfile: './lib/routes.second.client.ts',
+          outfile: './lib/routes2.ts',
         },
       ],
-      indexHtml: './index.second.html',
+      indexHtml: './index2.html',
       outdir: '../dist/client/second',
       publicdir: { source: '../public2', outdir: '../dist/client/second' },
       env: {
