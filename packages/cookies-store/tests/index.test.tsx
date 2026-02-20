@@ -298,7 +298,7 @@ describe('cookies-store', () => {
 
   describe('integration', () => {
     it('without', async () => {
-      const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).root()
+      const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
       const login = root
         .lets('mutation', 'authorize')
         .input(z.object({ nick: z.string() }))
@@ -384,7 +384,11 @@ describe('cookies-store', () => {
     })
 
     it('with', async () => {
-      const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).use(CookiesStore.plugin()).root()
+      const root = Point0.lets('root', 'root')
+        .baseurl('http://localhost:3001/')
+        .ssr(true)
+        .use(CookiesStore.plugin())
+        .root()
       const nickCookie = CookiesStore.define('nick')
       const login = root
         .lets('mutation', 'authorize')
@@ -473,7 +477,11 @@ describe('cookies-store', () => {
     })
 
     it('use', async () => {
-      const root = Point0.lets('root', 'root').baseurl('http://localhost/').ssr(true).use(CookiesStore.plugin()).root()
+      const root = Point0.lets('root', 'root')
+        .baseurl('http://localhost:3001/')
+        .ssr(true)
+        .use(CookiesStore.plugin())
+        .root()
       const nickCookie = CookiesStore.define('nick')
       const login = root
         .lets('mutation', 'authorize')

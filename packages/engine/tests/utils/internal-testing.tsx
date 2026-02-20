@@ -142,7 +142,7 @@ export const withFakeBrowserGlobals = async <TResult,>(fn: () => Promise<TResult
   }
 }
 
-export const waitReturn = async <T = undefined>(value?: T, timeout = 100): Promise<T> => {
+export const waitReturn = async <T = undefined,>(value?: T, timeout = 100): Promise<T> => {
   await new Promise((resolve) => setTimeout(resolve, timeout))
   return value as T
 }
@@ -534,7 +534,8 @@ export const createTestThings = async ({
   }) as unknown as FetchHtmlPreview
   const fetchSsr = (async (point: ReadyPoint, ...args: [any]) => {
     return await client.run(async () => {
-      const response = await client.fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
+      const url = point.route.flat(args[0] || {}, true)
+      const response = await client.fetch(url, ...args.slice(1))
       const view = await HtmlView.parse(await response.text())
       const scriptMatch = /<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">([\s\S]+?)<\/script>/.exec(view.html)
       if (!scriptMatch) {

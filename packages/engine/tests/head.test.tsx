@@ -5,7 +5,7 @@ import { createTestThings, waitReturn } from './utils/internal-testing.js'
 describe('head', () => {
   const root = Point0.lets('root', 'root')
     .ssr(true)
-    .baseurl('http://localhost/')
+    .baseurl('http://localhost:3001/')
     .loading(() => <div id="loading">...</div>)
     .error(({ error }) => <div id="error">{error.message}</div>)
     .queryOptions({

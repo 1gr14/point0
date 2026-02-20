@@ -234,23 +234,29 @@ export class Fetcher {
     }
 
     const redirectToDifferentDevClientIfNotThatPort = (scope: string): Response | undefined => {
-      const currentPort = Number(request.location.port)
-      if (Number.isNaN(currentPort)) {
+      // we keep current browser connection for pages on correct url, so we can recieve corret bun hmr updates
+      if (process.env.NODE_ENV === 'production') {
         return undefined
       }
       const thatClient = this.engine.clients.find((c) => c.scope === scope)
       if (!thatClient) {
         return undefined
       }
-      if (thatClient.port !== currentPort) {
-        return new Response('Redirecting to different dev client', {
-          status: 302,
-          headers: {
-            Location: `http://localhost:${thatClient.port}${request.location.pathname}${request.location.search}`,
-          },
-        })
+
+      const currentPort = Number(request.location.port)
+      const currentClient = Number.isNaN(currentPort)
+        ? undefined
+        : this.engine.clients.find((c) => c.port === currentPort)
+
+      if (currentClient === thatClient) {
+        return undefined
       }
-      return undefined
+      return new Response('Redirecting to different dev client', {
+        status: 302,
+        headers: {
+          Location: `http://localhost:${thatClient.port}${request.location.pathname}${request.location.search}`,
+        },
+      })
     }
 
     for (const publicdir of this.server.publicdirs) {
@@ -1185,8 +1191,11 @@ export class Fetcher {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (prepareFetchResult.redirectResult) {
       return {
-        ...fetchTaskPointResult,
+        request: prepareFetchResult.request,
+        scope: prepareFetchResult.scope,
+        response: prepareFetchResult.redirectResult.response,
         variant: 'redirect',
+        error: undefined,
       }
     }
 
@@ -1394,7 +1403,7 @@ export type PrepareFetchResult =
       actionPointResult: undefined
       errorResult: Error0
       optionsResult: undefined
-      redirectResult: Response | undefined
+      redirectResult: undefined
     }
 // export type FetcherFetchDetailedResultGeneral = {
 //   response: Response | undefined

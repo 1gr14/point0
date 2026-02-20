@@ -1213,6 +1213,9 @@ export type FetcherFetchDetailedResultPublicdir = FetcherFetchDetailedResultGene
 export type FetcherFetchDetailedResultOptions = FetcherFetchDetailedResultGeneral & {
   variant: 'options'
 }
+export type FetcherFetchDetailedResultRedirect = FetcherFetchDetailedResultGeneral & {
+  variant: 'redirect'
+}
 
 export type FetcherFetchDetailedResultNoMiddleware =
   | FetcherFetchDetailedResultTask
@@ -1220,6 +1223,7 @@ export type FetcherFetchDetailedResultNoMiddleware =
   | FetcherFetchDetailedResultUnknown
   | FetcherFetchDetailedResultPublicdir
   | FetcherFetchDetailedResultOptions
+  | FetcherFetchDetailedResultRedirect
 export type FetcherFetchDetailedResult = FetcherFetchDetailedResultNoMiddleware | FetcherFetchDetailedResultMiddleware
 export type FetcherFetchDetailedResultSpecific<
   TVariant extends FetcherFetchDetailedResult['variant'] | undefined = undefined,
@@ -1237,6 +1241,8 @@ export type FetcherFetchDetailedResultSpecific<
             ? FetcherFetchDetailedResultPublicdir
             : TVariant extends 'options'
               ? FetcherFetchDetailedResultOptions
+              : TVariant extends 'redirect'
+                ? FetcherFetchDetailedResultRedirect
               : never
 
 export type MiddlewareNextFn = () => Promise<FetcherFetchDetailedResult>

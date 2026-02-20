@@ -1000,7 +1000,7 @@ const parseEngineClientOptions = ({
     indexHtml: toFinalPath({
       ...generalOptionsParsed,
       cwdIfWasBuilt: outdir,
-      relPathAfterBuild: './index.html',
+      relPathAfterBuild: clientOptions.indexHtml ? nodePath.basename(clientOptions.indexHtml) : undefined,
       path: clientOptions.indexHtml,
     }),
     // indexHtmlDistFile: toFinalDistPath({

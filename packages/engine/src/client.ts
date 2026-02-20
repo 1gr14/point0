@@ -406,6 +406,7 @@ Bun.serve({
         method: request.method,
         headers: forwardedHeaders,
         body: request.body,
+        redirect: 'manual',
       },
     )
   },
@@ -539,6 +540,7 @@ Bun.serve({
             method: request.method,
             headers: forwardedHeaders,
             body: request.body,
+            redirect: 'manual',
           })
           return res
         },

@@ -1014,9 +1014,8 @@ export const page = root.lets('page', 'page', '/')
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.shakeMethods({ side: 'client' })
-          expect(
-            point.chainMethods.map((m) => `${m.name}: underSsr=${m.underSsr ? 'true' : 'false'}`),
-          ).toMatchInlineSnapshot(`
+          expect(point.chainMethods.map((m) => `${m.name}: underSsr=${m.underSsr ? 'true' : 'false'}`))
+            .toMatchInlineSnapshot(`
             [
               "root: underSsr=false",
               "iamNotUnderSsrByDefault: underSsr=false",
