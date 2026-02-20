@@ -115,7 +115,6 @@ describe('plugin', () => {
       .plugin()
     const root = Point0.lets('root', 'root')
       .ssr(true)
-      .baseurl('http://localhost:3001/')
       .with(() => ({ rootBefore: 'ok2' }))
       .use(plugin)
       .with(() => ({ rootAfter: 'ok3' }))
@@ -137,7 +136,7 @@ describe('plugin', () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
       .input(z.object({ plugin: z.number().transform((v) => v * 2) }))
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).baseurl('http://localhost:3001/').root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const query = root
       .lets('query', 'test')
       .use(plugin)
@@ -174,7 +173,7 @@ describe('plugin', () => {
         }
       })
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).baseurl('http://localhost:3001/').root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const page = root
       .lets('page', 'home', '/')
       .ctx(() => ({ page1: 'page1' }))
@@ -219,7 +218,7 @@ describe('plugin', () => {
       .use(plugin1)
       .ctx(({ ctx }) => ({ plugin2: 'plugin2', plugin21: ctx.plugin1 }))
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).baseurl('http://localhost:3001/').root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const page = root
       .lets('page', 'home', '/')
       .use(plugin2)
@@ -259,7 +258,7 @@ describe('plugin', () => {
         }
       })
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).baseurl('http://localhost:3001/').root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const page = root
       .lets('page', 'home', '/')
       .with(() => ({ page1: 'page1' }))
@@ -303,7 +302,7 @@ describe('plugin', () => {
       .use(plugin1)
       .with(({ props }) => ({ plugin2: 'plugin2', plugin21: props.plugin1 }))
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).baseurl('http://localhost:3001/').root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const page = root
       .lets('page', 'home', '/')
       .use(plugin2)
@@ -329,7 +328,7 @@ describe('plugin', () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
       .input(z.object({ plugin: z.number() }))
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).baseurl('http://localhost:3001/').root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const query = root
       .lets('query', 'test')
       .use(plugin)
@@ -360,8 +359,8 @@ describe('plugin', () => {
       .ssr(true)
       .with(() => ({ plugin: 'ssr' }))
       .plugin()
-    const rootSsr = Point0.lets('root', 'root').ssr(true).baseurl('http://localhost:3001/').root()
-    const rootNoSsr = Point0.lets('root', 'root').baseurl('http://localhost:3001/').root()
+    const rootSsr = Point0.lets('root', 'root').ssr(true).root()
+    const rootNoSsr = Point0.lets('root', 'root').root()
     expect(() =>
       rootSsr
         .lets('page', 'home', '/')
@@ -388,7 +387,6 @@ describe('plugin', () => {
   //   const root = Point0.lets('root', 'root')
   //     .ssr(true)
   //     .error(({ error }) => <div id="error">{error.message}</div>)
-  //     .baseurl('http://localhost:3001/')
   //     .root()
   //   const plugin = Point0.lets('plugin', 'test-plugin')
   //     .head('global', ({ error }) => {

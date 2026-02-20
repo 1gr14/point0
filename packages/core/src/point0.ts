@@ -1,6 +1,6 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
-import type { AnyLocation, AnyRoute, CallableRoute, KnownLocation } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, CallableRoute, KnownLocation, FlatInputStringOnly } from '@devp0nt/route0'
 import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   DehydratedState,
@@ -94,7 +94,6 @@ import type {
   AssertNoForbiddenMethodsIfNotSuitableStage,
   AssertRouteDefinitionInputExtends,
   BasePoint,
-  BasepathByBaseurl,
   ClientExecuteAction,
   ClientLoaderDataFn,
   ClientLoaderResponseFn,
@@ -193,19 +192,19 @@ import type {
   UsePointQueryResult,
   UseQueryOptions,
   WithError,
+  IsEmptyObject,
 } from './types.js'
 import {
   blankDataTransformerExtended,
   dedupeSlashes,
   generateId,
-  getBasepathOrNull,
-  getOriginOrNull,
   getWindowScrollPositionGetterByElementGetter,
   getWindowScrollPositionGetterBySelector,
   getWindowScrollPositionSetterByElementGetter,
   getWindowScrollPositionSetterBySelector,
   isContainsBinary,
   mergeHeaders,
+  prependAndDeappendSlash,
   toExtendedTransformer,
   windowScrollPositionGetter,
   windowScrollPositionSetter,
@@ -216,7 +215,7 @@ import {
 
 // requireCtx: server, nothing to prune
 // serverurl: client, nothing to prune
-// baseurl: both, nothing to prune
+// basepath: both, nothing to prune
 // ssr: both, nothing to prune
 // mutationOptions: client, prune on server
 // queryOptions: client, prune on server
@@ -331,7 +330,7 @@ export class Point0<
   readonly _root: RootPoint | undefined
   readonly _middlewares: MiddlewareFn[]
   _serverurl: string | undefined
-  readonly _baseurl: string | null | undefined
+  readonly _basepath: string | undefined
   readonly type: TPointType
   private readonly _letsReadyPointType: TLetsReadyPointType
   private readonly _transformer: DataTransformerExtended | undefined
@@ -469,7 +468,7 @@ export class Point0<
     _root?: RootPoint | undefined
     _middlewares?: MiddlewareFn[] | undefined
     _serverurl?: string | undefined
-    _baseurl?: string | null | undefined
+    _basepath?: string | undefined
     _transformer?: DataTransformerExtended | undefined
     _ssr?: boolean
     _eventerSubscriptions?: EventerSubscription[]
@@ -542,7 +541,7 @@ export class Point0<
     this._ssr = options._ssr ?? false
     this._eventerSubscriptions = options._eventerSubscriptions ?? []
     this._serverurl = options._serverurl ?? undefined
-    this._baseurl = options._baseurl ?? undefined
+    this._basepath = options._basepath ?? undefined
     this.type = options.type
     this._letsReadyPointType = options._letsReadyPointType
     this._defaultMutationOptions = options._defaultMutationOptions ?? {}
@@ -614,7 +613,7 @@ export class Point0<
     _root?: RootPoint | undefined
     _middlewares?: MiddlewareFn[]
     _serverurl?: string | undefined
-    _baseurl?: string | null | undefined
+    _basepath?: string | undefined
     _transformer?: DataTransformerExtended | null
     _ssr?: boolean
     _eventerSubscriptions?: EventerSubscription[]
@@ -718,7 +717,7 @@ export class Point0<
       _letsReadyPointType: (overrides._letsReadyPointType ?? this._letsReadyPointType) as TLetsReadyPointType,
       _middlewares: overrides._middlewares ?? [...this._middlewares],
       _serverurl: overrides._serverurl ?? this._serverurl,
-      _baseurl: overrides._baseurl ?? this._baseurl,
+      _basepath: overrides._basepath ?? this._basepath,
       _transformer: overrides._transformer ?? this._transformer,
       _ssr: overrides._ssr ?? this._ssr,
       _eventerSubscriptions: overrides._eventerSubscriptions ?? this._eventerSubscriptions,
@@ -871,9 +870,11 @@ export class Point0<
     }) as never
   }
 
-  baseurl<TBaseurl extends string, TBasepath extends string = BasepathByBaseurl<TBaseurl>>(
-    baseurl: TBaseurl,
-    basepath?: TBasepath,
+  basepath<TBasepath extends string>(
+    basepath: TBasepath &
+      (IsEmptyObject<FlatInputStringOnly<TBasepath>> extends true
+        ? unknown
+        : ShowError<'basepath can not contain params or search params'>),
   ): NiceRootStagePoint<
     StagePointTypeOrNever<TPointType>,
     'root',
@@ -891,13 +892,10 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   > {
-    // const normalizedBaseurl = [baseurl, basepath ].filter(Boolean).join('/') || '/'
-    const normalizedBasepath = basepath ? (getBasepathOrNull(baseurl) ?? '/') : basepath || '/'
-    const normalizedOrigin = getOriginOrNull(baseurl)
-    const normalizedBaseurl = normalizedOrigin ? `${normalizedOrigin}${normalizedBasepath}` : normalizedBasepath
-    const route = Route0.create(dedupeSlashes(`/${normalizedBasepath}`), { baseurl: normalizedBaseurl })
+    const normalizedBasepath = prependAndDeappendSlash(basepath) || '/'
+    const route = Route0.create(dedupeSlashes(`/${normalizedBasepath}`))
     return this._continue({
-      _baseurl: normalizedBaseurl,
+      _basepath: normalizedBasepath,
       route,
     }) as never
   }
@@ -3575,30 +3573,29 @@ export class Point0<
     const [letsReadyPointType, pointName, route] = args as [ReadyPointType, PointName, AnyRoute | string | undefined]
     const prevRoute = this.route
     const newRoute = (() => {
-      const routeConfig = { baseurl: this._baseurl ?? undefined }
       if (letsReadyPointType === 'page') {
         if (typeof route === 'string' || !route) {
           const routeOrPointName = route ?? pointName
           if (routeOrPointName === '/') {
-            return prevRoute?.clone(routeConfig) ?? Route0.create('/', routeConfig)
+            return prevRoute?.clone() ?? Route0.create('/')
           }
           return prevRoute
-            ? prevRoute.extend(routeOrPointName).clone(routeConfig)
-            : Route0.create(dedupeSlashes(`/${routeOrPointName}`), routeConfig)
+            ? prevRoute.extend(routeOrPointName).clone()
+            : Route0.create(dedupeSlashes(`/${routeOrPointName}`))
         }
-        return Route0.create(dedupeSlashes(`/${route.definition}`), routeConfig)
+        return Route0.create(dedupeSlashes(`/${route.definition}`))
       }
       if (letsReadyPointType === 'layout') {
         if (typeof route === 'string' || !route) {
           const routeNormalized = route ?? '/'
           if (routeNormalized === '/') {
-            return prevRoute?.clone(routeConfig) ?? Route0.create('/', routeConfig)
+            return prevRoute?.clone() ?? Route0.create('/')
           }
           return prevRoute
-            ? prevRoute.extend(routeNormalized).clone(routeConfig)
-            : Route0.create(dedupeSlashes(`/${routeNormalized}`), routeConfig)
+            ? prevRoute.extend(routeNormalized).clone()
+            : Route0.create(dedupeSlashes(`/${routeNormalized}`))
         }
-        return Route0.create(dedupeSlashes(`/${route.definition}`), routeConfig)
+        return Route0.create(dedupeSlashes(`/${route.definition}`))
       }
       return prevRoute
     })()
@@ -3647,7 +3644,7 @@ export class Point0<
       _useValue: undefined,
       _layouts: this.type === 'layout' ? [...this._layouts, this as unknown as LayoutPoint] : [...this._layouts],
       _serverurl: this._base?._serverurl,
-      _baseurl: this._base?._baseurl,
+      _basepath: this._base?._basepath,
       _defaultMutationOptions: this._base?._defaultMutationOptions,
       _mutationOptions: {},
       _defaultQueryOptions: this._base?._defaultQueryOptions,
@@ -4208,7 +4205,7 @@ export class Point0<
       // _root
       _middlewares: [...this._middlewares, ...point._middlewares],
       _serverurl: point._serverurl,
-      _baseurl: point._baseurl,
+      _basepath: point._basepath,
       _transformer: point._transformer,
       // _ssr
       _eventerSubscriptions: [...this._eventerSubscriptions, ...point._eventerSubscriptions],

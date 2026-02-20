@@ -17,22 +17,18 @@ import { PointsManager } from '@point0/core'
 export class ServerPoints {
   manager: PointsManager<true>
 
-  baseurl: string | null
-
   transformers = new Map<PointsScope, DataTransformerExtended>()
   roots = new Map<PointsScope, RootPoint>()
   scopes = new Set<PointsScope>()
   middlewares = new Map<PointsScope, MiddlewareFn[]>()
 
-  private constructor({ manager, baseurl }: { manager: PointsManager; baseurl: string | null }) {
-    this.baseurl = baseurl
+  private constructor({ manager }: { manager: PointsManager }) {
     this.manager = manager as never
   }
 
   static createFromDefinition(points: PointsDefinition | PointsManager): ServerPoints {
     const manager = PointsManager.createFromDefinition(points)
-    const baseurl = manager.root._baseurl ?? null
-    const instance = new ServerPoints({ manager, baseurl })
+    const instance = new ServerPoints({ manager })
     const roots = manager.getRoots()
     for (const root of roots) {
       instance.roots.set(root.scope, root)

@@ -1,7 +1,7 @@
 import { Route0, Routes } from '@devp0nt/route0'
 import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
-import { _point0_env, appendSlash, getBasepathOrNull, getHostOrNull } from './index.js'
+import { _point0_env, appendSlash } from './index.js'
 import { _getFakeClient, _ssItems } from './internals.js'
 import { PointsManager } from './points-manager.js'
 import type {
@@ -29,7 +29,7 @@ export class ClientPoints {
   manager: PointsManager
 
   baseurl: string | null
-  basepath: string | null
+  basepath: string
   host: string | null
   ssr: boolean
   middlewares: MiddlewareFn[]
@@ -59,7 +59,7 @@ export class ClientPoints {
     pagesTreeSource: PagesTreeSource
     pagesTree: PagesTree
     baseurl: string | null
-    basepath: string | null
+    basepath: string
     host: string | null
     ssr: boolean
     middlewares: MiddlewareFn[]
@@ -97,9 +97,9 @@ export class ClientPoints {
     const pagesTree = ClientPoints.toPagesTree({ points: manager.collection, pagesTreeSource })
     const routesHash = routes._.pathsOrdering.join(',')
 
-    const baseurl = root._baseurl || null
-    const basepath = getBasepathOrNull(baseurl)
-    const host = getHostOrNull(baseurl)
+    const baseurl = null
+    const basepath = root._basepath ?? '/'
+    const host = null
     const ssr = root._ssr
     const middlewares = root._middlewares
     const transformer = root._getTransformer()

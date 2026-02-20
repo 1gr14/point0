@@ -10,7 +10,6 @@ describe('on', () => {
       .on('*', (e) => {
         events.push(e)
       })
-      .baseurl('http://localhost:3001/')
       .ssr(true)
       .root()
     const page = root
@@ -75,7 +74,6 @@ describe('on', () => {
       .on('pointMutationStart', (e) => {
         events.push(e)
       })
-      .baseurl('http://localhost:3001/')
       .ssr(true)
       .root()
     const page = root
@@ -109,7 +107,6 @@ describe('on', () => {
       .on(['pointQuerySuccess', 'pointInfiniteQuerySuccess', 'pointMutationSuccess'], (e) => {
         events.push(e)
       })
-      .baseurl('http://localhost:3001/')
       .ssr(true)
       .root()
     const page = root
@@ -140,7 +137,6 @@ describe('on', () => {
       .on('error', (e) => {
         events.push(e)
       })
-      .baseurl('http://localhost:3001/')
       .ssr(true)
       .root()
     const page = root

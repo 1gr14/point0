@@ -5,7 +5,7 @@ import { createTestThings } from './utils/internal-testing.js'
 
 describe('ssr', () => {
   it.concurrent('page without loader', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const page = root.lets('page', 'home', '/').page(() => <div id="page">x</div>)
     const { fetchSsr } = await createTestThings({ points: [root, page] })
     const result = await fetchSsr(page)
@@ -17,7 +17,7 @@ describe('ssr', () => {
   })
 
   it.concurrent('page with loader', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const page = root
       .lets('page', 'home', '/')
       .loader(() => ({ x: 1 }))
@@ -37,7 +37,7 @@ describe('ssr', () => {
   })
 
   it.concurrent('page with loader and component with loader', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const component = root
       .lets('component', 'component')
       .loader(() => ({ y: 2 }))
@@ -77,7 +77,7 @@ describe('ssr', () => {
   })
 
   it.concurrent('page with loader and component with client loader', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const component = root
       .lets('component', 'component')
       .clientLoader(() => ({ y: 2 }))
@@ -114,7 +114,7 @@ describe('ssr', () => {
   })
 
   it.concurrent('page with loader and component with loader and client loader', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const component = root
       .lets('component', 'component')
       .loader(() => ({ z: 3 }))

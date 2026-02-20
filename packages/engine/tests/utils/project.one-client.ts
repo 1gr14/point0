@@ -73,7 +73,7 @@ export class TestProjectOneClient {
   async init() {
     await this.createTempDir()
     await this.copyTemplateToTempDir()
-    await this.replace(this.files.packageJson, 'test-project-name', this.name)
+    await this.replace(this.files.packageJson, 'test-one-client', this.name)
     await this.replace(this.files.engine, '// port: server,', `port: ${this.serverPort},`)
     await this.replace(
       this.files.engine,
@@ -86,6 +86,8 @@ export class TestProjectOneClient {
       '// hmrPort: client,',
       `hmrPort: ${typeof this.clientHmrPort === 'number' ? this.clientHmrPort : 'false'},`,
     )
+    // await this.replace(this.files.engine, '// baseurl: server,', `baseurl: '${localhost}:${this.serverPort}',`)
+    // await this.replace(this.files.engine, '// baseurl: client,', `baseurl: '${localhost}:${this.clientPort}',`)
     if (!this.ssr) {
       await this.replace(this.files.root, '.ssr(true)', '// .ssr(true)')
     }

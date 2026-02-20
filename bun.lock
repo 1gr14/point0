@@ -220,8 +220,8 @@
         "react-dom": "catalog:",
       },
     },
-    "packages/engine/tests/temp/prefetch-page/test-592f98cd-f49f-4cc9-bfcd-319f3312adb7": {
-      "name": "@point0/test-592f98cd-f49f-4cc9-bfcd-319f3312adb7",
+    "packages/engine/tests/templates/one-client": {
+      "name": "@point0/test-one-client",
       "version": "1.0.0",
       "dependencies": {
         "@devp0nt/route0": "catalog:",
@@ -248,8 +248,8 @@
         "typescript": "^5.9.3",
       },
     },
-    "packages/engine/tests/template": {
-      "name": "@point0/test-project-name",
+    "packages/engine/tests/templates/two-clients": {
+      "name": "@point0/test-two-clients",
       "version": "1.0.0",
       "dependencies": {
         "@devp0nt/route0": "catalog:",
@@ -316,7 +316,7 @@
   },
   "catalog": {
     "@devp0nt/error0": "^1.0.0-next.38",
-    "@devp0nt/route0": "^1.0.0-next.62",
+    "@devp0nt/route0": "^1.0.0-next.63",
     "@tanstack/react-query": "^5.0.0",
     "@unhead/react": "^2.1.2",
     "react": "^19.0.0",
@@ -406,7 +406,7 @@
 
     "@devp0nt/meta0": ["@devp0nt/meta0@1.0.0-next.34", "", { "dependencies": { "@devp0nt/deepmap0": "^1.0.0-next.23" } }, "sha512-+TGxn2PIxxmqTiYOknC3b1SUETCz5elAeFI9csgosPbHyqiJ2Aw6zMqHNnISxMXpja7DWa9hL9+FdLD7EL73yw=="],
 
-    "@devp0nt/route0": ["@devp0nt/route0@1.0.0-next.62", "", { "dependencies": { "serialize-error": "^12.0.0" } }, "sha512-WahzA1DXbxx0V32hbW/yoApPN1o2NcV6G1iL8RSXNECtxI9wE5NMi7zADpux+CFtcCXpGiimgKEbxlCZ62UQ4Q=="],
+    "@devp0nt/route0": ["@devp0nt/route0@1.0.0-next.63", "", { "dependencies": { "serialize-error": "^12.0.0" } }, "sha512-Y3ON51fm0ugp0/XFqC3gHgj3unBwN/faCHM54Td2c615CfasPn5wUXdV9v/OFvcdpDn7D162JalYQBgZ90Gn8A=="],
 
     "@epic-web/invariant": ["@epic-web/invariant@1.0.0", "", {}, "sha512-lrTPqgvfFQtR/eY/qkIzp98OGdNJu0m5ji3q/nJI8v3SXkRKEnWiOxMmbvcSoAIzv/cGiuvRy57k4suKQSAdwA=="],
 
@@ -576,9 +576,9 @@
 
     "@point0/react-dom": ["@point0/react-dom@workspace:packages/react-dom"],
 
-    "@point0/test-592f98cd-f49f-4cc9-bfcd-319f3312adb7": ["@point0/test-592f98cd-f49f-4cc9-bfcd-319f3312adb7@workspace:packages/engine/tests/temp/prefetch-page/test-592f98cd-f49f-4cc9-bfcd-319f3312adb7"],
+    "@point0/test-one-client": ["@point0/test-one-client@workspace:packages/engine/tests/templates/one-client"],
 
-    "@point0/test-project-name": ["@point0/test-project-name@workspace:packages/engine/tests/template"],
+    "@point0/test-two-clients": ["@point0/test-two-clients@workspace:packages/engine/tests/templates/two-clients"],
 
     "@point0/wouter": ["@point0/wouter@workspace:packages/wouter"],
 

@@ -484,7 +484,6 @@ export const l3 = b2.lets('layout', 'l3').layout()
         valid: point.valid,
         name: point.name,
         polh: point.polh,
-        baseurl: point.baseurl,
         basepath: point.basepath,
       }
     }
@@ -516,56 +515,49 @@ export const p6 = p5.lets('page', 'p6', '/r6').prefetchPageOnLinkHover('none', 1
           valid: true,
           name: 'root',
           polh: true,
-          baseurl: undefined,
           basepath: '/',
         })
         expect(parsed[1]).toMatchObject({
           valid: true,
           name: 'p1',
           polh: false,
-          baseurl: undefined,
           basepath: '/',
         })
         expect(parsed[2]).toMatchObject({
           valid: true,
           name: 'p2',
           polh: false,
-          baseurl: undefined,
           basepath: '/',
         })
         expect(parsed[3]).toMatchObject({
           valid: true,
           name: 'p3',
           polh: true,
-          baseurl: undefined,
           basepath: '/',
         })
         expect(parsed[4]).toMatchObject({
           valid: true,
           name: 'p4',
           polh: false,
-          baseurl: undefined,
           basepath: '/',
         })
         expect(parsed[5]).toMatchObject({
           valid: true,
           name: 'p5',
           polh: 100,
-          baseurl: undefined,
           basepath: '/',
         })
         expect(parsed[6]).toMatchObject({
           valid: true,
           name: 'p6',
           polh: false,
-          baseurl: undefined,
           basepath: '/',
         })
       }),
     )
 
     it.concurrent(
-      'point baseurl',
+      'point basepath',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
           routes: {
@@ -576,19 +568,19 @@ export const p6 = p5.lets('page', 'p6', '/r6').prefetchPageOnLinkHover('none', 1
           },
         })
         await file.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'root').baseurl('http://localhost/').root()
+export const root = Point0.lets('root', 'root').basepath('/').root()
 export const p1 = root.lets('page', 'p1', '/').page(() => <div>Hello</div>)
-export const root2 = root.lets('root', 'root2').baseurl(process.env.BASE_URL).root()
+export const root2 = root.lets('root', 'root2').basepath('/root2').root()
 export const p2 = root2.lets('page', 'p2', '/').page(() => <div>Hello</div>)
-export const root3 = root.lets('root', 'root3').baseurl(env.vars.BASE_URL).root()
+export const root3 = root.lets('root', 'root3').basepath('/root3').root()
 export const p3 = root3.lets('page', 'p3', '/').page(() => <div>Hello</div>)
-export const root4 = root.lets('root', 'root4').baseurl(process.env.BASE_URL, '/my/base').root()
+export const root4 = root.lets('root', 'root4').basepath('/my/base').root()
 export const p4 = root4.lets('page', 'p4', '/').page(() => <div>Hello</div>)
-export const root5 = root.lets('root', 'root5').baseurl('http://localhost/', '/my/base').root()
+export const root5 = root.lets('root', 'root5').basepath('/my/base').root()
 export const p5 = root5.lets('page', 'p5', '/').page(() => <div>Hello</div>)
-export const root6 = root.lets('root', 'root6').baseurl('http://localhost/my/base').root()
+export const root6 = root.lets('root', 'root6').basepath('/my/base').root()
 export const p6 = root6.lets('page', 'p6', '/').page(() => <div>Hello</div>)
-export const root7 = root.lets('root', 'root7').baseurl('http://localhost/my/base', '/extra/path').root()
+export const root7 = root.lets('root', 'root7').basepath('/my/base/extra/path').root()
 export const p7 = root7.lets('page', 'p7', '/').page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: file.path })
@@ -597,92 +589,78 @@ export const p7 = root7.lets('page', 'p7', '/').page(() => <div>Hello</div>)
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'root',
-          baseurl: 'http://localhost/',
           basepath: '/',
         })
         expect(parsed[1]).toMatchObject({
           valid: true,
           name: 'p1',
-          baseurl: 'http://localhost/',
           basepath: '/',
         })
         expect(parsed[2]).toMatchObject({
           valid: true,
           name: 'root2',
-          baseurl: 'process.env.BASE_URL',
-          basepath: '/',
+          basepath: '/root2',
         })
         expect(parsed[3]).toMatchObject({
           valid: true,
           name: 'p2',
-          baseurl: 'process.env.BASE_URL',
-          basepath: '/',
+          basepath: '/root2',
         })
         expect(parsed[4]).toMatchObject({
           valid: true,
           name: 'root3',
-          baseurl: 'process.env.BASE_URL',
-          basepath: '/',
+          basepath: '/root3',
         })
         expect(parsed[5]).toMatchObject({
           valid: true,
           name: 'p3',
-          baseurl: 'process.env.BASE_URL',
-          basepath: '/',
+          basepath: '/root3',
         })
         expect(parsed[6]).toMatchObject({
           valid: true,
           name: 'root4',
-          baseurl: 'process.env.BASE_URL',
           basepath: '/my/base',
         })
         expect(parsed[7]).toMatchObject({
           valid: true,
           name: 'p4',
-          baseurl: 'process.env.BASE_URL',
           basepath: '/my/base',
         })
         expect(parsed[8]).toMatchObject({
           valid: true,
           name: 'root5',
-          baseurl: 'http://localhost/my/base',
           basepath: '/my/base',
         })
         expect(parsed[9]).toMatchObject({
           valid: true,
           name: 'p5',
-          baseurl: 'http://localhost/my/base',
           basepath: '/my/base',
         })
         expect(parsed[10]).toMatchObject({
           valid: true,
           name: 'root6',
-          baseurl: 'http://localhost/my/base',
           basepath: '/my/base',
         })
         expect(parsed[11]).toMatchObject({
           valid: true,
           name: 'p6',
-          baseurl: 'http://localhost/my/base',
           basepath: '/my/base',
         })
         expect(parsed[12]).toMatchObject({
           valid: true,
           name: 'root7',
-          baseurl: 'http://localhost/my/base/extra/path',
           basepath: '/my/base/extra/path',
         })
         expect(parsed[13]).toMatchObject({
           valid: true,
           name: 'p7',
-          baseurl: 'http://localhost/my/base/extra/path',
           basepath: '/my/base/extra/path',
         })
       }),
     )
 
     it.concurrent(
-      'route is prefixed with basepath from baseurl',
+      'route is prefixed with basepath',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
           routes: {
@@ -693,7 +671,7 @@ export const p7 = root7.lets('page', 'p7', '/').page(() => <div>Hello</div>)
         })
         await file.write(`import {Point0} from '@point0/core'
 import { Route0, Routes } from '@devp0nt/route0'
-export const root = Point0.lets('root', 'myroot').baseurl('https://example.com/my/base').root()
+export const root = Point0.lets('root', 'myroot').basepath('/my/base').root()
 const routes = Routes.create({
   r1: Route0.create('/r1'),
 })
@@ -1040,7 +1018,7 @@ export const page = root.lets('page', 'page', '/')
               export const root = Point0.lets('root', 'root').ssr(true).clientLoader(true).root()
               export const page = root.lets('page', 'page', '/')
               .serverurl(() => console.info('fake'))
-              .baseurl(() => console.info('fake'))
+              .basepath(() => console.info('fake'))
               .ssr(() => console.info('fake'))
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
@@ -1098,7 +1076,7 @@ export const page = root.lets('page', 'page', '/')
             export const page = root
               .lets('page', 'page', '/')
               .serverurl(() => console.info('fake'))
-              .baseurl(() => console.info('fake'))
+              .basepath(() => console.info('fake'))
               .ssr(() => console.info('fake'))
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
@@ -1156,7 +1134,7 @@ export const page = root.lets('page', 'page', '/')
               export const root = Point0.lets('root', 'root').ssr(false).clientLoader(true).root()
               export const page = root.lets('page', 'page', '/')
               .serverurl(() => console.info('fake'))
-              .baseurl(() => console.info('fake'))
+              .basepath(() => console.info('fake'))
               .ssr(() => console.info('fake'))
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
@@ -1215,7 +1193,7 @@ export const page = root.lets('page', 'page', '/')
             export const page = root
               .lets('page', 'page', '/')
               .serverurl(() => console.info('fake'))
-              .baseurl(() => console.info('fake'))
+              .basepath(() => console.info('fake'))
               .ssr(() => console.info('fake'))
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
@@ -1272,7 +1250,7 @@ export const page = root.lets('page', 'page', '/')
               export const root = Point0.lets('root', 'root').ssr(true).clientLoader(true).root()
               export const page = root.lets('page', 'page', '/')
               .serverurl(() => console.info('fake'))
-              .baseurl(() => console.info('fake'))
+              .basepath(() => console.info('fake'))
               .ssr(() => console.info('fake'))
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
@@ -1331,7 +1309,7 @@ export const page = root.lets('page', 'page', '/')
             export const page = root
               .lets('page', 'page', '/')
               .serverurl(() => console.info('fake'))
-              .baseurl(() => console.info('fake'))
+              .basepath(() => console.info('fake'))
               .ssr(() => console.info('fake'))
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))

@@ -40,6 +40,7 @@ export type FilesGeneratorTaskRoutes = {
   what: 'routes'
   banner?: string | null
   outfile: string
+  baseurl?: string | null
 }
 
 export type FilesGeneratorTaskMeta = {
@@ -883,17 +884,17 @@ export class FilesGenerator {
     lines.push(`import { Routes } from '@devp0nt/route0'`)
     lines.push(``)
 
-    const rootPoint = points.find((p) => p.type === 'root' && p.scope === task.scope)
-    if (!rootPoint) {
+    const hasRootPoint = points.some((p) => p.type === 'root' && p.scope === task.scope)
+    if (!hasRootPoint) {
       throw new Error(`Root point not found for scope ${task.scope}`)
     }
 
-    const baseurlString = !rootPoint.baseurl
+    const baseurlString = !task.baseurl
       ? undefined
-      : rootPoint.baseurl.startsWith('process.env.') || rootPoint.baseurl.startsWith('import.meta.env.')
-        ? rootPoint.baseurl
-        : getOriginOrNull(rootPoint.baseurl)
-          ? `'${getOriginOrNull(rootPoint.baseurl)}'`
+      : task.baseurl.startsWith('process.env.') || task.baseurl.startsWith('import.meta.env.')
+        ? task.baseurl
+        : getOriginOrNull(task.baseurl)
+          ? `'${getOriginOrNull(task.baseurl)}'`
           : undefined
     const baseurlSuffix = baseurlString ? `, { baseurl: ${baseurlString} }` : ''
 

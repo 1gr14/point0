@@ -7,7 +7,7 @@ import { createTestThings, ymlify } from './utils/internal-testing.js'
 
 describe('input', () => {
   it.concurrent('empty and available in page component by location params', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     let result: InputParsed | undefined
     const page = root.lets('page', 'test', '/test').page(({ location }) => {
       result = location.params
@@ -22,7 +22,7 @@ describe('input', () => {
   })
 
   it.concurrent('available in page component by location params', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     let result: InputParsed | undefined
     const page = root.lets('page', 'test', '/test/:id').page(({ location }) => {
       result = location.params
@@ -38,7 +38,7 @@ describe('input', () => {
   })
 
   it.concurrent('available in page component and loader and clientLoader by route definition', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     let loaderResult: InputParsed | undefined
     let clientLoaderResult: InputParsed | undefined
     let pageResult: InputParsed | undefined
@@ -80,7 +80,7 @@ describe('input', () => {
   it.concurrent(
     'available in mutation loader by input schema definition, and empty object in clientLoader',
     async () => {
-      const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+      const root = Point0.lets('root', 'root').ssr(true).root()
       const mutation = root
         .lets('mutation', 'test')
         .input(z.object({ id: z.number() }))
@@ -111,7 +111,7 @@ describe('input', () => {
   )
 
   it.concurrent('works with unions', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.union([z.object({ id: z.string() }), z.object({ sn: z.number() })]))
@@ -134,7 +134,7 @@ describe('input', () => {
   })
 
   it.concurrent('works with unions when one is optional', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.union([z.object({ id: z.string() }), z.object({ sn: z.number().optional() })]))
@@ -157,7 +157,7 @@ describe('input', () => {
   })
 
   it.concurrent('can be extended by union', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.object({ x: z.string() }))
@@ -184,7 +184,7 @@ describe('input', () => {
   })
 
   it.concurrent('union can be extended by non union', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.union([z.object({ id: z.string() }), z.object({ sn: z.number().optional() })]))
@@ -211,7 +211,7 @@ describe('input', () => {
   })
 
   it.concurrent('available in mutation loader and clientLoader by schema definition', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.object({ id: z.string() }))
@@ -238,7 +238,7 @@ describe('input', () => {
   })
 
   it.concurrent('available in mutation loader by schema definition and function and generic', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.object({ id: z.string() }))
@@ -275,7 +275,7 @@ describe('input', () => {
   })
 
   it.concurrent('available in mutation clientLoader by schema definition and function and generic', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
       .lets('mutation', 'test')
       .clientInput(z.object({ id: z.string() }))
@@ -312,7 +312,7 @@ describe('input', () => {
   })
 
   it.concurrent('correctly typed when default in schema exists in mutation', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.object({ id: z.string(), sn: z.coerce.number().default(234) }))
@@ -335,7 +335,7 @@ describe('input', () => {
   })
 
   it.concurrent('correctly typed when default in schema exists in page', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const layout = root.lets('layout', 'layout').layout(({ children }) => {
       return <div>{children}</div>
     })
@@ -360,7 +360,7 @@ describe('input', () => {
   })
 
   it.concurrent('can be combined in different ways', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').ssr(true).root()
+    const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.object({ a: z.string() }))
@@ -396,7 +396,7 @@ describe('input', () => {
   })
 
   it.concurrent('do not allow conflicted schema by route', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').root()
+    const root = Point0.lets('root', 'root').root()
     const layout = root
       .lets('layout', 'layout', '/:x')
       .input(z.object({ x: z.string(), z: z.number() })) // it is ok
@@ -411,7 +411,7 @@ describe('input', () => {
   })
 
   it.concurrent('do not allow conflicted schema by schema', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').root()
+    const root = Point0.lets('root', 'root').root()
     root
       .lets('mutation', 'test')
       .input(z.object({ x: z.union([z.string(), z.number()]), z: z.number() })) // it is ok
@@ -425,7 +425,7 @@ describe('input', () => {
   })
 
   it.concurrent('do not allow conflicted schema by schema after unions', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').root()
+    const root = Point0.lets('root', 'root').root()
     root
       .lets('mutation', 'test')
       .input(z.union([z.object({ id: z.string() }), z.object({ sn: z.number() })])) // it is ok
@@ -439,7 +439,7 @@ describe('input', () => {
   })
 
   it.concurrent('do not allow conflicted schema by generic', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').root()
+    const root = Point0.lets('root', 'root').root()
     root
       .lets('mutation', 'test')
       .input(z.object({ x: z.union([z.string(), z.number()]), z: z.number() })) // it is ok
@@ -453,7 +453,7 @@ describe('input', () => {
   })
 
   it.concurrent('do not allow conflicted schema by function', async () => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').root()
+    const root = Point0.lets('root', 'root').root()
     root
       .lets('mutation', 'test')
       .input(z.object({ x: z.union([z.string(), z.number()]), z: z.number() })) // it is ok

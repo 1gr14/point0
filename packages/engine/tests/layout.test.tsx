@@ -7,7 +7,6 @@ describe('layout', () => {
   const createRoot = () =>
     Point0.lets('root', 'root')
       .ssr(true)
-      .baseurl('http://localhost:3001/')
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({

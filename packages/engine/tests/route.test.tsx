@@ -131,8 +131,8 @@ describe('route', () => {
     layout.lets('page', 'test', Route0.create('/:y')).page()
   })
 
-  it('baseurl path / is used to extend route', async () => {
-    const root = Point0.lets('root', 'root').baseurl('/').root()
+  it('basepath / is used to extend route', async () => {
+    const root = Point0.lets('root', 'root').root()
     const layout = root.lets('layout', 'layout', '/:x').layout(({ children }) => {
       return <div>{children}</div>
     })
@@ -141,45 +141,42 @@ describe('route', () => {
     expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/:x/:y'>()
   })
 
-  it('baseurl path /my/path is used to extend route', async () => {
-    const root = Point0.lets('root', 'root').baseurl('/my/path').root()
+  it('basepath /my/path is used to extend route', async () => {
+    const root = Point0.lets('root', 'root').basepath('/my/path').root()
     const layout = root.lets('layout', 'layout', '/:x').layout(({ children }) => {
       return <div>{children}</div>
     })
     const page = layout.lets('page', 'test', '/:y').page()
-    expect(page.route({ y: '123', x: '456' })).toBe('/456/123')
+    expect(page.route({ y: '123', x: '456' })).toBe('/my/path/456/123')
     expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/my/path/:x/:y'>()
   })
 
-  it('baseurl path https://example.com is used to extend route', async () => {
-    const root = Point0.lets('root', 'root').baseurl('https://example.com').root()
-    const layout = root.lets('layout', 'layout', '/:x').layout(({ children }) => {
-      return <div>{children}</div>
-    })
-    const page = layout.lets('page', 'test', '/:y').page()
-    expect(page.route({ y: '123', x: '456' })).toBe('/456/123')
-    expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/:x/:y'>()
-  })
-
-  it('baseurl path https://example.com/my/path is used to extend route', async () => {
-    const root = Point0.lets('root', 'root').baseurl('https://example.com/my/path').root()
+  it('basepath /my/path is used to extend route', async () => {
+    const root = Point0.lets('root', 'root').basepath('/my/path').root()
     expectTypeOf<typeof root.Infer.RouteDefinition>().toEqualTypeOf<'/my/path'>()
     const layout = root.lets('layout', 'layout', '/:x').layout(({ children }) => {
       return <div>{children}</div>
     })
     const page = layout.lets('page', 'test', '/:y').page()
-    expect(page.route({ y: '123', x: '456' })).toBe('/456/123')
+    expect(page.route({ y: '123', x: '456' })).toBe('/my/path/456/123')
     expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/my/path/:x/:y'>()
   })
 
-  it('baseurl path https://example.com with basepath my/path is used to extend route', async () => {
-    const root = Point0.lets('root', 'root').baseurl('https://example.com', 'my/path').root()
-    expectTypeOf<typeof root.Infer.RouteDefinition>().toEqualTypeOf<'/my/path'>()
+  it('basepath /my/path/extra is used to extend route', async () => {
+    const root = Point0.lets('root', 'root').basepath('/my/path/extra').root()
+    expectTypeOf<typeof root.Infer.RouteDefinition>().toEqualTypeOf<'/my/path/extra'>()
     const layout = root.lets('layout', 'layout', '/:x').layout(({ children }) => {
       return <div>{children}</div>
     })
     const page = layout.lets('page', 'test', '/:y').page()
-    expect(page.route({ y: '123', x: '456' })).toBe('/456/123')
-    expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/my/path/:x/:y'>()
+    expect(page.route({ y: '123', x: '456' })).toBe('/my/path/extra/456/123')
+    expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/my/path/extra/:x/:y'>()
+  })
+
+  it('basepath with params or search params not allowed', async () => {
+    // @ts-expect-error - it is bad
+    Point0.lets('root', 'root').basepath('/my/:id').root()
+    // @ts-expect-error - it is bad
+    Point0.lets('root', 'root').basepath('/my&id').root()
   })
 })

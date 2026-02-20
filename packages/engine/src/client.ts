@@ -9,7 +9,7 @@ import type {
   PointsDefinitionSource,
   PointsScope,
 } from '@point0/core'
-import { ClientPoints, env, getBasepathOrNull, getHostOrNull } from '@point0/core'
+import { ClientPoints, env, getHostOrNull } from '@point0/core'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
@@ -52,7 +52,6 @@ export class EngineClient<TPrepared extends boolean = boolean> {
   appProvided: EngineOptionsAppComponent | null
   App: TPrepared extends true ? AppComponent | null : undefined
   // appDistFile: string | null
-  // TODO: baseurl get from root point, and remove from config
   baseurl: string | null
   basepath: string | null
   host: string | null
@@ -90,6 +89,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     pointsProvided: PointsDefinitionSource | null
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
+    baseurl: string | null
     indexHtml: string | null
     // indexHtmlDistFile: string | null
     engineFile: string | null
@@ -121,7 +121,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     this.pointsProvided = input.pointsProvided
     this.appProvided = input.appProvided
     // this.appDistFile = input.appDistFile
-    this.baseurl = null
+    this.baseurl = input.baseurl
     this.basepath = null
     this.host = null
     this.indexHtml = input.indexHtml
@@ -165,6 +165,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     // pointsDistFile: string | null
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
+    baseurl: string | null
     publicdir: {
       source: PublicdirDefinition
       outdir: string
@@ -268,9 +269,12 @@ export class EngineClient<TPrepared extends boolean = boolean> {
 
     const points = await this.readClientPoints()
 
-    this.baseurl = points?.baseurl ?? null
-    this.basepath = getBasepathOrNull(this.baseurl)
+    this.basepath = points?.basepath ?? null
     this.host = getHostOrNull(this.baseurl)
+    if (points) {
+      points.baseurl = this.baseurl
+      points.host = this.host
+    }
 
     await this.readAppComponent()
 

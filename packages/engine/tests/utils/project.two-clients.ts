@@ -108,8 +108,9 @@ export class TestProjectTwoClient {
   async init() {
     await this.createTempDir()
     await this.copyTemplateToTempDir()
-    await this.replace(this.files.packageJson, 'test-project-name', this.name)
+    await this.replace(this.files.packageJson, 'test-two-clients', this.name)
     await this.replace(this.files.engine, '// port: server,', `port: ${this.serverPort},`)
+    // await this.replace(this.files.engine, '// baseurl: server,', `baseurl: '${localhost}:${this.serverPort}',`)
     await this.replace(
       this.files.engine,
       '// hmrPort: server,',
@@ -162,11 +163,27 @@ export class TestProjectTwoClient {
       )
     }
     const baseurl1 =
-      this.baseurl1 === true ? `http://localhost:${this.client1Port}` : this.baseurl1 === false ? false : this.baseurl1
-    await this.replace(this.files.root1, `.baseurl('/')`, baseurl1 ? `.baseurl('${baseurl1}')` : '')
+      this.baseurl1 === true ? `http://localhost:${this.client1Port}` : this.baseurl1 === false ? null : this.baseurl1
     const baseurl2 =
-      this.baseurl2 === true ? `http://localhost:${this.client2Port}` : this.baseurl2 === false ? false : this.baseurl2
-    await this.replace(this.files.root2, `.baseurl('/')`, baseurl2 ? `.baseurl('${baseurl2}')` : '')
+      this.baseurl2 === true ? `http://localhost:${this.client2Port}` : this.baseurl2 === false ? null : this.baseurl2
+
+    const basepath1 =
+      typeof baseurl1 === 'string' ? (baseurl1.startsWith('http') ? new URL(baseurl1).pathname || '/' : baseurl1) : '/'
+    const basepath2 =
+      typeof baseurl2 === 'string' ? (baseurl2.startsWith('http') ? new URL(baseurl2).pathname || '/' : baseurl2) : '/'
+
+    if (basepath1 && basepath1 !== '/') {
+      await this.replace(this.files.root1, `.basepath('/')`, `.basepath('${basepath1}')`)
+    }
+    if (basepath2 && basepath2 !== '/') {
+      await this.replace(this.files.root2, `.basepath('/')`, `.basepath('${basepath2}')`)
+    }
+    if (baseurl1) {
+      await this.replace(this.files.engine, `// baseurl: client1,`, `baseurl: '${baseurl1}',`)
+    }
+    if (baseurl2) {
+      await this.replace(this.files.engine, `// baseurl: client2,`, `baseurl: '${baseurl2}',`)
+    }
     if (!this.superjson1) {
       await this.replace(this.files.root1, '.transformer(superjson)', '// .transformer(superjson)')
     }

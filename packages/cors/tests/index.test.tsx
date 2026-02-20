@@ -8,7 +8,7 @@ import { cors } from '../src/index.js'
 
 describe('cors', () => {
   const prepare = async (options?: Parameters<typeof cors>[0]) => {
-    const root = Point0.lets('root', 'root').baseurl('http://localhost:3001/').use(cors(options)).root()
+    const root = Point0.lets('root', 'root').use(cors(options)).root()
     const page = root
       .lets('page', 'home', '/')
       .loader(({ request }) => ({ headers: request.headers }))
@@ -23,7 +23,7 @@ describe('cors', () => {
       })
     const tt = await createTestThings({ points: [root, page] })
     const fetch = async (options?: RequestInit) => {
-      return await tt.fetch(page.route.flat({}, true), options)
+      return await tt.fetch(page.route.flat({}, 'http://localhost:3001'), options)
     }
     return { root, page, fetch }
   }

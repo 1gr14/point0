@@ -59,7 +59,8 @@ export class EngineServer<TPrepared extends boolean = boolean> {
   outdir: string | null
   bunBuildConfig: EngineServerBuildConfigDefinition
   bunPlugins: EngineServerPluginsDefinition
-  baseurl: TPrepared extends true ? string | null : undefined
+  // baseurl is for publicdir only
+  baseurl: string | null
   prepared: TPrepared
   bunPluginsLoaded = false
   bunServer: Bun.Server<unknown> | undefined
@@ -91,6 +92,7 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
+    baseurl: string | null
     viteConfig: EngineOptionsViteConfig | null
     viteDevServer: ViteDevServer | null
     hmrPort: number | false
@@ -125,7 +127,7 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     this.hmrPort = input.hmrPort
     this.portPolicy = input.portPolicy
     this.compiler = input.compiler
-    this.baseurl = undefined as TPrepared extends true ? string | null : undefined
+    this.baseurl = input.baseurl
     this.fetcher = null as TPrepared extends true ? Fetcher : null
   }
 
@@ -138,6 +140,7 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     itWasBuilt: boolean
     port: number
     entry: Record<string, string> | null
+    baseurl: string | null
     publicdir: {
       source: PublicdirDefinition
       outdir: string
@@ -215,7 +218,6 @@ export class EngineServer<TPrepared extends boolean = boolean> {
       this.loadBunPlugins({ built: env.build.was }).then(async () => await this.readServerPoints()),
       this.publicdir ? this.publicdir.prepare() : Promise.resolve(),
     ])
-    this.baseurl = (points?.baseurl ?? null) as TPrepared extends true ? string | null : undefined
     if (this.publicdir) {
       this.publicdir.host = getHostOrNull(this.baseurl)
     }

@@ -11,7 +11,6 @@ export const client = Point0.lets<{ zxc: number }>('root', 'client')
     env: process.env,
     Bun,
   })
-  .baseurl('/')
   // .Infer['Ctx']
   .ctx([{ oklmn: 123 }])
   // .Infer.Ctx

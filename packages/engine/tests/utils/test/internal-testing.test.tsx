@@ -11,7 +11,6 @@ describe('internal-testing', () => {
   it('works', async () => {
     const root = Point0.lets('root', 'root')
       .ssr(true)
-      .baseurl('http://localhost:3001/')
       .queryOptions({ refetchOnMount: false, staleTime: Infinity })
       .prefetchPageOnNavigate(false)
       .prefetchPageOnLinkHover(false)
