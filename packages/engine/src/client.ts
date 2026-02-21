@@ -10,6 +10,7 @@ import type {
   PointsScope,
 } from '@point0/core'
 import { ClientPoints, env } from '@point0/core'
+import type { Request0 } from '@point0/core/request0'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
@@ -19,6 +20,7 @@ import type {
   EngineOptionsAppComponent,
   EngineOptionsCompilerSpecificParsed,
   EngineOptionsEnvParsed,
+  EngineOptionsServing,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
   PortPolicy,
@@ -53,7 +55,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
   App: TPrepared extends true ? AppComponent | null : undefined
   // appDistFile: string | null
   basepath: string | null
-  host: string | null
+  serving: EngineOptionsServing
   indexHtml: string | null
   // indexHtmlDistFile: string | null
   domRootElementId: string
@@ -88,7 +90,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     pointsProvided: PointsDefinitionSource | null
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
-    host: string | null
+    serving: EngineOptionsServing
     indexHtml: string | null
     // indexHtmlDistFile: string | null
     engineFile: string | null
@@ -121,7 +123,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     this.appProvided = input.appProvided
     // this.appDistFile = input.appDistFile
     this.basepath = null
-    this.host = input.host
+    this.serving = input.serving
     this.indexHtml = input.indexHtml
     // this.indexHtmlDistFile = input.indexHtmlDistFile
     this.distIndexHtmlContent = input.distIndexHtmlContent
@@ -163,7 +165,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     // pointsDistFile: string | null
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
-    host: string | null
+    serving: EngineOptionsServing
     publicdir: {
       source: PublicdirDefinition
       outdir: string
@@ -193,7 +195,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
 
     const publicdir = input.publicdir
       ? Publicdir.create({
-          host: input.host,
+          serving: input.serving,
           source: input.publicdir.source,
           outdir: input.publicdir.outdir,
           scope: input.scope,
@@ -268,9 +270,6 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     const points = await this.readClientPoints()
 
     this.basepath = points?.basepath ?? null
-    if (points) {
-      points.host = this.host
-    }
 
     await this.readAppComponent()
 
@@ -315,10 +314,23 @@ export class EngineClient<TPrepared extends boolean = boolean> {
 
   isPageLocationSuitable = ({ pageLocation }: { pageLocation: AnyLocation }): boolean => {
     return ClientPoints.isPageLocationSuitable({
-      host: this.host,
+      host: null,
       basepath: this.basepath,
       pageLocation,
     })
+  }
+
+  isServingRequest = ({ request }: { request: Request0 }): boolean => {
+    if (this.serving === false) {
+      return false
+    }
+    if (this.serving === true) {
+      return true
+    }
+    if (typeof this.serving === 'string') {
+      return request.location.host === this.serving
+    }
+    return this.serving({ request })
   }
 
   async startDevServer(): Promise<void> {

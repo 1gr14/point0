@@ -238,7 +238,7 @@ export class Fetcher {
       if (process.env.NODE_ENV === 'production') {
         return undefined
       }
-      const thatClient = this.engine.clients.find((c) => c.scope === scope)
+      const thatClient = this.server.clients.find((c) => c.scope === scope)
       if (!thatClient) {
         return undefined
       }
@@ -246,7 +246,7 @@ export class Fetcher {
       const currentPort = Number(request.location.port)
       const currentClient = Number.isNaN(currentPort)
         ? undefined
-        : this.engine.clients.find((c) => c.port === currentPort)
+        : this.server.clients.find((c) => c.port === currentPort)
 
       if (currentClient === thatClient) {
         return undefined
@@ -374,11 +374,11 @@ export class Fetcher {
     const pageLocation = request.location
 
     const foundExactPage = await (async () => {
-      for (const client of this.engine.clients) {
+      for (const client of this.server.clients) {
         if (!client.points) {
           continue
         }
-        if (client.host && pageLocation.host !== client.host) {
+        if (!client.isServingRequest({ request })) {
           continue
         }
         const found = await client.points.loadPage({ location: pageLocation })
@@ -443,9 +443,9 @@ export class Fetcher {
     }
 
     const foundSuitableClient = await (async () => {
-      for (const client of this.engine.clients) {
+      for (const client of this.server.clients) {
         // we can not do nothing wit this client on server if it has no indexHtml
-        if (!client.indexHtml) {
+        if (!client.isServingRequest({ request })) {
           continue
         }
         if (client.isPageLocationSuitable({ pageLocation })) {

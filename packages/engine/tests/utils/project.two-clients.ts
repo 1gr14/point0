@@ -116,7 +116,7 @@ export class TestProjectTwoClient {
     await this.copyTemplateToTempDir()
     await this.replace(this.files.packageJson, 'test-two-clients', this.name)
     await this.replace(this.files.engine, '// port: server,', `port: ${this.serverPort},`)
-    // await this.replace(this.files.engine, '// host: server,', `host: 'localhost:${this.serverPort}',`)
+    // await this.replace(this.files.engine, '// serving: client1,', `serving: 'localhost:${this.client1Port}',`)
     await this.replace(
       this.files.engine,
       '// hmrPort: server,',
@@ -171,10 +171,10 @@ export class TestProjectTwoClient {
     const host1 = this.host1 === true ? `localhost:${this.client1Port}` : this.host1 === false ? null : this.host1
     const host2 = this.host2 === true ? `localhost:${this.client2Port}` : this.host2 === false ? null : this.host2
     if (host1) {
-      await this.replace(this.files.engine, `// host: client1,`, `host: '${host1}',`)
+      await this.replace(this.files.engine, `// serving: client1,`, `serving: '${host1}',`)
     }
     if (host2) {
-      await this.replace(this.files.engine, `// host: client2,`, `host: '${host2}',`)
+      await this.replace(this.files.engine, `// serving: client2,`, `serving: '${host2}',`)
     }
     if (this.basepath1) {
       await this.replace(

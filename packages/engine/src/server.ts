@@ -59,7 +59,6 @@ export class EngineServer<TPrepared extends boolean = boolean> {
   outdir: string | null
   bunBuildConfig: EngineServerBuildConfigDefinition
   bunPlugins: EngineServerPluginsDefinition
-  host: string | null
   prepared: TPrepared
   bunPluginsLoaded = false
   bunServer: Bun.Server<unknown> | undefined
@@ -91,7 +90,6 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
-    host: string | null
     viteConfig: EngineOptionsViteConfig | null
     viteDevServer: ViteDevServer | null
     hmrPort: number | false
@@ -126,7 +124,6 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     this.hmrPort = input.hmrPort
     this.portPolicy = input.portPolicy
     this.compiler = input.compiler
-    this.host = input.host
     this.fetcher = null as TPrepared extends true ? Fetcher : null
   }
 
@@ -139,7 +136,6 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     itWasBuilt: boolean
     port: number
     entry: Record<string, string> | null
-    host: string | null
     publicdir: {
       source: PublicdirDefinition
       outdir: string
@@ -159,7 +155,7 @@ export class EngineServer<TPrepared extends boolean = boolean> {
   }): EngineServer<false> {
     const publicdir = input.publicdir
       ? Publicdir.create({
-          host: input.host,
+          serving: true,
           source: input.publicdir.source,
           outdir: input.publicdir.outdir,
           scope: input.scope,

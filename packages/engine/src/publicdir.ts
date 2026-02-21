@@ -26,9 +26,10 @@ async function* getAllFiles(dirPath: string): AsyncGenerator<string> {
 export type PublicdirDefinition = Array<[string, string | Response | (() => Response | Promise<Response>)]>
 export type PublicdirFileDefinition = string | Response | (() => Response | Promise<Response>)
 export type PublicdirFilesDefinition = Map<string, PublicdirFileDefinition>
+export type PublicdirServing = boolean | string | ((options: { request: Request0 }) => boolean)
 
 export class Publicdir<TPrepared extends boolean = boolean> {
-  host: string | null
+  serving: PublicdirServing
   source: PublicdirDefinition
   // <fileRoutePath, fileAbsPath | fileResponseOrFn>
   files: PublicdirFilesDefinition
@@ -41,14 +42,14 @@ export class Publicdir<TPrepared extends boolean = boolean> {
 
   private constructor(input: {
     prepared: TPrepared
-    host: string | null
+    serving: PublicdirServing
     source: PublicdirDefinition
     scope: PointsScope
     outdir: string | null
     server: TPrepared extends true ? EngineServer<true> | null : EngineServer<false> | null
     client: TPrepared extends true ? EngineClient<true> | null : EngineClient<false> | null
   }) {
-    this.host = input.host
+    this.serving = input.serving
     this.source = input.source
     this.files = new Map<string, PublicdirFileDefinition>()
     this.scope = input.scope
@@ -59,7 +60,7 @@ export class Publicdir<TPrepared extends boolean = boolean> {
   }
 
   static create(input: {
-    host: string | null
+    serving: PublicdirServing
     source: PublicdirDefinition
     scope: PointsScope
     outdir: string | null
@@ -117,7 +118,7 @@ export class Publicdir<TPrepared extends boolean = boolean> {
       throw new Error('Publicdir is not prepared')
     }
 
-    if (this.host && request.location.host !== this.host) {
+    if (!this.isServingRequest({ request })) {
       return undefined
     }
     const fileAbsPathOrResponseOrFn = this.files.get(request.location.pathname)
@@ -133,6 +134,19 @@ export class Publicdir<TPrepared extends boolean = boolean> {
           : fileAbsPathOrResponseOrFn.clone()
 
     return response
+  }
+
+  isServingRequest({ request }: { request: Request0 }): boolean {
+    if (this.serving === false) {
+      return false
+    }
+    if (this.serving === true) {
+      return true
+    }
+    if (typeof this.serving === 'string') {
+      return request.location.host === this.serving
+    }
+    return this.serving({ request })
   }
 
   async clean(): Promise<boolean> {
@@ -203,5 +217,5 @@ export class Publicdir<TPrepared extends boolean = boolean> {
     return await Promise.all(fileOperations)
   }
 
-  // TODO: add static checkConflicts(publicdirs: Publicdir[]): throw error if same files paths are used in different public dirs with same host
+  // TODO: add static checkConflicts(publicdirs: Publicdir[]): throw error if same files paths are used in different public dirs with same serving
 }

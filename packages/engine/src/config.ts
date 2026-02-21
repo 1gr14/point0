@@ -11,6 +11,7 @@ import type {
   PointsScope,
   RequiredCtx,
 } from '@point0/core'
+import type { Request0 } from '@point0/core/request0'
 import { prependAndDeappendSlash } from '@point0/core'
 import { minimatch } from 'minimatch'
 import { type CompilerEnvConsts, normalizeEnvConsts } from '../../compiler/dist/utils.js'
@@ -116,6 +117,7 @@ export type EngineOptionsCompilerSpecificParsed = {
 }
 
 export type PortPolicy = 'kill' | 'auto' | 'simple'
+export type EngineOptionsServing = boolean | string | ((options: { request: Request0 }) => boolean)
 
 export type EngineGeneralOptions = {
   file: string
@@ -140,7 +142,6 @@ export type EngineGeneralOptions = {
 export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   scope: PointsScope
   points?: PointsDefinitionSource<TRequiredCtx>
-  host?: string | null
   generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
   publicdir?: {
     source: EngineOptionsPublicdir
@@ -166,7 +167,7 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   // TODO: allow empty points
   // TODO: allow points collection
   points?: PointsDefinitionSource<TRequiredCtx>
-  host?: string | null
+  serving?: EngineOptionsServing
   generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
   app?: EngineOptionsAppComponent
   publicdir?: {
@@ -364,7 +365,7 @@ export type EngineClientOptionsParsed = {
   scope: PointsScope
   engineFile: string
   pointsProvided: PointsDefinitionSource | null
-  host: string | null
+  serving: EngineOptionsServing
   banner: string | null
   generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
   routesProvided: EngineOptionsRoutes | null
@@ -394,7 +395,6 @@ export type EngineClientOptionsParsed = {
 export type EngineServerOptionsParsed = {
   scope: PointsScope
   pointsProvided: PointsDefinitionSource | null
-  host: string | null
   banner: string | null
   generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
   routesProvided: EngineOptionsRoutes | null
@@ -835,7 +835,6 @@ export const parseEngineServerOptions = ({
   return {
     scope: serverOptions.scope,
     pointsProvided: serverOptions.points ?? null,
-    host: serverOptions.host ?? null,
     port,
     hmrPort,
     outdir,
@@ -961,7 +960,7 @@ const parseEngineClientOptions = ({
     scope: clientOptions.scope,
     compiler,
     pointsProvided: clientOptions.points ?? null,
-    host: clientOptions.host ?? null,
+    serving: clientOptions.serving ?? true,
     routesProvided: clientOptions.routes ?? null,
     generate: (clientOptions.generate ?? []).map((task) => {
       const baseTask = {

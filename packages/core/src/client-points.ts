@@ -29,7 +29,6 @@ export class ClientPoints {
   manager: PointsManager
 
   basepath: string
-  host: string | null
   ssr: boolean
   middlewares: MiddlewareFn[]
   transformer: DataTransformerExtended
@@ -46,7 +45,6 @@ export class ClientPoints {
     pagesTreeSource,
     pagesTree,
     basepath,
-    host,
     ssr,
     middlewares,
     transformer,
@@ -57,7 +55,6 @@ export class ClientPoints {
     pagesTreeSource: PagesTreeSource
     pagesTree: PagesTree
     basepath: string
-    host: string | null
     ssr: boolean
     middlewares: MiddlewareFn[]
     transformer: DataTransformerExtended
@@ -68,7 +65,6 @@ export class ClientPoints {
     this.pagesTreeSource = pagesTreeSource
     this.pagesTree = pagesTree
     this.basepath = basepath
-    this.host = host
     this.ssr = ssr
     this.middlewares = middlewares
     this.transformer = transformer
@@ -94,7 +90,6 @@ export class ClientPoints {
     const routesHash = routes._.pathsOrdering.join(',')
 
     const basepath = root._basepath ?? '/'
-    const host = null
     const ssr = root._ssr
     const middlewares = root._middlewares
     const transformer = root._getTransformer()
@@ -106,7 +101,6 @@ export class ClientPoints {
       pagesTreeSource,
       pagesTree,
       basepath,
-      host,
       ssr,
       middlewares,
       transformer,
@@ -460,17 +454,12 @@ export class ClientPoints {
   }
 
   static isPageLocationSuitable = ({
-    host,
     basepath,
     pageLocation,
   }: {
-    host: string | null
     basepath: string | null
     pageLocation: AnyLocation
   }): boolean => {
-    if (host && pageLocation.host && pageLocation.host !== host) {
-      return false
-    }
     if (basepath) {
       if (pageLocation.pathname === basepath) {
         return true
@@ -484,7 +473,6 @@ export class ClientPoints {
   }
   isPageLocationSuitable = ({ pageLocation }: { pageLocation: AnyLocation }): boolean => {
     return ClientPoints.isPageLocationSuitable({
-      host: this.host,
       basepath: this.basepath,
       pageLocation,
     })

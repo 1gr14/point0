@@ -76,7 +76,8 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared ex
       return client
     })
 
-    server.clients = clients
+    const serverClients = clients.filter((client) => client.serving !== false)
+    server.clients = serverClients
 
     const generator = FilesGenerator.create({
       logger: parsedOptions.general.logger,
@@ -86,7 +87,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared ex
       tasks: [...parsedOptions.server.generate, ...parsedOptions.clients.flatMap((client) => client.generate)],
     })
 
-    const publicdirs = [server.publicdir, ...clients.map((client) => client.publicdir)].flatMap((publicdir) =>
+    const publicdirs = [server.publicdir, ...serverClients.map((client) => client.publicdir)].flatMap((publicdir) =>
       publicdir ? [publicdir] : [],
     )
     server.publicdirs = publicdirs
@@ -111,6 +112,9 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared ex
     await this.server.prepare({ engine: this as Engine<TRequiredCtx, true> })
     await Promise.all(
       this.clients.map(async (client) => {
+        if (client.serving === false) {
+          return
+        }
         return await client.prepare({
           preventDevServer: preventClientDevServers,
         })
@@ -124,6 +128,9 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared ex
   async serveClientDevServers(): Promise<void> {
     await Promise.all(
       this.clients.map(async (client) => {
+        if (client.serving === false) {
+          return
+        }
         await client.startDevServer()
       }),
     )
