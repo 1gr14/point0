@@ -24,7 +24,7 @@ import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
 import { resolvePortByPolicy } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
-import { Publicdir, PublicdirCache } from './publicdir.js'
+import { Publicdir } from './publicdir.js'
 import { ServerPoints } from './server-points.js'
 import type { EngineServerBuildConfigDefinition, EngineServerPluginsDefinition } from './utils.js'
 import {
@@ -56,7 +56,6 @@ export class EngineServer<TPrepared extends boolean = boolean> {
   publicdir: TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
   // it is collection of server itself public dir and all its clients public dirs
   publicdirs: TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
-  staticCache: PublicdirCache | null
   outdir: string | null
   bunBuildConfig: EngineServerBuildConfigDefinition
   bunPlugins: EngineServerPluginsDefinition
@@ -88,8 +87,6 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     envVars: EngineOptionsEnvParsed
     entry: Record<string, string> | null
     publicdir: Publicdir<false> | null
-    staticCacheLimit: number | boolean
-    staticCache: PublicdirCache | null
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
@@ -118,7 +115,6 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     this.entry = input.entry
     this.publicdir = input.publicdir as TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
     this.publicdirs = [] as unknown as TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
-    this.staticCache = input.staticCache
     this.outdir = input.outdir
     this.bunBuildConfig = input.bunBuildConfig
     this.bunPlugins = input.bunPlugins
@@ -143,8 +139,8 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     publicdir: {
       source: PublicdirDefinition
       outdir: string
+      cacheLimit: number | boolean
     } | null
-    staticCacheLimit: number | boolean
     envConsts: EngineOptionsEnvParsed
     envVars: EngineOptionsEnvParsed
     outdir: string | null
@@ -158,14 +154,12 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     serveRetries: number
     compiler: EngineOptionsCompilerSpecificParsed | false
   }): EngineServer<false> {
-    const staticCacheCandidate = PublicdirCache.create({ limit: input.staticCacheLimit })
-    const staticCache = staticCacheCandidate.limit > 0 ? staticCacheCandidate : null
     const publicdir = input.publicdir
       ? Publicdir.create({
           serving: true,
           source: input.publicdir.source,
           outdir: input.publicdir.outdir,
-          cache: staticCache,
+          cacheLimit: input.publicdir.cacheLimit,
           scope: input.scope,
           server: null,
           client: null,
@@ -177,7 +171,6 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     const server = new EngineServer<false>({
       ...input,
       publicdir,
-      staticCache,
       prepared: false,
       viteDevServer,
     })

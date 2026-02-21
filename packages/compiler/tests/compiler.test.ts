@@ -106,7 +106,7 @@ export const root = Point0.lets('root', 'root').root()
         const compiler = Compiler.create({ side: 'client', scope: 'test', hmrFix: true })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.code).toContain('._tail(() =>')
+        expect(result.code).toContain('._tail(function X() {')
       }),
     )
 

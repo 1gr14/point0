@@ -169,6 +169,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     publicdir: {
       source: PublicdirDefinition
       outdir: string
+      cacheLimit: number | boolean
     } | null
     outdir: string | null
     bunBuildConfig: EngineClientBuildConfigDefinition
@@ -198,7 +199,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
           serving: input.serving,
           source: input.publicdir.source,
           outdir: input.publicdir.outdir,
-          cache: input.server.staticCache,
+          cacheLimit: input.publicdir.cacheLimit,
           scope: input.scope,
           server: null,
           client: null,

@@ -4,6 +4,15 @@ import { _point0_env } from './env.js'
 import { _ssItems } from './internals.js'
 import type { InputParsed, InputRawUnknown, InputSchema, UndefinedInputSchema } from './types.js'
 
+const decodeCookieValue = (value: string): string => {
+  const unquoted = value.startsWith('"') ? value.slice(1, -1) : value
+  try {
+    return unquoted.replace(/(%[\dA-F]{2})+/gi, decodeURIComponent)
+  } catch {
+    return unquoted
+  }
+}
+
 export class Request0<
   TInputWasExtracted extends boolean = boolean,
   // TODO:ASAP do we really need input here?
@@ -80,9 +89,15 @@ export class Request0<
     const cookieHeader = original.headers.get('cookie')
     if (cookieHeader) {
       cookieHeader.split(';').forEach((cookie) => {
-        const [name, ...valueParts] = cookie.trim().split('=')
-        if (name) {
-          cookies[name] = valueParts.join('=')
+        const [rawName, ...valueParts] = cookie.trim().split('=')
+        if (rawName) {
+          try {
+            const name = decodeURIComponent(rawName)
+            const value = decodeCookieValue(valueParts.join('='))
+            cookies[name] = value
+          } catch {
+            cookies[rawName] = valueParts.join('=')
+          }
         }
       })
     }

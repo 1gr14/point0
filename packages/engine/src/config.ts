@@ -146,8 +146,8 @@ export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   publicdir?: {
     source: EngineOptionsPublicdir
     outdir: string
+    cacheLimit?: number | boolean
   }
-  staticCacheLimit?: number | boolean
   env?: { vars?: EngineOptionsEnvStrict; consts?: EngineOptionsEnvWide }
   port?: number | string
   outdir?: string
@@ -174,6 +174,7 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   publicdir?: {
     source: EngineOptionsPublicdir
     outdir: string
+    cacheLimit?: number | boolean
   }
   indexHtml?: string
   domRootElementId?: string
@@ -389,6 +390,7 @@ export type EngineClientOptionsParsed = {
   publicdir: {
     source: PublicdirDefinition
     outdir: string
+    cacheLimit: number | boolean
   } | null
   portPolicy: PortPolicy
   serveRetries: number
@@ -407,8 +409,8 @@ export type EngineServerOptionsParsed = {
   publicdir: {
     source: PublicdirDefinition
     outdir: string
+    cacheLimit: number | boolean
   } | null
-  staticCacheLimit: number | boolean
   engineFile: string
   cwdBeforeBuild: string
   itWasBuilt: boolean
@@ -777,12 +779,13 @@ export const parseEngineServerOptions = ({
         ? [['/', publicdirOutdir]]
         : []
   const publicdir = publicdirOutdir ? { source: publicdirSource, outdir: publicdirOutdir } : null
-  const staticCacheLimit =
-    serverOptions.staticCacheLimit === false || serverOptions.staticCacheLimit === 0
+  const publicdirCacheLimitInput = serverOptions.publicdir?.cacheLimit
+  const publicdirCacheLimit =
+    publicdirCacheLimitInput === false || publicdirCacheLimitInput === 0
       ? 0
-      : serverOptions.staticCacheLimit === true || typeof serverOptions.staticCacheLimit === 'undefined'
+      : publicdirCacheLimitInput === true || typeof publicdirCacheLimitInput === 'undefined'
         ? true
-        : Math.max(0, Math.floor(serverOptions.staticCacheLimit))
+        : Math.max(0, Math.floor(publicdirCacheLimitInput))
   const entriesRecord = entriesRecordInput
     ? Object.fromEntries(
         Object.entries(entriesRecordInput).map(([key, value]) => [
@@ -847,8 +850,7 @@ export const parseEngineServerOptions = ({
     hmrPort,
     outdir,
     entry: entriesRecord,
-    publicdir,
-    staticCacheLimit,
+    publicdir: publicdir ? { ...publicdir, cacheLimit: publicdirCacheLimit } : null,
     engineFile: generalOptionsParsed.engineFile,
     cwdBeforeBuild: generalOptionsParsed.cwdBeforeBuild,
     itWasBuilt: generalOptionsParsed.itWasBuilt,
@@ -915,7 +917,16 @@ const parseEngineClientOptions = ({
       : publicdirOutdir && clientOptions.publicdir?.source
         ? [['/', publicdirOutdir]]
         : []
-  const publicdir = publicdirOutdir ? { source: publicdirSource, outdir: publicdirOutdir } : null
+  const publicdirCacheLimitInput = clientOptions.publicdir?.cacheLimit
+  const publicdirCacheLimit =
+    publicdirCacheLimitInput === false || publicdirCacheLimitInput === 0
+      ? 0
+      : publicdirCacheLimitInput === true || typeof publicdirCacheLimitInput === 'undefined'
+        ? true
+        : Math.max(0, Math.floor(publicdirCacheLimitInput))
+  const publicdir = publicdirOutdir
+    ? { source: publicdirSource, outdir: publicdirOutdir, cacheLimit: publicdirCacheLimit }
+    : null
   const generalOptionsParsedCompilerRecord =
     typeof generalOptionsParsed.compiler === 'object' && generalOptionsParsed.compiler !== null
       ? generalOptionsParsed.compiler

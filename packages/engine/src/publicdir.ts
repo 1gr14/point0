@@ -140,12 +140,18 @@ export class Publicdir<TPrepared extends boolean = boolean> {
     source: PublicdirDefinition
     scope: PointsScope
     outdir: string | null
-    cache: PublicdirCache | null
+    cacheLimit?: number | boolean
     server: EngineServer<false> | null
     client: EngineClient<false> | null
   }): Publicdir<false> {
+    const cacheCandidate = PublicdirCache.create({ limit: input.cacheLimit ?? true })
+    const cache = cacheCandidate.limit > 0 ? cacheCandidate : null
     return new Publicdir<false>({
-      ...input,
+      serving: input.serving,
+      source: input.source,
+      scope: input.scope,
+      outdir: input.outdir,
+      cache,
       prepared: false,
       server: input.server,
       client: input.client,

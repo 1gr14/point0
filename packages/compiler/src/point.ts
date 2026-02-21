@@ -1012,9 +1012,10 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       // Otherwise, continue to add HMR fix (last method matches pointType and has no args)
     }
 
-    // Create the function: () => { return null }
-    const makeArrowFunctionExpressionReturnNull = () => ({
-      type: 'ArrowFunctionExpression' as const,
+    // Create the function: function X() { return null }
+    const makeFunctionExpressionReturnNull = () => ({
+      type: 'FunctionExpression' as const,
+      id: { type: 'Identifier' as const, name: 'X' },
       params: [],
       body: {
         type: 'BlockStatement' as const,
@@ -1038,7 +1039,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     const hmrCallExpression = {
       type: 'CallExpression' as const,
       callee: hmrMemberExpression,
-      arguments: [makeArrowFunctionExpressionReturnNull()],
+      arguments: [makeFunctionExpressionReturnNull()],
       optional: false,
     }
 

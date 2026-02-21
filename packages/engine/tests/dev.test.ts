@@ -155,7 +155,7 @@ describe('dev', () => {
     // Sad, becouse it is main thing and sometimes failed... But in real it works
     it(
       'have hmr client updates',
-      wrp({ ssr: true, clientHmr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
+      wrp({ ssr: true, clientHmr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
         await tp.waitPortsFree()
         expect(engine.server.hmrPort).toBeFalse()
         expect(engine.clients[0].hmrPort).toBeNumber()
@@ -163,6 +163,10 @@ describe('dev', () => {
           'src/page.tsx',
           `import { root } from './lib/root.js'
           import { useState } from 'react'
+        export const incrementMutation = root.lets('mutation', 'incrementMutation')
+          .loader(() => {
+            return { one: 1 }
+          }).mutation()
         export const page = root.lets('page', 'home', '/')
           .wrapper(({children}) => {
             const [countWrapper, setCountWrapper] = useState(0)
@@ -176,10 +180,15 @@ describe('dev', () => {
           })
           .page(() => {
             const [countPage, setCountPage] = useState(0)
+            const increment = incrementMutation.useMutation()
             return (
               <div>
                 Hop {countPage}
-                <button id="page-button" onClick={() => setCountPage(countPage + 1)}>Click</button>
+                <button id="page-button" onClick={() => {
+                  increment.mutateAsync()
+                    .then((res) => setCountPage(countPage + res.one))
+                    .catch((err) => console.error(err))
+                }}>Click</button>
               </div>
             )
           })`,
@@ -197,8 +206,9 @@ describe('dev', () => {
         await page.waitContent('Hay 1')
         await page.waitContent('Wrapper 2')
         await tp.replace('src/page.tsx', 'Wrapper', 'Wrapperok')
-        await page.original.click('button#page-button')
         await page.waitContent('Wrapperok')
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        await page.original.click('button#page-button')
         expect(page.history.length).toBe(1)
         if (bundler === 'vite') {
           // after this vite loose state, but in real browser it works like normal hmr, so idk, it works, just skip test for vite here
@@ -209,6 +219,7 @@ describe('dev', () => {
         await tp.replace('src/page.tsx', 'Hay', 'La La Lay')
         await page.waitContent('La La Lay 2')
         await page.waitContent('Wrapperok 2')
+        await new Promise((resolve) => setTimeout(resolve, 1000))
         await page.original.click('button#page-button')
         await page.waitContent('La La Lay 3')
         await page.waitContent('Wrapperok 2')

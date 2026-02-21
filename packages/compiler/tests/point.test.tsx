@@ -1399,7 +1399,7 @@ export const root = Point0.lets('root', 'root').root()
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root')
               .root()
-              ._tail(() => {
+              ._tail(function X() {
                 return null
               })
             "
@@ -1423,7 +1423,7 @@ export const page = root.lets('page', 'page', '/').page()
             export const page = root
               .lets('page', 'page', '/')
               .page()
-              ._tail(() => {
+              ._tail(function X() {
                 return null
               })
             "
@@ -1504,7 +1504,7 @@ export const page = root
                 .error(RootRootError)
                 .page(() => <div>Hello</div>)
                 .root()
-                ._tail(() => {
+                ._tail(function X() {
                   return null
                 })
               function PageHomeWrapper() {
@@ -1690,7 +1690,7 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() 
               .ctx(() => ({ a: 1 }))
               .loader(() => ({ b: 2 }))
               .root()
-              ._tail(() => {
+              ._tail(function X() {
                 return null
               })
             "
@@ -1712,7 +1712,7 @@ export const root = Point0.lets('root', 'root').root()
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root')
               .root()
-              ._tail(() => {
+              ._tail(function X() {
                 return null
               })
             "
@@ -1735,7 +1735,7 @@ export const root = Point0.lets('root', 'root').root()
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root')
               .root()
-              ._tail(() => {
+              ._tail(function X() {
                 return null
               })
             "

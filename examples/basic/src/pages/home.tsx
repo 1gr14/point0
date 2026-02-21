@@ -147,7 +147,7 @@ export default generalLayout
             //   })
           }}
         >
-          Click mexzzx
+          Click mex
         </button>
         <p>State: {state}</p>
         <p>State2: {state2}</p>
