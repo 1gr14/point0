@@ -44,8 +44,6 @@ launch
 
 
 === REFACTOING 3000 ===
-тест енва на вложенный дефайн, он оба схлопнет?
-+++
 Error0
 Логгер может принимать как готовый логгер, так и функцию разруливающую логи принимающую левел категорию аргументы
 normzliae all errors texts everyhere with point name and path to point where it was defined
@@ -60,7 +58,7 @@ test onPrefetchPage and other prefetchModes
 Разобраться с эррор баундари для фронта
 ? bun watcher, not parcel watcher
 ? html transformer not regex hack
-Роутес не оверрай а клон, чтобы все склонирвать с нужным абс, а абс можно не тру а строку передать
+Роутес не оверрай а клон, а то почему оверрайд то
 --+
 Remove comments, unusde code, unused types (except core/point0.ts and core/types.ts)
 Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп

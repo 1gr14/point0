@@ -386,6 +386,62 @@ describe('CompilerFile', () => {
           )
         }),
       )
+
+      it.concurrent(
+        'env.build.define() resolves deeply nested chain (beyond 8 levels)',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(
+              env.build.define({
+                before: 'b0',
+                after: env.build.define({
+                  before: 'b1',
+                  after: env.build.define({
+                    before: 'b2',
+                    after: env.build.define({
+                      before: 'b3',
+                      after: env.build.define({
+                        before: 'b4',
+                        after: env.build.define({
+                          before: 'b5',
+                          after: env.build.define({
+                            before: 'b6',
+                            after: env.build.define({
+                              before: 'b7',
+                              after: env.build.define({
+                                before: 'b8',
+                                after: env.build.define({
+                                  before: 'b9',
+                                  after: env.build.define({
+                                    before: 'b10',
+                                    after: env.build.define({
+                                      before: 'b11',
+                                      after: 'deep-final',
+                                    }),
+                                  }),
+                                }),
+                              }),
+                            }),
+                          }),
+                        }),
+                      }),
+                    }),
+                  }),
+                }),
+              }),
+            )
+          })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development', built: true })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info('deep-final')
+              "
+            `,
+          )
+        }),
+      )
     })
 
     describe('env.side.define', () => {
@@ -485,6 +541,42 @@ describe('CompilerFile', () => {
           const cf = await file.wrpsync(async () => {
             const { env } = await import('@point0/core')
             console.info(env.side.define({ server: 'server-value', client: 'client-value' }))
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info('server-value')
+              "
+            `,
+          )
+        }),
+      )
+
+      it.concurrent(
+        'env.side.define() with missing selected branch becomes undefined',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(env.side.define({ server: 'server-only' }))
+          })
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info(undefined)
+              "
+            `,
+          )
+        }),
+      )
+
+      it.concurrent(
+        'env.side.define() with string literal keys collapses correctly',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrpsync(async () => {
+            const { env } = await import('@point0/core')
+            console.info(env.side.define({ 'server': 'server-value', 'client': 'client-value' }))
           })
           cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
