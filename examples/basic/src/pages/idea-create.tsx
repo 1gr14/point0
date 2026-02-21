@@ -88,7 +88,7 @@ export const generateIdeaMutation = client
     set.cookies('X-Y', 'kjhkj')
     const stream = new ReadableStream({
       async start(controller) {
-        const text = 'xo'.repeat(100) // 100 symbols
+        const text = 'x'.repeat(100) // 100 symbols
         for (const char of text) {
           controller.enqueue(char)
           await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol
@@ -114,7 +114,7 @@ export const clientFnMutation = client
   .mutation()
 
 export const clientFnMutationX = client
-  .lets('mutation', 'clientFnMutation')
+  .lets('mutation', 'clientFnMutation2')
   .loader(async () => {
     return new Response('HELLO!', {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },

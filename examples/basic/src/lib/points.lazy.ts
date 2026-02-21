@@ -26,6 +26,22 @@ export default [
   },
   {
     type: 'page',
+    name: 'gi1',
+    route: '/gi1',
+    polh: true,
+    layouts: ['generalLayout'],
+    point: async () => (await import('../pages/x/gi2.js')).gi1Page,
+  },
+  {
+    type: 'page',
+    name: 'gi2',
+    route: '/gi2',
+    polh: true,
+    layouts: ['generalLayout'],
+    point: async () => (await import('../pages/x/gi2 copy.js')).gi1Page,
+  },
+  {
+    type: 'page',
     name: 'ideas',
     route: '/ideas',
     polh: true,

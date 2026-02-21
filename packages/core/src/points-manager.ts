@@ -1,5 +1,5 @@
-import type { AnyRoute } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
+import type { AnyRoute } from '@devp0nt/route0'
 import * as React from 'react'
 import type {
   PointName,
@@ -55,6 +55,34 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     return PointsManager.createFromCollection(collection) as never
   }
 
+  private static recordToString = (record: NormalizedPointsCollectionRecord, scope?: PointsScope) => {
+    return [scope, record.type, record.name].filter((s) => s !== undefined).join('.')
+  }
+
+  private static readonly notifyAboutDuplicates = (collection: NormalizedPointsCollection, scope?: PointsScope) => {
+    const checks: Array<{ first: (typeof collection)[number]; duplicates: Array<(typeof collection)[number]> }> = []
+    for (const record of collection) {
+      const check = checks.find((d) => d.first.name === record.name && d.first.type === record.type)
+      if (!check) {
+        checks.push({ first: record, duplicates: [] })
+      } else {
+        check.duplicates.push(record)
+      }
+    }
+    const duplicates = checks.filter((c) => c.duplicates.length > 0).map((c) => [c.first, ...c.duplicates])
+    // for (const duplicateCheck of duplicatesChecks) {
+    //   console.error(
+    //     `Duplicate points found: ${[duplicateCheck.first, ...duplicateCheck.duplicates].map((r) => PointsManager.recordToString(r)).join(', ')}`,
+    //   )
+    // }
+    if (duplicates.length > 0) {
+      throw new Error(
+        'Duplicate points found:\n' +
+          duplicates.map((c) => c.map((r) => PointsManager.recordToString(r, scope)).join(', ')).join('\n'),
+      )
+    }
+  }
+
   static readonly createFromCollection = (
     collection: NormalizedPointsCollection,
   ): PointsManager<false, RequiredCtx> => {
@@ -63,6 +91,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
       throw new Error('Root point not found')
     }
     const root = firstRecord.point as RootPoint
+    PointsManager.notifyAboutDuplicates(collection, root.scope)
     return new PointsManager({
       root,
       scope: root.scope,
