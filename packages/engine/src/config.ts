@@ -147,6 +147,7 @@ export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
     source: EngineOptionsPublicdir
     outdir: string
   }
+  staticCacheLimit?: number | boolean
   env?: { vars?: EngineOptionsEnvStrict; consts?: EngineOptionsEnvWide }
   port?: number | string
   outdir?: string
@@ -407,6 +408,7 @@ export type EngineServerOptionsParsed = {
     source: PublicdirDefinition
     outdir: string
   } | null
+  staticCacheLimit: number | boolean
   engineFile: string
   cwdBeforeBuild: string
   itWasBuilt: boolean
@@ -775,6 +777,12 @@ export const parseEngineServerOptions = ({
         ? [['/', publicdirOutdir]]
         : []
   const publicdir = publicdirOutdir ? { source: publicdirSource, outdir: publicdirOutdir } : null
+  const staticCacheLimit =
+    serverOptions.staticCacheLimit === false || serverOptions.staticCacheLimit === 0
+      ? 0
+      : serverOptions.staticCacheLimit === true || typeof serverOptions.staticCacheLimit === 'undefined'
+        ? true
+        : Math.max(0, Math.floor(serverOptions.staticCacheLimit))
   const entriesRecord = entriesRecordInput
     ? Object.fromEntries(
         Object.entries(entriesRecordInput).map(([key, value]) => [
@@ -840,6 +848,7 @@ export const parseEngineServerOptions = ({
     outdir,
     entry: entriesRecord,
     publicdir,
+    staticCacheLimit,
     engineFile: generalOptionsParsed.engineFile,
     cwdBeforeBuild: generalOptionsParsed.cwdBeforeBuild,
     itWasBuilt: generalOptionsParsed.itWasBuilt,

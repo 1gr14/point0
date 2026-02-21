@@ -198,6 +198,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
           serving: input.serving,
           source: input.publicdir.source,
           outdir: input.publicdir.outdir,
+          cache: input.server.staticCache,
           scope: input.scope,
           server: null,
           client: null,
@@ -314,7 +315,6 @@ export class EngineClient<TPrepared extends boolean = boolean> {
 
   isPageLocationSuitable = ({ pageLocation }: { pageLocation: AnyLocation }): boolean => {
     return ClientPoints.isPageLocationSuitable({
-      host: null,
       basepath: this.basepath,
       pageLocation,
     })

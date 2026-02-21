@@ -175,8 +175,8 @@ describe('route', () => {
 
   it('basepath with params or search params not allowed', async () => {
     // @ts-expect-error - it is bad
-    Point0.lets('root', 'root').basepath('/my/:id').root()
+    expect(() => Point0.lets('root', 'root').basepath('/my/:id').root()).toThrow()
     // @ts-expect-error - it is bad
-    Point0.lets('root', 'root').basepath('/my&id').root()
+    expect(() => Point0.lets('root', 'root').basepath('/my&id').root()).toThrow()
   })
 })

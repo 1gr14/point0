@@ -2,6 +2,7 @@ import { prependAndDeappendSlash } from '@point0/core'
 import type { PointsScope } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 import * as nodeFs from 'node:fs/promises'
+import * as nodeOs from 'node:os'
 import * as nodePath from 'node:path'
 import type { EngineClient } from './client.js'
 import type { EngineServer } from './server.js'
@@ -27,6 +28,78 @@ export type PublicdirDefinition = Array<[string, string | Response | (() => Resp
 export type PublicdirFileDefinition = string | Response | (() => Response | Promise<Response>)
 export type PublicdirFilesDefinition = Map<string, PublicdirFileDefinition>
 export type PublicdirServing = boolean | string | ((options: { request: Request0 }) => boolean)
+type PublicdirCacheEntry = {
+  body: ArrayBuffer
+  contentType: string | null
+}
+
+export class PublicdirCache {
+  private entries: Map<string, PublicdirCacheEntry>
+  private size: number
+  readonly limit: number
+
+  private constructor(input: { limit: number }) {
+    this.entries = new Map()
+    this.size = 0
+    this.limit = input.limit
+  }
+
+  static create(input: { limit: number | boolean }): PublicdirCache {
+    const limit =
+      input.limit === true
+        ? PublicdirCache.autoLimit()
+        : input.limit === false || input.limit === 0
+          ? 0
+          : Math.max(0, Math.floor(input.limit))
+    return new PublicdirCache({ limit })
+  }
+
+  static autoLimit(): number {
+    const MB = 1024 * 1024
+    const totalMemory = nodeOs.totalmem()
+    // Keep cache conservative by default: 5% of RAM, clamped to 32MB..512MB.
+    return Math.max(32 * MB, Math.min(512 * MB, Math.floor(totalMemory * 0.05)))
+  }
+
+  clear(): void {
+    this.entries.clear()
+    this.size = 0
+  }
+
+  get(key: string): PublicdirCacheEntry | undefined {
+    const entry = this.entries.get(key)
+    if (!entry) {
+      return undefined
+    }
+    this.entries.delete(key)
+    this.entries.set(key, entry)
+    return entry
+  }
+
+  set(key: string, entry: PublicdirCacheEntry): void {
+    if (!this.limit || entry.body.byteLength > this.limit) {
+      return
+    }
+    const existing = this.entries.get(key)
+    if (existing) {
+      this.size -= existing.body.byteLength
+      this.entries.delete(key)
+    }
+    while (this.size + entry.body.byteLength > this.limit && this.entries.size > 0) {
+      const lruKey = this.entries.keys().next().value as string | undefined
+      if (!lruKey) {
+        break
+      }
+      const lruEntry = this.entries.get(lruKey)
+      if (lruEntry) {
+        this.size -= lruEntry.body.byteLength
+      }
+      this.entries.delete(lruKey)
+    }
+    this.entries.set(key, entry)
+    this.size += entry.body.byteLength
+  }
+}
 
 export class Publicdir<TPrepared extends boolean = boolean> {
   serving: PublicdirServing
@@ -39,6 +112,7 @@ export class Publicdir<TPrepared extends boolean = boolean> {
   prepared: TPrepared
 
   scope: PointsScope
+  cache: PublicdirCache | null
 
   private constructor(input: {
     prepared: TPrepared
@@ -46,6 +120,7 @@ export class Publicdir<TPrepared extends boolean = boolean> {
     source: PublicdirDefinition
     scope: PointsScope
     outdir: string | null
+    cache: PublicdirCache | null
     server: TPrepared extends true ? EngineServer<true> | null : EngineServer<false> | null
     client: TPrepared extends true ? EngineClient<true> | null : EngineClient<false> | null
   }) {
@@ -57,6 +132,7 @@ export class Publicdir<TPrepared extends boolean = boolean> {
     this.prepared = input.prepared
     this.server = input.server
     this.client = input.client
+    this.cache = input.cache
   }
 
   static create(input: {
@@ -64,6 +140,7 @@ export class Publicdir<TPrepared extends boolean = boolean> {
     source: PublicdirDefinition
     scope: PointsScope
     outdir: string | null
+    cache: PublicdirCache | null
     server: EngineServer<false> | null
     client: EngineClient<false> | null
   }): Publicdir<false> {
@@ -89,6 +166,7 @@ export class Publicdir<TPrepared extends boolean = boolean> {
   }
 
   async loadFiles(): Promise<void> {
+    this.cache?.clear()
     await Promise.all(
       this.source.map(async ([dirRoutePathOrFilePath, dirAbsPathOrResponseOrFn]) => {
         if (typeof dirAbsPathOrResponseOrFn === 'string') {
@@ -121,19 +199,42 @@ export class Publicdir<TPrepared extends boolean = boolean> {
     if (!this.isServingRequest({ request })) {
       return undefined
     }
-    const fileAbsPathOrResponseOrFn = this.files.get(request.location.pathname)
+    const routePath = request.location.pathname
+    const fileAbsPathOrResponseOrFn = this.files.get(routePath)
     if (!fileAbsPathOrResponseOrFn) {
       return undefined
     }
 
+    if (typeof fileAbsPathOrResponseOrFn === 'string') {
+      const cache = this.cache
+      const cacheKey = fileAbsPathOrResponseOrFn
+      const cached = cache?.get(cacheKey)
+      if (cached) {
+        return this.cachedToResponse(cached)
+      }
+      const file = Bun.file(fileAbsPathOrResponseOrFn)
+      if (!cache || !cache.limit) {
+        return new Response(file)
+      }
+      const body = await file.arrayBuffer()
+      const contentType = file.type || null
+      cache.set(cacheKey, {
+        body,
+        contentType,
+      })
+      return this.cachedToResponse({ body, contentType })
+    }
+
     const response =
-      typeof fileAbsPathOrResponseOrFn === 'string'
-        ? new Response(Bun.file(fileAbsPathOrResponseOrFn))
-        : typeof fileAbsPathOrResponseOrFn === 'function'
-          ? await fileAbsPathOrResponseOrFn()
-          : fileAbsPathOrResponseOrFn.clone()
+      typeof fileAbsPathOrResponseOrFn === 'function' ? await fileAbsPathOrResponseOrFn() : fileAbsPathOrResponseOrFn.clone()
 
     return response
+  }
+
+  private cachedToResponse(entry: PublicdirCacheEntry): Response {
+    return new Response(entry.body, {
+      headers: entry.contentType ? { 'content-type': entry.contentType } : undefined,
+    })
   }
 
   isServingRequest({ request }: { request: Request0 }): boolean {
