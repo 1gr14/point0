@@ -43,13 +43,13 @@ export type EngineLogger = {
 
 export type EngineOptionsPublicdir =
   | string
-  | Record<string, string | Response | (() => Response | Promise<Response>)>
+  | Record<string, string | (() => string | Promise<string>)>
   | Array<
       | string
-      | Record<string, string | Response | (() => Response | Promise<Response>)>
-      | [string, string | Response | (() => Response | Promise<Response>)]
+      | Record<string, string | (() => string | Promise<string>)>
+      | [string, string | (() => string | Promise<string>)]
     >
-export type EngineOptionsPublicdirParsed = Array<[string, string | Response | (() => Response | Promise<Response>)]>
+export type EngineOptionsPublicdirParsed = Array<[string, string | (() => string | Promise<string>)]>
 
 export type EngineOptionsEnvWide =
   | string

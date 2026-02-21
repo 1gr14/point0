@@ -3625,7 +3625,7 @@ export class Point0<
     const clientExecuteActionsSuitable = clientExecuteActionsAll.filter((action) => action.type !== 'loader')
 
     const mountActionsAll = [...this._mountActions]
-    const mountActionsSuitable = this.type !== 'base' && this.type !== 'root' ? [] : mountActionsAll
+    const mountActionsSuitable = this.type === 'base' || this.type === 'root' ? mountActionsAll : []
     if (letsReadyPointType === 'component' || letsReadyPointType === 'provider') {
       mountActionsSuitable.push({ type: 'selfProps', unstableId: Point0._getNextUnstableId(), ssr: this._ssr })
     }

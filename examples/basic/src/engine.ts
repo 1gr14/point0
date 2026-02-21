@@ -45,8 +45,8 @@ export const engine = Engine.create({
         source: [
           '../public',
           {
-            '.well-known/appspecific/com.chrome.devtools.json': new Response('{}'),
-            'robots.txt': new Response('User-agent: *\nDisallow: /'),
+            '.well-known/appspecific/com.chrome.devtools.json': () => '{}',
+            'robots.txt': () => 'User-agent: *\nDisallow: /',
           },
         ],
         outdir: '../dist/client',

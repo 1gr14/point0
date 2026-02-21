@@ -24,8 +24,8 @@ async function* getAllFiles(dirPath: string): AsyncGenerator<string> {
   }
 }
 
-export type PublicdirDefinition = Array<[string, string | Response | (() => Response | Promise<Response>)]>
-export type PublicdirFileDefinition = string | Response | (() => Response | Promise<Response>)
+export type PublicdirDefinition = Array<[string, string | (() => string | Promise<string>)]>
+export type PublicdirFileDefinition = string | (() => string | Promise<string>)
 export type PublicdirFilesDefinition = Map<string, PublicdirFileDefinition>
 export type PublicdirServing = boolean | string | ((options: { request: Request0 }) => boolean)
 type PublicdirCacheEntry = {
@@ -104,7 +104,7 @@ export class PublicdirCache {
 export class Publicdir<TPrepared extends boolean = boolean> {
   serving: PublicdirServing
   source: PublicdirDefinition
-  // <fileRoutePath, fileAbsPath | fileResponseOrFn>
+  // <fileRoutePath, fileAbsPath | fileContentFn>
   files: PublicdirFilesDefinition
   outdir: string | null
   server: TPrepared extends true ? EngineServer<true> | null : EngineServer<false> | null
@@ -174,10 +174,10 @@ export class Publicdir<TPrepared extends boolean = boolean> {
   async loadFiles(): Promise<void> {
     this.cache?.clear()
     await Promise.all(
-      this.source.map(async ([dirRoutePathOrFilePath, dirAbsPathOrResponseOrFn]) => {
-        if (typeof dirAbsPathOrResponseOrFn === 'string') {
+      this.source.map(async ([dirRoutePathOrFilePath, dirAbsPathOrContentFn]) => {
+        if (typeof dirAbsPathOrContentFn === 'string') {
           const dirRoutePath = dirRoutePathOrFilePath
-          const dirAbsPath = dirAbsPathOrResponseOrFn
+          const dirAbsPath = dirAbsPathOrContentFn
           for await (const fileAbsPath of getAllFiles(dirAbsPath)) {
             const relPath = nodePath.relative(dirAbsPath, fileAbsPath)
             const fileRoutePath = prependAndDeappendSlash(nodePath.join(dirRoutePath, relPath))
@@ -185,8 +185,8 @@ export class Publicdir<TPrepared extends boolean = boolean> {
           }
         } else {
           const fileRoutePath = dirRoutePathOrFilePath
-          const fileResponseOrFn = dirAbsPathOrResponseOrFn
-          this.files.set(fileRoutePath, fileResponseOrFn)
+          const fileContentFn = dirAbsPathOrContentFn
+          this.files.set(fileRoutePath, fileContentFn)
         }
       }),
     )
@@ -206,19 +206,19 @@ export class Publicdir<TPrepared extends boolean = boolean> {
       return undefined
     }
     const routePath = request.location.pathname
-    const fileAbsPathOrResponseOrFn = this.files.get(routePath)
-    if (!fileAbsPathOrResponseOrFn) {
+    const fileAbsPathOrContentFn = this.files.get(routePath)
+    if (!fileAbsPathOrContentFn) {
       return undefined
     }
 
-    if (typeof fileAbsPathOrResponseOrFn === 'string') {
+    if (typeof fileAbsPathOrContentFn === 'string') {
       const cache = this.cache
-      const cacheKey = fileAbsPathOrResponseOrFn
+      const cacheKey = fileAbsPathOrContentFn
       const cached = cache?.get(cacheKey)
       if (cached) {
         return this.cachedToResponse(cached)
       }
-      const file = Bun.file(fileAbsPathOrResponseOrFn)
+      const file = Bun.file(fileAbsPathOrContentFn)
       if (!cache || !cache.limit) {
         return new Response(file)
       }
@@ -231,10 +231,11 @@ export class Publicdir<TPrepared extends boolean = boolean> {
       return this.cachedToResponse({ body, contentType })
     }
 
-    const response =
-      typeof fileAbsPathOrResponseOrFn === 'function' ? await fileAbsPathOrResponseOrFn() : fileAbsPathOrResponseOrFn.clone()
-
-    return this.ensureResponseContentType({ routePath, response })
+    const content = await fileAbsPathOrContentFn()
+    const contentType = this.inferContentType(routePath)
+    return new Response(content, {
+      headers: contentType ? { 'content-type': contentType } : undefined,
+    })
   }
 
   private cachedToResponse(entry: PublicdirCacheEntry): Response {
@@ -243,21 +244,12 @@ export class Publicdir<TPrepared extends boolean = boolean> {
     })
   }
 
-  private ensureResponseContentType({ routePath, response }: { routePath: string; response: Response }): Response {
-    if (response.headers.has('content-type')) {
-      return response
-    }
+  private inferContentType(routePath: string): string | null {
     const inferredType = Bun.file(`publicdir${nodePath.extname(routePath)}`).type
     if (!inferredType || inferredType === 'application/octet-stream') {
-      return response
+      return null
     }
-    const headers = new Headers(response.headers)
-    headers.set('content-type', inferredType)
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers,
-    })
+    return inferredType
   }
 
   isServingRequest({ request }: { request: Request0 }): boolean {
@@ -301,10 +293,10 @@ export class Publicdir<TPrepared extends boolean = boolean> {
     const fileOperations: Array<Promise<string>> = []
 
     await Promise.all(
-      this.source.map(async ([dirRoutePathOrFilePath, dirAbsPathOrResponseOrFn]) => {
-        if (typeof dirAbsPathOrResponseOrFn === 'string') {
+      this.source.map(async ([dirRoutePathOrFilePath, dirAbsPathOrContentFn]) => {
+        if (typeof dirAbsPathOrContentFn === 'string') {
           const dirRoutePath = dirRoutePathOrFilePath
-          const dirAbsPath = dirAbsPathOrResponseOrFn
+          const dirAbsPath = dirAbsPathOrContentFn
           for await (const fileAbsPath of getAllFiles(dirAbsPath)) {
             const relPath = nodePath.relative(dirAbsPath, fileAbsPath)
             const fileRoutePath = prependAndDeappendSlash(nodePath.join(dirRoutePath, relPath))
@@ -323,11 +315,10 @@ export class Publicdir<TPrepared extends boolean = boolean> {
           }
         } else {
           const fileRoutePath = dirRoutePathOrFilePath
-          const fileResponseOrFn = dirAbsPathOrResponseOrFn
+          const fileContentFn = dirAbsPathOrContentFn
           fileOperations.push(
             (async () => {
-              const response = typeof fileResponseOrFn === 'function' ? await fileResponseOrFn() : fileResponseOrFn
-              const content = await response.text()
+              const content = await fileContentFn()
               const distAbsPath = nodePath.resolve(outdir, fileRoutePath.replace(/^\/+/, ''))
               // await nodeFs.mkdir(nodePath.dirname(distAbsPath), { recursive: true })
               await Bun.write(distAbsPath, content)

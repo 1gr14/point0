@@ -526,529 +526,535 @@ export class CompilerFile<THasContent extends boolean> {
       const isDevelopment = mode !== false && mode === 'development'
       const isTest = mode !== false && mode === 'test'
 
-      traverse(this.ast, {
-        MemberExpression: (p) => {
-          const node = p.node
+      const maxShakeForEnvPasses = 8
+      for (let pass = 0; pass < maxShakeForEnvPasses; pass++) {
+        let passModified = false as boolean
+        traverse(this.ast, {
+          MemberExpression: (p) => {
+            const node = p.node
 
-          // Handle env.side is.client/is.server
-          if (
-            side !== false &&
-            node.object.type === 'MemberExpression' &&
-            node.object.object.type === 'MemberExpression' &&
-            node.object.object.object.type === 'Identifier' &&
-            (node.object.object.object.name === 'env' || node.object.object.object.name === '_point0_env') &&
-            node.object.object.property.type === 'Identifier' &&
-            node.object.object.property.name === 'side' &&
-            node.object.property.type === 'Identifier' &&
-            node.object.property.name === 'is'
-          ) {
-            if (node.property.type === 'Identifier') {
-              const name = node.property.name
-              if (name === 'client') {
-                p.replaceWith(makeBooleanLiteral(side === 'client'))
-                modified = true
-              } else if (name === 'server') {
-                p.replaceWith(makeBooleanLiteral(side === 'server'))
-                modified = true
-              } else if (name === 'ssr') {
-                // If side is client, ssr is always false
-                // If side is server, leave it as-is (it's a getter that returns SSR phase)
-                if (side === 'client') {
-                  p.replaceWith(makeBooleanLiteral(false))
+            // Handle env.side is.client/is.server
+            if (
+              side !== false &&
+              node.object.type === 'MemberExpression' &&
+              node.object.object.type === 'MemberExpression' &&
+              node.object.object.object.type === 'Identifier' &&
+              (node.object.object.object.name === 'env' || node.object.object.object.name === '_point0_env') &&
+              node.object.object.property.type === 'Identifier' &&
+              node.object.object.property.name === 'side' &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'is'
+            ) {
+              if (node.property.type === 'Identifier') {
+                const name = node.property.name
+                if (name === 'client') {
+                  p.replaceWith(makeBooleanLiteral(side === 'client'))
                   modified = true
-                }
-                // Note: For server side, env.side.is.ssr is a getter, so we leave it as-is
-              }
-            }
-          }
-          // Handle env.mode.name
-          else if (
-            mode !== false &&
-            node.object.type === 'MemberExpression' &&
-            node.object.object.type === 'Identifier' &&
-            (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
-            node.object.property.type === 'Identifier' &&
-            node.object.property.name === 'mode' &&
-            node.property.type === 'Identifier' &&
-            node.property.name === 'name'
-          ) {
-            p.replaceWith(makeStringLiteral(mode))
-            modified = true
-          }
-          // Handle env.build.was
-          else if (
-            node.object.type === 'MemberExpression' &&
-            node.object.object.type === 'Identifier' &&
-            (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
-            node.object.property.type === 'Identifier' &&
-            node.object.property.name === 'build' &&
-            node.property.type === 'Identifier' &&
-            node.property.name === 'was'
-          ) {
-            p.replaceWith(makeBooleanLiteral(built))
-            modified = true
-          }
-          // Handle env.mode.is.production, env.mode.is.development, env.mode.is.test
-          else if (
-            mode !== false &&
-            node.object.type === 'MemberExpression' &&
-            node.object.object.type === 'MemberExpression' &&
-            node.object.object.object.type === 'Identifier' &&
-            (node.object.object.object.name === 'env' || node.object.object.object.name === '_point0_env') &&
-            node.object.object.property.type === 'Identifier' &&
-            node.object.object.property.name === 'mode' &&
-            node.object.property.type === 'Identifier' &&
-            node.object.property.name === 'is'
-          ) {
-            if (node.property.type === 'Identifier') {
-              const name = node.property.name
-              if (name === 'production') {
-                p.replaceWith(makeBooleanLiteral(isProduction))
-                modified = true
-              } else if (name === 'development') {
-                p.replaceWith(makeBooleanLiteral(isDevelopment))
-                modified = true
-              } else if (name === 'test') {
-                p.replaceWith(makeBooleanLiteral(isTest))
-                modified = true
-              }
-            }
-          }
-          // Handle env.runtime.name
-          else if (
-            runtime !== false &&
-            node.object.type === 'MemberExpression' &&
-            node.object.object.type === 'Identifier' &&
-            (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
-            node.object.property.type === 'Identifier' &&
-            node.object.property.name === 'runtime' &&
-            node.property.type === 'Identifier' &&
-            node.property.name === 'name'
-          ) {
-            p.replaceWith(makeStringLiteral(runtime))
-            modified = true
-          }
-          // Handle env.runtime.is.*
-          else if (
-            runtime !== false &&
-            node.object.type === 'MemberExpression' &&
-            node.object.object.type === 'MemberExpression' &&
-            node.object.object.object.type === 'Identifier' &&
-            (node.object.object.object.name === 'env' || node.object.object.object.name === '_point0_env') &&
-            node.object.object.property.type === 'Identifier' &&
-            node.object.object.property.name === 'runtime' &&
-            node.object.property.type === 'Identifier' &&
-            node.object.property.name === 'is' &&
-            node.property.type === 'Identifier'
-          ) {
-            p.replaceWith(makeBooleanLiteral(runtime === node.property.name))
-            modified = true
-          }
-          // Handle env.os.name
-          else if (
-            os !== false &&
-            node.object.type === 'MemberExpression' &&
-            node.object.object.type === 'Identifier' &&
-            (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
-            node.object.property.type === 'Identifier' &&
-            node.object.property.name === 'os' &&
-            node.property.type === 'Identifier' &&
-            node.property.name === 'name'
-          ) {
-            p.replaceWith(makeStringLiteral(os))
-            modified = true
-          }
-          // Handle env.os.is.*
-          else if (
-            os !== false &&
-            node.object.type === 'MemberExpression' &&
-            node.object.object.type === 'MemberExpression' &&
-            node.object.object.object.type === 'Identifier' &&
-            (node.object.object.object.name === 'env' || node.object.object.object.name === '_point0_env') &&
-            node.object.object.property.type === 'Identifier' &&
-            node.object.object.property.name === 'os' &&
-            node.object.property.type === 'Identifier' &&
-            node.object.property.name === 'is' &&
-            node.property.type === 'Identifier'
-          ) {
-            p.replaceWith(makeBooleanLiteral(os === node.property.name))
-            modified = true
-          }
-          // Handle env.scope.is.X - replace with true if scope matches, false otherwise
-          else if (
-            scope !== false &&
-            node.object.type === 'MemberExpression' &&
-            node.object.object.type === 'MemberExpression' &&
-            node.object.object.object.type === 'Identifier' &&
-            (node.object.object.object.name === 'env' || node.object.object.object.name === '_point0_env') &&
-            node.object.object.property.type === 'Identifier' &&
-            node.object.object.property.name === 'scope' &&
-            node.object.property.type === 'Identifier' &&
-            node.object.property.name === 'is' &&
-            node.property.type === 'Identifier'
-          ) {
-            const scopeName = node.property.name
-            p.replaceWith(makeBooleanLiteral(scope === scopeName))
-            modified = true
-          }
-          // Handle env.vars.X - replace if X is in consts
-          else if (
-            node.object.type === 'MemberExpression' &&
-            node.object.object.type === 'Identifier' &&
-            (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
-            node.object.property.type === 'Identifier' &&
-            node.object.property.name === 'vars' &&
-            node.property.type === 'Identifier'
-          ) {
-            const varName = node.property.name
-            // if (shouldReplaceVar(varName)) {
-            //   const envValue = process.env[varName]
-            //   if (envValue === undefined) {
-            //     p.replaceWith(makeUndefined())
-            //   } else {
-            //     // Try to determine the type - for now, always use string literal
-            //     // Could be enhanced to detect number/boolean
-            //     p.replaceWith(makeStringLiteral(envValue))
-            //   }
-            //   modified = true
-            // }
-            const checkResult = checkReplaceVar(varName, process.env[varName])
-            if (checkResult.shouldReplace) {
-              const desiredValue = checkResult.desiredValue
-              if (typeof desiredValue === 'string') {
-                p.replaceWith(makeStringLiteral(desiredValue))
-                modified = true
-              } else if (typeof desiredValue === 'number') {
-                p.replaceWith(makeNumericLiteral(desiredValue))
-                modified = true
-              } else if (typeof desiredValue === 'boolean') {
-                p.replaceWith(makeBooleanLiteral(desiredValue))
-                modified = true
-              } else if (desiredValue === null) {
-                p.replaceWith(makeNullLiteral())
-                modified = true
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-              } else if (desiredValue === undefined) {
-                p.replaceWith(makeUndefined())
-                modified = true
-              }
-            }
-          }
-        },
-
-        CallExpression: (p) => {
-          const node = p.node
-          const callee = node.callee
-
-          if (callee.type !== 'MemberExpression') return
-
-          const args = node.arguments
-          const replaceWithFinalValue = (value: Node | undefined) => {
-            p.replaceWith(value ?? makeUndefined())
-            modified = true
-          }
-          const getObjectPropertyValue = (objectExpression: ObjectExpression, key: string) => {
-            const props = objectExpression.properties
-            for (const prop of props) {
-              if (prop.type !== 'ObjectProperty') continue
-              if (prop.key.type === 'Identifier' && prop.key.name === key) {
-                return prop.value
-              }
-              if (prop.key.type === 'StringLiteral' && prop.key.value === key) {
-                return prop.value
-              }
-            }
-            return undefined
-          }
-
-          // Handle superstore hydrate and dehydrate
-          if (
-            side !== false &&
-            callee.object.type === 'Identifier' &&
-            callee.object.name === 'superstore' &&
-            callee.property.type === 'Identifier' &&
-            callee.property.name === 'define' &&
-            args.length > 2 &&
-            args[2]?.type === 'ObjectExpression'
-          ) {
-            const ssrConfig = args[2]
-            const hasHydrate = ssrConfig.properties.some(
-              (prop) => prop.type === 'ObjectProperty' && prop.key.type === 'Identifier' && prop.key.name === 'hydrate',
-            )
-            const hasDehydrate = ssrConfig.properties.some(
-              (prop: ObjectMethod | ObjectProperty | SpreadElement) =>
-                prop.type === 'ObjectProperty' && prop.key.type === 'Identifier' && prop.key.name === 'dehydrate',
-            )
-
-            if (hasHydrate && hasDehydrate) {
-              for (const prop of ssrConfig.properties) {
-                if (prop.type !== 'ObjectProperty' || prop.key.type !== 'Identifier') {
-                  continue
-                }
-                if (side === 'server' && prop.key.name === 'hydrate') {
-                  prop.value = makeThrowingArrowFunction('Not available on server')
+                  passModified = true
+                } else if (name === 'server') {
+                  p.replaceWith(makeBooleanLiteral(side === 'server'))
                   modified = true
-                } else if (side === 'client' && prop.key.name === 'dehydrate') {
-                  prop.value = makeThrowingArrowFunction('Not available on client')
-                  modified = true
-                }
-              }
-            }
-          }
-
-          // Handle env.side define.server()/define.client()
-          else if (
-            side !== false &&
-            callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'MemberExpression' &&
-            callee.object.object.object.type === 'Identifier' &&
-            (callee.object.object.object.name === 'env' || callee.object.object.object.name === '_point0_env') &&
-            callee.object.object.property.type === 'Identifier' &&
-            callee.object.object.property.name === 'side' &&
-            callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'define'
-          ) {
-            if (callee.property.type === 'Identifier') {
-              const name = callee.property.name
-
-              if (name === 'server' && side === 'client' && args.length > 0) {
-                args[0] = makeUndefined()
-                modified = true
-              } else if (name === 'client' && side === 'server' && args.length > 0) {
-                args[0] = makeUndefined()
-                modified = true
-              }
-            }
-          }
-          // Handle env.side define.unsafe.server()/define.unsafe.client()
-          else if (
-            side !== false &&
-            callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'MemberExpression' &&
-            callee.object.object.object.type === 'MemberExpression' &&
-            callee.object.object.object.object.type === 'Identifier' &&
-            (callee.object.object.object.object.name === 'env' ||
-              callee.object.object.object.object.name === '_point0_env') &&
-            callee.object.object.object.property.type === 'Identifier' &&
-            callee.object.object.object.property.name === 'side' &&
-            callee.object.object.property.type === 'Identifier' &&
-            callee.object.object.property.name === 'define' &&
-            callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'unsafe'
-          ) {
-            if (callee.property.type === 'Identifier') {
-              const name = callee.property.name
-
-              if (name === 'server' && side === 'client' && args.length > 0) {
-                args[0] = makeUndefined()
-                modified = true
-              } else if (name === 'client' && side === 'server' && args.length > 0) {
-                args[0] = makeUndefined()
-                modified = true
-              }
-            }
-          }
-          // Handle env.runtime.define.X() - replace with value if runtime matches, undefined otherwise
-          else if (
-            runtime !== false &&
-            callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'MemberExpression' &&
-            callee.object.object.object.type === 'Identifier' &&
-            (callee.object.object.object.name === 'env' || callee.object.object.object.name === '_point0_env') &&
-            callee.object.object.property.type === 'Identifier' &&
-            callee.object.object.property.name === 'runtime' &&
-            callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'define' &&
-            callee.property.type === 'Identifier'
-          ) {
-            const runtimeName = callee.property.name
-            replaceWithFinalValue(runtime === runtimeName ? args[0] : undefined)
-          }
-          // Handle env.runtime.define.unsafe.X() - replace with value if runtime matches, undefined otherwise
-          else if (
-            runtime !== false &&
-            callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'MemberExpression' &&
-            callee.object.object.object.type === 'MemberExpression' &&
-            callee.object.object.object.object.type === 'Identifier' &&
-            (callee.object.object.object.object.name === 'env' ||
-              callee.object.object.object.object.name === '_point0_env') &&
-            callee.object.object.object.property.type === 'Identifier' &&
-            callee.object.object.object.property.name === 'runtime' &&
-            callee.object.object.property.type === 'Identifier' &&
-            callee.object.object.property.name === 'define' &&
-            callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'unsafe' &&
-            callee.property.type === 'Identifier'
-          ) {
-            const runtimeName = callee.property.name
-            replaceWithFinalValue(runtime === runtimeName ? args[0] : undefined)
-          }
-          // Handle env.runtime.define() with options object
-          else if (
-            runtime !== false &&
-            callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'Identifier' &&
-            (callee.object.object.name === 'env' || callee.object.object.name === '_point0_env') &&
-            callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'runtime' &&
-            callee.property.type === 'Identifier' &&
-            callee.property.name === 'define'
-          ) {
-            if (args.length > 0 && args[0].type === 'ObjectExpression') {
-              replaceWithFinalValue(getObjectPropertyValue(args[0], runtime))
-            }
-          }
-          // Handle env.os.define.X() - replace with value if os matches, undefined otherwise
-          else if (
-            os !== false &&
-            callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'MemberExpression' &&
-            callee.object.object.object.type === 'Identifier' &&
-            (callee.object.object.object.name === 'env' || callee.object.object.object.name === '_point0_env') &&
-            callee.object.object.property.type === 'Identifier' &&
-            callee.object.object.property.name === 'os' &&
-            callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'define' &&
-            callee.property.type === 'Identifier'
-          ) {
-            const osName = callee.property.name
-            replaceWithFinalValue(os === osName ? args[0] : undefined)
-          }
-          // Handle env.os.define.unsafe.X() - replace with value if os matches, undefined otherwise
-          else if (
-            os !== false &&
-            callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'MemberExpression' &&
-            callee.object.object.object.type === 'MemberExpression' &&
-            callee.object.object.object.object.type === 'Identifier' &&
-            (callee.object.object.object.object.name === 'env' ||
-              callee.object.object.object.object.name === '_point0_env') &&
-            callee.object.object.object.property.type === 'Identifier' &&
-            callee.object.object.object.property.name === 'os' &&
-            callee.object.object.property.type === 'Identifier' &&
-            callee.object.object.property.name === 'define' &&
-            callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'unsafe' &&
-            callee.property.type === 'Identifier'
-          ) {
-            const osName = callee.property.name
-            replaceWithFinalValue(os === osName ? args[0] : undefined)
-          }
-          // Handle env.os.define() with options object
-          else if (
-            os !== false &&
-            callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'Identifier' &&
-            (callee.object.object.name === 'env' || callee.object.object.name === '_point0_env') &&
-            callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'os' &&
-            callee.property.type === 'Identifier' &&
-            callee.property.name === 'define'
-          ) {
-            if (args.length > 0 && args[0].type === 'ObjectExpression') {
-              replaceWithFinalValue(getObjectPropertyValue(args[0], os))
-            }
-          }
-          // Handle env.scope.define.X() - replace with value if scope matches, undefined otherwise
-          else if (
-            scope !== false &&
-            callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'MemberExpression' &&
-            callee.object.object.object.type === 'Identifier' &&
-            (callee.object.object.object.name === 'env' || callee.object.object.object.name === '_point0_env') &&
-            callee.object.object.property.type === 'Identifier' &&
-            callee.object.object.property.name === 'scope' &&
-            callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'define' &&
-            callee.property.type === 'Identifier'
-          ) {
-            const scopeName = callee.property.name
-            replaceWithFinalValue(scope === scopeName ? args[0] : undefined)
-          }
-          // Handle env.scope.define.unsafe.X() - replace with value if scope matches, undefined otherwise
-          else if (
-            scope !== false &&
-            callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'MemberExpression' &&
-            callee.object.object.object.type === 'MemberExpression' &&
-            callee.object.object.object.object.type === 'Identifier' &&
-            (callee.object.object.object.object.name === 'env' ||
-              callee.object.object.object.object.name === '_point0_env') &&
-            callee.object.object.object.property.type === 'Identifier' &&
-            callee.object.object.object.property.name === 'scope' &&
-            callee.object.object.property.type === 'Identifier' &&
-            callee.object.object.property.name === 'define' &&
-            callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'unsafe' &&
-            callee.property.type === 'Identifier'
-          ) {
-            const scopeName = callee.property.name
-            replaceWithFinalValue(scope === scopeName ? args[0] : undefined)
-          }
-          // Handle env.scope.define() with options object
-          else if (
-            scope !== false &&
-            callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'Identifier' &&
-            (callee.object.object.name === 'env' || callee.object.object.name === '_point0_env') &&
-            callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'scope' &&
-            callee.property.type === 'Identifier' &&
-            callee.property.name === 'define'
-          ) {
-            if (args.length > 0 && args[0].type === 'ObjectExpression') {
-              replaceWithFinalValue(getObjectPropertyValue(args[0], scope))
-            }
-          }
-          // Handle env.side define() with options object
-          else if (
-            side !== false &&
-            callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'Identifier' &&
-            (callee.object.object.name === 'env' || callee.object.object.name === '_point0_env') &&
-            callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'side' &&
-            callee.property.type === 'Identifier' &&
-            callee.property.name === 'define'
-          ) {
-            if (args.length > 0 && args[0].type === 'ObjectExpression') {
-              const props = args[0].properties
-              if (side === 'client') {
-                // Find server property and replace with undefined
-                for (const prop of props) {
-                  if (prop.type === 'ObjectProperty' && prop.key.type === 'Identifier' && prop.key.name === 'server') {
-                    prop.value = makeUndefined()
+                  passModified = true
+                } else if (name === 'ssr') {
+                  // If side is client, ssr is always false
+                  // If side is server, leave it as-is (it's a getter that returns SSR phase)
+                  if (side === 'client') {
+                    p.replaceWith(makeBooleanLiteral(false))
                     modified = true
+                    passModified = true
                   }
+                  // Note: For server side, env.side.is.ssr is a getter, so we leave it as-is
                 }
-              } else {
-                // Find client property and replace with undefined
-                for (const prop of props) {
-                  if (prop.type === 'ObjectProperty' && prop.key.type === 'Identifier' && prop.key.name === 'client') {
-                    prop.value = makeUndefined()
+              }
+            }
+            // Handle env.mode.name
+            else if (
+              mode !== false &&
+              node.object.type === 'MemberExpression' &&
+              node.object.object.type === 'Identifier' &&
+              (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'mode' &&
+              node.property.type === 'Identifier' &&
+              node.property.name === 'name'
+            ) {
+              p.replaceWith(makeStringLiteral(mode))
+              modified = true
+              passModified = true
+            }
+            // Handle env.build.was
+            else if (
+              node.object.type === 'MemberExpression' &&
+              node.object.object.type === 'Identifier' &&
+              (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'build' &&
+              node.property.type === 'Identifier' &&
+              node.property.name === 'was'
+            ) {
+              p.replaceWith(makeBooleanLiteral(built))
+              modified = true
+              passModified = true
+            }
+            // Handle env.mode.is.production, env.mode.is.development, env.mode.is.test
+            else if (
+              mode !== false &&
+              node.object.type === 'MemberExpression' &&
+              node.object.object.type === 'MemberExpression' &&
+              node.object.object.object.type === 'Identifier' &&
+              (node.object.object.object.name === 'env' || node.object.object.object.name === '_point0_env') &&
+              node.object.object.property.type === 'Identifier' &&
+              node.object.object.property.name === 'mode' &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'is'
+            ) {
+              if (node.property.type === 'Identifier') {
+                const name = node.property.name
+                if (name === 'production') {
+                  p.replaceWith(makeBooleanLiteral(isProduction))
+                  modified = true
+                  passModified = true
+                } else if (name === 'development') {
+                  p.replaceWith(makeBooleanLiteral(isDevelopment))
+                  modified = true
+                  passModified = true
+                } else if (name === 'test') {
+                  p.replaceWith(makeBooleanLiteral(isTest))
+                  modified = true
+                  passModified = true
+                }
+              }
+            }
+            // Handle env.runtime.name
+            else if (
+              runtime !== false &&
+              node.object.type === 'MemberExpression' &&
+              node.object.object.type === 'Identifier' &&
+              (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'runtime' &&
+              node.property.type === 'Identifier' &&
+              node.property.name === 'name'
+            ) {
+              p.replaceWith(makeStringLiteral(runtime))
+              modified = true
+              passModified = true
+            }
+            // Handle env.runtime.is.*
+            else if (
+              runtime !== false &&
+              node.object.type === 'MemberExpression' &&
+              node.object.object.type === 'MemberExpression' &&
+              node.object.object.object.type === 'Identifier' &&
+              (node.object.object.object.name === 'env' || node.object.object.object.name === '_point0_env') &&
+              node.object.object.property.type === 'Identifier' &&
+              node.object.object.property.name === 'runtime' &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'is' &&
+              node.property.type === 'Identifier'
+            ) {
+              p.replaceWith(makeBooleanLiteral(runtime === node.property.name))
+              modified = true
+              passModified = true
+            }
+            // Handle env.os.name
+            else if (
+              os !== false &&
+              node.object.type === 'MemberExpression' &&
+              node.object.object.type === 'Identifier' &&
+              (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'os' &&
+              node.property.type === 'Identifier' &&
+              node.property.name === 'name'
+            ) {
+              p.replaceWith(makeStringLiteral(os))
+              modified = true
+              passModified = true
+            }
+            // Handle env.os.is.*
+            else if (
+              os !== false &&
+              node.object.type === 'MemberExpression' &&
+              node.object.object.type === 'MemberExpression' &&
+              node.object.object.object.type === 'Identifier' &&
+              (node.object.object.object.name === 'env' || node.object.object.object.name === '_point0_env') &&
+              node.object.object.property.type === 'Identifier' &&
+              node.object.object.property.name === 'os' &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'is' &&
+              node.property.type === 'Identifier'
+            ) {
+              p.replaceWith(makeBooleanLiteral(os === node.property.name))
+              modified = true
+              passModified = true
+            }
+            // Handle env.scope.is.X - replace with true if scope matches, false otherwise
+            else if (
+              scope !== false &&
+              node.object.type === 'MemberExpression' &&
+              node.object.object.type === 'MemberExpression' &&
+              node.object.object.object.type === 'Identifier' &&
+              (node.object.object.object.name === 'env' || node.object.object.object.name === '_point0_env') &&
+              node.object.object.property.type === 'Identifier' &&
+              node.object.object.property.name === 'scope' &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'is' &&
+              node.property.type === 'Identifier'
+            ) {
+              const scopeName = node.property.name
+              p.replaceWith(makeBooleanLiteral(scope === scopeName))
+              modified = true
+              passModified = true
+            }
+            // Handle env.vars.X - replace if X is in consts
+            else if (
+              node.object.type === 'MemberExpression' &&
+              node.object.object.type === 'Identifier' &&
+              (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'vars' &&
+              node.property.type === 'Identifier'
+            ) {
+              const varName = node.property.name
+              // if (shouldReplaceVar(varName)) {
+              //   const envValue = process.env[varName]
+              //   if (envValue === undefined) {
+              //     p.replaceWith(makeUndefined())
+              //   } else {
+              //     // Try to determine the type - for now, always use string literal
+              //     // Could be enhanced to detect number/boolean
+              //     p.replaceWith(makeStringLiteral(envValue))
+              //   }
+              //   modified = true
+              // }
+              const checkResult = checkReplaceVar(varName, process.env[varName])
+              if (checkResult.shouldReplace) {
+                const desiredValue = checkResult.desiredValue
+                if (typeof desiredValue === 'string') {
+                  p.replaceWith(makeStringLiteral(desiredValue))
+                  modified = true
+                  passModified = true
+                } else if (typeof desiredValue === 'number') {
+                  p.replaceWith(makeNumericLiteral(desiredValue))
+                  modified = true
+                  passModified = true
+                } else if (typeof desiredValue === 'boolean') {
+                  p.replaceWith(makeBooleanLiteral(desiredValue))
+                  modified = true
+                  passModified = true
+                } else if (desiredValue === null) {
+                  p.replaceWith(makeNullLiteral())
+                  modified = true
+                  passModified = true
+                  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                } else if (desiredValue === undefined) {
+                  p.replaceWith(makeUndefined())
+                  modified = true
+                  passModified = true
+                }
+              }
+            }
+          },
+
+          CallExpression: (p) => {
+            const node = p.node
+            const callee = node.callee
+
+            if (callee.type !== 'MemberExpression') return
+
+            const args = node.arguments
+            const replaceWithFinalValue = (value: Node | undefined) => {
+              p.replaceWith(value ?? makeUndefined())
+              modified = true
+              passModified = true
+            }
+            const getObjectPropertyValue = (objectExpression: ObjectExpression, key: string) => {
+              const props = objectExpression.properties
+              for (const prop of props) {
+                if (prop.type !== 'ObjectProperty') continue
+                if (prop.key.type === 'Identifier' && prop.key.name === key) {
+                  return prop.value
+                }
+                if (prop.key.type === 'StringLiteral' && prop.key.value === key) {
+                  return prop.value
+                }
+              }
+              return undefined
+            }
+
+            // Handle superstore hydrate and dehydrate
+            if (
+              side !== false &&
+              callee.object.type === 'Identifier' &&
+              callee.object.name === 'superstore' &&
+              callee.property.type === 'Identifier' &&
+              callee.property.name === 'define' &&
+              args.length > 2 &&
+              args[2]?.type === 'ObjectExpression'
+            ) {
+              const ssrConfig = args[2]
+              const hasHydrate = ssrConfig.properties.some(
+                (prop) =>
+                  prop.type === 'ObjectProperty' && prop.key.type === 'Identifier' && prop.key.name === 'hydrate',
+              )
+              const hasDehydrate = ssrConfig.properties.some(
+                (prop: ObjectMethod | ObjectProperty | SpreadElement) =>
+                  prop.type === 'ObjectProperty' && prop.key.type === 'Identifier' && prop.key.name === 'dehydrate',
+              )
+
+              if (hasHydrate && hasDehydrate) {
+                for (const prop of ssrConfig.properties) {
+                  if (prop.type !== 'ObjectProperty' || prop.key.type !== 'Identifier') {
+                    continue
+                  }
+                  if (side === 'server' && prop.key.name === 'hydrate') {
+                    prop.value = makeThrowingArrowFunction('Not available on server')
                     modified = true
+                    passModified = true
+                  } else if (side === 'client' && prop.key.name === 'dehydrate') {
+                    prop.value = makeThrowingArrowFunction('Not available on client')
+                    modified = true
+                    passModified = true
                   }
                 }
               }
             }
-          }
-          // Handle env.build.define() with options object
-          else if (
-            callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'Identifier' &&
-            (callee.object.object.name === 'env' || callee.object.object.name === '_point0_env') &&
-            callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'build' &&
-            callee.property.type === 'Identifier' &&
-            callee.property.name === 'define'
-          ) {
-            if (args.length > 0 && args[0].type === 'ObjectExpression') {
-              replaceWithFinalValue(getObjectPropertyValue(args[0], built ? 'after' : 'before'))
+
+            // Handle env.side define.server()/define.client()
+            else if (
+              side !== false &&
+              callee.object.type === 'MemberExpression' &&
+              callee.object.object.type === 'MemberExpression' &&
+              callee.object.object.object.type === 'Identifier' &&
+              (callee.object.object.object.name === 'env' || callee.object.object.object.name === '_point0_env') &&
+              callee.object.object.property.type === 'Identifier' &&
+              callee.object.object.property.name === 'side' &&
+              callee.object.property.type === 'Identifier' &&
+              callee.object.property.name === 'define'
+            ) {
+              if (callee.property.type === 'Identifier') {
+                const name = callee.property.name
+
+                if (name === 'server') {
+                  replaceWithFinalValue(side === 'server' ? args[0] : undefined)
+                } else if (name === 'client') {
+                  replaceWithFinalValue(side === 'client' ? args[0] : undefined)
+                }
+              }
             }
-          }
-        },
-      })
+            // Handle env.side define.unsafe.server()/define.unsafe.client()
+            else if (
+              side !== false &&
+              callee.object.type === 'MemberExpression' &&
+              callee.object.object.type === 'MemberExpression' &&
+              callee.object.object.object.type === 'MemberExpression' &&
+              callee.object.object.object.object.type === 'Identifier' &&
+              (callee.object.object.object.object.name === 'env' ||
+                callee.object.object.object.object.name === '_point0_env') &&
+              callee.object.object.object.property.type === 'Identifier' &&
+              callee.object.object.object.property.name === 'side' &&
+              callee.object.object.property.type === 'Identifier' &&
+              callee.object.object.property.name === 'define' &&
+              callee.object.property.type === 'Identifier' &&
+              callee.object.property.name === 'unsafe'
+            ) {
+              if (callee.property.type === 'Identifier') {
+                const name = callee.property.name
+
+                if (name === 'server') {
+                  replaceWithFinalValue(side === 'server' ? args[0] : undefined)
+                } else if (name === 'client') {
+                  replaceWithFinalValue(side === 'client' ? args[0] : undefined)
+                }
+              }
+            }
+            // Handle env.runtime.define.X() - replace with value if runtime matches, undefined otherwise
+            else if (
+              runtime !== false &&
+              callee.object.type === 'MemberExpression' &&
+              callee.object.object.type === 'MemberExpression' &&
+              callee.object.object.object.type === 'Identifier' &&
+              (callee.object.object.object.name === 'env' || callee.object.object.object.name === '_point0_env') &&
+              callee.object.object.property.type === 'Identifier' &&
+              callee.object.object.property.name === 'runtime' &&
+              callee.object.property.type === 'Identifier' &&
+              callee.object.property.name === 'define' &&
+              callee.property.type === 'Identifier'
+            ) {
+              const runtimeName = callee.property.name
+              replaceWithFinalValue(runtime === runtimeName ? args[0] : undefined)
+            }
+            // Handle env.runtime.define.unsafe.X() - replace with value if runtime matches, undefined otherwise
+            else if (
+              runtime !== false &&
+              callee.object.type === 'MemberExpression' &&
+              callee.object.object.type === 'MemberExpression' &&
+              callee.object.object.object.type === 'MemberExpression' &&
+              callee.object.object.object.object.type === 'Identifier' &&
+              (callee.object.object.object.object.name === 'env' ||
+                callee.object.object.object.object.name === '_point0_env') &&
+              callee.object.object.object.property.type === 'Identifier' &&
+              callee.object.object.object.property.name === 'runtime' &&
+              callee.object.object.property.type === 'Identifier' &&
+              callee.object.object.property.name === 'define' &&
+              callee.object.property.type === 'Identifier' &&
+              callee.object.property.name === 'unsafe' &&
+              callee.property.type === 'Identifier'
+            ) {
+              const runtimeName = callee.property.name
+              replaceWithFinalValue(runtime === runtimeName ? args[0] : undefined)
+            }
+            // Handle env.runtime.define() with options object
+            else if (
+              runtime !== false &&
+              callee.object.type === 'MemberExpression' &&
+              callee.object.object.type === 'Identifier' &&
+              (callee.object.object.name === 'env' || callee.object.object.name === '_point0_env') &&
+              callee.object.property.type === 'Identifier' &&
+              callee.object.property.name === 'runtime' &&
+              callee.property.type === 'Identifier' &&
+              callee.property.name === 'define'
+            ) {
+              if (args.length > 0 && args[0].type === 'ObjectExpression') {
+                replaceWithFinalValue(getObjectPropertyValue(args[0], runtime))
+              }
+            }
+            // Handle env.os.define.X() - replace with value if os matches, undefined otherwise
+            else if (
+              os !== false &&
+              callee.object.type === 'MemberExpression' &&
+              callee.object.object.type === 'MemberExpression' &&
+              callee.object.object.object.type === 'Identifier' &&
+              (callee.object.object.object.name === 'env' || callee.object.object.object.name === '_point0_env') &&
+              callee.object.object.property.type === 'Identifier' &&
+              callee.object.object.property.name === 'os' &&
+              callee.object.property.type === 'Identifier' &&
+              callee.object.property.name === 'define' &&
+              callee.property.type === 'Identifier'
+            ) {
+              const osName = callee.property.name
+              replaceWithFinalValue(os === osName ? args[0] : undefined)
+            }
+            // Handle env.os.define.unsafe.X() - replace with value if os matches, undefined otherwise
+            else if (
+              os !== false &&
+              callee.object.type === 'MemberExpression' &&
+              callee.object.object.type === 'MemberExpression' &&
+              callee.object.object.object.type === 'MemberExpression' &&
+              callee.object.object.object.object.type === 'Identifier' &&
+              (callee.object.object.object.object.name === 'env' ||
+                callee.object.object.object.object.name === '_point0_env') &&
+              callee.object.object.object.property.type === 'Identifier' &&
+              callee.object.object.object.property.name === 'os' &&
+              callee.object.object.property.type === 'Identifier' &&
+              callee.object.object.property.name === 'define' &&
+              callee.object.property.type === 'Identifier' &&
+              callee.object.property.name === 'unsafe' &&
+              callee.property.type === 'Identifier'
+            ) {
+              const osName = callee.property.name
+              replaceWithFinalValue(os === osName ? args[0] : undefined)
+            }
+            // Handle env.os.define() with options object
+            else if (
+              os !== false &&
+              callee.object.type === 'MemberExpression' &&
+              callee.object.object.type === 'Identifier' &&
+              (callee.object.object.name === 'env' || callee.object.object.name === '_point0_env') &&
+              callee.object.property.type === 'Identifier' &&
+              callee.object.property.name === 'os' &&
+              callee.property.type === 'Identifier' &&
+              callee.property.name === 'define'
+            ) {
+              if (args.length > 0 && args[0].type === 'ObjectExpression') {
+                replaceWithFinalValue(getObjectPropertyValue(args[0], os))
+              }
+            }
+            // Handle env.scope.define.X() - replace with value if scope matches, undefined otherwise
+            else if (
+              scope !== false &&
+              callee.object.type === 'MemberExpression' &&
+              callee.object.object.type === 'MemberExpression' &&
+              callee.object.object.object.type === 'Identifier' &&
+              (callee.object.object.object.name === 'env' || callee.object.object.object.name === '_point0_env') &&
+              callee.object.object.property.type === 'Identifier' &&
+              callee.object.object.property.name === 'scope' &&
+              callee.object.property.type === 'Identifier' &&
+              callee.object.property.name === 'define' &&
+              callee.property.type === 'Identifier'
+            ) {
+              const scopeName = callee.property.name
+              replaceWithFinalValue(scope === scopeName ? args[0] : undefined)
+            }
+            // Handle env.scope.define.unsafe.X() - replace with value if scope matches, undefined otherwise
+            else if (
+              scope !== false &&
+              callee.object.type === 'MemberExpression' &&
+              callee.object.object.type === 'MemberExpression' &&
+              callee.object.object.object.type === 'MemberExpression' &&
+              callee.object.object.object.object.type === 'Identifier' &&
+              (callee.object.object.object.object.name === 'env' ||
+                callee.object.object.object.object.name === '_point0_env') &&
+              callee.object.object.object.property.type === 'Identifier' &&
+              callee.object.object.object.property.name === 'scope' &&
+              callee.object.object.property.type === 'Identifier' &&
+              callee.object.object.property.name === 'define' &&
+              callee.object.property.type === 'Identifier' &&
+              callee.object.property.name === 'unsafe' &&
+              callee.property.type === 'Identifier'
+            ) {
+              const scopeName = callee.property.name
+              replaceWithFinalValue(scope === scopeName ? args[0] : undefined)
+            }
+            // Handle env.scope.define() with options object
+            else if (
+              scope !== false &&
+              callee.object.type === 'MemberExpression' &&
+              callee.object.object.type === 'Identifier' &&
+              (callee.object.object.name === 'env' || callee.object.object.name === '_point0_env') &&
+              callee.object.property.type === 'Identifier' &&
+              callee.object.property.name === 'scope' &&
+              callee.property.type === 'Identifier' &&
+              callee.property.name === 'define'
+            ) {
+              if (args.length > 0 && args[0].type === 'ObjectExpression') {
+                replaceWithFinalValue(getObjectPropertyValue(args[0], scope))
+              }
+            }
+            // Handle env.side define() with options object
+            else if (
+              side !== false &&
+              callee.object.type === 'MemberExpression' &&
+              callee.object.object.type === 'Identifier' &&
+              (callee.object.object.name === 'env' || callee.object.object.name === '_point0_env') &&
+              callee.object.property.type === 'Identifier' &&
+              callee.object.property.name === 'side' &&
+              callee.property.type === 'Identifier' &&
+              callee.property.name === 'define'
+            ) {
+              if (args.length > 0 && args[0].type === 'ObjectExpression') {
+                replaceWithFinalValue(getObjectPropertyValue(args[0], side))
+              }
+            }
+            // Handle env.build.define() with options object
+            else if (
+              callee.object.type === 'MemberExpression' &&
+              callee.object.object.type === 'Identifier' &&
+              (callee.object.object.name === 'env' || callee.object.object.name === '_point0_env') &&
+              callee.object.property.type === 'Identifier' &&
+              callee.object.property.name === 'build' &&
+              callee.property.type === 'Identifier' &&
+              callee.property.name === 'define'
+            ) {
+              if (args.length > 0 && args[0].type === 'ObjectExpression') {
+                replaceWithFinalValue(getObjectPropertyValue(args[0], built ? 'after' : 'before'))
+              }
+            }
+          },
+        })
+        if (!passModified) break
+      }
 
       this._shakeForEnv = { side, scope, mode, runtime, os, consts, built, errors, ok: true, modified }
       this.modified ||= modified

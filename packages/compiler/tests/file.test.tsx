@@ -311,6 +311,81 @@ describe('CompilerFile', () => {
           )
         }),
       )
+
+      it.concurrent(
+        'env.build.define() with nested env.side.define() applies nested transform',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info(
+              env.build.define({
+                before: env.side.define.server('before-server-value'),
+                after: env.side.define.client('after-client-value'),
+              }),
+            )
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development', built: true })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info(undefined)
+              "
+            `,
+          )
+        }),
+      )
+
+      it.concurrent(
+        'stress: combined define transforms resolve in fixed-point passes',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/core')
+            console.info({
+              a: env.build.define({
+                before: 'before-value',
+                after: env.runtime.define.bun(
+                  env.os.define.linux(env.scope.define.x(env.side.define.server('a-value'))),
+                ),
+              }),
+              b: env.side.define({
+                server: env.runtime.define.unsafe.bun('server-runtime'),
+                client: env.runtime.define.browser('client-runtime'),
+              }),
+              c: env.scope.define({
+                x: env.os.define.unsafe.linux('scope-os-unsafe'),
+                y: env.os.define.ios('scope-os'),
+              }),
+              d: env.runtime.define({
+                bun: env.build.define({
+                  before: 'runtime-before',
+                  after: env.scope.define.unsafe.x('runtime-build-scope'),
+                }),
+                browser: 'runtime-browser',
+              }),
+            })
+          })
+          cf.shakeForEnv({
+            side: 'client',
+            scope: 'x',
+            mode: 'development',
+            runtime: 'bun',
+            os: 'linux',
+            built: true,
+          })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/core')
+              console.info({
+                a: undefined,
+                b: undefined,
+                c: 'scope-os-unsafe',
+                d: 'runtime-build-scope',
+              })
+              "
+            `,
+          )
+        }),
+      )
     })
 
     describe('env.side.define', () => {
@@ -325,7 +400,7 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.side.define.server(undefined))
+              console.info(undefined)
               "
             `,
           )
@@ -343,7 +418,7 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.side.define.server('server-value'))
+              console.info('server-value')
               "
             `,
           )
@@ -361,7 +436,7 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.side.define.client(undefined))
+              console.info(undefined)
               "
             `,
           )
@@ -379,7 +454,7 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.side.define.client('client-value'))
+              console.info('client-value')
               "
             `,
           )
@@ -397,7 +472,7 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.side.define({ server: undefined, client: 'client-value' }))
+              console.info('client-value')
               "
             `,
           )
@@ -415,7 +490,7 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.side.define({ server: 'server-value', client: undefined }))
+              console.info('server-value')
               "
             `,
           )
@@ -433,7 +508,7 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.side.define.unsafe.server(undefined))
+              console.info(undefined)
               "
             `,
           )
@@ -451,7 +526,7 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.side.define.unsafe.server('server-value'))
+              console.info('server-value')
               "
             `,
           )
@@ -469,7 +544,7 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.side.define.unsafe.client(undefined))
+              console.info(undefined)
               "
             `,
           )
@@ -487,7 +562,7 @@ describe('CompilerFile', () => {
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              console.info(env.side.define.unsafe.client('client-value'))
+              console.info('client-value')
               "
             `,
           )

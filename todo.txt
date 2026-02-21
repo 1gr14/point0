@@ -44,8 +44,6 @@ launch
 
 
 === REFACTOING 3000 ===
-В еслинт проверить флоатинг промис
-Убедиться что если моунтаблы сбрасываются, то они не сбрасываются после рута и бейза
 тест енва на вложенный дефайн, он оба схлопнет?
 +++
 Error0
@@ -203,7 +201,6 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 
 
 === ENGINE ===
-tests for publicdirs
 --+
 (when actions, scalar)
 И из файла поинтсов как раз для этого и нужно в том числеэкспортировать и тайпед поинты объектом судя по всему
