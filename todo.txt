@@ -203,7 +203,6 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 
 
 === ENGINE ===
-Написать тесты на правильное определение путей после билда в энжине
 tests for publicdirs
 --+
 (when actions, scalar)

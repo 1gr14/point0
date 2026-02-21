@@ -234,12 +234,29 @@ export class Publicdir<TPrepared extends boolean = boolean> {
     const response =
       typeof fileAbsPathOrResponseOrFn === 'function' ? await fileAbsPathOrResponseOrFn() : fileAbsPathOrResponseOrFn.clone()
 
-    return response
+    return this.ensureResponseContentType({ routePath, response })
   }
 
   private cachedToResponse(entry: PublicdirCacheEntry): Response {
     return new Response(entry.body, {
       headers: entry.contentType ? { 'content-type': entry.contentType } : undefined,
+    })
+  }
+
+  private ensureResponseContentType({ routePath, response }: { routePath: string; response: Response }): Response {
+    if (response.headers.has('content-type')) {
+      return response
+    }
+    const inferredType = Bun.file(`publicdir${nodePath.extname(routePath)}`).type
+    if (!inferredType || inferredType === 'application/octet-stream') {
+      return response
+    }
+    const headers = new Headers(response.headers)
+    headers.set('content-type', inferredType)
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
     })
   }
 

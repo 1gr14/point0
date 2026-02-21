@@ -15,6 +15,7 @@ export const engine = Engine.create({
     ],
     outdir: '../dist/server',
     env: { vars: { MY_ENV_SERVER_VARIABLE: 'SERVER1' }, consts: ['MY_ENV_FILE_CONSTANT'] },
+    // publicdir: server,
     // port: server,
     // hmrPort: server,
     // viteConfig: '../vite.config.ts',
