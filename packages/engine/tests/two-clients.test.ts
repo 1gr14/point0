@@ -267,8 +267,8 @@ describe('two-clients', () => {
         {
           ssr1: true,
           ssr2: true,
-          basepath1: '/',
-          basepath2: '/second',
+          basepath1: '/first',
+          basepath2: '/',
           ...vites,
           // preserve: true,
         },
@@ -288,31 +288,30 @@ describe('two-clients', () => {
           tp.spawn(['bun', 'run', 'dev'])
           await tp.waitStarted()
 
-          // server return nothing becouse request not matches no one basepath
-          const page01 = await tp.gotoServer('/')
+          const page01 = await tp.gotoServer('/first')
           expect(page01.tale).toMatchInlineSnapshot(`
         "
-        /
+        /first
           div: First Client
           "
         `)
-          const page02 = await tp.gotoServer('/second')
+          const page02 = await tp.gotoServer('/')
           expect(page02.tale).toMatchInlineSnapshot(`
         "
-        /second
+        /
           div: Second Client
           "
         `)
 
           // first client return itsefl becouse of basepath
-          const page1 = await tp.gotoClient1('/')
+          const page1 = await tp.gotoClient1('/first')
           expect(page1.tale).toMatchInlineSnapshot(`
         "
-        /
+        /first
           div: First Client
           "
         `)
-          const response1 = await tp.fetchClient1('/')
+          const response1 = await tp.fetchClient1('/first')
           const html1 = await response1.text()
           expect(html1).toContain('__POINT0_ENV_VARS__')
           expect(html1).toContain('__POINT0_ENV_CONSTS__')
@@ -325,14 +324,14 @@ describe('two-clients', () => {
           expect(html1).not.toContain('SECOND_CONST')
 
           // second client return itself becouse of basepath
-          const page2 = await tp.gotoClient2('/second')
+          const page2 = await tp.gotoClient2('/')
           expect(page2.tale).toMatchInlineSnapshot(`
         "
-        /second
+        /
           div: Second Client
           "
         `)
-          const response2 = await tp.fetchClient2('/second')
+          const response2 = await tp.fetchClient2('/')
           const html2 = await response2.text()
           expect(html2).toContain('__POINT0_ENV_VARS__')
           expect(html2).toContain('__POINT0_ENV_CONSTS__')
@@ -359,6 +358,21 @@ describe('two-clients', () => {
           expect(await tp.fetchClient2('/first.txt').then((r) => r.text())).toContain('first')
 
           expect(await tp.fetchClient1('/second.txt').then((r) => r.text())).toContain('second')
+
+          const page1404 = await tp.gotoClient1('/first/404')
+          expect(page1404.tale).toMatchInlineSnapshot(`
+          "
+          /first/404
+            div: Page Not Found 1
+            "
+          `)
+          const page2404 = await tp.gotoClient2('/404')
+          expect(page2404.tale).toMatchInlineSnapshot(`
+          "
+          /404
+            div: Page Not Found 2
+            "
+          `)
         },
       ),
       {

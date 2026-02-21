@@ -894,6 +894,9 @@ export class Point0<
   > {
     const normalizedBasepath = prependAndDeappendSlash(basepath) || '/'
     const route = Route0.create(dedupeSlashes(`/${normalizedBasepath}`))
+    if (route.getParamsKeys().length > 0 || route.getSearchKeys().length > 0) {
+      throw new Error('basepath can not contain params or search params')
+    }
     return this._continue({
       _basepath: normalizedBasepath,
       route,

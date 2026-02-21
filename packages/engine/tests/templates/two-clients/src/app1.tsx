@@ -9,7 +9,7 @@ export default function App() {
           {/* Before RouterRoutes */}
           <RouterRoutes
             Page404={() => {
-              return <div>Page Not Found</div>
+              return <div>Page Not Found 1</div>
             }}
           />
           {/* After RouterRoutes */}
