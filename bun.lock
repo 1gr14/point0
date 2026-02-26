@@ -315,7 +315,7 @@
     },
   },
   "catalog": {
-    "@devp0nt/error0": "^1.0.0-next.49",
+    "@devp0nt/error0": "^1.0.0-next.52",
     "@devp0nt/route0": "^1.0.0-next.64",
     "@tanstack/react-query": "^5.0.0",
     "@unhead/react": "^2.1.2",
