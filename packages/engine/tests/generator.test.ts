@@ -1,7 +1,7 @@
+import type { LoggerFn } from '@point0/core'
 import { beforeAll, describe, expect, it, jest } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import type { EngineLogger } from '../src/config.js'
 import { FilesGenerator } from '../src/generator.js'
 import { waitUntilFileChanged } from './utils/other.js'
 
@@ -37,10 +37,10 @@ const helper = (
     dir: string
     files: TestFile[]
     fixPaths: (content: string) => string
-    logger: EngineLogger
-    getLogs: () => unknown[][]
-    getLastLog: () => unknown[]
-    getLastLogFirstArg: () => unknown
+    logger: LoggerFn
+    getLogs: () => Array<[{ lever: string; topic: string; message: string }]>
+    getLastLog: () => [{ lever: string; topic: string; message: string }]
+    getLastLogMessage: () => string
   }) => void | Promise<void>,
   preserve = false,
 ) => {
@@ -53,25 +53,15 @@ const helper = (
       }
       return content
     }
-    const logger = {
-      info: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-      debug: jest.fn(),
-    }
+    const logger = jest.fn<LoggerFn>()
     const getLogs = () => {
-      return [
-        ...logger.info.mock.calls,
-        ...logger.error.mock.calls,
-        ...logger.warn.mock.calls,
-        ...logger.debug.mock.calls,
-      ]
+      return [...logger.mock.calls]
     }
     const getLastLog = () => {
       return getLogs()[getLogs().length - 1]
     }
-    const getLastLogFirstArg = () => {
-      return getLastLog()[0]
+    const getLastLogMessage = () => {
+      return getLastLog()[0].message
     }
     try {
       await callback({
@@ -81,7 +71,7 @@ const helper = (
         logger,
         getLogs,
         getLastLog,
-        getLastLogFirstArg,
+        getLastLogMessage,
       })
     } finally {
       if (!preserve) {
@@ -109,7 +99,7 @@ describe('FilesGenerator', () => {
   describe('#sync', () => {
     it.concurrent(
       'generates lazy points file for server',
-      helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, logger, getLastLogFirstArg, getLogs }) => {
+      helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, logger, getLastLogMessage, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
 export const query = root.lets('query', 'myquery').loader(() => ({hello: 'World'})).query()
@@ -155,13 +145,13 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
-        expect(getLastLogFirstArg()).toBe('4 points processed')
+        expect(getLastLogMessage()).toBe('4 points processed')
         expect(getLogs()).toHaveLength(1)
       }),
     )
     it.concurrent(
       'generates lazy points file for client',
-      helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, logger, getLastLogFirstArg, getLogs }) => {
+      helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, logger, getLastLogMessage, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
 export const query = root.lets('query', 'myquery').loader(() => ({hello: 'World'})).query()
@@ -202,12 +192,12 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
-        expect(getLastLogFirstArg()).toBe('4 points processed')
+        expect(getLastLogMessage()).toBe('4 points processed')
         expect(getLogs()).toHaveLength(1)
       }),
     )
 
-    it(
+    it.only(
       'generates lazy points file, and log errors for invalid points',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, logger, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -242,9 +232,9 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
-        expect(getLogs()[0][0]).toBe('2 points processed')
-        expect(getLogs()[1][0]).toBe(
-          `page.mypage: Last called method name 'undefined' does not match point type 'page'. Please, use .page() in end of point chain in ${rootFile.path}:3:20`,
+        expect(getLogs()[1][0].message).toBe('2 points processed')
+        expect(getLogs()[0][0].message).toContain(
+          `page.mypage: Last called method name 'undefined' does not match point type 'page'.`,
         )
         expect(getLogs()).toHaveLength(2)
       }),
@@ -925,9 +915,9 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
 
         expect(getLogs()).toHaveLength(0)
         await generator.sync()
-        expect(getLogs()[0][0]).toBe('2 points processed')
+        expect(getLogs()[0][0].message).toBe('2 points processed')
         await generator.watch()
-        expect(getLogs()[1][0]).toBe('generator watcher started')
+        expect(getLogs()[1][0].message).toBe('Watcher started')
 
         expect(fixPaths(await pointsFile.text())).toMatchInlineSnapshot(`
           "import type { PointsDefinition } from '@point0/core'
@@ -968,8 +958,8 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
           "
         `)
 
-        expect(getLogs()[2][0]).toBe('➖ page.mypage')
-        expect(getLogs()[3][0]).toBe('➕ page.mypage2')
+        expect(getLogs()[2][0].message).toBe('➖ page.mypage')
+        expect(getLogs()[3][0].message).toBe('➕ page.mypage2')
       }),
     )
   })

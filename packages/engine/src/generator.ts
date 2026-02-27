@@ -1,12 +1,13 @@
 import type { RoutesPretty } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
 import { CompilerPoint, END_POINT_TYPES, Walker } from '@point0/compiler'
-import { generateId } from '@point0/core'
+import type { LoggerFn } from '@point0/core'
+import { generateId, logger } from '@point0/core'
 import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import type { EngineLogger, EngineOptionsRoutes } from './config.js'
+import type { EngineOptionsRoutes } from './config.js'
 import { getDirByPaths, resolveTempDirPath } from './utils.js'
 
 type ChangeCollectedPointsEvent = {
@@ -23,7 +24,7 @@ export type FilesGeneratorOptions = {
   tasks: FilesGeneratorTask[]
   routes: Record<string, RoutesPretty | null | EngineOptionsRoutes>
   banner?: string
-  logger?: EngineLogger
+  logger?: LoggerFn
 }
 
 export type FilesGeneratorTaskPoints = {
@@ -70,7 +71,7 @@ export class FilesGenerator {
   readonly routes: Record<string, RoutesPretty>
   readonly routesSrc: Record<string, { instance: RoutesPretty | null; getter: EngineOptionsRoutes | null }>
   private isRoutesInitialized = false
-  readonly logger: EngineLogger
+  readonly logger: LoggerFn
 
   readonly watchDir: string
   readonly watchIgnore: string[]
@@ -90,12 +91,7 @@ export class FilesGenerator {
   constructor(opts: FilesGeneratorOptions) {
     this.banner = opts.banner
     this.cwd = opts.cwd
-    this.logger = opts.logger ?? {
-      info: console.info.bind(console),
-      error: console.error.bind(console),
-      warn: console.warn.bind(console),
-      debug: console.debug.bind(console),
-    }
+    this.logger = opts.logger ?? logger
     const glob = Array.isArray(opts.glob) ? opts.glob : [opts.glob]
     this.globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g))
     this.globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g.slice(1)))
@@ -142,7 +138,11 @@ export class FilesGenerator {
       return result
     }
     const [loggerMethod, emoji] = result.errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '']
-    this.logger[loggerMethod]([emoji, `${result.points.length} points processed`].filter(Boolean).join(' '))
+    this.logger({
+      lever: loggerMethod,
+      topic: 'FilesGenerator',
+      message: [emoji, `${result.points.length} points processed`].filter(Boolean).join(' '),
+    })
     return result
   }
 
@@ -261,7 +261,7 @@ export class FilesGenerator {
       const errorsMessages = point.errors.map((e) => (e instanceof Error ? e.message : String(e))).join(', ')
       const message = `${point.type}.${point.name}: ${errorsMessages} in ${point.strpos}`
       if (!options?.silent) {
-        this.logger.error(message)
+        this.logger({ lever: 'error', topic: 'FilesGenerator', message })
       }
     }
     const prevPoints = [...this.points]
@@ -272,7 +272,11 @@ export class FilesGenerator {
     const { written } = diff.changed ? await this.writeOutputs() : { written: false }
     if (!options?.silent) {
       for (const error of errors) {
-        this.logger.error(error instanceof Error ? error.message : String(error))
+        this.logger({
+          lever: 'error',
+          topic: 'FilesGenerator',
+          message: error instanceof Error ? error.message : String(error),
+        })
       }
     }
     this.actualizePointsByPaths()
@@ -976,7 +980,7 @@ export class FilesGenerator {
       async (err, events) => {
         if (err) {
           if (!options?.silent) {
-            this.logger.error(`🔴 generator error: ${err.message}`)
+            this.logger({ lever: 'error', topic: 'FilesGenerator', message: `Watcher error`, error: err })
           }
           return
         }
@@ -1027,19 +1031,19 @@ export class FilesGenerator {
               if (evt.deleted.length > 0) {
                 const deletedTypesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(' ')
                 if (!options?.silent) {
-                  this.logger.info(`➖ ${deletedTypesAndNames}`)
+                  this.logger({ lever: 'info', topic: 'FilesGenerator', message: `➖ ${deletedTypesAndNames}` })
                 }
               }
               if (evt.added.length > 0) {
                 const addedTypesAndNames = evt.added.map((p) => `${p.type}.${p.name}`).join(' ')
                 if (!options?.silent) {
-                  this.logger.info(`➕ ${addedTypesAndNames}`)
+                  this.logger({ lever: 'info', topic: 'FilesGenerator', message: `➕ ${addedTypesAndNames}` })
                 }
               }
             }
           } catch (e) {
             if (!options?.silent) {
-              this.logger.error(`🔴 ${(e as Error).message}`)
+              this.logger({ lever: 'error', topic: 'FilesGenerator', message: `Watcher error`, error: e })
             }
           }
         }
@@ -1050,7 +1054,7 @@ export class FilesGenerator {
     )
 
     if (!options?.silent) {
-      this.logger.info('generator watcher started')
+      this.logger({ lever: 'info', topic: 'FilesGenerator', message: 'Watcher started' })
     }
 
     // Store subscription for potential cleanup

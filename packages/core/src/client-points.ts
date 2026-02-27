@@ -1,8 +1,8 @@
 import { Route0, Routes } from '@devp0nt/route0'
 import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
-import type { ErrorPoint0 } from './index.js'
-import { _point0_env, appendSlash } from './index.js'
+import type { ErrorPoint0, LoggerFn } from './index.js'
+import { _defaultLoggerFn, _point0_env, _ssClientLogger, appendSlash } from './index.js'
 import { _getFakeClient, _ssItems } from './internals.js'
 import { PointsManager } from './points-manager.js'
 import type {
@@ -73,8 +73,9 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
 
   static createFromDefintion<TError extends ErrorPoint0>(
     points: PointsDefinition | PointsManager,
+    options: { logger?: LoggerFn } = {},
   ): ClientPoints<TError> {
-    const manager = PointsManager.createFromDefinition(points)
+    const manager = PointsManager.createFromDefinition(points, options)
     // const manager = PointsManager.createFromCollection(_manager.collection.filter((p) => ['root', 'page', 'layout', 'provider', 'init'].))
     // I was tried to filter not needed points, but for what? In real client we already filter it on generate pahes, on server does not matter if there more points then needed
     const roots = manager.getRoots()
@@ -112,9 +113,10 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
 
   static async createFromSource<TError extends ErrorPoint0>(
     source: PointsDefinitionSource,
+    options: { logger?: LoggerFn } = {},
   ): Promise<ClientPoints<TError>> {
-    const manager = await PointsManager.createFromSource(source)
-    return ClientPoints.createFromDefintion(manager)
+    const manager = await PointsManager.createFromSource(source, options)
+    return ClientPoints.createFromDefintion(manager, options)
   }
 
   static readonly toRoutes = ({
@@ -488,6 +490,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
       throw new Error('Client points can not be mounted on server')
     }
     _ssItems.__POINT0_CLIENT_POINTS__.set(this as unknown as ClientPoints<ErrorPoint0>)
+    _ssClientLogger.set(this.manager.logger ?? _defaultLoggerFn)
   }
 
   static getInstance = <TError extends ErrorPoint0>(): ClientPoints<TError> => {

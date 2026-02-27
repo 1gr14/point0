@@ -137,6 +137,13 @@ export class SuperStore {
         serverGlobalState: SuperStoreState
       }
     | {
+        variant: 'serverGlobal'
+        clientState: undefined
+        fakeClientState: undefined
+        serverStorageState: undefined
+        serverGlobalState: SuperStoreState
+      }
+    | {
         variant: 'fakeClient'
         clientState: undefined
         fakeClientState: SuperStoreState
@@ -155,18 +162,27 @@ export class SuperStore {
       }
     } else {
       const serverStorage = this.serverStorage
-      if (!serverStorage) {
-        throw new Error(
-          'Server storage is not initialized. We do not know how it is possible. Please, report this issue to the developers',
-        )
-      }
-      const serverStorageState = serverStorage.getStore()
-      if (!serverStorageState) {
-        throw new Error(
-          'Server store not found. You should call this function on server only inside server context wrapped in superstore.runWithServerStorageProvider(serverStorageState, callback). So call it in hooks, components, functions, not in top of files without wrappers',
-        )
-      }
+      // if (!serverStorage) {
+      //   throw new Error(
+      //     'Server storage is not initialized. We do not know how it is possible. Please, report this issue to the developers',
+      //   )
+      // }
+      const serverStorageState = serverStorage?.getStore()
+      // if (!serverStorageState) {
+      //   throw new Error(
+      //     'Server store not found. You should call this function on server only inside server context wrapped in superstore.runWithServerStorageProvider(serverStorageState, callback). So call it in hooks, components, functions, not in top of files without wrappers',
+      //   )
+      // }
       if (!fakeClient) {
+        if (!serverStorageState) {
+          return {
+            variant: 'serverGlobal',
+            clientState: undefined,
+            fakeClientState: undefined,
+            serverStorageState: undefined,
+            serverGlobalState: this.serverGlobalState,
+          }
+        }
         return {
           variant: 'server',
           clientState: undefined,
@@ -174,6 +190,11 @@ export class SuperStore {
           serverStorageState,
           serverGlobalState: this.serverGlobalState,
         }
+      }
+      if (!serverStorageState) {
+        throw new Error(
+          'Server storage is not initialized for fake client. We do not know how it is possible. Please, report this issue to the developers',
+        )
       }
       serverStorageState.__POINT0_FAKE_CLIENTS_STATE__ ||= {}
       ;(serverStorageState.__POINT0_FAKE_CLIENTS_STATE__ as SuperStoreState)[fakeClient.id] ||= {}
@@ -383,7 +404,7 @@ export class SuperStore {
         }
         case 'serverOnlyGlobal': {
           // if (states.variant === 'client') {
-          if (states.variant !== 'server') {
+          if (states.variant !== 'server' && states.variant !== 'serverGlobal') {
             throw new Error(`Cannot access serverOnlyGlobal item "${name}" from client`)
           }
           return states.serverGlobalState
@@ -394,7 +415,7 @@ export class SuperStore {
           throw new Error(`Invalid policy: ${policy}`)
       }
     })()
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
     if (!result) {
       throw new Error(`State not found for item policy "${policy}". It is a critical bug, please report it`)
     }

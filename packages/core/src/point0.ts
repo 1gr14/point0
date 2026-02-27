@@ -214,7 +214,9 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
-import { getCallerLocation } from './index.js'
+import { getCallerLocation, logger } from './index.js'
+import type { LoggerFn } from './logger.js'
+
 // import stringify from 'safe-stable-stringify'
 
 // known stage fns
@@ -320,7 +322,6 @@ export class Point0<
     return `${this.scope}.${this.type}.${this.name}`
   }
   toStringWithLocation() {
-    console.log(123123, this._fsLocation)
     return this._fsLocation
       ? `${this.toString()}(${this._fsLocation.path}:${this._fsLocation.line}:${this._fsLocation.column})`
       : this.toString()
@@ -343,6 +344,24 @@ export class Point0<
   private readonly _base: BasePoint | LayoutPoint | undefined
   readonly _root: RootPoint | undefined
   readonly _fsLocation: FsLocation | undefined
+  readonly _logger: LoggerFn | undefined
+  readonly _memoizedLogger: LoggerFn | undefined
+  readonly _getLogger = (): LoggerFn | undefined => {
+    if (this._memoizedLogger) {
+      return this._memoizedLogger
+    }
+    if (this._logger) {
+      return this._logger
+    }
+    let _root = this._root
+    while (_root) {
+      if (_root._logger) {
+        return _root._logger
+      }
+      _root = _root._root
+    }
+    return undefined
+  }
   readonly _Error: ClassLikeError0<TError>
   readonly _middlewares: MiddlewareFn<TError>[]
   _serverurl: string | undefined
@@ -482,6 +501,7 @@ export class Point0<
     _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
     _fsLocation?: FsLocation | undefined
+    _logger?: LoggerFn | undefined
     _Error?: ClassLikeError0<TError>
     _middlewares?: MiddlewareFn<TError>[] | undefined
     _serverurl?: string | undefined
@@ -554,6 +574,7 @@ export class Point0<
     this._base = options._base ?? undefined
     this._root = options._root ?? undefined
     this._fsLocation = options._fsLocation ?? undefined
+    this._logger = options._logger ?? undefined
     this._Error = options._Error ?? (ErrorPoint0 as unknown as ClassLikeError0<TError>)
     this._middlewares = options._middlewares ?? []
     this._transformer = options._transformer ?? undefined
@@ -631,6 +652,7 @@ export class Point0<
     _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
     _fsLocation?: FsLocation | undefined
+    _logger?: LoggerFn | undefined
     _Error?: ClassLikeError0<TError> | undefined
     _middlewares?: MiddlewareFn<TError>[]
     _serverurl?: string | undefined
@@ -737,6 +759,7 @@ export class Point0<
       _base: overrides._base ?? this._base,
       _root: overrides._root ?? this._root,
       _fsLocation: overrides._fsLocation ?? this._fsLocation,
+      _logger: overrides._logger ?? this._logger,
       _Error: overrides._Error ?? this._Error,
       type: (overrides.type ?? this.type) as TPointType,
       _letsReadyPointType: (overrides._letsReadyPointType ?? this._letsReadyPointType) as TLetsReadyPointType,
@@ -8064,6 +8087,7 @@ export class Point0<
     data: Extract<AnyEventerEvent<TError>, { name: TName }>['data'],
   ) {
     const event = { name, data, side: _point0_env.side.name } as AnyEventerEvent<TError>
+    // const _logger = this._getLogger() ?? logger
     for (const subscription of this._eventerSubscriptions) {
       if (subscription.side && subscription.side !== event.side) {
         continue
@@ -8075,7 +8099,12 @@ export class Point0<
         try {
           await subscription.callback(event)
         } catch (error) {
-          console.error(error)
+          logger({
+            lever: 'error',
+            topic: 'Eventer',
+            message: `Error emitting event ${name} on point ${this.toStringWithLocation()}`,
+            error,
+          })
         }
       })()
     }

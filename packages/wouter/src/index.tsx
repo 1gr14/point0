@@ -8,7 +8,7 @@ import {
   Route0,
   type RoutesPretty,
 } from '@devp0nt/route0'
-import { ErrorPoint0 } from '@point0/core'
+import { ErrorPoint0, logger } from '@point0/core'
 import {
   _ssItems,
   _wrapNavigate,
@@ -325,15 +325,10 @@ const _getWouterLinkProps = (
         prefetchTimeoutRef.current = setTimeout(
           () => {
             prefetchTimeoutRef.current = null
-            ClientPoints.getInstance()
-              .prefetchPage({
-                location: pointWithLocation.location,
-                trigger: 'linkHover',
-              })
-              .catch((e: unknown) => {
-                // TODO: replace with onClientError handler
-                console.error('Failed to prefetch page on hover', e)
-              })
+            void ClientPoints.getInstance().prefetchPage({
+              location: pointWithLocation.location,
+              trigger: 'linkHover',
+            })
           },
           pointWithLocation.point.polh === true ? 30 : pointWithLocation.point.polh,
         )
@@ -489,13 +484,13 @@ export const createLink = <
         return providedHref
       }
       if (routeName === undefined) {
-        console.error('routeName is required for Link without to or href')
+        logger({ lever: 'error', topic: 'Wouter', message: 'routeName is required for Link without to or href' })
         return '#'
       }
       const route = routes[routeName]
       if (!route) {
         // TODO: replace with onClientError handler
-        console.error(`Route "${routeName}" not found`)
+        logger({ lever: 'error', topic: 'Wouter', message: `Route "${routeName}" not found` })
         return '#'
       }
       return route.flat(input)
@@ -548,13 +543,13 @@ export const createNavLink = <
         return providedHref
       }
       if (routeName === undefined) {
-        console.error('routeName is required for NavLink without to or href')
+        logger({ lever: 'error', topic: 'Wouter', message: 'routeName is required for NavLink without to or href' })
         return '#'
       }
       const route = routes[routeName]
       if (!route) {
         // TODO: replace with onClientError handler
-        console.error(`Route "${routeName}" not found`)
+        logger({ lever: 'error', topic: 'Wouter', message: `Route "${routeName}" not found` })
         return '#'
       }
       return route.flat(input)

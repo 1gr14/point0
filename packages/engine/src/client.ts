@@ -3,6 +3,7 @@ import { ClientPoints, env } from '@point0/core'
 import type {
   AppComponent,
   InputParsed,
+  LoggerFn,
   NormalizedNodeEnv,
   PagePoint,
   PointsDefinitionSource,
@@ -17,7 +18,6 @@ import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
 import type { CompilerOptions } from '../../compiler/dist/compiler.js'
 import type {
-  EngineLogger,
   EngineOptionsAppComponent,
   EngineOptionsCompilerSpecificParsed,
   EngineOptionsEnvParsed,
@@ -67,7 +67,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
   compiler: EngineOptionsCompilerSpecificParsed | false
   viteConfig: EngineOptionsViteConfig | null
   index: number
-  logger: EngineLogger
+  logger: LoggerFn
   envVars: EngineOptionsEnvParsed
   envConsts: EngineOptionsEnvParsed
   publicdir: TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
@@ -107,7 +107,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     compiler: EngineOptionsCompilerSpecificParsed | false
     viteConfig: EngineOptionsViteConfig | null
     index: number
-    logger: EngineLogger
+    logger: LoggerFn
     envVars: EngineOptionsEnvParsed
     envConsts: EngineOptionsEnvParsed
     publicdir: Publicdir | null
@@ -183,7 +183,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     portPolicy: PortPolicy
     serveRetries: number
     index: number
-    logger: EngineLogger
+    logger: LoggerFn
     envVars: EngineOptionsEnvParsed
     envConsts: EngineOptionsEnvParsed
     engineFile: string | null
@@ -296,7 +296,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     if (!this.pointsProvided) {
       return null
     }
-    const points = await ClientPoints.createFromSource(this.pointsProvided)
+    const points = await ClientPoints.createFromSource(this.pointsProvided, { logger: this.logger })
     this.points = points as TPrepared extends true ? ClientPoints | null : undefined
     return points
   }
@@ -438,7 +438,11 @@ Bun.serve({
         NODE_ENV: process.env.NODE_ENV,
       },
     })
-    this.logger.info(`${this.scope} client dev server started on port ${this.port}`)
+    this.logger({
+      lever: 'info',
+      topic: 'EngineClient',
+      message: `Client "${this.scope}" dev server started http://localhost:${this.port}`,
+    })
     this.bunNativeDevServer = childProcess
     return childProcess
 
@@ -558,7 +562,11 @@ Bun.serve({
         },
       }),
     )()
-    this.logger.info(`${this.scope} client dev server started on port ${this.port}`)
+    this.logger({
+      lever: 'info',
+      topic: 'EngineClient',
+      message: `Client "${this.scope}" dev server started http://localhost:${this.port}`,
+    })
     return { bunViteDevServer, viteDevServer }
   }
 

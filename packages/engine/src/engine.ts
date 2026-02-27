@@ -1,19 +1,21 @@
-import type {
-  AnyNiceReadyPoint,
-  AnyPoint,
-  ErrorPoint0,
-  EventerEmitFn,
-  FetcherFetchDetailedResult,
-  PointsScope,
-  RequiredCtx,
-  UndefinedCtx,
+import {
+  _ssServerLogger,
+  type AnyNiceReadyPoint,
+  type AnyPoint,
+  type ErrorPoint0,
+  type EventerEmitFn,
+  type FetcherFetchDetailedResult,
+  type LoggerFn,
+  type PointsScope,
+  type RequiredCtx,
+  type UndefinedCtx,
 } from '@point0/core'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { EngineClient } from './client.js'
 import { parseEngineOptions } from './config.js'
-import type { EngineLogger, EngineOptions } from './config.js'
+import type { EngineOptions } from './config.js'
 import { FilesGenerator } from './generator.js'
 import type { FileGeneratorProcessResult, FilesGeneratorPointsFilesChangeWatcher } from './generator.js'
 import type { Publicdir } from './publicdir.js'
@@ -28,7 +30,7 @@ export class Engine<
   clients: TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
   server: TPrepared extends true ? EngineServer<true, TError> : EngineServer<false, TError>
   publicdirs: TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
-  logger: EngineLogger
+  logger: LoggerFn
   generator: FilesGenerator
   prepared: TPrepared
 
@@ -37,7 +39,7 @@ export class Engine<
   private constructor(input: {
     clients: EngineClient[]
     server: EngineServer<any, any>
-    logger: EngineLogger
+    logger: LoggerFn
     prepared: TPrepared
     generator: FilesGenerator
     publicdirs: Array<Publicdir<false>>
@@ -61,6 +63,8 @@ export class Engine<
     options: EngineOptions<TRequiredCtx, TError>,
   ): Engine<TRequiredCtx, TError, false> {
     const parsedOptions = parseEngineOptions(options)
+
+    _ssServerLogger.set(parsedOptions.general.logger)
 
     const server = EngineServer.create({
       ...parsedOptions.server,
@@ -388,7 +392,12 @@ export class Engine<
   } = {}): Promise<void> {
     if (sync) {
       void this.generator.sync({ logOnNotWritten }).catch((error: unknown) => {
-        console.error(error)
+        this.logger({
+          lever: 'error',
+          topic: 'FilesGenerator',
+          message: 'Failed to generate files',
+          error,
+        })
       })
     }
     await this.generator.watch()

@@ -1,5 +1,5 @@
 import type { RoutesPretty } from '@devp0nt/route0'
-import { prependAndDeappendSlash } from '@point0/core'
+import { _defaultLoggerFn, prependAndDeappendSlash } from '@point0/core'
 import type {
   AppComponent,
   AppComponentModule,
@@ -10,6 +10,7 @@ import type {
   PointsScope,
   RequiredCtx,
   ErrorPoint0,
+  LoggerFn,
 } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 import { minimatch } from 'minimatch'
@@ -31,16 +32,6 @@ import type {
 // TODO:ASAP transform to class
 // TODO:ASAP allow predefined config mutable, which can be pased to Engine.create or in EngineOptions
 // TODO:ASAP add tests
-
-export type EngineLogger = {
-  info: (message: string, meta?: Record<string, any>) => void
-
-  error: (error: unknown, meta?: Record<string, any>) => void
-
-  warn: (message: string, meta?: Record<string, any>) => void
-
-  debug: (message: string, meta?: Record<string, any>) => void
-}
 
 export type EngineOptionsPublicdir =
   | string
@@ -123,7 +114,7 @@ export type EngineOptionsServing = boolean | string | ((options: { request: Requ
 export type EngineGeneralOptions = {
   file: string
   generte?: Array<Omit<FilesGeneratorTaskMeta, 'scopes'>>
-  logger?: EngineLogger
+  logger?: LoggerFn
   portPolicy?: PortPolicy
   serveRetries?: number
   itWasBuilt?: boolean
@@ -343,7 +334,7 @@ export type EngineOptions<
 //         : never
 
 export type EngineGeneralOptionsParsed = {
-  logger: EngineLogger
+  logger: LoggerFn
   itWasBuilt: boolean
   cwdAfterBuild: string
   cwdBeforeBuild: string
@@ -594,12 +585,7 @@ const parseEngineGeneralOptions = ({
               ...(generalOptions.compiler.side !== undefined ? { side: generalOptions.compiler.side } : {}),
             }
   const result = {
-    logger: generalOptions.logger || {
-      info: console.info.bind(console),
-      error: console.error.bind(console),
-      warn: console.warn.bind(console),
-      debug: console.debug.bind(console),
-    },
+    logger: generalOptions.logger ?? _defaultLoggerFn,
     itWasBuilt,
     cwdAfterBuild,
     cwdBeforeBuild,

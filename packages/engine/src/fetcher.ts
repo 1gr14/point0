@@ -901,9 +901,6 @@ export class Fetcher<TError extends ErrorPoint0> {
         effects: executor.effects, // here we pass executor effects, becouse we want to apply status and effects to it
         ErrorClass: point?._Error ?? root._Error,
       })
-      if (executeResult.error) {
-        this.server.logger.error(executeResult.error, meta)
-      }
 
       if (executeResult.error) {
         const response = toJsonErrorResponse(
@@ -959,7 +956,6 @@ export class Fetcher<TError extends ErrorPoint0> {
         pageLocation: undefined,
       }
     } catch (error) {
-      this.server.logger.error(error, meta)
       const ErrorClass = root._Error
       const error0 = ErrorClass.from(error)
       const response = toJsonErrorResponse(ErrorClass, error0, 500)
@@ -1073,7 +1069,6 @@ export class Fetcher<TError extends ErrorPoint0> {
         throw new Error(`Client "${client.scope}" has no indexHtml`)
       }
     } catch (error) {
-      this.server.logger.error(error, meta)
       const ErrorClass = client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
       const error0 = ErrorClass.from(error)
       const response = toJsonErrorResponse(ErrorClass, error0, 500)
@@ -1356,29 +1351,44 @@ export class Fetcher<TError extends ErrorPoint0> {
 
     return await _ssRunWithServerStorageState(serverStorageState, async () => {
       emit?.('engineFetchStart', _eventData)
-      const result = await this._composeMiddlewares({
-        middlewares,
-        finalHandler: async () =>
-          await this._fetchDetailed({
-            requiredCtx,
-            prepareFetchResult,
-            serverStorageState,
-          }),
-        baseOptions: middlewareOptions,
-      })
-      const response = prepareFetchResult.effects.apply(result.response)
-      const finalResult = {
-        ...result,
-        response,
-      } as FetcherFetchDetailedResult<TError>
-      const error = result.error
-      emit?.('engineFetchSettled', { ..._eventData, error, result: finalResult })
-      if (error) {
-        emit?.('engineFetchError', { ..._eventData, error, result: finalResult })
-      } else {
-        emit?.('engineFetchSuccess', { ..._eventData, error: undefined, result: finalResult })
+      try {
+        const result = await this._composeMiddlewares({
+          middlewares,
+          finalHandler: async () =>
+            await this._fetchDetailed({
+              requiredCtx,
+              prepareFetchResult,
+              serverStorageState,
+            }),
+          baseOptions: middlewareOptions,
+        })
+        const response = prepareFetchResult.effects.apply(result.response)
+        const finalResult = {
+          ...result,
+          response,
+        } as FetcherFetchDetailedResult<TError>
+        const error = result.error
+        emit?.('engineFetchSettled', { ..._eventData, error, result: finalResult })
+        if (error) {
+          emit?.('engineFetchError', { ..._eventData, error, result: finalResult })
+        } else {
+          emit?.('engineFetchSuccess', { ..._eventData, error: undefined, result: finalResult })
+        }
+        return finalResult
+      } catch (error) {
+        const ErrorClass = (this.server.points?.manager.root._Error ?? ErrorPoint0) as ClassLikeError0<TError>
+        const error0 = ErrorClass.from(error)
+        const finalResult = {
+          request: prepareFetchResult.request,
+          scope: prepareFetchResult.scope,
+          response: toJsonErrorResponse(ErrorClass, error),
+          variant: 'unknown' as const,
+          error: error0,
+        }
+        emit?.('engineFetchSettled', { ..._eventData, error: error0, result: finalResult })
+        emit?.('engineFetchError', { ..._eventData, error: error0, result: finalResult })
+        return finalResult
       }
-      return finalResult
     })
   }
 

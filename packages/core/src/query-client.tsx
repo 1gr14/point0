@@ -49,6 +49,12 @@ export const queryClient = superstore.define<QueryClient, DehydratedState>(
   },
 ) as unknown as NiceUnsettableRedefinableSuperStoreItem<QueryClient, DehydratedState>
 
-export const QueryClientProvider = ({ children }: { children: React.ReactNode }) => {
-  return <QueryClientProviderOriginal client={queryClient.get()}>{children}</QueryClientProviderOriginal>
+export const QueryClientProvider = ({
+  children,
+  queryClient: _queryClient = queryClient.get(),
+}: {
+  children: React.ReactNode
+  queryClient?: QueryClient
+}) => {
+  return <QueryClientProviderOriginal client={_queryClient}>{children}</QueryClientProviderOriginal>
 }

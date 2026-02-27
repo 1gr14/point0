@@ -1,12 +1,13 @@
-import { env, prependAndDeappendSlash } from '@point0/core'
 import type {
+  ErrorPoint0,
   FetcherFetchDetailedResult,
+  LoggerFn,
   NormalizedNodeEnv,
   PointsDefinitionSource,
   PointsScope,
   RequiredCtx,
-  ErrorPoint0,
 } from '@point0/core'
+import { _ssServerLogger, env, prependAndDeappendSlash } from '@point0/core'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -14,7 +15,6 @@ import type { ViteDevServer } from 'vite'
 import type { CompilerOptions } from '../../compiler/dist/compiler.js'
 import type { EngineClient } from './client.js'
 import type {
-  EngineLogger,
   EngineOptionsCompilerSpecificParsed,
   EngineOptionsEnvParsed,
   EngineOptionsViteConfig,
@@ -24,9 +24,10 @@ import type {
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
 import { resolvePortByPolicy } from './port.js'
-import { Publicdir } from './publicdir.js'
 import type { PublicdirDefinition } from './publicdir.js'
+import { Publicdir } from './publicdir.js'
 import { ServerPoints } from './server-points.js'
+import type { EngineServerBuildConfigDefinition, EngineServerPluginsDefinition } from './utils.js'
 import {
   createViteDevServer,
   executeEngineServerBuildConfig,
@@ -38,7 +39,6 @@ import {
   validateEntrypoints,
   withRetries,
 } from './utils.js'
-import type { EngineServerBuildConfigDefinition, EngineServerPluginsDefinition } from './utils.js'
 
 export class EngineServer<TPrepared extends boolean = boolean, TError extends ErrorPoint0 = ErrorPoint0> {
   scope: PointsScope
@@ -52,7 +52,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
   portPolicy: PortPolicy
   serveRetries: number
   clients: TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
-  logger: EngineLogger
+  logger: LoggerFn
   entry: Record<string, string> | null
   publicdir: TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
   // it is collection of server itself public dir and all its clients public dirs
@@ -82,7 +82,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     port: number
     portPolicy: PortPolicy
     serveRetries: number
-    logger: EngineLogger
+    logger: LoggerFn
     clients: EngineClient[]
     envConsts: EngineOptionsEnvParsed
     envVars: EngineOptionsEnvParsed
@@ -147,7 +147,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
-    logger: EngineLogger
+    logger: LoggerFn
     clients: EngineClient[]
     viteConfig: EngineOptionsViteConfig | null
     hmrPort: number | false
@@ -217,6 +217,17 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
       this.publicdir ? this.publicdir.prepare() : Promise.resolve(),
     ])
     this.prepared = true as never
+    if (this.points) {
+      const newLogger = this.points.manager.root._getLogger()
+      if (newLogger) {
+        _ssServerLogger.set(newLogger)
+        this.logger = newLogger
+        this.points.manager.logger = newLogger
+        for (const client of this.clients) {
+          client.logger = newLogger
+        }
+      }
+    }
     this.fetcher = Fetcher.create({ engine, server: this as EngineServer<true, TError> }) as TPrepared extends true
       ? Fetcher<TError>
       : null
@@ -227,7 +238,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     if (!this.pointsProvided) {
       return null
     }
-    const points = await ServerPoints.createFromSource(this.pointsProvided)
+    const points = await ServerPoints.createFromSource(this.pointsProvided, { logger: this.logger })
     await points.load()
     this.points = points as TPrepared extends true ? ServerPoints<TError> | null : undefined
     return points
@@ -339,7 +350,13 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
           throw new Error(`Dispose function not exported from server entry point "${entryFile}": ${entryFile}`)
         }
       } catch (error) {
-        console.error(`Error loading entry point "${entryFile}"`, error)
+        // this.logger.error(`Error loading entry point "${entryFile}"`, error)
+        this.logger({
+          lever: 'error',
+          topic: 'EngineServer',
+          message: `Failed to load entry point "${entryFile}"`,
+          error,
+        })
       }
     }
     await load()
@@ -534,6 +551,11 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
         },
       }),
     )()
+    this.logger({
+      lever: 'info',
+      topic: 'EngineServer',
+      message: `Server "${this.scope}" started http://localhost:${this.port}`,
+    })
   }
 
   async dispose(options?: { closeViteDevServer?: boolean }): Promise<void> {
