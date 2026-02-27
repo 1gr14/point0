@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'bun:test'
-import type { AnyEventerEvent } from '@point0/core'
 import { Point0 } from '@point0/core'
+import type { AnyEventerEvent, ErrorPoint0 } from '@point0/core'
+import { describe, expect, it } from 'bun:test'
 import { createTestThings } from './utils/internal-testing.js'
 
 describe('on', () => {
   it.concurrent('*', async () => {
-    const events: AnyEventerEvent[] = []
+    const events: AnyEventerEvent<ErrorPoint0>[] = []
     const root = Point0.lets('root', 'root')
       .on('*', (e) => {
         events.push(e)
@@ -63,7 +63,7 @@ describe('on', () => {
   })
 
   it.concurrent('name', async () => {
-    const events: AnyEventerEvent[] = []
+    const events: AnyEventerEvent<ErrorPoint0>[] = []
     const root = Point0.lets('root', 'root')
       .on('engineFetchStart', (e) => {
         events.push(e)
@@ -99,7 +99,7 @@ describe('on', () => {
   })
 
   it.concurrent('[name, name]', async () => {
-    const events: AnyEventerEvent[] = []
+    const events: AnyEventerEvent<ErrorPoint0>[] = []
     const root = Point0.lets('root', 'root')
       .on('engineFetchStart', (e) => {
         events.push(e)
@@ -132,7 +132,7 @@ describe('on', () => {
   })
 
   it.concurrent('error', async () => {
-    const events: AnyEventerEvent[] = []
+    const events: AnyEventerEvent<ErrorPoint0>[] = []
     const root = Point0.lets('root', 'root')
       .on('error', (e) => {
         events.push(e)

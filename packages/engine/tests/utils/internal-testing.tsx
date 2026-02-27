@@ -289,7 +289,7 @@ export const createTestThings = async ({
   preventClientDevServers = true,
 }: {
   wrapper?: React.ComponentType<{ children: React.ReactNode }>
-  points?: PointsDefinition
+  points?: PointsDefinition<any, any>
   app?: AppComponent
   globals?: Record<string, any>
   engineOptions?: Partial<EngineOptions>

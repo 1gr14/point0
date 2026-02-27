@@ -1,6 +1,5 @@
-import * as nodeFs from 'node:fs/promises'
-import * as nodePath from 'node:path'
 import { type AnyLocation, Route0 } from '@devp0nt/route0'
+import { ClientPoints, env } from '@point0/core'
 import type {
   AppComponent,
   InputParsed,
@@ -8,10 +7,12 @@ import type {
   PagePoint,
   PointsDefinitionSource,
   PointsScope,
+  RequiredCtx,
 } from '@point0/core'
-import { ClientPoints, env } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
+import * as nodeFs from 'node:fs/promises'
+import * as nodePath from 'node:path'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
 import type { CompilerOptions } from '../../compiler/dist/compiler.js'
@@ -27,11 +28,10 @@ import type {
 } from './config.js'
 import type { Executor } from './executor.js'
 import { resolvePortByPolicy } from './port.js'
-import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
+import type { PublicdirDefinition } from './publicdir.js'
 import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
 import type { EngineServer } from './server.js'
-import type { EngineClientBuildConfigDefinition, EngineClientPluginsDefinition } from './utils.js'
 import {
   createViteDevServer,
   extractEngineClientBuildConfig,
@@ -42,6 +42,7 @@ import {
   resolveTempDirPath,
   withRetries,
 } from './utils.js'
+import type { EngineClientBuildConfigDefinition, EngineClientPluginsDefinition } from './utils.js'
 
 export class EngineClient<TPrepared extends boolean = boolean> {
   cwd: string
@@ -1073,7 +1074,7 @@ Bun.serve({
     pageLocation,
     input,
   }: {
-    executor: Executor
+    executor: Executor<RequiredCtx, any>
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
     input: InputParsed
@@ -1101,7 +1102,7 @@ Bun.serve({
     pageLocation,
     input,
   }: {
-    executor: Executor
+    executor: Executor<RequiredCtx, any>
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
     input: InputParsed

@@ -5,7 +5,7 @@ import type { RequestMethod } from '@point0/core/request0'
 // inspired by https://github.com/elysiajs/elysia-cors/tree/main
 // thanks a lot, SaltyAom https://saltyaom.com/
 
-type CorsOriginCheck = (context: MiddlewareFnOptionsBase) => boolean | undefined | Promise<boolean | undefined>
+type CorsOriginCheck = (context: MiddlewareFnOptionsBase<any>) => boolean | undefined | Promise<boolean | undefined>
 type CorsOriginValue = string | RegExp | CorsOriginCheck
 
 export type HTTPMethod = RequestMethod | (string & {})
@@ -66,7 +66,7 @@ export const cors = (options: CorsOptions = {}): NicePristinePluginReadyPoint =>
   }: {
     requestOrigin: string | null
     originOption: CorsOptions['origin']
-    context: MiddlewareFnOptionsBase
+    context: MiddlewareFnOptionsBase<any>
   }): Promise<string | undefined> => {
     const evaluate = async (candidate: CorsOriginValue): Promise<string | undefined> => {
       if (typeof candidate === 'string') {

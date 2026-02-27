@@ -108,7 +108,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
   client: EngineClient<true>
   points: ClientPoints
 
-  engine: Engine<any, true>
+  engine: Engine<any, any, true>
   state: TState
   jar: CookieJar
   // fetch: FetchCookieImpl<string | URL | Request, RequestInit, Response>
@@ -141,7 +141,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     cookieSetter,
     cookieGetter,
   }: {
-    engine: Engine<any, true>
+    engine: Engine<any, any, true>
     client: EngineClient<true>
     points: ClientPoints
     runtime: ClientRuntime
@@ -193,7 +193,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     cookieGetter,
     state,
   }: {
-    engine: Engine
+    engine: Engine<any, any, any>
     scope: PointsScope
     globals: Record<string, unknown>
     points?: ClientPoints
@@ -208,7 +208,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     state?: TState | undefined
   }): FakeClient<TState> {
     if (!engine.prepared) {
-      throw new Error('Engine is not prepared')
+      throw new Error('Engine is not prepared. Please call engine.prepare() first.')
     }
     const client = engine.clients.find((client) => client.scope === scope)
     if (!client) {
@@ -267,7 +267,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     //   // throw new Error('Points for fake client not provided')
     // }
     const fakeClient = new FakeClient({
-      engine: engine as Engine<any, true>,
+      engine: engine as Engine<any, any, true>,
       client: client as EngineClient<true>,
       id,
       scope,

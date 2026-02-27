@@ -3,7 +3,10 @@ import { defineConfig, type Options } from 'tsup'
 
 const general = {
   entry: [
+    'src/client-points.ts',
+    'src/effects.ts',
     'src/env.ts',
+    'src/error.ts',
     'src/env.types.ts',
     'src/eventer.ts',
     'src/index.ts',
@@ -11,10 +14,8 @@ const general = {
     'src/mountable.ts',
     'src/point0.ts',
     'src/points-manager.ts',
-    'src/client-points.ts',
     'src/query-client.tsx',
     'src/request0.ts',
-    'src/effects.ts',
     'src/router.tsx',
     'src/super-store.ts',
     'src/types.ts',

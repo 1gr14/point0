@@ -1,6 +1,5 @@
-import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
-import type { AnyLocation, AnyRoute, CallableRoute, KnownLocation, FlatInputStringOnly } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, CallableRoute, FlatInputStringOnly, KnownLocation } from '@devp0nt/route0'
 import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   DehydratedState,
@@ -20,14 +19,17 @@ import { createContext, useContextSelector } from 'use-context-selector'
 import type { Context } from 'use-context-selector'
 import { Effects } from './effects.js'
 import { _point0_env } from './env.js'
+import { ErrorPoint0 } from './error.js'
+import type { ClassLikeError0 } from './error.js'
 import { uniqEventerErrorEventNames } from './eventer.js'
 import type {
   AnyEventerEvent,
+  AnyEventerEventName,
   AnyEventerSubscriptionCallback,
-  ClientEventerEvent,
+  ClientEventerEventName,
   ClientEventerSubscriptionCallback,
   EventerSubscription,
-  ServerEventerEvent,
+  ServerEventerEventName,
   ServerEventerSubscriptionCallback,
   UniqEventerErrorEventName,
 } from './eventer.js'
@@ -89,9 +91,9 @@ import type {
   AppendCtxExposedKeys,
   AssertInputSchemaNotWider,
   AssertNoArrayReturn,
-  AssertNotFunction,
   AssertNoForbiddenCtxExposedKeys,
   AssertNoForbiddenMethodsIfNotSuitableStage,
+  AssertNotFunction,
   AssertRouteDefinitionInputExtends,
   BasePoint,
   ClientExecuteAction,
@@ -107,6 +109,7 @@ import type {
   DataTransformer,
   DataTransformerExtended,
   EmptyCtx,
+  EmptyData,
   ExtendRouteDefinition,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
@@ -121,6 +124,7 @@ import type {
   FinalLoaderDataOrNever,
   FinalLoaderOutput,
   IfAnyThenElse,
+  IfNeverThen,
   Infer,
   InferCtxFnOutputCtxAppend,
   InputParsed,
@@ -129,6 +133,7 @@ import type {
   InputsRaw,
   InputsRawOrUndefined,
   InputsRawOrUndefinedOrVoid,
+  IsEmptyObject,
   IsInputOptional,
   IsInputsOptional,
   LayoutPoint,
@@ -192,8 +197,8 @@ import type {
   UsePointQueryResult,
   UseQueryOptions,
   WithError,
-  IsEmptyObject,
 } from './types.js'
+import type { FsLocation } from './utils.js'
 import {
   blankDataTransformerExtended,
   dedupeSlashes,
@@ -209,6 +214,7 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
+import { getCallerLocation } from './index.js'
 // import stringify from 'safe-stable-stringify'
 
 // known stage fns
@@ -273,6 +279,7 @@ export class Point0<
   TPointType extends PointType,
   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -290,6 +297,7 @@ export class Point0<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -311,6 +319,12 @@ export class Point0<
   toString() {
     return `${this.scope}.${this.type}.${this.name}`
   }
+  toStringWithLocation() {
+    console.log(123123, this._fsLocation)
+    return this._fsLocation
+      ? `${this.toString()}(${this._fsLocation.path}:${this._fsLocation.line}:${this._fsLocation.column})`
+      : this.toString()
+  }
   toJSON() {
     return this.toString()
   }
@@ -328,14 +342,16 @@ export class Point0<
 
   private readonly _base: BasePoint | LayoutPoint | undefined
   readonly _root: RootPoint | undefined
-  readonly _middlewares: MiddlewareFn[]
+  readonly _fsLocation: FsLocation | undefined
+  readonly _Error: ClassLikeError0<TError>
+  readonly _middlewares: MiddlewareFn<TError>[]
   _serverurl: string | undefined
   readonly _basepath: string | undefined
   readonly type: TPointType
   private readonly _letsReadyPointType: TLetsReadyPointType
   private readonly _transformer: DataTransformerExtended | undefined
   _getTransformer = () => this._transformer ?? blankDataTransformerExtended
-  private readonly _eventerSubscriptions: EventerSubscription[]
+  private readonly _eventerSubscriptions: EventerSubscription<any, TError>[]
   readonly _ssr: boolean
   readonly scope: PointsScope
   readonly scopes: PointsScope[]
@@ -351,7 +367,7 @@ export class Point0<
   readonly _infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
     InputsRaw<TServerInputSchema, TClientInputSchema>,
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-    Error0,
+    TError,
     InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
     QueryKey,
     unknown
@@ -400,27 +416,26 @@ export class Point0<
     return !this._polhPolicy ? false : (this._polhDuration ?? true)
   }
   private readonly _ProviderReactContext: Context<MountableSuccessData<TQueriesDefinitions, TMapperOutput>> | undefined
-  private readonly _errorComponent: ErrorComponentType<DestinationComponentVariant> | undefined
-  private static readonly DefaultErrorComponent: ErrorComponentType<any> = ({ error }) => {
-    const { stack, ...json } = error.toJSON()
+  private readonly _errorComponent: ErrorComponentType<DestinationComponentVariant, TError> | undefined
+  private readonly DefaultErrorComponent: ErrorComponentType<any, TError> = ({ error }) => {
+    const { stack, ...json } = this._Error.serialize(error)
     return React.createElement(
       React.Fragment,
       null,
       React.createElement('pre', null, JSON.stringify(json, null, 2)),
-      React.createElement('pre', null, stack),
+      React.createElement('pre', null, stack as string),
     )
   }
-  private readonly _layoutErrorComponent: ErrorComponentType<any> | undefined
-  private readonly _pageErrorComponent: ErrorComponentType<any> | undefined
-  private readonly _componentErrorComponent: ErrorComponentType<any> | undefined
+  private readonly _layoutErrorComponent: ErrorComponentType<any, TError> | undefined
+  private readonly _pageErrorComponent: ErrorComponentType<any, TError> | undefined
+  private readonly _componentErrorComponent: ErrorComponentType<any, TError> | undefined
   private readonly _layoutLoadingComponent: LoadingComponentType<any> | undefined
-  static readonly DefaultLoadingComponent: LoadingComponentType<any> = () =>
+  private readonly DefaultLoadingComponent: LoadingComponentType<any> = () =>
     React.createElement(React.Fragment, null, 'Loading...')
   private readonly _loadingComponent: LoadingComponentType<any> | undefined
   private readonly _pageLoadingComponent: LoadingComponentType<any> | undefined
   private readonly _componentLoadingComponent: LoadingComponentType<any> | undefined
-  private readonly _getComponentLoadingComponent = () =>
-    this._componentLoadingComponent ?? Point0.DefaultLoadingComponent
+  private readonly _getComponentLoadingComponent = () => this._componentLoadingComponent ?? this.DefaultLoadingComponent
   X: TPointType extends 'layout'
     ? LayoutSelfType<
         TRouteDefinition,
@@ -466,12 +481,14 @@ export class Point0<
     _letsReadyPointType: TLetsReadyPointType
     _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
-    _middlewares?: MiddlewareFn[] | undefined
+    _fsLocation?: FsLocation | undefined
+    _Error?: ClassLikeError0<TError>
+    _middlewares?: MiddlewareFn<TError>[] | undefined
     _serverurl?: string | undefined
     _basepath?: string | undefined
     _transformer?: DataTransformerExtended | undefined
     _ssr?: boolean
-    _eventerSubscriptions?: EventerSubscription[]
+    _eventerSubscriptions?: EventerSubscription<any, TError>[]
     scope: PointsScope
     scopes: PointsScope[]
     _defaultMutationOptions?: UseMutationOptions
@@ -487,7 +504,7 @@ export class Point0<
       | ExtraUseInfiniteQueryOptions<
           InputsRaw<TServerInputSchema, TClientInputSchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-          Error0,
+          TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
@@ -520,10 +537,10 @@ export class Point0<
     _polhDuration?: number | undefined
     _ponPolicy?: PrefetchPagePolicy | undefined
     _onPrefetchMountableFns?: OnPrefetchMountableFn[]
-    _errorComponent?: ErrorComponentType<any>
-    _layoutErrorComponent?: ErrorComponentType<any>
-    _pageErrorComponent?: ErrorComponentType<any>
-    _componentErrorComponent?: ErrorComponentType<any>
+    _errorComponent?: ErrorComponentType<any, TError>
+    _layoutErrorComponent?: ErrorComponentType<any, TError>
+    _pageErrorComponent?: ErrorComponentType<any, TError>
+    _componentErrorComponent?: ErrorComponentType<any, TError>
     _loadingComponent?: LoadingComponentType<any>
     _layoutLoadingComponent?: LoadingComponentType<any>
     _pageLoadingComponent?: LoadingComponentType<any>
@@ -536,6 +553,8 @@ export class Point0<
     this.scopes = options.scopes
     this._base = options._base ?? undefined
     this._root = options._root ?? undefined
+    this._fsLocation = options._fsLocation ?? undefined
+    this._Error = options._Error ?? (ErrorPoint0 as unknown as ClassLikeError0<TError>)
     this._middlewares = options._middlewares ?? []
     this._transformer = options._transformer ?? undefined
     this._ssr = options._ssr ?? false
@@ -611,12 +630,14 @@ export class Point0<
     _letsReadyPointType?: TLetsReadyPointType
     _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
-    _middlewares?: MiddlewareFn[]
+    _fsLocation?: FsLocation | undefined
+    _Error?: ClassLikeError0<TError> | undefined
+    _middlewares?: MiddlewareFn<TError>[]
     _serverurl?: string | undefined
     _basepath?: string | undefined
     _transformer?: DataTransformerExtended | null
     _ssr?: boolean
-    _eventerSubscriptions?: EventerSubscription[]
+    _eventerSubscriptions?: EventerSubscription<any, TError>[]
     _defaultMutationOptions?: UseMutationOptions | undefined
     _mutationOptions?: UseMutationOptions | undefined
     _defaultInfiniteQueryOptions?: PartialUseInfiniteQueryOptions | undefined
@@ -630,7 +651,7 @@ export class Point0<
       | ExtraUseInfiniteQueryOptions<
           InputsRaw<TServerInputSchema, TClientInputSchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-          Error0,
+          TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
@@ -666,10 +687,10 @@ export class Point0<
     _polhDuration?: number | undefined
     _ponPolicy?: PrefetchPagePolicy | undefined
     _onPrefetchMountableFns?: OnPrefetchMountableFn[]
-    _errorComponent?: ErrorComponentType<any> | undefined
-    _layoutErrorComponent?: ErrorComponentType<any> | undefined
-    _pageErrorComponent?: ErrorComponentType<any> | undefined
-    _componentErrorComponent?: ErrorComponentType<any> | undefined
+    _errorComponent?: ErrorComponentType<any, TError> | undefined
+    _layoutErrorComponent?: ErrorComponentType<any, TError> | undefined
+    _pageErrorComponent?: ErrorComponentType<any, TError> | undefined
+    _componentErrorComponent?: ErrorComponentType<any, TError> | undefined
     _loadingComponent?: LoadingComponentType<any> | undefined
     _layoutLoadingComponent?: LoadingComponentType<any> | undefined
     _pageLoadingComponent?: LoadingComponentType<any> | undefined
@@ -679,6 +700,7 @@ export class Point0<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -696,6 +718,7 @@ export class Point0<
       TPointType,
       TLetsReadyPointType,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -713,6 +736,8 @@ export class Point0<
       scopes: overrides.scopes ?? this.scopes,
       _base: overrides._base ?? this._base,
       _root: overrides._root ?? this._root,
+      _fsLocation: overrides._fsLocation ?? this._fsLocation,
+      _Error: overrides._Error ?? this._Error,
       type: (overrides.type ?? this.type) as TPointType,
       _letsReadyPointType: (overrides._letsReadyPointType ?? this._letsReadyPointType) as TLetsReadyPointType,
       _middlewares: overrides._middlewares ?? [...this._middlewares],
@@ -739,7 +764,7 @@ export class Point0<
       }) as ExtraUseInfiniteQueryOptions<
         InputsRaw<TServerInputSchema, TClientInputSchema>,
         FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-        Error0,
+        TError,
         InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
         QueryKey,
         unknown
@@ -784,6 +809,7 @@ export class Point0<
     'coreStage',
     'root',
     TRequiredCtx,
+    ErrorPoint0,
     EmptyCtx,
     UndefinedCtxExposedKeys,
     UndefinedLoaderOutput,
@@ -804,6 +830,7 @@ export class Point0<
     'coreStage',
     'plugin',
     UndefinedCtx,
+    ErrorPoint0,
     EmptyCtx,
     UndefinedCtxExposedKeys,
     UndefinedLoaderOutput,
@@ -818,6 +845,7 @@ export class Point0<
     []
   >
   static lets(pointType: 'root' | 'plugin', pointName: string) {
+    const _fsLocation = _point0_env.mode.is.production || _point0_env.build.was ? undefined : getCallerLocation(3)
     if (pointType === 'root') {
       if (pointName === 'plugin') {
         throw new Error('Cannot create root point with "plugin" scope, it is internally used name for plugin points')
@@ -828,6 +856,7 @@ export class Point0<
         scopes: [pointName],
         _letsReadyPointType: 'root',
         name: pointName,
+        _fsLocation,
       }) as never
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (pointType === 'plugin') {
@@ -837,6 +866,7 @@ export class Point0<
         scopes: ['plugin'],
         _letsReadyPointType: 'plugin',
         name: pointName,
+        _fsLocation,
       }) as never
     } else {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -846,12 +876,38 @@ export class Point0<
 
   // root settings
 
+  errorClass<TErrorClass extends ClassLikeError0<ErrorPoint0>>(
+    ErrorClass: TErrorClass,
+  ): NiceRootStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    'root',
+    TRequiredCtx,
+    InstanceType<TErrorClass>,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  > {
+    return this._continue({
+      _Error: ErrorClass as never,
+    }) as never
+  }
+
   serverurl(
     serverurl: string,
   ): NiceRootStagePoint<
     StagePointTypeOrNever<TPointType>,
     'root',
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -879,6 +935,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     'root',
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -895,7 +952,7 @@ export class Point0<
     const normalizedBasepath = prependAndDeappendSlash(basepath) || '/'
     const route = Route0.create(dedupeSlashes(`/${normalizedBasepath}`))
     if (route.getParamsKeys().length > 0 || route.getSearchKeys().length > 0) {
-      throw new Error('basepath can not contain params or search params')
+      throw new Error(`basepath can not contain params or search params on point ${this.toStringWithLocation()}`)
     }
     return this._continue({
       _basepath: normalizedBasepath,
@@ -926,13 +983,14 @@ export class Point0<
   //   }) as never
   // }
 
-  on<TEventName extends AnyEventerEvent['name'] | '*'>(
+  on<TEventName extends AnyEventerEventName | '*'>(
     name: TEventName,
-    callback: AnyEventerSubscriptionCallback<TEventName>,
+    callback: AnyEventerSubscriptionCallback<TEventName, TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -948,11 +1006,12 @@ export class Point0<
   >
   on(
     name: 'error',
-    callback: AnyEventerSubscriptionCallback<UniqEventerErrorEventName>,
+    callback: AnyEventerSubscriptionCallback<UniqEventerErrorEventName, TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -966,13 +1025,14 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  on<TEventNames extends Array<AnyEventerEvent['name']>>(
+  on<TEventNames extends Array<AnyEventerEventName>>(
     names: TEventNames,
-    callback: AnyEventerSubscriptionCallback<TEventNames[number]>,
+    callback: AnyEventerSubscriptionCallback<TEventNames[number], TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -987,9 +1047,8 @@ export class Point0<
     TQueriesDefinitions
   >
   on(
-    name: AnyEventerEvent['name'] | 'error' | '*' | Array<AnyEventerEvent['name']>,
-
-    callback: AnyEventerSubscriptionCallback | undefined = () => {},
+    name: AnyEventerEventName | 'error' | '*' | Array<AnyEventerEventName>,
+    callback: AnyEventerSubscriptionCallback<any, TError> | undefined = () => {},
   ) {
     const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
     const subscriptions = names.map((name) => ({ name, callback, side: undefined }))
@@ -998,13 +1057,14 @@ export class Point0<
     }) as never
   }
 
-  serverOn<TEventName extends ServerEventerEvent['name'] | '*'>(
+  serverOn<TEventName extends ServerEventerEventName | '*'>(
     name: TEventName,
-    callback: ServerEventerSubscriptionCallback<TEventName>,
+    callback: ServerEventerSubscriptionCallback<TEventName, TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1020,11 +1080,12 @@ export class Point0<
   >
   serverOn(
     name: 'error',
-    callback: ServerEventerSubscriptionCallback<UniqEventerErrorEventName>,
+    callback: ServerEventerSubscriptionCallback<UniqEventerErrorEventName, TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1038,13 +1099,14 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  serverOn<TEventNames extends Array<ServerEventerEvent['name']>>(
+  serverOn<TEventNames extends Array<ServerEventerEventName>>(
     names: TEventNames,
-    callback: ServerEventerSubscriptionCallback<TEventNames[number]>,
+    callback: ServerEventerSubscriptionCallback<TEventNames[number], TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1059,9 +1121,8 @@ export class Point0<
     TQueriesDefinitions
   >
   serverOn(
-    name: ServerEventerEvent['name'] | 'error' | '*' | Array<ServerEventerEvent['name']>,
-
-    callback: ServerEventerSubscriptionCallback | undefined = () => {},
+    name: ServerEventerEventName | 'error' | '*' | Array<ServerEventerEventName>,
+    callback: ServerEventerSubscriptionCallback<any, TError> | undefined = () => {},
   ) {
     const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
     const subscriptions = names.map((name) => ({ name, callback, side: 'server' as const }))
@@ -1070,13 +1131,14 @@ export class Point0<
     }) as never
   }
 
-  clientOn<TEventName extends ClientEventerEvent['name'] | '*'>(
+  clientOn<TEventName extends ClientEventerEventName | '*'>(
     name: TEventName,
-    callback: ClientEventerSubscriptionCallback<TEventName>,
+    callback: ClientEventerSubscriptionCallback<TEventName, TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1092,11 +1154,12 @@ export class Point0<
   >
   clientOn(
     name: 'error',
-    callback: ClientEventerSubscriptionCallback<UniqEventerErrorEventName>,
+    callback: ClientEventerSubscriptionCallback<UniqEventerErrorEventName, TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1110,13 +1173,14 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  clientOn<TEventNames extends Array<ClientEventerEvent['name']>>(
+  clientOn<TEventNames extends Array<ClientEventerEventName>>(
     names: TEventNames,
-    callback: ClientEventerSubscriptionCallback<TEventNames[number]>,
+    callback: ClientEventerSubscriptionCallback<TEventNames[number], TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1131,9 +1195,8 @@ export class Point0<
     TQueriesDefinitions
   >
   clientOn(
-    name: ClientEventerEvent['name'] | 'error' | '*' | Array<ClientEventerEvent['name']>,
-
-    callback: ClientEventerSubscriptionCallback | undefined = () => {},
+    name: ClientEventerEventName | 'error' | '*' | Array<ClientEventerEventName>,
+    callback: ClientEventerSubscriptionCallback<any, TError> | undefined = () => {},
   ) {
     const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
     const subscriptions = names.map((name) => ({ name, callback, side: 'client' as const }))
@@ -1148,6 +1211,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1172,6 +1236,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1197,6 +1262,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1222,6 +1288,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1250,6 +1317,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1274,6 +1342,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1298,6 +1367,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1322,6 +1392,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1346,6 +1417,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1377,13 +1449,14 @@ export class Point0<
   // extra components
 
   error(
-    errorComponent: ErrorComponentType<any>,
+    errorComponent: ErrorComponentType<any, TError>,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1403,11 +1476,7 @@ export class Point0<
       TQueriesDefinitions
     >
   >
-  error(errorComponent: ErrorComponentType<any> | undefined) {
-    errorComponent ||= () => null
-    // this._applyComponentDisplayName(errorComponent, {
-    //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'Error',
-    // })
+  error(errorComponent: ErrorComponentType<any, any> | undefined) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
@@ -1416,32 +1485,39 @@ export class Point0<
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
-        {
-          type: 'errorComponent',
-          Component: errorComponent,
-          variant: this._getDestinationComponentVariant(),
-          unstableId: Point0._getNextUnstableId(),
-          ssr: this._ssr,
-        },
+        ...(errorComponent
+          ? [
+              {
+                type: 'errorComponent' as const,
+                Component: errorComponent,
+                variant: this._getDestinationComponentVariant(),
+                unstableId: Point0._getNextUnstableId(),
+                ssr: this._ssr,
+              },
+            ]
+          : []),
       ],
-      ...(this._isMountablePoint()
-        ? {
-            _errorComponent: errorComponent,
-          }
-        : {
-            _layoutErrorComponent: errorComponent,
-            _pageErrorComponent: errorComponent,
-            _componentErrorComponent: errorComponent,
-          }),
+      ...(!errorComponent
+        ? {}
+        : this._isMountablePoint()
+          ? {
+              _errorComponent: errorComponent,
+            }
+          : {
+              _layoutErrorComponent: errorComponent,
+              _pageErrorComponent: errorComponent,
+              _componentErrorComponent: errorComponent,
+            }),
     }) as never
   }
 
   layoutError(
-    layoutErrorComponent: ErrorComponentType<any>,
+    layoutErrorComponent: ErrorComponentType<any, TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1454,10 +1530,10 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
+  >
+  layoutError(layoutErrorComponent: ErrorComponentType<any, TError> | undefined) {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutError for serverNoSsr side
-      _layoutErrorComponent: (layoutErrorComponent as never) || (() => null),
+      _layoutErrorComponent: layoutErrorComponent,
       // _layoutErrorComponent: this._applyComponentDisplayName(layoutErrorComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'LayoutError',
       // }),
@@ -1465,11 +1541,12 @@ export class Point0<
   }
 
   pageError(
-    pageErrorComponent: ErrorComponentType<any>,
+    pageErrorComponent: ErrorComponentType<any, TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1482,23 +1559,23 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageError for serverNoSsr side
-    pageErrorComponent ||= () => null
+  >
+  pageError(pageErrorComponent: ErrorComponentType<any, TError> | undefined) {
     // this._applyComponentDisplayName(pageErrorComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'PageError',
     // })
     return this._continue({
-      _pageErrorComponent: pageErrorComponent as never,
+      _pageErrorComponent: pageErrorComponent,
     }) as never
   }
 
   componentError(
-    componentErrorComponent: ErrorComponentType<any>,
+    componentErrorComponent: ErrorComponentType<any, TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1511,10 +1588,10 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
+  >
+  componentError(componentErrorComponent: ErrorComponentType<any, TError> | undefined) {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentError for serverNoSsr side
-      _componentErrorComponent: (componentErrorComponent as never) || (() => null),
+      _componentErrorComponent: componentErrorComponent,
       // _componentErrorComponent: this._applyComponentDisplayName(componentErrorComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'ComponentError',
       // }),
@@ -1527,6 +1604,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1539,10 +1617,10 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
+  >
+  layoutLoading(layoutLoadingComponent: LoadingComponentType<any> | undefined) {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutLoading for serverNoSsr side
-      _layoutLoadingComponent: (layoutLoadingComponent as never) || (() => null),
+      _layoutLoadingComponent: layoutLoadingComponent,
       // _layoutLoadingComponent: this._applyComponentDisplayName(layoutLoadingComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'LayoutLoading',
       // }),
@@ -1555,6 +1633,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1567,14 +1646,13 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageLoading for serverNoSsr side
-    pageLoadingComponent ||= () => null
+  >
+  pageLoading(pageLoadingComponent: LoadingComponentType<any> | undefined) {
     // this._applyComponentDisplayName(pageLoadingComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'PageLoading',
     // })
     return this._continue({
-      _pageLoadingComponent: pageLoadingComponent as never,
+      _pageLoadingComponent: pageLoadingComponent,
     }) as never
   }
 
@@ -1584,6 +1662,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1596,10 +1675,10 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
+  >
+  componentLoading(componentLoadingComponent: LoadingComponentType<any> | undefined) {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentLoading for serverNoSsr side
-      _componentLoadingComponent: (componentLoadingComponent as never) || (() => null),
+      _componentLoadingComponent: componentLoadingComponent,
       // _componentLoadingComponent: this._applyComponentDisplayName(
       //   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentLoading for serverNoSsr side
       //   (componentLoadingComponent as never) || (() => null),
@@ -1618,6 +1697,7 @@ export class Point0<
       : StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1638,7 +1718,6 @@ export class Point0<
     >
   >
   loading(loadingComponent: LoadingComponentType<any> | undefined) {
-    loadingComponent ||= () => null
     // this._applyComponentDisplayName(loadingComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'Loading',
     // })
@@ -1650,23 +1729,29 @@ export class Point0<
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
-        {
-          type: 'loadingComponent',
-          Component: loadingComponent,
-          variant: this._getDestinationComponentVariant(),
-          unstableId: Point0._getNextUnstableId(),
-          ssr: this._ssr,
-        },
+        ...(loadingComponent
+          ? [
+              {
+                type: 'loadingComponent' as const,
+                Component: loadingComponent,
+                variant: this._getDestinationComponentVariant(),
+                unstableId: Point0._getNextUnstableId(),
+                ssr: this._ssr,
+              },
+            ]
+          : []),
       ],
-      ...(this._isMountablePoint()
-        ? {
-            _loadingComponent: loadingComponent,
-          }
-        : {
-            _layoutLoadingComponent: loadingComponent,
-            _pageLoadingComponent: loadingComponent,
-            _componentLoadingComponent: loadingComponent,
-          }),
+      ...(!loadingComponent
+        ? {}
+        : this._isMountablePoint()
+          ? {
+              _loadingComponent: loadingComponent,
+            }
+          : {
+              _layoutLoadingComponent: loadingComponent,
+              _pageLoadingComponent: loadingComponent,
+              _componentLoadingComponent: loadingComponent,
+            }),
     }) as never
   }
 
@@ -1681,7 +1766,8 @@ export class Point0<
         TClientLoaderOutput,
         TQueriesDefinitions
       >,
-      TMapperOutput
+      TMapperOutput,
+      TError
     >,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
@@ -1689,6 +1775,7 @@ export class Point0<
       : StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1707,7 +1794,8 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions
     >
-  > {
+  >
+  wrapper(wrapperComponent: WrapperComponentType<any, any, any, any, any> | undefined) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
@@ -1716,12 +1804,16 @@ export class Point0<
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
-        {
-          type: 'wrapper',
-          Component: wrapperComponent,
-          unstableId: Point0._getNextUnstableId(),
-          ssr: this._ssr,
-        },
+        ...(wrapperComponent
+          ? [
+              {
+                type: 'wrapper' as const,
+                Component: wrapperComponent,
+                unstableId: Point0._getNextUnstableId(),
+                ssr: this._ssr,
+              },
+            ]
+          : []),
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
@@ -1729,6 +1821,7 @@ export class Point0<
 
   with<
     TPoint extends NiceReadyPoint<
+      any,
       any,
       any,
       any,
@@ -1800,6 +1893,7 @@ export class Point0<
       : StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1845,6 +1939,7 @@ export class Point0<
       : StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1899,6 +1994,7 @@ export class Point0<
       : StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2016,6 +2112,7 @@ export class Point0<
       any,
       any,
       any,
+      any,
       'infiniteQuery' | 'query',
       any,
       any,
@@ -2046,6 +2143,7 @@ export class Point0<
       : StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2123,6 +2221,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2142,6 +2241,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2162,6 +2262,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2227,6 +2328,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2266,11 +2368,12 @@ export class Point0<
 
   // middlewares
   middleware(
-    middlewareFn: MiddlewareFn,
+    middlewareFn: MiddlewareFn<TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2300,6 +2403,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2342,6 +2446,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2371,6 +2476,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2400,6 +2506,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2428,6 +2535,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2451,6 +2559,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
     AppendCtxExposedKeys<TCtxExposedKeys, Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>>,
     TServerLoaderOutput,
@@ -2476,6 +2585,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
     AppendCtxExposedKeys<TCtxExposedKeys, TCtxFnExposedKeys>,
     TServerLoaderOutput,
@@ -2497,6 +2607,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     AppendCtx<TCtx, TAppendCtx>,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2520,6 +2631,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     AppendCtx<TCtx, TAppendCtx>,
     AppendCtxExposedKeys<TCtxExposedKeys, Extract<keyof TAppendCtx, string>>,
     TServerLoaderOutput,
@@ -2542,6 +2654,7 @@ export class Point0<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     AppendCtx<TCtx, TAppendCtx>,
     AppendCtxExposedKeys<TCtxExposedKeys, TAppendCtxExposedKeys>,
     TServerLoaderOutput,
@@ -2580,9 +2693,10 @@ export class Point0<
     TNewServerLoaderOutput extends Response ? 'clientStage' : 'serverStage',
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
-    TNewServerLoaderOutput,
+    IfNeverThen<TNewServerLoaderOutput, EmptyData>,
     TClientLoaderOutput,
     TMapperOutput,
     TRouteDefinition,
@@ -2628,10 +2742,11 @@ export class Point0<
     TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage', // response can happen only in mutation, so we not care about this happen in mountable
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
-    TNewClientLoaderOutput,
+    IfNeverThen<TNewClientLoaderOutput, EmptyData>,
     TMapperOutput,
     TRouteDefinition,
     TServerInputSchema,
@@ -2693,11 +2808,12 @@ export class Point0<
       : StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
     TClientLoaderOutput,
-    TNewMapperOutput,
+    IfNeverThen<TNewMapperOutput, EmptyData>,
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
@@ -2807,7 +2923,8 @@ export class Point0<
             TClientLoaderOutput,
             TQueriesDefinitions
           >,
-          TMapperOutput
+          TMapperOutput,
+          TError
         >
       | ResolvableHead
       | string,
@@ -2817,6 +2934,7 @@ export class Point0<
       : StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2852,7 +2970,8 @@ export class Point0<
                 TClientLoaderOutput,
                 TQueriesDefinitions
               >,
-              TMapperOutput
+              TMapperOutput,
+              TError
             >
           | ResolvableHead
           | string,
@@ -2862,6 +2981,7 @@ export class Point0<
       : StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2891,7 +3011,8 @@ export class Point0<
                 MountableLocation<TLetsReadyPointType, TRouteDefinition>,
                 TInnerProps,
                 TQueriesDefinitions,
-                TMapperOutput
+                TMapperOutput,
+                ErrorPoint0
               >
             | ResolvableHead
             | string,
@@ -2903,7 +3024,8 @@ export class Point0<
                 MountableLocation<TLetsReadyPointType, TRouteDefinition>,
                 TInnerProps,
                 TQueriesDefinitions,
-                TMapperOutput
+                TMapperOutput,
+                ErrorPoint0
               >
             | ResolvableHead
             | string,
@@ -2970,16 +3092,17 @@ export class Point0<
 
   input<
     TNextServerInputSchema extends InputSchema,
-    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
       AssertInputSchemaNotWider<TNextServerInputSchema, TServerInputSchema, TClientInputSchema>,
   >(
     inputSchema: TNextServerInputSchema,
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       StagePointTypeOrNever<TPointType>,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -2997,20 +3120,21 @@ export class Point0<
   input<
     TInputRaw extends InputRaw,
     TInputParsed extends InputParsed = TInputRaw,
-    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
       AssertInputSchemaNotWider<
         RecordValidationSchema<TInputRaw, TInputParsed>,
         TServerInputSchema,
         TClientInputSchema
       >,
   >(
-    ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TError]
+    ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       StagePointTypeOrNever<TPointType>,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -3027,20 +3151,21 @@ export class Point0<
   >
   input<
     TValidateFn extends CustomValidationFn<any>,
-    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
       AssertInputSchemaNotWider<
         CustomValidationFnToRecordValidationSchema<TValidateFn>,
         TServerInputSchema,
         TClientInputSchema
       >,
   >(
-    validateFn: TValidateFn & TError,
+    validateFn: TValidateFn & TCheckError,
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       StagePointTypeOrNever<TPointType>,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -3057,14 +3182,15 @@ export class Point0<
   >
   input<
     TInput extends InputRaw,
-    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
       AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
   >(): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       StagePointTypeOrNever<TPointType>,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -3096,16 +3222,17 @@ export class Point0<
 
   clientInput<
     TNextClientInputSchema extends InputSchema,
-    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
       AssertInputSchemaNotWider<TNextClientInputSchema, TServerInputSchema, TClientInputSchema>,
   >(
     inputSchema: TNextClientInputSchema,
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       StagePointTypeOrNever<TPointType>,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -3123,20 +3250,21 @@ export class Point0<
   clientInput<
     TInputRaw extends InputRaw,
     TInputParsed extends InputParsed = TInputRaw,
-    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
       AssertInputSchemaNotWider<
         RecordValidationSchema<TInputRaw, TInputParsed>,
         TServerInputSchema,
         TClientInputSchema
       >,
   >(
-    validateFn: CustomValidationFn<TInputParsed> & TError,
+    validateFn: CustomValidationFn<TInputParsed> & TCheckError,
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       StagePointTypeOrNever<TPointType>,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -3153,20 +3281,21 @@ export class Point0<
   >
   clientInput<
     TValidateFn extends CustomValidationFn<any>,
-    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
       AssertInputSchemaNotWider<
         CustomValidationFnToRecordValidationSchema<TValidateFn>,
         TServerInputSchema,
         TClientInputSchema
       >,
   >(
-    validateFn: TValidateFn & TError,
+    validateFn: TValidateFn & TCheckError,
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       StagePointTypeOrNever<TPointType>,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -3183,16 +3312,17 @@ export class Point0<
   >
   clientInput<
     TInput extends InputRaw,
-    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
       AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
   >(
-    ...args: unknown extends TError ? [] : [TError]
+    ...args: unknown extends TCheckError ? [] : [TCheckError]
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       StagePointTypeOrNever<TPointType>,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -3224,16 +3354,17 @@ export class Point0<
 
   sharedInput<
     TNextInputSchema extends InputSchema,
-    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
       AssertInputSchemaNotWider<TNextInputSchema, TServerInputSchema, TClientInputSchema>,
   >(
     inputSchema: TNextInputSchema,
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       StagePointTypeOrNever<TPointType>,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -3251,20 +3382,21 @@ export class Point0<
   sharedInput<
     TInputRaw extends InputRaw,
     TInputParsed extends InputParsed = TInputRaw,
-    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
       AssertInputSchemaNotWider<
         RecordValidationSchema<TInputRaw, TInputParsed>,
         TServerInputSchema,
         TClientInputSchema
       >,
   >(
-    validateFn: CustomValidationFn<TInputParsed> & TError,
+    validateFn: CustomValidationFn<TInputParsed> & TCheckError,
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       StagePointTypeOrNever<TPointType>,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -3281,20 +3413,21 @@ export class Point0<
   >
   sharedInput<
     TValidateFn extends CustomValidationFn<any>,
-    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
       AssertInputSchemaNotWider<
         CustomValidationFnToRecordValidationSchema<TValidateFn>,
         TServerInputSchema,
         TClientInputSchema
       >,
   >(
-    validateFn: TValidateFn & TError,
+    validateFn: TValidateFn & TCheckError,
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       StagePointTypeOrNever<TPointType>,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -3311,16 +3444,17 @@ export class Point0<
   >
   sharedInput<
     TInput extends InputRaw,
-    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
       AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
   >(
-    ...args: unknown extends TError ? [] : [TError]
+    ...args: unknown extends TCheckError ? [] : [TCheckError]
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       StagePointTypeOrNever<TPointType>,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -3357,7 +3491,7 @@ export class Point0<
   lets<
     TPointName extends PointName,
     TProvidedRoute extends RouteDefinition = TPointName,
-    TError = AssertInputSchemaNotWider<
+    TCheckError = AssertInputSchemaNotWider<
       RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
       TServerInputSchema,
       TClientInputSchema
@@ -3368,11 +3502,12 @@ export class Point0<
       ? [letsReadyPointType: 'page', pointName: TPointName, route?: TProvidedRoute]
       : never[]
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       'coreStage',
       'page',
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       UndefinedLoaderOutput,
@@ -3396,7 +3531,7 @@ export class Point0<
   lets<
     TPointName extends PointName,
     TProvidedRoute extends AnyRoute,
-    TError = AssertInputSchemaNotWider<
+    TCheckError = AssertInputSchemaNotWider<
       RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
       TServerInputSchema,
       TClientInputSchema
@@ -3407,11 +3542,12 @@ export class Point0<
       ? [letsReadyPointType: 'page', pointName: TPointName, route: TProvidedRoute]
       : never[]
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       'coreStage',
       'page',
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       UndefinedLoaderOutput,
@@ -3435,7 +3571,7 @@ export class Point0<
   lets<
     TPointName extends PointName,
     TProvidedRoute extends RouteDefinition = '/',
-    TError = AssertInputSchemaNotWider<
+    TCheckError = AssertInputSchemaNotWider<
       RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
       TServerInputSchema,
       TClientInputSchema
@@ -3446,11 +3582,12 @@ export class Point0<
       ? [letsReadyPointType: 'layout', pointName: TPointName, route?: TProvidedRoute]
       : never[]
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       'coreStage',
       'layout',
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       UndefinedLoaderOutput,
@@ -3474,7 +3611,7 @@ export class Point0<
   lets<
     TPointName extends PointName,
     TProvidedRoute extends AnyRoute,
-    TError = AssertInputSchemaNotWider<
+    TCheckError = AssertInputSchemaNotWider<
       RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
       TServerInputSchema,
       TClientInputSchema
@@ -3485,11 +3622,12 @@ export class Point0<
       ? [letsReadyPointType: 'layout', pointName: TPointName, route: TProvidedRoute]
       : never[]
   ): WithError<
-    TError,
+    TCheckError,
     NiceStagePoint<
       'coreStage',
       'layout',
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       UndefinedLoaderOutput,
@@ -3516,6 +3654,7 @@ export class Point0<
     'coreStage',
     'component',
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     UndefinedLoaderOutput,
@@ -3535,6 +3674,7 @@ export class Point0<
     'coreStage',
     'provider',
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     UndefinedLoaderOutput,
@@ -3559,6 +3699,7 @@ export class Point0<
     'coreStage',
     TNewLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     UndefinedLoaderOutput,
@@ -3573,6 +3714,7 @@ export class Point0<
     TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
   >
   lets(...args: any[]) {
+    const _fsLocation = _point0_env.mode.is.production || _point0_env.build.was ? undefined : getCallerLocation(3)
     const [letsReadyPointType, pointName, route] = args as [ReadyPointType, PointName, AnyRoute | string | undefined]
     const prevRoute = this.route
     const newRoute = (() => {
@@ -3639,6 +3781,7 @@ export class Point0<
       type: 'coreStage',
       _letsReadyPointType: letsReadyPointType,
       name: pointName,
+      _fsLocation,
       route: newRoute as never,
       _page: undefined,
       _component: undefined,
@@ -3682,6 +3825,7 @@ export class Point0<
     'root',
     UndefinedReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -3708,6 +3852,7 @@ export class Point0<
     'plugin',
     UndefinedReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -3731,6 +3876,7 @@ export class Point0<
     'base',
     UndefinedReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -3770,6 +3916,7 @@ export class Point0<
     'page',
     UndefinedReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -3830,6 +3977,7 @@ export class Point0<
     'component',
     UndefinedReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -3892,6 +4040,7 @@ export class Point0<
     'layout',
     UndefinedReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -3912,7 +4061,7 @@ export class Point0<
     >
   >
   layout<
-    TPoint extends NiceLayoutReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+    TPoint extends NiceLayoutReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
   >(
     ...args: TLetsReadyPointType extends 'page'
       ? [
@@ -3928,6 +4077,7 @@ export class Point0<
       : StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -3977,7 +4127,8 @@ export class Point0<
       return layout as never
     } else {
       const [layoutNicePoint] = args as [
-        NiceLayoutReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
+        | NiceLayoutReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+        | undefined,
       ]
       return this._continue({
         _layouts: layoutNicePoint ? [...new Set([...this._layouts, layoutNicePoint.point])] : this._layouts,
@@ -3992,13 +4143,14 @@ export class Point0<
       ) as never,
       _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
         if (!point._ProviderReactContext) {
-          throw new Error('ProviderReactContext not found on point: ' + point.name)
+          throw new Error(`ProviderReactContext not found on point ${point.toStringWithLocation()}`)
         }
 
         if (keys == null) {
           // no keys — return full context
           return useContextSelector(point._ProviderReactContext, (ctx) => {
-            if (!ctx) throw new Error('useValue must be used within a Provider.')
+            if (!ctx)
+              throw new Error(`useValue must be used within a Provider on point ${point.toStringWithLocation()}`)
             return ctx
           })
         }
@@ -4006,7 +4158,8 @@ export class Point0<
         if (Array.isArray(keys)) {
           // multiple keys — build a memoized object
           return useContextSelector(point._ProviderReactContext, (ctx) => {
-            if (!ctx) throw new Error('useValue must be used within a Provider.')
+            if (!ctx)
+              throw new Error(`useValue must be used within a Provider on point ${point.toStringWithLocation()}`)
             const picked = {} as any
             for (const key of keys) {
               picked[key] = ctx[key]
@@ -4017,7 +4170,7 @@ export class Point0<
 
         // single key
         return useContextSelector(point._ProviderReactContext, (ctx) => {
-          if (!ctx) throw new Error('useValue must be used within a Provider.')
+          if (!ctx) throw new Error(`useValue must be used within a Provider on point ${point.toStringWithLocation()}`)
           return ctx[keys]
         })
       },
@@ -4055,6 +4208,7 @@ export class Point0<
     'provider',
     UndefinedReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -4107,7 +4261,7 @@ export class Point0<
     return point as never
   }
 
-  use<T extends NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>>(
+  use<T extends NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>>(
     plugin: T &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'use'> &
       AssertInputSchemaNotWider<T['Infer']['ServerInputSchema'], TServerInputSchema, TClientInputSchema> &
@@ -4118,6 +4272,7 @@ export class Point0<
       : StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     AppendCtx<TCtx, T['Infer']['Ctx']>,
     AppendCtxExposedKeys<TCtxExposedKeys, T['Infer']['CtxExposedKeys']>,
     TServerLoaderOutput,
@@ -4140,7 +4295,7 @@ export class Point0<
       T['Infer']['Queries']
     >
   >
-  use(plugin: NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>) {
+  use(plugin: NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>) {
     const point = plugin.point
 
     // throw new Error(`Point ${this.toString()} and ${point.toString()} have different ssr settings`)
@@ -4171,7 +4326,7 @@ export class Point0<
 
     if (typeof pointMountActionsSsr === 'boolean' && this._ssr !== pointMountActionsSsr) {
       throw new Error(
-        `Point ${this.toString()} and ${point.toString()} have different ssr settings, so you may loose mount actions in ssr mode`,
+        `Points have different ssr settings, so you may loose mount actions in ssr mode ${this.toStringWithLocation()} and ${point.toStringWithLocation()} `,
       )
     }
 
@@ -4285,7 +4440,7 @@ export class Point0<
         ? [
             queryOptions?: ExtraUseQueryOptions<
               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-              Error0,
+              TError,
               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
               QueryKey
             >,
@@ -4298,6 +4453,7 @@ export class Point0<
     'query',
     undefined,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -4319,7 +4475,7 @@ export class Point0<
           ? [
               queryOptions?: ExtraUseQueryOptions<
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                Error0,
+                TError,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 QueryKey
               >,
@@ -4334,6 +4490,7 @@ export class Point0<
     'finalStage',
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -4355,7 +4512,9 @@ export class Point0<
     if (this._isMountablePoint()) {
       // mountable point finalize query
       if (this.type === 'finalStage') {
-        throw new Error(`You can not use query() in ${this.toString()} becouse this point query already finalized`)
+        throw new Error(
+          `You can not use query() becouse this point query already finalized in point ${this.toStringWithLocation()}`,
+        )
       }
       return this._continue({
         type: 'finalStage',
@@ -4376,7 +4535,7 @@ export class Point0<
           _queryOptions: queryOptions,
         }) as never
       } else {
-        throw new Error(`Unknown condition, please report this issue`)
+        throw new Error(`Unknown condition, please report this issue on point ${this.toStringWithLocation()}`)
       }
     }
   }
@@ -4388,7 +4547,7 @@ export class Point0<
             infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
               InputsRaw<TServerInputSchema, TClientInputSchema>,
               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-              Error0,
+              TError,
               InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
               QueryKey,
               unknown
@@ -4404,6 +4563,7 @@ export class Point0<
     'infiniteQuery',
     undefined,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -4426,7 +4586,7 @@ export class Point0<
               infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                Error0,
+                TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
@@ -4442,6 +4602,7 @@ export class Point0<
     'finalStage',
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -4463,7 +4624,7 @@ export class Point0<
     if (this._isMountablePoint()) {
       if (this.type === 'finalStage') {
         throw new Error(
-          `You can not use infiniteQueryOptions() in ${this.toString()} becouse this point query already finalized`,
+          `You can not use infiniteQueryOptions() becouse this point query already finalized in point ${this.toStringWithLocation()}`,
         )
       }
       return this._continue({
@@ -4488,14 +4649,14 @@ export class Point0<
           _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<
             InputsRaw<TServerInputSchema, TClientInputSchema>,
             FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-            Error0,
+            TError,
             InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
             QueryKey,
             unknown
           >,
         }) as never
       } else {
-        throw new Error(`Unknown condition, please report this issue`)
+        throw new Error(`Unknown condition, please report this issue on point ${this.toStringWithLocation()}`)
       }
     }
   }
@@ -4505,7 +4666,7 @@ export class Point0<
       ? [
           mutationOptions?: UseMutationOptions<
             FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
-            Error0,
+            TError,
             InputsRawOrUndefinedOrVoid<TServerInputSchema, TClientInputSchema>
           >,
         ]
@@ -4514,6 +4675,7 @@ export class Point0<
     'mutation',
     UndefinedReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -4555,7 +4717,7 @@ export class Point0<
   }): void {
     if ((component as any).__POINT0_INSTANCE__) {
       throw new Error(
-        'This component is already assigned to a point. Please use a different component. Better always define component in place by arrow function.',
+        `This component is already assigned to a point. Please use a different component. Better always define component in place by arrow function. Point ${point.toStringWithLocation()}`,
       )
     }
     Object.assign(component, {
@@ -4773,12 +4935,12 @@ export class Point0<
     } satisfies InputSchema
   }
 
-  private static parseInputSafeSync<TInputSchema extends InputSchema | UndefinedInputSchema>(
+  private parseInputSafeSync<TInputSchema extends InputSchema | UndefinedInputSchema>(
     inputSchema: TInputSchema,
     ...args: IsInputOptional<TInputSchema> extends true
       ? [input?: InputRaw<TInputSchema>]
       : [input: InputRaw<TInputSchema>]
-  ): SafeParseInputResult<TInputSchema> {
+  ): SafeParseInputResult<TInputSchema, TError> {
     const [input = {}] = args
     if (!inputSchema) {
       return {
@@ -4792,7 +4954,9 @@ export class Point0<
 
       // if promise throw error, promise not allowed
       if (result instanceof Promise) {
-        throw new Error('Promise returning schema input not allowed for client input schemas')
+        throw new this._Error(
+          `Promise returning schema input not allowed for client input schemas on point ${this.toStringWithLocation()}`,
+        )
       }
 
       if ('value' in result) {
@@ -4808,19 +4972,21 @@ export class Point0<
         return {
           success: false,
           data: undefined,
-          error: new Error0('Unknown input schema error'),
+          error: new this._Error(`Unknown input schema error on point ${this.toStringWithLocation()}`, {
+            cause: result,
+          }),
         }
       }
       const path = firstIssue.path?.map((p) => (typeof p === 'object' ? p.key : p)).join('.')
       const message = [path, firstIssue.message].filter(Boolean).join(': ')
-      const error = new Error0(message)
+      const error = new this._Error(message, { cause: result })
       return {
         success: false,
         data: undefined,
         error,
       }
     } catch (error) {
-      return { success: false, data: undefined, error: Error0.from(error) }
+      return { success: false, data: undefined, error: this._Error.from(error) }
     }
   }
 
@@ -4828,11 +4994,11 @@ export class Point0<
     ...args: IsInputOptional<TClientInputSchema> extends true
       ? [input?: InputRaw<TClientInputSchema>]
       : [input: InputRaw<TClientInputSchema>]
-  ): SafeParseInputResult<TClientInputSchema> {
+  ): SafeParseInputResult<TClientInputSchema, TError> {
     const output = {} as InputParsed<TClientInputSchema>
     for (const clientExecuteAction of this._clientExecuteActions) {
       if (clientExecuteAction.type === 'input') {
-        const result = Point0.parseInputSafeSync(clientExecuteAction.schema, ...args)
+        const result = this.parseInputSafeSync(clientExecuteAction.schema, ...args)
         if (!result.success) {
           return result
         }
@@ -4882,7 +5048,7 @@ export class Point0<
       return { parsedInput: result.data, inputError: undefined }
     })()
     if (inputError) {
-      throw new Error(`Input error: ${inputError.message}`)
+      throw inputError
     }
     let currentInputParsed = {} as InputParsed<TClientInputSchema>
     location ??=
@@ -4898,7 +5064,7 @@ export class Point0<
           continue
         }
         case 'input': {
-          const result = Point0.parseInputSafeSync(clientExecuteAction.schema, input)
+          const result = this.parseInputSafeSync(clientExecuteAction.schema, input)
           if (result.error) {
             throw result.error
           }
@@ -4929,7 +5095,9 @@ export class Point0<
         }
 
         default: {
-          throw new Error(`Unknown client extend fn type: ${(clientExecuteAction as any).type}`)
+          throw new Error(
+            `Unknown client extend fn type: ${(clientExecuteAction as any).type} on point ${this.toStringWithLocation()}`,
+          )
         }
       }
     }
@@ -4992,9 +5160,9 @@ export class Point0<
     const location = useLocation()
     const serverQueryEnabled = this._hasServerLoader()
     const clientQueryEnabled = this._hasClientLoader()
-    if (this._queryResultType === 'infiniteQuery') {
-      throw new Error(`Point ${this.name} is not a finite query`)
-    }
+    // if (this._queryResultType === 'infiniteQuery') {
+    //   throw new Error(`It is not a finite query on point ${this.toStringWithLocation()} `)
+    // }
     if (!serverQueryEnabled && !clientQueryEnabled) {
       return { data: {}, query: undefined, clientQuery: undefined } as never
     }
@@ -5034,7 +5202,7 @@ export class Point0<
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                Error0,
+                TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
@@ -5048,7 +5216,7 @@ export class Point0<
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                Error0,
+                TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
@@ -5061,9 +5229,9 @@ export class Point0<
     const location = useLocation()
     const serverQueryEnabled = this._hasServerLoader()
     const clientQueryEnabled = this._hasClientLoader()
-    if (this._queryResultType !== 'infiniteQuery') {
-      throw new Error(`Point ${this.name} is not an infinite query`)
-    }
+    // if (this._queryResultType !== 'infiniteQuery') {
+    //   throw new Error(`It is not an infinite query on point ${this.toStringWithLocation()} `)
+    // }
     if (!serverQueryEnabled && !clientQueryEnabled) {
       return { data: {}, query: undefined, clientQuery: undefined } as never
     }
@@ -5131,7 +5299,7 @@ export class Point0<
     })
     const serverurl = this.getServerUrl()
     if (!serverurl) {
-      throw new Error('Server URL is not set')
+      throw new Error(`Server URL is not set on point ${this.toStringWithLocation()}`)
     }
     const url = new URL('/_point0', serverurl)
     const method = 'POST'
@@ -5185,7 +5353,7 @@ export class Point0<
       const __POINT0_FETCH_FN__ = _ssItems.__POINT0_FETCH_FN__.getWeak()
       if (!__POINT0_FETCH_FN__) {
         throw new Error(
-          'Fetch function in server available only inside loaders, components, etc, do not use it in top level. Or use FakeClient',
+          `Fetch function in server available only inside loaders, components, etc, do not use it in top level. Or use FakeClient on point ${this.toStringWithLocation()}`,
         )
       }
       return __POINT0_FETCH_FN__
@@ -5253,7 +5421,7 @@ export class Point0<
           input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
           options?: { fetchOptions?: FetchOptions; _outputType?: FetchServerOutputType },
         ]
-  ): Promise<FetchServerDetailedOutput<TServerLoaderOutput>> {
+  ): Promise<FetchServerDetailedOutput<TServerLoaderOutput, TError>> {
     let res: Response | undefined
     const _eventData = {
       input: args[0] || {},
@@ -5284,7 +5452,7 @@ export class Point0<
           data: undefined,
           error: undefined,
           output: res,
-        } as Extract<FetchServerDetailedOutput<TServerLoaderOutput>, { error: undefined }>
+        } as Extract<FetchServerDetailedOutput<TServerLoaderOutput, TError>, { error: undefined }>
         const eventData = {
           ..._eventData,
           ...result,
@@ -5301,7 +5469,7 @@ export class Point0<
           data,
           error: undefined,
           output: data,
-        } as Extract<FetchServerDetailedOutput<TServerLoaderOutput>, { error: undefined }>
+        } as Extract<FetchServerDetailedOutput<TServerLoaderOutput, TError>, { error: undefined }>
         const eventData = {
           ..._eventData,
           ...result,
@@ -5314,8 +5482,8 @@ export class Point0<
         response: res,
         output: undefined,
         data: undefined,
-        error: Error0.from(data, {
-          httpStatus: res.status,
+        error: Object.assign(this._Error.from(data), {
+          status: res.status,
         }),
       }
       const eventData = {
@@ -5329,7 +5497,7 @@ export class Point0<
       const result = {
         response: res,
         data: undefined,
-        error: Error0.from(error),
+        error: this._Error.from(error),
         output: undefined,
       }
       const eventData = {
@@ -5455,7 +5623,7 @@ export class Point0<
         isInfiniteQuery: this._queryResultType === 'infiniteQuery',
       })
     }
-    throw new Error('No loader found')
+    throw new Error(`No loader found on point ${this.toStringWithLocation()}`)
   }
 
   _getServerQueryOptions({
@@ -5470,7 +5638,7 @@ export class Point0<
     outputType?: FetchServerOutputType
   }): UseQueryOptions<
     FetchServerOutput<TServerLoaderOutput>,
-    Error0,
+    TError,
     FetchServerOutput<TServerLoaderOutput>,
     QueryKey
   > {
@@ -5498,7 +5666,7 @@ export class Point0<
         this._emit('pointQuerySuccess', eventData)
         return data
       } catch (error) {
-        const error0 = Error0.from(error)
+        const error0 = this._Error.from(error)
         const eventData = {
           ..._eventData,
           error: error0,
@@ -5538,7 +5706,7 @@ export class Point0<
     serverData?: Data
   }): UseQueryOptions<
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-    Error0,
+    TError,
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     QueryKey
   > {
@@ -5568,7 +5736,7 @@ export class Point0<
         this._emit('pointQuerySuccess', eventData)
         return clientData
       } catch (error) {
-        const error0 = Error0.from(error)
+        const error0 = this._Error.from(error)
         const eventData = {
           ..._eventData,
           error: error0,
@@ -5609,7 +5777,7 @@ export class Point0<
     fetchOptions?: FetchOptions | undefined
   }): UseQueryOptions<
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-    Error0,
+    TError,
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     QueryKey
   > {
@@ -5650,7 +5818,7 @@ export class Point0<
         this._emit('pointQuerySuccess', eventData)
         return data
       } catch (error) {
-        const error0 = Error0.from(error)
+        const error0 = this._Error.from(error)
         const eventData = {
           ..._eventData,
           error: error0,
@@ -5704,7 +5872,7 @@ export class Point0<
         ]
   ): UseQueryOptions<
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-    Error0,
+    TError,
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     QueryKey
   > {
@@ -5736,7 +5904,7 @@ export class Point0<
         outputType,
       }) as never
     }
-    throw new Error('No loader found')
+    throw new Error(`No loader found on point ${this.toStringWithLocation()}`)
   }
 
   private _getServerInfiniteQueryOptions({
@@ -5750,7 +5918,7 @@ export class Point0<
       | ExtraUseInfiniteQueryOptions<
           InputsRaw<TServerInputSchema, TClientInputSchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-          Error0,
+          TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
@@ -5760,7 +5928,7 @@ export class Point0<
     outputType?: FetchServerOutputType
   }): UseInfiniteQueryOptions<
     InfiniteData<FetchServerOutput<TServerLoaderOutput>>,
-    Error0,
+    TError,
     FetchServerOutput<TServerLoaderOutput>,
     QueryKey
   > {
@@ -5789,7 +5957,7 @@ export class Point0<
         this._emit('pointInfiniteQuerySuccess', eventData)
         return data
       } catch (error) {
-        const error0 = Error0.from(error)
+        const error0 = this._Error.from(error)
         const eventData = {
           ..._eventData,
           error: error0,
@@ -5823,7 +5991,7 @@ export class Point0<
       | ExtraUseInfiniteQueryOptions<
           InputsRaw<TServerInputSchema, TClientInputSchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-          Error0,
+          TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
@@ -5833,7 +6001,7 @@ export class Point0<
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> extends Data
       ? FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>
       : never,
-    Error0,
+    TError,
     InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
     QueryKey
   > {
@@ -5867,7 +6035,7 @@ export class Point0<
         this._emit('pointInfiniteQuerySuccess', eventData)
         return clientData
       } catch (error) {
-        const error0 = Error0.from(error)
+        const error0 = this._Error.from(error)
         const eventData = {
           ..._eventData,
           error: error0,
@@ -5901,7 +6069,7 @@ export class Point0<
       | ExtraUseInfiniteQueryOptions<
           InputsRaw<TServerInputSchema, TClientInputSchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-          Error0,
+          TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
@@ -5912,7 +6080,7 @@ export class Point0<
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> extends Data
       ? FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>
       : never,
-    Error0,
+    TError,
     InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
     QueryKey
   > {
@@ -5982,7 +6150,7 @@ export class Point0<
         this._emit('pointInfiniteQuerySuccess', eventData)
         return clientData
       } catch (error) {
-        const error0 = Error0.from(error)
+        const error0 = this._Error.from(error)
         const eventData = {
           ..._eventData,
           error: error0,
@@ -6011,7 +6179,7 @@ export class Point0<
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                Error0,
+                TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
@@ -6031,7 +6199,7 @@ export class Point0<
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                Error0,
+                TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
@@ -6048,7 +6216,7 @@ export class Point0<
   ): UseInfiniteQueryOptions<
     InputsRaw<TServerInputSchema, TClientInputSchema>,
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-    Error0,
+    TError,
     InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
     QueryKey
   > {
@@ -6080,7 +6248,7 @@ export class Point0<
         outputType,
       }) as never
     }
-    throw new Error('No loader found')
+    throw new Error(`No loader found on point ${this.toStringWithLocation()}`)
   }
 
   private _useServerQuery({
@@ -6093,7 +6261,7 @@ export class Point0<
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchServerOutputType
-  }): UseQueryResult<FetchServerOutput<TServerLoaderOutput>, Error0> {
+  }): UseQueryResult<FetchServerOutput<TServerLoaderOutput>, TError> {
     return useQuery(this._getServerQueryOptions({ input, queryOptions, fetchOptions, outputType }))
   }
 
@@ -6105,7 +6273,7 @@ export class Point0<
     input: InputsRaw<TServerInputSchema, TClientInputSchema>
     location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
-  }): UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, Error0> {
+  }): UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, TError> {
     return useQuery(
       this._getClientQueryOptions({
         input,
@@ -6125,7 +6293,7 @@ export class Point0<
     location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
-  }): UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, Error0> {
+  }): UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, TError> {
     const queryClient = useQueryClient()
     return useQuery(
       this._getCombinedQueryOptions({
@@ -6149,7 +6317,7 @@ export class Point0<
       | ExtraUseInfiniteQueryOptions<
           InputsRaw<TServerInputSchema, TClientInputSchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-          Error0,
+          TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
@@ -6157,7 +6325,7 @@ export class Point0<
       | undefined
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchServerOutputType
-  }): UseInfiniteQueryResult<InfiniteData<FetchServerOutput<TServerLoaderOutput>>, Error0> {
+  }): UseInfiniteQueryResult<InfiniteData<FetchServerOutput<TServerLoaderOutput>>, TError> {
     const infiniteQueryOptions = this._getServerInfiniteQueryOptions({
       input,
       infiniteQueryOptions: providedInfiniteQueryOptions,
@@ -6178,13 +6346,13 @@ export class Point0<
       | ExtraUseInfiniteQueryOptions<
           InputsRaw<TServerInputSchema, TClientInputSchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-          Error0,
+          TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
         >
       | undefined
-  }): UseInfiniteQueryResult<InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>, Error0> {
+  }): UseInfiniteQueryResult<InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>, TError> {
     const infiniteQueryOptions = this._getClientInfiniteQueryOptions({
       input,
       infiniteQueryOptions: providedInfiniteQueryOptions,
@@ -6205,14 +6373,14 @@ export class Point0<
       | ExtraUseInfiniteQueryOptions<
           InputsRaw<TServerInputSchema, TClientInputSchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-          Error0,
+          TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
         >
       | undefined
     fetchOptions?: FetchOptions | undefined
-  }): UseInfiniteQueryResult<InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>, Error0> {
+  }): UseInfiniteQueryResult<InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>, TError> {
     const queryClient = useQueryClient()
     const infiniteQueryOptions = this._getCombinedInfiniteQueryOptions({
       input,
@@ -6229,7 +6397,7 @@ export class Point0<
     options?: { fetchOptions?: FetchOptions },
   ): MutationOptions<
     FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
-    Error0,
+    TError,
     InputsRawOrUndefinedOrVoid<TServerInputSchema, TClientInputSchema>
   > {
     const mutationFn = async (input: Record<string, any> = {}) => {
@@ -6243,7 +6411,7 @@ export class Point0<
       try {
         if (_point0_env.side.is.server) {
           throw new Error(
-            'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
+            `If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data on point ${this.toStringWithLocation()}`,
           )
         }
         const serverFetchResult = await (async () => {
@@ -6262,20 +6430,20 @@ export class Point0<
             input: input as never,
           })
           if (!clientOutput) {
-            throw new Error('Client output is not set')
+            throw new Error(`Client output is not set on point ${this.toStringWithLocation()}`)
           }
           this._emit('pointMutationSettled', { ...eventData, output: clientOutput })
           this._emit('pointMutationSuccess', { ...eventData, output: clientOutput })
           return clientOutput as FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
         }
         if (!serverFetchResult?.output) {
-          throw new Error('Server output is not set')
+          throw new Error(`Server output is not set on point ${this.toStringWithLocation()}`)
         }
         this._emit('pointMutationSettled', { ...eventData, output: serverFetchResult.output })
         this._emit('pointMutationSuccess', { ...eventData, output: serverFetchResult.output })
         return serverFetchResult.output as never as FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
       } catch (error) {
-        const error0 = Error0.from(error)
+        const error0 = this._Error.from(error)
         this._emit('pointMutationSettled', { ...eventData, error: error0 })
         this._emit('pointMutationError', { ...eventData, error: error0 })
         throw error0
@@ -6288,7 +6456,7 @@ export class Point0<
       mutationFn,
     } as MutationOptions<
       FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
-      Error0,
+      TError,
       InputsRawOrUndefinedOrVoid<TServerInputSchema, TClientInputSchema>
     >
   }
@@ -6298,7 +6466,7 @@ export class Point0<
     options?: { fetchOptions?: FetchOptions | undefined },
   ): UseMutationResult<
     FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
-    Error0,
+    TError,
     InputsRawOrUndefinedOrVoid<TServerInputSchema, TClientInputSchema>
   > => {
     return useMutation(this.getMutationOptions(mutationOptions, options))
@@ -6600,7 +6768,7 @@ export class Point0<
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                Error0,
+                TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
@@ -6622,7 +6790,7 @@ export class Point0<
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                Error0,
+                TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
@@ -6697,7 +6865,7 @@ export class Point0<
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                Error0,
+                TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
@@ -6718,7 +6886,7 @@ export class Point0<
             | ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                Error0,
+                TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
@@ -6780,7 +6948,7 @@ export class Point0<
     force?: boolean
   }): Promise<void> {
     if (this.type !== 'page') {
-      throw new Error('Point type is not page')
+      throw new Error(`Point type is not page on point ${this.toStringWithLocation()}`)
     }
     queryClient ??= _ssItems.__POINT0_QUERY_CLIENT__.get()
     const _queryOptions = this._getServerQueryOptions({
@@ -6798,7 +6966,7 @@ export class Point0<
     }
     const data = (await queryClient.fetchQuery(_queryOptions as never)) as any
     if (!data?.dehydratedState) {
-      throw new Error('Dehydrated state not found')
+      throw new Error(`Dehydrated state not found on point ${this.toStringWithLocation()}`)
     }
     hydrate(queryClient, data.dehydratedState)
   }
@@ -6845,7 +7013,7 @@ export class Point0<
     this._emit('pointPrefetchPageStart', eventData)
 
     if (!this.route) {
-      const error = new Error0('Route is not set')
+      const error = new this._Error('Route is not set')
       this._emit('pointPrefetchPageSettled', { ...eventData, error })
       this._emit('pointPrefetchPageError', { ...eventData, error })
       throw error
@@ -6855,7 +7023,9 @@ export class Point0<
     const queryClientDehydratedStateWasPrefetched = await (async () => {
       if (policy === 'ssrDehydratedState' || policy === 'ssrDehydratedStateAndClientQuery') {
         if (!this._root?._ssr) {
-          throw new Error('Query client dehydrated state can be prefetched only when ssr is enabled')
+          throw new Error(
+            `Query client dehydrated state can be prefetched only when ssr is enabled on point ${this.toStringWithLocation()}`,
+          )
         }
         await this._prefetchPageQueryClientDehydratedState({
           queryClient,
@@ -6995,10 +7165,10 @@ export class Point0<
       this._emit('pointPrefetchPageSettled', eventData)
       this._emit('pointPrefetchPageSuccess', eventData)
     } catch (error) {
-      const error0 = Error0.from(error)
+      const error0 = this._Error.from(error)
       this._emit('pointPrefetchPageSettled', { ...eventData, error: error0 })
       this._emit('pointPrefetchPageError', { ...eventData, error: error0 })
-      throw error
+      throw error0
     }
   }
 
@@ -7015,7 +7185,7 @@ export class Point0<
       pageState: RouterPageState
       setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
     }
-    prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any> }>
+    prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any, ErrorPoint0> }>
   }) => {
     React.useEffect(() => {
       // pageStateManager.setPageState(pageState)
@@ -7051,7 +7221,7 @@ export class Point0<
       pageState: RouterPageState
       setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
     }
-    prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any> }>
+    prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any, ErrorPoint0> }>
     isHeadable: boolean
     fallbackLoadingComponent: LoadingComponentType<any>
   }): React.ComponentType<{ _isHeadable?: boolean }> => {
@@ -7083,21 +7253,23 @@ export class Point0<
     prevMountActions,
     isHeadable,
     fallbackErrorComponent,
+    ErrorClass,
   }: {
     componentVariant: DestinationComponentVariant
     pageStateManager: {
       pageState: RouterPageState
       setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
     }
-    prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any> }>
+    prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any, ErrorPoint0> }>
     isHeadable: boolean
-    fallbackErrorComponent: ErrorComponentType<any>
+    fallbackErrorComponent: ErrorComponentType<any, any>
+    ErrorClass: ClassLikeError0<Error>
   }): React.ComponentType<{ error: Error; _isHeadable?: boolean }> => {
     const errorComponent =
       prevMountActions.flatMap(({ action }) => (action.type === 'errorComponent' ? [action.Component] : [])).at(-1) ??
       fallbackErrorComponent
     return ({ error, _isHeadable = isHeadable }: { error: Error; _isHeadable?: boolean }) => {
-      const error0 = Error0.from(error)
+      const error0 = ErrorClass.from(error)
       if (_isHeadable) {
         Point0._usePrevHeadsAndSetPageState({
           pageState: {
@@ -7123,7 +7295,7 @@ export class Point0<
       | PageSuccessComponentType<any, any, any, any>
       | ComponentSuccessComponentType<any, any, any>
       | 'children'
-    extraProps: (mountableState: MountableState<any, any, any, any, any>) => Record<string, any>
+    extraProps: (mountableState: MountableState<any, any, any, any, any, ErrorPoint0>) => Record<string, any>
     location?: AnyLocation
     pageStateManager?: {
       pageState: RouterPageState
@@ -7134,7 +7306,7 @@ export class Point0<
       outerProps: TOuterProps
       queryIndex?: number
       prev?: {
-        prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any> }>
+        prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any, ErrorPoint0> }>
         nextMountActions: MountAction[]
         innerProps: Props
         queries: QueriesResults
@@ -7162,13 +7334,13 @@ export class Point0<
         page: this._pageLoadingComponent,
         component: this._componentLoadingComponent,
         layout: this._layoutLoadingComponent,
-      }[componentVariant] ?? Point0.DefaultLoadingComponent
+      }[componentVariant] ?? this.DefaultLoadingComponent
     const fallbackErrorComponent =
       {
         page: this._pageErrorComponent,
         component: this._componentErrorComponent,
         layout: this._layoutErrorComponent,
-      }[componentVariant] ?? Point0.DefaultErrorComponent
+      }[componentVariant] ?? this.DefaultErrorComponent
 
     const {
       nextMountActions,
@@ -7183,7 +7355,10 @@ export class Point0<
       if (!prev) {
         return {
           nextMountActions: this._mountActions,
-          prevMountActions: [] as Array<{ action: MountAction; state: MountableState<any, any, any, any, any> }>,
+          prevMountActions: [] as Array<{
+            action: MountAction
+            state: MountableState<any, any, any, any, any, ErrorPoint0>
+          }>,
           PrevLoadingComponent: undefined,
           PrevErrorComponent: undefined,
           prevInnerProps: {},
@@ -7216,7 +7391,7 @@ export class Point0<
       if (error) {
         return {
           status: 'error',
-          error: Error0.from(error),
+          error: this._Error.from(error),
           loading: false,
           data: undefined,
         }
@@ -7237,7 +7412,7 @@ export class Point0<
         loading: false,
         data: prevMappedData ?? prevQueries.at(0)?.data ?? {},
       }
-    })() as Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading' | 'data'>
+    })() as Pick<MountableState<any, any, any, any, any, ErrorPoint0>, 'status' | 'error' | 'loading' | 'data'>
 
     const mountState = {
       ...queriesState,
@@ -7245,7 +7420,7 @@ export class Point0<
       input: currentLayer.inputRaw,
       props: prevInnerProps,
       queries: prevQueries,
-    } as MountableState<any, any, any, any, any>
+    } as MountableState<any, any, any, any, any, ErrorPoint0>
     let nextMappedData = prevMappedData
     let ErrorComponent =
       PrevErrorComponent ??
@@ -7256,6 +7431,7 @@ export class Point0<
           prevMountActions,
           isHeadable,
           fallbackErrorComponent,
+          ErrorClass: this._Error,
         }),
         [],
       )
@@ -7280,6 +7456,7 @@ export class Point0<
           prevMountActions,
           isHeadable,
           fallbackErrorComponent,
+          ErrorClass: this._Error,
         }),
         [],
       )
@@ -7313,7 +7490,7 @@ export class Point0<
         outerProps: TOuterProps
         queryIndex?: number
         prev?: {
-          prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any> }>
+          prevMountActions: Array<{ action: MountAction; state: MountableState<any, any, any, any, any, ErrorPoint0> }>
           nextMountActions: MountAction[]
           innerProps: Props
           queries: QueriesResults
@@ -7538,7 +7715,7 @@ export class Point0<
       }
 
       // @ts-expect-error -- we know that this is not possible, but to not forget add case for new action type
-      throw new Error(`Unknown mount action type: ${action.type}`)
+      throw new Error(`Unknown mount action type: ${action.type} on point ${this.toStringWithLocation()}`)
     }
 
     // so we come to the end and can return mount component
@@ -7717,9 +7894,9 @@ export class Point0<
           outerProps: restProps,
         },
       ],
-      extraProps: (mountableState: MountableState<any, any, any, any, any>) => {
+      extraProps: (mountableState: MountableState<any, any, any, any, any, ErrorPoint0>) => {
         if (!this._ProviderReactContext) {
-          throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
+          throw new Error(`ProviderReactContext not found on point ${this.toStringWithLocation()}`)
         }
         if (mountableState.data) {
           superstore.setValue(this.getSsProviderValueKey(inputRaw), mountableState.data, 'clientServerIsolated')
@@ -7757,7 +7934,7 @@ export class Point0<
     )
     if (!value) {
       throw new Error(
-        `Provider value not found on point: provider.${this.name}. You should call getValue only after Provider component is mounted and loaded.`,
+        `Provider value not found. You should call getValue only after Provider component is mounted and loaded. On point ${this.toStringWithLocation()}`,
       )
     }
     return value
@@ -7803,9 +7980,9 @@ export class Point0<
           outerProps: restProps,
         },
       ],
-      extraProps: (mountableState: MountableState<any, any, any, any, any>) => {
+      extraProps: (mountableState: MountableState<any, any, any, any, any, ErrorPoint0>) => {
         if (!this._ProviderReactContext) {
-          throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
+          throw new Error(`ProviderReactContext not found on point ${this.toStringWithLocation()}`)
         }
         if (mountableState.data) {
           superstore.setValue(this.getSsProviderValueKey(inputRaw), mountableState.data, 'clientServerIsolated')
@@ -7835,7 +8012,7 @@ export class Point0<
       | Array<keyof MountableSuccessData<TQueriesDefinitions, TMapperOutput>>,
   ) {
     if (!this._useValue) {
-      throw new Error('useValue not found on point: ' + this.name)
+      throw new Error(`useValue not found on point ${this.toStringWithLocation()}`)
     }
     return (this as any)._useValue(this, keys)
   }
@@ -7882,8 +8059,11 @@ export class Point0<
   //   return null
   // }
 
-  _emit<TName extends AnyEventerEvent['name']>(name: TName, data: Extract<AnyEventerEvent, { name: TName }>['data']) {
-    const event = { name, data, side: _point0_env.side.name } as AnyEventerEvent
+  _emit<TName extends AnyEventerEventName>(
+    name: TName,
+    data: Extract<AnyEventerEvent<TError>, { name: TName }>['data'],
+  ) {
+    const event = { name, data, side: _point0_env.side.name } as AnyEventerEvent<TError>
     for (const subscription of this._eventerSubscriptions) {
       if (subscription.side && subscription.side !== event.side) {
         continue

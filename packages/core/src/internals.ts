@@ -9,10 +9,11 @@ import type { RouterContextValue } from './router.js'
 import type { SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './super-store.js'
 import { superstore } from './super-store.js'
 import type { FetchFn, PointsScope } from './types.js'
+import type { ErrorPoint0 } from './error.js'
 
 const initUndefined = () => undefined as never
 
-type LikeFakeClient = { id: string; scope: PointsScope; fetch: FetchFn; points: ClientPoints } | undefined
+type LikeFakeClient = { id: string; scope: PointsScope; fetch: FetchFn; points: ClientPoints<ErrorPoint0> } | undefined
 export const _getFakeClient = (): LikeFakeClient | undefined => {
   return superstore.getFakeClient() as LikeFakeClient | undefined
 }
@@ -26,7 +27,7 @@ export const _ssItems = {
   ),
   __POINT0_REQUEST0__: superstore.define<Request0>('__POINT0_REQUEST0__', initUndefined, 'serverOnlyStorage'),
   __POINT0_EFFECTS__: superstore.define<Effects>('__POINT0_EFFECTS__', initUndefined, 'serverOnlyStorage'),
-  __POINT0_CLIENT_POINTS__: superstore.define<ClientPoints | undefined>(
+  __POINT0_CLIENT_POINTS__: superstore.define<ClientPoints<ErrorPoint0> | undefined>(
     '__POINT0_CLIENT_POINTS__',
     initUndefined,
     'clientServerIsolated',

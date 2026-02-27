@@ -1,5 +1,6 @@
 export * from './client-points.js'
 export * from './env.js'
+export * from './error.js'
 export type * from './eventer.js'
 export * from './internals.js'
 export type * from './mountable.js'

@@ -1,6 +1,5 @@
-import nodePath from 'node:path'
-import { fileURLToPath } from 'node:url'
 import type { RoutesPretty } from '@devp0nt/route0'
+import { prependAndDeappendSlash } from '@point0/core'
 import type {
   AppComponent,
   AppComponentModule,
@@ -10,13 +9,16 @@ import type {
   PointsDefinitionSource,
   PointsScope,
   RequiredCtx,
+  ErrorPoint0,
 } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
-import { prependAndDeappendSlash } from '@point0/core'
 import { minimatch } from 'minimatch'
+import nodePath from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { type CompilerEnvConsts, normalizeEnvConsts } from '../../compiler/dist/utils.js'
 import type { FilesGeneratorTaskMeta, FilesGeneratorTaskPoints, FilesGeneratorTaskRoutes } from './generator.js'
 import type { PublicdirDefinition } from './publicdir.js'
+import { toAbsPath, toJsExtension } from './utils.js'
 import type {
   BunBuildConfigDefinition,
   BunPluginsDefinition,
@@ -25,7 +27,6 @@ import type {
   EngineServerBuildConfigDefinition,
   EngineServerPluginsDefinition,
 } from './utils.js'
-import { toAbsPath, toJsExtension } from './utils.js'
 
 // TODO:ASAP transform to class
 // TODO:ASAP allow predefined config mutable, which can be pased to Engine.create or in EngineOptions
@@ -139,9 +140,12 @@ export type EngineGeneralOptions = {
   compiler?: EngineOptionsCompilerGeneral | boolean
 }
 
-export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+export type EngineServerOptions<
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TError extends ErrorPoint0 = ErrorPoint0,
+> = {
   scope: PointsScope
-  points?: PointsDefinitionSource<TRequiredCtx>
+  points?: PointsDefinitionSource<TRequiredCtx, TError>
   generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
   publicdir?: {
     source: EngineOptionsPublicdir
@@ -163,11 +167,11 @@ export type EngineServerOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   serveRetries?: number
 }
 
-export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+export type EngineClientOptions = {
   scope: PointsScope
   // TODO: allow empty points
   // TODO: allow points collection
-  points?: PointsDefinitionSource<TRequiredCtx>
+  points?: PointsDefinitionSource
   serving?: EngineOptionsServing
   generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
   app?: EngineOptionsAppComponent
@@ -192,17 +196,11 @@ export type EngineClientOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> 
   banner?: string
 }
 export type EngineOptions<
-  TServer1 extends RequiredCtx = RequiredCtx,
-  TClient1 extends RequiredCtx = RequiredCtx,
-  TClient2 extends RequiredCtx = RequiredCtx,
-  TClient3 extends RequiredCtx = RequiredCtx,
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TError extends ErrorPoint0 = ErrorPoint0,
 > = EngineGeneralOptions & {
-  server: EngineServerOptions<TServer1>
-  clients?:
-    | []
-    | [EngineClientOptions<TClient1>]
-    | [EngineClientOptions<TClient1>, EngineClientOptions<TClient2>]
-    | [EngineClientOptions<TClient1>, EngineClientOptions<TClient2>, EngineClientOptions<TClient3>]
+  server: EngineServerOptions<TRequiredCtx, TError>
+  clients?: EngineClientOptions[]
 }
 
 // type IsUnknown<T> = unknown extends T ? ([T] extends [unknown] ? true : false) : false
@@ -497,7 +495,7 @@ const parseEngineGeneralOptions = ({
   serverOptions,
 }: {
   generalOptions: EngineGeneralOptions
-  serverOptions: EngineServerOptions
+  serverOptions: EngineServerOptions<any, any>
   clientsOptions: EngineClientOptions[] | undefined
 }): EngineGeneralOptionsParsed => {
   if (!generalOptions.file) {
@@ -1082,7 +1080,7 @@ const parseEngineClientOptions = ({
 //   } as EngineOptions
 // }
 
-export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {
+export const parseEngineOptions = (options: EngineOptions<any, any>): EngineOptionsParsed => {
   const { server: serverOptions, clients: clientsOptionsRaw, ...generalOptions } = options
   // const clientsOptions = clientsOptionsRaw?.flatMap((clientOptions) => (clientOptions ? [clientOptions] : [])) ?? []
   const clientsOptions = clientsOptionsRaw ?? []

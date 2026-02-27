@@ -232,3 +232,30 @@ export const generateId = (): string => {
     return Math.random().toString(36).slice(2) + Date.now().toString(36)
   }
 }
+
+export const getCallerLocation = (skip = 2): FsLocation | undefined => {
+  const stack = new Error().stack
+  if (!stack) return undefined
+
+  const lines = stack.split('\n')
+  const target = lines[skip]
+  if (!target) return undefined
+
+  // Matches:
+  // at fn (/path/file.ts:10:5)
+  // at /path/file.ts:10:5
+  const match = target.match(/\((.*):(\d+):(\d+)\)/) || target.match(/at (.*):(\d+):(\d+)/)
+
+  if (!match) return undefined
+
+  return {
+    path: match[1],
+    line: Number(match[2]),
+    column: Number(match[3]),
+  }
+}
+export type FsLocation = {
+  path: string
+  line: number
+  column: number
+}

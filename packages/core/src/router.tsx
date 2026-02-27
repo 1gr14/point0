@@ -1,9 +1,10 @@
-import { Error0 } from '@devp0nt/error0'
-import type { AnyLocation, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
+import type { AnyLocation, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ClientPoints } from './client-points.js'
+import type { ClassLikeError0 } from './error.js'
+import { ErrorPoint0 } from './error.js'
 import { _ssItems } from './internals.js'
 import type { IfAnyThenElse } from './types.js'
 
@@ -37,9 +38,9 @@ export type RouterPageStateLoading = {
   loading: true
   initial: false
 }
-export type RouterPageStateError = {
+export type RouterPageStateError<TError extends ErrorPoint0 = ErrorPoint0> = {
   status: 'error'
-  error: Error0
+  error: TError
   loading: false
   initial: false
 }
@@ -344,14 +345,18 @@ export const useIsNavigating = (): boolean => {
 //   }, [ctx.status, ctx.error, isNavigating])
 // }
 
-export function _wrapUseNavigate<T extends () => (to: string, ...args: any[]) => any>(
+export function _wrapUseNavigate<
+  T extends () => (to: string, ...args: any[]) => any,
+  TError extends ErrorPoint0 = ErrorPoint0,
+>(
   useAdapterNavigate: T,
-): () => (...args: Parameters<ReturnType<T>>) => Promise<{ location: AnyLocation; error: Error0 | undefined }> {
+  ErrorClass: ClassLikeError0<TError>,
+): () => (...args: Parameters<ReturnType<T>>) => Promise<{ location: AnyLocation; error: TError | undefined }> {
   return () => {
     // const routerContext = React.useContext(RouterContext)
     // if (!routerContext) throw new Error('useNavigate must be used within RouterContextProvider')
     const adapterNavigate = useAdapterNavigate()
-    return _wrapNavigate(adapterNavigate)
+    return _wrapNavigate(adapterNavigate, ErrorClass)
 
     // return async (...args: Parameters<ReturnType<T>>) => {
     //   const to = (() => {
@@ -388,9 +393,13 @@ export function _wrapUseNavigate<T extends () => (to: string, ...args: any[]) =>
   }
 }
 
-export function _wrapNavigate<T extends (to: string, ...args: any[]) => any>(
+export function _wrapNavigate<
+  T extends (to: string, ...args: any[]) => any,
+  TErrorClass extends ClassLikeError0<ErrorPoint0> = ClassLikeError0<ErrorPoint0>,
+>(
   adapterNavigate: T,
-): (...args: Parameters<T>) => Promise<{ location: AnyLocation; error: Error0 | undefined }> {
+  ErrorClass: TErrorClass = ErrorPoint0 as unknown as TErrorClass,
+): (...args: Parameters<T>) => Promise<{ location: AnyLocation; error: InstanceType<TErrorClass> | undefined }> {
   return async (...args: Parameters<T>) => {
     const routerContext = getRouterContext()
     const to = (() => {
@@ -417,7 +426,7 @@ export function _wrapNavigate<T extends (to: string, ...args: any[]) => any>(
       routerContext.setNextLocation(null)
       return { location, error: undefined }
     } catch (error) {
-      const error0 = Error0.from(error)
+      const error0 = ErrorClass.from(error) as InstanceType<TErrorClass>
       routerContext.setError(error0)
       routerContext.setStatus('transitioning')
 

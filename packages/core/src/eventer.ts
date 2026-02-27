@@ -1,4 +1,3 @@
-import type { Error0 } from '@devp0nt/error0'
 import type { AnyLocation } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import type { Request0 } from './request0.js'
@@ -15,6 +14,7 @@ import type {
   PrefetchPagePolicy,
   QueryKey,
 } from './types.js'
+import type { ErrorPoint0 } from './error.js'
 
 export type EventerSide = 'client' | 'server'
 
@@ -24,31 +24,43 @@ export type EventerEvent<TSide extends EventerSide, TName extends string, TData 
   data: TData
 }
 
-export type EventerEmitFn = <TName extends AnyEventerEvent['name']>(
+export type EventerEmitFn<TError extends ErrorPoint0> = <TName extends AnyEventerEventName>(
   name: TName,
-  data: Extract<AnyEventerEvent, { name: TName }>['data'],
+  data: Extract<AnyEventerEvent<TError>, { name: TName }>['data'],
 ) => void
 
-export type AnyEventerSubscriptionCallback<TName extends AnyEventerEvent['name'] | '*' = any> = (
-  event: TName extends '*' ? AnyEventerEvent : Extract<AnyEventerEvent, { name: TName }>,
+export type AnyEventerSubscriptionCallback<
+  TName extends AnyEventerEventName | '*' = any,
+  TError extends ErrorPoint0 = ErrorPoint0,
+> = (
+  event: TName extends '*' ? AnyEventerEvent<TError> : Extract<AnyEventerEvent<TError>, { name: TName }>,
 ) => void | Promise<void>
 
-export type ServerEventerSubscriptionCallback<TName extends ServerEventerEvent['name'] | '*' = any> = (
+export type ServerEventerSubscriptionCallback<
+  TName extends ServerEventerEventName | '*' = any,
+  TError extends ErrorPoint0 = ErrorPoint0,
+> = (
   event: TName extends '*'
-    ? ServerEventerEvent
-    : Omit<Extract<ServerEventerEvent, { name: TName }>, 'side'> & { side: 'server' },
+    ? ServerEventerEvent<TError>
+    : Omit<Extract<ServerEventerEvent<TError>, { name: TName }>, 'side'> & { side: 'server' },
 ) => void | Promise<void>
 
-export type ClientEventerSubscriptionCallback<TName extends ClientEventerEvent['name'] | '*' = any> = (
+export type ClientEventerSubscriptionCallback<
+  TName extends ClientEventerEventName | '*' = any,
+  TError extends ErrorPoint0 = ErrorPoint0,
+> = (
   event: TName extends '*'
-    ? ClientEventerEvent
-    : Omit<Extract<ClientEventerEvent, { name: TName }>, 'side'> & { side: 'client' },
+    ? ClientEventerEvent<TError>
+    : Omit<Extract<ClientEventerEvent<TError>, { name: TName }>, 'side'> & { side: 'client' },
 ) => void | Promise<void>
 
-export type EventerSubscription<TName extends AnyEventerEvent['name'] | '*' = any> = {
+export type EventerSubscription<
+  TName extends AnyEventerEventName | '*' = any,
+  TError extends ErrorPoint0 = ErrorPoint0,
+> = {
   side: EventerSide | undefined
   name: TName
-  callback: AnyEventerSubscriptionCallback<TName>
+  callback: AnyEventerSubscriptionCallback<TName, TError>
 }
 
 // pointFetchServer
@@ -60,10 +72,10 @@ export type EventerEventPointFetchServerStart = EventerEvent<
     point: AnyNiceReadyPoint
   }
 >
-export type EventerEventPointFetchServerSettled = EventerEvent<
+export type EventerEventPointFetchServerSettled<TError extends ErrorPoint0> = EventerEvent<
   'client' | 'server',
   'pointFetchServerSettled',
-  FetchServerDetailedOutput<any> & {
+  FetchServerDetailedOutput<any, TError> & {
     input: InputRaw
     point: AnyNiceReadyPoint
   }
@@ -71,15 +83,15 @@ export type EventerEventPointFetchServerSettled = EventerEvent<
 export type EventerEventPointFetchServerSuccess = EventerEvent<
   'client' | 'server',
   'pointFetchServerSuccess',
-  Extract<FetchServerDetailedOutput<any>, { error: undefined }> & {
+  Extract<FetchServerDetailedOutput<any, any>, { error: undefined }> & {
     input: InputRaw
     point: AnyNiceReadyPoint
   }
 >
-export type EventerEventPointFetchServerError = EventerEvent<
+export type EventerEventPointFetchServerError<TError extends ErrorPoint0> = EventerEvent<
   'client' | 'server',
   'pointFetchServerError',
-  Extract<FetchServerDetailedOutput<any>, { error: Error0 }> & {
+  Extract<FetchServerDetailedOutput<any, TError>, { error: TError }> & {
     input: InputRaw
     point: AnyNiceReadyPoint
   }
@@ -94,7 +106,7 @@ export type EventerEventPointMutationStart = EventerEvent<
     point: AnyNiceReadyPoint
   }
 >
-export type EventerEventPointMutationSettled = EventerEvent<
+export type EventerEventPointMutationSettled<TError extends ErrorPoint0> = EventerEvent<
   'client' | 'server',
   'pointMutationSettled',
   {
@@ -107,7 +119,7 @@ export type EventerEventPointMutationSettled = EventerEvent<
       }
     | {
         output: undefined
-        error: Error0
+        error: TError
       }
   )
 >
@@ -121,13 +133,13 @@ export type EventerEventPointMutationSuccess = EventerEvent<
     error: undefined
   }
 >
-export type EventerEventPointMutationError = EventerEvent<
+export type EventerEventPointMutationError<TError extends ErrorPoint0> = EventerEvent<
   'client' | 'server',
   'pointMutationError',
   {
     point: AnyNiceReadyPoint
     input: InputRaw
-    error: Error0
+    error: TError
     output: undefined
   }
 >
@@ -143,7 +155,7 @@ export type EventerEventPointQueryStart = EventerEvent<
     mode: 'server' | 'client' | 'combined'
   }
 >
-export type EventerEventPointQuerySettled = EventerEvent<
+export type EventerEventPointQuerySettled<TError extends ErrorPoint0> = EventerEvent<
   'client' | 'server',
   'pointQuerySettled',
   {
@@ -158,7 +170,7 @@ export type EventerEventPointQuerySettled = EventerEvent<
       }
     | {
         data: undefined
-        error: Error0
+        error: TError
       }
   )
 >
@@ -174,14 +186,14 @@ export type EventerEventPointQuerySuccess = EventerEvent<
     mode: 'server' | 'client' | 'combined'
   }
 >
-export type EventerEventPointQueryError = EventerEvent<
+export type EventerEventPointQueryError<TError extends ErrorPoint0> = EventerEvent<
   'client' | 'server',
   'pointQueryError',
   {
     queryKey: QueryKey
     point: AnyNiceReadyPoint
     input: InputRaw
-    error: Error0
+    error: TError
     data: undefined
     mode: 'server' | 'client' | 'combined'
   }
@@ -198,7 +210,7 @@ export type EventerEventPointInfiniteQueryStart = EventerEvent<
     mode: 'server' | 'client' | 'combined'
   }
 >
-export type EventerEventPointInfiniteQuerySettled = EventerEvent<
+export type EventerEventPointInfiniteQuerySettled<TError extends ErrorPoint0> = EventerEvent<
   'client' | 'server',
   'pointInfiniteQuerySettled',
   {
@@ -213,7 +225,7 @@ export type EventerEventPointInfiniteQuerySettled = EventerEvent<
       }
     | {
         data: undefined
-        error: Error0
+        error: TError
       }
   )
 >
@@ -229,14 +241,14 @@ export type EventerEventPointInfiniteQuerySuccess = EventerEvent<
     mode: 'server' | 'client' | 'combined'
   }
 >
-export type EventerEventPointInfiniteQueryError = EventerEvent<
+export type EventerEventPointInfiniteQueryError<TError extends ErrorPoint0> = EventerEvent<
   'client' | 'server',
   'pointInfiniteQueryError',
   {
     queryKey: QueryKey
     point: AnyNiceReadyPoint
     input: InputRaw
-    error: Error0
+    error: TError
     data: undefined
     mode: 'server' | 'client' | 'combined'
   }
@@ -258,7 +270,7 @@ export type EventerEventPointPrefetchPageStart = EventerEvent<
     }
   }
 >
-export type EventerEventPointPrefetchPageSettled = EventerEvent<
+export type EventerEventPointPrefetchPageSettled<TError extends ErrorPoint0> = EventerEvent<
   'client' | 'server',
   'pointPrefetchPageSettled',
   {
@@ -271,7 +283,7 @@ export type EventerEventPointPrefetchPageSettled = EventerEvent<
       force?: boolean
       policy?: PrefetchPagePolicy
     }
-    error: Error0 | undefined
+    error: TError | undefined
   }
 >
 export type EventerEventPointPrefetchPageSuccess = EventerEvent<
@@ -290,7 +302,7 @@ export type EventerEventPointPrefetchPageSuccess = EventerEvent<
     error: undefined
   }
 >
-export type EventerEventPointPrefetchPageError = EventerEvent<
+export type EventerEventPointPrefetchPageError<TError extends ErrorPoint0> = EventerEvent<
   'client' | 'server',
   'pointPrefetchPageError',
   {
@@ -303,7 +315,7 @@ export type EventerEventPointPrefetchPageError = EventerEvent<
       force?: boolean
       policy?: PrefetchPagePolicy
     }
-    error: Error0
+    error: TError
   }
 >
 
@@ -314,83 +326,96 @@ export type EventerEventEngineFetchStart = EventerEvent<
   {
     request: Request0
     scope: PointsScope
-    variant: MiddlewareFnOptions['variant']
+    variant: MiddlewareFnOptions<any>['variant']
     point: AnyNiceReadyPoint | undefined
   }
 >
-export type EventerEventEngineFetchSettled = EventerEvent<
+export type EventerEventEngineFetchSettled<TError extends ErrorPoint0> = EventerEvent<
   'server',
   'engineFetchSettled',
   {
     request: Request0
     scope: PointsScope
-    variant: MiddlewareFnOptions['variant']
+    variant: MiddlewareFnOptions<any>['variant']
     point: AnyNiceReadyPoint | undefined
-    result: FetcherFetchDetailedResult
-    error: Error0 | undefined
+    result: FetcherFetchDetailedResult<TError>
+    error: TError | undefined
   }
 >
-export type EventerEventEngineFetchSuccess = EventerEvent<
+export type EventerEventEngineFetchSuccess<TError extends ErrorPoint0> = EventerEvent<
   'server',
   'engineFetchSuccess',
   {
     request: Request0
     scope: PointsScope
-    variant: MiddlewareFnOptions['variant']
+    variant: MiddlewareFnOptions<any>['variant']
     point: AnyNiceReadyPoint | undefined
-    result: FetcherFetchDetailedResult
+    result: FetcherFetchDetailedResult<TError>
     error: undefined
   }
 >
-export type EventerEventEngineFetchError = EventerEvent<
+export type EventerEventEngineFetchError<TError extends ErrorPoint0> = EventerEvent<
   'server',
   'engineFetchError',
   {
     request: Request0
     scope: PointsScope
-    variant: MiddlewareFnOptions['variant']
+    variant: MiddlewareFnOptions<any>['variant']
     point: AnyNiceReadyPoint | undefined
-    result: FetcherFetchDetailedResult
-    error: Error0
+    result: FetcherFetchDetailedResult<TError>
+    error: TError
   }
 >
 
-export type AnyEventerEvent =
+export type AnyEventerEvent<TError extends ErrorPoint0> =
   | EventerEventPointFetchServerStart
-  | EventerEventPointFetchServerSettled
+  | EventerEventPointFetchServerSettled<TError>
   | EventerEventPointFetchServerSuccess
-  | EventerEventPointFetchServerError
+  | EventerEventPointFetchServerError<TError>
   | EventerEventPointQueryStart
-  | EventerEventPointQuerySettled
+  | EventerEventPointQuerySettled<TError>
   | EventerEventPointQuerySuccess
-  | EventerEventPointQueryError
+  | EventerEventPointQueryError<TError>
   | EventerEventPointInfiniteQueryStart
-  | EventerEventPointInfiniteQuerySettled
+  | EventerEventPointInfiniteQuerySettled<TError>
   | EventerEventPointInfiniteQuerySuccess
-  | EventerEventPointInfiniteQueryError
+  | EventerEventPointInfiniteQueryError<TError>
   | EventerEventPointMutationStart
-  | EventerEventPointMutationSettled
+  | EventerEventPointMutationSettled<TError>
   | EventerEventPointMutationSuccess
-  | EventerEventPointMutationError
+  | EventerEventPointMutationError<TError>
   | EventerEventPointPrefetchPageStart
-  | EventerEventPointPrefetchPageSettled
+  | EventerEventPointPrefetchPageSettled<TError>
   | EventerEventPointPrefetchPageSuccess
-  | EventerEventPointPrefetchPageError
+  | EventerEventPointPrefetchPageError<TError>
   | EventerEventEngineFetchStart
-  | EventerEventEngineFetchSettled
-  | EventerEventEngineFetchSuccess
-  | EventerEventEngineFetchError
+  | EventerEventEngineFetchSettled<TError>
+  | EventerEventEngineFetchSuccess<TError>
+  | EventerEventEngineFetchError<TError>
 
-export type ClientEventerEvent = Extract<AnyEventerEvent, { side: 'client' | 'server' } | { side: 'client' }>
+export type ClientEventerEvent<TError extends ErrorPoint0> = Extract<
+  AnyEventerEvent<TError>,
+  { side: 'client' | 'server' } | { side: 'client' }
+>
+export type ClientEventerEventName = ClientEventerEvent<any>['name']
 
-export type ServerEventerEvent = Extract<AnyEventerEvent, { side: 'client' | 'server' } | { side: 'server' }>
+export type ServerEventerEvent<TError extends ErrorPoint0> = Extract<
+  AnyEventerEvent<TError>,
+  { side: 'client' | 'server' } | { side: 'server' }
+>
+export type ServerEventerEventName = ServerEventerEvent<any>['name']
 
-export type UniversalEventerEvent = Extract<AnyEventerEvent, { side: 'client' | 'server' }>
+export type UniversalEventerEvent<TError extends ErrorPoint0> = Extract<
+  AnyEventerEvent<TError>,
+  { side: 'client' | 'server' }
+>
+export type UniversalEventerEventName = UniversalEventerEvent<any>['name']
 
 export const uniqEventerErrorEventNames = [
   'pointMutationError',
   'pointQueryError',
   'pointInfiniteQueryError',
   'engineFetchError',
-] satisfies Array<AnyEventerEvent['name']>
+] satisfies Array<AnyEventerEventName>
+export type AnyEventerEventName = AnyEventerEvent<any>['name']
 export type UniqEventerErrorEventName = (typeof uniqEventerErrorEventNames)[number]

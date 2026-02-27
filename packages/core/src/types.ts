@@ -1,4 +1,3 @@
-import type { Error0 } from '@devp0nt/error0'
 import type {
   AnyLocation,
   DescendantLocation,
@@ -20,6 +19,7 @@ import type { ResponseEffectsSetHelper, ResponseEffectsValues } from './effects.
 import type { EmptyProps, Props, QueriesDefinitions } from './mountable.js'
 import type { Point0 } from './point0.js'
 import type { Request0 } from './request0.js'
+import type { ErrorPoint0 } from './error.js'
 
 // basic
 
@@ -73,6 +73,7 @@ export type Infer<
   TPointType extends PointType,
   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -88,6 +89,7 @@ export type Infer<
 > = {
   PointType: TPointType
   LetsReadyPointType: TLetsReadyPointType
+  Error: TError
   RequiredCtx: TRequiredCtx
   Ctx: TCtx
   CtxExposed: ExposedCtx<TCtx, TCtxExposedKeys>
@@ -117,9 +119,10 @@ export type Infer<
     TClientInputSchema,
     TQueryResultType,
     TServerLoaderOutput,
-    TClientLoaderOutput
+    TClientLoaderOutput,
+    TError
   >
-  UseQueryResult: UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
+  UseQueryResult: UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TError>
   FetchServerOutput: TServerLoaderOutput extends LoaderOutput ? TServerLoaderOutput : never
   FetchOutput: TQueryResultType extends 'infiniteQuery'
     ? InfiniteData<FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>>
@@ -127,7 +130,7 @@ export type Infer<
   ServerQueryData: QueriedData<TQueryResultType, TServerLoaderOutput>
   ClientQueryData: QueriedData<TQueryResultType, TClientLoaderOutput>
   QueriedData: FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
-  ServerExecuteResult: ServerExecuteResult<TCtx, TServerLoaderOutput>
+  ServerExecuteResult: ServerExecuteResult<TCtx, TServerLoaderOutput, TError>
 }
 
 // points types
@@ -172,6 +175,7 @@ export type AnyPoint<
   TPointType extends PointType = PointType,
   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType = UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx = any,
+  TError extends ErrorPoint0 = any,
   TCtx extends Ctx = any,
   TCtxExposedKeys extends CtxExposedKeys = any,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
@@ -188,6 +192,7 @@ export type AnyPoint<
   TPointType,
   TLetsReadyPointType,
   TRequiredCtx,
+  TError,
   TCtx,
   TCtxExposedKeys,
   TServerLoaderOutput,
@@ -204,6 +209,7 @@ export type AnyPoint<
 
 export type RootPoint<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TError extends ErrorPoint0 = any,
   TCtx extends Ctx = any,
   TCtxExposedKeys extends CtxExposedKeys = any,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
@@ -220,6 +226,7 @@ export type RootPoint<
   'root',
   UndefinedReadyPointType,
   TRequiredCtx,
+  TError,
   TCtx,
   TCtxExposedKeys,
   TServerLoaderOutput,
@@ -236,6 +243,7 @@ export type RootPoint<
 
 export type PluginPoint<
   TRequiredCtx extends RequiredCtx = any,
+  TError extends ErrorPoint0 = any,
   TCtx extends Ctx = any,
   TCtxExposedKeys extends CtxExposedKeys = any,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
@@ -252,6 +260,7 @@ export type PluginPoint<
   'plugin',
   UndefinedReadyPointType,
   TRequiredCtx,
+  TError,
   TCtx,
   TCtxExposedKeys,
   TServerLoaderOutput,
@@ -268,6 +277,7 @@ export type PluginPoint<
 
 export type BasePoint<
   TRequiredCtx extends RequiredCtx = any,
+  TError extends ErrorPoint0 = any,
   TCtx extends Ctx = any,
   TCtxExposedKeys extends CtxExposedKeys = any,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
@@ -284,6 +294,7 @@ export type BasePoint<
   'base',
   UndefinedReadyPointType,
   TRequiredCtx,
+  TError,
   TCtx,
   TCtxExposedKeys,
   TServerLoaderOutput,
@@ -300,6 +311,7 @@ export type BasePoint<
 
 export type PagePoint<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TError extends ErrorPoint0 = any,
   TCtx extends Ctx = any,
   TCtxExposedKeys extends CtxExposedKeys = any,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
@@ -316,6 +328,7 @@ export type PagePoint<
   'page',
   UndefinedReadyPointType,
   TRequiredCtx,
+  TError,
   TCtx,
   TCtxExposedKeys,
   TServerLoaderOutput,
@@ -332,6 +345,7 @@ export type PagePoint<
 
 export type LayoutPoint<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TError extends ErrorPoint0 = any,
   TCtx extends Ctx = any,
   TCtxExposedKeys extends CtxExposedKeys = any,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
@@ -348,6 +362,7 @@ export type LayoutPoint<
   'layout',
   UndefinedReadyPointType,
   TRequiredCtx,
+  TError,
   TCtx,
   TCtxExposedKeys,
   TServerLoaderOutput,
@@ -365,6 +380,7 @@ export type LayoutPoint<
 export type ReadyPoint<
   TPointType extends ReadyPointType = ReadyPointType,
   TRequiredCtx extends RequiredCtx = any,
+  TError extends ErrorPoint0 = any,
   TCtx extends Ctx = any,
   TCtxExposedKeys extends CtxExposedKeys = any,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
@@ -381,6 +397,7 @@ export type ReadyPoint<
   TPointType,
   UndefinedReadyPointType,
   TRequiredCtx,
+  TError,
   TCtx,
   TCtxExposedKeys,
   TServerLoaderOutput,
@@ -564,6 +581,7 @@ export type IsInputsSchemasDefined<
 export type InputRawUnknown = Record<string, unknown>
 export type InputParseResult<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TError extends ErrorPoint0 = ErrorPoint0,
 > =
   | {
       inputParsed: InputParsed<TInputSchema>
@@ -571,15 +589,17 @@ export type InputParseResult<
     }
   | {
       inputParsed: null // TODO: to undefined
-      inputParseError: Error0
+      inputParseError: TError
     }
 export type InputsParseResult<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = InputParseResult<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+  TError extends ErrorPoint0 = ErrorPoint0,
+> = InputParseResult<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>, TError>
 
 export type SafeParseInputResult<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TError = unknown,
 > =
   | {
       success: true
@@ -589,12 +609,13 @@ export type SafeParseInputResult<
   | {
       success: false
       data: undefined
-      error: Error0
+      error: TError
     }
 export type SafeParseInputsResult<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = SafeParseInputResult<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+  TError = Error,
+> = SafeParseInputResult<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>, TError>
 
 // utils
 
@@ -698,6 +719,8 @@ export type IsNever<T> = [T] extends [never] ? true : false
 export type IfAnyThenElse<T, Then, Else = T> = 0 extends 1 & T ? Then : Else
 export type IsAny<T> = 0 extends 1 & T ? true : false
 
+export type IfNeverThen<TElse, TThen> = [TElse] extends [never] ? TThen : TElse
+
 export type OmitUnnamedKeys<T> = {
   [K in keyof T as string extends K ? never : K]: T[K]
 }
@@ -779,32 +802,35 @@ type NarrowQueryComponentPropStatus<
 export type UseServerQueryResult<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TError extends ErrorPoint0,
   TStatus extends 'pending' | 'error' | 'success',
 > = TServerLoaderOutput extends UndefinedLoaderOutput
   ? never
   : TQueryResultType extends 'infiniteQuery'
     ? NarrowQueryComponentPropStatus<
-        UseInfiniteQueryResult<InfiniteData<FetchServerOutput<TServerLoaderOutput>>, Error0>,
+        UseInfiniteQueryResult<InfiniteData<FetchServerOutput<TServerLoaderOutput>>, TError>,
         TStatus
       >
     : TQueryResultType extends 'query'
-      ? NarrowQueryComponentPropStatus<UseQueryResult<FetchServerOutput<TServerLoaderOutput>, Error0>, TStatus>
+      ? NarrowQueryComponentPropStatus<UseQueryResult<FetchServerOutput<TServerLoaderOutput>, TError>, TStatus>
       : never
 export type UseClientQueryResult<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TError extends ErrorPoint0,
   TStatus extends 'pending' | 'error' | 'success',
 > = TClientLoaderOutput extends UndefinedLoaderOutput
   ? never
   : TQueryResultType extends 'infiniteQuery'
-    ? NarrowQueryComponentPropStatus<UseInfiniteQueryResult<InfiniteData<TClientLoaderOutput>, Error0>, TStatus>
+    ? NarrowQueryComponentPropStatus<UseInfiniteQueryResult<InfiniteData<TClientLoaderOutput>, TError>, TStatus>
     : TQueryResultType extends 'query'
-      ? NarrowQueryComponentPropStatus<UseQueryResult<TClientLoaderOutput, Error0>, TStatus>
+      ? NarrowQueryComponentPropStatus<UseQueryResult<TClientLoaderOutput, TError>, TStatus>
       : never
 export type UseCombinedQueryResult<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TError extends ErrorPoint0,
   TStatus extends 'pending' | 'error' | 'success',
 > = TClientLoaderOutput extends UndefinedLoaderOutput
   ? never
@@ -812,12 +838,12 @@ export type UseCombinedQueryResult<
     ? never
     : TQueryResultType extends 'infiniteQuery'
       ? NarrowQueryComponentPropStatus<
-          UseInfiniteQueryResult<InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>, Error0>,
+          UseInfiniteQueryResult<InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>, TError>,
           TStatus
         >
       : TQueryResultType extends 'query'
         ? NarrowQueryComponentPropStatus<
-            UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, Error0>,
+            UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, TError>,
             TStatus
           >
         : never
@@ -825,13 +851,14 @@ export type UsePointQueryResult<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TError extends ErrorPoint0,
   TStatus extends 'pending' | 'error' | 'success' = any,
 > = TServerLoaderOutput extends Data
   ? TClientLoaderOutput extends Data
-    ? UseCombinedQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus>
-    : UseServerQueryResult<TQueryResultType, TServerLoaderOutput, TStatus>
+    ? UseCombinedQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TError, TStatus>
+    : UseServerQueryResult<TQueryResultType, TServerLoaderOutput, TError, TStatus>
   : TClientLoaderOutput extends Data
-    ? UseClientQueryResult<TQueryResultType, TClientLoaderOutput, TStatus>
+    ? UseClientQueryResult<TQueryResultType, TClientLoaderOutput, TError, TStatus>
     : never
 export type UsePointQueryOptions<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
@@ -839,11 +866,12 @@ export type UsePointQueryOptions<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TError extends ErrorPoint0,
 > = TQueryResultType extends 'infiniteQuery'
   ? ExtraUseInfiniteQueryOptions<
       InputsRaw<TServerInputSchema, TClientInputSchema>,
       FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-      Error0,
+      TError,
       InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
       QueryKey,
       unknown
@@ -851,7 +879,7 @@ export type UsePointQueryOptions<
   : TQueryResultType extends 'query'
     ? ExtraUseQueryOptions<
         FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-        Error0,
+        TError,
         FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
         QueryKey
       >
@@ -887,14 +915,20 @@ export type UndefinedClientResponse = undefined
 export type UndefinedLastDataOrResponse = undefined
 
 export type ServerExecuteFn = <
-  TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
 >(
   point: TPoint,
   ...args: TPoint['Infer']['IsServerInputOptional'] extends true
     ? [input?: TPoint['Infer']['ServerInputRaw']]
     : [input: TPoint['Infer']['ServerInputRaw']]
-) => Promise<ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>>
-export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput> =
+) => Promise<
+  ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput'], TPoint['Infer']['Error']>
+>
+export type ServerExecuteResult<
+  TCtx extends Ctx,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TError extends ErrorPoint0,
+> =
   | {
       ctx: TCtx
       data: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
@@ -909,7 +943,7 @@ export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends Lo
       data: Data | UndefinedData
       response: Response | UndefinedResponse
       effects: ResponseEffectsValues
-      error: Error0
+      error: TError
       output: LoaderOutput | UndefinedLoaderOutput
       point: ReadyPoint | undefined
     }
@@ -948,7 +982,6 @@ export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, a
   keyof InferCtxFnOutputCtxAppend<TCtxFn>,
   string
 >
-
 export type LoaderResponseFnOptions<
   TCtx extends Ctx = Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -1137,7 +1170,10 @@ export type ClientLoaderDataFn<
 ) => Promise<TNewClientLoaderOutput> | TNewClientLoaderOutput
 
 export type FetchServerOutput<TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput> = TServerLoaderOutput
-export type FetchServerDetailedOutput<TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput> =
+export type FetchServerDetailedOutput<
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TError extends ErrorPoint0,
+> =
   | {
       response: Response
       data: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
@@ -1148,15 +1184,16 @@ export type FetchServerDetailedOutput<TServerLoaderOutput extends LoaderOutput |
       response: Response | undefined
       data: undefined
       output: undefined
-      error: Error0
+      error: TError
     }
 
 export type FetchServerOutputType = 'data' | 'queryClientDehydratedState'
 
 // mountable app
 
-export type AppProps = { points: ClientPoints }
-export type AppComponent = (props: AppProps) => React.ReactElement
+// TODO: do not pass points to app
+export type AppProps<TError extends ErrorPoint0> = { points: ClientPoints<TError> }
+export type AppComponent = <TError extends ErrorPoint0>(props: AppProps<TError>) => React.ReactElement
 export type AppComponentModule = { default: AppComponent }
 
 // data transformer
@@ -1182,21 +1219,22 @@ export type FetchTask = {
   pointInput: InputRawUnknown | undefined // in case if it is page or layout, we will parse input on task level, becouse we need it to extract totally match pageLocation
 }
 
-export type FetcherFetchDetailedResultGeneral = {
+export type FetcherFetchDetailedResultGeneral<TError extends ErrorPoint0> = {
   response: Response
   request: Request0
   scope: PointsScope
-  error: Error0 | undefined
+  error: TError | undefined
 }
-export type FetcherFetchDetailedResultMiddleware = FetcherFetchDetailedResultGeneral & {
-  variant: 'middleware'
-}
-export type FetcherFetchDetailedResultPage = FetcherFetchDetailedResultGeneral & {
+export type FetcherFetchDetailedResultMiddleware<TError extends ErrorPoint0> =
+  FetcherFetchDetailedResultGeneral<TError> & {
+    variant: 'middleware'
+  }
+export type FetcherFetchDetailedResultPage<TError extends ErrorPoint0> = FetcherFetchDetailedResultGeneral<TError> & {
   variant: 'page'
   point: ReadyPoint | undefined
   input: InputRawUnknown | undefined
 }
-export type FetcherFetchDetailedResultTask = FetcherFetchDetailedResultGeneral & {
+export type FetcherFetchDetailedResultTask<TError extends ErrorPoint0> = FetcherFetchDetailedResultGeneral<TError> & {
   variant: 'task'
   point: ReadyPoint | undefined
   task: FetchTask
@@ -1204,58 +1242,67 @@ export type FetcherFetchDetailedResultTask = FetcherFetchDetailedResultGeneral &
   responseFormat: 'json' | 'html'
   input: InputRawUnknown | undefined
 }
-export type FetcherFetchDetailedResultUnknown = FetcherFetchDetailedResultGeneral & {
-  variant: 'unknown'
-}
-export type FetcherFetchDetailedResultPublicdir = FetcherFetchDetailedResultGeneral & {
-  variant: 'publicdir'
-}
-export type FetcherFetchDetailedResultOptions = FetcherFetchDetailedResultGeneral & {
-  variant: 'options'
-}
-export type FetcherFetchDetailedResultRedirect = FetcherFetchDetailedResultGeneral & {
-  variant: 'redirect'
-}
+export type FetcherFetchDetailedResultUnknown<TError extends ErrorPoint0> =
+  FetcherFetchDetailedResultGeneral<TError> & {
+    variant: 'unknown'
+  }
+export type FetcherFetchDetailedResultPublicdir<TError extends ErrorPoint0> =
+  FetcherFetchDetailedResultGeneral<TError> & {
+    variant: 'publicdir'
+  }
+export type FetcherFetchDetailedResultOptions<TError extends ErrorPoint0> =
+  FetcherFetchDetailedResultGeneral<TError> & {
+    variant: 'options'
+  }
+export type FetcherFetchDetailedResultRedirect<TError extends ErrorPoint0> =
+  FetcherFetchDetailedResultGeneral<TError> & {
+    variant: 'redirect'
+  }
 
-export type FetcherFetchDetailedResultNoMiddleware =
-  | FetcherFetchDetailedResultTask
-  | FetcherFetchDetailedResultPage
-  | FetcherFetchDetailedResultUnknown
-  | FetcherFetchDetailedResultPublicdir
-  | FetcherFetchDetailedResultOptions
-  | FetcherFetchDetailedResultRedirect
-export type FetcherFetchDetailedResult = FetcherFetchDetailedResultNoMiddleware | FetcherFetchDetailedResultMiddleware
+export type FetcherFetchDetailedResultNoMiddleware<TError extends ErrorPoint0> =
+  | FetcherFetchDetailedResultTask<TError>
+  | FetcherFetchDetailedResultPage<TError>
+  | FetcherFetchDetailedResultUnknown<TError>
+  | FetcherFetchDetailedResultPublicdir<TError>
+  | FetcherFetchDetailedResultOptions<TError>
+  | FetcherFetchDetailedResultRedirect<TError>
+export type FetcherFetchDetailedResult<TError extends ErrorPoint0> =
+  | FetcherFetchDetailedResultNoMiddleware<TError>
+  | FetcherFetchDetailedResultMiddleware<TError>
 export type FetcherFetchDetailedResultSpecific<
-  TVariant extends FetcherFetchDetailedResult['variant'] | undefined = undefined,
+  TVariant extends FetcherFetchDetailedResult<any>['variant'] | undefined = undefined,
+  TError extends ErrorPoint0 = ErrorPoint0,
 > = TVariant extends undefined
-  ? FetcherFetchDetailedResult
+  ? FetcherFetchDetailedResult<TError>
   : TVariant extends 'middleware'
-    ? FetcherFetchDetailedResultMiddleware
+    ? FetcherFetchDetailedResultMiddleware<TError>
     : TVariant extends 'page'
-      ? FetcherFetchDetailedResultPage
+      ? FetcherFetchDetailedResultPage<TError>
       : TVariant extends 'task'
-        ? FetcherFetchDetailedResultTask
+        ? FetcherFetchDetailedResultTask<TError>
         : TVariant extends 'unknown'
-          ? FetcherFetchDetailedResultUnknown
+          ? FetcherFetchDetailedResultUnknown<TError>
           : TVariant extends 'publicdir'
-            ? FetcherFetchDetailedResultPublicdir
+            ? FetcherFetchDetailedResultPublicdir<TError>
             : TVariant extends 'options'
-              ? FetcherFetchDetailedResultOptions
+              ? FetcherFetchDetailedResultOptions<TError>
               : TVariant extends 'redirect'
-                ? FetcherFetchDetailedResultRedirect
-              : never
+                ? FetcherFetchDetailedResultRedirect<TError>
+                : never
 
-export type MiddlewareNextFn = () => Promise<FetcherFetchDetailedResult>
-export type MiddlewareFnOptions = {
+export type MiddlewareNextFn<TError extends ErrorPoint0> = () => Promise<FetcherFetchDetailedResult<TError>>
+export type MiddlewareFnOptions<TError extends ErrorPoint0> = {
   request: Request0
   set: ResponseEffectsSetHelper
   point: AnyNiceReadyPoint | undefined
   scope: PointsScope
   variant: 'task' | 'page' | 'unknown' | 'publicdir' | 'options' | 'redirect'
-  next: MiddlewareNextFn
+  next: MiddlewareNextFn<TError>
 }
-export type MiddlewareFnOptionsBase = Omit<MiddlewareFnOptions, 'next'>
-export type MiddlewareFn = (options: MiddlewareFnOptions) => Promise<Response | FetcherFetchDetailedResult>
+export type MiddlewareFnOptionsBase<TError extends ErrorPoint0> = Omit<MiddlewareFnOptions<TError>, 'next'>
+export type MiddlewareFn<TError extends ErrorPoint0> = (
+  options: MiddlewareFnOptions<TError>,
+) => Promise<Response | FetcherFetchDetailedResult<TError>>
 
 // nice middle point
 
@@ -1275,11 +1322,14 @@ export type AssertNoForbiddenMethodsIfNotSuitableStage<
         ? ShowError<`You can not use ${TMethod}() in final stage, add it somewhere earlier`>
         : unknown
       : unknown
+export type AssertIsNotNever<TOutput extends LoaderOutput | UndefinedLoaderOutput | Ctx | UndefinedCtx> =
+  IsNever<TOutput> extends true ? ShowError<`Output can not be type of "never"`> : unknown
 
 export type NiceRootStagePoint<
   TPointType extends StagePointType,
   TLetsReadyPointType extends 'root',
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1297,6 +1347,7 @@ export type NiceRootStagePoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1311,6 +1362,7 @@ export type NiceRootStagePoint<
     TQueriesDefinitions
   >,
   | 'root'
+  | 'errorClass'
   | 'use'
   | 'middleware'
   | 'ssr'
@@ -1361,6 +1413,7 @@ export type NicePluginStagePoint<
   TPointType extends StagePointType,
   TLetsReadyPointType extends 'plugin',
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1378,6 +1431,7 @@ export type NicePluginStagePoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1445,6 +1499,7 @@ export type NiceBaseStagePoint<
   TPointType extends StagePointType,
   TLetsReadyPointType extends 'base',
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1462,6 +1517,7 @@ export type NiceBaseStagePoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1523,6 +1579,7 @@ export type NicePageStagePoint<
   TPointType extends StagePointType,
   TLetsReadyPointType extends 'page',
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1540,6 +1597,7 @@ export type NicePageStagePoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1590,6 +1648,7 @@ export type NiceComponentStagePoint<
   TPointType extends StagePointType,
   TLetsReadyPointType extends 'component',
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1607,6 +1666,7 @@ export type NiceComponentStagePoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1650,6 +1710,7 @@ export type NiceQueryStagePoint<
   TPointType extends StagePointType,
   TLetsReadyPointType extends 'query',
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1667,6 +1728,7 @@ export type NiceQueryStagePoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1703,6 +1765,7 @@ export type NiceInfiniteQueryStagePoint<
   TPointType extends StagePointType,
   TLetsReadyPointType extends 'infiniteQuery',
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1720,6 +1783,7 @@ export type NiceInfiniteQueryStagePoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1756,6 +1820,7 @@ export type NiceMutationStagePoint<
   TPointType extends StagePointType,
   TLetsReadyPointType extends 'mutation',
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1773,6 +1838,7 @@ export type NiceMutationStagePoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1809,6 +1875,7 @@ export type NiceLayoutStagePoint<
   TPointType extends StagePointType,
   TLetsReadyPointType extends 'layout',
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1826,6 +1893,7 @@ export type NiceLayoutStagePoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1882,6 +1950,7 @@ export type NiceProviderStagePoint<
   TPointType extends StagePointType,
   TLetsReadyPointType extends 'provider',
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1899,6 +1968,7 @@ export type NiceProviderStagePoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1943,6 +2013,7 @@ export type NiceStagePoint<
   TPointType extends StagePointType,
   TLetsReadyPointType extends ReadyPointType,
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1960,6 +2031,7 @@ export type NiceStagePoint<
       TPointType,
       TLetsReadyPointType,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -1978,6 +2050,7 @@ export type NiceStagePoint<
         TPointType,
         TLetsReadyPointType,
         TRequiredCtx,
+        TError,
         TCtx,
         TCtxExposedKeys,
         TServerLoaderOutput,
@@ -1996,6 +2069,7 @@ export type NiceStagePoint<
           TPointType,
           TLetsReadyPointType,
           TRequiredCtx,
+          TError,
           TCtx,
           TCtxExposedKeys,
           TServerLoaderOutput,
@@ -2014,6 +2088,7 @@ export type NiceStagePoint<
             TPointType,
             TLetsReadyPointType,
             TRequiredCtx,
+            TError,
             TCtx,
             TCtxExposedKeys,
             TServerLoaderOutput,
@@ -2032,6 +2107,7 @@ export type NiceStagePoint<
               TPointType,
               TLetsReadyPointType,
               TRequiredCtx,
+              TError,
               TCtx,
               TCtxExposedKeys,
               TServerLoaderOutput,
@@ -2050,6 +2126,7 @@ export type NiceStagePoint<
                 TPointType,
                 TLetsReadyPointType,
                 TRequiredCtx,
+                TError,
                 TCtx,
                 TCtxExposedKeys,
                 TServerLoaderOutput,
@@ -2068,6 +2145,7 @@ export type NiceStagePoint<
                   TPointType,
                   TLetsReadyPointType,
                   TRequiredCtx,
+                  TError,
                   TCtx,
                   TCtxExposedKeys,
                   TServerLoaderOutput,
@@ -2086,6 +2164,7 @@ export type NiceStagePoint<
                     TPointType,
                     TLetsReadyPointType,
                     TRequiredCtx,
+                    TError,
                     TCtx,
                     TCtxExposedKeys,
                     TServerLoaderOutput,
@@ -2104,6 +2183,7 @@ export type NiceStagePoint<
                       TPointType,
                       TLetsReadyPointType,
                       TRequiredCtx,
+                      TError,
                       TCtx,
                       TCtxExposedKeys,
                       TServerLoaderOutput,
@@ -2122,6 +2202,7 @@ export type NiceStagePoint<
                         TPointType,
                         TLetsReadyPointType,
                         TRequiredCtx,
+                        TError,
                         TCtx,
                         TCtxExposedKeys,
                         TServerLoaderOutput,
@@ -2143,6 +2224,7 @@ export type NiceRootReadyPoint<
   TPointType extends 'root',
   TLetsReadyPointType extends UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -2160,6 +2242,7 @@ export type NiceRootReadyPoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2180,6 +2263,7 @@ export type NicePluginReadyPoint<
   TPointType extends 'plugin',
   TLetsReadyPointType extends UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -2197,6 +2281,7 @@ export type NicePluginReadyPoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2217,6 +2302,7 @@ export type NicePristinePluginReadyPoint = NicePluginReadyPoint<
   'plugin',
   UndefinedReadyPointType,
   UndefinedCtx,
+  any,
   EmptyCtx,
   UndefinedCtxExposedKeys,
   UndefinedLoaderOutput,
@@ -2235,6 +2321,7 @@ export type NiceBaseReadyPoint<
   TPointType extends 'base',
   TLetsReadyPointType extends UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -2252,6 +2339,7 @@ export type NiceBaseReadyPoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2300,6 +2388,7 @@ export type NicePageReadyPoint<
   TPointType extends 'page',
   TLetsReadyPointType extends UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -2317,6 +2406,7 @@ export type NicePageReadyPoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2337,6 +2427,7 @@ export type NiceComponentReadyPoint<
   TPointType extends 'component',
   TLetsReadyPointType extends UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -2354,6 +2445,7 @@ export type NiceComponentReadyPoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2374,6 +2466,7 @@ export type NiceLayoutReadyPoint<
   TPointType extends 'layout',
   TLetsReadyPointType extends UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -2391,6 +2484,7 @@ export type NiceLayoutReadyPoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2415,6 +2509,7 @@ export type NiceQueryReadyPoint<
   TPointType extends 'query',
   TLetsReadyPointType extends UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -2432,6 +2527,7 @@ export type NiceQueryReadyPoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2452,6 +2548,7 @@ export type NiceInfiniteQueryReadyPoint<
   TPointType extends 'infiniteQuery',
   TLetsReadyPointType extends UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -2469,6 +2566,7 @@ export type NiceInfiniteQueryReadyPoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2489,6 +2587,7 @@ export type NiceMutationReadyPoint<
   TPointType extends 'mutation',
   TLetsReadyPointType extends UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -2506,6 +2605,7 @@ export type NiceMutationReadyPoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2529,6 +2629,7 @@ export type NiceProviderReadyPoint<
   TPointType extends 'provider',
   TLetsReadyPointType extends UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -2546,6 +2647,7 @@ export type NiceProviderReadyPoint<
     TPointType,
     TLetsReadyPointType,
     TRequiredCtx,
+    TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -2570,6 +2672,7 @@ export type NiceReadyPoint<
   TPointType extends ReadyPointType,
   TLetsReadyPointType extends UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -2587,6 +2690,7 @@ export type NiceReadyPoint<
       TPointType,
       TLetsReadyPointType,
       TRequiredCtx,
+      TError,
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -2605,6 +2709,7 @@ export type NiceReadyPoint<
         TPointType,
         TLetsReadyPointType,
         TRequiredCtx,
+        TError,
         TCtx,
         TCtxExposedKeys,
         TServerLoaderOutput,
@@ -2623,6 +2728,7 @@ export type NiceReadyPoint<
           TPointType,
           TLetsReadyPointType,
           TRequiredCtx,
+          TError,
           TCtx,
           TCtxExposedKeys,
           TServerLoaderOutput,
@@ -2641,6 +2747,7 @@ export type NiceReadyPoint<
             TPointType,
             TLetsReadyPointType,
             TRequiredCtx,
+            TError,
             TCtx,
             TCtxExposedKeys,
             TServerLoaderOutput,
@@ -2659,6 +2766,7 @@ export type NiceReadyPoint<
               TPointType,
               TLetsReadyPointType,
               TRequiredCtx,
+              TError,
               TCtx,
               TCtxExposedKeys,
               TServerLoaderOutput,
@@ -2677,6 +2785,7 @@ export type NiceReadyPoint<
                 TPointType,
                 TLetsReadyPointType,
                 TRequiredCtx,
+                TError,
                 TCtx,
                 TCtxExposedKeys,
                 TServerLoaderOutput,
@@ -2695,6 +2804,7 @@ export type NiceReadyPoint<
                   TPointType,
                   TLetsReadyPointType,
                   TRequiredCtx,
+                  TError,
                   TCtx,
                   TCtxExposedKeys,
                   TServerLoaderOutput,
@@ -2713,6 +2823,7 @@ export type NiceReadyPoint<
                     TPointType,
                     TLetsReadyPointType,
                     TRequiredCtx,
+                    TError,
                     TCtx,
                     TCtxExposedKeys,
                     TServerLoaderOutput,
@@ -2731,6 +2842,7 @@ export type NiceReadyPoint<
                       TPointType,
                       TLetsReadyPointType,
                       TRequiredCtx,
+                      TError,
                       TCtx,
                       TCtxExposedKeys,
                       TServerLoaderOutput,
@@ -2749,6 +2861,7 @@ export type NiceReadyPoint<
                         TPointType,
                         TLetsReadyPointType,
                         TRequiredCtx,
+                        TError,
                         TCtx,
                         TCtxExposedKeys,
                         TServerLoaderOutput,
@@ -2767,6 +2880,7 @@ export type NiceReadyPoint<
 export type AnyNiceReadyPoint<
   TPointType extends ReadyPointType = any,
   TLetsReadyPointType extends UndefinedReadyPointType = UndefinedReadyPointType,
+  TError extends ErrorPoint0 = any,
   TRequiredCtx extends RequiredCtx = any,
   TCtx extends Ctx = any,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = any,
@@ -2784,6 +2898,7 @@ export type AnyNiceReadyPoint<
   TPointType,
   TLetsReadyPointType,
   TRequiredCtx,
+  TError,
   TCtx,
   TCtxExposedKeys,
   TServerLoaderOutput,
@@ -2801,6 +2916,7 @@ export type AnyNiceRequestableReadyPoint<
   TPointType extends RequestableReadyPointType = RequestableReadyPointType,
   TLetsReadyPointType extends UndefinedReadyPointType = UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx = any,
+  TError extends ErrorPoint0 = any,
   TCtx extends Ctx = any,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = any,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
@@ -2817,6 +2933,7 @@ export type AnyNiceRequestableReadyPoint<
   TPointType,
   TLetsReadyPointType,
   TRequiredCtx,
+  TError,
   TCtx,
   TCtxExposedKeys,
   TServerLoaderOutput,

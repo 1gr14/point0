@@ -1,11 +1,12 @@
+import { env, prependAndDeappendSlash } from '@point0/core'
 import type {
   FetcherFetchDetailedResult,
   NormalizedNodeEnv,
   PointsDefinitionSource,
   PointsScope,
   RequiredCtx,
+  ErrorPoint0,
 } from '@point0/core'
-import { env, prependAndDeappendSlash } from '@point0/core'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -23,10 +24,9 @@ import type {
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
 import { resolvePortByPolicy } from './port.js'
-import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
+import type { PublicdirDefinition } from './publicdir.js'
 import { ServerPoints } from './server-points.js'
-import type { EngineServerBuildConfigDefinition, EngineServerPluginsDefinition } from './utils.js'
 import {
   createViteDevServer,
   executeEngineServerBuildConfig,
@@ -38,12 +38,13 @@ import {
   validateEntrypoints,
   withRetries,
 } from './utils.js'
+import type { EngineServerBuildConfigDefinition, EngineServerPluginsDefinition } from './utils.js'
 
-export class EngineServer<TPrepared extends boolean = boolean> {
+export class EngineServer<TPrepared extends boolean = boolean, TError extends ErrorPoint0 = ErrorPoint0> {
   scope: PointsScope
   cwd: string
-  points: TPrepared extends true ? ServerPoints | null : undefined
-  pointsProvided: PointsDefinitionSource | null
+  points: TPrepared extends true ? ServerPoints<TError> | null : undefined
+  pointsProvided: PointsDefinitionSource<RequiredCtx, TError> | null
   itWasBuilt: boolean
   engineFile: string | null
   cwdBeforeBuild: string
@@ -67,14 +68,14 @@ export class EngineServer<TPrepared extends boolean = boolean> {
   envConsts: EngineOptionsEnvParsed
   envVars: EngineOptionsEnvParsed
   hmrPort: number | false
-  fetcher: TPrepared extends true ? Fetcher : null
+  fetcher: TPrepared extends true ? Fetcher<TError> : null
   compiler: EngineOptionsCompilerSpecificParsed | false
 
   private constructor(input: {
     prepared: TPrepared
     cwd: string
     scope: PointsScope
-    pointsProvided: PointsDefinitionSource | null
+    pointsProvided: PointsDefinitionSource<any, TError> | null
     itWasBuilt: boolean
     engineFile: string | null
     cwdBeforeBuild: string
@@ -98,7 +99,7 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     this.cwd = input.cwd
     this.scope = input.scope
     this.pointsProvided = input.pointsProvided
-    this.points = undefined as TPrepared extends true ? ServerPoints : undefined
+    this.points = undefined as TPrepared extends true ? ServerPoints<TError> : undefined
     this.itWasBuilt = process.env.POINT0_ENGINE_WAS_BUILT
       ? process.env.POINT0_ENGINE_WAS_BUILT === 'true'
       : input.itWasBuilt
@@ -124,7 +125,7 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     this.hmrPort = input.hmrPort
     this.portPolicy = input.portPolicy
     this.compiler = input.compiler
-    this.fetcher = null as TPrepared extends true ? Fetcher : null
+    this.fetcher = null as TPrepared extends true ? Fetcher<TError> : null
   }
 
   static create(input: {
@@ -206,9 +207,9 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE }
   }
 
-  async prepare({ engine }: { engine: Engine<RequiredCtx, true> }): Promise<EngineServer<true>> {
+  async prepare({ engine }: { engine: Engine<RequiredCtx, TError, true> }): Promise<EngineServer<true, TError>> {
     if (this.isPrepared()) {
-      return this as EngineServer<true>
+      return this as EngineServer<true, TError>
     }
     this.setEnvVars({ assignToProcessEnv: true, nodeEnvFallback: undefined })
     await Promise.all([
@@ -216,19 +217,19 @@ export class EngineServer<TPrepared extends boolean = boolean> {
       this.publicdir ? this.publicdir.prepare() : Promise.resolve(),
     ])
     this.prepared = true as never
-    this.fetcher = Fetcher.create({ engine, server: this as EngineServer<true> }) as TPrepared extends true
-      ? Fetcher
+    this.fetcher = Fetcher.create({ engine, server: this as EngineServer<true, TError> }) as TPrepared extends true
+      ? Fetcher<TError>
       : null
-    return this as EngineServer<true>
+    return this as EngineServer<true, TError>
   }
 
-  async readServerPoints(): Promise<ServerPoints | null> {
+  async readServerPoints(): Promise<ServerPoints<TError> | null> {
     if (!this.pointsProvided) {
       return null
     }
     const points = await ServerPoints.createFromSource(this.pointsProvided)
     await points.load()
-    this.points = points as TPrepared extends true ? ServerPoints | null : undefined
+    this.points = points as TPrepared extends true ? ServerPoints<TError> | null : undefined
     return points
   }
 
@@ -871,7 +872,7 @@ export class EngineServer<TPrepared extends boolean = boolean> {
     request: Request
     requiredCtx: RequiredCtx
     bunServer?: Bun.Server<unknown>
-  }): Promise<FetcherFetchDetailedResult> {
+  }): Promise<FetcherFetchDetailedResult<TError>> {
     if (!this.isPrepared()) {
       throw new Error('Server is not prepared')
     }

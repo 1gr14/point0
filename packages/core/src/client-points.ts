@@ -1,6 +1,7 @@
 import { Route0, Routes } from '@devp0nt/route0'
 import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
+import type { ErrorPoint0 } from './index.js'
 import { _point0_env, appendSlash } from './index.js'
 import { _getFakeClient, _ssItems } from './internals.js'
 import { PointsManager } from './points-manager.js'
@@ -25,12 +26,12 @@ import type {
   ReadyPointType,
 } from './types.js'
 
-export class ClientPoints {
+export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
   manager: PointsManager
 
   basepath: string
   ssr: boolean
-  middlewares: MiddlewareFn[]
+  middlewares: MiddlewareFn<TError>[]
   transformer: DataTransformerExtended
 
   routes: RoutesPretty
@@ -56,7 +57,7 @@ export class ClientPoints {
     pagesTree: PagesTree
     basepath: string
     ssr: boolean
-    middlewares: MiddlewareFn[]
+    middlewares: MiddlewareFn<TError>[]
     transformer: DataTransformerExtended
   }) {
     this.manager = manager
@@ -70,7 +71,9 @@ export class ClientPoints {
     this.transformer = transformer
   }
 
-  static createFromDefintion(points: PointsDefinition | PointsManager): ClientPoints {
+  static createFromDefintion<TError extends ErrorPoint0>(
+    points: PointsDefinition | PointsManager,
+  ): ClientPoints<TError> {
     const manager = PointsManager.createFromDefinition(points)
     // const manager = PointsManager.createFromCollection(_manager.collection.filter((p) => ['root', 'page', 'layout', 'provider', 'init'].))
     // I was tried to filter not needed points, but for what? In real client we already filter it on generate pahes, on server does not matter if there more points then needed
@@ -94,7 +97,7 @@ export class ClientPoints {
     const middlewares = root._middlewares
     const transformer = root._getTransformer()
 
-    return new ClientPoints({
+    return new ClientPoints<any>({
       manager,
       routes,
       routesHash,
@@ -107,7 +110,9 @@ export class ClientPoints {
     })
   }
 
-  static async createFromSource(source: PointsDefinitionSource): Promise<ClientPoints> {
+  static async createFromSource<TError extends ErrorPoint0>(
+    source: PointsDefinitionSource,
+  ): Promise<ClientPoints<TError>> {
     const manager = await PointsManager.createFromSource(source)
     return ClientPoints.createFromDefintion(manager)
   }
@@ -482,10 +487,10 @@ export class ClientPoints {
     if (_point0_env.side.is.server) {
       throw new Error('Client points can not be mounted on server')
     }
-    _ssItems.__POINT0_CLIENT_POINTS__.set(this)
+    _ssItems.__POINT0_CLIENT_POINTS__.set(this as unknown as ClientPoints<ErrorPoint0>)
   }
 
-  static getInstance = (): ClientPoints => {
+  static getInstance = <TError extends ErrorPoint0>(): ClientPoints<TError> => {
     // all this needed only for router, to know which routes and pages exists in current scope
     // we can not here use env.scope, because for server it can be 'root' while for client it can be 'site' for example
     // and this code will be executed on server
@@ -502,7 +507,7 @@ export class ClientPoints {
         )
       }
     }
-    return clientPoints
+    return clientPoints as unknown as ClientPoints<TError>
   }
 }
 

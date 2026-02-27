@@ -1,4 +1,3 @@
-import { Error0 } from '@devp0nt/error0'
 import {
   type AnyLocation,
   type AnyRoute,
@@ -9,6 +8,7 @@ import {
   Route0,
   type RoutesPretty,
 } from '@devp0nt/route0'
+import { ErrorPoint0 } from '@point0/core'
 import {
   _ssItems,
   _wrapNavigate,
@@ -26,6 +26,7 @@ import type {
   RouterStatus,
   UseAdapterLocationFn,
 } from '@point0/core'
+import type { ClassLikeError0 } from '@point0/core'
 import React, { Fragment, useCallback, useMemo, useRef } from 'react'
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
 import {
@@ -43,7 +44,7 @@ const _useNativeNavigate = () => {
   const [, navigate] = useWouterLocation()
   return navigate
 }
-export const useSimpleNavigate = _wrapUseNavigate(_useNativeNavigate)
+export const useSimpleNavigate = _wrapUseNavigate(_useNativeNavigate, ErrorPoint0)
 
 // export const createNavigate = <
 //   TRoutes extends RoutesPretty,
@@ -77,11 +78,16 @@ export const useSimpleNavigate = _wrapUseNavigate(_useNativeNavigate)
 //   return navigate0
 // }
 
-export const createNavigate = <TRoutes extends RoutesPretty, TNavigate extends (to: string, ...rest: any[]) => any>(
+export const createNavigate = <
+  TRoutes extends RoutesPretty,
+  TNavigate extends (to: string, ...rest: any[]) => any,
+  TErrorClass extends ClassLikeError0<ErrorPoint0> = ClassLikeError0<ErrorPoint0>,
+>(
   routes: TRoutes,
   navigate: TNavigate,
+  ErrorClass: TErrorClass = ErrorPoint0 as unknown as TErrorClass,
 ) => {
-  const wrappedNavigate = _wrapNavigate(navigate)
+  const wrappedNavigate = _wrapNavigate(navigate, ErrorClass)
   async function navigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
     ...args: HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
       ? [
@@ -94,11 +100,11 @@ export const createNavigate = <TRoutes extends RoutesPretty, TNavigate extends (
           input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
           ...rest: Tail<Parameters<TNavigate>>,
         ]
-  ): Promise<{ location: AnyLocation; error: Error0 | undefined }> {
+  ): Promise<{ location: AnyLocation; error: InstanceType<TErrorClass> | undefined }> {
     const [routeName, input, ...rest] = args as [ExtractRoutesKeys<TRoutes>, unknown, ...Tail<Parameters<TNavigate>>]
     const route = routes[routeName]
     if (!route) {
-      throw new Error0(`Route "${routeName}" not found`)
+      throw new ErrorClass(`Route "${routeName}" not found`)
     }
 
     const to = route.flat(input || {}) as string
@@ -117,35 +123,33 @@ export const createNavigate = <TRoutes extends RoutesPretty, TNavigate extends (
             input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
             ...rest: Tail<Parameters<TNavigate>>,
           ]
-    ): Promise<{ location: AnyLocation; error: Error0 | undefined }>
+    ): Promise<{ location: AnyLocation; error: InstanceType<TErrorClass> | undefined }>
     to: typeof wrappedNavigate
   }
 }
 
 type Tail<T extends readonly unknown[]> = T extends readonly [unknown, ...infer R] ? R : never
 
-export const createUseNavigate = <
-  TRoutes extends RoutesPretty,
-  TUseNavigate extends () => (to: string, ...args: any[]) => any = typeof useSimpleNavigate,
->(
+export const createUseNavigate = <TRoutes extends RoutesPretty, TError extends ErrorPoint0 = ErrorPoint0>(
   routes: TRoutes,
-  useNavigate?: TUseNavigate,
+  ErrorClass?: ClassLikeError0<TError>,
 ) => {
   return () => {
-    const simpleNavigate = useNavigate ? useNavigate() : useSimpleNavigate()
+    const useSimpleNaviate = _wrapUseNavigate(_useNativeNavigate, ErrorClass ?? ErrorPoint0)
+    const simpleNavigate = useSimpleNaviate()
     function useNavigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
       ...args: HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
         ? [
             route: TRouteName,
             input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
-            ...rest: Tail<Parameters<ReturnType<TUseNavigate>>>,
+            ...rest: Tail<Parameters<ReturnType<typeof useSimpleNavigate>>>,
           ]
         : [
             route: TRouteName,
             input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
-            ...rest: Tail<Parameters<ReturnType<TUseNavigate>>>,
+            ...rest: Tail<Parameters<ReturnType<typeof useSimpleNavigate>>>,
           ]
-    ): Promise<{ location: AnyLocation; error: Error0 | undefined }>
+    ): Promise<{ location: AnyLocation; error: TError | undefined }>
     // function useNavigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
     //   ...args: OnlyIfHasParams<
     //     ExtractRoute<TRoutes, TRouteName>,
@@ -172,16 +176,19 @@ export const createUseNavigate = <
     // ): Promise<{ location: AnyLocation; error: Error0 | undefined }>
 
     async function useNavigate0(...args: any[]) {
-      const { to, rest } = ((): { to: string; rest: Tail<Parameters<ReturnType<TUseNavigate>>> } => {
+      const { to, rest } = ((): { to: string; rest: Tail<Parameters<ReturnType<typeof useSimpleNavigate>>> } => {
         if (typeof args[0] === 'string') {
           // it is route name
           const route = routes[args[0]]
           if (!route) {
             throw new Error(`Route "${args[0]}" not found`)
           }
-          return { to: route.flat(args[1] || {}), rest: args.slice(2) as Tail<Parameters<ReturnType<TUseNavigate>>> }
+          return {
+            to: route.flat(args[1] || {}),
+            rest: args.slice(2) as Tail<Parameters<ReturnType<typeof useSimpleNavigate>>>,
+          }
         }
-        throw new Error0('Invalid useNavigate arguments', { meta: { args } })
+        throw new Error('Invalid useNavigate arguments')
         // return { to: args[0].to, rest: args.slice(1) as Tail<Parameters<ReturnType<TUseNavigate>>> }
       })()
       return await simpleNavigate(to, ...rest)

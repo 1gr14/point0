@@ -1,4 +1,3 @@
-import type { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, ExactLocation, WeakAncestorLocation } from '@devp0nt/route0'
 import type {
   InfiniteQueryObserverSuccessResult,
@@ -37,6 +36,7 @@ import type {
   UndefinedReadyPointType,
   UndefinedRouteDefinition,
 } from './types.js'
+import type { ErrorPoint0 } from './error.js'
 
 export type Props = Record<string, any>
 export type UndefinedProps = undefined
@@ -73,14 +73,17 @@ export type QueryDefinition<TQueryResultType extends QueryResultType, TQueriedDa
   data: TQueriedData // it is infinite data in infinite data case
 }
 export type QueriesDefinitions = Array<QueryDefinition<any, any>>
-export type QueryByDefinition<TQueryDefinition extends QueryDefinition<any, any>> = TQueryDefinition extends {
+export type QueryByDefinition<
+  TQueryDefinition extends QueryDefinition<any, any>,
+  TError extends ErrorPoint0,
+> = TQueryDefinition extends {
   type: infer TQueryResultType
   data: infer TQueriedData
 }
   ? TQueryResultType extends 'query'
-    ? UseQueryResult<TQueriedData, Error0>
+    ? UseQueryResult<TQueriedData, TError>
     : TQueryResultType extends 'infiniteQuery'
-      ? UseInfiniteQueryResult<TQueriedData, Error0>
+      ? UseInfiniteQueryResult<TQueriedData, TError>
       : never
   : never
 export type SuccessQueryByDefinition<TQueryDefinition extends QueryDefinition<any, any>> = TQueryDefinition extends {
@@ -88,9 +91,9 @@ export type SuccessQueryByDefinition<TQueryDefinition extends QueryDefinition<an
   data: infer TQueriedData
 }
   ? TQueryResultType extends 'query'
-    ? QueryObserverSuccessResult<TQueriedData, Error0>
+    ? QueryObserverSuccessResult<TQueriedData, any>
     : TQueryResultType extends 'infiniteQuery'
-      ? InfiniteQueryObserverSuccessResult<TQueriedData, Error0>
+      ? InfiniteQueryObserverSuccessResult<TQueriedData, any>
       : never
   : never
 export type QueryDefinitionByQuery<TQueryResult extends UseQueryOrInfiniteQueryResult> =
@@ -115,20 +118,23 @@ export type QueriesDefinitionsByQueries<TQueries extends QueriesResults> = IfAny
             ? [Q2D<Q1>]
             : []
 >
-type D2Q<T> = T extends QueryDefinition<any, any> ? QueryByDefinition<T> : never
-export type QueriesByDefinitions<TQueriesDefinitions extends QueriesDefinitions> = IfAnyThenElse<
+type D2Q<T, TError extends ErrorPoint0> = T extends QueryDefinition<any, any> ? QueryByDefinition<T, TError> : never
+export type QueriesByDefinitions<
+  TQueriesDefinitions extends QueriesDefinitions,
+  TError extends ErrorPoint0,
+> = IfAnyThenElse<
   TQueriesDefinitions,
   any,
   TQueriesDefinitions extends readonly [infer Q1, infer Q2, infer Q3, infer Q4, infer Q5]
-    ? [D2Q<Q1>, D2Q<Q2>, D2Q<Q3>, D2Q<Q4>, D2Q<Q5>]
+    ? [D2Q<Q1, TError>, D2Q<Q2, TError>, D2Q<Q3, TError>, D2Q<Q4, TError>, D2Q<Q5, TError>]
     : TQueriesDefinitions extends readonly [infer Q1, infer Q2, infer Q3, infer Q4]
-      ? [D2Q<Q1>, D2Q<Q2>, D2Q<Q3>, D2Q<Q4>]
+      ? [D2Q<Q1, TError>, D2Q<Q2, TError>, D2Q<Q3, TError>, D2Q<Q4, TError>]
       : TQueriesDefinitions extends readonly [infer Q1, infer Q2, infer Q3]
-        ? [D2Q<Q1>, D2Q<Q2>, D2Q<Q3>]
+        ? [D2Q<Q1, TError>, D2Q<Q2, TError>, D2Q<Q3, TError>]
         : TQueriesDefinitions extends readonly [infer Q1, infer Q2]
-          ? [D2Q<Q1>, D2Q<Q2>]
+          ? [D2Q<Q1, TError>, D2Q<Q2, TError>]
           : TQueriesDefinitions extends readonly [infer Q1]
-            ? [D2Q<Q1>]
+            ? [D2Q<Q1, TError>]
             : []
 >
 type D2SQ<T> = T extends QueryDefinition<any, any> ? SuccessQueryByDefinition<T> : never
@@ -258,13 +264,14 @@ export type MountableStateError<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TError extends ErrorPoint0,
 > = {
   location: TLocation
   props: TInnerProps
   // queries: QueriesUnknownStatus<TQueries>
-  queries: QueriesByDefinitions<TQueriesDefinitions>
+  queries: QueriesByDefinitions<TQueriesDefinitions, TError>
   data: undefined
-  error: Error0
+  error: TError
   loading: false
   status: 'error'
 }
@@ -272,11 +279,12 @@ export type MountableStateLoading<
   TLocation extends AnyLocation,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TError extends ErrorPoint0,
 > = {
   location: TLocation
   props: TInnerProps
   // queries: QueriesUnknownStatus<TQueries>
-  queries: QueriesByDefinitions<TQueriesDefinitions>
+  queries: QueriesByDefinitions<TQueriesDefinitions, TError>
   data: undefined
   error: undefined
   loading: true
@@ -302,28 +310,33 @@ export type MountableState<
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TError extends ErrorPoint0,
 > = IfAnyThenElse<
   TStatus,
   | MountableStateSuccess<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
-  | MountableStateLoading<TLocation, TInnerProps, TQueriesDefinitions>
-  | MountableStateError<TLocation, TInnerProps, TQueriesDefinitions>,
+  | MountableStateLoading<TLocation, TInnerProps, TQueriesDefinitions, TError>
+  | MountableStateError<TLocation, TInnerProps, TQueriesDefinitions, TError>,
   TStatus extends 'success'
     ? MountableStateSuccess<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
     : TStatus extends 'loading'
-      ? MountableStateLoading<TLocation, TInnerProps, TQueriesDefinitions>
+      ? MountableStateLoading<TLocation, TInnerProps, TQueriesDefinitions, TError>
       : TStatus extends 'error'
-        ? MountableStateError<TLocation, TInnerProps, TQueriesDefinitions>
+        ? MountableStateError<TLocation, TInnerProps, TQueriesDefinitions, TError>
         : never
 >
 
 export type DestinationComponentVariant = 'page' | 'component' | 'layout'
-export type ErrorComponentProps<TDestinationComponentVariant extends DestinationComponentVariant> = {
+export type ErrorComponentProps<
+  TDestinationComponentVariant extends DestinationComponentVariant,
+  TError extends ErrorPoint0,
+> = {
   type: TDestinationComponentVariant
-  error: Error0
+  error: TError
 }
-export type ErrorComponentType<TDestinationComponentVariant extends DestinationComponentVariant> = React.ComponentType<
-  ErrorComponentProps<TDestinationComponentVariant>
->
+export type ErrorComponentType<
+  TDestinationComponentVariant extends DestinationComponentVariant,
+  TError extends ErrorPoint0,
+> = React.ComponentType<ErrorComponentProps<TDestinationComponentVariant, TError>>
 
 export type LoadingComponentProps<TDestinationComponentVariant extends DestinationComponentVariant> = {
   type: TDestinationComponentVariant
@@ -373,7 +386,8 @@ export type WrapperComponentProps<
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput> & {
+  TError extends ErrorPoint0,
+> = MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput, TError> & {
   children: Exclude<React.ReactNode, Promise<any>> | undefined
 } & WithErrorAndLoadingComponents
 export type WrapperComponentType<
@@ -381,8 +395,9 @@ export type WrapperComponentType<
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TError extends ErrorPoint0,
 > = (
-  options: WrapperComponentProps<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
+  options: WrapperComponentProps<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput, TError>,
 ) => Exclude<React.ReactNode, Promise<any>>
 
 export type WithFnOptions<
@@ -390,7 +405,8 @@ export type WithFnOptions<
   TInnerProps extends Props = Props,
   TQueriesDefinitions extends QueriesDefinitions = QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-> = MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
+  TError extends ErrorPoint0 = ErrorPoint0,
+> = MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput, TError>
 export type WithFn<
   TLocation extends AnyLocation = AnyLocation,
   TInnerProps extends Props = Props,
@@ -436,15 +452,17 @@ export type HeadFnOptions<
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = MountableState<TStatus, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
+  TError extends ErrorPoint0,
+> = MountableState<TStatus, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput, TError>
 export type HeadFn<
   TStatus extends 'loading' | 'error' | 'success' = any,
   TLocation extends AnyLocation = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
+  TError extends ErrorPoint0 = ErrorPoint0,
 > = (
-  options: HeadFnOptions<TStatus, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
+  options: HeadFnOptions<TStatus, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput, TError>,
 ) => ResolvableHead | string
 
 export type GlobalHeadFnOptions<
@@ -858,7 +876,7 @@ export type MountAction<
     : TType extends 'wrapper'
       ? {
           type: 'wrapper'
-          Component: WrapperComponentType<any, any, any, any>
+          Component: WrapperComponentType<any, any, any, any, ErrorPoint0>
           unstableId: number
           ssr: boolean
         }
@@ -875,7 +893,7 @@ export type MountAction<
                 : TType extends 'errorComponent'
                   ? {
                       type: 'errorComponent'
-                      Component: ErrorComponentType<any>
+                      Component: ErrorComponentType<any, ErrorPoint0>
                       variant: DestinationComponentVariant | undefined
                       unstableId: number
                       ssr: boolean

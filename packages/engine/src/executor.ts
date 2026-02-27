@@ -1,12 +1,15 @@
-import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation } from '@devp0nt/route0'
+import { _ssItems, _ssRunWithServerStorageState } from '@point0/core'
 import type {
   AnyPoint,
   AppComponent,
+  ClassLikeError0,
   ClientPoints,
   // Ctx,
   Data,
   DataTransformerExtended,
+  ErrorPoint0,
+  IfAnyThenElse,
   InputParsed,
   InputRaw,
   InputSchema,
@@ -31,19 +34,18 @@ import type {
   UnknownCtx,
   UnknownData,
 } from '@point0/core'
-import type { Request0 } from '@point0/core/request0'
-import { _ssItems, _ssRunWithServerStorageState } from '@point0/core'
 import { Effects } from '@point0/core/effects'
-import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
+import type { Request0 } from '@point0/core/request0'
 import { dehydrate } from '@tanstack/react-query'
+import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
 import { createHead } from '@unhead/react/server'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import { stringify } from 'safe-stable-stringify'
 import type { Engine } from './engine.js'
 
-export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
-  engine: Engine
+export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError extends ErrorPoint0 = ErrorPoint0> {
+  engine: Engine<RequiredCtx, TError, true>
   request: Request0
   effects: Effects
   requiredCtx: TRequiredCtx
@@ -57,7 +59,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     serverStorageState,
     effects,
   }: {
-    engine: Engine
+    engine: Engine<RequiredCtx, TError, true>
     request: Request0
     requiredCtx: TRequiredCtx
     // serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
@@ -72,19 +74,19 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     this.serverStorageState = serverStorageState
   }
 
-  static async create<TRequiredCtx extends RequiredCtx = RequiredCtx>({
+  static async create<TRequiredCtx extends RequiredCtx = RequiredCtx, TError extends ErrorPoint0 = ErrorPoint0>({
     engine,
     request,
     requiredCtx,
     effects,
     serverStorageState: providedServerStorageState,
   }: {
-    engine: Engine
+    engine: Engine<RequiredCtx, TError, true>
     request: Request0
     requiredCtx: TRequiredCtx
     effects: Effects
     serverStorageState: SuperStoreInternalValuesOrErrors
-  }): Promise<Executor<TRequiredCtx>> {
+  }): Promise<Executor<TRequiredCtx, TError>> {
     const serverStorageState = Object.assign(providedServerStorageState, {
       __POINT0_FAKE_CLIENT__: undefined,
       __POINT0_FETCH_FN__: engine.fetch.bind(engine),
@@ -100,7 +102,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       __POINT0_ROUTER_CONTEXT__: new Error('Router context will exists only on ssr phase') as never,
       __POINT0_UNHEAD_HEAD__: createHead(),
     } satisfies SuperStoreInternalValues)
-    return new Executor<TRequiredCtx>({
+    return new Executor<TRequiredCtx, TError>({
       engine,
       request,
       requiredCtx,
@@ -119,7 +121,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     ...args: IsInputOptional<TInputSchema> extends true
       ? [input?: InputRaw<TInputSchema>]
       : [input: InputRaw<TInputSchema>]
-  ): Promise<SafeParseInputResult<TInputSchema>> {
+  ): Promise<SafeParseInputResult<TInputSchema, unknown>> {
     const [input = {}] = args
     if (!inputSchema) {
       return {
@@ -144,19 +146,19 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         return {
           success: false,
           data: undefined,
-          error: new Error0('Unknown input schema error'),
+          error: new Error('Unknown input schema error'),
         }
       }
       const path = firstIssue.path?.map((p) => (typeof p === 'object' ? p.key : p)).join('.')
       const message = [path, firstIssue.message].filter(Boolean).join(': ')
-      const error = new Error0(message)
+      const error = new Error(message)
       return {
         success: false,
         data: undefined,
         error,
       }
     } catch (error) {
-      return { success: false, data: undefined, error: Error0.from(error) }
+      return { success: false, data: undefined, error }
     }
   }
 
@@ -177,63 +179,73 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return { success: true, data: output, error: undefined }
   }
 
-  async execute<
-    TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
-  >(
-    point: TPoint,
-    ...args: TPoint['Infer']['IsServerInputOptional'] extends true
-      ? [input?: TPoint['Infer']['ServerInputRaw'], effects?: Effects]
-      : [input: TPoint['Infer']['ServerInputRaw'], effects?: Effects]
-  ): Promise<ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>>
+  // async execute<
+  //   TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  // >(
+  //   point: TPoint,
+  //   ...args: TPoint['Infer']['IsServerInputOptional'] extends true
+  //     ? [input?: TPoint['Infer']['ServerInputRaw'], effects?: Effects]
+  //     : [input: TPoint['Infer']['ServerInputRaw'], effects?: Effects]
+  // ): Promise<
+  //   ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput'], TPoint['Infer']['Error']>
+  // >
   async execute<
     TPoint extends
-      | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+      | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
       | ReadyPoint
       | undefined,
+    TErrorClass extends ClassLikeError0<ErrorPoint0>,
   >({
     point,
     input,
     effects,
-  }: ExecuteOptions<TPoint>): Promise<
+    ErrorClass,
+  }: ExecuteOptions<TPoint, TErrorClass>): Promise<
     ServerExecuteResult<
-      TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+      TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
         ? TPoint['Infer']['Ctx']
         : UnknownCtx,
-      TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+      TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
         ? TPoint['Infer']['ServerLoaderOutput']
-        : UnknownData
+        : UnknownData,
+      // TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+      //   ? TPoint['Infer']['Error']
+      //   : unknown
+      IfAnyThenElse<InstanceType<TErrorClass>, ErrorPoint0, InstanceType<TErrorClass>>
     >
   >
   async execute(
-    ...args:
-      | [options: ExecuteOptions<any>]
-      | [
-          point:
-            | ReadyPoint
-            | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
-            | undefined,
-          input?: InputRaw,
-          effects?: Effects,
-        ]
-  ): Promise<ServerExecuteResult<any, any>> {
+    ...args: [options: ExecuteOptions<any, ClassLikeError0<ErrorPoint0>>]
+    // | [
+    //     point:
+    //       | ReadyPoint
+    //       | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+    //       | undefined,
+    //     input?: InputRaw,
+    //     effects?: Effects,
+    //   ]
+  ): Promise<ServerExecuteResult<any, any, any>> {
     const {
       point,
       input = {},
       effects = Effects.create(),
+      ErrorClass,
     } = ((): {
       point: ReadyPoint | undefined
       input: InputRaw
       effects?: Effects
+      ErrorClass: ClassLikeError0<ErrorPoint0>
     } => {
-      if (args[0] === undefined || 'Infer' in args[0]) {
-        // so it is NiceReadyPoint provided like first argument
-        return { point: args[0]?.point, input: args[1] as InputRaw, effects: args[2] }
-      }
+      // if (args[0] === undefined || 'Infer' in args[0]) {
+      //   // so it is NiceReadyPoint provided like first argument
+      //   return { point: args[0]?.point, input: args[1] as InputRaw, effects: args[2] }
+      // }
       // so it is ReadyPoint provided in object
       return {
         point: args[0].point,
         input: args[0].input,
         effects: args[0].effects,
+        ErrorClass: args[0].ErrorClass,
       }
     })()
 
@@ -253,10 +265,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       if (inputError) {
         const status = 422
         effects.set.status(status)
+        const error0 = ErrorClass.from(inputError)
+        error0.status = status
         return {
           ctx: this.requiredCtx ?? {},
           data: {},
-          error: Error0.from(inputError),
+          error: error0,
           status,
           response: undefined,
           output: {},
@@ -301,13 +315,13 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
       try {
         if (!point) {
-          const error = new Error0(`Point Not Found`)
           const status = 404
+          const error0 = new ErrorClass(`Point Not Found`, { status })
           effects.set.status(status)
           return {
             ctx: layers[0].ctx,
             data: layers[0].data,
-            error,
+            error: error0,
             status,
             response: layers[0].response,
             output: layers[0].output,
@@ -317,13 +331,13 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
 
         if (!point._hasServerLoader()) {
-          const error = new Error0(`Point "${point.toString()}" has no server loader`)
           const status = 500
+          const error0 = new ErrorClass(`Point "${point.toString()}" has no server loader`, { status })
           effects.set.status(status)
           return {
             ctx: layers[0].ctx,
             data: layers[0].data,
-            error,
+            error: error0,
             status,
             response: layers[0].response,
             output: layers[0].output,
@@ -346,11 +360,13 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               const safeParseResult = await Executor.parseInputSafeAsync(serverExecuteAction.schema, input)
               if (safeParseResult.error) {
                 const status = 422
+                const error0 = ErrorClass.from(safeParseResult.error)
+                error0.status = status
                 effects.set.status(status)
                 return {
                   ctx: this.requiredCtx ?? {},
                   data: layers[0].data,
-                  error: Error0.from(safeParseResult.error),
+                  error: error0,
                   status,
                   response: layers[0].response,
                   output: layers[0].output,
@@ -388,7 +404,15 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 ...layers[0].ctxExposed,
                 ctx: { ...layers[0].ctx },
                 input: layers[0].inputParsed,
-                execute: this.execute.bind(this),
+                execute: (
+                  point:
+                    | ReadyPoint
+                    | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+                    | undefined,
+                  input?: InputRaw,
+                ) => {
+                  return this.execute({ point, input, ErrorClass })
+                },
                 request: this.request,
                 set: effects.set,
                 point,
@@ -445,7 +469,15 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 ctx: { ...layers[0].ctx },
                 data: { ...layers[0].data },
                 input: layers[0].inputParsed,
-                execute: this.execute.bind(this),
+                execute: (
+                  point:
+                    | ReadyPoint
+                    | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+                    | undefined,
+                  input?: InputRaw,
+                ) => {
+                  return this.execute({ point, input, ErrorClass })
+                },
                 request: this.request as never,
                 set: effects.set,
                 point,
@@ -507,40 +539,23 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           data: layers[0].data,
           response: layers[0].response,
           error: undefined,
-          status: effects.status,
           output: layers[0].output,
           effects: effects.values,
           point,
         }
       } catch (error) {
-        try {
-          const error0 = Error0.from(error)
-          const status = error0.httpStatus ?? 500
-          effects.set.status(status)
-          return {
-            ctx: layers[0].ctx,
-            data: layers[0].data,
-            error: error0,
-            status,
-            response: layers[0].response,
-            output: layers[0].output,
-            effects: effects.values,
-            point,
-          }
-        } catch {
-          const error0 = Error0.from(error)
-          const status = error0.httpStatus ?? 500
-          effects.set.status(status)
-          return {
-            ctx: layers[0].ctx,
-            data: layers[0].data,
-            error: error0,
-            status,
-            response: layers[0].response,
-            output: layers[0].output,
-            effects: effects.values,
-            point,
-          }
+        const error0 = ErrorClass.from(error)
+        if (error0.status) {
+          effects.set.status(error0.status)
+        }
+        return {
+          ctx: layers[0].ctx,
+          data: layers[0].data,
+          error: error0,
+          response: layers[0].response,
+          output: layers[0].output,
+          effects: effects.values,
+          point,
         }
       }
     })
@@ -748,10 +763,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 export type ExecuteOptions<
   TPoint extends
     | ReadyPoint
-    | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+    | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
     | undefined,
+  TErrorClass extends ClassLikeError0<ErrorPoint0>,
 > = {
   point?: TPoint | undefined
   input: TPoint extends ReadyPoint ? TPoint['Infer']['ServerInputRaw'] : InputRaw
   effects?: Effects
+  ErrorClass: TErrorClass
 }

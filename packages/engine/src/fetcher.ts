@@ -1,6 +1,14 @@
-import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, CallableRoute, ExactLocation } from '@devp0nt/route0'
+import {
+  _getSsItemsWithRestErrors,
+  _ssItems,
+  _ssRunWithServerStorageState,
+  blankDataTransformerExtended,
+  ErrorPoint0,
+  generateId,
+} from '@point0/core'
 import type {
+  ClassLikeError0,
   Data,
   FetcherFetchDetailedResult,
   FetcherFetchDetailedResultGeneral,
@@ -16,15 +24,8 @@ import type {
   RootPoint,
   SuperStoreInternalValuesOrErrors,
 } from '@point0/core'
-import {
-  _getSsItemsWithRestErrors,
-  _ssItems,
-  _ssRunWithServerStorageState,
-  blankDataTransformerExtended,
-  generateId,
-} from '@point0/core'
-import { Request0 } from '@point0/core/request0'
 import { Effects } from '@point0/core/effects'
+import { Request0 } from '@point0/core/request0'
 import { unflatten } from 'flat'
 import type { EngineClient } from './client.js'
 import type { Engine } from './engine.js'
@@ -33,16 +34,28 @@ import { Executor } from './executor.js'
 import type { Publicdir } from './publicdir.js'
 import type { EngineServer } from './server.js'
 
-export class Fetcher {
-  engine: Engine<RequiredCtx, true>
+export class Fetcher<TError extends ErrorPoint0> {
+  engine: Engine<RequiredCtx, TError, true>
   server: EngineServer<true>
 
-  private constructor({ engine, server }: { engine: Engine<RequiredCtx, true>; server: EngineServer<true> }) {
+  private constructor({
+    engine,
+    server,
+  }: {
+    engine: Engine<RequiredCtx, TError, true>
+    server: EngineServer<true, any>
+  }) {
     this.engine = engine
     this.server = server
   }
 
-  static create({ engine, server }: { engine: Engine<RequiredCtx, true>; server: EngineServer<true> }): Fetcher {
+  static create<TError extends ErrorPoint0>({
+    engine,
+    server,
+  }: {
+    engine: Engine<RequiredCtx, TError, true>
+    server: EngineServer<true, TError>
+  }): Fetcher<TError> {
     return new Fetcher({ engine, server })
   }
 
@@ -219,7 +232,7 @@ export class Fetcher {
   }: {
     originalRequest: Request
     bunServer?: Bun.Server<unknown>
-  }): Promise<PrepareFetchResult> => {
+  }): Promise<PrepareFetchResult<TError>> => {
     const effects = Effects.create()
     const isFromServer =
       '__POINT0_IS_SERVER_REQUEST__' in originalRequest && originalRequest.__POINT0_IS_SERVER_REQUEST__ === true
@@ -232,297 +245,326 @@ export class Fetcher {
     if (request.headers['x-point0-client-request-id']) {
       effects.set.headers('x-point0-client-request-id', request.headers['x-point0-client-request-id'])
     }
+    try {
+      const redirectToDifferentDevClientIfNotThatPort = (scope: string): Response | undefined => {
+        // we keep current browser connection for pages on correct url, so we can recieve corret bun hmr updates
+        if (process.env.NODE_ENV === 'production') {
+          return undefined
+        }
+        const thatClient = this.server.clients.find((c) => c.scope === scope)
+        if (!thatClient) {
+          return undefined
+        }
 
-    const redirectToDifferentDevClientIfNotThatPort = (scope: string): Response | undefined => {
-      // we keep current browser connection for pages on correct url, so we can recieve corret bun hmr updates
-      if (process.env.NODE_ENV === 'production') {
-        return undefined
-      }
-      const thatClient = this.server.clients.find((c) => c.scope === scope)
-      if (!thatClient) {
-        return undefined
-      }
+        const currentPort = Number(request.location.port)
+        const currentClient = Number.isNaN(currentPort)
+          ? undefined
+          : this.server.clients.find((c) => c.port === currentPort)
 
-      const currentPort = Number(request.location.port)
-      const currentClient = Number.isNaN(currentPort)
-        ? undefined
-        : this.server.clients.find((c) => c.port === currentPort)
-
-      if (currentClient === thatClient) {
-        return undefined
-      }
-      return new Response('Redirecting to different dev client', {
-        status: 302,
-        headers: {
-          Location: `http://localhost:${thatClient.port}${request.location.pathname}${request.location.search}`,
-        },
-      })
-    }
-
-    for (const publicdir of this.server.publicdirs) {
-      const staticResponse = await publicdir.fetch({ request })
-      if (staticResponse) {
-        const scope = publicdir.scope
-        return {
-          scope,
-          request,
-          effects,
-          middlewares:
-            this.server.points?.middlewares.get(publicdir.scope) ??
-            this.server.points?.middlewares.get(this.server.scope) ??
-            [],
-          middlewareOptions: {
-            request,
-            set: effects.set,
-            point: undefined,
-            scope,
-            variant: 'publicdir',
+        if (currentClient === thatClient) {
+          return undefined
+        }
+        return new Response('Redirecting to different dev client', {
+          status: 302,
+          headers: {
+            Location: `http://localhost:${thatClient.port}${request.location.pathname}${request.location.search}`,
           },
-          publicdirResult: { publicdir, response: staticResponse },
-          taskPointResult: undefined,
-          pagePointResult: undefined,
-          actionPointResult: undefined,
-          errorResult: undefined,
-          optionsResult: undefined,
-          redirectResult: undefined,
-        }
+        })
       }
-    }
 
-    const task = await this.getTaskFromRequest({ request })
-
-    if (!task) {
-      const responseFromAbsFilePath = await Fetcher.fetchAbsFilePathOnDevServer({ request })
-      if (responseFromAbsFilePath) {
-        return {
-          scope: this.engine.server.scope,
-          request,
-          effects,
-          middlewares: [],
-          middlewareOptions: {
-            request,
-            set: effects.set,
-            point: undefined,
-            scope: this.engine.server.scope,
-            variant: '' as never, // it is dev only thing, lets forget about it
-          },
-          publicdirResult: { publicdir: undefined, response: responseFromAbsFilePath },
-          taskPointResult: undefined,
-          pagePointResult: undefined,
-          actionPointResult: undefined,
-          errorResult: undefined,
-          optionsResult: undefined,
-          redirectResult: undefined,
-        }
-      }
-    }
-
-    if (task) {
-      const exact = this.server.points?.findExact({
-        scope: task.scope,
-        type: task.pointType,
-        name: task.pointName,
-      })
-      const root = exact?._root ?? this.server.points?.roots.get(task.scope)
-      if (!root) {
-        return {
-          scope: task.scope,
-          request,
-          effects,
-          middlewares: [],
-          middlewareOptions: {
-            request,
-            set: effects.set,
-            point: undefined,
-            scope: task.scope,
-            variant: 'unknown',
-          },
-          publicdirResult: undefined,
-          taskPointResult: undefined,
-          pagePointResult: undefined,
-          actionPointResult: undefined,
-          errorResult: new Error0(`Root for point "${task.scope}.${task.pointType}.${task.pointName}" not found`, {
-            httpStatus: 404,
-          }),
-          optionsResult: undefined,
-          redirectResult: undefined,
-        }
-      } else {
-        return {
-          scope: task.scope,
-          request,
-          effects,
-          middlewares: exact?._middlewares ?? root._middlewares,
-          middlewareOptions: {
-            request,
-            set: effects.set,
-            point: exact,
-            scope: task.scope,
-            variant: 'task',
-          },
-          publicdirResult: undefined,
-          taskPointResult: { task, point: exact, root },
-          pagePointResult: undefined,
-          actionPointResult: undefined,
-          errorResult: undefined,
-          optionsResult: undefined,
-          redirectResult: undefined,
-        }
-      }
-    }
-
-    const pageLocation = request.location
-
-    const foundExactPage = await (async () => {
-      for (const client of this.server.clients) {
-        if (!client.points) {
-          continue
-        }
-        if (!client.isServingRequest({ request })) {
-          continue
-        }
-        const found = await client.points.loadPage({ location: pageLocation })
-        if (found) {
+      for (const publicdir of this.server.publicdirs) {
+        const staticResponse = await publicdir.fetch({ request })
+        if (staticResponse) {
+          const scope = publicdir.scope
           return {
-            page: found.page,
-            client,
-            pageLocation: found.pageLocation,
+            scope,
+            request,
+            effects,
+            middlewares:
+              this.server.points?.middlewares.get(publicdir.scope) ??
+              this.server.points?.middlewares.get(this.server.scope) ??
+              [],
+            middlewareOptions: {
+              request,
+              set: effects.set,
+              point: undefined,
+              scope,
+              variant: 'publicdir',
+            },
+            publicdirResult: { publicdir, response: staticResponse },
+            taskPointResult: undefined,
+            pagePointResult: undefined,
+            actionPointResult: undefined,
+            errorResult: undefined,
+            optionsResult: undefined,
+            redirectResult: undefined,
           }
         }
       }
-      return undefined
-    })()
-    if (foundExactPage) {
-      const redirectResponse = redirectToDifferentDevClientIfNotThatPort(foundExactPage.page.scope)
-      if (redirectResponse) {
+
+      const task = await this.getTaskFromRequest({ request })
+
+      if (!task) {
+        const responseFromAbsFilePath = await Fetcher.fetchAbsFilePathOnDevServer({ request })
+        if (responseFromAbsFilePath) {
+          return {
+            scope: this.engine.server.scope,
+            request,
+            effects,
+            middlewares: [],
+            middlewareOptions: {
+              request,
+              set: effects.set,
+              point: undefined,
+              scope: this.engine.server.scope,
+              variant: '' as never, // it is dev only thing, lets forget about it
+            },
+            publicdirResult: { publicdir: undefined, response: responseFromAbsFilePath },
+            taskPointResult: undefined,
+            pagePointResult: undefined,
+            actionPointResult: undefined,
+            errorResult: undefined,
+            optionsResult: undefined,
+            redirectResult: undefined,
+          }
+        }
+      }
+
+      if (task) {
+        const exact = this.server.points?.findExact({
+          scope: task.scope,
+          type: task.pointType,
+          name: task.pointName,
+        })
+        const root = exact?._root ?? this.server.points?.roots.get(task.scope)
+        const ErrorClass = (root?._Error ?? ErrorPoint0) as ClassLikeError0<TError>
+        if (!root) {
+          return {
+            scope: task.scope,
+            request,
+            effects,
+            middlewares: [],
+            middlewareOptions: {
+              request,
+              set: effects.set,
+              point: undefined,
+              scope: task.scope,
+              variant: 'unknown',
+            },
+            publicdirResult: undefined,
+            taskPointResult: undefined,
+            pagePointResult: undefined,
+            actionPointResult: undefined,
+            errorResult: new ErrorClass(
+              `Root for point "${task.scope}.${task.pointType}.${task.pointName}" not found`,
+              {
+                status: 404,
+              },
+            ),
+            optionsResult: undefined,
+            redirectResult: undefined,
+          }
+        } else {
+          return {
+            scope: task.scope,
+            request,
+            effects,
+            middlewares: exact?._middlewares ?? root._middlewares,
+            middlewareOptions: {
+              request,
+              set: effects.set,
+              point: exact,
+              scope: task.scope,
+              variant: 'task',
+            },
+            publicdirResult: undefined,
+            taskPointResult: { task, point: exact, root },
+            pagePointResult: undefined,
+            actionPointResult: undefined,
+            errorResult: undefined,
+            optionsResult: undefined,
+            redirectResult: undefined,
+          }
+        }
+      }
+
+      const pageLocation = request.location
+
+      const foundExactPage = await (async () => {
+        for (const client of this.server.clients) {
+          if (!client.points) {
+            continue
+          }
+          if (!client.isServingRequest({ request })) {
+            continue
+          }
+          const found = await client.points.loadPage({ location: pageLocation })
+          if (found) {
+            return {
+              page: found.page,
+              client,
+              pageLocation: found.pageLocation,
+            }
+          }
+        }
+        return undefined
+      })()
+      if (foundExactPage) {
+        const redirectResponse = redirectToDifferentDevClientIfNotThatPort(foundExactPage.page.scope)
+        if (redirectResponse) {
+          return {
+            scope: foundExactPage.page.scope,
+            request,
+            effects,
+            middlewares: [],
+            middlewareOptions: {
+              request,
+              set: effects.set,
+              point: undefined,
+              scope: foundExactPage.page.scope,
+              variant: 'redirect',
+            },
+            publicdirResult: undefined,
+            taskPointResult: undefined,
+            pagePointResult: undefined,
+            actionPointResult: undefined,
+            errorResult: undefined,
+            optionsResult: undefined,
+            redirectResult: { response: redirectResponse },
+          }
+        }
         return {
-          scope: foundExactPage.page.scope,
+          scope: foundExactPage.client.scope,
           request,
           effects,
-          middlewares: [],
+          middlewares: foundExactPage.page._middlewares,
           middlewareOptions: {
             request,
             set: effects.set,
-            point: undefined,
-            scope: foundExactPage.page.scope,
-            variant: 'redirect',
+            point: foundExactPage.page,
+            scope: foundExactPage.client.scope,
+            variant: 'page',
           },
           publicdirResult: undefined,
           taskPointResult: undefined,
-          pagePointResult: undefined,
+          pagePointResult: {
+            client: foundExactPage.client,
+            pageLocation: foundExactPage.pageLocation,
+            point: foundExactPage.page,
+          },
           actionPointResult: undefined,
           errorResult: undefined,
           optionsResult: undefined,
-          redirectResult: { response: redirectResponse },
+          redirectResult: undefined,
         }
       }
-      return {
-        scope: foundExactPage.client.scope,
-        request,
-        effects,
-        middlewares: foundExactPage.page._middlewares,
-        middlewareOptions: {
-          request,
-          set: effects.set,
-          point: foundExactPage.page,
-          scope: foundExactPage.client.scope,
-          variant: 'page',
-        },
-        publicdirResult: undefined,
-        taskPointResult: undefined,
-        pagePointResult: {
-          client: foundExactPage.client,
-          pageLocation: foundExactPage.pageLocation,
-          point: foundExactPage.page,
-        },
-        actionPointResult: undefined,
-        errorResult: undefined,
-        optionsResult: undefined,
-        redirectResult: undefined,
-      }
-    }
 
-    const foundSuitableClient = await (async () => {
-      for (const client of this.server.clients) {
-        // we can not do nothing wit this client on server if it has no indexHtml
-        if (!client.isServingRequest({ request })) {
-          continue
+      const foundSuitableClient = await (async () => {
+        for (const client of this.server.clients) {
+          // we can not do nothing wit this client on server if it has no indexHtml
+          if (!client.isServingRequest({ request })) {
+            continue
+          }
+          if (client.isPageLocationSuitable({ pageLocation })) {
+            return client
+          }
         }
-        if (client.isPageLocationSuitable({ pageLocation })) {
-          return client
+        return undefined
+      })()
+      if (foundSuitableClient) {
+        const redirectResponse = redirectToDifferentDevClientIfNotThatPort(foundSuitableClient.scope)
+        if (redirectResponse) {
+          return {
+            scope: foundSuitableClient.scope,
+            request,
+            effects,
+            middlewares: [],
+            middlewareOptions: {
+              request,
+              set: effects.set,
+              point: undefined,
+              scope: foundSuitableClient.scope,
+              variant: 'redirect',
+            },
+            publicdirResult: undefined,
+            taskPointResult: undefined,
+            pagePointResult: undefined,
+            actionPointResult: undefined,
+            errorResult: undefined,
+            optionsResult: undefined,
+            redirectResult: { response: redirectResponse },
+          }
         }
-      }
-      return undefined
-    })()
-    if (foundSuitableClient) {
-      const redirectResponse = redirectToDifferentDevClientIfNotThatPort(foundSuitableClient.scope)
-      if (redirectResponse) {
         return {
           scope: foundSuitableClient.scope,
           request,
           effects,
-          middlewares: [],
+          middlewares: foundSuitableClient.points?.middlewares ?? [],
           middlewareOptions: {
             request,
             set: effects.set,
             point: undefined,
             scope: foundSuitableClient.scope,
-            variant: 'redirect',
+            variant: 'unknown',
           },
           publicdirResult: undefined,
           taskPointResult: undefined,
-          pagePointResult: undefined,
+          pagePointResult: {
+            client: foundSuitableClient,
+            pageLocation,
+            point: undefined,
+          },
           actionPointResult: undefined,
           errorResult: undefined,
           optionsResult: undefined,
-          redirectResult: { response: redirectResponse },
+          redirectResult: undefined,
         }
       }
+
+      const ErrorClass = (this.server.points?.manager.root._Error ?? ErrorPoint0) as ClassLikeError0<TError>
       return {
-        scope: foundSuitableClient.scope,
+        scope: this.server.scope,
         request,
         effects,
-        middlewares: foundSuitableClient.points?.middlewares ?? [],
+        middlewares: this.server.points?.middlewares.get(this.server.scope) ?? [],
         middlewareOptions: {
           request,
           set: effects.set,
           point: undefined,
-          scope: foundSuitableClient.scope,
+          scope: this.server.scope,
           variant: 'unknown',
         },
         publicdirResult: undefined,
         taskPointResult: undefined,
-        pagePointResult: {
-          client: foundSuitableClient,
-          pageLocation,
-          point: undefined,
-        },
+        pagePointResult: undefined,
         actionPointResult: undefined,
-        errorResult: undefined,
+        errorResult: new ErrorClass(`Not Found`, { status: 404 }),
         optionsResult: undefined,
         redirectResult: undefined,
       }
-    }
-
-    return {
-      scope: this.server.scope,
-      request,
-      effects,
-      middlewares: this.server.points?.middlewares.get(this.server.scope) ?? [],
-      middlewareOptions: {
-        request,
-        set: effects.set,
-        point: undefined,
+    } catch (error) {
+      const ErrorClass = this.server.points?.manager.root._Error ?? ErrorPoint0
+      const error0 = ErrorClass.from(error)
+      return {
         scope: this.server.scope,
-        variant: 'unknown',
-      },
-      publicdirResult: undefined,
-      taskPointResult: undefined,
-      pagePointResult: undefined,
-      actionPointResult: undefined,
-      errorResult: new Error0(`Not Found`, { httpStatus: 404 }),
-      optionsResult: undefined,
-      redirectResult: undefined,
+        request,
+        effects,
+        middlewares: this.server.points?.middlewares.get(this.server.scope) ?? [],
+        middlewareOptions: {
+          request,
+          set: effects.set,
+          point: undefined,
+          scope: this.server.scope,
+          variant: 'unknown',
+        },
+        publicdirResult: undefined,
+        taskPointResult: undefined,
+        pagePointResult: undefined,
+        actionPointResult: undefined,
+        errorResult: error0,
+        optionsResult: undefined,
+        redirectResult: undefined,
+      }
     }
   }
 
@@ -857,13 +899,18 @@ export class Fetcher {
         point,
         input,
         effects: executor.effects, // here we pass executor effects, becouse we want to apply status and effects to it
+        ErrorClass: point?._Error ?? root._Error,
       })
       if (executeResult.error) {
         this.server.logger.error(executeResult.error, meta)
       }
 
       if (executeResult.error) {
-        const response = toJsonErrorResponse(executeResult.error, executeResult.effects.status ?? 500)
+        const response = toJsonErrorResponse(
+          point?._Error ?? root._Error,
+          executeResult.error,
+          executeResult.effects.status ?? 500,
+        )
         return {
           ...partialResult,
           input,
@@ -886,8 +933,8 @@ export class Fetcher {
       }
 
       if (!executeResult.output) {
-        const error = new Error0('No output')
-        const response = toJsonErrorResponse(error, 404)
+        const error = new Error('No output')
+        const response = toJsonErrorResponse(root._Error, error, 404)
         return {
           ...partialResult,
           input,
@@ -913,8 +960,9 @@ export class Fetcher {
       }
     } catch (error) {
       this.server.logger.error(error, meta)
-      const error0 = Error0.from(error)
-      const response = toJsonErrorResponse(error0)
+      const ErrorClass = root._Error
+      const error0 = ErrorClass.from(error)
+      const response = toJsonErrorResponse(ErrorClass, error0, 500)
       return {
         ...partialResult,
         input,
@@ -969,7 +1017,7 @@ export class Fetcher {
       // TODO: lets provide here wrapResponse and wrapRequest and call it
       // TODO: also there on error fo input not throw it but return as error
 
-      const executor = await Executor.create({
+      const executor = await Executor.create<RequiredCtx, any>({
         engine: this.engine,
         request,
         requiredCtx,
@@ -1000,10 +1048,13 @@ export class Fetcher {
               headers: { 'Content-Type': 'text/html' },
               status: 500,
             })
+            const ErrorClass =
+              client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
+            const error0 = ErrorClass.from(error)
             return {
               ...partialResult,
               response,
-              error: Error0.from(error),
+              error: error0,
             }
           }
           throw error
@@ -1023,8 +1074,9 @@ export class Fetcher {
       }
     } catch (error) {
       this.server.logger.error(error, meta)
-      const error0 = Error0.from(error)
-      const response = toJsonErrorResponse(error0)
+      const ErrorClass = client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
+      const error0 = ErrorClass.from(error)
+      const response = toJsonErrorResponse(ErrorClass, error0, 500)
       return {
         ...partialResult,
         response,
@@ -1038,14 +1090,14 @@ export class Fetcher {
     finalHandler,
     baseOptions,
   }: {
-    middlewares: MiddlewareFn[]
-    finalHandler: () => Promise<FetcherFetchDetailedResultNoMiddleware>
-    baseOptions: MiddlewareFnOptionsBase
-  }): Promise<FetcherFetchDetailedResult> {
+    middlewares: MiddlewareFn<any>[]
+    finalHandler: () => Promise<FetcherFetchDetailedResultNoMiddleware<any>>
+    baseOptions: MiddlewareFnOptionsBase<any>
+  }): Promise<FetcherFetchDetailedResult<any>> {
     let index = -1
     let isMiddleware = true as boolean
 
-    async function dispatch(i: number): Promise<Response | FetcherFetchDetailedResult> {
+    async function dispatch(i: number): Promise<Response | FetcherFetchDetailedResult<any>> {
       if (i <= index) {
         throw new Error('next() called multiple times')
       }
@@ -1058,8 +1110,8 @@ export class Fetcher {
         // throw finishSymbol
       }
 
-      const mw = middlewares[i]
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      const mw = middlewares.at(i)
+
       if (!mw) {
         throw new Error('Middleware is undefined')
       }
@@ -1095,11 +1147,12 @@ export class Fetcher {
       }
       return result
     } catch (error) {
-      const error0 = Error0.from(error)
+      const ErrorClass = this.server.points?.manager.root._Error ?? ErrorPoint0
+      const error0 = ErrorClass.from(error)
       return {
         request: baseOptions.request,
         scope: baseOptions.scope,
-        response: toJsonErrorResponse(error0),
+        response: toJsonErrorResponse(ErrorClass, error0),
         variant: isMiddleware ? 'middleware' : 'unknown',
         error: error0,
       }
@@ -1112,135 +1165,148 @@ export class Fetcher {
     serverStorageState,
   }: {
     requiredCtx: RequiredCtx
-    prepareFetchResult: PrepareFetchResult
+    prepareFetchResult: PrepareFetchResult<TError>
     serverStorageState: SuperStoreInternalValuesOrErrors
-  }): Promise<FetcherFetchDetailedResultNoMiddleware> {
-    if (prepareFetchResult.publicdirResult) {
-      return {
-        request: prepareFetchResult.request,
-        scope: prepareFetchResult.scope,
-        response: prepareFetchResult.publicdirResult.response,
-        variant: 'publicdir',
-        error: undefined,
+  }): Promise<FetcherFetchDetailedResultNoMiddleware<TError>> {
+    try {
+      if (prepareFetchResult.publicdirResult) {
+        return {
+          request: prepareFetchResult.request,
+          scope: prepareFetchResult.scope,
+          response: prepareFetchResult.publicdirResult.response,
+          variant: 'publicdir',
+          error: undefined,
+        }
       }
-    }
 
-    if (prepareFetchResult.request.original.method === 'OPTIONS') {
-      return {
-        request: prepareFetchResult.request,
-        scope: prepareFetchResult.scope,
-        response: new Response(null, { status: 204 }),
-        variant: 'options',
-        error: undefined,
+      if (prepareFetchResult.request.original.method === 'OPTIONS') {
+        return {
+          request: prepareFetchResult.request,
+          scope: prepareFetchResult.scope,
+          response: new Response(null, { status: 204 }),
+          variant: 'options',
+          error: undefined,
+        }
       }
-    }
 
-    if (prepareFetchResult.errorResult) {
+      if (prepareFetchResult.errorResult) {
+        const ErrorClass = this.server.points?.manager.root._Error ?? ErrorPoint0
+        return {
+          request: prepareFetchResult.request,
+          scope: prepareFetchResult.scope,
+          response: toJsonErrorResponse(ErrorClass, prepareFetchResult.errorResult),
+          variant: 'unknown',
+          error: prepareFetchResult.errorResult,
+        }
+      }
+
+      // if (prepareFetchResult.actionPointResult) {
+      //   const error = new Error0(`Not Implemented`, { httpStatus: 501 })
+      //   return {
+      //     request: prepareFetchResult.request,
+      //     scope: prepareFetchResult.scope,
+      //     response: toJsonErrorResponse(error),
+      //     variant: 'unknown',
+      //     error,
+      //   }
+      // }
+
+      if (prepareFetchResult.pagePointResult) {
+        const fetchPagePointResult = await this.fetchPagePoint({
+          client: prepareFetchResult.pagePointResult.client,
+          point: prepareFetchResult.pagePointResult.point,
+          pageLocation: prepareFetchResult.pagePointResult.pageLocation,
+          request: prepareFetchResult.request,
+          requiredCtx,
+          effects: prepareFetchResult.effects,
+          serverStorageState,
+        })
+        return {
+          ...fetchPagePointResult,
+          variant: 'page',
+        }
+      }
+
+      if (prepareFetchResult.taskPointResult) {
+        const fetchTaskPointResult = await this.fetchTaskPoint({
+          root: prepareFetchResult.taskPointResult.root,
+          point: prepareFetchResult.taskPointResult.point,
+          task: prepareFetchResult.taskPointResult.task,
+          request: prepareFetchResult.request,
+          requiredCtx,
+          effects: prepareFetchResult.effects,
+          serverStorageState,
+        })
+        return {
+          ...fetchTaskPointResult,
+          variant: 'task',
+        }
+      }
+
+      if (prepareFetchResult.redirectResult) {
+        return {
+          request: prepareFetchResult.request,
+          scope: prepareFetchResult.scope,
+          response: prepareFetchResult.redirectResult.response,
+          variant: 'redirect',
+          error: undefined,
+        }
+      }
+
+      const ErrorClass = (this.server.points?.manager.root._Error ?? ErrorPoint0) as ClassLikeError0<TError>
+      const error = new ErrorClass(`Critical Error: Not Found`, { status: 404 })
       return {
-        request: prepareFetchResult.request,
-        scope: prepareFetchResult.scope,
-        response: toJsonErrorResponse(prepareFetchResult.errorResult),
+        request: (prepareFetchResult as any).request,
+        scope: (prepareFetchResult as any).scope,
+        response: toJsonErrorResponse(ErrorClass, error),
         variant: 'unknown',
-        error: prepareFetchResult.errorResult,
+        error,
       }
-    }
 
-    // if (prepareFetchResult.actionPointResult) {
-    //   const error = new Error0(`Not Implemented`, { httpStatus: 501 })
-    //   return {
-    //     request: prepareFetchResult.request,
-    //     scope: prepareFetchResult.scope,
-    //     response: toJsonErrorResponse(error),
-    //     variant: 'unknown',
-    //     error,
-    //   }
-    // }
+      // const fetchPointResult = await this.fetchPoint({
+      //   request: prepareFetchResult.request,
+      //   suitable: prepareFetchResult.pointResult.suitable,
+      //   task: prepareFetchResult.pointResult.task,
+      //   requiredCtx,
+      //   effects: prepareFetchResult.effects,
+      //   serverStorageState,
+      // })
 
-    if (prepareFetchResult.pagePointResult) {
-      const fetchPagePointResult = await this.fetchPagePoint({
-        client: prepareFetchResult.pagePointResult.client,
-        point: prepareFetchResult.pagePointResult.point,
-        pageLocation: prepareFetchResult.pagePointResult.pageLocation,
-        request: prepareFetchResult.request,
-        requiredCtx,
-        effects: prepareFetchResult.effects,
-        serverStorageState,
-      })
+      // if (fetchPointResult.task) {
+      //   return {
+      //     ...fetchPointResult,
+      //     task: fetchPointResult.task,
+      //     variant: 'point',
+      //     response: fetchPointResult.response,
+      //     input: fetchPointResult.request.state.__POINT0_RAW_UNKNOWN_INPUT__ as InputRawUnknown | undefined,
+      //   }
+      // }
+
+      // if (fetchPointResult.responseFormat === 'html') {
+      //   return {
+      //     ...fetchPointResult,
+      //     variant: 'page',
+      //     response: fetchPointResult.response,
+      //     input: fetchPointResult.request.state.__POINT0_RAW_UNKNOWN_INPUT__ as InputRawUnknown | undefined,
+      //   }
+      // }
+
+      // return {
+      //   ...fetchPointResult,
+      //   variant: 'unknown',
+      //   response: fetchPointResult.response,
+      // }
+    } catch (error) {
+      const ErrorClass = (this.server.points?.manager.root._Error ?? ErrorPoint0) as ClassLikeError0<TError>
+      const error0 = ErrorClass.from(error)
       return {
-        ...fetchPagePointResult,
-        variant: 'page',
+        request: (prepareFetchResult as any).request,
+        scope: (prepareFetchResult as any).scope,
+        response: toJsonErrorResponse(ErrorClass, error),
+        variant: 'unknown',
+        error: error0,
       }
     }
-
-    if (prepareFetchResult.taskPointResult) {
-      const fetchTaskPointResult = await this.fetchTaskPoint({
-        root: prepareFetchResult.taskPointResult.root,
-        point: prepareFetchResult.taskPointResult.point,
-        task: prepareFetchResult.taskPointResult.task,
-        request: prepareFetchResult.request,
-        requiredCtx,
-        effects: prepareFetchResult.effects,
-        serverStorageState,
-      })
-      return {
-        ...fetchTaskPointResult,
-        variant: 'task',
-      }
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (prepareFetchResult.redirectResult) {
-      return {
-        request: prepareFetchResult.request,
-        scope: prepareFetchResult.scope,
-        response: prepareFetchResult.redirectResult.response,
-        variant: 'redirect',
-        error: undefined,
-      }
-    }
-
-    const error = new Error0(`Not Found`, { httpStatus: 404 })
-    return {
-      request: (prepareFetchResult as any).request,
-      scope: (prepareFetchResult as any).scope,
-      response: toJsonErrorResponse(error),
-      variant: 'unknown',
-      error: new Error0(`Critical Error: Not Found`, { httpStatus: 404 }),
-    }
-
-    // const fetchPointResult = await this.fetchPoint({
-    //   request: prepareFetchResult.request,
-    //   suitable: prepareFetchResult.pointResult.suitable,
-    //   task: prepareFetchResult.pointResult.task,
-    //   requiredCtx,
-    //   effects: prepareFetchResult.effects,
-    //   serverStorageState,
-    // })
-
-    // if (fetchPointResult.task) {
-    //   return {
-    //     ...fetchPointResult,
-    //     task: fetchPointResult.task,
-    //     variant: 'point',
-    //     response: fetchPointResult.response,
-    //     input: fetchPointResult.request.state.__POINT0_RAW_UNKNOWN_INPUT__ as InputRawUnknown | undefined,
-    //   }
-    // }
-
-    // if (fetchPointResult.responseFormat === 'html') {
-    //   return {
-    //     ...fetchPointResult,
-    //     variant: 'page',
-    //     response: fetchPointResult.response,
-    //     input: fetchPointResult.request.state.__POINT0_RAW_UNKNOWN_INPUT__ as InputRawUnknown | undefined,
-    //   }
-    // }
-
-    // return {
-    //   ...fetchPointResult,
-    //   variant: 'unknown',
-    //   response: fetchPointResult.response,
-    // }
   }
 
   async fetchDetailed({
@@ -1251,7 +1317,7 @@ export class Fetcher {
     request: Request
     requiredCtx: RequiredCtx
     bunServer?: Bun.Server<unknown>
-  }): Promise<FetcherFetchDetailedResult> {
+  }): Promise<FetcherFetchDetailedResult<TError>> {
     const prepareFetchResult = await this.prepareFetch({
       originalRequest: request,
       bunServer,
@@ -1304,7 +1370,7 @@ export class Fetcher {
       const finalResult = {
         ...result,
         response,
-      } as FetcherFetchDetailedResult
+      } as FetcherFetchDetailedResult<TError>
       const error = result.error
       emit?.('engineFetchSettled', { ..._eventData, error, result: finalResult })
       if (error) {
@@ -1330,13 +1396,13 @@ export class Fetcher {
   }
 }
 
-export type PrepareFetchResult =
+type PrepareFetchResult<TError extends ErrorPoint0> =
   | {
       scope: PointsScope
       request: Request0
       effects: Effects
-      middlewares: MiddlewareFn[]
-      middlewareOptions: MiddlewareFnOptionsBase
+      middlewares: MiddlewareFn<any>[]
+      middlewareOptions: MiddlewareFnOptionsBase<any>
       publicdirResult: { publicdir: Publicdir<true> | undefined; response: Response } // in case if it is bun dev server try to fetch abs path
       taskPointResult: undefined
       pagePointResult: undefined
@@ -1349,8 +1415,8 @@ export type PrepareFetchResult =
       scope: PointsScope
       request: Request0
       effects: Effects
-      middlewares: MiddlewareFn[]
-      middlewareOptions: MiddlewareFnOptionsBase
+      middlewares: MiddlewareFn<any>[]
+      middlewareOptions: MiddlewareFnOptionsBase<any>
       publicdirResult: undefined
       taskPointResult: { task: FetchTask; point: ReadyPoint | undefined; root: RootPoint }
       pagePointResult: undefined
@@ -1363,8 +1429,8 @@ export type PrepareFetchResult =
       scope: PointsScope
       request: Request0
       effects: Effects
-      middlewares: MiddlewareFn[]
-      middlewareOptions: MiddlewareFnOptionsBase
+      middlewares: MiddlewareFn<any>[]
+      middlewareOptions: MiddlewareFnOptionsBase<any>
       publicdirResult: undefined
       taskPointResult: undefined
       pagePointResult: {
@@ -1381,8 +1447,8 @@ export type PrepareFetchResult =
       scope: PointsScope
       request: Request0
       effects: Effects
-      middlewares: MiddlewareFn[]
-      middlewareOptions: MiddlewareFnOptionsBase
+      middlewares: MiddlewareFn<any>[]
+      middlewareOptions: MiddlewareFnOptionsBase<any>
       publicdirResult: undefined
       taskPointResult: undefined
       pagePointResult: undefined
@@ -1395,13 +1461,13 @@ export type PrepareFetchResult =
       scope: PointsScope
       request: Request0
       effects: Effects
-      middlewares: MiddlewareFn[]
-      middlewareOptions: MiddlewareFnOptionsBase
+      middlewares: MiddlewareFn<any>[]
+      middlewareOptions: MiddlewareFnOptionsBase<any>
       publicdirResult: undefined
       taskPointResult: undefined
       pagePointResult: undefined
       actionPointResult: undefined
-      errorResult: Error0
+      errorResult: TError
       optionsResult: undefined
       redirectResult: undefined
     }
@@ -1472,7 +1538,7 @@ export type PrepareFetchResult =
 //   pointInput: InputRawUnknown | undefined // in case if it is page or layout, we will parse input on task level, becouse we need it to extract totally match pageLocation
 // }
 
-export type FetcherFetchPagePointResult = Omit<FetcherFetchDetailedResultGeneral, 'response'> & {
+type FetcherFetchPagePointResult = Omit<FetcherFetchDetailedResultGeneral<any>, 'response'> & {
   response: Response
   point: ReadyPoint | undefined
   pageLocation: AnyLocation
@@ -1481,7 +1547,7 @@ export type FetcherFetchPagePointResult = Omit<FetcherFetchDetailedResultGeneral
   responseFormat: 'html'
   input: InputRawUnknown
 }
-export type FetcherFetchTaskPointResult = Omit<FetcherFetchDetailedResultGeneral, 'response'> & {
+type FetcherFetchTaskPointResult = Omit<FetcherFetchDetailedResultGeneral<any>, 'response'> & {
   response: Response
   point: ReadyPoint | undefined
   pageLocation: AnyLocation | undefined

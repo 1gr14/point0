@@ -1,27 +1,32 @@
-import nodeFs from 'node:fs'
-import nodePath from 'node:path'
-import { pathToFileURL } from 'node:url'
 import type {
   AnyNiceReadyPoint,
   AnyPoint,
+  ErrorPoint0,
   EventerEmitFn,
   FetcherFetchDetailedResult,
   PointsScope,
   RequiredCtx,
   UndefinedCtx,
 } from '@point0/core'
+import nodeFs from 'node:fs'
+import nodePath from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { EngineClient } from './client.js'
-import type { EngineLogger, EngineOptions } from './config.js'
 import { parseEngineOptions } from './config.js'
-import type { FileGeneratorProcessResult, FilesGeneratorPointsFilesChangeWatcher } from './generator.js'
+import type { EngineLogger, EngineOptions } from './config.js'
 import { FilesGenerator } from './generator.js'
+import type { FileGeneratorProcessResult, FilesGeneratorPointsFilesChangeWatcher } from './generator.js'
 import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
 
-export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared extends boolean = boolean> {
+export class Engine<
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TError extends ErrorPoint0 = ErrorPoint0,
+  TPrepared extends boolean = boolean,
+> {
   clients: TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
-  server: TPrepared extends true ? EngineServer<true> : EngineServer<false>
+  server: TPrepared extends true ? EngineServer<true, TError> : EngineServer<false, TError>
   publicdirs: TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
   logger: EngineLogger
   generator: FilesGenerator
@@ -31,14 +36,14 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared ex
 
   private constructor(input: {
     clients: EngineClient[]
-    server: EngineServer
+    server: EngineServer<any, any>
     logger: EngineLogger
     prepared: TPrepared
     generator: FilesGenerator
     publicdirs: Array<Publicdir<false>>
   }) {
     this.clients = input.clients as TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
-    this.server = input.server as TPrepared extends true ? EngineServer<true> : EngineServer<false>
+    this.server = input.server as TPrepared extends true ? EngineServer<true, TError> : EngineServer<false, TError>
     this.logger = input.logger
     this.prepared = input.prepared
     this.generator = input.generator
@@ -52,9 +57,9 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared ex
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(options: EngineOptions): Engine<TRequiredCtx, false>
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(options: EngineOptions): Engine<TRequiredCtx, false> {
-  static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
-    options: EngineOptions<TRequiredCtx>,
-  ): Engine<TRequiredCtx, false> {
+  static create<TRequiredCtx extends RequiredCtx = RequiredCtx, TError extends ErrorPoint0 = ErrorPoint0>(
+    options: EngineOptions<TRequiredCtx, TError>,
+  ): Engine<TRequiredCtx, TError, false> {
     const parsedOptions = parseEngineOptions(options)
 
     const server = EngineServer.create({
@@ -103,13 +108,13 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared ex
   }
 
   // async prepare(): Promise<Engine<true>> {
-  async prepare(options?: { preventClientDevServers?: boolean }): Promise<Engine<TRequiredCtx, true>> {
+  async prepare(options?: { preventClientDevServers?: boolean }): Promise<Engine<TRequiredCtx, TError, true>> {
     const { preventClientDevServers } = options ?? {}
     if (this.isPrepared()) {
-      return this as Engine<TRequiredCtx, true>
+      return this as Engine<TRequiredCtx, TError, true>
     }
 
-    await this.server.prepare({ engine: this as Engine<TRequiredCtx, true> })
+    await this.server.prepare({ engine: this as Engine<TRequiredCtx, TError, true> })
     await Promise.all(
       this.clients.map(async (client) => {
         if (client.serving === false) {
@@ -122,7 +127,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared ex
     )
     this.prepared = true as never
 
-    return this as Engine<TRequiredCtx, true>
+    return this as Engine<TRequiredCtx, TError, true>
   }
 
   async serveClientDevServers(): Promise<void> {
@@ -136,7 +141,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared ex
     )
   }
 
-  isPrepared(): this is Engine<TRequiredCtx, true> {
+  isPrepared(): this is Engine<TRequiredCtx, TError, true> {
     return !!this.prepared
   }
 
@@ -268,7 +273,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared ex
     ...args: TRequiredCtx extends UndefinedCtx
       ? [request: Request, options?: { requiredCtx?: TRequiredCtx }]
       : [request: Request, options: { requiredCtx: TRequiredCtx }]
-  ): Promise<FetcherFetchDetailedResult> {
+  ): Promise<FetcherFetchDetailedResult<ErrorPoint0>> {
     if (!this.isPrepared()) {
       throw new Error('Engine is not prepared. Please call await engine.prepare() first.')
     }
@@ -474,20 +479,24 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TPrepared ex
   }: {
     point?: AnyPoint | AnyNiceReadyPoint | undefined
     scope?: PointsScope | undefined
-  } = {}): EventerEmitFn | undefined {
+  } = {}): EventerEmitFn<ErrorPoint0> | undefined {
     if (point) {
-      return point.point._emit.bind(point.point) as EventerEmitFn
+      return point.point._emit.bind(point.point) as EventerEmitFn<ErrorPoint0>
     }
     if (scope) {
       const root = this.server.points?.roots.get(scope)
       if (root) {
-        return root._emit.bind(root) as EventerEmitFn
+        return root._emit.bind(root) as EventerEmitFn<ErrorPoint0>
       }
     }
     const root = this.server.points?.roots.get(this.server.scope)
     if (root) {
-      return root._emit.bind(root) as EventerEmitFn
+      return root._emit.bind(root) as EventerEmitFn<ErrorPoint0>
     }
     return undefined
   }
+
+  // getErrorClass<TError extends ErrorPoint0>(fallback: ClassLikeError0<TError> | undefined): ClassLikeError0<TError> {
+  //   return (this.server.points?.manager.root._Error ?? fallback ?? ErrorPoint0) as ClassLikeError0<TError>
+  // }
 }

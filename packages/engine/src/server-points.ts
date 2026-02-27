@@ -1,7 +1,10 @@
 import type { AnyRoute } from '@devp0nt/route0'
+import { PointsManager } from '@point0/core'
 import type {
   DataTransformerExtended,
+  ErrorPoint0,
   LayoutPoint,
+  MiddlewareFn,
   PagePoint,
   PointName,
   PointsDefinition,
@@ -9,26 +12,27 @@ import type {
   PointsScope,
   PointType,
   ReadyPoint,
+  RequiredCtx,
   RootPoint,
-  MiddlewareFn,
 } from '@point0/core'
-import { PointsManager } from '@point0/core'
 
-export class ServerPoints {
-  manager: PointsManager<true>
+export class ServerPoints<TError extends ErrorPoint0> {
+  manager: PointsManager<true, RequiredCtx, TError>
 
   transformers = new Map<PointsScope, DataTransformerExtended>()
   roots = new Map<PointsScope, RootPoint>()
   scopes = new Set<PointsScope>()
-  middlewares = new Map<PointsScope, MiddlewareFn[]>()
+  middlewares = new Map<PointsScope, MiddlewareFn<any>[]>()
 
   private constructor({ manager }: { manager: PointsManager }) {
     this.manager = manager as never
   }
 
-  static createFromDefinition(points: PointsDefinition | PointsManager): ServerPoints {
+  static createFromDefinition<TError extends ErrorPoint0>(
+    points: PointsDefinition<RequiredCtx, TError> | PointsManager<boolean, RequiredCtx, TError>,
+  ): ServerPoints<TError> {
     const manager = PointsManager.createFromDefinition(points)
-    const instance = new ServerPoints({ manager })
+    const instance = new ServerPoints<TError>({ manager })
     const roots = manager.getRoots()
     for (const root of roots) {
       instance.roots.set(root.scope, root)
@@ -36,10 +40,12 @@ export class ServerPoints {
       instance.scopes.add(root.scope)
       instance.middlewares.set(root.scope, root._middlewares)
     }
-    return instance
+    return instance as ServerPoints<TError>
   }
 
-  static async createFromSource(source: PointsDefinitionSource): Promise<ServerPoints> {
+  static async createFromSource<TError extends ErrorPoint0>(
+    source: PointsDefinitionSource<RequiredCtx, TError>,
+  ): Promise<ServerPoints<TError>> {
     const manager = await PointsManager.createFromSource(source)
     return ServerPoints.createFromDefinition(manager)
   }

@@ -4,10 +4,11 @@ import type {
   MiddlewareFn,
   PointsScope,
   ReadyPointType,
+  ErrorPoint0,
 } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 
-export class FetchRecorder {
+export class FetchRecorder<TError extends ErrorPoint0 = ErrorPoint0> {
   records: FetchRecorderRecord[]
   limit: number
   enabled: boolean
@@ -37,7 +38,7 @@ export class FetchRecorder {
     }
   }
 
-  recordResult(result: FetcherFetchDetailedResult) {
+  recordResult(result: FetcherFetchDetailedResult<TError>) {
     const record = this.records.find((record) => record.request.id === result.request.id)
     if (!record) {
       return
@@ -76,13 +77,13 @@ export class FetchRecorder {
 
   getFinishedResults<TVariant extends FetchRecorderVariant | undefined = undefined>(
     filter?: FetchRecorderFilter<TVariant>,
-  ): Array<FetcherFetchDetailedResultSpecific<TVariant>> {
+  ): Array<FetcherFetchDetailedResultSpecific<TVariant, TError>> {
     return this.getRecords(filter).map((record) => record.result) as never
   }
 
   async waitFinishedResults<TVariant extends FetchRecorderVariant | undefined = undefined>(
     filter?: FetchRecorderFilter<TVariant>,
-  ): Promise<Array<FetcherFetchDetailedResultSpecific<TVariant>>> {
+  ): Promise<Array<FetcherFetchDetailedResultSpecific<TVariant, TError>>> {
     await this.waitStable()
     return this.getFinishedResults(filter) as never
   }
@@ -126,7 +127,7 @@ export class FetchRecorder {
     }
   }
 
-  get middleware(): MiddlewareFn {
+  get middleware(): MiddlewareFn<TError> {
     return async ({ request, next }) => {
       this.recordRequest(request)
       const result = await next()
@@ -153,7 +154,7 @@ export class FetchRecorder {
   }
 }
 
-export type FetchRecorderVariant = FetcherFetchDetailedResult['variant']
+export type FetchRecorderVariant = FetcherFetchDetailedResult<any>['variant']
 export type FetchRecorderFilter<TVariant extends FetchRecorderVariant | undefined = undefined> = {
   variant?: TVariant
   scope?: PointsScope
@@ -169,14 +170,19 @@ export type FetchRecorderRecordStarted = {
   request: Request0
   result: undefined
 }
-export type FetchRecorderRecordFinished<TVariant extends FetchRecorderVariant | undefined = undefined> = {
+export type FetchRecorderRecordFinished<
+  TVariant extends FetchRecorderVariant | undefined = undefined,
+  TError extends ErrorPoint0 = ErrorPoint0,
+> = {
   time: {
     start: number
     end: number
     duration: number
   }
   request: Request0
-  result: FetcherFetchDetailedResultSpecific<TVariant>
+  result: FetcherFetchDetailedResultSpecific<TVariant, TError>
 }
 
-export type FetchRecorderRecord = FetchRecorderRecordStarted | FetchRecorderRecordFinished
+export type FetchRecorderRecord<TError extends ErrorPoint0 = ErrorPoint0> =
+  | FetchRecorderRecordStarted
+  | FetchRecorderRecordFinished<undefined, TError>

@@ -1,7 +1,6 @@
-import { describe, expect, expectTypeOf, it } from 'bun:test'
-import { Error0 } from '@devp0nt/error0'
+import { ErrorPoint0, Point0 } from '@point0/core'
 import type { Prettify } from '@point0/core'
-import { Point0 } from '@point0/core'
+import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { createTestThings, ymlify } from './utils/internal-testing.js'
 
 describe('loader', () => {
@@ -64,7 +63,7 @@ describe('loader', () => {
       .lets('page', 'home', '/')
       .loader(() => {
         if (Math.random() + 1) {
-          throw new Error0('test error', { httpStatus: 410 })
+          throw new ErrorPoint0('test error', { status: 410 })
         }
         return { x: 1 }
       })
@@ -113,7 +112,7 @@ describe('loader', () => {
     const mutation = root
       .lets('mutation', 'test')
       .loader(() => {
-        throw new Error0('test error', { httpStatus: 410 })
+        throw new ErrorPoint0('test error', { status: 410 })
       })
       .mutation()
     const { render } = await createTestThings({ points: [root, mutation, page] })

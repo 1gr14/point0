@@ -62,7 +62,6 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "@tanstack/react-query": "catalog:",
-    "@devp0nt/error0": "catalog:",
     "@devp0nt/route0": "catalog:",
     "@unhead/react": "catalog:"
   },
@@ -72,7 +71,7 @@
     "esbuild-fix-imports-plugin": "^1.0.22",
     "superjson": "^2.2.6",
     "tsup": "^8.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "catalog:"
   },
   "publishConfig": {
     "access": "public"

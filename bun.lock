@@ -12,7 +12,7 @@
         "@semantic-release/github": "^11.0.6",
         "@semantic-release/npm": "^12.0.2",
         "@typescript-eslint/utils": "^8.56.0",
-        "@typescript/native-preview": "^7.0.0-dev.20260212.1",
+        "@typescript/native-preview": "catalog:",
         "eslint": "^10.0.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-no-only-tests": "^3.3.0",
@@ -22,6 +22,7 @@
         "prettier": "^3.6.2",
         "rimraf": "^6.0.1",
         "semantic-release": "^24.2.8",
+        "typescript": "catalog:",
         "typescript-eslint": "^8.56.0",
         "zod": "catalog:",
       },
@@ -51,7 +52,7 @@
         "cross-env": "^10.0.0",
         "ncp": "^2.0.0",
         "rimraf": "^6.0.1",
-        "typescript": "^5.9.3",
+        "typescript": "catalog:",
       },
     },
     "examples/vite": {
@@ -79,7 +80,7 @@
         "cross-env": "^10.0.0",
         "ncp": "^2.0.0",
         "rimraf": "^6.0.1",
-        "typescript": "^5.9.3",
+        "typescript": "catalog:",
         "vite": "^7.2.2",
         "vite-bundle-analyzer": "^1.2.3",
         "vite-plugin-commonjs": "^0.10.4",
@@ -104,7 +105,7 @@
         "dedent": "^1.7.1",
         "esbuild-fix-imports-plugin": "^1.0.22",
         "tsup": "^8.0.0",
-        "typescript": "^5.9.3",
+        "typescript": "catalog:",
       },
       "peerDependencies": {
         "@devp0nt/route0": "catalog:",
@@ -119,7 +120,7 @@
         "@types/bun": "^1.2.22",
         "@types/node": "^20.0.0",
         "tsup": "^8.0.0",
-        "typescript": "^5.9.3",
+        "typescript": "catalog:",
       },
       "peerDependencies": {
         "@point0/core": "workspace:*",
@@ -144,10 +145,9 @@
         "esbuild-fix-imports-plugin": "^1.0.22",
         "superjson": "^2.2.6",
         "tsup": "^8.0.0",
-        "typescript": "^5.9.3",
+        "typescript": "catalog:",
       },
       "peerDependencies": {
-        "@devp0nt/error0": "catalog:",
         "@devp0nt/route0": "catalog:",
         "@tanstack/react-query": "catalog:",
         "@unhead/react": "catalog:",
@@ -162,7 +162,7 @@
         "@types/bun": "^1.2.22",
         "@types/node": "^20.0.0",
         "tsup": "^8.0.0",
-        "typescript": "^5.9.3",
+        "typescript": "catalog:",
       },
       "peerDependencies": {
         "@point0/core": "workspace:*",
@@ -191,6 +191,7 @@
         "tough-cookie": "^6.0.0",
       },
       "devDependencies": {
+        "@devp0nt/error0": "catalog:",
         "@point0/cookies-store": "workspace:*",
         "@testing-library/react": "^16.3.1",
         "@types/bun": "^1.2.22",
@@ -200,17 +201,16 @@
         "@types/qs": "^6.14.0",
         "@vitejs/plugin-react": "^5.1.2",
         "esbuild-fix-imports-plugin": "^1.0.22",
-        "happy-dom": "^20.1.0",
+        "happy-dom": "20.3.0",
         "lodash": "^4.17.21",
         "playwright": "^1.57.0",
         "tsup": "^8.0.0",
-        "typescript": "^5.9.3",
+        "typescript": "catalog:",
         "vite": "^7.3.1",
         "vite-plugin-svgr": "^4.5.0",
         "vite-tsconfig-paths": "^6.0.4",
       },
       "peerDependencies": {
-        "@devp0nt/error0": "catalog:",
         "@devp0nt/route0": "catalog:",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
@@ -245,7 +245,7 @@
         "cross-env": "^10.0.0",
         "ncp": "^2.0.0",
         "rimraf": "^6.0.1",
-        "typescript": "^5.9.3",
+        "typescript": "catalog:",
       },
     },
     "packages/engine/tests/templates/two-clients": {
@@ -273,7 +273,7 @@
         "cross-env": "^10.0.0",
         "ncp": "^2.0.0",
         "rimraf": "^6.0.1",
-        "typescript": "^5.9.3",
+        "typescript": "catalog:",
       },
     },
     "packages/react-dom": {
@@ -284,7 +284,7 @@
         "@types/node": "^20.0.0",
         "esbuild-fix-imports-plugin": "^1.0.22",
         "tsup": "^8.0.0",
-        "typescript": "^5.9.3",
+        "typescript": "catalog:",
       },
       "peerDependencies": {
         "@point0/core": "workspace:*",
@@ -300,10 +300,9 @@
         "@types/node": "^20.0.0",
         "esbuild-fix-imports-plugin": "^1.0.22",
         "tsup": "^8.0.0",
-        "typescript": "^5.9.3",
+        "typescript": "catalog:",
       },
       "peerDependencies": {
-        "@devp0nt/error0": "catalog:",
         "@devp0nt/route0": "catalog:",
         "@point0/core": "workspace:*",
         "@tanstack/react-query": "catalog:",
@@ -318,9 +317,11 @@
     "@devp0nt/error0": "^1.0.0-next.52",
     "@devp0nt/route0": "^1.0.0-next.64",
     "@tanstack/react-query": "^5.0.0",
+    "@typescript/native-preview": "^7.0.0-dev.20260212.1",
     "@unhead/react": "^2.1.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "typescript": "^5.9.3",
     "zod": "^4.0.0",
   },
   "packages": {
@@ -400,7 +401,7 @@
 
     "@commitlint/types": ["@commitlint/types@19.8.1", "", { "dependencies": { "@types/conventional-commits-parser": "^5.0.0", "chalk": "^5.3.0" } }, "sha512-/yCrWGCoA1SVKOks25EGadP9Pnj0oAIHGpl2wH2M2Y46dPM2ueb8wyCVOD7O3WCTkaJ0IkKvzhl1JY7+uCT2Dw=="],
 
-    "@devp0nt/error0": ["@devp0nt/error0@1.0.0-next.49", "", {}, "sha512-DQCXwqi/P8IoItNPA+J6/rQHYHiDilNDsh+jO/B0RO/svgH5BImYsVEw2KtOTbCZHQXMpGNKF91KWEtGV5cj6w=="],
+    "@devp0nt/error0": ["@devp0nt/error0@1.0.0-next.53", "", {}, "sha512-qHHRibdvoRHEHzv+mknmuxCwFhb2fqePI31YEXMTysSFBdWCgQJz/Htzlijyz3aPD7fHGps2dzCsEK93ZkS8wg=="],
 
     "@devp0nt/route0": ["@devp0nt/route0@1.0.0-next.64", "", { "dependencies": { "serialize-error": "^12.0.0" } }, "sha512-ksB/wptQQFMk+cCbINeMxuU5Dr9sapOpu61Z0awc0heAlX63NH8Xd3tDtLOZ6Rme/NwF5YEQBHFmopcPhBYnZw=="],
 
@@ -916,7 +917,7 @@
 
     "emojilib": ["emojilib@2.4.0", "", {}, "sha512-5U0rVMU5Y2n2+ykNLQqMoqklN9ICBT/KsvC1Gz6vqHbz2AXXGkG+Pm5rMWk/8Vjrr/mY9985Hi8DYzn1F09Nyw=="],
 
-    "entities": ["entities@7.0.1", "", {}, "sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA=="],
+    "entities": ["entities@4.5.0", "", {}, "sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw=="],
 
     "env-ci": ["env-ci@11.2.0", "", { "dependencies": { "execa": "^8.0.0", "java-properties": "^1.0.2" } }, "sha512-D5kWfzkmaOQDioPmiviWAVtKmpPT4/iJmMVQxWxMPJTFyTkdc5JQUfc5iXEeWxcOdsYTKSAiA/Age4NUOqKsRA=="],
 
@@ -1048,7 +1049,7 @@
 
     "handlebars": ["handlebars@4.7.8", "", { "dependencies": { "minimist": "^1.2.5", "neo-async": "^2.6.2", "source-map": "^0.6.1", "wordwrap": "^1.0.0" }, "optionalDependencies": { "uglify-js": "^3.1.4" }, "bin": { "handlebars": "bin/handlebars" } }, "sha512-vafaFqs8MZkRrSX7sFVUdo3ap/eNiLnb4IakshzvP56X5Nr1iGKAIqdX6tMlm6HcNRIkr6AxO5jFEoJzzpT8aQ=="],
 
-    "happy-dom": ["happy-dom@20.7.0", "", { "dependencies": { "@types/node": ">=20.0.0", "@types/whatwg-mimetype": "^3.0.2", "@types/ws": "^8.18.1", "entities": "^7.0.1", "whatwg-mimetype": "^3.0.0", "ws": "^8.18.3" } }, "sha512-hR/uLYQdngTyEfxnOoa+e6KTcfBFyc1hgFj/Cc144A5JJUuHFYqIEBDcD4FeGqUeKLRZqJ9eN9u7/GDjYEgS1g=="],
+    "happy-dom": ["happy-dom@20.3.0", "", { "dependencies": { "@types/node": "^20.0.0", "@types/whatwg-mimetype": "^3.0.2", "@types/ws": "^8.18.1", "whatwg-mimetype": "^3.0.0", "ws": "^8.18.3" } }, "sha512-5qJbkqcvR8j/a4av5IWqqIWmEGf9dt6OhGMS6qxCgjSOBGzGa5XLoqg40OyD8XNzQ+g1g2zsXi10kjfpzYH55Q=="],
 
     "has-flag": ["has-flag@4.0.0", "", {}, "sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ=="],
 
@@ -1657,8 +1658,6 @@
     "@semantic-release/release-notes-generator/get-stream": ["get-stream@7.0.1", "", {}, "sha512-3M8C1EOFN6r8AMUhwUAACIoXZJEOufDU5+0gFFN5uNs6XYOralD2Pqkl7m046va6x77FwposWXbAhPPIOus7mQ=="],
 
     "@svgr/core/cosmiconfig": ["cosmiconfig@8.3.6", "", { "dependencies": { "import-fresh": "^3.3.0", "js-yaml": "^4.1.0", "parse-json": "^5.2.0", "path-type": "^4.0.0" }, "peerDependencies": { "typescript": ">=4.9.5" }, "optionalPeers": ["typescript"] }, "sha512-kcZ6+W5QzcJ3P1Mt+83OUv/oHFqZHIx8DuxG6eZ5RGMERoLqp4BuGjhHLYGK+Kf5XVkQvqBSmAy/nGWN3qDgEA=="],
-
-    "@svgr/hast-util-to-babel-ast/entities": ["entities@4.5.0", "", {}, "sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw=="],
 
     "@typescript-eslint/eslint-plugin/ignore": ["ignore@7.0.5", "", {}, "sha512-Hs59xBNfUIunMFgWAbGX5cq6893IbWg4KnrjbYwX3tx0ztorVgTDA6B2sxf8ejHJ4wz8BqGUMYlnzNBer5NvGg=="],
 

@@ -1,6 +1,7 @@
 import { Route0 } from '@devp0nt/route0'
 import type { AnyRoute } from '@devp0nt/route0'
 import * as React from 'react'
+import type { ErrorPoint0 } from './error.js'
 import type {
   PointName,
   PointsScope,
@@ -11,7 +12,11 @@ import type {
   UndefinedRoute,
 } from './types.js'
 
-export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extends RequiredCtx = RequiredCtx> {
+export class PointsManager<
+  TReady extends boolean = boolean,
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TError extends ErrorPoint0 = ErrorPoint0,
+> {
   collection: TReady extends true ? ReadyPointsCollection : NormalizedPointsCollection
   root: RootPoint
   scope: PointsScope
@@ -38,15 +43,20 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     this.scope = scope
   }
 
-  static readonly createFromDefinition = <TPoints extends PointsDefinition | PointsManager>(
+  static readonly createFromDefinition = <TPoints extends PointsDefinition<any, any> | PointsManager<any, any, any>>(
     points: TPoints,
   ): PointsManager<
     false,
-    TPoints extends PointsManager<any, infer TRequiredCtx>
+    TPoints extends PointsManager<any, infer TRequiredCtx, any>
       ? TRequiredCtx
-      : TPoints extends PointsDefinition<infer TRequiredCtx>
+      : TPoints extends PointsDefinition<infer TRequiredCtx, any>
         ? TRequiredCtx
-        : RequiredCtx
+        : RequiredCtx,
+    TPoints extends PointsDefinition<any, infer TError>
+      ? TError
+      : TPoints extends PointsManager<any, any, infer TError>
+        ? TError
+        : ErrorPoint0
   > => {
     if (points instanceof PointsManager) {
       return points as never
@@ -100,9 +110,15 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     })
   }
 
-  static async createFromSource<TSource extends PointsDefinitionSource>(
+  static async createFromSource<TSource extends PointsDefinitionSource<any, any>>(
     source: TSource,
-  ): Promise<PointsManager<false, TSource extends PointsDefinitionSource<infer TRequiredCtx> ? TRequiredCtx : never>> {
+  ): Promise<
+    PointsManager<
+      false,
+      TSource extends PointsDefinitionSource<infer TRequiredCtx> ? TRequiredCtx : never,
+      TSource extends PointsDefinitionSource<any, infer TError> ? TError : ErrorPoint0
+    >
+  > {
     if (typeof source === 'function') {
       const result = await source()
       const points = 'default' in result ? result.default : result
@@ -121,9 +137,9 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     return typeof record === 'object' && 'type' in record && record.type === 'root' && 'point' in record.point
   }
 
-  async load(force?: boolean): Promise<PointsManager<true, TRequiredCtx>> {
+  async load(force?: boolean): Promise<PointsManager<true, TRequiredCtx, TError>> {
     if (this.ready && !force) {
-      return this as PointsManager<true, TRequiredCtx>
+      return this as PointsManager<true, TRequiredCtx, TError>
     }
     const { readyPoints, errors } = await PointsManager.toReadyPointsCollection(this.collection)
     for (const error of errors) {
@@ -133,7 +149,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     this.ready = true as never
     this.root = this.collection.at(0)?.point as RootPoint
     this.scope = this.root.scope
-    return this as PointsManager<true, TRequiredCtx>
+    return this as PointsManager<true, TRequiredCtx, TError>
     // return new PointsManager<true, TRequiredCtx>({
     //   root: this.root,
     //   scope: this.root.scope,
@@ -280,23 +296,34 @@ export type MixedPointsCollection = MixedPointsCollectionRecord[]
 export type NormalizedPointsCollectionRecord = ReadyPointsCollectionRecord | NormalizedLazyPointsCollectionRecord
 export type NormalizedPointsCollection = NormalizedPointsCollectionRecord[]
 
-export type PointsDefinition<TRequiredCtx extends RequiredCtx = RequiredCtx> =
-  | [{ point: RootPoint<TRequiredCtx> }, ...MixedPointsCollectionRecord[]]
-  | readonly [{ point: RootPoint<TRequiredCtx> }, ...MixedPointsCollectionRecord[]]
-export type PointsDefinitionGetter<TRequiredCtx extends RequiredCtx = RequiredCtx> = () => Promise<
-  PointsDefinition<TRequiredCtx>
->
-export type PointsDefinitionModule<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
-  default: PointsDefinition<TRequiredCtx>
+export type PointsDefinition<
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TError extends ErrorPoint0 = ErrorPoint0,
+> =
+  | [{ point: RootPoint<TRequiredCtx, TError> }, ...MixedPointsCollectionRecord[]]
+  | readonly [{ point: RootPoint<TRequiredCtx, TError> }, ...MixedPointsCollectionRecord[]]
+export type PointsDefinitionGetter<
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TError extends ErrorPoint0 = ErrorPoint0,
+> = () => Promise<PointsDefinition<TRequiredCtx, TError>>
+export type PointsDefinitionModule<
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TError extends ErrorPoint0 = ErrorPoint0,
+> = {
+  default: PointsDefinition<TRequiredCtx, TError>
 }
-export type PointsDefinitionModuleGetter<TRequiredCtx extends RequiredCtx = RequiredCtx> = () => Promise<
-  PointsDefinitionModule<TRequiredCtx>
->
-export type PointsDefinitionSource<TRequiredCtx extends RequiredCtx = RequiredCtx> =
-  | PointsDefinition<TRequiredCtx>
-  | PointsDefinitionGetter<TRequiredCtx>
-  | PointsDefinitionModule<TRequiredCtx>
-  | PointsDefinitionModuleGetter<TRequiredCtx>
+export type PointsDefinitionModuleGetter<
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TError extends ErrorPoint0 = ErrorPoint0,
+> = () => Promise<PointsDefinitionModule<TRequiredCtx, TError>>
+export type PointsDefinitionSource<
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TError extends ErrorPoint0 = ErrorPoint0,
+> =
+  | PointsDefinition<TRequiredCtx, TError>
+  | PointsDefinitionGetter<TRequiredCtx, TError>
+  | PointsDefinitionModule<TRequiredCtx, TError>
+  | PointsDefinitionModuleGetter<TRequiredCtx, TError>
 export type ExtractPointsDefinition<T extends PointsDefinitionSource> = T extends PointsDefinition
   ? T
   : T extends PointsDefinitionModule
