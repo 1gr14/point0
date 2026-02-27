@@ -156,12 +156,12 @@ export async function killPort(
       try {
         const pids = await listPids(port, excludeCurrentProcess)
         if (pids.length === 0) {
-          if (!silent) _logger({ lever: 'info', topic, message: `No process found using port ${port}` })
+          if (!silent) _logger({ level: 'info', topic, message: `No process found using port ${port}` })
           return
         }
         if (!silent) {
           for (const pid of pids) {
-            _logger({ lever: 'info', topic, message: `Killing process ${pid} on port ${port}` })
+            _logger({ level: 'info', topic, message: `Killing process ${pid} on port ${port}` })
           }
         }
         await killByPids(pids)

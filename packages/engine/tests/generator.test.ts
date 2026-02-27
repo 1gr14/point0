@@ -38,8 +38,8 @@ const helper = (
     files: TestFile[]
     fixPaths: (content: string) => string
     logger: LoggerFn
-    getLogs: () => Array<[{ lever: string; topic: string; message: string }]>
-    getLastLog: () => [{ lever: string; topic: string; message: string }]
+    getLogs: () => Array<[{ level: string; topic: string; message: string }]>
+    getLastLog: () => [{ level: string; topic: string; message: string }]
     getLastLogMessage: () => string
   }) => void | Promise<void>,
   preserve = false,
@@ -197,7 +197,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
       }),
     )
 
-    it.only(
+    it(
       'generates lazy points file, and log errors for invalid points',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, logger, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'

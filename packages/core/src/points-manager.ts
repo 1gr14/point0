@@ -154,7 +154,7 @@ export class PointsManager<
     const root = this.collection.at(0)?.point as RootPoint
     const _logger = root._getLogger() ?? this.logger ?? logger
     for (const error of errors) {
-      _logger({ lever: 'error', topic: 'PointsManager', message: 'Error loading points', error })
+      _logger({ level: 'error', topic: 'PointsManager', message: 'Error loading points', error })
     }
     this.collection = readyPoints
     this.ready = true as never

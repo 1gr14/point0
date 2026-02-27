@@ -217,21 +217,24 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
       this.publicdir ? this.publicdir.prepare() : Promise.resolve(),
     ])
     this.prepared = true as never
-    if (this.points) {
-      const newLogger = this.points.manager.root._getLogger()
-      if (newLogger) {
-        _ssServerLogger.set(newLogger)
-        this.logger = newLogger
-        this.points.manager.logger = newLogger
-        for (const client of this.clients) {
-          client.logger = newLogger
-        }
-      }
-    }
+    this._applyRootLogger()
     this.fetcher = Fetcher.create({ engine, server: this as EngineServer<true, TError> }) as TPrepared extends true
       ? Fetcher<TError>
       : null
     return this as EngineServer<true, TError>
+  }
+
+  /** Override default engine logger with root point _logger when present (point logger > engine config). */
+  private _applyRootLogger(): void {
+    if (!this.points) return
+    const rootLogger = this.points.manager.root._getLogger()
+    if (!rootLogger) return
+    _ssServerLogger.set(rootLogger)
+    this.logger = rootLogger
+    this.points.manager.logger = rootLogger
+    for (const client of this.clients) {
+      client.logger = rootLogger
+    }
   }
 
   async readServerPoints(): Promise<ServerPoints<TError> | null> {
@@ -352,7 +355,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
       } catch (error) {
         // this.logger.error(`Error loading entry point "${entryFile}"`, error)
         this.logger({
-          lever: 'error',
+          level: 'error',
           topic: 'EngineServer',
           message: `Failed to load entry point "${entryFile}"`,
           error,
@@ -552,7 +555,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
       }),
     )()
     this.logger({
-      lever: 'info',
+      level: 'info',
       topic: 'EngineServer',
       message: `Server "${this.scope}" started http://localhost:${this.port}`,
     })

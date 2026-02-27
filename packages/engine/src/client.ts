@@ -439,7 +439,7 @@ Bun.serve({
       },
     })
     this.logger({
-      lever: 'info',
+      level: 'info',
       topic: 'EngineClient',
       message: `Client "${this.scope}" dev server started http://localhost:${this.port}`,
     })
@@ -563,7 +563,7 @@ Bun.serve({
       }),
     )()
     this.logger({
-      lever: 'info',
+      level: 'info',
       topic: 'EngineClient',
       message: `Client "${this.scope}" dev server started http://localhost:${this.port}`,
     })

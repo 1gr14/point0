@@ -484,13 +484,13 @@ export const createLink = <
         return providedHref
       }
       if (routeName === undefined) {
-        logger({ lever: 'error', topic: 'Wouter', message: 'routeName is required for Link without to or href' })
+        logger({ level: 'error', topic: 'Wouter', message: 'routeName is required for Link without to or href' })
         return '#'
       }
       const route = routes[routeName]
       if (!route) {
         // TODO: replace with onClientError handler
-        logger({ lever: 'error', topic: 'Wouter', message: `Route "${routeName}" not found` })
+        logger({ level: 'error', topic: 'Wouter', message: `Route "${routeName}" not found` })
         return '#'
       }
       return route.flat(input)
@@ -543,13 +543,13 @@ export const createNavLink = <
         return providedHref
       }
       if (routeName === undefined) {
-        logger({ lever: 'error', topic: 'Wouter', message: 'routeName is required for NavLink without to or href' })
+        logger({ level: 'error', topic: 'Wouter', message: 'routeName is required for NavLink without to or href' })
         return '#'
       }
       const route = routes[routeName]
       if (!route) {
         // TODO: replace with onClientError handler
-        logger({ lever: 'error', topic: 'Wouter', message: `Route "${routeName}" not found` })
+        logger({ level: 'error', topic: 'Wouter', message: `Route "${routeName}" not found` })
         return '#'
       }
       return route.flat(input)

@@ -490,7 +490,8 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
       throw new Error('Client points can not be mounted on server')
     }
     _ssItems.__POINT0_CLIENT_POINTS__.set(this as unknown as ClientPoints<ErrorPoint0>)
-    _ssClientLogger.set(this.manager.logger ?? _defaultLoggerFn)
+    const fromRoot = this.manager.root._getLogger()
+    _ssClientLogger.set(fromRoot ?? this.manager.logger ?? _defaultLoggerFn)
   }
 
   static getInstance = <TError extends ErrorPoint0>(): ClientPoints<TError> => {

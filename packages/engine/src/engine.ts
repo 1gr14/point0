@@ -393,7 +393,7 @@ export class Engine<
     if (sync) {
       void this.generator.sync({ logOnNotWritten }).catch((error: unknown) => {
         this.logger({
-          lever: 'error',
+          level: 'error',
           topic: 'FilesGenerator',
           message: 'Failed to generate files',
           error,

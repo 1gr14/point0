@@ -214,7 +214,7 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
-import { getCallerLocation, logger } from './index.js'
+import { getCallerLocation, getLoggerForPoint } from './index.js'
 import type { LoggerFn } from './logger.js'
 
 // import stringify from 'safe-stable-stringify'
@@ -345,19 +345,11 @@ export class Point0<
   readonly _root: RootPoint | undefined
   readonly _fsLocation: FsLocation | undefined
   readonly _logger: LoggerFn | undefined
-  readonly _memoizedLogger: LoggerFn | undefined
   readonly _getLogger = (): LoggerFn | undefined => {
-    if (this._memoizedLogger) {
-      return this._memoizedLogger
-    }
-    if (this._logger) {
-      return this._logger
-    }
+    if (this._logger) return this._logger
     let _root = this._root
     while (_root) {
-      if (_root._logger) {
-        return _root._logger
-      }
+      if (_root._logger) return _root._logger
       _root = _root._root
     }
     return undefined
@@ -8087,7 +8079,7 @@ export class Point0<
     data: Extract<AnyEventerEvent<TError>, { name: TName }>['data'],
   ) {
     const event = { name, data, side: _point0_env.side.name } as AnyEventerEvent<TError>
-    // const _logger = this._getLogger() ?? logger
+    const logger = getLoggerForPoint(this)
     for (const subscription of this._eventerSubscriptions) {
       if (subscription.side && subscription.side !== event.side) {
         continue
@@ -8100,7 +8092,7 @@ export class Point0<
           await subscription.callback(event)
         } catch (error) {
           logger({
-            lever: 'error',
+            level: 'error',
             topic: 'Eventer',
             message: `Error emitting event ${name} on point ${this.toStringWithLocation()}`,
             error,
