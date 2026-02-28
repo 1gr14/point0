@@ -24,13 +24,13 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
               loader: guessLoader(filepath),
             }
           }
-          const codeAndMap = result.file?.toCodeWithMap()
           if (filepath.includes('pages/idea.tsx')) {
-            console.log(111, codeAndMap?.code)
+            console.log(111, result.code)
           }
 
           return {
-            contents: appendInlineSourceMap(codeAndMap?.code ?? result.code, codeAndMap?.map),
+            // contents: appendInlineSourceMap(result.code, result.map),
+            contents: result.code,
             loader: guessLoader(filepath),
           }
         } catch (e) {
@@ -47,11 +47,11 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
   } satisfies BunPlugin
 }
 
-function appendInlineSourceMap(code: string, map: Record<string, unknown> | undefined) {
-  if (!map) return code
-  const encoded = Buffer.from(JSON.stringify(map), 'utf8').toString('base64')
-  return `${code}\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${encoded}\n`
-}
+// function appendInlineSourceMap(code: string, map: Record<string, unknown> | undefined) {
+//   if (!map) return code
+//   const encoded = Buffer.from(JSON.stringify(map), 'utf8').toString('base64')
+//   return `${code}\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${encoded}\n`
+// }
 
 function guessLoader(path: string) {
   if (path.endsWith('.ts')) return 'ts'

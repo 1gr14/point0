@@ -60,7 +60,7 @@ export const root = Point0.lets('root', 'root').root()
         const compiler = Compiler.create({ side: 'client', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.code).toContain('if (true)')
+        expect(result.code).toMatch(/if\s*\(\s*true\s*\)/)
       }),
     )
 
@@ -71,7 +71,7 @@ export const root = Point0.lets('root', 'root').root()
         const compiler = Compiler.create({ side: 'server', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.code).toContain('if (true)')
+        expect(result.code).toMatch(/if\s*\(\s*true\s*\)/)
       }),
     )
 
@@ -82,7 +82,7 @@ export const root = Point0.lets('root', 'root').root()
         const compiler = Compiler.create({ side: 'client', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.code).toContain('if (true)')
+        expect(result.code).toMatch(/if\s*\(\s*true\s*\)/)
       }),
     )
 
@@ -93,7 +93,7 @@ export const root = Point0.lets('root', 'root').root()
         const compiler = Compiler.create({ side: 'client', scope: 'test', consts: [{ TEST_VAR: true }] })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.code).toContain('if (true)')
+        expect(result.code).toMatch(/if\s*\(\s*true\s*\)/)
       }),
     )
 
@@ -106,7 +106,7 @@ export const root = Point0.lets('root', 'root').root()
         const compiler = Compiler.create({ side: 'client', scope: 'test', hmrFix: true })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.code).toContain('._tail(function X() {')
+        expect(result.code).toMatch(/\._tail\(function X\(\)\s*\{/)
       }),
     )
 

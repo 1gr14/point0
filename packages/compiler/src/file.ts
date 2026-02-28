@@ -1,5 +1,4 @@
-import * as nodeFsSync from 'node:fs'
-import * as nodeFs from 'node:fs/promises'
+import type { GeneratorResult } from '@babel/generator'
 import generatorModule from '@babel/generator'
 import babel from '@babel/parser'
 import type traverseType from '@babel/traverse'
@@ -8,6 +7,8 @@ import traverseModule from '@babel/traverse'
 import type { File, Node, ObjectExpression, ObjectMethod, ObjectProperty, SpreadElement } from '@babel/types'
 import * as t from '@babel/types'
 import type { EnvOsName, EnvRuntimeName, NormalizedNodeEnv } from '@point0/core'
+import * as nodeFsSync from 'node:fs'
+import * as nodeFs from 'node:fs/promises'
 import prettier from 'prettier'
 import type { CompilerPoint } from './point.js'
 import { type CompilerEnvConsts, normalizeEnvConsts } from './utils.js'
@@ -266,6 +267,10 @@ export class CompilerFile<THasContent extends boolean> {
       const ast = babel.parse(this.content, {
         sourceType: 'module',
         errorRecovery: true,
+        tokens: true,
+        createParenthesizedExpressions: true,
+        retainLines: true,
+        ...({ experimental_preserveFormat: true } as any),
         plugins: [
           'typescript',
           'jsx',
@@ -351,37 +356,33 @@ export class CompilerFile<THasContent extends boolean> {
     return exists
   }
 
-  toCode(): string {
+  toCode({ map: sourceMaps }: { map?: boolean } = {}): {
+    code: string
+    map: GeneratorResult['map']
+  } {
     if (!this.content) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
-    const { code } = babelGenerator(this.ast, { retainLines: true })
-    return code
-  }
-
-  toCodeWithMap(): { code: string; map: NonNullable<ReturnType<typeof babelGenerator>['map']> } {
-    if (!this.content) {
-      throw new Error(`File ${this.abs} is not read yet`)
-    }
-    const generated = babelGenerator(
+    const { code, map } = babelGenerator(
       this.ast,
       {
-        sourceMaps: true,
         sourceFileName: this.abs,
+        retainLines: true,
+        tokens: true,
+        createParenthesizedExpressions: true,
+        ...({ experimental_preserveFormat: true } as any),
+        ...(sourceMaps ? { sourceMaps: true } : {}),
       },
       this.content,
     )
-    if (!generated.map) {
-      throw new Error(`Failed to generate sourcemap for file ${this.abs}`)
-    }
     return {
-      code: generated.code,
-      map: generated.map,
+      code,
+      map,
     }
   }
 
   async toPrettyCode(): Promise<string> {
-    const code = this.toCode()
+    const { code } = this.toCode()
     return await prettier.format(code, {
       parser: 'babel',
       semi: false,

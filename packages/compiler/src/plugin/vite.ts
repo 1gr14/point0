@@ -18,18 +18,18 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
       const result = compiler.compile({
         content: code,
         file: filepath,
+        map: true,
       })
 
       if (!result.modified) return null
-      const codeAndMap = result.file?.toCodeWithMap()
 
       if (filepath.includes('pages/idea.tsx')) {
-        console.log(111, codeAndMap?.code)
+        console.log(111, result.code)
       }
 
       return {
-        code: codeAndMap?.code ?? result.code,
-        map: codeAndMap?.map ?? null,
+        code: result.code,
+        map: result.map,
       }
     },
   }

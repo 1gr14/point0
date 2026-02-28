@@ -1,3 +1,4 @@
+import type { GeneratorResult } from '@babel/generator'
 import type { RoutesPretty } from '@devp0nt/route0'
 import { type EnvOsName, type EnvRuntimeName, type NormalizedNodeEnv, normalNodeEnvs } from '@point0/core'
 import type { CompilerFile } from './file.js'
@@ -102,9 +103,20 @@ export class Compiler {
     })
   }
 
-  compile({ content, file, tryIndex = 0 }: { content?: string; file: string; tryIndex?: number }): {
+  compile({
+    content,
+    file,
+    tryIndex = 0,
+    map: sourceMaps = false,
+  }: {
+    content?: string
+    file: string
+    tryIndex?: number
+    map?: boolean
+  }): {
     file: CompilerFile<true> | undefined
     code: string
+    map: GeneratorResult['map']
     points: CompilerPoint[]
     errors: unknown[]
     modified: boolean
@@ -125,6 +137,7 @@ export class Compiler {
       return {
         file: collectResult.file,
         code: content || '',
+        map: null,
         points: collectResult.points,
         errors,
         modified: false,
@@ -149,11 +162,18 @@ export class Compiler {
       if (tryIndex >= 10) {
         throw new Error('Too many tries to compile file. Looks like it is endless loop of changes.')
       }
-      return this.compile({ content, file, tryIndex: tryIndex + 1 })
+      return this.compile({ content, file, tryIndex: tryIndex + 1, map: sourceMaps })
     }
+    const { code, map } = (() => {
+      if (cf.modified) {
+        return cf.toCode({ map: sourceMaps })
+      }
+      return { code: cf.content, map: null }
+    })()
     return {
       file: cf,
-      code: cf.modified ? cf.toCode() : cf.content,
+      code: code,
+      map: map,
       points: collectResult.points,
       errors,
       modified: cf.modified,
