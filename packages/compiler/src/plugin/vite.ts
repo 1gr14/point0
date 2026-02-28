@@ -23,6 +23,10 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
       if (!result.modified) return null
       const codeAndMap = result.file?.toCodeWithMap()
 
+      if (filepath.includes('pages/idea.tsx')) {
+        console.log(111, codeAndMap?.code)
+      }
+
       return {
         code: codeAndMap?.code ?? result.code,
         map: codeAndMap?.map ?? null,

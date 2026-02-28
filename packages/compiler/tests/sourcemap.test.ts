@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'bun:test'
+import { transform as esbuildTransform } from 'esbuild'
 import { originalPositionFor, TraceMap } from '@jridgewell/trace-mapping'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
@@ -20,6 +21,41 @@ export function ideaLoader() {
 }
 `
 
+const sourceCodeViteLike = `import { useState } from 'react'
+import { Link } from '@/lib/navigate'
+import { ideaLayout } from '../layouts/idea.js'
+
+// const getIdea = async (ctx: Ctx, id: number) => {
+//   const idea = await ctx.prisma.idea.findUniqueOrThrow({
+//     where: { id },
+//   })
+//   return { idea }
+// }
+
+export const ideaPage = ideaLayout
+  .lets('page', 'idea', '/')
+  .loader(async ({ ctx, input }) => {
+    const idea = await ctx.prisma.idea.findUniqueOrThrow({
+      where: { id: +input.id },
+    })
+    const error = new Error('test error')
+    console.error(444, error)
+    throw error
+    return { idea }
+  })
+  .page(({ props: { idea }, location }) => {
+    const [state, setState] = useState(() => 0)
+    return (
+      <div onClick={() => setState(state + 1)}>
+        <p>{idea.description}</p>
+        <p>{JSON.stringify(location)}</p>
+      </div>
+    )
+  })
+
+export default ideaPage
+`
+
 function lineOf(content: string, search: string) {
   const line = content.split('\n').findIndex((item) => item.includes(search)) + 1
   if (!line) {
@@ -34,6 +70,19 @@ function positionOf(content: string, search: string) {
   const column = sourceLine.indexOf(search)
   if (column < 0) {
     throw new Error(`Column for "${search}" not found`)
+  }
+  return { line, column }
+}
+
+function positionOfRegex(content: string, pattern: RegExp, search: string) {
+  const line = content.split('\n').findIndex((item) => pattern.test(item)) + 1
+  if (!line) {
+    throw new Error(`Line matching "${pattern.source}" not found`)
+  }
+  const sourceLine = content.split('\n')[line - 1] ?? ''
+  const column = sourceLine.indexOf(search)
+  if (column < 0) {
+    throw new Error(`Column for "${search}" not found in regex-matched line`)
   }
   return { line, column }
 }
@@ -75,6 +124,44 @@ describe('Compiler sourcemaps', () => {
       const original = originalPositionFor(traceMap, generatedThrowPos)
 
       expect(original.line).toBe(sourceThrowPos.line)
+    } finally {
+      await Bun.file(filepath).delete()
+    }
+  })
+
+  it('keeps accurate line mapping after Vite-like esbuild map composition', async () => {
+    const filepath = nodePath.join(tempDir, `${crypto.randomUUID()}.tsx`)
+    await Bun.write(filepath, sourceCodeViteLike)
+    try {
+      const plugin = compilerVitePlugin({ side: 'server', scope: 'test' })
+      const transform = typeof plugin.transform === 'function' ? plugin.transform : plugin.transform?.handler
+      expect(typeof transform).toBe('function')
+      if (!transform) return
+
+      const transformed = await transform.call({} as never, sourceCodeViteLike, filepath)
+      expect(transformed && typeof transformed !== 'string').toBe(true)
+      if (!transformed || typeof transformed === 'string' || !transformed.map) return
+      if (typeof transformed.code !== 'string') return
+      const mapInput = typeof transformed.map === 'string' ? JSON.parse(transformed.map) : transformed.map
+      if (!mapInput) return
+
+      const codeWithInlineMap = `${transformed.code}\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${Buffer.from(
+        JSON.stringify(mapInput),
+        'utf8',
+      ).toString('base64')}\n`
+      const esbuildResult = await esbuildTransform(codeWithInlineMap, {
+        loader: 'tsx',
+        format: 'esm',
+        sourcemap: 'external',
+        sourcefile: filepath,
+      })
+
+      const generatedErrorPos = positionOfRegex(esbuildResult.code, /new Error\(/, 'new Error(')
+      const sourceErrorPos = positionOf(sourceCodeViteLike, "const error = new Error('test error')")
+      const esbuildMap = JSON.parse(esbuildResult.map) as ConstructorParameters<typeof TraceMap>[0]
+      const original = originalPositionFor(new TraceMap(esbuildMap), generatedErrorPos)
+
+      expect(original.line).toBe(sourceErrorPos.line)
     } finally {
       await Bun.file(filepath).delete()
     }

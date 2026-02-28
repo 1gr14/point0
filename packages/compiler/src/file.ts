@@ -366,7 +366,6 @@ export class CompilerFile<THasContent extends boolean> {
     const generated = babelGenerator(
       this.ast,
       {
-        retainLines: true,
         sourceMaps: true,
         sourceFileName: this.abs,
       },
