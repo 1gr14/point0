@@ -1,6 +1,7 @@
-import { ErrorPoint0, Point0 } from '@point0/core'
 import type { Prettify } from '@point0/core'
+import { ErrorPoint0, Point0 } from '@point0/core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
+import superjson from 'superjson'
 import { createTestThings, ymlify } from './utils/internal-testing.js'
 
 describe('loader', () => {
@@ -18,22 +19,61 @@ describe('loader', () => {
         refetchIntervalInBackground: false,
       })
       .root()
+  const createRootWithTransformer = () =>
+    Point0.lets('root', 'root')
+      .ssr(true)
+      .transformer(superjson)
+      .loading(() => <div id="loading">...</div>)
+      .error(({ error }) => <div id="error">{error.message}</div>)
+      .queryOptions({
+        retry: false,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
+      })
+      .root()
 
   it('returns data', async () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
-      .loader(() => ({ x: 1 }))
+      .loader(() => ({ x: 1, date: new Date('2026-01-01') }))
       .page(({ data }) => {
-        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ x: number }>()
+        // but actually without transformer date is string
+        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ x: number; date: Date }>()
+        expect(data.date).toBe('2026-01-01T00:00:00.000Z' as never)
         return ymlify(data)
       })
     const { fetchPreview, fetchSsr } = await createTestThings({ points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "
-      x: 1
-      "
-    `)
+          "
+          date: 2026-01-01T00:00:00.000Z
+          x: 1
+          "
+        `)
+    const { response } = await fetchSsr(page)
+    expect(response.status).toBe(200)
+  })
+
+  it('returns transformed data', async () => {
+    const root = createRootWithTransformer()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(() => ({ x: 1, date: new Date('2026-01-01') }))
+      .page(({ data }) => {
+        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ x: number; date: Date }>()
+        expect(data.date).toBeInstanceOf(Date)
+        return ymlify({ ...data, date: data.date.toISOString() })
+      })
+    const { fetchPreview, fetchSsr } = await createTestThings({ points: [root, page] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+          "
+          date: 2026-01-01T00:00:00.000Z
+          x: 1
+          "
+        `)
     const { response } = await fetchSsr(page)
     expect(response.status).toBe(200)
   })

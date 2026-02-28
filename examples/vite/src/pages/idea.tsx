@@ -19,6 +19,9 @@ export const ideaPage = ideaLayout
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
       where: { id: +input.id },
     })
+    const error = new Error('test error')
+    console.error(444, error)
+    throw error
     return { idea }
   })
   .with(() => ({ idea: ideaLayout.useValue('idea') }))

@@ -17,7 +17,7 @@ export const engine = Engine.create({
         outfile: './lib/points.server.ts',
       },
     ],
-    port: 3000,
+    port: 3020,
     entry: './index.server.ts',
     outdir: '../dist/server',
     viteConfig: '../vite.config.ts',
@@ -39,7 +39,7 @@ export const engine = Engine.create({
       ],
       routes: async () => await import('./lib/routes').then((m) => m.routes),
       indexHtml: './index.html',
-      port: 3001,
+      port: 3021,
       env: { vars: ['SOURCE_BASE_URL'] },
       publicdir: {
         source: [

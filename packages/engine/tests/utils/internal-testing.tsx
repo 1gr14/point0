@@ -536,6 +536,7 @@ export const createTestThings = async ({
     return await client.run(async () => {
       const url = point.route.flat(args[0] || {}, 'http://localhost')
       const response = await client.fetch(url, ...args.slice(1))
+      const transformer = point.point._getTransformer()
       const view = await HtmlView.parse(await response.text())
       const scriptMatch = /<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">([\s\S]+?)<\/script>/.exec(view.html)
       if (!scriptMatch) {
@@ -551,10 +552,9 @@ export const createTestThings = async ({
         throw new Error('Could not extract dehydrated super store value from script')
       }
       // Parse the JSON string to get the actual string value (first JSON.parse removes the outer quotes)
-      const dehydratedSuperStoreString = JSON.parse(valueMatch[1])
-      // Parse again to get the actual JSON object
-      const dehydratedSuperStore = JSON.parse(dehydratedSuperStoreString)
-      const queryClientDehydratedState = dehydratedSuperStore.__POINT0_QUERY_CLIENT__ as DehydratedState
+      // Parse to get the actual JSON object
+      const dehydratedSuperStore = transformer.parse(JSON.parse(valueMatch[1])) as Record<string, unknown>
+      const queryClientDehydratedState = (dehydratedSuperStore as any).__POINT0_QUERY_CLIENT__ as DehydratedState
       if (queryClientDehydratedState.queries.length === 0) {
         throw new Error('Query client dehydrated state is empty')
       }

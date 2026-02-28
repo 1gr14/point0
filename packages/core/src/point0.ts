@@ -5552,7 +5552,6 @@ export class Point0<
     outputType?: FetchServerOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
-    console.error(123)
     return [
       'point0',
       this.scope,

@@ -45,7 +45,6 @@ launch
 
 === REFACTOING 3000 ===
 Проверить, что сгенерированные с ошилкой поинты нормально в энжину ложатся
-тест на трансформер
 try catch evertywhere in engine to show real error in real place
 Добавить тесты на execute из поинта (или выпилить этот экзекьют)
 --+
