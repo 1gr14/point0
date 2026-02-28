@@ -6,10 +6,16 @@ export type LoggerOptions = {
   topic: string
   message: string
   error?: unknown
+  meta?: Record<string, unknown>
 }
 export type LoggerFn = (options: LoggerOptions) => void
 export const _defaultLoggerFn: LoggerFn = (options: LoggerOptions) => {
-  console[options.level](`[${options.topic}] ${options.message}`, ...(options.error ? [options.error] : []))
+  // eslint-disable-next-line no-console
+  console[options.level](
+    `[${options.topic}] ${options.message}`,
+    ...(options.error ? [options.error] : []),
+    ...(options.meta ? [options.meta] : []),
+  )
 }
 
 export const _ssClientLogger = superstore.define<LoggerFn>(

@@ -6,7 +6,6 @@ const general = {
     'src/client.ts',
     'src/config.ts',
     'src/engine.ts',
-    'src/error.ts',
     'src/executor.ts',
     'src/fake-client.ts',
     'src/fetcher.ts',

@@ -10,6 +10,7 @@ import {
 import type {
   ClassLikeError0,
   Data,
+  DataTransformerExtended,
   FetcherFetchDetailedResult,
   FetcherFetchDetailedResultGeneral,
   FetcherFetchDetailedResultNoMiddleware,
@@ -29,7 +30,6 @@ import { Request0 } from '@point0/core/request0'
 import { unflatten } from 'flat'
 import type { EngineClient } from './client.js'
 import type { Engine } from './engine.js'
-import { toJsonErrorResponse } from './error.js'
 import { Executor } from './executor.js'
 import type { Publicdir } from './publicdir.js'
 import type { EngineServer } from './server.js'
@@ -92,27 +92,52 @@ export class Fetcher<TError extends ErrorPoint0> {
     if (!validOutputTypes.includes(outputType as (typeof validOutputTypes)[number])) {
       throw new Error(`Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${typeof outputType}`)
     }
-    const pointInput = await (async () => {
-      if (pointType === 'page' || pointType === 'layout') {
-        return await this.getPointInputFromTaskRequest({ request, scope })
-      }
-      return undefined
-    })()
+    // const pointInput = await (async () => {
+    //   if (pointType === 'page' || pointType === 'layout') {
+    //     return await this.getPointInputFromTaskRequest({ request, scope, point: undefined }) // here point undefined, becouse it is needed only for transformer
+    //   }
+    //   return undefined
+    // })()
     return {
       pointType: pointType as (typeof validPointTypes)[number],
       outputType: outputType as (typeof validOutputTypes)[number],
       scope,
       pointName,
-      pointInput,
+      // pointInput,
     }
+  }
+
+  private _transformers = new Map<PointsScope, DataTransformerExtended>()
+  private getTransformer = ({
+    scope,
+    point,
+  }: {
+    scope: PointsScope
+    point: ReadyPoint | undefined
+  }): DataTransformerExtended => {
+    if (point?._transformer) {
+      return point._transformer
+    }
+    const exTransformer = this._transformers.get(scope)
+    if (exTransformer) {
+      return exTransformer
+    }
+    const transformer =
+      this.server.points?.getTransformerByScope({
+        scope,
+      }) || blankDataTransformerExtended
+    this._transformers.set(scope, transformer)
+    return transformer
   }
 
   private readonly _getPointInputFromTaskRequest = async ({
     request,
     scope,
+    point,
   }: {
     request: Request0
     scope: PointsScope
+    point: ReadyPoint | undefined
   }): Promise<InputRawUnknown> => {
     if (request.location.pathname !== '/_point0') {
       return {}
@@ -144,24 +169,23 @@ export class Fetcher<TError extends ErrorPoint0> {
     ) {
       throw new Error(`Invalid body point input: must be an object, got ${typeof inputRawNotTransformed}`)
     }
-    const transformer =
-      this.server.points?.getTransformerByScope({
-        scope,
-      }) || blankDataTransformerExtended
+    const transformer = this.getTransformer({ scope, point })
     const inputRaw = transformer.deserialize<InputRawUnknown>(inputRawNotTransformed)
     return inputRaw
   }
   getPointInputFromTaskRequest = async ({
     request,
     scope,
+    point,
   }: {
     request: Request0
     scope: PointsScope
+    point: ReadyPoint | undefined
   }): Promise<InputRawUnknown> => {
     if (request.state.__POINT0_RAW_UNKNOWN_INPUT__) {
       return request.state.__POINT0_RAW_UNKNOWN_INPUT__ as InputRawUnknown
     }
-    const result = await this._getPointInputFromTaskRequest({ request, scope })
+    const result = await this._getPointInputFromTaskRequest({ request, scope, point })
     request.state.__POINT0_RAW_UNKNOWN_INPUT__ = result
     return result
   }
@@ -795,14 +819,14 @@ export class Fetcher<TError extends ErrorPoint0> {
     serverStorageState: SuperStoreInternalValuesOrErrors
   }): Promise<FetcherFetchTaskPointResult> => {
     const client = this.server.clients.find((client) => client.scope === root.scope)
-    const meta: Record<string, any> = {
-      url: request.original.url,
-      scope: root.scope,
-      pointType: task.pointType,
-      outputType: task.outputType,
-      pointName: task.pointName,
-      pointInput: task.pointInput,
-    }
+    // const meta: Record<string, any> = {
+    //   url: request.original.url,
+    //   scope: root.scope,
+    //   pointType: task.pointType,
+    //   outputType: task.outputType,
+    //   pointName: task.pointName,
+    //   pointInput: task.pointInput,
+    // }
     const partialResult = {
       request,
       scope: root.scope,
@@ -814,6 +838,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       error: undefined,
     }
     let input: InputRawUnknown = {}
+    const transformer = this.getTransformer({ scope: root.scope, point })
 
     try {
       if (task.outputType === 'html' && task.pointType === 'page') {
@@ -830,7 +855,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             `Point "${task.scope}.${task.pointType}.${task.pointName}" has no route while requested page html via task`,
           )
         }
-        input = await this.getPointInputFromTaskRequest({ request, scope: root.scope })
+        input = await this.getPointInputFromTaskRequest({ request, scope: root.scope, point })
         const pageLocation = (point.route as CallableRoute).getLocation((point.route as CallableRoute).flat(input))
         const result = await this.fetchPagePoint({
           client,
@@ -854,7 +879,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         effects,
         serverStorageState,
       })
-      input = await this.getPointInputFromTaskRequest({ request, scope: root.scope })
+      input = await this.getPointInputFromTaskRequest({ request, scope: root.scope, point })
 
       if (task.outputType === 'queryClientDehydratedState') {
         if (task.pointType !== 'page') {
@@ -881,7 +906,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           input,
         })
         const dehydratedState = await executor.getQueryClientReadyDehydratedState()
-        const response = new Response(point._getTransformer().stringify({ dehydratedState }), {
+        const response = new Response(transformer.stringify({ dehydratedState }), {
           headers: { 'Content-Type': 'application/json' },
           status: 200,
         })
@@ -903,11 +928,18 @@ export class Fetcher<TError extends ErrorPoint0> {
       })
 
       if (executeResult.error) {
-        const response = toJsonErrorResponse(
-          point?._Error ?? root._Error,
-          executeResult.error,
-          executeResult.effects.status ?? 500,
-        )
+        const response = toJsonErrorResponse({
+          ErrorClass: point?._Error ?? root._Error,
+          error: executeResult.error,
+          // status: executeResult.effects.status >=  ?? 500,
+          status:
+            executeResult.error.status ??
+            (!executeResult.effects.status ||
+            (executeResult.effects.status >= 200 && executeResult.effects.status < 400)
+              ? undefined
+              : executeResult.effects.status),
+          transformer,
+        })
         return {
           ...partialResult,
           input,
@@ -931,7 +963,12 @@ export class Fetcher<TError extends ErrorPoint0> {
 
       if (!executeResult.output) {
         const error = new Error('No output')
-        const response = toJsonErrorResponse(root._Error, error, 404)
+        const response = toJsonErrorResponse({
+          ErrorClass: root._Error,
+          error,
+          status: 404,
+          transformer,
+        })
         return {
           ...partialResult,
           input,
@@ -943,7 +980,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       // else we try to get endpoint json
-      const response = new Response(executeResult.point._getTransformer().stringify(executeResult.output), {
+      const response = new Response(transformer.stringify(executeResult.output), {
         headers: { 'Content-Type': 'application/json' },
         status: executeResult.effects.status ?? 200,
       })
@@ -958,7 +995,12 @@ export class Fetcher<TError extends ErrorPoint0> {
     } catch (error) {
       const ErrorClass = root._Error
       const error0 = ErrorClass.from(error)
-      const response = toJsonErrorResponse(ErrorClass, error0, 500)
+      const response = toJsonErrorResponse({
+        ErrorClass,
+        error: error0,
+        status: 500,
+        transformer,
+      })
       return {
         ...partialResult,
         input,
@@ -988,14 +1030,14 @@ export class Fetcher<TError extends ErrorPoint0> {
     serverStorageState: SuperStoreInternalValuesOrErrors
   }): Promise<FetcherFetchPagePointResult> => {
     const input = this.getPointInputFormSuitablePageLocation({ pageLocation, request })
-    const meta: Record<string, any> = {
-      url: request.original.url,
-      scope: client.scope,
-      pointType: 'page',
-      outputType: 'html',
-      pointName: point?.name,
-      pointInput: input,
-    }
+    // const meta: Record<string, any> = {
+    //   url: request.original.url,
+    //   scope: client.scope,
+    //   pointType: 'page',
+    //   outputType: 'html',
+    //   pointName: point?.name,
+    //   pointInput: input,
+    // }
     const partialResult = {
       client,
       pageLocation,
@@ -1071,7 +1113,13 @@ export class Fetcher<TError extends ErrorPoint0> {
     } catch (error) {
       const ErrorClass = client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
       const error0 = ErrorClass.from(error)
-      const response = toJsonErrorResponse(ErrorClass, error0, 500)
+      const transformer = this.getTransformer({ scope: client.scope, point })
+      const response = toJsonErrorResponse({
+        ErrorClass,
+        error: error0,
+        status: 500,
+        transformer,
+      })
       return {
         ...partialResult,
         response,
@@ -1144,10 +1192,16 @@ export class Fetcher<TError extends ErrorPoint0> {
     } catch (error) {
       const ErrorClass = this.server.points?.manager.root._Error ?? ErrorPoint0
       const error0 = ErrorClass.from(error)
+      const transformer = this.getTransformer({ scope: baseOptions.scope, point: undefined })
       return {
         request: baseOptions.request,
         scope: baseOptions.scope,
-        response: toJsonErrorResponse(ErrorClass, error0),
+        response: toJsonErrorResponse({
+          ErrorClass,
+          error: error0,
+          status: 500,
+          transformer,
+        }),
         variant: isMiddleware ? 'middleware' : 'unknown',
         error: error0,
       }
@@ -1189,7 +1243,11 @@ export class Fetcher<TError extends ErrorPoint0> {
         return {
           request: prepareFetchResult.request,
           scope: prepareFetchResult.scope,
-          response: toJsonErrorResponse(ErrorClass, prepareFetchResult.errorResult),
+          response: toJsonErrorResponse({
+            ErrorClass,
+            error: prepareFetchResult.errorResult,
+            transformer: this.getTransformer({ scope: prepareFetchResult.scope, point: undefined }),
+          }),
           variant: 'unknown',
           error: prepareFetchResult.errorResult,
         }
@@ -1253,7 +1311,12 @@ export class Fetcher<TError extends ErrorPoint0> {
       return {
         request: (prepareFetchResult as any).request,
         scope: (prepareFetchResult as any).scope,
-        response: toJsonErrorResponse(ErrorClass, error),
+        response: toJsonErrorResponse({
+          ErrorClass,
+          error,
+          status: 404,
+          transformer: this.getTransformer({ scope: (prepareFetchResult as any).scope, point: undefined }),
+        }),
         variant: 'unknown',
         error,
       }
@@ -1297,7 +1360,11 @@ export class Fetcher<TError extends ErrorPoint0> {
       return {
         request: (prepareFetchResult as any).request,
         scope: (prepareFetchResult as any).scope,
-        response: toJsonErrorResponse(ErrorClass, error),
+        response: toJsonErrorResponse({
+          ErrorClass,
+          error: error0,
+          transformer: this.getTransformer({ scope: prepareFetchResult.scope, point: undefined }),
+        }),
         variant: 'unknown',
         error: error0,
       }
@@ -1381,7 +1448,11 @@ export class Fetcher<TError extends ErrorPoint0> {
         const finalResult = {
           request: prepareFetchResult.request,
           scope: prepareFetchResult.scope,
-          response: toJsonErrorResponse(ErrorClass, error),
+          response: toJsonErrorResponse({
+            ErrorClass,
+            error: error0,
+            transformer: this.getTransformer({ scope: prepareFetchResult.scope, point: undefined }),
+          }),
           variant: 'unknown' as const,
           error: error0,
         }
@@ -1567,4 +1638,28 @@ type FetcherFetchTaskPointResult = Omit<FetcherFetchDetailedResultGeneral<any>, 
   data: Data | undefined
   responseFormat: 'json' | 'html'
   input: InputRawUnknown
+}
+
+export const toJsonErrorResponse = ({
+  ErrorClass,
+  error,
+  status,
+  transformer,
+}: {
+  ErrorClass: ClassLikeError0
+  error: unknown
+  status?: number
+  transformer: DataTransformerExtended
+}) => {
+  const error0 = ErrorClass.from(error)
+  status = status ?? error0.status ?? 500
+  if (error0.status !== status) {
+    error0.status = status
+  }
+  const serialzied = ErrorClass.serialize(error0)
+  const stringified = transformer.stringify(serialzied)
+  return new Response(stringified, {
+    headers: { 'Content-Type': 'application/json' },
+    status,
+  })
 }

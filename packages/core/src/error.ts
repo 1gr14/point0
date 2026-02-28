@@ -22,7 +22,9 @@ export class ErrorPoint0 extends Error {
     const record = typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {}
     const message =
       typeof record.message === 'string' ? record.message : typeof error === 'string' ? error : 'Unknown error'
-    if (record.name !== 'ErrorPoint0') {
+    const isSerializedErrorPoint0 = record.name === 'ErrorPoint0'
+    const isOriginalError = error instanceof Error && error.constructor === Error
+    if (!isSerializedErrorPoint0 && !isOriginalError) {
       return new ErrorPoint0(message, {
         cause: error,
       })

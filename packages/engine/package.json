@@ -34,10 +34,6 @@
       "types": "./dist/config.d.ts",
       "import": "./dist/config.js"
     },
-    "./error": {
-      "types": "./dist/error.d.ts",
-      "import": "./dist/error.js"
-    },
     "./executor": {
       "types": "./dist/executor.d.ts",
       "import": "./dist/executor.js"

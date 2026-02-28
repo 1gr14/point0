@@ -360,7 +360,7 @@ export class Point0<
   readonly _basepath: string | undefined
   readonly type: TPointType
   private readonly _letsReadyPointType: TLetsReadyPointType
-  private readonly _transformer: DataTransformerExtended | undefined
+  readonly _transformer: DataTransformerExtended | undefined
   _getTransformer = () => this._transformer ?? blankDataTransformerExtended
   private readonly _eventerSubscriptions: EventerSubscription<any, TError>[]
   readonly _ssr: boolean
@@ -5477,7 +5477,7 @@ export class Point0<
         return result
       }
       const json = await res.json()
-      const data = this._getTransformer().deserialize(json)
+      const data = this._getTransformer().deserialize(json) ?? json
       if (res.ok) {
         const result = {
           response: res,
@@ -5493,13 +5493,13 @@ export class Point0<
         this._emit('pointFetchServerSuccess', eventData)
         return result
       }
+      const error0 = this._Error.from(data)
+      error0.status = res.status
       const result = {
         response: res,
         output: undefined,
         data: undefined,
-        error: Object.assign(this._Error.from(data), {
-          status: res.status,
-        }),
+        error: error0,
       }
       const eventData = {
         ..._eventData,
@@ -5552,6 +5552,7 @@ export class Point0<
     outputType?: FetchServerOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
+    console.error(123)
     return [
       'point0',
       this.scope,

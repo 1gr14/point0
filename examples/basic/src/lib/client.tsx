@@ -37,7 +37,9 @@ export const client = Point0.lets<{ zxc: number }>('root', 'client')
     return (
       <div>
         <div>Error: {error.message}</div>
-        <pre>{JSON.stringify(error.stack, null, 2)}</pre>
+        <code>
+          <pre>{error.stack}</pre>
+        </code>
       </div>
     )
   })

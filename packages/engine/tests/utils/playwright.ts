@@ -418,11 +418,13 @@ export class PlaywrightPage {
 
   logStory(): void {
     throwOnHelperLogFnCalling()
+    // eslint-disable-next-line no-console
     console.dir(this.story, { depth: null })
   }
 
   logLogs(): void {
     throwOnHelperLogFnCalling()
+    // eslint-disable-next-line no-console
     console.dir(this.logs, { depth: null })
   }
 

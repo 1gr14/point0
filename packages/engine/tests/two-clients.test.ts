@@ -96,10 +96,10 @@ describe('two-clients', () => {
           // server return nothing becouse request not matches no one host
           const response = await tp.fetchServer('/')
           const json = await response.json()
-          expect(response.status).toBe(404)
           expect(json).toMatchObject({
             message: 'Not Found',
           })
+          expect(response.status).toBe(404)
 
           // first client return itsefl becouse of host
           const page1 = await tp.gotoClient1('/')

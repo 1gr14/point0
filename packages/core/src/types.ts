@@ -1216,7 +1216,7 @@ export type FetchTask = {
   outputType: 'data' | 'queryClientDehydratedState' | 'html'
   scope: PointsScope
   pointName: PointName
-  pointInput: InputRawUnknown | undefined // in case if it is page or layout, we will parse input on task level, becouse we need it to extract totally match pageLocation
+  // pointInput: InputRawUnknown | undefined // in case if it is page or layout, we will parse input on task level, becouse we need it to extract totally match pageLocation
 }
 
 export type FetcherFetchDetailedResultGeneral<TError extends ErrorPoint0> = {

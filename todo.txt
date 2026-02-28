@@ -44,12 +44,10 @@ launch
 
 
 === REFACTOING 3000 ===
-create ErrorPoint0
-add error0 extends LikeClassError0 (just from and serialize) as generic to points .errorClass(AppError)
-get error0 from root point when try to throw
-Логгер может принимать как готовый логгер, так и функцию разруливающую логи принимающую левел категорию аргументы
-normzliae all errors texts everyhere with point name and path to point where it was defined
+Проверить, что сгенерированные с ошилкой поинты нормально в энжину ложатся
+тест на трансформер
 try catch evertywhere in engine to show real error in real place
+Добавить тесты на execute из поинта (или выпилить этот экзекьют)
 --+
 Он эмит эррор тоже в он нужен
 На фронте в хтмл вырезать изэнвов констсы
@@ -89,6 +87,7 @@ shrink core/index.ts size, by remove code duplicates
 find TODO in code
 Перепроверить все публичные названия методов и если надо то поменять
 ---
+? Разделить серверный логгер и сервер логгер, чтобы нужный использовался. То есть в глобально логгере у нас харнятся разные, и по сайд мы определяем куда направить
 ? recursive ShowError on method in with query input, becouse now we can not show normal type error
 ? Replace all node methods with native bun methods
 ? getFakeClient remove from internals, use from superstore import fakeClient.get() from fake-client.ts
