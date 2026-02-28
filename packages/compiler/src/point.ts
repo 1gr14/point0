@@ -902,43 +902,50 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       body,
     }
 
-    const parentDecl = nodePath.findParent((p) => {
-      const n = p.node
-      return (
-        n.type === 'VariableDeclaration' || n.type === 'ExportNamedDeclaration' || n.type === 'ExportDefaultDeclaration'
-      )
-    })
+    // const parentDecl = nodePath.findParent((p) => {
+    //   const n = p.node
+    //   return (
+    //     n.type === 'VariableDeclaration' || n.type === 'ExportNamedDeclaration' || n.type === 'ExportDefaultDeclaration'
+    //   )
+    // })
 
-    if (parentDecl) {
-      const parseResult = this.file.parse()
-      if (parseResult.ok) {
-        const program = parseResult.ast.program
-        const parentNode = parentDecl.node
-        let parentIndex = -1
+    // if (parentDecl) {
+    //   const parseResult = this.file.parse()
+    //   if (parseResult.ok) {
+    //     const program = parseResult.ast.program
+    //     const parentNode = parentDecl.node
+    //     let parentIndex = -1
 
-        // biome-ignore lint/complexity/useIndexOf: ok
-        parentIndex = program.body.findIndex((stmt) => stmt === parentNode)
+    //     // biome-ignore lint/complexity/useIndexOf: ok
+    //     parentIndex = program.body.findIndex((stmt) => stmt === parentNode)
 
-        if (parentIndex === -1) {
-          parentIndex = program.body.findIndex((stmt) => {
-            if (stmt.type === 'ExportNamedDeclaration' && parentNode.type === 'VariableDeclaration') {
-              return stmt.declaration === parentNode
-            }
-            if (stmt.type === 'ExportDefaultDeclaration' && parentNode.type === 'ExportDefaultDeclaration') {
-              return stmt.declaration === parentNode.declaration
-            }
-            if (stmt.type === 'ExportNamedDeclaration' && parentNode.type === 'ExportNamedDeclaration') {
-              return stmt.declaration === parentNode.declaration
-            }
-            return false
-          })
-        }
+    //     if (parentIndex === -1) {
+    //       parentIndex = program.body.findIndex((stmt) => {
+    //         if (stmt.type === 'ExportNamedDeclaration' && parentNode.type === 'VariableDeclaration') {
+    //           return stmt.declaration === parentNode
+    //         }
+    //         if (stmt.type === 'ExportDefaultDeclaration' && parentNode.type === 'ExportDefaultDeclaration') {
+    //           return stmt.declaration === parentNode.declaration
+    //         }
+    //         if (stmt.type === 'ExportNamedDeclaration' && parentNode.type === 'ExportNamedDeclaration') {
+    //           return stmt.declaration === parentNode.declaration
+    //         }
+    //         return false
+    //       })
+    //     }
 
-        if (parentIndex !== -1) {
-          program.body.splice(parentIndex, 0, functionDeclaration)
-          this.file.modified = true
-        }
-      }
+    //     if (parentIndex !== -1) {
+    //       program.body.splice(parentIndex, 0, functionDeclaration)
+    //       this.file.modified = true
+    //     }
+    //   }
+    // }
+
+    const parseResult = this.file.parse()
+    if (parseResult.ok) {
+      const program = parseResult.ast.program
+      program.body.push(functionDeclaration)
+      this.file.modified = true
     }
 
     nodePath.node.arguments[0] = {

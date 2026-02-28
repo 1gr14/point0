@@ -1468,6 +1468,39 @@ export const page = root
               function MySpecialComponent() {
                 return <div>MySpecialComponent</div>
               }
+              export const root = Point0.lets('root', 'root')
+                .pageLoading(RootRootPageLoading)
+                .pageError(RootRootPageError)
+                .layoutLoading(RootRootLayoutLoading)
+                .layoutError(RootRootLayoutError)
+                .componentLoading(RootRootComponentLoading)
+                .componentError(RootRootComponentError)
+                .loading(RootRootLoading)
+                .loading(MySpecialComponent)
+                .error(RootRootError)
+                .page(() => <div>Hello</div>)
+                .root()
+                ._tail(function X() {
+                  return null
+                })
+              export const page = root
+                .lets('page', 'home', '/')
+                .wrapper(PageHomeWrapper)
+                .loading(PageHomeLoading)
+                .error(PageHomeError)
+                .page(PageHome)
+              function PageHomeWrapper() {
+                return <div>Wrapper</div>
+              }
+              function PageHomeLoading() {
+                return <div>Loading</div>
+              }
+              function PageHomeError() {
+                return <div>Error</div>
+              }
+              function PageHome() {
+                return <div>Hello</div>
+              }
               function RootRootPageLoading() {
                 return <div>Loading</div>
               }
@@ -1492,39 +1525,6 @@ export const page = root
               function RootRootError() {
                 return <div>Error</div>
               }
-              export const root = Point0.lets('root', 'root')
-                .pageLoading(RootRootPageLoading)
-                .pageError(RootRootPageError)
-                .layoutLoading(RootRootLayoutLoading)
-                .layoutError(RootRootLayoutError)
-                .componentLoading(RootRootComponentLoading)
-                .componentError(RootRootComponentError)
-                .loading(RootRootLoading)
-                .loading(MySpecialComponent)
-                .error(RootRootError)
-                .page(() => <div>Hello</div>)
-                .root()
-                ._tail(function X() {
-                  return null
-                })
-              function PageHomeWrapper() {
-                return <div>Wrapper</div>
-              }
-              function PageHomeLoading() {
-                return <div>Loading</div>
-              }
-              function PageHomeError() {
-                return <div>Error</div>
-              }
-              function PageHome() {
-                return <div>Hello</div>
-              }
-              export const page = root
-                .lets('page', 'home', '/')
-                .wrapper(PageHomeWrapper)
-                .loading(PageHomeLoading)
-                .error(PageHomeError)
-                .page(PageHome)
               "
             `)
             expect(pagePoint.file.modified).toBe(true)
@@ -1544,10 +1544,10 @@ export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
               "import { Point0 } from '@point0/core'
               export const root = Point0.lets('root', 'root').root()
+              export const page = root.lets('page', 'home', '/').page(PageHome)
               function PageHome() {
                 return <div>Hello</div>
               }
-              export const page = root.lets('page', 'home', '/').page(PageHome)
               "
             `)
             expect(point.file.modified).toBe(true)
@@ -1567,10 +1567,10 @@ export default root.lets('page', 'home', '/').page(() => <div>Hello</div>)
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
               "import { Point0 } from '@point0/core'
               const root = Point0.lets('root', 'root').root()
+              export default root.lets('page', 'home', '/').page(PageHome)
               function PageHome() {
                 return <div>Hello</div>
               }
-              export default root.lets('page', 'home', '/').page(PageHome)
               "
             `)
             expect(point.file.modified).toBe(true)
@@ -1590,10 +1590,10 @@ export const layout = root.lets('layout', 'main', '/').layout(() => <div>Layout<
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
               "import { Point0 } from '@point0/core'
               export const root = Point0.lets('root', 'root').root()
+              export const layout = root.lets('layout', 'main', '/').layout(LayoutMain)
               function LayoutMain() {
                 return <div>Layout</div>
               }
-              export const layout = root.lets('layout', 'main', '/').layout(LayoutMain)
               "
             `)
             expect(point.file.modified).toBe(true)
@@ -1613,12 +1613,12 @@ export const component = root.lets('component', 'myComponent', '/').component(()
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
               "import { Point0 } from '@point0/core'
               export const root = Point0.lets('root', 'root').root()
-              function ComponentMyComponent() {
-                return <div>Component</div>
-              }
               export const component = root
                 .lets('component', 'myComponent', '/')
                 .component(ComponentMyComponent)
+              function ComponentMyComponent() {
+                return <div>Component</div>
+              }
               "
             `)
             expect(point.file.modified).toBe(true)
@@ -1664,10 +1664,10 @@ export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
                 return null
               }
               export const root = Point0.lets('root', 'root').root()
+              export const page = root.lets('page', 'home', '/').page(PageHome0)
               function PageHome0() {
                 return <div>Hello</div>
               }
-              export const page = root.lets('page', 'home', '/').page(PageHome0)
               "
             `)
             expect(point.file.modified).toBe(true)
