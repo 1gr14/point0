@@ -359,6 +359,28 @@ export class CompilerFile<THasContent extends boolean> {
     return code
   }
 
+  toCodeWithMap(): { code: string; map: NonNullable<ReturnType<typeof babelGenerator>['map']> } {
+    if (!this.content) {
+      throw new Error(`File ${this.abs} is not read yet`)
+    }
+    const generated = babelGenerator(
+      this.ast,
+      {
+        retainLines: true,
+        sourceMaps: true,
+        sourceFileName: this.abs,
+      },
+      this.content,
+    )
+    if (!generated.map) {
+      throw new Error(`Failed to generate sourcemap for file ${this.abs}`)
+    }
+    return {
+      code: generated.code,
+      map: generated.map,
+    }
+  }
+
   async toPrettyCode(): Promise<string> {
     const code = this.toCode()
     return await prettier.format(code, {

@@ -1,5 +1,4 @@
 import type { BunPlugin } from 'bun'
-// import MagicString from 'magic-string'
 import type { CompilerOptions } from '../compiler.js'
 import { Compiler } from '../compiler.js'
 
@@ -25,18 +24,14 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
               loader: guessLoader(filepath),
             }
           }
-
-          // const ms = new MagicString(original)
-          // ms.overwrite(0, original.length, transformed)
+          const codeAndMap = result.file?.toCodeWithMap()
+          if (filepath.includes('pages/idea.tsx')) {
+            console.log(111, codeAndMap?.code)
+          }
 
           return {
-            contents: result.code,
+            contents: appendInlineSourceMap(codeAndMap?.code ?? result.code, codeAndMap?.map),
             loader: guessLoader(filepath),
-            // sourcemap: ms.generateMap({
-            //   source: filepath,
-            //   includeContent: true,
-            //   hires: true,
-            // }),
           }
         } catch (e) {
           console.error(e)
@@ -50,6 +45,12 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
       })
     },
   } satisfies BunPlugin
+}
+
+function appendInlineSourceMap(code: string, map: Record<string, unknown> | undefined) {
+  if (!map) return code
+  const encoded = Buffer.from(JSON.stringify(map), 'utf8').toString('base64')
+  return `${code}\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${encoded}\n`
 }
 
 function guessLoader(path: string) {

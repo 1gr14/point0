@@ -1,4 +1,3 @@
-import MagicString from 'magic-string'
 import type { Plugin } from 'vite'
 import type { CompilerOptions } from '../compiler.js'
 import { Compiler } from '../compiler.js'
@@ -22,17 +21,11 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
       })
 
       if (!result.modified) return null
-
-      const ms = new MagicString(code)
-      ms.overwrite(0, code.length, result.code)
+      const codeAndMap = result.file?.toCodeWithMap()
 
       return {
-        code: result.code,
-        map: ms.generateMap({
-          source: filepath,
-          includeContent: true,
-          hires: true,
-        }),
+        code: codeAndMap?.code ?? result.code,
+        map: codeAndMap?.map ?? null,
       }
     },
   }
