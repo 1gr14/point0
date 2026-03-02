@@ -395,34 +395,51 @@ plugins = [${combinedPluginsStrings.map((p) => `"${p}"`).join(', ')}]
     // },
     const scriptContent = `
 import indexHtml from '${this.indexHtml}';
-Bun.serve({
-  port: ${this.port},
-  routes: {
-    '/index.html': indexHtml,
-  },
-  fetch: async (request) => {
-    if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
-      return new Response('__NO_RESPONSE__', {
-        headers: {
-          'Content-Type': 'text/plain',
+import { Engine } from '@point0/engine';
+import { withRetries } from '@point0/engine/utils';
+const { engine } = await Engine.findAndImportSelf({ engineFile: '${this.engineFile}' });
+try {
+  withRetries(${this.serveRetries}, () => Bun.serve({
+    port: ${this.port},
+    routes: {
+      '/index.html': indexHtml,
+    },
+    fetch: async (request) => {
+      if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
+        return new Response('__NO_RESPONSE__', {
+          headers: {
+            'Content-Type': 'text/plain',
+          },
+          status: 404,
+        })
+      }
+      const url = new URL(request.url)
+      const forwardedHeaders = new Headers(request.headers)
+      forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client', '${this.scope}')
+      return await fetch(
+        \`http://localhost:${this.server.port}\${url.pathname}\${url.search}\`,
+        {
+          method: request.method,
+          headers: forwardedHeaders,
+          body: request.body,
+          redirect: 'manual',
         },
-        status: 404,
-      })
-    }
-    const url = new URL(request.url)
-    const forwardedHeaders = new Headers(request.headers)
-    forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client', '${this.scope}')
-    return await fetch(
-      \`http://localhost:${this.server.port}\${url.pathname}\${url.search}\`,
-      {
-        method: request.method,
-        headers: forwardedHeaders,
-        body: request.body,
-        redirect: 'manual',
-      },
-    )
-  },
-});
+      )
+    },
+  }))();
+  engine.logger({
+    level: 'info',
+    topic: 'EngineClient',
+    message: 'Client "${this.scope}" dev server started http://localhost:${this.port}',
+  })
+} catch (error) {
+  engine.logger({
+    level: 'error',
+    topic: 'EngineClient',
+    message: error instanceof Error ? error.message : String(error),
+  });
+  process.exit(1);
+}
 `
     await Bun.write(bunfigTomlPath, bunfigTomlContent)
     await Bun.write(scriptPath, scriptContent)
@@ -437,11 +454,6 @@ Bun.serve({
         ...(compilerOptions ? { POINT0_COMPILER_OPTIONS: JSON.stringify(compilerOptions) } : {}),
         NODE_ENV: process.env.NODE_ENV,
       },
-    })
-    this.logger({
-      level: 'info',
-      topic: 'EngineClient',
-      message: `Client "${this.scope}" dev server started http://localhost:${this.port}`,
     })
     this.bunNativeDevServer = childProcess
     return childProcess

@@ -25,7 +25,7 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
             }
           }
           if (filepath.includes('pages/idea.tsx')) {
-            console.log(111, result.code)
+            // console.log(111, result.code)
           }
 
           return {

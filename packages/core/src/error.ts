@@ -14,10 +14,10 @@ export class ErrorPoint0 extends Error {
     this.name = 'ErrorPoint0'
     if (
       process.env.NODE_ENV !== 'production' &&
-      typeof (globalThis as unknown as Record<string, unknown>).__FIX_VITE_SSR_STACKTRACE__ === 'function'
+      typeof (globalThis as unknown as Record<string, unknown>).__ERROR0_FIX_STACKTRACE__ === 'function'
     ) {
       try {
-        ;(globalThis as any).__FIX_VITE_SSR_STACKTRACE__(this) as void
+        ;(globalThis as any).__ERROR0_FIX_STACKTRACE__(this) as void
       } catch {}
     }
     // this.meta = options.meta
@@ -29,10 +29,10 @@ export class ErrorPoint0 extends Error {
     }
     if (
       process.env.NODE_ENV !== 'production' &&
-      typeof (globalThis as unknown as Record<string, unknown>).__FIX_VITE_SSR_STACKTRACE__ === 'function'
+      typeof (globalThis as unknown as Record<string, unknown>).__ERROR0_FIX_STACKTRACE__ === 'function'
     ) {
       try {
-        ;(globalThis as any).__FIX_VITE_SSR_STACKTRACE__(error) as void
+        ;(globalThis as any).__ERROR0_FIX_STACKTRACE__(error) as void
       } catch {}
     }
     const record = typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {}

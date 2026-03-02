@@ -228,7 +228,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     if (process.env.NODE_ENV === 'production' || !this.viteDevServer) {
       return
     }
-    ;(globalThis as any).__FIX_VITE_SSR_STACKTRACE__ = (value: unknown) => {
+    ;(globalThis as any).__ERROR0_FIX_STACKTRACE__ = (value: unknown) => {
       this.fixViteSsrStacktrace(value)
     }
   }
@@ -237,7 +237,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     if (process.env.NODE_ENV === 'production' || !this.viteDevServer) {
       return
     }
-    ;(globalThis as any).__FIX_VITE_SSR_STACKTRACE__ = undefined
+    ;(globalThis as any).__ERROR0_FIX_STACKTRACE__ = undefined
   }
 
   private setEnvVars({

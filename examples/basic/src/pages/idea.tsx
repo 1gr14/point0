@@ -21,7 +21,6 @@ export const ideaPage = ideaLayout
       where: { id: +input.id },
     })
     const error = new Error('test error')
-    console.error(444, error)
     throw error
     return [202, { idea }]
   })
@@ -77,8 +76,4 @@ export const ideaPage = ideaLayout
     )
   })
 
-
-
-
-
-  export default ideaPage
+export default ideaPage

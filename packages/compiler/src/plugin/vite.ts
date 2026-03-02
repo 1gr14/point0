@@ -24,7 +24,7 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
       if (!result.modified) return null
 
       if (filepath.includes('pages/idea.tsx')) {
-        console.log(111, result.code)
+        // console.log(111, result.code)
       }
 
       return {

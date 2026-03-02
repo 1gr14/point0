@@ -21,7 +21,6 @@ export const ideaPage = ideaLayout
       where: { id: +input.id },
     })
     const error = new ErrorPoint0('test error')
-    console.error(444, error)
     throw error
     return { idea }
   })

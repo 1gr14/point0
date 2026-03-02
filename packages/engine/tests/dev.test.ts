@@ -231,12 +231,12 @@ describe('dev', () => {
       },
     )
 
-    it.only(
+    it(
       'keeps error stack',
       wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp }) => {
-        if (bundler !== 'vite') {
-          return
-        }
+        // if (bundler !== 'vite') {
+        //   return
+        // }
         await tp.waitPortsFree()
         await tp.write(
           'src/page.tsx',
