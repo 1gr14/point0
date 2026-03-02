@@ -224,8 +224,8 @@
         "react-dom": "catalog:",
       },
     },
-    "packages/engine/tests/temp/build/test-a9f2dbdd-0c14-4338-a109-7808fea552ed": {
-      "name": "@point0/test-a9f2dbdd-0c14-4338-a109-7808fea552ed",
+    "packages/engine/tests/temp/dev/test-3": {
+      "name": "@point0/test-3",
       "version": "1.0.0",
       "dependencies": {
         "@devp0nt/route0": "catalog:",
@@ -252,8 +252,8 @@
         "typescript": "catalog:",
       },
     },
-    "packages/engine/tests/temp/prefetch-page/test-6ae0fd96-c0b5-4906-8a2f-8ccec23a1bf6": {
-      "name": "@point0/test-6ae0fd96-c0b5-4906-8a2f-8ccec23a1bf6",
+    "packages/engine/tests/temp/dev/test-8": {
+      "name": "@point0/test-8",
       "version": "1.0.0",
       "dependencies": {
         "@devp0nt/route0": "catalog:",
@@ -280,8 +280,8 @@
         "typescript": "catalog:",
       },
     },
-    "packages/engine/tests/temp/two-clients/test-67d4e0ba-9761-4f2d-a793-66073112f1fd": {
-      "name": "@point0/test-67d4e0ba-9761-4f2d-a793-66073112f1fd",
+    "packages/engine/tests/temp/publicdir/test-9d04709b-2683-491d-a74b-8614ffc57961": {
+      "name": "@point0/test-9d04709b-2683-491d-a74b-8614ffc57961",
       "version": "1.0.0",
       "dependencies": {
         "@devp0nt/route0": "catalog:",
@@ -679,11 +679,11 @@
 
     "@point0/react-dom": ["@point0/react-dom@workspace:packages/react-dom"],
 
-    "@point0/test-67d4e0ba-9761-4f2d-a793-66073112f1fd": ["@point0/test-67d4e0ba-9761-4f2d-a793-66073112f1fd@workspace:packages/engine/tests/temp/two-clients/test-67d4e0ba-9761-4f2d-a793-66073112f1fd"],
+    "@point0/test-3": ["@point0/test-3@workspace:packages/engine/tests/temp/dev/test-3"],
 
-    "@point0/test-6ae0fd96-c0b5-4906-8a2f-8ccec23a1bf6": ["@point0/test-6ae0fd96-c0b5-4906-8a2f-8ccec23a1bf6@workspace:packages/engine/tests/temp/prefetch-page/test-6ae0fd96-c0b5-4906-8a2f-8ccec23a1bf6"],
+    "@point0/test-8": ["@point0/test-8@workspace:packages/engine/tests/temp/dev/test-8"],
 
-    "@point0/test-a9f2dbdd-0c14-4338-a109-7808fea552ed": ["@point0/test-a9f2dbdd-0c14-4338-a109-7808fea552ed@workspace:packages/engine/tests/temp/build/test-a9f2dbdd-0c14-4338-a109-7808fea552ed"],
+    "@point0/test-9d04709b-2683-491d-a74b-8614ffc57961": ["@point0/test-9d04709b-2683-491d-a74b-8614ffc57961@workspace:packages/engine/tests/temp/publicdir/test-9d04709b-2683-491d-a74b-8614ffc57961"],
 
     "@point0/test-one-client": ["@point0/test-one-client@workspace:packages/engine/tests/templates/one-client"],
 

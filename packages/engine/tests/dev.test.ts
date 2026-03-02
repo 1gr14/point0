@@ -231,17 +231,15 @@ describe('dev', () => {
       },
     )
 
-    it.only(
+    it(
       'have server updates',
-      wrp(
-        { ssr: true, clientHmr: true, serverHmr: true, vite: bundler === 'vite', preserve: true },
-        async ({ tp, engine }) => {
-          await tp.waitPortsFree()
-          expect(engine.server.hmrPort).toBeNumber()
-          expect(engine.clients[0].hmrPort).toBeNumber()
-          await tp.write(
-            'src/page.tsx',
-            `import { root } from './lib/root.js'
+      wrp({ ssr: true, clientHmr: true, serverHmr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
+        await tp.waitPortsFree()
+        expect(engine.server.hmrPort).toBeNumber()
+        expect(engine.clients[0].hmrPort).toBeNumber()
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
           import { useState } from 'react'
         export const incrementMutation = root.lets('mutation', 'incrementMutation')
           .loader(() => {
@@ -262,27 +260,26 @@ describe('dev', () => {
               </div>
             )
           })`,
-          )
-          tp.spawn(['bun', 'run', 'dev'])
-          await tp.waitStarted()
-          const page = await tp.gotoClient('/')
-          await page.waitContent('Hop 0')
-          await page.original.click('button#page-button')
-          await page.waitContent('Hop 1')
-          await tp.replace('src/page.tsx', 'Hop', 'Hay')
-          await page.waitContent('Hay 1')
-          await tp.replace('src/page.tsx', 'inc: 1', 'inc: 10')
-          await new Promise((resolve) => setTimeout(resolve, 1000))
-          await page.original.click('button#page-button')
-          await page.waitContent('Hay 11')
-          await tp.replace('src/page.tsx', 'Hay', 'La La Lay')
-          await page.waitContent('La La Lay 11')
-          await new Promise((resolve) => setTimeout(resolve, 1000))
-          await page.original.click('button#page-button')
-          await page.waitContent('La La Lay 21')
-          expect(page.history.length).toBe(1)
-        },
-      ),
+        )
+        tp.spawn(['bun', 'run', 'dev'])
+        await tp.waitStarted()
+        const page = await tp.gotoClient('/')
+        await page.waitContent('Hop 0')
+        await page.original.click('button#page-button')
+        await page.waitContent('Hop 1')
+        await tp.replace('src/page.tsx', 'Hop', 'Hay')
+        await page.waitContent('Hay 1')
+        await tp.replace('src/page.tsx', 'inc: 1', 'inc: 10')
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        await page.original.click('button#page-button')
+        await page.waitContent('Hay 11')
+        await tp.replace('src/page.tsx', 'Hay', 'La La Lay')
+        await page.waitContent('La La Lay 11')
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        await page.original.click('button#page-button')
+        await page.waitContent('La La Lay 21')
+        expect(page.history.length).toBe(1)
+      }),
       {
         // retry: 3,
       },

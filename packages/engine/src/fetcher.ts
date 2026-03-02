@@ -1,12 +1,4 @@
 import type { AnyLocation, CallableRoute, ExactLocation } from '@devp0nt/route0'
-import {
-  _getSsItemsWithRestErrors,
-  _ssItems,
-  _ssRunWithServerStorageState,
-  blankDataTransformerExtended,
-  ErrorPoint0,
-  generateId,
-} from '@point0/core'
 import type {
   ClassLikeError0,
   Data,
@@ -24,6 +16,15 @@ import type {
   RequiredCtx,
   RootPoint,
   SuperStoreInternalValuesOrErrors,
+} from '@point0/core'
+import {
+  _getSsItemsWithRestErrors,
+  _point0_env,
+  _ssItems,
+  _ssRunWithServerStorageState,
+  blankDataTransformerExtended,
+  ErrorPoint0,
+  generateId,
 } from '@point0/core'
 import { Effects } from '@point0/core/effects'
 import { Request0 } from '@point0/core/request0'
@@ -1380,6 +1381,10 @@ export class Fetcher<TError extends ErrorPoint0> {
     requiredCtx: RequiredCtx
     bunServer?: Bun.Server<unknown>
   }): Promise<FetcherFetchDetailedResult<TError>> {
+    if (!_point0_env.mode.is.production) {
+      // Keep it. Vite server updates will not work for points without it.
+      await this.server.readServerPoints()
+    }
     const prepareFetchResult = await this.prepareFetch({
       originalRequest: request,
       bunServer,
