@@ -404,15 +404,15 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 ...layers[0].ctxExposed,
                 ctx: { ...layers[0].ctx },
                 input: layers[0].inputParsed,
-                execute: (
-                  point:
-                    | ReadyPoint
-                    | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
-                    | undefined,
-                  input?: InputRaw,
-                ) => {
-                  return this.execute({ point, input, ErrorClass })
-                },
+                // execute: (
+                //   point:
+                //     | ReadyPoint
+                //     | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+                //     | undefined,
+                //   input?: InputRaw,
+                // ) => {
+                //   return this.execute({ point, input, ErrorClass })
+                // },
                 request: this.request,
                 set: effects.set,
                 point,
@@ -469,15 +469,15 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 ctx: { ...layers[0].ctx },
                 data: { ...layers[0].data },
                 input: layers[0].inputParsed,
-                execute: (
-                  point:
-                    | ReadyPoint
-                    | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
-                    | undefined,
-                  input?: InputRaw,
-                ) => {
-                  return this.execute({ point, input, ErrorClass })
-                },
+                // execute: (
+                //   point:
+                //     | ReadyPoint
+                //     | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+                //     | undefined,
+                //   input?: InputRaw,
+                // ) => {
+                //   return this.execute({ point, input, ErrorClass })
+                // },
                 request: this.request as never,
                 set: effects.set,
                 point,

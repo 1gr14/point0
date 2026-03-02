@@ -45,8 +45,9 @@ export const createIdeaMutation = client
       content: z.string().min(1).max(1000),
     }),
   )
-  .loader(async ({ data, execute }) => {
-    const result = await execute(BestIdeaComponent, { x: 22, y: 2 })
+  // .loader(async ({ data, execute }) => {
+  .loader(async ({ data }) => {
+    // const result = await execute(BestIdeaComponent, { x: 22, y: 2 })
     console.info('testCookie', testCookie.get())
     testCookie.set(Math.random().toString())
     console.info('testServerCookie', testServerCookie.get())
@@ -55,10 +56,10 @@ export const createIdeaMutation = client
     console.info('testNumberDefaultCookie', testNumberDefaultCookie.get())
     console.info('testNumberCookie', testNumberCookie.get())
     testNumberCookie.set(Math.random())
-    if (result.error) {
-      throw result.error
-    }
-    return { ...data, ...result.data }
+    // if (result.error) {
+    //   throw result.error
+    // }
+    return { ...data }
   })
   .loader(async ({ input, ctx, data }) => {
     const idea = await ctx.prisma.idea.create({

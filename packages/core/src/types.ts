@@ -957,7 +957,7 @@ export type CtxFnOptions<
   point: ReadyPoint | undefined
   input: InputParsed<TServerInputSchema>
   set: ResponseEffectsSetHelper
-  execute: ServerExecuteFn
+  // execute: ServerExecuteFn
   ctx: TCtxPrev
 }
 export type CtxFn<
@@ -993,7 +993,7 @@ export type LoaderResponseFnOptions<
   input: InputParsed<TServerInputSchema>
   data: DataOrUndefinedData<TServerLoaderOutput>
   set: ResponseEffectsSetHelper
-  execute: ServerExecuteFn
+  // execute: ServerExecuteFn
   ctx: TCtx
 }
 export type LoaderResponseFn<
@@ -1021,7 +1021,7 @@ export type LoaderDataFnOptions<
   input: InputParsed<TServerInputSchema>
   data: DataOrUndefinedData<TServerLoaderOutput>
   set: ResponseEffectsSetHelper
-  execute: ServerExecuteFn
+  // execute: ServerExecuteFn
   ctx: TCtx
 }
 export type LoaderDataFn<
