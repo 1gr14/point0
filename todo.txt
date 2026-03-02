@@ -191,7 +191,6 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 
 
 
-
 === ENGINE ===
 --+
 (when actions, scalar)
@@ -245,16 +244,7 @@ binary, just throw error if some engine distdirs not inside firstlevel server di
 
 
 
-=== NPM ===
-sematic release + protected branches (main, next)
-private publish
-protected github branches next and amin
 
-
-
-=== AUTH ===
-better auth plugin
-Куки босс знает все куки и может сериалайзить и десериалайзиться разберёмся на беттер асунктически
 
 
 
@@ -298,33 +288,22 @@ _slug ← name
 
 
 
-=== INIT ===
-Инит клиент асунк может и не вызывать лоадинг а просто параллельно иницализироваться. Третий аргумент летс это зависимости, четвёртый аргумент это настройка таргета отложенная или блокирующая. Последний метод это сами функции инициализации
---?
-При указании инит на провайдере или чанеле первым аргументом передаётся инпут, вторым зависимости
-Провайдер тчк инит, переведёт  к автооборачиванию
-одноимённые попадают на первый уровень, разноимённые распределяются по сервер и клиент, в реалтайме такая же ерунда будет
-Инишиалайзер даже асунк может быть вызван все равно на верхнем уровне
-? root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
-.lets('init', 'db', {dep1, dep2}).loader().clientLoader(), and rename current TInit to TLoad, it has no context at all, it just return data, here deps will be just added to ctx. Returns {...value,_:{value, client: clientValue, server: serverValue, init}}; 
-Депенденсы инита перед словом сервер или клиент
-.client .server .engine (so server and cient will be in <App><Initializer>, and engine will be only in engine.init())
-So we also need <my.Init>{children}</my.Init> and <Init />, bet
-So we need be able to auto init or not, lets add .auto(true | false) by default true
-and how cool it be to set init points just in usual ctx of points. Incredible cool! But when we assign it to ctx it gets only server value, I think use should manage it by hmself, just set {...ctx, ...my.server}
-Летс иниту всё же придётся прогонять сунковые клиент лоадеры на месте (но он вообще по другому экстрактится, он даже не экстрактится а инициализируется), и всё же
-.enabled()
-Инит может быть юниверсал, чтобы и там и там инициализировалось
-Учесть, что клиент может инициализироваться как статически так и асунктически
-В ините клиента только синхронные функции, иначе это уже провайдер. И инит происходит наэтапе макета то есть сервер даже не видит что там
-? Поинтсы провайдить не в моунт, а в инитиалайзер апа (вероятно)
-В клиенте вероятно нет клиент и сервер, всё разгуливается просто в функции инит через энвиронмент, надо решить проблему того, что если в ините клиента асунк испорты, чтобы после сср не показывало ловлинги. Вероятно надо просто добавить поле сср, в которое можно добавить строку клиент или но например
-Тут короче клиент просто если сунк, то он мапер, а если асунк то уж что поделаешь будет лоадинг на весь сайт
+=== AUTH ===
+better auth plugin
+Куки босс знает все куки и может сериалайзить и десериалайзиться разберёмся на беттер асунктически
 
 
 
-=== DEFINE ===
-Добавить дефайн, он такой же как инит, но не вызывает, но может объявить что угодно нужен для мсп
+=== NPM ===
+sematic release + protected branches (main, next)
+private publish
+protected github branches next and amin
+
+
+
+
+
+
 
 
 
@@ -343,11 +322,6 @@ check if there is no client port defined if there is no App and indexhtml, so it
 Все нукролино и прочие делаются через сетФетч в поинте, чтобы сказать там мол все запросы отправляй в реквест бан айписи, а уже в коде своего бан вызываем при приходе сообщения  engine.fetch() вот этот запрос
 somehow wh we have now in client-server, have same ot main-renderer process, via replace fetch implementation
 Надо сразу чекнуть электрон, вероятно консумХэндлер достаточно добавить, чтобы поинт просто взял и стал чем угодно, но будто бы тут лучше отдельную разработку для электорна делать, это подождёт
-
-
-
-=== START0 ===
-unwind and tailwind
 
 
 
@@ -376,6 +350,16 @@ root.lets('exclude', 'backend').exclude() → создаётся base, но но
 walker cache for compiled files by settings and file timestemp
 readLimit, parseLimit
 walker persist on bun plugin and vite plugin during request, so lets refresh read files by timestamp
+
+
+
+=== START0 ===
+unwind and tailwind
+
+
+
+
+
 
 
 
@@ -431,17 +415,73 @@ Route0.create('>+zxc') → will be rewritten () => Route0.create('>currentfilepa
 
 
 
-=== STATIC ===
+
+=== EXAMPLES ===
+example refactor
+example test
+example auth
+example monorepo
+---
+example zustand (usual/persistent)
+
+
+
+=== DOCS ===
+docs in comments
+respect /v1/ at start
+Consumer–Source Eversion / Client-Server Eversion
+
+
+
+=== LAUNCH ===
+? todo.txt → github tasks, todo.txt to gitignore
+license
+npm public
+social pages
+video
+article
+launch
+❤️❤️❤️
+
+
+
+
+
+
+
+
+
+
+
+
+
+=== INIT ===
+Инит клиент асунк может и не вызывать лоадинг а просто параллельно иницализироваться. Третий аргумент летс это зависимости, четвёртый аргумент это настройка таргета отложенная или блокирующая. Последний метод это сами функции инициализации
 --?
-html prefetch mode
-В оутпут тайп добавить хтмл
-static site generator; 
-Свойство сервера для пабликдира что индексхтмлы мы респектим все как страницу и респектим ли главный
-Префетч мод хтмл, просто тупо грузит новую страницу и открывает
-.navigationPolicy('hard' | 'soft') or somehow or maybe not needed;
-.static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; 
-or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; 
-also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
+При указании инит на провайдере или чанеле первым аргументом передаётся инпут, вторым зависимости
+Провайдер тчк инит, переведёт  к автооборачиванию
+одноимённые попадают на первый уровень, разноимённые распределяются по сервер и клиент, в реалтайме такая же ерунда будет
+Инишиалайзер даже асунк может быть вызван все равно на верхнем уровне
+? root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
+.lets('init', 'db', {dep1, dep2}).loader().clientLoader(), and rename current TInit to TLoad, it has no context at all, it just return data, here deps will be just added to ctx. Returns {...value,_:{value, client: clientValue, server: serverValue, init}}; 
+Депенденсы инита перед словом сервер или клиент
+.client .server .engine (so server and cient will be in <App><Initializer>, and engine will be only in engine.init())
+So we also need <my.Init>{children}</my.Init> and <Init />, bet
+So we need be able to auto init or not, lets add .auto(true | false) by default true
+and how cool it be to set init points just in usual ctx of points. Incredible cool! But when we assign it to ctx it gets only server value, I think use should manage it by hmself, just set {...ctx, ...my.server}
+Летс иниту всё же придётся прогонять сунковые клиент лоадеры на месте (но он вообще по другому экстрактится, он даже не экстрактится а инициализируется), и всё же
+.enabled()
+Инит может быть юниверсал, чтобы и там и там инициализировалось
+Учесть, что клиент может инициализироваться как статически так и асунктически
+В ините клиента только синхронные функции, иначе это уже провайдер. И инит происходит наэтапе макета то есть сервер даже не видит что там
+? Поинтсы провайдить не в моунт, а в инитиалайзер апа (вероятно)
+В клиенте вероятно нет клиент и сервер, всё разгуливается просто в функции инит через энвиронмент, надо решить проблему того, что если в ините клиента асунк испорты, чтобы после сср не показывало ловлинги. Вероятно надо просто добавить поле сср, в которое можно добавить строку клиент или но например
+Тут короче клиент просто если сунк, то он мапер, а если асунк то уж что поделаешь будет лоадинг на весь сайт
+
+
+
+=== DEFINE ===
+Добавить дефайн, он такой же как инит, но не вызывает, но может объявить что угодно нужен для мсп
 
 
 
@@ -505,32 +545,24 @@ elysia and uWebSocket separate realizations
 
 
 
-=== EXAMPLES ===
-example refactor
-example test
-example auth
-example monorepo
----
-example zustand (usual/persistent)
+=== STATIC ===
+--?
+html prefetch mode
+В оутпут тайп добавить хтмл
+static site generator; 
+Свойство сервера для пабликдира что индексхтмлы мы респектим все как страницу и респектим ли главный
+Префетч мод хтмл, просто тупо грузит новую страницу и открывает
+.navigationPolicy('hard' | 'soft') or somehow or maybe not needed;
+.static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; 
+or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; 
+also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
 
 
 
-=== DOCS ===
-docs in comments
-respect /v1/ at start
-Consumer–Source Eversion / Client-Server Eversion
 
 
 
-=== LAUNCH ===
-? todo.txt → github tasks, todo.txt to gitignore
-license
-npm public
-social pages
-video
-article
-launch
-❤️❤️❤️
+
 
 
 
