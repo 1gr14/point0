@@ -138,10 +138,16 @@ export async function isPortBinded(
  */
 export async function killPort(
   ports: number[] | number,
-  options?: { silent?: boolean; excludeCurrentProcess?: boolean; force?: boolean; logger?: LoggerFn; topic?: string },
+  options?: {
+    silent?: boolean
+    excludeCurrentProcess?: boolean
+    force?: boolean
+    logger?: LoggerFn
+    category?: string[]
+  },
 ): Promise<void> {
   const _logger = options?.logger ?? logger
-  const topic = options?.topic ?? 'killPort'
+  const category = options?.category ?? ['killPort']
   ports = Array.isArray(ports) ? ports : [ports]
   const silent = options?.silent ?? true
   const excludeCurrentProcess = options?.excludeCurrentProcess ?? true
@@ -156,16 +162,19 @@ export async function killPort(
       try {
         const pids = await listPids(port, excludeCurrentProcess)
         if (pids.length === 0) {
-          if (!silent) _logger({ level: 'info', topic, message: `No process found using port ${port}` })
+          if (!silent) _logger({ level: 'info', category, message: `No process found using port ${port}` })
           return
         }
         if (!silent) {
           for (const pid of pids) {
-            _logger({ level: 'info', topic, message: `Killing process ${pid} on port ${port}` })
+            _logger({ level: 'info', category, message: `Killing process ${pid} on port ${port}` })
           }
         }
         await killByPids(pids)
       } catch (error) {
+        if (!silent) {
+          _logger({ level: 'error', category, message: `Error killing process on port ${port}`, error })
+        }
         if (!force) {
           throw error
         }
@@ -185,7 +194,8 @@ export async function resolvePortByPolicy(options: {
     return port
   }
   if (portPolicy === 'kill') {
-    await killPort(port, { silent, excludeCurrentProcess: true, force: false })
+    // we will do kill on after serve try
+    // await killPort(port, { silent, excludeCurrentProcess: true, force: false })
     return port
   }
   let candidatePort = port

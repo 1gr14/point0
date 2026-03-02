@@ -1,4 +1,5 @@
-import type { PointsScope, NormalizedNodeEnv } from '@point0/core'
+import type { NormalizedNodeEnv, PointsScope } from '@point0/core'
+import { env } from '@point0/core'
 import type { BuildConfig, BunPlugin } from 'bun'
 import { plugin } from 'bun'
 import * as nodeFsSync from 'node:fs'
@@ -6,8 +7,8 @@ import * as nodePath from 'node:path'
 import type { Options as RetryOptions } from 'p-retry'
 import pRetry from 'p-retry'
 import type { ViteDevServer } from 'vite'
-import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, ExtractedViteConfig } from './config.js'
-import { env } from '@point0/core'
+import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, ExtractedViteConfig, PortPolicy } from './config.js'
+import { killPort } from './port.js'
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
   if (!path) {
@@ -577,51 +578,139 @@ export const readableStreamToString = async (readableStream: ReadableStream): Pr
   return new TextDecoder().decode(Buffer.concat(chunks))
 }
 
-type WithRetriesFn = {
-  <T extends (...args: any[]) => any>(count: number, filter: string[], fn: T): T
-  <T extends (...args: any[]) => any>(count: number, fn: T): T
-}
-export const withRetries: WithRetriesFn = <T extends (...args: any[]) => any>(
-  ...args: [count: number, filter: string[], fn: T] | [count: number, fn: T]
-): T => {
-  const [count, filter, fn] = args.length === 3 ? [args[0], args[1], args[2]] : [args[0], undefined, args[1]]
+// export const withRetries = <T extends (...args: any[]) => Promise<void>>(
+//   options: {
+//     count: number
+//     filter?: string[]
+//     onBeforeRetry?: (error: unknown) => void | Promise<void>
+//   },
+//   fn: T,
+// ): T => {
+//   const { count, filter, onBeforeRetry } = options
+//   // We return a new function that mimics the original function's signature
+//   return ((...innerArgs: Parameters<T>): ReturnType<T> => {
+//     let retryIndex = 0
 
+//     const attempt = (): any => {
+//       try {
+//         const result = fn(...innerArgs)
+
+//         // Check if the result is a Promise (Async case)
+//         if (result instanceof Promise) {
+//           return result.catch((error: unknown) => {
+//             handleError(error)
+//             return attempt()
+//           })
+//         }
+
+//         // Sync case success
+//         return result
+//       } catch (error) {
+//         // Sync case error
+//         handleError(error)
+//         return attempt()
+//       }
+//     }
+
+//     const handleError = (error: unknown) => {
+//       const errorMessage = error instanceof Error ? error.message : String(error)
+//       const isFiltered = filter && !filter.some((f) => errorMessage.includes(f))
+
+//       if (isFiltered || retryIndex >= count) {
+//         throw error
+//       }
+//       retryIndex++
+//     }
+
+//     return attempt()
+//   }) as T
+// }
+
+// export const withRetries = <T extends (...args: any[]) => Promise<any>>(
+//   options: {
+//     count: number
+//     filter?: string[]
+//     onBeforeRetry?: (error: unknown) => void | Promise<void>
+//   },
+//   fn: T,
+// ): T => {
+//   const { count, filter, onBeforeRetry } = options
+//   // We return a new function that mimics the original function's signature
+//   return (async (...innerArgs: Parameters<T>) => {
+//     let retryIndex = 0
+
+//     const attempt = async () => {
+//       try {
+//         return await fn(...innerArgs)
+//       } catch (error) {
+//         // Sync case error
+//         await handleError(error)
+//         return attempt()
+//       }
+//     }
+
+//     const handleError = async (error: unknown) => {
+//       const errorMessage = error instanceof Error ? error.message : String(error)
+//       const isFiltered = !!filter && !filter.some((f) => errorMessage.includes(f))
+
+//       if (isFiltered || retryIndex >= count) {
+//         throw error
+//       }
+//       if (onBeforeRetry) {
+//         await onBeforeRetry(error)
+//       }
+//       retryIndex++
+//     }
+
+//     return await attempt()
+//   }) as T
+// }
+
+export const serveWithRetries = <T extends (...args: any[]) => Promise<any>>(
+  options: {
+    port: number
+    serveRetries: number
+    filterErrorMessages?: string[]
+    portPolicy: PortPolicy
+    category: string[]
+  },
+  fn: T,
+): T => {
+  const { serveRetries: providedServeRetries, filterErrorMessages, portPolicy, category, port } = options
+  const serveRetries = (() => {
+    if (!providedServeRetries && portPolicy === 'kill') {
+      return 3
+    }
+    return providedServeRetries
+  })()
   // We return a new function that mimics the original function's signature
-  return ((...innerArgs: Parameters<T>): ReturnType<T> => {
+  return (async (...innerArgs: Parameters<T>) => {
     let retryIndex = 0
 
-    const attempt = (): any => {
+    const attempt = async () => {
       try {
-        const result = fn(...innerArgs)
-
-        // Check if the result is a Promise (Async case)
-        if (result instanceof Promise) {
-          return result.catch((error: unknown) => {
-            handleError(error)
-            return attempt()
-          })
-        }
-
-        // Sync case success
-        return result
+        return await fn(...innerArgs)
       } catch (error) {
         // Sync case error
-        handleError(error)
+        await handleError(error)
         return attempt()
       }
     }
 
-    const handleError = (error: unknown) => {
+    const handleError = async (error: unknown) => {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      const isFiltered = filter && !filter.some((f) => errorMessage.includes(f))
+      const isFiltered = !!filterErrorMessages && !filterErrorMessages.some((f) => errorMessage.includes(f))
 
-      if (isFiltered || retryIndex >= count) {
+      if (isFiltered || retryIndex >= serveRetries) {
         throw error
+      }
+      if (portPolicy === 'kill') {
+        await killPort(port, { force: true, category })
       }
       retryIndex++
     }
 
-    return attempt()
+    return await attempt()
   }) as T
 }
 

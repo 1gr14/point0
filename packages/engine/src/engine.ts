@@ -14,14 +14,13 @@ import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { EngineClient } from './client.js'
-import { parseEngineOptions } from './config.js'
 import type { EngineOptions } from './config.js'
-import { FilesGenerator } from './generator.js'
+import { parseEngineOptions } from './config.js'
 import type { FileGeneratorProcessResult, FilesGeneratorPointsFilesChangeWatcher } from './generator.js'
+import { FilesGenerator } from './generator.js'
 import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
-import { killPort } from './port.js'
 
 export class Engine<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -227,10 +226,11 @@ export class Engine<
               p.kill('SIGKILL')
             })
 
-            void killPort(this.server.port).finally(() => {
-              processes = start()
-            })
-            // processes = start()
+            // void killPort(this.server.port, { force: true, category: ['EngineServer'] }).finally(() => {
+            //   processes = start()
+            // })
+            // we already do kill in serve() if policy is kill
+            processes = start()
           })
           return []
         }
@@ -258,11 +258,12 @@ export class Engine<
         ]
   ): Promise<void> {
     const { requiredCtx } = args[0] ?? {}
-    if (!this.isPrepared()) {
-      throw new Error(
-        'Engine is not prepared. Please call await engine.prepare() first. And do it in each server entrypoint file, strongly before any other import',
-      )
-    }
+    // if (!this.isPrepared()) {
+    //   throw new Error(
+    //     'Engine is not prepared. Please call await engine.prepare() first. And do it in each server entrypoint file, strongly before any other import',
+    //   )
+    // }
+    await this.prepare()
     await this.server.serve({ requiredCtx })
   }
 
@@ -396,7 +397,7 @@ export class Engine<
       void this.generator.sync({ logOnNotWritten }).catch((error: unknown) => {
         this.logger({
           level: 'error',
-          topic: 'FilesGenerator',
+          category: ['FilesGenerator'],
           message: 'Failed to generate files',
           error,
         })

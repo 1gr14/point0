@@ -17,5 +17,3 @@ new Elysia()
     return await engine.fetch(request, { requiredCtx: store })
   })
   .listen(engine.server.port) // you can pick any port, so does not needed to use .server.port, but it is more readable
-
-console.info(`🚀 http://localhost:${engine.server.port}`)

@@ -38,8 +38,8 @@ const helper = (
     files: TestFile[]
     fixPaths: (content: string) => string
     logger: LoggerFn
-    getLogs: () => Array<[{ level: string; topic: string; message: string }]>
-    getLastLog: () => [{ level: string; topic: string; message: string }]
+    getLogs: () => Array<[{ level: string; category: string[]; message: string }]>
+    getLastLog: () => [{ level: string; category: string[]; message: string }]
     getLastLogMessage: () => string
   }) => void | Promise<void>,
   preserve = false,

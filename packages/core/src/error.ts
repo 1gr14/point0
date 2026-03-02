@@ -64,14 +64,7 @@ export class ErrorPoint0 extends Error {
     //     return undefined
     //   }
     // })()
-    const isStacktracePublic =
-      process.env.ERROR0_PUBLIC_STACKTRACE === 'true'
-        ? true
-        : process.env.ERROR0_PUBLIC_STACKTRACE === 'false'
-          ? false
-          : process.env.NODE_ENV === 'production'
-            ? false
-            : true
+    const isStacktracePublic = process.env.NODE_ENV !== 'production'
     return {
       name: 'ErrorPoint0',
       message: error.message,

@@ -3,7 +3,7 @@ import { superstore } from './super-store.js'
 
 export type LoggerOptions = {
   level: 'info' | 'error' | 'warn' | 'debug'
-  topic: string
+  category: string[]
   message: string
   error?: unknown
   meta?: Record<string, unknown>
@@ -12,7 +12,7 @@ export type LoggerFn = (options: LoggerOptions) => void
 export const _defaultLoggerFn: LoggerFn = (options: LoggerOptions) => {
   // eslint-disable-next-line no-console
   console[options.level](
-    `[${options.topic}] ${options.message}`,
+    `[${options.category.join(':')}] ${options.message}`,
     ...(options.error ? [options.error] : []),
     ...(options.meta ? [options.meta] : []),
   )

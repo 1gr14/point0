@@ -140,7 +140,7 @@ export class FilesGenerator {
     const [loggerMethod, emoji] = result.errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '']
     this.logger({
       level: loggerMethod,
-      topic: 'FilesGenerator',
+      category: ['FilesGenerator'],
       message: [emoji, `${result.points.length} points processed`].filter(Boolean).join(' '),
     })
     return result
@@ -263,7 +263,7 @@ export class FilesGenerator {
       const errorsMessages = point.errors.map((e) => (e instanceof Error ? e.message : String(e))).join(', ')
       const message = `${point.type}.${point.name}: ${errorsMessages} in ${point.strpos}`
       if (!options?.silent) {
-        this.logger({ level: 'error', topic: 'FilesGenerator', message })
+        this.logger({ level: 'error', category: ['FilesGenerator'], message })
       }
     }
     const prevPoints = [...this.points]
@@ -296,7 +296,7 @@ export class FilesGenerator {
         const fileSuffix = file ? ` in ${file}${originalErrorPosition}` : ''
         this.logger({
           level: 'error',
-          topic: 'FilesGenerator',
+          category: ['FilesGenerator'],
           // message: (error instanceof Error ? error.message : String(error)) + error.file ? ` in ${error.file}` : '',
           message: originalMessage + fileSuffix,
         })
@@ -1003,7 +1003,7 @@ export class FilesGenerator {
       async (err, events) => {
         if (err) {
           if (!options?.silent) {
-            this.logger({ level: 'error', topic: 'FilesGenerator', message: `Watcher error`, error: err })
+            this.logger({ level: 'error', category: ['FilesGenerator'], message: `Watcher error`, error: err })
           }
           return
         }
@@ -1054,19 +1054,19 @@ export class FilesGenerator {
               if (evt.deleted.length > 0) {
                 const deletedTypesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(' ')
                 if (!options?.silent) {
-                  this.logger({ level: 'info', topic: 'FilesGenerator', message: `➖ ${deletedTypesAndNames}` })
+                  this.logger({ level: 'info', category: ['FilesGenerator'], message: `➖ ${deletedTypesAndNames}` })
                 }
               }
               if (evt.added.length > 0) {
                 const addedTypesAndNames = evt.added.map((p) => `${p.type}.${p.name}`).join(' ')
                 if (!options?.silent) {
-                  this.logger({ level: 'info', topic: 'FilesGenerator', message: `➕ ${addedTypesAndNames}` })
+                  this.logger({ level: 'info', category: ['FilesGenerator'], message: `➕ ${addedTypesAndNames}` })
                 }
               }
             }
           } catch (e) {
             if (!options?.silent) {
-              this.logger({ level: 'error', topic: 'FilesGenerator', message: `Watcher error`, error: e })
+              this.logger({ level: 'error', category: ['FilesGenerator'], message: `Watcher error`, error: e })
             }
           }
         }
@@ -1077,7 +1077,7 @@ export class FilesGenerator {
     )
 
     if (!options?.silent) {
-      this.logger({ level: 'info', topic: 'FilesGenerator', message: 'Watcher started' })
+      this.logger({ level: 'info', category: ['FilesGenerator'], message: 'Watcher started' })
     }
 
     // Store subscription for potential cleanup

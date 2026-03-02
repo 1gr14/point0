@@ -1,5 +1,4 @@
 import { type AnyLocation, Route0 } from '@devp0nt/route0'
-import { ClientPoints, env } from '@point0/core'
 import type {
   AppComponent,
   InputParsed,
@@ -10,6 +9,7 @@ import type {
   PointsScope,
   RequiredCtx,
 } from '@point0/core'
+import { ClientPoints, env } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import * as nodeFs from 'node:fs/promises'
@@ -28,10 +28,11 @@ import type {
 } from './config.js'
 import type { Executor } from './executor.js'
 import { resolvePortByPolicy } from './port.js'
-import { Publicdir } from './publicdir.js'
 import type { PublicdirDefinition } from './publicdir.js'
+import { Publicdir } from './publicdir.js'
 import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
 import type { EngineServer } from './server.js'
+import type { EngineClientBuildConfigDefinition, EngineClientPluginsDefinition } from './utils.js'
 import {
   createViteDevServer,
   extractEngineClientBuildConfig,
@@ -40,9 +41,8 @@ import {
   isAsyncFn,
   normalizeAndValidateNodeEnv,
   resolveTempDirPath,
-  withRetries,
+  serveWithRetries,
 } from './utils.js'
-import type { EngineClientBuildConfigDefinition, EngineClientPluginsDefinition } from './utils.js'
 
 export class EngineClient<TPrepared extends boolean = boolean> {
   cwd: string
@@ -395,10 +395,15 @@ plugins = [${combinedPluginsStrings.map((p) => `"${p}"`).join(', ')}]
     const scriptContent = `
 import indexHtml from '${this.indexHtml}';
 import { Engine } from '@point0/engine';
-import { withRetries } from '@point0/engine/utils';
+import { serveWithRetries } from '@point0/engine/utils';
 const { engine } = await Engine.findAndImportSelf({ engineFile: '${this.engineFile}' });
 try {
-  withRetries(${this.serveRetries}, () => Bun.serve({
+  await serveWithRetries({
+    port: ${this.port},
+    serveRetries: ${this.serveRetries},
+    portPolicy: '${this.portPolicy}',
+    category: ['EngineClient'],
+  }, async () => Bun.serve({
     port: ${this.port},
     routes: {
       '/index.html': indexHtml,
@@ -428,13 +433,13 @@ try {
   }))();
   engine.logger({
     level: 'info',
-    topic: 'EngineClient',
+    category: ['EngineClient'],
     message: 'Client "${this.scope}" dev server started http://localhost:${this.port}',
   })
 } catch (error) {
   engine.logger({
     level: 'error',
-    topic: 'EngineClient',
+    category: ['EngineClient'],
     message: error instanceof Error ? error.message : String(error),
   });
   process.exit(1);
@@ -530,52 +535,59 @@ try {
       throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
     }
     const srcIndexHtmlContent = await Bun.file(this.indexHtml).text()
-    const bunViteDevServer = withRetries(this.serveRetries, () =>
-      Bun.serve({
+    const bunViteDevServer = await serveWithRetries(
+      {
         port: this.port,
-        development: {
-          console: false,
-          hmr: false, // vite provides it own hmr
-        },
-        fetch: async (request) => {
-          const location = Route0.getLocation(request.url)
-          if (location.pathname === '/index.html') {
-            const originalIndexHtml = await viteDevServer.transformIndexHtml(request.url, srcIndexHtmlContent)
-            return new Response(originalIndexHtml, {
-              headers: {
-                'Content-Type': 'text/html',
-              },
+        serveRetries: this.serveRetries,
+        portPolicy: this.portPolicy,
+        category: ['EngineClient'],
+      },
+      async () =>
+        Bun.serve({
+          port: this.port,
+          development: {
+            console: false,
+            hmr: false, // vite provides it own hmr
+          },
+          fetch: async (request) => {
+            const location = Route0.getLocation(request.url)
+            if (location.pathname === '/index.html') {
+              const originalIndexHtml = await viteDevServer.transformIndexHtml(request.url, srcIndexHtmlContent)
+              return new Response(originalIndexHtml, {
+                headers: {
+                  'Content-Type': 'text/html',
+                },
+              })
+            }
+            const middlewareResponse = await this.fetchViteDevServerMiddleware({
+              request,
             })
-          }
-          const middlewareResponse = await this.fetchViteDevServerMiddleware({
-            request,
-          })
-          if (middlewareResponse) {
-            return middlewareResponse
-          }
-          if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
-            return new Response('__NO_RESPONSE__', {
-              headers: {
-                'Content-Type': 'text/plain',
-              },
-              status: 404,
+            if (middlewareResponse) {
+              return middlewareResponse
+            }
+            if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
+              return new Response('__NO_RESPONSE__', {
+                headers: {
+                  'Content-Type': 'text/plain',
+                },
+                status: 404,
+              })
+            }
+            const forwardedHeaders = new Headers(request.headers)
+            forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client', this.scope)
+            const res = await fetch(`http://localhost:${this.server.port}${location.pathname}${location.search}`, {
+              method: request.method,
+              headers: forwardedHeaders,
+              body: request.body,
+              redirect: 'manual',
             })
-          }
-          const forwardedHeaders = new Headers(request.headers)
-          forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client', this.scope)
-          const res = await fetch(`http://localhost:${this.server.port}${location.pathname}${location.search}`, {
-            method: request.method,
-            headers: forwardedHeaders,
-            body: request.body,
-            redirect: 'manual',
-          })
-          return res
-        },
-      }),
+            return res
+          },
+        }),
     )()
     this.logger({
       level: 'info',
-      topic: 'EngineClient',
+      category: ['EngineClient'],
       message: `Client "${this.scope}" dev server started http://localhost:${this.port}`,
     })
     return { bunViteDevServer, viteDevServer }

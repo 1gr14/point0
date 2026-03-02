@@ -8094,7 +8094,7 @@ export class Point0<
         } catch (error) {
           // logger({
           //   level: 'error',
-          //   topic: 'Eventer',
+          //   category: ['Eventer'],
           //   message: `Error emitting event ${name} on point ${this.toStringWithLocation()}`,
           //   error,
           // })
