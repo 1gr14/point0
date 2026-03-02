@@ -1,6 +1,5 @@
-import { Route0 } from '@devp0nt/route0'
 import type { AnyLocation, AnyRoute, CallableRoute, FlatInputStringOnly, KnownLocation } from '@devp0nt/route0'
-import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Route0 } from '@devp0nt/route0'
 import type {
   DehydratedState,
   InfiniteData,
@@ -11,17 +10,17 @@ import type {
   UseMutationResult,
   UseQueryResult,
 } from '@tanstack/react-query'
+import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import { flatten } from 'flat'
 import * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
-import { createContext, useContextSelector } from 'use-context-selector'
 import type { Context } from 'use-context-selector'
+import { createContext, useContextSelector } from 'use-context-selector'
 import { Effects } from './effects.js'
 import { _point0_env } from './env.js'
-import { ErrorPoint0 } from './error.js'
 import type { ClassLikeError0 } from './error.js'
-import { uniqEventerErrorEventNames } from './eventer.js'
+import { ErrorPoint0 } from './error.js'
 import type {
   AnyEventerEvent,
   AnyEventerEventName,
@@ -33,7 +32,10 @@ import type {
   ServerEventerSubscriptionCallback,
   UniqEventerErrorEventName,
 } from './eventer.js'
+import { uniqEventerErrorEventNames } from './eventer.js'
+import { getCallerLocation } from './index.js'
 import { _getFakeClient, _ssItems } from './internals.js'
+import type { LoggerFn } from './logger.js'
 import type {
   AppendProps,
   AppendQueries,
@@ -82,8 +84,8 @@ import type {
   WithSelfQueryIfShouldBeFinalized,
   WrapperComponentType,
 } from './mountable.js'
-import { _usePageStateManager, useLocation, useRouterContext } from './router.js'
 import type { RouterPageState } from './router.js'
+import { _usePageStateManager, useLocation, useRouterContext } from './router.js'
 import { superstore } from './super-store.js'
 import type {
   AnyPoint,
@@ -214,8 +216,6 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
-import { getCallerLocation, getLoggerForPoint } from './index.js'
-import type { LoggerFn } from './logger.js'
 
 // import stringify from 'safe-stable-stringify'
 
@@ -8077,9 +8077,10 @@ export class Point0<
   _emit<TName extends AnyEventerEventName>(
     name: TName,
     data: Extract<AnyEventerEvent<TError>, { name: TName }>['data'],
+    preventEmitError = false,
   ) {
     const event = { name, data, side: _point0_env.side.name } as AnyEventerEvent<TError>
-    const logger = getLoggerForPoint(this)
+    // const logger = getLoggerForPoint(this)
     for (const subscription of this._eventerSubscriptions) {
       if (subscription.side && subscription.side !== event.side) {
         continue
@@ -8091,12 +8092,17 @@ export class Point0<
         try {
           await subscription.callback(event)
         } catch (error) {
-          logger({
-            level: 'error',
-            topic: 'Eventer',
-            message: `Error emitting event ${name} on point ${this.toStringWithLocation()}`,
-            error,
-          })
+          // logger({
+          //   level: 'error',
+          //   topic: 'Eventer',
+          //   message: `Error emitting event ${name} on point ${this.toStringWithLocation()}`,
+          //   error,
+          // })
+          try {
+            if (!preventEmitError) {
+              this._emit('emitError', { error: this._Error.from(error), event: event as never }, true)
+            }
+          } catch {}
         }
       })()
     }

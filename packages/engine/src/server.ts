@@ -12,7 +12,7 @@ import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { ViteDevServer } from 'vite'
-import type { CompilerOptions } from '../../compiler/dist/compiler.js'
+import type { CompilerOptions } from '@point0/compiler'
 import type { EngineClient } from './client.js'
 import type {
   EngineOptionsCompilerSpecificParsed,
@@ -312,8 +312,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
       mode: this.compiler.mode ? normalizeAndValidateNodeEnv() : false,
       runtime: this.compiler.runtime,
       os: this.compiler.os,
-      // TODO:ASAP add env varsconsts here from engine options
-      consts: this.compiler.consts,
+      consts: [...(this.compiler.consts ?? []), this.envConsts],
       filter: this.compiler.filter,
     }
   }

@@ -403,7 +403,7 @@ export const createTestThings = async ({
           return '\n' + state.titles.join('\n') + '\n'
         }
 
-        const rendered = rtl.render(app({ points: client.points }), { container: root })
+        const rendered = rtl.render(app(), { container: root })
         state._unmount = rendered.unmount
         state.body = document.body
         state.document = document

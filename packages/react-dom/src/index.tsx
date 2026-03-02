@@ -58,6 +58,4 @@ export function mount(
   }
 }
 
-// we have absolutly same type in @point0/core/types, so if somebody need it, get it from there
-type AppProps = { points: ClientPoints }
-type AppComponent = (props: AppProps) => React.ReactElement
+type AppComponent = () => React.ReactElement

@@ -354,8 +354,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
       mode: this.compiler.mode ? normalizeAndValidateNodeEnv() : false,
       runtime: this.compiler.runtime,
       os: this.compiler.os,
-      // TODO:ASAP add env varsconsts here from engine options
-      consts: this.compiler.consts,
+      consts: [...(this.compiler.consts ?? []), this.envConsts],
       filter: this.compiler.filter,
     }
   }

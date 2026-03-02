@@ -687,7 +687,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           name: suitableMarker.pointName,
         })
         if (exactPoint) {
-          if (exactPoint._queryResultType === 'infiniteQuery') {
+          if (suitableMarker.isInfiniteQuery) {
             await exactPoint.prefetchInfiniteQuery(suitableMarker.input, undefined, { force: true, mode: 'server' })
           } else {
             await exactPoint.prefetchQuery(suitableMarker.input, undefined, { force: true, mode: 'server' })

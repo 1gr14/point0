@@ -14,12 +14,11 @@ import type {
   UseInfiniteQueryResult,
   UseQueryResult,
 } from '@tanstack/react-query'
-import type { ClientPoints } from './client-points.js'
 import type { ResponseEffectsSetHelper, ResponseEffectsValues } from './effects.js'
+import type { ErrorPoint0 } from './error.js'
 import type { EmptyProps, Props, QueriesDefinitions } from './mountable.js'
 import type { Point0 } from './point0.js'
 import type { Request0 } from './request0.js'
-import type { ErrorPoint0 } from './error.js'
 
 // basic
 
@@ -1191,9 +1190,7 @@ export type FetchServerOutputType = 'data' | 'queryClientDehydratedState'
 
 // mountable app
 
-// TODO: do not pass points to app
-export type AppProps<TError extends ErrorPoint0> = { points: ClientPoints<TError> }
-export type AppComponent = <TError extends ErrorPoint0>(props: AppProps<TError>) => React.ReactElement
+export type AppComponent = () => React.ReactElement
 export type AppComponentModule = { default: AppComponent }
 
 // data transformer

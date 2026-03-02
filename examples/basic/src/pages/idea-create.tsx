@@ -1,5 +1,3 @@
-import { useState } from 'react'
-import * as z from 'zod'
 import { client } from '@/lib/client.js'
 import {
   testCookie,
@@ -8,8 +6,9 @@ import {
   testServerCookie,
   testStringDefaultCookie,
 } from '@/lib/cookies.js'
+import { useState } from 'react'
+import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
-import { BestIdeaComponent } from './home.js'
 
 export const createIdeaMutation = client
   .lets('mutation', 'createIdea')

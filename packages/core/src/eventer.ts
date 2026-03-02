@@ -367,7 +367,15 @@ export type EventerEventEngineFetchError<TError extends ErrorPoint0> = EventerEv
   }
 >
 
+// emit
+export type EventerEventEmitError<TError extends ErrorPoint0> = EventerEvent<
+  'client' | 'server',
+  'emitError',
+  { error: TError; event: Exclude<AnyEventerEvent<TError>, EventerEventEmitError<TError>> }
+>
+
 export type AnyEventerEvent<TError extends ErrorPoint0> =
+  | EventerEventEmitError<TError>
   | EventerEventPointFetchServerStart
   | EventerEventPointFetchServerSettled<TError>
   | EventerEventPointFetchServerSuccess

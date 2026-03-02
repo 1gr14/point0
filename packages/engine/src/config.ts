@@ -16,7 +16,8 @@ import type { Request0 } from '@point0/core/request0'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { type CompilerEnvConsts, normalizeEnvConsts } from '../../compiler/dist/utils.js'
+import type { CompilerEnvConsts, CompilerEnvConstsNormalized } from '@point0/compiler'
+import { normalizeEnvConsts } from '@point0/compiler'
 import type { FilesGeneratorTaskMeta, FilesGeneratorTaskPoints, FilesGeneratorTaskRoutes } from './generator.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { toAbsPath, toJsExtension } from './utils.js'
@@ -83,7 +84,7 @@ export type EngineOptionsCompilerGeneral = {
 export type EngineOptionsCompilerGeneralParsed = {
   side: boolean
   scope: boolean
-  consts: CompilerEnvConsts | undefined
+  consts: CompilerEnvConstsNormalized | undefined
   mode: boolean
   runtime: boolean
   os: boolean
@@ -101,7 +102,7 @@ export type EngineOptionsCompilerSpecific = {
 export type EngineOptionsCompilerSpecificParsed = {
   side: boolean
   scope: boolean
-  consts: CompilerEnvConsts | undefined
+  consts: CompilerEnvConstsNormalized | undefined
   mode: boolean
   runtime: EnvRuntimeName | false
   os: EnvOsName | false

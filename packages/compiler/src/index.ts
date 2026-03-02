@@ -1,4 +1,6 @@
+export * from './compiler.js'
 export * from './file.js'
 export * from './point.js'
 export * from './resolver.js'
+export * from './utils.js'
 export * from './walker.js'
