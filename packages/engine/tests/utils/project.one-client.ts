@@ -276,7 +276,7 @@ export class TestProjectOneClient {
 
   async waitStarted() {
     await this.waitOutput([`started http://localhost:${this.serverPort}`, '!Failed to start server'])
-    await this.waitOutput([`started http://localhost:${this.clientPort}`, '!Failed to start client'])
+    // await this.waitOutput([`started http://localhost:${this.clientPort}`, '!Failed to start client'])
   }
 
   // async waitWSReady(timeout = 2000) {

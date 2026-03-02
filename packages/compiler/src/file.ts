@@ -27,12 +27,10 @@ const babelGenerator = ((generatorModule as any).default ?? generatorModule) as 
   ? T
   : typeof generatorModule
 
-const minifyGuardedExpressions = ((
-  minifyGuardedExpressionsModule as any
-).default ?? minifyGuardedExpressionsModule) as typeof minifyGuardedExpressionsModule
-const minifyDeadCodeElimination = ((
-  minifyDeadCodeEliminationModule as any
-).default ?? minifyDeadCodeEliminationModule) as typeof minifyDeadCodeEliminationModule
+const minifyGuardedExpressions = ((minifyGuardedExpressionsModule as any).default ??
+  minifyGuardedExpressionsModule) as typeof minifyGuardedExpressionsModule
+const minifyDeadCodeElimination = ((minifyDeadCodeEliminationModule as any).default ??
+  minifyDeadCodeEliminationModule) as typeof minifyDeadCodeEliminationModule
 
 export class CompilerFile<THasContent extends boolean> {
   readonly abs: string
@@ -415,7 +413,10 @@ export class CompilerFile<THasContent extends boolean> {
         code: false,
         configFile: false,
         babelrc: false,
-        plugins: [minifyGuardedExpressions, minifyDeadCodeElimination],
+        plugins: [
+          minifyGuardedExpressions,
+          [minifyDeadCodeElimination, { keepFnName: true, keepFnArgs: true, keepClassName: true }],
+        ],
       })
       if (!result?.ast) {
         return { ok: true, errors, modified }

@@ -21,6 +21,10 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
         map: true,
       })
 
+      // if (filepath.includes('page.tsx')) {
+      //   console.log(111, result.code)
+      // }
+
       if (!result.modified) return null
 
       return {

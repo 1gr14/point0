@@ -59,6 +59,7 @@
     "@babel/core": "^7.29.0",
     "@babel/generator": "^7.29.0",
     "@babel/parser": "^7.29.0",
+    "@babel/preset-typescript": "^7.28.5",
     "@babel/traverse": "^7.29.0",
     "@babel/types": "^7.29.0",
     "babel-plugin-minify-dead-code-elimination": "^0.5.2",
