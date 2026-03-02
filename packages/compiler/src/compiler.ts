@@ -157,6 +157,8 @@ export class Compiler {
     if (built) {
       cf.shakeForBuiltEngine()
     }
+    const optimizeResult = cf.optimizeGuardedExpressions()
+    errors.push(...optimizeResult.errors)
     const isSomeStale = CompilerPoint.isSomeStale(collectResult.points)
     if (isSomeStale) {
       if (tryIndex >= 10) {

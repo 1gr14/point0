@@ -1,6 +1,9 @@
 import type { GeneratorResult } from '@babel/generator'
 import generatorModule from '@babel/generator'
+import { transformFromAstSync } from '@babel/core'
+import minifyDeadCodeEliminationModule from 'babel-plugin-minify-dead-code-elimination'
 import babel from '@babel/parser'
+import minifyGuardedExpressionsModule from 'babel-plugin-minify-guarded-expressions'
 import type traverseType from '@babel/traverse'
 import type { NodePath } from '@babel/traverse'
 import traverseModule from '@babel/traverse'
@@ -23,6 +26,13 @@ const babelGenerator = ((generatorModule as any).default ?? generatorModule) as 
 }
   ? T
   : typeof generatorModule
+
+const minifyGuardedExpressions = ((
+  minifyGuardedExpressionsModule as any
+).default ?? minifyGuardedExpressionsModule) as typeof minifyGuardedExpressionsModule
+const minifyDeadCodeElimination = ((
+  minifyDeadCodeEliminationModule as any
+).default ?? minifyDeadCodeEliminationModule) as typeof minifyDeadCodeEliminationModule
 
 export class CompilerFile<THasContent extends boolean> {
   readonly abs: string
@@ -379,6 +389,57 @@ export class CompilerFile<THasContent extends boolean> {
     return {
       code,
       map,
+    }
+  }
+
+  optimizeGuardedExpressions(): { ok: boolean; errors: unknown[]; modified: boolean } {
+    const errors: unknown[] = []
+    let modified = false
+    if (!this.content) {
+      throw new Error(`File ${this.abs} is not read yet`)
+    }
+    try {
+      const beforeCode = babelGenerator(
+        this.ast,
+        {
+          sourceFileName: this.abs,
+          retainLines: true,
+          tokens: true,
+          createParenthesizedExpressions: true,
+          ...({ experimental_preserveFormat: true } as any),
+        },
+        this.content,
+      ).code
+      const result = transformFromAstSync(this.ast, this.content, {
+        ast: true,
+        code: false,
+        configFile: false,
+        babelrc: false,
+        plugins: [minifyGuardedExpressions, minifyDeadCodeElimination],
+      })
+      if (!result?.ast) {
+        return { ok: true, errors, modified }
+      }
+      const afterCode = babelGenerator(
+        result.ast,
+        {
+          sourceFileName: this.abs,
+          retainLines: true,
+          tokens: true,
+          createParenthesizedExpressions: true,
+          ...({ experimental_preserveFormat: true } as any),
+        },
+        this.content,
+      ).code
+      if (afterCode !== beforeCode) {
+        this.ast.program = result.ast.program
+        modified = true
+        this.modified = true
+      }
+      return { ok: true, errors, modified }
+    } catch (e) {
+      errors.push(e)
+      return { ok: false, errors, modified }
     }
   }
 
