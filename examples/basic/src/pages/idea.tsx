@@ -1,7 +1,9 @@
-import { useState } from 'react'
 import { Link } from '@/lib/navigate'
+import { useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
 import type { Ctx } from '../lib/client.js'
+import { env } from '@point0/core'
+import { clientOnlyFn } from '@/lib/client-only.js'
 
 export const getIdea = async (ctx: Ctx, id: number) => {
   const idea = await ctx.prisma.idea.findUniqueOrThrow({
@@ -11,6 +13,10 @@ export const getIdea = async (ctx: Ctx, id: number) => {
 }
 
 // TODO: add getIdeaChain, or getIdeaQuery and use it in layout and for example in updatePage
+
+if (env.side.is.client) {
+  clientOnlyFn()
+}
 
 export const ideaPage = ideaLayout
   .lets('page', 'idea', '/')

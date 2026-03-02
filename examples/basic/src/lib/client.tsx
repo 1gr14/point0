@@ -27,12 +27,14 @@ export const client = Point0.lets<{ zxc: number }>('root', 'client')
   })
   // .prefetchPageOnNavigate(false)
   // .prefetchPageOnLinkHover(false)
-  .head('global', ({ loading, error }) => ({
-    ...(loading ? { title: 'Loading...' } : {}),
-    ...(error ? { title: error.message } : {}),
-    titleTemplate: '%s | IdeaNick',
-    htmlAttrs: { lang: 'en' },
-  }))
+  .head('global', ({ loading, error }) => {
+    return {
+      ...(loading ? { title: 'Loading...' } : {}),
+      ...(error ? { title: error.message } : {}),
+      titleTemplate: '%s | IdeaNick',
+      htmlAttrs: { lang: 'en' },
+    }
+  })
   .error(({ error }) => {
     return (
       <div>
