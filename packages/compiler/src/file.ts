@@ -278,6 +278,7 @@ export class CompilerFile<THasContent extends boolean> {
           'classProperties',
           'classPrivateProperties',
           'classPrivateMethods',
+          'throwExpressions',
         ],
       })
       this._parse = { ast, errors, ok: true }

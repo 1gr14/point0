@@ -245,7 +245,9 @@ export class FilesGenerator {
         return pointsArrays.flat()
       }),
     )
-    const errors = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.errors))
+    const errors = collectedChunks.flatMap((chunk) =>
+      chunk.flatMap((p) => p.errors.map((e) => ({ error: e, file: p.file?.abs }))),
+    )
     const collectedPoints = await Promise.all(
       collectedChunks.flatMap((chunk) =>
         chunk.flatMap((p) =>
@@ -271,11 +273,32 @@ export class FilesGenerator {
     this.sortPoints()
     const { written } = diff.changed ? await this.writeOutputs() : { written: false }
     if (!options?.silent) {
-      for (const error of errors) {
+      for (const { error, file } of errors) {
+        const originalMessage = error instanceof Error ? error.message || String(error) : String(error)
+        const originalErrorLoc =
+          typeof error === 'object' &&
+          error !== null &&
+          'loc' in error &&
+          typeof error.loc === 'object' &&
+          error.loc !== null
+            ? error.loc
+            : undefined
+        const originalErrorLine =
+          originalErrorLoc && 'line' in originalErrorLoc && typeof originalErrorLoc.line === 'number'
+            ? originalErrorLoc.line
+            : undefined
+        const originalErrorColumn =
+          originalErrorLoc && 'column' in originalErrorLoc && typeof originalErrorLoc.column === 'number'
+            ? originalErrorLoc.column
+            : undefined
+        const originalErrorPosition =
+          originalErrorLine && originalErrorColumn ? `(${originalErrorLine}:${originalErrorColumn})` : ''
+        const fileSuffix = file ? ` in ${file}${originalErrorPosition}` : ''
         this.logger({
           level: 'error',
           topic: 'FilesGenerator',
-          message: error instanceof Error ? error.message : String(error),
+          // message: (error instanceof Error ? error.message : String(error)) + error.file ? ` in ${error.file}` : '',
+          message: originalMessage + fileSuffix,
         })
       }
     }
