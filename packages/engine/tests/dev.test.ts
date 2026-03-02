@@ -153,6 +153,87 @@ describe('dev', () => {
       },
     )
 
+    it(
+      'cut unused code on the fly',
+      wrp({ ssr: false, vite: bundler === 'vite' }, async ({ tp, engine }) => {
+        expect(engine.server.port).toBeNumber()
+        expect(engine.clients[0].port).toBeNumber()
+        expect(engine.server.hmrPort).toBeFalse()
+        expect(engine.clients[0].hmrPort).toBeFalse()
+        await tp.write(
+          'src/server-only.tsx',
+          `import { root } from './lib/root.js'
+          import { env } from '@point0/core'
+          if (typeof window !== 'undefined') {
+            throw new Error('This module for server only')
+          }
+          export const sayHiFromServer = () => ({hiFromServer: 'hiFromServer'})
+        `,
+        )
+        await tp.write(
+          'src/client-only.tsx',
+          `import { root } from './lib/root.js'
+          import { env } from '@point0/core'
+          if (typeof window === 'undefined') {
+            throw new Error('This module for client only')
+          }
+          export const sayHiFromClient = () => ({hiFromClient: 'hiFromClient'})
+        `,
+        )
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          import { env } from '@point0/core'
+          import { sayHiFromServer } from './server-only.tsx'
+          import { sayHiFromClient } from './client-only.tsx'
+
+          if (env.side.is.server) {
+            sayHiFromServer()
+          }
+          if (env.side.is.client) {
+            sayHiFromClient()
+          }
+
+        export const page = root.lets('page', 'home', '/')
+          .loader(() => {
+            return {
+              ...sayHiFromServer(),
+            }
+          })
+          .clientLoader(({data}) => {
+            return {
+              ...data,
+              ...sayHiFromClient(),
+            }
+          })
+          .page(({data}) => <div>
+            <div id="server">{data.hiFromServer}</div>
+            <div id="client">{data.hiFromClient}</div>
+          </div>)`,
+        )
+        tp.spawn(['bun', 'run', 'dev'])
+        await tp.waitStarted()
+        const html = await tp.fetchServerHtml('/')
+        const page = await tp.gotoClient('/')
+        await page.stable
+        expect(page.tale).toMatchInlineSnapshot(`
+        "
+        /
+          (Empty)
+          
+          div: Loading...
+          
+          div:
+            #server: hiFromServer
+            #client: hiFromClient
+          "
+        `)
+      }),
+      {
+        retry: 3,
+      },
+    )
+
     // Sad, becouse it is main thing and sometimes failed... But in real it works
     it(
       'have hmr client updates',
@@ -281,7 +362,7 @@ describe('dev', () => {
         expect(page.history.length).toBe(1)
       }),
       {
-        // retry: 3,
+        retry: 3,
       },
     )
 
