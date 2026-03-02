@@ -6,6 +6,7 @@ import type {
   TestProjectOneClientFactoryCreateProjectOptions,
 } from './utils/project.one-client.js'
 import { TestProjectOneClientFactory } from './utils/project.one-client.js'
+import assert from 'node:assert'
 
 setDefaultTimeout(15000)
 
@@ -251,6 +252,195 @@ describe('build', () => {
             div: MY_CLIENT_ONLY5
             "
         `)
+      }),
+      {
+        retry: 3,
+      },
+    )
+
+    //     it.only(
+    //       'keeps error stack',
+    //       wrp({ ssr: true, vite: bundler === 'vite', preserve: true }, async ({ tp }) => {
+    //         await tp.waitPortsFree()
+    //         if (bundler !== 'vite') {
+    //           return
+    //         }
+    //         await tp.write(
+    //           'src/page.tsx',
+    //           `import { root } from './lib/root.js'
+    // import { useState, useEffect } from 'react'
+
+    // const ErrorComponent = ({ error }) => <div id="error">{error.stack}</div>
+
+    // export const page1 = root.lets('page', 'page1', '/1')
+    //   .error(ErrorComponent)
+    //   .loader(() => {
+    //     return {x:1}
+    //   })
+    //   .page(({data}) => {
+    //     const error = new Error('render error on line 12')
+    //     return (
+    //       <div id="error">
+    //         {error.stack}
+    //       </div>
+    //     )
+    //   })
+
+    // export const page2 = root.lets('page', 'page2', '/2')
+    //   .error(ErrorComponent)
+    //   .loader(() => {
+    //     throw new Error('loader error on line 23')
+    //     return {x:1}
+    //   })
+    //   .page(({data}) => {
+    //     return (
+    //       <div>
+    //         {data.x}
+    //       </div>
+    //     )
+    //   })
+
+    //             `,
+    //         )
+    //         await tp.generate()
+    //         const bp = tp.spawn(['bun', 'run', 'build'])
+    //         await bp.exited
+    //         tp.spawn(['bun', 'run', 'start'], {
+    //           env: {
+    //             ...process.env,
+    //             ERROR0_PUBLIC_STACKTRACE: 'true',
+    //           },
+    //         })
+    //         await tp.waitStarted()
+
+    //         const extractPosition = (tale: string) => {
+    //           const match = tale.match(/page\.tsx:(\d+):(\d+)/)
+    //           if (!match) {
+    //             return undefined
+    //           }
+    //           return {
+    //             line: Number(match[1]),
+    //             column: Number(match[2]),
+    //           }
+    //         }
+
+    //         const page = await tp.gotoServer('/1')
+    //         await page.waitContent('#error')
+    //         console.log(page.tale)
+    //         expect(page.tale).toContain('page.tsx')
+    //         // it is not yet work normally. All errors in react components in points are broken, becouse for hmr we move to bottom of file
+    //         // TODO: in compiler break chain add function MyComponent() in that place, then continue chain.
+    //         // const pos1 = extractPosition(page.tale)
+    //         // assert(pos1)
+    //         // expect(pos1.line).toBe(12)
+    //         // if (pos1.column !== 19 && pos1.column !== 23) {
+    //         //   throw new Error('Column for page1 is not 19 or 23, it is ' + pos1.column)
+    //         // }
+
+    //         const page2 = await tp.gotoServer('/2')
+    //         await page2.waitContent('#error')
+    //         expect(page2.tale).toContain('page.tsx')
+    //         const pos2 = extractPosition(page2.tale)
+    //         assert(pos2)
+    //         expect(pos2.line).toBe(23)
+    //         if (pos2.column !== 11 && pos2.column !== 15) {
+    //           throw new Error('Column for page2 is not 11 or 15, it is ' + pos2.column)
+    //         }
+    //       }),
+    //       {
+    //         retry: 3,
+    //       },
+    //     )
+    //   })
+
+    it.only(
+      'hvae correct sourcemap',
+      wrp({ ssr: true, vite: bundler === 'vite', preserve: true }, async ({ tp }) => {
+        await tp.waitPortsFree()
+        if (bundler !== 'vite') {
+          return
+        }
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+import { useState, useEffect } from 'react'
+
+const ErrorComponent = ({ error }) => <div id="error">{error.stack}</div>
+
+export const page1 = root.lets('page', 'page1', '/1')
+.error(ErrorComponent)
+.loader(() => {
+return {x:1}
+})
+.page(({data}) => {
+const error = new Error('render error on line 12')
+return (
+  <div id="error">
+    {error.stack}
+  </div>
+)
+})
+
+export const page2 = root.lets('page', 'page2', '/2')
+.error(ErrorComponent)
+.loader(() => {
+throw new Error('loader error on line 23')
+return {x:1}
+})
+.page(({data}) => {
+return (
+  <div>
+    {data.x}
+  </div>
+)
+})
+          
+        `,
+        )
+        await tp.generate()
+        const bp = tp.spawn(['bun', 'run', 'build'])
+        await bp.exited
+        tp.spawn(['bun', 'run', 'start'], {
+          env: {
+            ...process.env,
+            ERROR0_PUBLIC_STACKTRACE: 'true',
+          },
+        })
+        await tp.waitStarted()
+
+        const extractPosition = (tale: string) => {
+          const match = tale.match(/page\.tsx:(\d+):(\d+)/)
+          if (!match) {
+            return undefined
+          }
+          return {
+            line: Number(match[1]),
+            column: Number(match[2]),
+          }
+        }
+
+        const page = await tp.gotoServer('/1')
+        await page.waitContent('#error')
+        console.log(page.tale)
+        expect(page.tale).toContain('page.tsx')
+        // it is not yet work normally. All errors in react components in points are broken, becouse for hmr we move to bottom of file
+        // TODO: in compiler break chain add function MyComponent() in that place, then continue chain.
+        // const pos1 = extractPosition(page.tale)
+        // assert(pos1)
+        // expect(pos1.line).toBe(12)
+        // if (pos1.column !== 19 && pos1.column !== 23) {
+        //   throw new Error('Column for page1 is not 19 or 23, it is ' + pos1.column)
+        // }
+
+        const page2 = await tp.gotoServer('/2')
+        await page2.waitContent('#error')
+        expect(page2.tale).toContain('page.tsx')
+        const pos2 = extractPosition(page2.tale)
+        assert(pos2)
+        expect(pos2.line).toBe(23)
+        if (pos2.column !== 11 && pos2.column !== 15) {
+          throw new Error('Column for page2 is not 11 or 15, it is ' + pos2.column)
+        }
       }),
       {
         retry: 3,

@@ -64,13 +64,21 @@ export class ErrorPoint0 extends Error {
     //     return undefined
     //   }
     // })()
+    const isStacktracePublic =
+      process.env.ERROR0_PUBLIC_STACKTRACE === 'true'
+        ? true
+        : process.env.ERROR0_PUBLIC_STACKTRACE === 'false'
+          ? false
+          : process.env.NODE_ENV === 'production'
+            ? false
+            : true
     return {
       name: 'ErrorPoint0',
       message: error.message,
       ...(error.status ? { status: error.status } : {}),
       ...(error.code ? { code: error.code } : {}),
       // ...(meta ? { meta } : {}),
-      ...(process.env.NODE_ENV === 'production' || !error.stack ? {} : { stack: error.stack }),
+      ...(!isStacktracePublic || !error.stack ? {} : { stack: error.stack }),
     }
   }
 }

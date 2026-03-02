@@ -21,6 +21,7 @@ import type { FileGeneratorProcessResult, FilesGeneratorPointsFilesChangeWatcher
 import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
+import { killPort } from './port.js'
 
 export class Engine<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -225,10 +226,11 @@ export class Engine<
             processes.forEach((p) => {
               p.kill('SIGKILL')
             })
-            // void killPort(this.server.port).finally(() => {
-            //   processes = start()
-            // })
-            processes = start()
+
+            void killPort(this.server.port).finally(() => {
+              processes = start()
+            })
+            // processes = start()
           })
           return []
         }

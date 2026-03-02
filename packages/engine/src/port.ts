@@ -78,7 +78,7 @@ const killPids: Partial<Record<typeof platform, (pids: string[]) => Promise<void
     for (const pid of pids) {
       const killResult = await Bun.$`kill -9 ${pid}`.nothrow().quiet()
       if (killResult.exitCode !== 0) {
-        throw new Error(`Failed to kill process ${pid}: ${killResult.stderr.toString().trim()}`)
+        // throw new Error(`Failed to kill process ${pid}: ${killResult.stderr.toString().trim()}`)
       }
     }
   },
@@ -86,7 +86,7 @@ const killPids: Partial<Record<typeof platform, (pids: string[]) => Promise<void
     for (const pid of pids) {
       const killResult = await Bun.$`kill -9 ${pid}`.nothrow().quiet()
       if (killResult.exitCode !== 0) {
-        throw new Error(`Failed to kill process ${pid}: ${killResult.stderr.toString().trim()}`)
+        // throw new Error(`Failed to kill process ${pid}: ${killResult.stderr.toString().trim()}`)
       }
     }
   },
@@ -94,7 +94,7 @@ const killPids: Partial<Record<typeof platform, (pids: string[]) => Promise<void
     for (const pid of pids) {
       const killResult = await Bun.$`taskkill /pid ${pid} -t -f`.nothrow().quiet()
       if (killResult.exitCode !== 0) {
-        throw new Error(`Failed to kill process ${pid}: ${killResult.stderr.toString().trim()}`)
+        // throw new Error(`Failed to kill process ${pid}: ${killResult.stderr.toString().trim()}`)
       }
     }
   },

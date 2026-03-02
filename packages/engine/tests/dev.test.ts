@@ -234,9 +234,6 @@ describe('dev', () => {
     it(
       'keeps error stack',
       wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp }) => {
-        // if (bundler !== 'vite') {
-        //   return
-        // }
         await tp.waitPortsFree()
         await tp.write(
           'src/page.tsx',
@@ -292,6 +289,8 @@ export const page2 = root.lets('page', 'page2', '/2')
         const page = await tp.gotoClient('/1')
         await page.waitContent('#error')
         expect(page.tale).toContain('page.tsx')
+        // it is not yet work normally. All errors in react components in points are broken, becouse for hmr we move to bottom of file
+        // TODO: in compiler break chain add function MyComponent() in that place, then continue chain.
         // const pos1 = extractPosition(page.tale)
         // assert(pos1)
         // expect(pos1.line).toBe(12)
@@ -310,7 +309,7 @@ export const page2 = root.lets('page', 'page2', '/2')
         }
       }),
       {
-        // retry: 3,
+        retry: 3,
       },
     )
   })

@@ -24,9 +24,6 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
               loader: guessLoader(filepath),
             }
           }
-          if (filepath.includes('pages/idea.tsx')) {
-            // console.log(111, result.code)
-          }
 
           return {
             // contents: appendInlineSourceMap(result.code, result.map),
