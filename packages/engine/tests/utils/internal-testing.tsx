@@ -69,7 +69,6 @@ import { HtmlView } from './html-view.js'
 //   // return _rtl
 // }
 // export const { rtl, rtlGlobals } = await importRtl()
-// console.log(Object.keys(rtlGlobals))
 // export const rtl = {
 //   ..._rtl.rtl,
 //   globals: _rtl.globals,
@@ -99,7 +98,6 @@ export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
   //       .filter((x: any) => x !== null),
   //   ),
   // }
-  // console.log(555, Object.keys(result))
   // return result
   return {
     window,

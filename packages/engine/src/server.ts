@@ -185,6 +185,61 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     return !!this.prepared
   }
 
+  // private static patchConsoleForViteSsrStacktraceFix(): void {
+  //   if (EngineServer.viteSsrConsolePatched) {
+  //     return
+  //   }
+  //   EngineServer.viteSsrConsolePatched = true
+  //   const methods: Array<'error' | 'warn' | 'info'> = ['error', 'warn', 'info']
+  //   for (const method of methods) {
+  //     // eslint-disable-next-line no-console
+  //     const originalMethod = console[method].bind(console) as (...args: unknown[]) => void
+  //     // eslint-disable-next-line no-console
+  //     console[method] = ((...args: unknown[]) => {
+  //       const fixer = EngineServer.viteSsrStacktraceFixer
+  //       if (fixer) {
+  //         for (const arg of args) {
+  //           fixer(arg)
+  //         }
+  //       }
+  //       originalMethod(...args)
+  //     }) as Console[typeof method]
+  //   }
+  // }
+
+  fixViteSsrStacktrace(error: unknown): void {
+    if (!this.viteDevServer || !(error instanceof Error)) {
+      return
+    }
+    const seen = new Set<object>()
+    const maxDepth = 100
+    let depth = 0
+    seen.add(error)
+    this.viteDevServer.ssrFixStacktrace(error)
+    let cause = (error as Error & { cause?: unknown }).cause
+    while (cause instanceof Error && !seen.has(cause) && depth < maxDepth) {
+      this.viteDevServer.ssrFixStacktrace(cause)
+      cause = (cause as Error & { cause?: unknown }).cause
+      depth++
+    }
+  }
+
+  private installViteSsrStacktraceFixer(): void {
+    if (process.env.NODE_ENV === 'production' || !this.viteDevServer) {
+      return
+    }
+    ;(globalThis as any).__FIX_VITE_SSR_STACKTRACE__ = (value: unknown) => {
+      this.fixViteSsrStacktrace(value)
+    }
+  }
+
+  private uninstallViteSsrStacktraceFixer(): void {
+    if (process.env.NODE_ENV === 'production' || !this.viteDevServer) {
+      return
+    }
+    ;(globalThis as any).__FIX_VITE_SSR_STACKTRACE__ = undefined
+  }
+
   private setEnvVars({
     nodeEnvFallback,
     assignToProcessEnv,
@@ -321,6 +376,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
             : undefined,
     })
     this.viteDevServer = viteDevServer
+    this.installViteSsrStacktraceFixer()
     return viteDevServer
   }
 
@@ -353,6 +409,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
           throw new Error(`Dispose function not exported from server entry point "${entryFile}": ${entryFile}`)
         }
       } catch (error) {
+        this.fixViteSsrStacktrace(error)
         // this.logger.error(`Error loading entry point "${entryFile}"`, error)
         this.logger({
           level: 'error',
@@ -573,6 +630,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
       // we do not close it by default, becouse it should alway persist for hot reloads
       await this.viteDevServer.close()
     }
+    this.uninstallViteSsrStacktraceFixer()
   }
 
   getBuildPaths(): {

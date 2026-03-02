@@ -27,7 +27,7 @@ export const client = Point0.lets<{ zxc: number }>('root', 'client')
   })
   // .prefetchPageOnNavigate(false)
   // .prefetchPageOnLinkHover(false)
-  .head('universal', ({ loading, error }) => ({
+  .head('global', ({ loading, error }) => ({
     ...(loading ? { title: 'Loading...' } : {}),
     ...(error ? { title: error.message } : {}),
     titleTemplate: '%s | IdeaNick',

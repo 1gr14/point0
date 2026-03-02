@@ -12,6 +12,14 @@ export class ErrorPoint0 extends Error {
     this.status = options.status
     this.code = options.code
     this.name = 'ErrorPoint0'
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      typeof (globalThis as unknown as Record<string, unknown>).__FIX_VITE_SSR_STACKTRACE__ === 'function'
+    ) {
+      try {
+        ;(globalThis as any).__FIX_VITE_SSR_STACKTRACE__(this) as void
+      } catch {}
+    }
     // this.meta = options.meta
   }
 
@@ -19,21 +27,25 @@ export class ErrorPoint0 extends Error {
     if (error instanceof ErrorPoint0) {
       return error
     }
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      typeof (globalThis as unknown as Record<string, unknown>).__FIX_VITE_SSR_STACKTRACE__ === 'function'
+    ) {
+      try {
+        ;(globalThis as any).__FIX_VITE_SSR_STACKTRACE__(error) as void
+      } catch {}
+    }
     const record = typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {}
     const message =
       typeof record.message === 'string' ? record.message : typeof error === 'string' ? error : 'Unknown error'
     const isSerializedErrorPoint0 = record.name === 'ErrorPoint0'
     const isOriginalError = error instanceof Error && error.constructor === Error
-    if (!isSerializedErrorPoint0 && !isOriginalError) {
-      return new ErrorPoint0(message, {
-        cause: error,
-      })
-    }
+    const cause: unknown = isSerializedErrorPoint0 ? undefined : isOriginalError ? error.cause : error
     const status = typeof record.status === 'number' ? record.status : undefined
     const code = typeof record.code === 'string' ? record.code : undefined
     const stack = typeof record.stack === 'string' ? record.stack : undefined
     const error0 = new ErrorPoint0(message, {
-      cause: error,
+      cause,
       status,
       code,
     })

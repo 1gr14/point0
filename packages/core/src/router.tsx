@@ -314,8 +314,6 @@ export const useIsNavigating = (): boolean => {
 
 //     const prevLocation = prevLocationRef.current
 //     const nextLocation = ctx.nextLocation
-//     console.log('prevLocation', prevLocation)
-//     console.log('nextLocation', nextLocation)
 //     if (
 //       prevLocation.href && nextLocation.href
 //         ? prevLocation.href === nextLocation.href

@@ -531,9 +531,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           layers[0].data = undefined
         }
 
-        // const status = effects.status ?? 200
-        // console.log('status', status)
-        // effects.set.status(status)
         return {
           ctx: layers[0].ctx,
           data: layers[0].data,

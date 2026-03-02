@@ -437,7 +437,6 @@ describe('FakeClient', () => {
   //   const headHtml = html.split(/<head>/)[1].split(/<\/head>/)[0]
   //   const bodyHtml = html.split(/<body>/)[1].split(/<\/body>/)[0]
   //   const ssScript = html.split(/<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">/)[1].split(/<\/script>/)[0]
-  //   // console.log(headHtml, bodyHtml)
   //   expect(html).toContain('<div id="serverMutationSideName">-</div>')
   //   expect(html).toContain('<div id="clientMutationSideName">-</div>')
   //   await client.run(async () => {
@@ -620,7 +619,6 @@ describe('FakeClient', () => {
   //   })
   //   const response = await client.fetch(new Request(page.route({ abs: true })))
   //   const html = await response.text()
-  //   console.log(html)
   //   return
   //   expect(html).toContain('pageSideName')
   // })
@@ -673,13 +671,10 @@ describe('FakeClient', () => {
   //         expect(element?.textContent).toContain('Hello 1 2')
   //       })
 
-  //       console.log('Initial Container HTML:', container.innerHTML)
-
   //       // Subscribe to HTML changes
   //       const observer = new window.MutationObserver((mutations) => {
-  //         console.log('HTML Changed:', container.innerHTML)
   //         mutations.forEach((mutation) => {
-  //           // console.log('Mutation:', {
+  //           // console.info('Mutation:', {
   //           //   type: mutation.type,
   //           //   side: mutation.side,
   //           //   addedNodes: Array.from(mutation.addedNodes).map((n) => n.textContent),

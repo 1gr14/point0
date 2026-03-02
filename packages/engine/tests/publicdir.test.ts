@@ -115,7 +115,7 @@ describe('publicdir', () => {
         await tp.write('public/server-data.json', '{"ok":true}')
         await tp.write('public/server-style.css', 'body{color:red}')
         await tp.write('public/server-page.html', '<!doctype html><title>publicdir</title>')
-        await tp.write('public/server-script.js', 'console.log("publicdir")')
+        await tp.write('public/server-script.js', 'console.info("publicdir")')
         await tp.write(
           'public/server-icon.svg',
           `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1"/></svg>`,
@@ -128,7 +128,7 @@ describe('publicdir', () => {
         await expectServerTextAndType(tp, '/server-data.json', '{"ok":true}', 'application/json')
         await expectServerTextAndType(tp, '/server-style.css', 'body{color:red}', 'text/css')
         await expectServerTextAndType(tp, '/server-page.html', '<!doctype html><title>publicdir</title>', 'text/html')
-        await expectServerTextAndType(tp, '/server-script.js', 'console.log("publicdir")', [
+        await expectServerTextAndType(tp, '/server-script.js', 'console.info("publicdir")', [
           'application/javascript',
           'text/javascript',
         ])
@@ -160,7 +160,7 @@ describe('publicdir', () => {
         '/server-array-async-function.js',
         async () => {
           await new Promise((resolve) => setTimeout(resolve, 100))
-          return 'console.log("array-async-function")'
+          return 'console.info("array-async-function")'
         },
       ],
     ]`,
@@ -171,7 +171,7 @@ describe('publicdir', () => {
         await expectServerTextAndType(tp, '/server-array-string.txt', 'server-array-string', 'text/plain')
         await expectServerTextAndType(tp, '/server-array-response.json', '{"via":"array-response"}', 'application/json')
         await expectServerTextAndType(tp, '/server-array-function.css', 'body{--from:array-function}', 'text/css')
-        await expectServerTextAndType(tp, '/server-array-async-function.js', 'console.log("array-async-function")', [
+        await expectServerTextAndType(tp, '/server-array-async-function.js', 'console.info("array-async-function")', [
           'application/javascript',
           'text/javascript',
         ])

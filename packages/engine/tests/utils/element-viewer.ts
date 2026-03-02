@@ -33,7 +33,7 @@ export class ElementViewer {
     this._history = [{ url, timestamp: Date.now() }]
     // this.observer = new MutationObserver(() => {
     //   // Read innerHTML immediately - DOM should be updated when callback fires
-    //   console.log('FIRE', this.element.innerHTML)
+    //   console.info('FIRE', this.element.innerHTML)
     //   this.notify()
     // })
     this.looping = false

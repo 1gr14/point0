@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from '@/lib/navigate'
 import { ideaLayout } from '../layouts/idea.js'
+import { ErrorPoint0 } from '@point0/core'
 
 // const getIdea = async (ctx: Ctx, id: number) => {
 //   const idea = await ctx.prisma.idea.findUniqueOrThrow({
@@ -19,7 +20,7 @@ export const ideaPage = ideaLayout
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
       where: { id: +input.id },
     })
-    const error = new Error('test error')
+    const error = new ErrorPoint0('test error')
     console.error(444, error)
     throw error
     return { idea }
