@@ -41,4 +41,4 @@ export default [
   clientCtx1_24,
   clientCtx2_25,
   clientCtx3_26,
-] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>

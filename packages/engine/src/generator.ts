@@ -140,7 +140,7 @@ export class FilesGenerator {
     const [loggerMethod, emoji] = result.errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '']
     this.logger({
       level: loggerMethod,
-      category: ['FilesGenerator'],
+      category: ['generator'],
       message: [emoji, `${result.points.length} points processed`].filter(Boolean).join(' '),
     })
     return result
@@ -263,11 +263,17 @@ export class FilesGenerator {
       const errorsMessages = point.errors.map((e) => (e instanceof Error ? e.message : String(e))).join(', ')
       const message = `${point.type}.${point.name}: ${errorsMessages} in ${point.strpos}`
       if (!options?.silent) {
-        this.logger({ level: 'error', category: ['FilesGenerator'], message })
+        this.logger({ level: 'error', category: ['generator'], message })
       }
     }
     const prevPoints = [...this.points]
-    const newPoints = collectedPoints.filter((p) => p.valid)
+    const validPoints = collectedPoints.filter((p) => p.valid)
+    const hasPointParseErrors = invalidPoints.length > 0
+    const hasCollectionErrors = errors.length > 0
+    const shouldPreservePrevPoints = hasPointParseErrors || hasCollectionErrors
+    const newPoints = shouldPreservePrevPoints
+      ? FilesGenerator.mergeCollectedPointsWithoutDeletion(prevPoints, validPoints)
+      : validPoints
     const diff = FilesGenerator.getCollectedPointsDiff(prevPoints, newPoints)
     this.points.splice(0, this.points.length, ...newPoints)
     this.sortPoints()
@@ -296,7 +302,7 @@ export class FilesGenerator {
         const fileSuffix = file ? ` in ${file}${originalErrorPosition}` : ''
         this.logger({
           level: 'error',
-          category: ['FilesGenerator'],
+          category: ['generator'],
           // message: (error instanceof Error ? error.message : String(error)) + error.file ? ` in ${error.file}` : '',
           message: originalMessage + fileSuffix,
         })
@@ -747,7 +753,9 @@ export class FilesGenerator {
         }),
       )
     }
-    lines.push(`] as PointsDefinition<typeof ${rootImported.renamedExportName}['Infer']['RequiredCtx']>`)
+    lines.push(
+      `] as PointsDefinition<typeof ${rootImported.renamedExportName}['Infer']['RequiredCtx'], typeof ${rootImported.renamedExportName}['Infer']['Error']>`,
+    )
 
     lines.push(``)
     return lines.join('\n')
@@ -782,7 +790,9 @@ export class FilesGenerator {
       }
       lines.push(`  ${renamedExportName},`)
     }
-    lines.push(`] as PointsDefinition<typeof ${rootImported.renamedExportName}['Infer']['RequiredCtx']>`)
+    lines.push(
+      `] as PointsDefinition<typeof ${rootImported.renamedExportName}['Infer']['RequiredCtx'], typeof ${rootImported.renamedExportName}['Infer']['Error']>`,
+    )
     lines.push(``)
 
     return lines.join('\n')
@@ -958,6 +968,22 @@ export class FilesGenerator {
     return { deleted, added, changed }
   }
 
+  private static mergeCollectedPointsWithoutDeletion(
+    prevPoints: CompilerPoint[],
+    newPoints: CompilerPoint[],
+  ): CompilerPoint[] {
+    const result = [...prevPoints]
+    for (const newPoint of newPoints) {
+      const prevIdx = result.findIndex((prevPoint) => CompilerPoint.isGenerallySamePoint(prevPoint, newPoint))
+      if (prevIdx >= 0) {
+        result[prevIdx] = newPoint
+      } else {
+        result.push(newPoint)
+      }
+    }
+    return result
+  }
+
   private static chunk<T>(array: readonly T[], size: number): T[][] {
     if (size <= 0) throw new Error('chunk size must be > 0')
     const result: T[][] = []
@@ -1003,7 +1029,7 @@ export class FilesGenerator {
       async (err, events) => {
         if (err) {
           if (!options?.silent) {
-            this.logger({ level: 'error', category: ['FilesGenerator'], message: `Watcher error`, error: err })
+            this.logger({ level: 'error', category: ['generator'], message: `Watcher error`, error: err })
           }
           return
         }
@@ -1052,21 +1078,29 @@ export class FilesGenerator {
             this.notifyCustomWatchers(isDelete ? 'delete' : 'update', pathAbs, evt)
             if (evt.changed) {
               if (evt.deleted.length > 0) {
-                const deletedTypesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(' ')
+                const deletedTypesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(', ')
                 if (!options?.silent) {
-                  this.logger({ level: 'info', category: ['FilesGenerator'], message: `➖ ${deletedTypesAndNames}` })
+                  this.logger({
+                    level: 'info',
+                    category: ['generator'],
+                    message: `remove: ${deletedTypesAndNames}`,
+                  })
                 }
               }
               if (evt.added.length > 0) {
-                const addedTypesAndNames = evt.added.map((p) => `${p.type}.${p.name}`).join(' ')
+                const addedTypesAndNames = evt.added.map((p) => `${p.type}.${p.name}`).join(', ')
                 if (!options?.silent) {
-                  this.logger({ level: 'info', category: ['FilesGenerator'], message: `➕ ${addedTypesAndNames}` })
+                  this.logger({
+                    level: 'info',
+                    category: ['generator'],
+                    message: `add: ${addedTypesAndNames}`,
+                  })
                 }
               }
             }
           } catch (e) {
             if (!options?.silent) {
-              this.logger({ level: 'error', category: ['FilesGenerator'], message: `Watcher error`, error: e })
+              this.logger({ level: 'error', category: ['generator'], message: `Watcher error`, error: e })
             }
           }
         }
@@ -1077,7 +1111,7 @@ export class FilesGenerator {
     )
 
     if (!options?.silent) {
-      this.logger({ level: 'info', category: ['FilesGenerator'], message: 'Watcher started' })
+      this.logger({ level: 'info', category: ['generator'], message: 'Watcher started' })
     }
 
     // Store subscription for potential cleanup

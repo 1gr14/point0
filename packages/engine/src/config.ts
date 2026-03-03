@@ -161,9 +161,7 @@ export type EngineServerOptions<
 
 export type EngineClientOptions = {
   scope: PointsScope
-  // TODO: allow empty points
-  // TODO: allow points collection
-  points?: PointsDefinitionSource
+  points?: PointsDefinitionSource<any, any>
   serving?: EngineOptionsServing
   generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
   app?: EngineOptionsAppComponent
@@ -356,7 +354,7 @@ export type EngineGeneralOptionsParsed = {
 export type EngineClientOptionsParsed = {
   scope: PointsScope
   engineFile: string
-  pointsProvided: PointsDefinitionSource | null
+  pointsProvided: PointsDefinitionSource<any, any> | null
   serving: EngineOptionsServing
   banner: string | null
   generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
@@ -387,7 +385,7 @@ export type EngineClientOptionsParsed = {
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
-  pointsProvided: PointsDefinitionSource | null
+  pointsProvided: PointsDefinitionSource<any, any> | null
   banner: string | null
   generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
   routesProvided: EngineOptionsRoutes | null

@@ -142,7 +142,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
               name: 'myquery',
               point: async () => (await import('./file0.js')).query,
             },
-          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
         expect(getLastLogMessage()).toBe('4 points processed')
@@ -189,7 +189,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
               polh: false,
               point: async () => (await import('./file0.js')).page,
             },
-          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
         expect(getLastLogMessage()).toBe('4 points processed')
@@ -229,7 +229,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           import { root as root_0 } from './file0.js'
           export default [
             root_0,
-          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
         expect(getLogs()[1][0].message).toBe('2 points processed')
@@ -293,7 +293,7 @@ export const page = layout2.lets('page', 'mypage').page(() => <div>Hello</div>)
               route: '/',
               point: async () => (await import('./file0.js')).layout2,
             },
-          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
       }),
@@ -332,7 +332,7 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
           export default [
             root_0,
             page_1,
-          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
       }),
@@ -654,7 +654,7 @@ export const layout = root.lets('layout', 'mylayout', '/layout').layout(() => <d
               route: '/layout',
               point: async () => (await import('./file0.js')).layout,
             },
-          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
 
@@ -666,7 +666,7 @@ export const layout = root.lets('layout', 'mylayout', '/layout').layout(() => <d
             root_0,
             page_1,
             layout_2,
-          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
 
@@ -736,7 +736,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
               polh: false,
               point: async () => (await import('./file0.js')).page,
             },
-          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
         expect(content1).toMatchInlineSnapshot(`
@@ -748,7 +748,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           export default [
             root_0,
             page_1,
-          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
       }),
@@ -847,7 +847,7 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
               polh: false,
               point: async () => (await import('./file0.js')).page0,
             },
-          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
 
@@ -864,7 +864,7 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
               polh: false,
               point: async () => (await import('./file1.js')).page1,
             },
-          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
 
@@ -881,7 +881,7 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
               polh: false,
               point: async () => (await import('./file1.js')).page2,
             },
-          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
       }),
@@ -931,7 +931,7 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
               polh: false,
               point: async () => (await import('./file0.js')).page,
             },
-          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
 
@@ -954,12 +954,12 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
               polh: false,
               point: async () => (await import('./file0.js')).page,
             },
-          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
 
-        expect(getLogs()[2][0].message).toBe('➖ page.mypage')
-        expect(getLogs()[3][0].message).toBe('➕ page.mypage2')
+        expect(getLogs()[2][0].message).toBe('remove: page.mypage')
+        expect(getLogs()[3][0].message).toBe('add: page.mypage2')
       }),
     )
   })

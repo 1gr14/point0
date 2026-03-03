@@ -8,7 +8,7 @@ let reactRoot: Root | null = null
 
 export function mount(
   App: AppComponent,
-  points: PointsDefinition | PointsManager,
+  points: PointsDefinition<any, any> | PointsManager<any, any, any>,
   domRootElement?: HTMLElement | null,
 ) {
   if (domRootElement !== undefined) {

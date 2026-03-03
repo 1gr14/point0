@@ -8095,12 +8095,6 @@ export class Point0<
         try {
           await subscription.callback(event)
         } catch (error) {
-          // logger({
-          //   level: 'error',
-          //   category: ['Eventer'],
-          //   message: `Error emitting event ${name} on point ${this.toStringWithLocation()}`,
-          //   error,
-          // })
           try {
             if (!preventEmitError) {
               this._emit('emitError', { error: this._Error.from(error), event: event as never }, true)

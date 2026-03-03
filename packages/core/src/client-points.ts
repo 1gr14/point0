@@ -72,7 +72,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
   }
 
   static createFromDefintion<TError extends ErrorPoint0>(
-    points: PointsDefinition | PointsManager,
+    points: PointsDefinition<any, TError> | PointsManager<any, any, TError>,
     options: { logger?: LoggerFn } = {},
   ): ClientPoints<TError> {
     const manager = PointsManager.createFromDefinition(points, options)
@@ -112,7 +112,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
   }
 
   static async createFromSource<TError extends ErrorPoint0>(
-    source: PointsDefinitionSource,
+    source: PointsDefinitionSource<any, TError>,
     options: { logger?: LoggerFn } = {},
   ): Promise<ClientPoints<TError>> {
     const manager = await PointsManager.createFromSource(source, options)

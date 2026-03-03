@@ -124,7 +124,7 @@ export class PointsManager<
   ): Promise<
     PointsManager<
       false,
-      TSource extends PointsDefinitionSource<infer TRequiredCtx> ? TRequiredCtx : never,
+      TSource extends PointsDefinitionSource<infer TRequiredCtx, any> ? TRequiredCtx : never,
       TSource extends PointsDefinitionSource<any, infer TError> ? TError : ErrorPoint0
     >
   > {
@@ -154,7 +154,7 @@ export class PointsManager<
     const root = this.collection.at(0)?.point as RootPoint
     const _logger = root._getLogger() ?? this.logger ?? logger
     for (const error of errors) {
-      _logger({ level: 'error', category: ['PointsManager'], message: 'Error loading points', error })
+      _logger({ level: 'error', category: ['points'], message: 'Error loading points', error })
     }
     this.collection = readyPoints
     this.ready = true as never
@@ -169,7 +169,9 @@ export class PointsManager<
     // })
   }
 
-  static toNormalizedPointsCollection(points: MixedPointsCollection | PointsDefinition): NormalizedPointsCollection {
+  static toNormalizedPointsCollection(
+    points: MixedPointsCollection | PointsDefinition<any, any>,
+  ): NormalizedPointsCollection {
     return points.map((p) => {
       // const sourcePoint = record.point
       const point = 'point' in p && 'point' in p.point ? p.point.point : undefined
@@ -307,46 +309,40 @@ export type MixedPointsCollection = MixedPointsCollectionRecord[]
 export type NormalizedPointsCollectionRecord = ReadyPointsCollectionRecord | NormalizedLazyPointsCollectionRecord
 export type NormalizedPointsCollection = NormalizedPointsCollectionRecord[]
 
-export type PointsDefinition<
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TError extends ErrorPoint0 = ErrorPoint0,
-> =
+export type PointsDefinition<TRequiredCtx extends RequiredCtx, TError extends ErrorPoint0> =
   | [{ point: RootPoint<TRequiredCtx, TError> }, ...MixedPointsCollectionRecord[]]
   | readonly [{ point: RootPoint<TRequiredCtx, TError> }, ...MixedPointsCollectionRecord[]]
-export type PointsDefinitionGetter<
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TError extends ErrorPoint0 = ErrorPoint0,
-> = () => Promise<PointsDefinition<TRequiredCtx, TError>>
-export type PointsDefinitionModule<
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TError extends ErrorPoint0 = ErrorPoint0,
-> = {
+export type PointsDefinitionGetter<TRequiredCtx extends RequiredCtx, TError extends ErrorPoint0> = () => Promise<
+  PointsDefinition<TRequiredCtx, TError>
+>
+export type PointsDefinitionModule<TRequiredCtx extends RequiredCtx, TError extends ErrorPoint0> = {
   default: PointsDefinition<TRequiredCtx, TError>
 }
-export type PointsDefinitionModuleGetter<
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TError extends ErrorPoint0 = ErrorPoint0,
-> = () => Promise<PointsDefinitionModule<TRequiredCtx, TError>>
-export type PointsDefinitionSource<
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TError extends ErrorPoint0 = ErrorPoint0,
-> =
+export type PointsDefinitionModuleGetter<TRequiredCtx extends RequiredCtx, TError extends ErrorPoint0> = () => Promise<
+  PointsDefinitionModule<TRequiredCtx, TError>
+>
+export type PointsDefinitionSource<TRequiredCtx extends RequiredCtx, TError extends ErrorPoint0> =
   | PointsDefinition<TRequiredCtx, TError>
   | PointsDefinitionGetter<TRequiredCtx, TError>
   | PointsDefinitionModule<TRequiredCtx, TError>
   | PointsDefinitionModuleGetter<TRequiredCtx, TError>
-export type ExtractPointsDefinition<T extends PointsDefinitionSource> = T extends PointsDefinition
-  ? T
-  : T extends PointsDefinitionModule
-    ? T['default']
-    : T extends PointsDefinitionModuleGetter
-      ? Awaited<ReturnType<T>> extends PointsDefinition
-        ? Awaited<ReturnType<T>>
-        : Awaited<ReturnType<T>> extends PointsDefinitionModule
-          ? Awaited<ReturnType<T>>['default']
-          : never
-      : never
-export type RequiredCtxByPointsDefinitionSource<T extends PointsDefinitionSource> =
+export type ExtractPointsDefinition<T extends PointsDefinitionSource<any, any>> =
+  T extends PointsDefinition<any, any>
+    ? T
+    : T extends PointsDefinitionModule<any, any>
+      ? T['default']
+      : T extends PointsDefinitionModuleGetter<any, any>
+        ? Awaited<ReturnType<T>> extends PointsDefinition<any, any>
+          ? Awaited<ReturnType<T>>
+          : Awaited<ReturnType<T>> extends PointsDefinitionModule<any, any>
+            ? Awaited<ReturnType<T>>['default']
+            : never
+        : never
+export type RequiredCtxByPointsDefinitionSource<T extends PointsDefinitionSource<any, any>> =
   ExtractPointsDefinition<T>[0]['point']['Infer']['RequiredCtx']
-export type RequiredCtxByPointsDefinitionSourceOrUndefined<T extends PointsDefinitionSource | undefined> =
-  T extends PointsDefinitionSource ? RequiredCtxByPointsDefinitionSource<T> : T extends undefined ? undefined : never
+export type RequiredCtxByPointsDefinitionSourceOrUndefined<T extends PointsDefinitionSource<any, any> | undefined> =
+  T extends PointsDefinitionSource<any, any>
+    ? RequiredCtxByPointsDefinitionSource<T>
+    : T extends undefined
+      ? undefined
+      : never

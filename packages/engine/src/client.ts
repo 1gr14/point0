@@ -49,7 +49,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
   scope: PointsScope
   engineFile: string | null
   // pointsDistFile: string | null
-  pointsProvided: PointsDefinitionSource | null
+  pointsProvided: PointsDefinitionSource<any, any> | null
   points: TPrepared extends true ? ClientPoints | null : undefined
   ssr: TPrepared extends true ? boolean : undefined
   appProvided: EngineOptionsAppComponent | null
@@ -88,7 +88,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     prepared: TPrepared
     cwd: string
     // pointsDistFile: string | null
-    pointsProvided: PointsDefinitionSource | null
+    pointsProvided: PointsDefinitionSource<any, any> | null
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
     serving: EngineOptionsServing
@@ -162,7 +162,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
   static create(input: {
     scope: PointsScope
     cwd: string
-    pointsProvided: PointsDefinitionSource | null
+    pointsProvided: PointsDefinitionSource<any, any> | null
     // pointsDistFile: string | null
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
@@ -405,7 +405,7 @@ try {
     port: ${this.port},
     serveRetries: ${this.serveRetries},
     portPolicy,
-    category: ['EngineClient'],
+    category: ['client'],
   }, async () => Bun.serve({
     port: ${this.port},
     routes: {
@@ -437,13 +437,13 @@ try {
   setOverridenPortPolicy({ scope: '${this.scope}', side: 'client', portPolicy: 'kill' });
   engine.logger({
     level: 'info',
-    category: ['EngineClient'],
+    category: ['client'],
     message: 'Client "${this.scope}" dev server started http://localhost:${this.port}',
   })
 } catch (error) {
   engine.logger({
     level: 'error',
-    category: ['EngineClient'],
+    category: ['client'],
     message: error instanceof Error ? error.message : String(error),
   });
   process.exit(1);
@@ -451,60 +451,69 @@ try {
 `
     await Bun.write(bunfigTomlPath, bunfigTomlContent)
     await Bun.write(scriptPath, scriptContent)
-    const childProcess = Bun.spawn(['bun', '--no-clear-screen', scriptPath], {
+    const childProcess = Bun.spawn(['bun', scriptPath], {
       cwd: tempDir,
-      stdout: 'inherit',
-      stderr: 'inherit',
+      stdout: 'pipe',
+      stderr: 'pipe',
       stdin: 'inherit',
       env: {
         ...process.env,
-        // FORCE_COLOR: '1',
+        FORCE_COLOR: process.env.FORCE_COLOR ?? '1',
         ...(compilerOptions ? { POINT0_COMPILER_OPTIONS: JSON.stringify(compilerOptions) } : {}),
         NODE_ENV: process.env.NODE_ENV,
       },
     })
+
+    const stripTerminalClearSequences = (text: string): string =>
+      text
+        .replace(/\x1bc/g, '')
+        .replace(/\x1b\[\?1049[hl]/g, '')
+        .replace(/\x1b\[\?1047[hl]/g, '')
+        .replace(/\x1b\[\?47[hl]/g, '')
+        .replace(/\x1b\[(?:[0-3]?J|2K|K|H|1;1H)/g, '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+
+    const pipeFilteredLogs = ({
+      stream,
+      target,
+    }: {
+      stream: ReadableStream<Uint8Array> | null
+      target: NodeJS.WriteStream
+    }): void => {
+      if (!stream) {
+        return
+      }
+      const decoder = new TextDecoder()
+      void stream
+        .pipeTo(
+          new WritableStream({
+            write(chunk) {
+              const text = decoder.decode(chunk, { stream: true })
+              const cleaned = stripTerminalClearSequences(text)
+              if (cleaned.length > 0) {
+                target.write(cleaned)
+              }
+            },
+            close() {
+              const flushed = decoder.decode()
+              const cleaned = stripTerminalClearSequences(flushed)
+              if (cleaned.length > 0) {
+                target.write(cleaned)
+              }
+            },
+          }),
+        )
+        .catch(() => {
+          // Process streams can close abruptly during normal shutdown.
+        })
+    }
+
+    pipeFilteredLogs({ stream: childProcess.stdout, target: process.stdout })
+    pipeFilteredLogs({ stream: childProcess.stderr, target: process.stderr })
+
     this.bunNativeDevServer = childProcess
     return childProcess
-
-    // ... I was trying to prevent console clearing on bun fullstack server hmr ...
-    // const buffer = ''
-    // function filterClearSequences(chunk: string) {
-    //   buffer += chunk
-
-    //   // ONLY remove real clear-screen sequences
-    //   buffer = buffer
-    //     .replace(/\x1bc/g, '') // RIS
-    //     .replace(/\x1b\[2J/g, '') // clear screen
-    //     .replace(/\x1b\[3J/g, '') // clear scrollback
-    //     .replace(/\x1b\[H\x1b\[2J/g, '') // home + clear
-    //     .replace(/\x1b\[1;1H\x1b\[2J/g, '') // alternate form
-
-    //   const out = buffer
-    //   buffer = ''
-    //   return out
-    // }
-    // void childProcess.stdout.pipeTo(
-    //   new WritableStream({
-    //     write(chunk) {
-    //       const text = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk)
-    //       process.stdout.write(text)
-    //       // const cleaned = filterClearSequences(text)
-    //       // process.stdout.write(chunk)
-    //       // process.stdout.write(cleaned)
-    //     },
-    //   }),
-    // )
-    // void childProcess.stderr.pipeTo(
-    //   new WritableStream({
-    //     write(chunk) {
-    //       const text = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk)
-    //       process.stdout.write(text)
-    //       // const cleaned = filterClearSequences(text)
-    //       // process.stdout.write(chunk)
-    //       // process.stdout.write(cleaned)
-    //     },
-    //   }),
-    // )
   }
 
   async startBunViteDevServer(): Promise<{
@@ -545,7 +554,7 @@ try {
         port: this.port,
         serveRetries: this.serveRetries,
         portPolicy,
-        category: ['EngineClient'],
+        category: ['client'],
       },
       async () =>
         Bun.serve({
@@ -593,7 +602,7 @@ try {
     setOverridenPortPolicy({ scope: this.scope, side: 'client', portPolicy: 'kill' })
     this.logger({
       level: 'info',
-      category: ['EngineClient'],
+      category: ['client'],
       message: `Client "${this.scope}" dev server started http://localhost:${this.port}`,
     })
     return { bunViteDevServer, viteDevServer }

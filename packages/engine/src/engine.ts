@@ -196,10 +196,6 @@ export class Engine<
       const serverEntryProcesses: Array<Promise<any>> = await (async () => {
         if (this.server.viteConfig) {
           process.env.POINT0_PREVENT_CLIENT_DEV_SERVER = 'true'
-          // const viteDevServer = await this.server.startViteDevServer()
-          // const engineVitedModule = await viteDevServer.ssrLoadModule(engineFile)
-          // const engineVited: typeof this = engineVitedModule.engine ?? engineVitedModule.default
-          // return [engineVited.server.loadViteDevEntries({ watch, viteDevServer })]
           await this.server.startViteDevServer()
           return [this.server.loadViteDevEntries({ watch, entriesFiles })]
         } else {
@@ -209,8 +205,6 @@ export class Engine<
               .map((entryFile) => {
                 return Bun.spawn({
                   cmd: ['bun', 'run', ...(watch ? ['--watch'] : []), ...bunRunArgs, entryFile],
-                  // cmd: ['bun', 'run', ...bunRunArgs, entryFile],
-                  // cmd: ['bun', ...bunRunArgs, entryFile],
                   env: {
                     ...process.env,
                     POINT0_PREVENT_CLIENT_DEV_SERVER: 'true',
@@ -225,11 +219,6 @@ export class Engine<
             processes.forEach((p) => {
               p.kill('SIGKILL')
             })
-
-            // void killPort(this.server.port, { force: true, category: ['EngineServer'] }).finally(() => {
-            //   processes = start()
-            // })
-            // we already do kill in serve() if policy is kill
             processes = start()
           })
           return []
@@ -397,7 +386,7 @@ export class Engine<
       void this.generator.sync({ logOnNotWritten }).catch((error: unknown) => {
         this.logger({
           level: 'error',
-          category: ['FilesGenerator'],
+          category: ['generator'],
           message: 'Failed to generate files',
           error,
         })

@@ -91,4 +91,4 @@ export default [
     route: '/ideas/:id',
     point: async () => (await import('../layouts/idea.js')).ideaLayout,
   },
-] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
+] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>

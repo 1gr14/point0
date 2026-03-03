@@ -37,7 +37,7 @@ export const BestIdeaComponent = client
   .loader(async ({ ctx, input }) => {
     return {
       bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
-      mult: input.x * input.y * 10000,
+      mult: input.x * input.y * 100,
     }
   })
   .loader(async ({ data }) => ({
@@ -147,7 +147,7 @@ export default generalLayout
             //   })
           }}
         >
-          Click mexxx
+          Click mex
         </button>
         <p>State: {state}</p>
         <p>State2: {state2}</p>

@@ -131,7 +131,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
   static create(input: {
     cwd: string
     scope: PointsScope
-    pointsProvided: PointsDefinitionSource | null
+    pointsProvided: PointsDefinitionSource<any, any> | null
     engineFile: string | null
     cwdBeforeBuild: string
     itWasBuilt: boolean
@@ -412,7 +412,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
         // this.logger.error(`Error loading entry point "${entryFile}"`, error)
         this.logger({
           level: 'error',
-          category: ['EngineServer'],
+          category: ['server'],
           message: `Failed to load entry point "${entryFile}"`,
           error,
         })
@@ -496,7 +496,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
         port: this.port,
         serveRetries: this.serveRetries,
         portPolicy,
-        category: ['EngineServer'],
+        category: ['server'],
       },
       async () =>
         Bun.serve({
@@ -618,7 +618,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     setOverridenPortPolicy({ scope: this.scope, side: 'server', portPolicy: 'kill' })
     this.logger({
       level: 'info',
-      category: ['EngineServer'],
+      category: ['server'],
       message: `Server "${this.scope}" started http://localhost:${this.port}`,
     })
   }
