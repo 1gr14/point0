@@ -23,7 +23,7 @@ import type {
 } from './config.js'
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
-import { resolvePortByPolicy } from './port.js'
+import { getOverridenPortPolicy, resolvePortByPolicy, setOverridenPortPolicy } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
 import { ServerPoints } from './server-points.js'
@@ -489,15 +489,13 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     if (!this.isPrepared()) {
       throw new Error('Server is not prepared')
     }
-    this.port = await resolvePortByPolicy({
-      port: this.port,
-      portPolicy: this.portPolicy,
-    })
+    const portPolicy = getOverridenPortPolicy({ scope: this.scope, side: 'server', portPolicy: this.portPolicy })
+    this.port = await resolvePortByPolicy({ port: this.port, portPolicy })
     this.bunServer = await serveWithRetries(
       {
         port: this.port,
         serveRetries: this.serveRetries,
-        portPolicy: this.portPolicy,
+        portPolicy,
         category: ['EngineServer'],
       },
       async () =>
@@ -617,6 +615,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
           },
         }),
     )()
+    setOverridenPortPolicy({ scope: this.scope, side: 'server', portPolicy: 'kill' })
     this.logger({
       level: 'info',
       category: ['EngineServer'],

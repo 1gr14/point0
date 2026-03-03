@@ -681,7 +681,7 @@ export const serveWithRetries = <T extends (...args: any[]) => Promise<any>>(
     if (!providedServeRetries && portPolicy === 'kill') {
       return 3
     }
-    return providedServeRetries
+    return Math.max(providedServeRetries, 3)
   })()
   // We return a new function that mimics the original function's signature
   return (async (...innerArgs: Parameters<T>) => {

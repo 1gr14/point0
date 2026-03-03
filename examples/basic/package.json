@@ -13,6 +13,7 @@
     "typesgo": "tsgo --noEmit"
   },
   "dependencies": {
+    "@devp0nt/error0": "catalog:",
     "@devp0nt/route0": "catalog:",
     "@point0/compiler": "workspace:*",
     "@point0/cookies-store": "workspace:*",

@@ -1,6 +1,7 @@
 import { Point0 } from '@point0/core'
 import superjson from 'superjson'
 import { prisma } from './prisma.js'
+import { AppError } from './error.js'
 
 export const client = Point0.lets<{ zxc: number }>('root', 'client')
   .ssr(true)
@@ -11,6 +12,7 @@ export const client = Point0.lets<{ zxc: number }>('root', 'client')
     env: process.env,
     Bun,
   })
+  .errorClass(AppError)
   // .Infer['Ctx']
   .ctx([{ oklmn: 123 }])
   // .Infer.Ctx

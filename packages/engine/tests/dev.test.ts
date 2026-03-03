@@ -213,7 +213,6 @@ describe('dev', () => {
         )
         tp.spawn(['bun', 'run', 'dev'])
         await tp.waitStarted()
-        const html = await tp.fetchServerHtml('/')
         const page = await tp.gotoClient('/')
         await page.stable
         expect(page.tale).toMatchInlineSnapshot(`

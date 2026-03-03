@@ -27,7 +27,7 @@ import type {
   PortPolicy,
 } from './config.js'
 import type { Executor } from './executor.js'
-import { resolvePortByPolicy } from './port.js'
+import { getOverridenPortPolicy, resolvePortByPolicy, setOverridenPortPolicy } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
 import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
@@ -366,9 +366,10 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     if (!this.engineFile) {
       throw new Error(`Engine file path is not provided for client "${this.scope}"`)
     }
+    const portPolicy = getOverridenPortPolicy({ scope: this.scope, side: 'client', portPolicy: this.portPolicy })
     this.port = await resolvePortByPolicy({
       port: this.port,
-      portPolicy: this.portPolicy,
+      portPolicy,
     })
     const tempDir = resolveTempDirPath(['client-bun-dev-server', `${this.scope}-${this.port}`])
     const pluginsStrings = await extractEngineClientDevPluginsStrings({
@@ -396,12 +397,14 @@ plugins = [${combinedPluginsStrings.map((p) => `"${p}"`).join(', ')}]
 import indexHtml from '${this.indexHtml}';
 import { Engine } from '@point0/engine';
 import { serveWithRetries } from '@point0/engine/utils';
+import { getOverridenPortPolicy, setOverridenPortPolicy } from '@point0/engine/port';
 const { engine } = await Engine.findAndImportSelf({ engineFile: '${this.engineFile}' });
 try {
+  const portPolicy = getOverridenPortPolicy({ scope: '${this.scope}', side: 'client', portPolicy: '${portPolicy}' });
   await serveWithRetries({
     port: ${this.port},
     serveRetries: ${this.serveRetries},
-    portPolicy: '${this.portPolicy}',
+    portPolicy,
     category: ['EngineClient'],
   }, async () => Bun.serve({
     port: ${this.port},
@@ -431,6 +434,7 @@ try {
       )
     },
   }))();
+  setOverridenPortPolicy({ scope: '${this.scope}', side: 'client', portPolicy: 'kill' });
   engine.logger({
     level: 'info',
     category: ['EngineClient'],
@@ -447,7 +451,7 @@ try {
 `
     await Bun.write(bunfigTomlPath, bunfigTomlContent)
     await Bun.write(scriptPath, scriptContent)
-    const childProcess = Bun.spawn(['bun', scriptPath], {
+    const childProcess = Bun.spawn(['bun', '--no-clear-screen', scriptPath], {
       cwd: tempDir,
       stdout: 'inherit',
       stderr: 'inherit',
@@ -510,9 +514,10 @@ try {
     if (!this.viteConfig) {
       throw new Error(`Vite config not found for client "${this.scope}"`)
     }
+    const portPolicy = getOverridenPortPolicy({ scope: this.scope, side: 'client', portPolicy: this.portPolicy })
     this.port = await resolvePortByPolicy({
       port: this.port,
-      portPolicy: this.portPolicy,
+      portPolicy,
     })
     const viteDevServer = await createViteDevServer({
       viteConfig: this.viteConfig,
@@ -539,7 +544,7 @@ try {
       {
         port: this.port,
         serveRetries: this.serveRetries,
-        portPolicy: this.portPolicy,
+        portPolicy,
         category: ['EngineClient'],
       },
       async () =>
@@ -585,6 +590,7 @@ try {
           },
         }),
     )()
+    setOverridenPortPolicy({ scope: this.scope, side: 'client', portPolicy: 'kill' })
     this.logger({
       level: 'info',
       category: ['EngineClient'],

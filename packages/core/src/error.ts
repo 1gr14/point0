@@ -38,9 +38,9 @@ export class ErrorPoint0 extends Error {
     const record = typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {}
     const message =
       typeof record.message === 'string' ? record.message : typeof error === 'string' ? error : 'Unknown error'
-    const isSerializedErrorPoint0 = record.name === 'ErrorPoint0'
-    const isOriginalError = error instanceof Error && error.constructor === Error
-    const cause: unknown = isSerializedErrorPoint0 ? undefined : isOriginalError ? error.cause : error
+    const isErrorInstance = error instanceof Error
+    const isOriginalError = isErrorInstance && error.constructor === Error
+    const cause: unknown = isOriginalError || !isErrorInstance ? undefined : error
     const status = typeof record.status === 'number' ? record.status : undefined
     const code = typeof record.code === 'string' ? record.code : undefined
     const stack = typeof record.stack === 'string' ? record.stack : undefined

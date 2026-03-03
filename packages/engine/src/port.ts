@@ -1,6 +1,7 @@
 // https://github.com/gastrodia/port-bun/blob/main/src/lib.ts
 
 import { logger, type LoggerFn } from '@point0/core'
+import type { PortPolicy } from './config.js'
 
 const platform = process.platform
 
@@ -187,9 +188,8 @@ export async function resolvePortByPolicy(options: {
   port: number
   portPolicy: 'kill' | 'auto' | 'simple'
   maxPort?: number
-  silent?: boolean
 }): Promise<number> {
-  const { port, portPolicy, maxPort = 65535, silent = true } = options
+  const { port, portPolicy, maxPort = 65535 } = options
   if (portPolicy === 'simple') {
     return port
   }
@@ -207,4 +207,34 @@ export async function resolvePortByPolicy(options: {
     candidatePort += 1
   }
   throw new Error(`No available port found from ${port} to ${maxPort}`)
+}
+
+export function getOverridenPortPolicy({
+  scope,
+  side,
+  portPolicy,
+}: {
+  scope: string
+  side: 'server' | 'client'
+  portPolicy: PortPolicy
+}): PortPolicy {
+  const overriden = process.env[`POINT0_PORT_POLICY_${scope.toUpperCase()}_${side.toUpperCase()}`] as
+    | PortPolicy
+    | undefined
+  if (!overriden || !['kill', 'auto', 'simple'].includes(overriden)) {
+    return portPolicy
+  }
+  return overriden
+}
+
+export function setOverridenPortPolicy({
+  scope,
+  side,
+  portPolicy,
+}: {
+  scope: string
+  side: 'server' | 'client'
+  portPolicy: PortPolicy
+}): void {
+  process.env[`POINT0_PORT_POLICY_${scope.toUpperCase()}_${side.toUpperCase()}`] = portPolicy
 }
