@@ -2418,7 +2418,7 @@ export type NiceActionReadyPoint<
   TQueryResultType extends undefined
     ? WithFetchIfHasServerLoader<
         TServerLoaderOutput,
-        'point' | 'type' | 'Infer' | 'getMutationOptions' | 'useMutation' | 'fetchMutation'
+        'point' | 'type' | 'Infer' | 'getMutationOptions' | 'useMutation' | 'fetchMutation' | 'fetch'
       >
     : WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
 >
@@ -2540,8 +2540,8 @@ export type NiceReadyPoint<
           TInnerProps,
           TQueriesDefinitions
         >
-      : TPointType extends 'page'
-        ? NicePageReadyPoint<
+      : TPointType extends 'action'
+        ? NiceActionReadyPoint<
             TPointType,
             TLetsReadyPointType,
             TRequiredCtx,
@@ -2559,8 +2559,8 @@ export type NiceReadyPoint<
             TInnerProps,
             TQueriesDefinitions
           >
-        : TPointType extends 'component'
-          ? NiceComponentReadyPoint<
+        : TPointType extends 'page'
+          ? NicePageReadyPoint<
               TPointType,
               TLetsReadyPointType,
               TRequiredCtx,
@@ -2578,8 +2578,8 @@ export type NiceReadyPoint<
               TInnerProps,
               TQueriesDefinitions
             >
-          : TPointType extends 'layout'
-            ? NiceLayoutReadyPoint<
+          : TPointType extends 'component'
+            ? NiceComponentReadyPoint<
                 TPointType,
                 TLetsReadyPointType,
                 TRequiredCtx,
@@ -2597,8 +2597,8 @@ export type NiceReadyPoint<
                 TInnerProps,
                 TQueriesDefinitions
               >
-            : TPointType extends 'provider'
-              ? NiceProviderReadyPoint<
+            : TPointType extends 'layout'
+              ? NiceLayoutReadyPoint<
                   TPointType,
                   TLetsReadyPointType,
                   TRequiredCtx,
@@ -2616,7 +2616,26 @@ export type NiceReadyPoint<
                   TInnerProps,
                   TQueriesDefinitions
                 >
-              : never
+              : TPointType extends 'provider'
+                ? NiceProviderReadyPoint<
+                    TPointType,
+                    TLetsReadyPointType,
+                    TRequiredCtx,
+                    TError,
+                    TCtx,
+                    TCtxExposedKeys,
+                    TServerLoaderOutput,
+                    TClientLoaderOutput,
+                    TMapperOutput,
+                    TRouteDefinition,
+                    TServerInputSchema,
+                    TClientInputSchema,
+                    TQueryResultType,
+                    TOuterProps,
+                    TInnerProps,
+                    TQueriesDefinitions
+                  >
+                : never
 
 export type AnyNiceReadyPoint<
   TPointType extends ReadyPointType = any,

@@ -27,13 +27,13 @@ export const ExternalHelperComponent = () => {
 // export const ExternalHelperComponent2 = () => null
 
 // export const myMut = client
-//   .lets('mutation', 'myMut')
+//   .lets('action', 'myMut')
 //   .loader(async ({ ctx }) => {
 //     return {
 //       z: Math.random(),
 //     }
 //   })
-//   .mutation()
+//   .mutation().action()
 
 // // export const ExternalHelperComponent2 = client.lets('component', 'externalHelper2').component(() => {
 // export const ExternalHelperComponent2 = client

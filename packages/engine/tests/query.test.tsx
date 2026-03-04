@@ -22,9 +22,9 @@ describe('query', () => {
   it.concurrent('simple', async () => {
     const root = createRoot()
     const q = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .loader(() => ({ x: 1 }))
-      .query()
+      .query().action()
     const page = root.lets('page', 'home', '/').page(() => {
       const query = q.useQuery()
       return (
@@ -50,7 +50,7 @@ describe('query', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
-        query.test (client) < {}
+        action.test (client) < {}
         "
       `)
     fetchRecorder.prune()
@@ -63,7 +63,7 @@ describe('query', () => {
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
         page.home (client) (page) < {}
-        query.test (server) < {}
+        action.test (server) < {}
         "
       `)
   })
@@ -71,9 +71,9 @@ describe('query', () => {
   it.concurrent('with page loader and query loader', async () => {
     const root = createRoot()
     const q = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .loader(async () => await waitReturn({ x: 1 }))
-      .query()
+      .query().action()
     const page = root
       .lets('page', 'home', '/')
       .loader(async () => await waitReturn({ y: 2 }))
@@ -103,7 +103,7 @@ describe('query', () => {
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
         page.home (client) < {}
-        query.test (client) < {}
+        action.test (client) < {}
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -116,9 +116,9 @@ describe('query', () => {
   it.concurrent('with clientLoader', async () => {
     const root = createRoot()
     const q = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .clientLoader(() => ({ y: 2 }))
-      .query()
+      .query().action()
     const page = root.lets('page', 'home', '/').page(() => {
       const query = q.useQuery()
       return <div id="page">y={query.data?.y ?? 'nothing'}</div>
@@ -151,10 +151,10 @@ describe('query', () => {
   it.concurrent('with loader and clientLoader', async () => {
     const root = createRoot()
     const q = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .loader(() => ({ x: 1 }))
       .clientLoader(({ data }) => ({ y: 2, ...data }))
-      .query()
+      .query().action()
     const page = root.lets('page', 'home', '/').page(() => {
       const query = q.useQuery()
       return (
@@ -178,7 +178,7 @@ describe('query', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
-        query.test (client) < {}
+        action.test (client) < {}
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -191,10 +191,10 @@ describe('query', () => {
   it.concurrent('with input and loader', async () => {
     const root = createRoot()
     const q = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .input(z.object({ y: z.number() }))
       .loader(({ input }) => ({ x: input.y * 2 }))
-      .query()
+      .query().action()
     const page = root.lets('page', 'home', '/').page(() => {
       const query = q.useQuery({ y: 123 })
       return <div id="page">x={query.data?.x ?? 'nothing'}</div>
@@ -214,7 +214,7 @@ describe('query', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
-        query.test (client) < {"y":123}
+        action.test (client) < {"y":123}
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -227,10 +227,10 @@ describe('query', () => {
   it.concurrent('with input and clientLoader', async () => {
     const root = createRoot()
     const q = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .sharedInput(z.object({ y: z.number() }))
       .clientLoader(({ input }) => ({ x: input.y * 2 }))
-      .query()
+      .query().action()
     const page = root.lets('page', 'home', '/').page(() => {
       const query = q.useQuery({ y: 123 })
       return <div id="page">x={query.data?.x ?? 'nothing'}</div>
@@ -263,11 +263,11 @@ describe('query', () => {
   it.concurrent('with input and clientLoader and loader', async () => {
     const root = createRoot()
     const q = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .sharedInput(z.object({ y: z.number() }))
       .loader(() => ({ z: 3 }))
       .clientLoader(({ input }) => ({ x: input.y * 2 }))
-      .query()
+      .query().action()
     const page = root.lets('page', 'home', '/').page(() => {
       const query = q.useQuery({ y: 123 })
       return <div id="page">x={query.data?.x ?? 'nothing'}</div>
@@ -287,7 +287,7 @@ describe('query', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
-        query.test (client) < {"y":123}
+        action.test (client) < {"y":123}
         "
       `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`

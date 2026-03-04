@@ -300,7 +300,7 @@ describe('cookies-store', () => {
     it('without', async () => {
       const root = Point0.lets('root', 'root').ssr(true).root()
       const login = root
-        .lets('mutation', 'authorize')
+        .lets('action', 'authorize')
         .input(z.object({ nick: z.string() }))
         .loader(({ set, input }) => {
           set.cookies('nick', input.nick)
@@ -314,8 +314,9 @@ describe('cookies-store', () => {
             console.error(error)
           },
         })
+        .action()
       const logout = root
-        .lets('mutation', 'logout')
+        .lets('action', 'logout')
         .loader(({ set }) => {
           set.cookies('nick', undefined)
           return { success: true }
@@ -328,6 +329,7 @@ describe('cookies-store', () => {
             console.error(error)
           },
         })
+        .action()
       const page = root
         .lets('page', 'home', '/')
         .loader(({ request }) => ({ nick: request.cookies.nick }))
@@ -387,7 +389,7 @@ describe('cookies-store', () => {
       const root = Point0.lets('root', 'root').ssr(true).use(CookiesStore.plugin()).root()
       const nickCookie = CookiesStore.define('nick')
       const login = root
-        .lets('mutation', 'authorize')
+        .lets('action', 'authorize')
         .input(z.object({ nick: z.string() }))
         .loader(({ input }) => {
           nickCookie.set(input.nick)
@@ -401,8 +403,9 @@ describe('cookies-store', () => {
             console.error(error)
           },
         })
+        .action()
       const logout = root
-        .lets('mutation', 'logout')
+        .lets('action', 'logout')
         .loader(() => {
           nickCookie.delete()
           return { success: true }
@@ -415,6 +418,7 @@ describe('cookies-store', () => {
             console.error(error)
           },
         })
+        .action()
       const page = root
         .lets('page', 'home', '/')
         .loader(({ request }) => ({ nick: request.cookies.nick }))
@@ -476,7 +480,7 @@ describe('cookies-store', () => {
       const root = Point0.lets('root', 'root').ssr(true).use(CookiesStore.plugin()).root()
       const nickCookie = CookiesStore.define('nick')
       const login = root
-        .lets('mutation', 'authorize')
+        .lets('action', 'authorize')
         .input(z.object({ nick: z.string() }))
         .loader(({ input }) => {
           nickCookie.set(input.nick)
@@ -490,8 +494,9 @@ describe('cookies-store', () => {
             console.error(error)
           },
         })
+        .action()
       const logout = root
-        .lets('mutation', 'logout')
+        .lets('action', 'logout')
         .loader(() => {
           nickCookie.delete()
           return { success: true }
@@ -504,6 +509,7 @@ describe('cookies-store', () => {
             console.error(error)
           },
         })
+        .action()
       const page = root
         .lets('page', 'home', '/')
         .loader(({ request }) => ({ nick: request.cookies.nick }))

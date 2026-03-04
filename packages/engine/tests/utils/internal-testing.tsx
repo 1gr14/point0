@@ -244,6 +244,12 @@ type FetchPoint = <T extends AnyNiceRequestableReadyPoint>(
     ? [input?: T['Infer']['InputRawOrUndefined']]
     : [input: T['Infer']['InputRawOrUndefined']]
 ) => ReturnType<T['fetch']>
+type FetchPointYml = <T extends AnyNiceRequestableReadyPoint>(
+  point: T,
+  ...args: T['Infer']['IsInputOptional'] extends true
+    ? [input?: T['Infer']['InputRawOrUndefined']]
+    : [input: T['Infer']['InputRawOrUndefined']]
+) => Promise<string>
 type FetchHtmlView = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['IsInputOptional'] extends true
@@ -511,7 +517,7 @@ export const createTestThings = async ({
   const loadPointYml = (async (point: ReadyPoint, ...args: [any]) => {
     const result = await loadPoint(point as any, ...args)
     return ymlify(result)
-  }) as unknown as FetchPoint
+  }) as unknown as FetchPointYml
   const fetchView = (async (point: ReadyPoint, ...args: [any]) => {
     return await client.run(async () => {
       const response = await client.fetch(point.route.flat(args[0] || {}, 'http://localhost'), ...args.slice(1))

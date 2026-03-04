@@ -138,7 +138,7 @@ describe('plugin', () => {
       .plugin()
     const root = Point0.lets('root', 'root').ssr(true).root()
     const query = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .use(plugin)
       .input(z.object({ query: z.number().transform((v) => v * 3) }))
       .loader(({ input }) => {
@@ -146,6 +146,7 @@ describe('plugin', () => {
         return input
       })
       .query()
+      .action()
     const page = root
       .lets('page', 'home', '/')
       .with(query, { plugin: 100, query: 200 })
@@ -330,7 +331,7 @@ describe('plugin', () => {
       .plugin()
     const root = Point0.lets('root', 'root').ssr(true).root()
     const query = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .use(plugin)
       .input(z.object({ query: z.number() }))
       .loader(({ input }) => {
@@ -338,6 +339,7 @@ describe('plugin', () => {
         return input
       })
       .query()
+      .action()
     const page = root
       .lets('page', 'home', '/')
       .with(query, { plugin: 123, query: 456 })

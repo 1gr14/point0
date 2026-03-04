@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { generalLayout } from '../../layouts/general.js'
 
 export const generateIdeaMutation = client
-  .lets('mutation', 'generateIdea1')
+  .lets('action', 'generateIdea1')
   .loader(async () => {
     testCookie.set(Math.random().toString())
     const stream = new ReadableStream({
@@ -23,6 +23,7 @@ export const generateIdeaMutation = client
     })
   })
   .mutation()
+  .action()
 
 export const gi1Page = generalLayout
   .lets('page', 'gi1', '/gi1')

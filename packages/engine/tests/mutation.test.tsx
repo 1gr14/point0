@@ -58,7 +58,7 @@ describe('mutation', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
-        mutation.test (client) < {}
+        action.test (client) < {}
         "
       `)
   })
@@ -148,7 +148,7 @@ describe('mutation', () => {
         `)
       expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
-        mutation.test (client) < {}
+        action.test (client) < {}
         "
       `)
     })
@@ -193,7 +193,7 @@ describe('mutation', () => {
         `)
       expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
-        mutation.test (client) < {"y":123}
+        action.test (client) < {"y":123}
         "
       `)
     })
@@ -285,7 +285,7 @@ describe('mutation', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
-        mutation.test (client) < {"y":123}
+        action.test (client) < {"y":123}
         "
       `)
   })

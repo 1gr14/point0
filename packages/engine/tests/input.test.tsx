@@ -82,7 +82,7 @@ describe('input', () => {
     async () => {
       const root = Point0.lets('root', 'root').ssr(true).root()
       const mutation = root
-        .lets('mutation', 'test')
+        .lets('action', 'test')
         .input(z.object({ id: z.number() }))
         .loader(({ input }) => {
           return { loader: { input } }
@@ -92,6 +92,7 @@ describe('input', () => {
           return { clientLoader: { input }, ...data }
         })
         .mutation()
+        .action()
       expectTypeOf<Prettify<typeof mutation.Infer.InputRaw>>().toEqualTypeOf<{ id: number }>()
       expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<false>()
       expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<{ id: number }>()
@@ -113,12 +114,13 @@ describe('input', () => {
   it.concurrent('works with unions', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .input(z.union([z.object({ id: z.string() }), z.object({ sn: z.number() })]))
       .loader(({ input }) => {
         return { loader: { input } }
       })
       .mutation()
+      .action()
     expectTypeOf<Prettify<typeof mutation.Infer.InputRaw>>().toEqualTypeOf<{ id: string } | { sn: number }>()
     expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<false>()
     expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<{ id: string } | { sn: number }>()
@@ -136,12 +138,13 @@ describe('input', () => {
   it.concurrent('works with unions when one is optional', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .input(z.union([z.object({ id: z.string() }), z.object({ sn: z.number().optional() })]))
       .loader(({ input }) => {
         return { loader: { input } }
       })
       .mutation()
+      .action()
     expectTypeOf<Prettify<typeof mutation.Infer.InputRaw>>().toEqualTypeOf<{ id: string } | { sn?: number }>()
     expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<true>()
     expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<{ id: string } | { sn?: number }>()
@@ -159,13 +162,14 @@ describe('input', () => {
   it.concurrent('can be extended by union', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .input(z.object({ x: z.string() }))
       .input(z.union([z.object({ id: z.string() }), z.object({ sn: z.number().optional() })]))
       .loader(({ input }) => {
         return { loader: { input } }
       })
       .mutation()
+      .action()
     expectTypeOf<typeof mutation.Infer.InputRaw>().toEqualTypeOf<{ x: string } & ({ id: string } | { sn?: number })>()
     expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<false>()
     expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<
@@ -186,13 +190,14 @@ describe('input', () => {
   it.concurrent('union can be extended by non union', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .input(z.union([z.object({ id: z.string() }), z.object({ sn: z.number().optional() })]))
       .input(z.object({ x: z.string() }))
       .loader(({ input }) => {
         return { loader: { input } }
       })
       .mutation()
+      .action()
     expectTypeOf<typeof mutation.Infer.InputRaw>().toEqualTypeOf<{ x: string } & ({ id: string } | { sn?: number })>()
     expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<false>()
     expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<
@@ -213,7 +218,7 @@ describe('input', () => {
   it.concurrent('available in mutation loader and clientLoader by schema definition', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .input(z.object({ id: z.string() }))
       .loader(({ input }) => {
         return { loader: { input } }
@@ -223,6 +228,7 @@ describe('input', () => {
         return { clientLoader: { input }, ...data }
       })
       .mutation()
+      .action()
     const { loadPointYml } = await createTestThings({ points: [root, mutation] })
     const result = await loadPointYml(mutation, { id: '123', sn: 234 })
     expect(result).toMatchInlineSnapshot(`
@@ -240,7 +246,7 @@ describe('input', () => {
   it.concurrent('available in mutation loader by schema definition and function and generic', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .input(z.object({ id: z.string() }))
       .input<{ o: 1 }>()
       .input<{ id: string; sn: number }, { sn: number; xxx: number }>((raw) => {
@@ -253,6 +259,7 @@ describe('input', () => {
         return { loader: { input } }
       })
       .mutation()
+      .action()
     expectTypeOf<Prettify<(typeof mutation)['Infer']['InputRaw']>>().toEqualTypeOf<{ id: string; sn: number; o: 1 }>()
     expectTypeOf<Prettify<(typeof mutation)['Infer']['ServerInputParsed']>>().toEqualTypeOf<{
       id: string
@@ -277,7 +284,7 @@ describe('input', () => {
   it.concurrent('available in mutation clientLoader by schema definition and function and generic', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .clientInput(z.object({ id: z.string() }))
       .clientInput<{ o: 1 }>()
       .clientInput<{ id: string; sn: number }, { sn: number; xxx: number }>((raw) => {
@@ -290,6 +297,7 @@ describe('input', () => {
         return { clientLoader: { input } }
       })
       .mutation()
+      .action()
     expectTypeOf<Prettify<(typeof mutation)['Infer']['InputRaw']>>().toEqualTypeOf<{ id: string; sn: number; o: 1 }>()
     expectTypeOf<Prettify<(typeof mutation)['Infer']['ClientInputParsed']>>().toEqualTypeOf<{
       id: string
@@ -314,12 +322,13 @@ describe('input', () => {
   it.concurrent('correctly typed when default in schema exists in mutation', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .input(z.object({ id: z.string(), sn: z.coerce.number().default(234) }))
       .loader(({ input }) => {
         return { loader: { input } }
       })
       .mutation()
+      .action()
     expectTypeOf<(typeof mutation)['Infer']['InputRaw']>().toEqualTypeOf<{ id: string; sn?: unknown }>()
     expectTypeOf<(typeof mutation)['Infer']['ServerInputParsed']>().toEqualTypeOf<{ id: string; sn: number }>()
     const { loadPointYml } = await createTestThings({ points: [root, mutation] })
@@ -362,7 +371,7 @@ describe('input', () => {
   it.concurrent('can be combined in different ways', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .input(z.object({ a: z.string() }))
       .clientInput(z.object({ b: z.number() }))
       .sharedInput(z.object({ c: z.number() }))
@@ -377,6 +386,7 @@ describe('input', () => {
         return { clientLoader: { input }, ...data }
       })
       .mutation()
+      .action()
     const { loadPointYml } = await createTestThings({ points: [root, mutation] })
     const result = await loadPointYml(mutation, { a: '123', b: 234, c: 345, d: true, e: 456 })
     expect(result).toMatchInlineSnapshot(`
@@ -413,7 +423,7 @@ describe('input', () => {
   it.concurrent('do not allow conflicted schema by schema', async () => {
     const root = Point0.lets('root', 'root').root()
     root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .input(z.object({ x: z.union([z.string(), z.number()]), z: z.number() })) // it is ok
       .input(z.object({ x: z.string(), z: z.number() })) // it is ok
       .input(z.object({ x: z.number(), z: z.number() }))
@@ -422,12 +432,13 @@ describe('input', () => {
         return { input }
       })
       .mutation()
+      .action()
   })
 
   it.concurrent('do not allow conflicted schema by schema after unions', async () => {
     const root = Point0.lets('root', 'root').root()
     root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .input(z.union([z.object({ id: z.string() }), z.object({ sn: z.number() })])) // it is ok
       .input(z.object({ x: z.string() })) // it is ok
       .input(z.object({ id: z.number() }))
@@ -436,12 +447,13 @@ describe('input', () => {
         return { input }
       })
       .mutation()
+      .action()
   })
 
   it.concurrent('do not allow conflicted schema by generic', async () => {
     const root = Point0.lets('root', 'root').root()
     root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .input(z.object({ x: z.union([z.string(), z.number()]), z: z.number() })) // it is ok
       .input<{ x: string; z: number }>() // it is ok
       .input<{ x: number; z: number }>()
@@ -450,12 +462,13 @@ describe('input', () => {
         return { input }
       })
       .mutation()
+      .action()
   })
 
   it.concurrent('do not allow conflicted schema by function', async () => {
     const root = Point0.lets('root', 'root').root()
     root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .input(z.object({ x: z.union([z.string(), z.number()]), z: z.number() })) // it is ok
       .input<{ x: string; z: number }>((raw) => {
         if (typeof raw.x !== 'string') {
@@ -481,5 +494,6 @@ describe('input', () => {
         return { input }
       })
       .mutation()
+      .action()
   })
 })

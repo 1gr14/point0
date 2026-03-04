@@ -244,10 +244,10 @@ describe('dev', () => {
           'src/page.tsx',
           `import { root } from './lib/root.js'
           import { useState } from 'react'
-        export const incrementMutation = root.lets('mutation', 'incrementMutation')
+        export const incrementMutation = root.lets('action', 'incrementMutation')
           .loader(() => {
             return { one: 1 }
-          }).mutation()
+          }).mutation().action()
         export const page = root.lets('page', 'home', '/')
           .wrapper(({children}) => {
             const [countWrapper, setCountWrapper] = useState(0)
@@ -321,10 +321,10 @@ describe('dev', () => {
           'src/page.tsx',
           `import { root } from './lib/root.js'
           import { useState } from 'react'
-        export const incrementMutation = root.lets('mutation', 'incrementMutation')
+        export const incrementMutation = root.lets('action', 'incrementMutation')
           .loader(() => {
             return { inc: 1 }
-          }).mutation()
+          }).mutation().action()
         export const page = root.lets('page', 'home', '/')
           .page(() => {
             const [countPage, setCountPage] = useState(0)

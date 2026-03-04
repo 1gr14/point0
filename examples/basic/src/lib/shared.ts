@@ -3,7 +3,7 @@ import { client } from './client'
 export const shared = client.lets('root', 'shared').root()
 
 export const sharedQuery = shared
-  .lets('query', 'sharedQuery')
+  .lets('action', 'sharedQuery')
   .loader(() => ({
     shared1: 'shared22',
   }))
@@ -12,3 +12,4 @@ export const sharedQuery = shared
     shared2: 'shared11',
   }))
   .query()
+  .action()

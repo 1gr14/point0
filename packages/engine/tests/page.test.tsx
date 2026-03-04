@@ -790,9 +790,10 @@ describe('page', () => {
   it('with query', async () => {
     const root = createRoot()
     const query = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .loader(() => ({ x: 1 }))
       .query()
+      .action()
 
     const page = root
       .lets('page', 'home')
@@ -813,7 +814,7 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      query.test (client) < {}
+      action.test (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -826,10 +827,11 @@ describe('page', () => {
   it('with query input', async () => {
     const root = createRoot()
     const query = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .input(z.object({ y: z.number() }))
       .loader(({ input }) => ({ x: input.y * 2 }))
       .query()
+      .action()
     const page = root
       .lets('page', 'home', '/:y')
       .with(query, ({ location }) => ({ y: +location.params.y }))
@@ -854,7 +856,7 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      query.test (client) < {"y":123}
+      action.test (client) < {"y":123}
       "
     `)
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
@@ -867,10 +869,11 @@ describe('page', () => {
   it('with query props input', async () => {
     const root = createRoot()
     const query = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .input(z.object({ y: z.number() }))
       .loader(({ input }) => ({ x: input.y * 2 }))
       .query()
+      .action()
     const page = root
       .lets('page', 'home')
       .with(() => ({ y: 123 }))
@@ -895,7 +898,7 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      query.test (client) < {"y":123}
+      action.test (client) < {"y":123}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -908,10 +911,11 @@ describe('page', () => {
   it('with query fn', async () => {
     const root = createRoot()
     const query = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .input(z.object({ y: z.number() }))
       .loader(({ input }) => ({ x: input.y * 2 }))
       .query()
+      .action()
     const page = root
       .lets('page', 'home', '/:y')
       .with(({ location }) => {
@@ -937,7 +941,7 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      query.test (client) < {"y":123}
+      action.test (client) < {"y":123}
       "
     `)
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
@@ -950,13 +954,15 @@ describe('page', () => {
   it('with query fn return many queries', async () => {
     const root = createRoot()
     const query1 = root
-      .lets('query', 'query1')
+      .lets('action', 'query1')
       .loader(() => ({ x: 1 }))
       .query()
+      .action()
     const query2 = root
-      .lets('query', 'query2')
+      .lets('action', 'query2')
       .loader(() => ({ y: 2 }))
       .query()
+      .action()
     const page = root
       .lets('page', 'home')
       .with(() => {
@@ -982,8 +988,8 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      query.query1 (client) < {}
-      query.query2 (client) < {}
+      action.query1 (client) < {}
+      action.query2 (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -996,7 +1002,7 @@ describe('page', () => {
   it('with infinite query', async () => {
     const root = createRoot()
     const query = root
-      .lets('infiniteQuery', 'test')
+      .lets('action', 'test')
       .input(z.object({ cursor: z.number().optional() }))
       .loader(({ input }) => {
         const cursor = input.cursor ?? 0
@@ -1011,6 +1017,7 @@ describe('page', () => {
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: 0,
       })
+      .action()
     const page = root
       .lets('page', 'home')
       .with(query)
@@ -1071,9 +1078,9 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      infiniteQuery.test (client) < {"cursor":0}
-      infiniteQuery.test (client) < {"cursor":2}
-      infiniteQuery.test (client) < {"cursor":4}
+      action.test (client) < {"cursor":0}
+      action.test (client) < {"cursor":2}
+      action.test (client) < {"cursor":4}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -1089,7 +1096,7 @@ describe('page', () => {
   it('with infinite query fn', async () => {
     const root = createRoot()
     const query = root
-      .lets('infiniteQuery', 'test')
+      .lets('action', 'test')
       .input(z.object({ cursor: z.number().optional() }))
       .loader(({ input }) => {
         const cursor = input.cursor ?? 0
@@ -1104,6 +1111,7 @@ describe('page', () => {
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: 0,
       })
+      .action()
     const page = root
       .lets('page', 'home')
       .with(() => {
@@ -1166,9 +1174,9 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      infiniteQuery.test (client) < {"cursor":0}
-      infiniteQuery.test (client) < {"cursor":2}
-      infiniteQuery.test (client) < {"cursor":4}
+      action.test (client) < {"cursor":0}
+      action.test (client) < {"cursor":2}
+      action.test (client) < {"cursor":4}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -1184,7 +1192,7 @@ describe('page', () => {
   it('with infinite query fn return many queries', async () => {
     const root = createRoot()
     const query = root
-      .lets('infiniteQuery', 'test')
+      .lets('action', 'test')
       .input(z.object({ cursor: z.number().optional() }))
       .loader(({ input }) => {
         const cursor = input.cursor ?? 0
@@ -1199,10 +1207,12 @@ describe('page', () => {
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: 0,
       })
+      .action()
     const query2 = root
-      .lets('query', 'query2')
+      .lets('action', 'query2')
       .loader(() => ({ y: 2 }))
       .query()
+      .action()
     const page = root
       .lets('page', 'home')
       .with(() => {
@@ -1269,10 +1279,10 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      infiniteQuery.test (client) < {"cursor":0}
-      query.query2 (client) < {}
-      infiniteQuery.test (client) < {"cursor":2}
-      infiniteQuery.test (client) < {"cursor":4}
+      action.test (client) < {"cursor":0}
+      action.query2 (client) < {}
+      action.test (client) < {"cursor":2}
+      action.test (client) < {"cursor":4}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -1289,9 +1299,10 @@ describe('page', () => {
   it('related query', async () => {
     const root = createRoot()
     const query = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .loader(() => ({ x: 1 }))
       .query()
+      .action()
     const page = root
       .lets('page', 'home')
       .relatedQuery(query)
@@ -1311,7 +1322,7 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      query.test (client) < {}
+      action.test (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -1324,10 +1335,11 @@ describe('page', () => {
   it('related query input', async () => {
     const root = createRoot()
     const query = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .input(z.object({ y: z.number() }))
       .loader(({ input }) => ({ x: input.y * 2 }))
       .query()
+      .action()
     const page = root
       .lets('page', 'home', '/:y')
       .relatedQuery(query, ({ location }) => ({ y: +location.params.y }))
@@ -1351,7 +1363,7 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      query.test (client) < {"y":123}
+      action.test (client) < {"y":123}
       "
     `)
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
@@ -1363,7 +1375,7 @@ describe('page', () => {
 
   // it('related query fn', async () => {
   //   const query = root
-  //     .lets('query', 'test')
+  //     .lets('action', 'test')
   //     .input(z.object({ y: z.number() }))
   //     .loader(({ input }) => ({ x: input.y * 2 }))
   //     .query()
@@ -1402,7 +1414,7 @@ describe('page', () => {
   it('related infinite query', async () => {
     const root = createRoot()
     const query = root
-      .lets('infiniteQuery', 'test')
+      .lets('action', 'test')
       .input(z.object({ cursor: z.number().optional() }))
       .loader(({ input }) => {
         const cursor = input.cursor ?? 0
@@ -1417,6 +1429,7 @@ describe('page', () => {
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: 0,
       })
+      .action()
     const page = root
       .lets('page', 'home')
       .relatedQuery(query)
@@ -1477,9 +1490,9 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      infiniteQuery.test (client) < {"cursor":0}
-      infiniteQuery.test (client) < {"cursor":2}
-      infiniteQuery.test (client) < {"cursor":4}
+      action.test (client) < {"cursor":0}
+      action.test (client) < {"cursor":2}
+      action.test (client) < {"cursor":4}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -1494,7 +1507,7 @@ describe('page', () => {
 
   // it('related infinite query fn', async () => {
   //   const query = root
-  //     .lets('infiniteQuery', 'test')
+  //     .lets('action', 'test')
   //     .input(z.object({ cursor: z.number().optional() }))
   //     .loader(({ input }) => {
   //       const cursor = input.cursor ?? 0
@@ -1586,10 +1599,11 @@ describe('page', () => {
   it('query with injected query', async () => {
     const root = createRoot()
     const query = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .input(z.object({ y: z.number() }))
       .loader(({ input }) => ({ x: input.y * 2 }))
       .query()
+      .action()
 
     const page = root
       .lets('page', 'home', '/:y')
@@ -1616,7 +1630,7 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      query.test (client) < {"y":123}
+      action.test (client) < {"y":123}
       page.home (client) < {"y":"123"}
       "
     `)
@@ -1662,10 +1676,11 @@ describe('page', () => {
   it('mapper with qureies', async () => {
     const root = createRoot()
     const query = root
-      .lets('query', 'test')
+      .lets('action', 'test')
       .input(z.object({ y: z.number() }))
       .loader(({ input }) => ({ x: input.y * 2 }))
       .query()
+      .action()
     const page = root
       .lets('page', 'home', '/:y')
       .loader(() => ({ z: 3 }))
@@ -1693,7 +1708,7 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      query.test (client) < {"y":123}
+      action.test (client) < {"y":123}
       page.home (client) < {"y":"123"}
       "
     `)

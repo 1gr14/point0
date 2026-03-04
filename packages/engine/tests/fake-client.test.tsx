@@ -167,7 +167,7 @@ describe('FakeClient', () => {
       .page(({ data }) => <div>Hello from {data.serverLoaderSideName}</div>)
     const cooka = CookiesStore.define({ name: 'z' })
     const mutation = root
-      .lets('mutation', 'mutation')
+      .lets('action', 'mutation')
       .loader(({ set, request }) => {
         set.cookies({ name: 'x', value: '1' })
         set.cookies({ name: 'y', value: '2', httpOnly: true })
@@ -176,6 +176,7 @@ describe('FakeClient', () => {
         }
       })
       .mutation()
+      .action()
     expect(env.side.name).toBe('server')
     const points = [root, page, mutation] as const
     const engine = await Engine.create({
@@ -255,10 +256,11 @@ describe('FakeClient', () => {
       .root()
     let counter = 0
     const mutation = root
-      .lets('mutation', 'mutation')
+      .lets('action', 'mutation')
       .loader(() => ({ index: counter++, serverMutationSideName: env.side.name }))
       .clientLoader(({ data }) => ({ ...data, clientMutationSideName: env.side.name }))
       .mutation()
+      .action()
     const page = root
       .lets('page', 'page', '/')
       .loader(() => ({ x: 1, serverLoaderSideName: env.side.name }))
@@ -335,7 +337,7 @@ describe('FakeClient', () => {
       expect(container.querySelector('#clientLoaderSideName')?.textContent).toBe('client')
       expect(container.querySelector('#serverMutationSideName')?.textContent).toBe('server')
       expect(container.querySelector('#clientMutationSideName')?.textContent).toBe('client')
-      const results = await fetchRecorder.waitFinishedResults({ pointType: 'mutation', variant: 'task' })
+      const results = await fetchRecorder.waitFinishedResults({ pointType: 'action', variant: 'task' })
       expect(results).toHaveLength(3)
     })
 
@@ -349,7 +351,7 @@ describe('FakeClient', () => {
       .loader(() => ({ serverLoaderSideName: env.side.name }))
       .page(({ data }) => <div>Hello from {data.serverLoaderSideName}</div>)
     const mutation = root
-      .lets('mutation', 'mutation')
+      .lets('action', 'mutation')
       .loader(({ request }) => {
         return {
           serverRequestId: request.id,
@@ -357,6 +359,7 @@ describe('FakeClient', () => {
         }
       })
       .mutation()
+      .action()
     expect(env.side.name).toBe('server')
     const points = [root, page, mutation] as const
     const engine = await Engine.create({
@@ -387,7 +390,7 @@ describe('FakeClient', () => {
   //   const root = Point0.lets('root', 'root').ssr(true).serverurl('http://localhost:3000').root()
   //   let counter = 0
   //   const mutation = root
-  //     .lets('mutation', 'mutation')
+  //     .lets('action', 'mutation')
   //     .loader(() => ({ index: counter++, serverMutationSideName: env.side.name }))
   //     .clientLoader(({ data }) => ({ ...data, clientMutationSideName: env.side.name }))
   //     .mutation()
@@ -506,7 +509,7 @@ describe('FakeClient', () => {
   //         import { env } from '@point0/core'
   //         let counter = 0
   //         export const mutation = root
-  //           .lets('mutation', 'mutation')
+  //           .lets('action', 'mutation')
   //           .loader(() => ({ index: counter++, serverMutationSideName: env.side.name }))
   //           .clientLoader(({ data }) => ({ ...data, clientMutationSideName: env.side.name }))
   //           .mutation()
@@ -575,7 +578,7 @@ describe('FakeClient', () => {
   //   const root = Point0.lets('root', 'root').ssr(true).serverurl('http://localhost:3000').root()
   //   let counter = 0
   //   const mutation = root
-  //     .lets('mutation', 'mutation')
+  //     .lets('action', 'mutation')
   //     .loader(() => ({ index: counter++, serverMutationSideName: env.side.name }))
   //     .clientLoader(({ data }) => ({ ...data, clientMutationSideName: env.side.name }))
   //     .mutation()
@@ -627,7 +630,7 @@ describe('FakeClient', () => {
   //   const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
   //   let counter = 0
   //   const mutation = root
-  //     .lets('mutation', 'mutation')
+  //     .lets('action', 'mutation')
   //     .loader(() => ({ index: counter++ }))
   //     .mutation()
   //   const page = root

@@ -2,16 +2,16 @@ import { Route0 } from '@devp0nt/route0'
 import { sharedQuery } from '@/lib/shared'
 import { client } from '../lib/client'
 
-// export const emptyQuery = client.lets('infiniteQuery', 'empty').infiniteQuery({})
-// export const emptyQuery1 = client.lets('infiniteQuery', 'empty').infiniteQuery()
+// export const emptyQuery = client.lets('action', 'empty').infiniteQuery({}).action()
+// export const emptyQuery1 = client.lets('action', 'empty').infiniteQuery().action()
 // export const emptyQuery2 = client
-//   .lets('infiniteQuery', 'empty')
+//   .lets('action', 'empty')
 //   .loader(() => ({}))
-//   .infiniteQuery({getNextPageParam: () => 1, initialPageParam: 0, pageParamFromInput: 'x'})
+//   .infiniteQuery({getNextPageParam: () => 1, initialPageParam: 0, pageParamFromInput: 'x'}).action()
 // export const emptyQuery3 = client
-//   .lets('infiniteQuery', 'empty')
+//   .lets('action', 'empty')
 //   .loader(() => ({}))
-//   .infiniteQuery()
+//   .infiniteQuery().action()
 
 export const empty = client
   .lets('page', 'empty', 'empty&x')

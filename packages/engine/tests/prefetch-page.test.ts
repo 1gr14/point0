@@ -85,12 +85,13 @@ export const withBothPage = layout.lets('page', 'withBoth_${mark}', 'with-both')
 
 const pageWithRelatedQueryTsx = (mark: string) => `import { layout } from './layout.js'
 import { root } from '../lib/root.js'
-export const relatedQuery = root.lets('query', 'relatedQuery_${mark}')
+export const relatedQuery = root.lets('action', 'relatedQuery_${mark}')
   .loader(async () => {
     await new Promise((r) => setTimeout(r, ${loaderDuration}))
     return { x: 1 }
   })
   .query()
+  .action()
 export const withRelatedQueryPage = layout.lets('page', 'withRelatedQuery_${mark}', 'with-related-query')
   .relatedQuery(relatedQuery)
   .page(({ data }) => <div id="with-related-query">{data.x}</div>)
@@ -98,12 +99,13 @@ export const withRelatedQueryPage = layout.lets('page', 'withRelatedQuery_${mark
 
 const pageWithMountedQueryTsx = (mark: string) => `import { layout } from './layout.js'
 import { root } from '../lib/root.js'
-export const mountedQuery = root.lets('query', 'mountedQuery_${mark}')
+export const mountedQuery = root.lets('action', 'mountedQuery_${mark}')
   .loader(async () => {
     await new Promise((r) => setTimeout(r, ${loaderDuration}))
     return { x: 1 }
   })
   .query()
+  .action()
 export const withMountedQueryPage = layout.lets('page', 'withMountedQuery_${mark}', 'with-mounted-query')
   .with(mountedQuery)
   .page(({ data }) => <div id="with-mounted-query">{data.x}</div>)
@@ -330,8 +332,8 @@ describe('prefetch-page', () => {
           GET /
           root.page.withServer (data)
           root.page.withBoth (data)
-          root.query.relatedQuery (data)
-          root.query.mountedQuery (data)"
+          root.action.relatedQuery (data)
+          root.action.mountedQuery (data)"
         `)
           }),
           {
@@ -382,8 +384,8 @@ describe('prefetch-page', () => {
             GET /
             root.page.withServer (data)
             root.page.withBoth (data)
-            root.query.relatedQuery (data)
-            root.query.mountedQuery (data)"
+            root.action.relatedQuery (data)
+            root.action.mountedQuery (data)"
           `)
           }),
           {
@@ -522,6 +524,8 @@ describe('prefetch-page', () => {
             expect(requestsTale.split('\n').sort().join('\n')).toMatchInlineSnapshot(`
               "
               GET /
+              root.action.mountedQuery (data)
+              root.action.relatedQuery (data)
               root.page.withBoth (data)
               root.page.withBoth (queryClientDehydratedState)
               root.page.withClient (queryClientDehydratedState)
@@ -529,9 +533,7 @@ describe('prefetch-page', () => {
               root.page.withNone (queryClientDehydratedState)
               root.page.withRelatedQuery (queryClientDehydratedState)
               root.page.withServer (data)
-              root.page.withServer (queryClientDehydratedState)
-              root.query.mountedQuery (data)
-              root.query.relatedQuery (data)"
+              root.page.withServer (queryClientDehydratedState)"
             `)
           }),
           {
@@ -736,8 +738,8 @@ describe('prefetch-page', () => {
             GET /
             root.page.withServer (data)
             root.page.withBoth (data)
-            root.query.relatedQuery (data)
-            root.query.mountedQuery (data)"
+            root.action.relatedQuery (data)
+            root.action.mountedQuery (data)"
           `)
           }),
           {
@@ -790,8 +792,8 @@ describe('prefetch-page', () => {
             GET /
             root.page.withServer (data)
             root.page.withBoth (data)
-            root.query.relatedQuery (data)
-            root.query.mountedQuery (data)"
+            root.action.relatedQuery (data)
+            root.action.mountedQuery (data)"
           `)
           }),
           {
@@ -838,8 +840,8 @@ describe('prefetch-page', () => {
               GET /
               root.page.withServer (data)
               root.page.withBoth (data)
-              root.query.relatedQuery (data)
-              root.query.mountedQuery (data)"
+              root.action.relatedQuery (data)
+              root.action.mountedQuery (data)"
             `)
           }),
           {
@@ -884,8 +886,8 @@ describe('prefetch-page', () => {
               GET /
               root.page.withServer (data)
               root.page.withBoth (data)
-              root.query.relatedQuery (data)
-              root.query.mountedQuery (data)"
+              root.action.relatedQuery (data)
+              root.action.mountedQuery (data)"
             `)
           }),
           {
@@ -938,8 +940,8 @@ describe('prefetch-page', () => {
               GET /
               root.page.withServer (data)
               root.page.withBoth (data)
-              root.query.relatedQuery (data)
-              root.query.mountedQuery (data)"
+              root.action.relatedQuery (data)
+              root.action.mountedQuery (data)"
             `)
           }),
           {
@@ -984,8 +986,8 @@ describe('prefetch-page', () => {
               GET /
               root.page.withServer (data)
               root.page.withBoth (data)
-              root.query.relatedQuery (data)
-              root.query.mountedQuery (data)"
+              root.action.relatedQuery (data)
+              root.action.mountedQuery (data)"
             `)
           }),
           {
@@ -1030,8 +1032,8 @@ describe('prefetch-page', () => {
             GET /
             root.page.withServer (data)
             root.page.withBoth (data)
-            root.query.relatedQuery (data)
-            root.query.mountedQuery (data)"
+            root.action.relatedQuery (data)
+            root.action.mountedQuery (data)"
           `)
           }),
           {
@@ -1076,8 +1078,8 @@ describe('prefetch-page', () => {
               GET /
               root.page.withServer (data)
               root.page.withBoth (data)
-              root.query.relatedQuery (data)
-              root.query.mountedQuery (data)"
+              root.action.relatedQuery (data)
+              root.action.mountedQuery (data)"
             `)
           }),
           {

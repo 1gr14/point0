@@ -133,9 +133,9 @@ describe('loader', () => {
       return <div id="page">Home</div>
     })
     const mutation = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .loader(() => [201, { x: 1 }])
-      .mutation()
+      .mutation().action()
     const { render } = await createTestThings({ points: [root, mutation] })
     await render(page.route(), async () => {
       const result = await mutation.fetchServerDetailed()
@@ -150,11 +150,11 @@ describe('loader', () => {
       return <div id="page">Home</div>
     })
     const mutation = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .loader(() => {
         throw new ErrorPoint0('test error', { status: 410 })
       })
-      .mutation()
+      .mutation().action()
     const { render } = await createTestThings({ points: [root, mutation, page] })
     await render(page.route(), async () => {
       const result = await mutation.fetchServerDetailed()

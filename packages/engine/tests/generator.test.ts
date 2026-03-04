@@ -102,7 +102,7 @@ describe('FilesGenerator', () => {
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, logger, getLastLogMessage, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
-export const query = root.lets('query', 'myquery').loader(() => ({hello: 'World'})).query()
+export const query = root.lets('action', 'myquery').loader(() => ({hello: 'World'})).query().action()
 export const page = root.lets('page', 'mypage').query(query).page(({data}) => <div>Hello, {data.hello}</div>)
 export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         `)
@@ -138,7 +138,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
               point: async () => (await import('./file0.js')).page,
             },
             {
-              type: 'query',
+              type: 'action',
               name: 'myquery',
               point: async () => (await import('./file0.js')).query,
             },
@@ -154,7 +154,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, logger, getLastLogMessage, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
-export const query = root.lets('query', 'myquery').loader(() => ({hello: 'World'})).query()
+export const query = root.lets('action', 'myquery').loader(() => ({hello: 'World'})).query().action()
 export const page = root.lets('page', 'mypage').query(query).page(({data}) => <div>Hello, {data.hello}</div>)
 export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         `)

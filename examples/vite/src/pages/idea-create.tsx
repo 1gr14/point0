@@ -5,7 +5,7 @@ import { generalLayout } from '../layouts/general.js'
 import { client } from '../lib/client.js'
 
 export const createIdeaMutation = client
-  .lets('mutation', 'createIdea')
+  .lets('action', 'createIdea')
   .input(
     z.object({
       title: z.string().min(1).max(10),
@@ -24,9 +24,10 @@ export const createIdeaMutation = client
       console.info('success')
     },
   })
+  .action()
 
 export const generateIdeaMutation = client
-  .lets('mutation', 'generateIdea')
+  .lets('action', 'generateIdea')
   .loader(async () => {
     const stream = new ReadableStream({
       async start(controller) {
@@ -45,6 +46,7 @@ export const generateIdeaMutation = client
     })
   })
   .mutation()
+  .action()
 
 const Page = () => {
   // any hook or whatever here, it is just client code

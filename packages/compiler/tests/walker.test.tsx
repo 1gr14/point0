@@ -178,9 +178,9 @@ describe('Walker', () => {
                       export const pageV = rootV2.lets('page', 'pageN').page(() => <div>Hello</div>)
                       export const layoutV = pageV.lets('layout', 'layoutN').layout(() => <div>Hello</div>)
                       export const componentV = layoutV.lets('component', 'componentN').component(() => <div>Hello</div>)
-                      export const mutationV = componentV.lets('mutation', 'mutationN').loader().mutation()
-                      export const queryV = mutationV.lets('query', 'queryN').loader().query()
-                      export const infiniteQueryV = queryV.lets('infiniteQuery', 'infiniteQueryN').loader().infiniteQuery()
+                      export const mutationV = componentV.lets('action', 'mutationN').loader().mutation().action()
+                      export const queryV = mutationV.lets('action', 'queryN').loader().query().action()
+                      export const infiniteQueryV = queryV.lets('action', 'infiniteQueryN').loader().infiniteQuery().action()
                       export const providerV = infiniteQueryV.lets('provider', 'providerN').loader().provider()
                       export const baseV = providerV.lets('base', 'baseN').base()
                       export const baseV2 = baseV.lets('base', 'baseN2').loader().base()
@@ -269,13 +269,13 @@ describe('Walker', () => {
                       export const componentV = layoutV.lets('component', 'componentN').component(() => <div>Hello</div>)
         `)
         await f5.write(`import {componentV} from '${f4.importpath}'
-                      export const mutationV = componentV.lets('mutation', 'mutationN').loader().mutation()
+                      export const mutationV = componentV.lets('action', 'mutationN').loader().mutation().action()
         `)
         await f6.write(`import {mutationV} from '${f5.importpath}'
-                      export const queryV = mutationV.lets('query', 'queryN').loader().query()
+                      export const queryV = mutationV.lets('action', 'queryN').loader().query().action()
         `)
         await f7.write(`import {queryV} from '${f6.importpath}'
-                      export const infiniteQueryV = queryV.lets('infiniteQuery', 'infiniteQueryN').loader().infiniteQuery()
+                      export const infiniteQueryV = queryV.lets('action', 'infiniteQueryN').loader().infiniteQuery().action()
         `)
         await f8.write(`import {infiniteQueryV} from '${f7.importpath}'
                       export const providerV = infiniteQueryV.lets('provider', 'providerN').loader().provider()
@@ -525,13 +525,13 @@ describe('Walker', () => {
     //                   export const componentV = layoutV.lets('component', 'componentN').component(() => <div>Hello</div>)
     //     `)
     //     await f5.write(`import {componentV} from '${f4.importpath}'
-    //                   export const mutationV = componentV.lets('mutation', 'mutationN').loader().mutation()
+    //                   export const mutationV = componentV.lets('action', 'mutationN').loader().mutation().action()
     //     `)
     //     await f6.write(`import {mutationV} from '${f5.importpath}'
-    //                   export const queryV = mutationV.lets('query', 'queryN').loader().query()
+    //                   export const queryV = mutationV.lets('action', 'queryN').loader().query().action()
     //     `)
     //     await f7.write(`import {queryV} from '${f6.importpath}'
-    //                   export const infiniteQueryV = queryV.lets('infiniteQuery', 'infiniteQueryN').loader().infiniteQuery()
+    //                   export const infiniteQueryV = queryV.lets('action', 'infiniteQueryN').loader().infiniteQuery().action()
     //     `)
     //     await f8.write(`import {infiniteQueryV} from '${f7.importpath}'
     //                   export const providerV = infiniteQueryV.lets('provider', 'providerN').loader().provider()
