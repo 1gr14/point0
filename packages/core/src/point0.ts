@@ -146,6 +146,7 @@ import type {
   MergeRecordValidationSchemas,
   MiddlewareFn,
   MountablePointType,
+  NiceActionReadyPoint,
   NiceBaseReadyPoint,
   NiceComponentReadyPoint,
   NiceInfiniteQueryReadyPoint,
@@ -167,7 +168,8 @@ import type {
   PointType,
   PointsScope,
   PrefetchPagePolicy,
-  QueriedData,
+  QueriedFiniteData,
+  QueriedInfiniteData,
   QueryKey,
   QueryMode,
   QueryResultType,
@@ -2075,10 +2077,10 @@ export class Point0<
             : () => ({})
       const withQueryFn = ((options) => {
         const input = getInputFn(options)
-        if (point._queryResultType === 'query') {
-          return point.useQuery(input, queryOptions)
-        } else {
+        if (point._queryResultType === 'infiniteQuery') {
           return point.useInfiniteQuery(input, queryOptions as never)
+        } else {
+          return point.useQuery(input, queryOptions)
         }
       }) as WithQueryFn<any, any, any, any, any>
       return this._continue({
@@ -4453,7 +4455,9 @@ export class Point0<
   }
 
   query(
-    ...args: TLetsReadyPointType extends Exclude<PointType, MountablePointType>
+    // TODO:ACTION it is only for query, remove this block
+    // ...args: TLetsReadyPointType extends Exclude<PointType, MountablePointType>
+    ...args: TLetsReadyPointType extends 'query'
       ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
         ? [
             queryOptions?: ExtraUseQueryOptions<
@@ -4486,9 +4490,44 @@ export class Point0<
     TQueriesDefinitions
   >
   query(
+    ...args: TLetsReadyPointType extends 'action'
+      ? TPointType extends 'finalStage'
+        ? [ShowError<`You can not use query() to finalize your query, becouse it is already finalized`>]
+        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+          ? [
+              queryOptions?: ExtraUseQueryOptions<
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                TError,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                QueryKey
+              >,
+            ]
+          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+            ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
+            : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .query()`>]
+      : never
+  ): NiceStagePoint<
+    'finalStage',
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    'query',
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  query(
     ...args: TLetsReadyPointType extends MountablePointType
       ? TPointType extends 'finalStage'
-        ? [ShowError<`You can not use query() to finalize yout query, becouse it is already finalized`>]
+        ? [ShowError<`You can not use query() to finalize your query, becouse it is already finalized`>]
         : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
           ? [
               queryOptions?: ExtraUseQueryOptions<
@@ -4553,13 +4592,20 @@ export class Point0<
           _queryOptions: queryOptions,
         }) as never
       } else {
-        throw new Error(`Unknown condition, please report this issue on point ${this.toStringWithLocation()}`)
+        // action final
+        return this._continue({
+          type: 'finalStage',
+          _queryResultType: this._queryResultType === 'infiniteQuery' ? 'infiniteQuery' : 'query',
+          _queryOptions: queryOptions,
+        }) as never
       }
     }
   }
 
   infiniteQuery(
-    ...args: TLetsReadyPointType extends Exclude<PointType, MountablePointType>
+    // TODO:ACTION it is only for infiniteQuery, remove this block
+    // ...args: TLetsReadyPointType extends Exclude<PointType, MountablePointType>
+    ...args: TLetsReadyPointType extends 'infiniteQuery'
       ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
         ? [
             infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
@@ -4596,9 +4642,48 @@ export class Point0<
     TQueriesDefinitions
   >
   infiniteQuery(
+    ...args: TPointType extends 'finalStage'
+      ? [ShowError<`You can not use query() to finalize your query, becouse it is already finalized`>]
+      : TLetsReadyPointType extends 'action'
+        ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+          ? [
+              infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+                InputsRaw<TServerInputSchema, TClientInputSchema>,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                TError,
+                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+                QueryKey,
+                unknown
+              >,
+            ]
+          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+            ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
+            : [
+                ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery()`>,
+              ]
+        : never
+  ): NiceStagePoint<
+    'finalStage',
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    'infiniteQuery',
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  infiniteQuery(
     ...args: TLetsReadyPointType extends MountablePointType
       ? TPointType extends 'finalStage'
-        ? [ShowError<`You can not use infiniteQuery() to finalize yout query, becouse it is already finalized`>]
+        ? [ShowError<`You can not use infiniteQuery() to finalize your query, becouse it is already finalized`>]
         : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
           ? [
               infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
@@ -4642,7 +4727,7 @@ export class Point0<
     if (this._isMountablePoint()) {
       if (this.type === 'finalStage') {
         throw new Error(
-          `You can not use infiniteQueryOptions() becouse this point query already finalized in point ${this.toStringWithLocation()}`,
+          `You can not use infiniteQuery() becouse this point query already finalized in point ${this.toStringWithLocation()}`,
         )
       }
       return this._continue({
@@ -4674,21 +4759,36 @@ export class Point0<
           >,
         }) as never
       } else {
-        throw new Error(`Unknown condition, please report this issue on point ${this.toStringWithLocation()}`)
+        // action final
+        return this._continue({
+          type: 'finalStage',
+          _queryResultType: 'infiniteQuery',
+          _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<
+            InputsRaw<TServerInputSchema, TClientInputSchema>,
+            FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+            TError,
+            InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+            QueryKey,
+            unknown
+          >,
+        }) as never
       }
     }
   }
 
   mutation(
-    ...args: FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
-      ? [
-          mutationOptions?: UseMutationOptions<
-            FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
-            TError,
-            InputsRawOrUndefinedOrVoid<TServerInputSchema, TClientInputSchema>
-          >,
-        ]
-      : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .mutation()`>]
+    // TODO:ACTION it is only for mutation, remove this block
+    ...args: TLetsReadyPointType extends 'mutation'
+      ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
+        ? [
+            mutationOptions?: UseMutationOptions<
+              FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
+              TError,
+              InputsRawOrUndefinedOrVoid<TServerInputSchema, TClientInputSchema>
+            >,
+          ]
+        : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .mutation()`>]
+      : never
   ): NiceMutationReadyPoint<
     'mutation',
     UndefinedReadyPointType,
@@ -4706,11 +4806,72 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
-    const [mutationOptions = {}] = args
+  >
+  mutation(
+    ...args: TLetsReadyPointType extends 'action'
+      ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
+        ? [
+            mutationOptions?: UseMutationOptions<
+              FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
+              TError,
+              InputsRawOrUndefinedOrVoid<TServerInputSchema, TClientInputSchema>
+            >,
+          ]
+        : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .mutation()`>]
+      : never
+  ): NiceStagePoint<
+    'finalStage',
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  mutation(...args: any[]) {
+    const [mutationOptions = {}] = args as [UseMutationOptions<any> | undefined]
     const point = this._continue({
       type: 'mutation',
-      _mutationOptions: mutationOptions as UseMutationOptions,
+      _mutationOptions: mutationOptions,
+      _letsReadyPointType: undefined,
+    })
+    return point as never
+  }
+
+  action(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ...args: FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
+      ? never[]
+      : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .action()`>]
+  ): NiceActionReadyPoint<
+    'action',
+    UndefinedReadyPointType,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  > {
+    const point = this._continue({
+      type: 'action',
       _letsReadyPointType: undefined,
     })
     return point as never
@@ -4743,22 +4904,28 @@ export class Point0<
       Infer: point.Infer,
       point,
       lets: point.lets.bind(point),
-      useQuery: point.useQuery.bind(point),
-      getQueryOptions: point.getQueryOptions.bind(point),
-      prefetchQuery: point.prefetchQuery.bind(point),
+
       getQueryKey: point.getQueryKey.bind(point),
-      useInfiniteQuery: point.useInfiniteQuery.bind(point),
+      getQueryOptions: point.getQueryOptions.bind(point),
+      useQuery: point.useQuery.bind(point),
+      prefetchQuery: point.prefetchQuery.bind(point),
+      fetchQuery: point.fetchQuery.bind(point),
+
+      getInfiniteQueryKey: point.getInfiniteQueryKey.bind(point),
       getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
+      useInfiniteQuery: point.useInfiniteQuery.bind(point),
       prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
+      fetchInfiniteQuery: point.fetchInfiniteQuery.bind(point),
+
       getMutationOptions: point.getMutationOptions.bind(point),
+      fetchMutation: point.fetchMutation.bind(point),
       useMutation: point.useMutation.bind(point),
-      fetch: point.fetch.bind(point),
+
       getFetchServerOptions: point.getFetchServerOptions.bind(point),
       fetchServerDetailed: point.fetchServerDetailed.bind(point),
       fetchServer: point.fetchServer.bind(point),
-      fetchQuery: point.fetchQuery.bind(point),
-      fetchInfiniteQuery: point.fetchInfiniteQuery.bind(point),
-      fetchMutation: point.fetchMutation.bind(point),
+      fetch: point.fetch.bind(point),
+
       // Component: Object.assign(point.Component.bind(point), { displayName: (point.Component as any).displayName }),
       // Page: Object.assign(point.Page.bind(point), { displayName: (point.Page as any).displayName }),
       // Layout: Object.assign(point.Layout.bind(point), { displayName: (point.Layout as any).displayName }),
@@ -5607,6 +5774,41 @@ export class Point0<
     ]
   }
 
+  _getFinalQueryKey({
+    input = {},
+    options = {},
+    queryResultType,
+  }: {
+    input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>
+    options?: { _outputType?: FetchServerOutputType }
+    queryResultType: QueryResultType
+  }): QueryKey {
+    const { _outputType } = options
+    const hasClientLoader = this._hasClientLoader()
+    const hasServerLoader = this._hasServerLoader()
+    if (hasClientLoader && hasServerLoader) {
+      return this._getCombinedQueryKey({
+        input: input as never,
+        outputType: _outputType,
+        isInfiniteQuery: queryResultType === 'infiniteQuery',
+      })
+    }
+    if (hasClientLoader) {
+      return this._getClientQueryKey({
+        input: input as never,
+        isInfiniteQuery: queryResultType === 'infiniteQuery',
+      })
+    }
+    if (hasServerLoader) {
+      return this._getServerQueryKey({
+        input: input as never,
+        outputType: _outputType,
+        isInfiniteQuery: queryResultType === 'infiniteQuery',
+      })
+    }
+    throw new Error(`No loader found on point ${this.toStringWithLocation()}`)
+  }
+
   getQueryKey(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
@@ -5618,30 +5820,23 @@ export class Point0<
           options?: { _outputType?: FetchServerOutputType },
         ]
   ): QueryKey {
-    const [input, { _outputType } = {}] = args
-    const hasClientLoader = this._hasClientLoader()
-    const hasServerLoader = this._hasServerLoader()
-    if (hasClientLoader && hasServerLoader) {
-      return this._getCombinedQueryKey({
-        input: input as never,
-        outputType: _outputType,
-        isInfiniteQuery: this._queryResultType === 'infiniteQuery',
-      })
-    }
-    if (hasClientLoader) {
-      return this._getClientQueryKey({
-        input: input as never,
-        isInfiniteQuery: this._queryResultType === 'infiniteQuery',
-      })
-    }
-    if (hasServerLoader) {
-      return this._getServerQueryKey({
-        input: input as never,
-        outputType: _outputType,
-        isInfiniteQuery: this._queryResultType === 'infiniteQuery',
-      })
-    }
-    throw new Error(`No loader found on point ${this.toStringWithLocation()}`)
+    const [input, options = {}] = args
+    return this._getFinalQueryKey({ input, options, queryResultType: 'query' })
+  }
+
+  getInfiniteQueryKey(
+    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+      ? [
+          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          options?: { _outputType?: FetchServerOutputType },
+        ]
+      : [
+          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          options?: { _outputType?: FetchServerOutputType },
+        ]
+  ): QueryKey {
+    const [input, options = {}] = args
+    return this._getFinalQueryKey({ input, options, queryResultType: 'infiniteQuery' })
   }
 
   _getServerQueryOptions({
@@ -6564,7 +6759,7 @@ export class Point0<
   }):
     | false
     | {
-        cacheData: QueriedData<any, any>
+        cacheData: QueriedFiniteData<any>
         queryOptions: UseQueryOptions<any, any, any, any>
         queryClient: QueryClient
       } {
@@ -6577,7 +6772,7 @@ export class Point0<
     if (!this._hasServerLoader() && mode === 'server') {
       return false
     }
-    const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'provider']
+    const suitablePointTypes = ['page', 'action', 'query', 'infiniteQuery', 'component', 'layout', 'provider']
     if (!suitablePointTypes.includes(this.type)) {
       return false
     }
@@ -6625,19 +6820,19 @@ export class Point0<
   ): Promise<
     TCacheOnly extends false
       ? TMode extends 'server'
-        ? QueriedData<TQueryResultType, TServerLoaderOutput>
+        ? QueriedFiniteData<TServerLoaderOutput>
         : TMode extends 'client'
-          ? QueriedData<TQueryResultType, TClientLoaderOutput>
+          ? QueriedFiniteData<TClientLoaderOutput>
           : TMode extends 'serverAndClient'
-            ? QueriedData<TQueryResultType, FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
+            ? QueriedFiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
             : never
       :
           | (TMode extends 'server'
-              ? QueriedData<TQueryResultType, TServerLoaderOutput>
+              ? QueriedFiniteData<TServerLoaderOutput>
               : TMode extends 'client'
-                ? QueriedData<TQueryResultType, TClientLoaderOutput>
+                ? QueriedFiniteData<TClientLoaderOutput>
                 : TMode extends 'serverAndClient'
-                  ? QueriedData<TQueryResultType, FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
+                  ? QueriedFiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
                   : never)
           | undefined
   > {
@@ -6748,7 +6943,7 @@ export class Point0<
   }):
     | false
     | {
-        cacheData: QueriedData<any, any>
+        cacheData: QueriedInfiniteData<any>
         infiniteQueryOptions: UseInfiniteQueryOptions<any, any, any, any>
         queryClient: QueryClient
       } {
@@ -6761,7 +6956,7 @@ export class Point0<
     if (!this._hasServerLoader() && mode === 'server') {
       return false
     }
-    const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'provider']
+    const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'action', 'layout', 'provider']
     if (!suitablePointTypes.includes(this.type)) {
       return false
     }
@@ -6775,7 +6970,7 @@ export class Point0<
     })
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey: infiniteQueryOptions.queryKey as never })
-    return { cacheData: query?.state.data, infiniteQueryOptions, queryClient }
+    return { cacheData: query?.state.data as never, infiniteQueryOptions, queryClient }
   }
 
   async fetchInfiniteQuery<TMode extends QueryMode = 'serverAndClient', TCacheOnly extends boolean = false>(
@@ -6827,19 +7022,19 @@ export class Point0<
   ): Promise<
     TCacheOnly extends false
       ? TMode extends 'server'
-        ? QueriedData<TQueryResultType, TServerLoaderOutput>
+        ? QueriedInfiniteData<TServerLoaderOutput>
         : TMode extends 'client'
-          ? QueriedData<TQueryResultType, TClientLoaderOutput>
+          ? QueriedInfiniteData<TClientLoaderOutput>
           : TMode extends 'serverAndClient'
-            ? QueriedData<TQueryResultType, FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
+            ? QueriedInfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
             : never
       :
           | (TMode extends 'server'
-              ? QueriedData<TQueryResultType, TServerLoaderOutput>
+              ? QueriedInfiniteData<TServerLoaderOutput>
               : TMode extends 'client'
-                ? QueriedData<TQueryResultType, TClientLoaderOutput>
+                ? QueriedInfiniteData<TClientLoaderOutput>
                 : TMode extends 'serverAndClient'
-                  ? QueriedData<TQueryResultType, FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
+                  ? QueriedInfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
                   : never)
           | undefined
   > {

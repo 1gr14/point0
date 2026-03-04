@@ -123,11 +123,13 @@ export type Infer<
   >
   UseQueryResult: UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TError>
   FetchServerOutput: TServerLoaderOutput extends LoaderOutput ? TServerLoaderOutput : never
-  FetchOutput: TQueryResultType extends 'infiniteQuery'
-    ? InfiniteData<FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>>
-    : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
-  ServerQueryData: QueriedData<TQueryResultType, TServerLoaderOutput>
-  ClientQueryData: QueriedData<TQueryResultType, TClientLoaderOutput>
+  FetchOutput: FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
+  ServerQueryFiniteData: QueriedFiniteData<TServerLoaderOutput>
+  ClientQueryFiniteData: QueriedFiniteData<TClientLoaderOutput>
+  ServerQueryInfiniteData: QueriedInfiniteData<TServerLoaderOutput>
+  ClientQueryInfiniteData: QueriedInfiniteData<TClientLoaderOutput>
+  QueriedFiniteData: FinalQueriedFiniteData<TServerLoaderOutput, TClientLoaderOutput>
+  QueriedInfiniteData: FinalQueriedInfiniteData<TServerLoaderOutput, TClientLoaderOutput>
   QueriedData: FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
   ServerExecuteResult: ServerExecuteResult<TCtx, TServerLoaderOutput, TError>
 }
@@ -140,11 +142,12 @@ export type PointType =
   | 'base'
   | 'page'
   | 'component'
+  | 'layout'
+  | 'provider'
+  | 'action'
   | 'query'
   | 'infiniteQuery'
   | 'mutation'
-  | 'layout'
-  | 'provider'
   | 'coreStage'
   | 'serverStage'
   | 'clientStage'
@@ -153,7 +156,7 @@ export type StagePointType = 'coreStage' | 'serverStage' | 'clientStage' | 'fina
 export type ReadyPointType = Exclude<PointType, StagePointType>
 export type RequestableReadyPointType = Exclude<ReadyPointType, 'root' | 'base' | 'plugin'>
 export type MountablePointType = 'page' | 'component' | 'layout' | 'provider'
-export type QueryableReadyPointType = MountablePointType | 'query' | 'infiniteQuery'
+export type QueryableReadyPointType = MountablePointType | 'action' | 'query' | 'infiniteQuery'
 export type IsReadyPointType<TPointType extends PointType> = TPointType extends ReadyPointType ? true : false
 export type UndefinedReadyPointType = undefined
 export type ReadyPointTypeOrNever<TPointType extends PointType | UndefinedReadyPointType> =
@@ -703,6 +706,20 @@ export type FinalQueriedData<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
 > = QueriedData<TQueryResultType, FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
+export type QueriedFiniteData<TLoaderOutput extends LoaderOutput | UndefinedLoaderOutput> = TLoaderOutput extends Data
+  ? TLoaderOutput
+  : undefined
+export type FinalQueriedFiniteData<
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+> = QueriedFiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
+export type QueriedInfiniteData<TLoaderOutput extends LoaderOutput | UndefinedLoaderOutput> = TLoaderOutput extends Data
+  ? InfiniteData<TLoaderOutput>
+  : undefined
+export type FinalQueriedInfiniteData<
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+> = QueriedInfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
 
 export type HasAnyLoader<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1703,6 +1720,64 @@ export type NiceComponentStagePoint<
   | 'infiniteQuery'
 >
 
+export type NiceActionStagePoint<
+  TPointType extends StagePointType,
+  TLetsReadyPointType extends 'action',
+  TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
+  TCtx extends Ctx,
+  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
+  TQueriesDefinitions extends QueriesDefinitions,
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsReadyPointType,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >,
+  | 'action'
+  | 'on'
+  | 'serverOn'
+  | 'clientOn'
+  | 'middleware'
+  | 'use'
+  | 'fetchOptions'
+  | 'input'
+  | 'clientInput'
+  | 'sharedInput'
+  | 'ctx'
+  | 'loader'
+  | 'clientLoader'
+  | 'mutation'
+  | 'infiniteQuery'
+  | 'query'
+  // | 'onPrefetchPage'
+  | 'point'
+  | 'type'
+  | 'Infer'
+>
+
 export type NiceQueryStagePoint<
   TPointType extends StagePointType,
   TLetsReadyPointType extends 'query',
@@ -2118,8 +2193,8 @@ export type NiceStagePoint<
               TInnerProps,
               TQueriesDefinitions
             >
-          : TLetsReadyPointType extends 'query'
-            ? NiceQueryStagePoint<
+          : TLetsReadyPointType extends 'action'
+            ? NiceActionStagePoint<
                 TPointType,
                 TLetsReadyPointType,
                 TRequiredCtx,
@@ -2137,8 +2212,8 @@ export type NiceStagePoint<
                 TInnerProps,
                 TQueriesDefinitions
               >
-            : TLetsReadyPointType extends 'infiniteQuery'
-              ? NiceInfiniteQueryStagePoint<
+            : TLetsReadyPointType extends 'query'
+              ? NiceQueryStagePoint<
                   TPointType,
                   TLetsReadyPointType,
                   TRequiredCtx,
@@ -2156,8 +2231,8 @@ export type NiceStagePoint<
                   TInnerProps,
                   TQueriesDefinitions
                 >
-              : TLetsReadyPointType extends 'mutation'
-                ? NiceMutationStagePoint<
+              : TLetsReadyPointType extends 'infiniteQuery'
+                ? NiceInfiniteQueryStagePoint<
                     TPointType,
                     TLetsReadyPointType,
                     TRequiredCtx,
@@ -2175,8 +2250,8 @@ export type NiceStagePoint<
                     TInnerProps,
                     TQueriesDefinitions
                   >
-                : TLetsReadyPointType extends 'layout'
-                  ? NiceLayoutStagePoint<
+                : TLetsReadyPointType extends 'mutation'
+                  ? NiceMutationStagePoint<
                       TPointType,
                       TLetsReadyPointType,
                       TRequiredCtx,
@@ -2194,8 +2269,8 @@ export type NiceStagePoint<
                       TInnerProps,
                       TQueriesDefinitions
                     >
-                  : TLetsReadyPointType extends 'provider'
-                    ? NiceProviderStagePoint<
+                  : TLetsReadyPointType extends 'layout'
+                    ? NiceLayoutStagePoint<
                         TPointType,
                         TLetsReadyPointType,
                         TRequiredCtx,
@@ -2213,7 +2288,26 @@ export type NiceStagePoint<
                         TInnerProps,
                         TQueriesDefinitions
                       >
-                    : never
+                    : TLetsReadyPointType extends 'provider'
+                      ? NiceProviderStagePoint<
+                          TPointType,
+                          TLetsReadyPointType,
+                          TRequiredCtx,
+                          TError,
+                          TCtx,
+                          TCtxExposedKeys,
+                          TServerLoaderOutput,
+                          TClientLoaderOutput,
+                          TMapperOutput,
+                          TRouteDefinition,
+                          TServerInputSchema,
+                          TClientInputSchema,
+                          TQueryResultType,
+                          TOuterProps,
+                          TInnerProps,
+                          TQueriesDefinitions
+                        >
+                      : never
 
 // nice end point
 
@@ -2373,7 +2467,7 @@ export type WithQueryIfSuitable<
         TServerLoaderOutput,
         | TLiteral
         | 'useInfiniteQuery'
-        | 'getQueryKey'
+        | 'getInfiniteQueryKey'
         | 'getInfiniteQueryOptions'
         | 'fetchInfiniteQuery'
         | 'prefetchInfiniteQuery'
@@ -2499,6 +2593,49 @@ export type NiceLayoutReadyPoint<
     TServerLoaderOutput,
     TQueryResultType,
     'point' | 'type' | 'lets' | 'useValue' | 'getValue' | 'getValueWeak' | 'Infer' | 'Layout' | 'X' | 'route'
+  >
+>
+
+export type NiceActionReadyPoint<
+  TPointType extends 'action',
+  TLetsReadyPointType extends UndefinedReadyPointType,
+  TRequiredCtx extends RequiredCtx,
+  TError extends ErrorPoint0,
+  TCtx extends Ctx,
+  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
+  TQueriesDefinitions extends QueriesDefinitions,
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsReadyPointType,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >,
+  WithQueryIfSuitable<
+    TServerLoaderOutput,
+    TQueryResultType,
+    'point' | 'type' | 'Infer' | 'getMutationOptions' | 'useMutation' | 'fetchMutation'
   >
 >
 
