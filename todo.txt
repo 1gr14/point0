@@ -254,16 +254,18 @@ binary, just throw error if some engine distdirs not inside firstlevel server di
 
 
 === ACTION ===
-Фетч отдаёт не квериед дату всегда
-Если отутпут тайп респонс то нельзя никакой квери
-Мутейшен это один из квери резалт тайпов?
-Удалить недоэкшены
-
 Всё что касается таска передаётся в хедерах
 Все экшены ходят не на _point0 а по реальному нормальному урлу
 Позволить определить дефолтный префикс для урлов по мимо _point0
+THeaders, TSearch, TParams(?), TBody, TUnassignedInput
+apply this types to Request0<THeaders, TSearch, TParams, TBody>
+.parseInput() as chain method
+before this we have {parse} in ctx and loadrs fn. there is parse.input() → {input, body, search, params}, parse.body(), parse.search(), parse.params()
+after this we have {parsed} in ctx and loadrs fn. there is parsed.input, parsed.body, parsed.search, parsed.params
+do not apply transformer to action request
 Инпуту можно определить он из серч параметров или из бади или если функция, то тогда как он берётся из реквеста по сути как экшен
 В он саксес и он еррор в квери опшинсах добавить суффикс клиент и сервер
+asFormData it is fetch options
 --?
 __INPUT_RAW__ не хранить в стейте, а геж-то ещё хранить напримерв _state
 remove input from request
@@ -420,7 +422,7 @@ cli extract point by type and name, so agent can see errors right in terminal
 
 
 === FILEROUTING ===
-Два слеша дают тоже абсолютный роут
+Два слеша дают тоже абсолютный роут (//)
 --?
 Файл роутинг файл может быть и тс файло, тогда он экспортит роут и бэйз который будет применён к мдкс
 Просто > ставить в строку, чтобы файловый роутинг получить
