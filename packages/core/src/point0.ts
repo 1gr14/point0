@@ -96,6 +96,7 @@ import type {
   AssertNoForbiddenCtxExposedKeys,
   AssertNoForbiddenMethodsIfNotSuitableStage,
   AssertNotFunction,
+  AssertNotResponseForMountable,
   AssertRouteDefinitionInputExtends,
   BasePoint,
   ClientExecuteAction,
@@ -149,19 +150,16 @@ import type {
   NiceActionReadyPoint,
   NiceBaseReadyPoint,
   NiceComponentReadyPoint,
-  NiceInfiniteQueryReadyPoint,
   NiceLayoutReadyPoint,
-  NiceMutationReadyPoint,
   NicePageReadyPoint,
   NicePluginReadyPoint,
   NicePluginStagePoint,
   NiceProviderReadyPoint,
-  NiceQueryReadyPoint,
   NiceReadyPoint,
   NiceRootReadyPoint,
   NiceRootStagePoint,
   NiceStagePoint,
-  NormalizeQueryResultType,
+  // NormalizeQueryResultType,
   NormalizedPrefetchPagePolicy,
   PartialUseInfiniteQueryOptions,
   PointName,
@@ -2701,11 +2699,9 @@ export class Point0<
   }
 
   loader<TNewServerLoaderOutput extends LoaderOutput = LoaderOutput>(
-    loaderFn: TLetsReadyPointType extends 'mutation'
-      ? LoaderResponseFn<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema, TNewServerLoaderOutput> &
-          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>
-      : LoaderDataFn<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema, TNewServerLoaderOutput> &
-          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>,
+    loaderFn: LoaderResponseFn<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema, TNewServerLoaderOutput> &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'> &
+      AssertNotResponseForMountable<TNewServerLoaderOutput, TLetsReadyPointType>,
   ): NiceStagePoint<
     TNewServerLoaderOutput extends Response ? 'clientStage' : 'serverStage',
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -2719,7 +2715,8 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
+    // NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
+    TQueryResultType,
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
@@ -2727,7 +2724,7 @@ export class Point0<
   loader(loaderFn: LoaderDataFn<any, any, any, any, any> | LoaderResponseFn<any, any, any, any, any> | boolean) {
     return this._continue({
       type: 'serverStage', // it should be clientStage if loader returns response, but we know it only by types, we do not know it in runtime, bu it is ok to have here for runtime serverStage. Not good, but ok.
-      _queryResultType: this._normalizeQueryResultType('query'),
+      // _queryResultType: this._normalizeQueryResultType('query'),
       _serverExecuteActions: [
         ...this._serverExecuteActions,
         { type: 'loader', fn: (loaderFn as unknown) ?? ((c: any) => c.data), unstableId: Point0._getNextUnstableId() },
@@ -2736,27 +2733,18 @@ export class Point0<
   }
 
   clientLoader<TNewClientLoaderOutput extends LoaderOutput = LoaderOutput>(
-    clientLoaderFn: TLetsReadyPointType extends 'mutation'
-      ? ClientLoaderResponseFn<
-          TLetsReadyPointType,
-          TRouteDefinition,
-          TClientInputSchema,
-          TServerLoaderOutput,
-          TClientLoaderOutput,
-          TNewClientLoaderOutput
-        > &
-          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>
-      : ClientLoaderDataFn<
-          TLetsReadyPointType,
-          TRouteDefinition,
-          TClientInputSchema,
-          TServerLoaderOutput,
-          TClientLoaderOutput,
-          TNewClientLoaderOutput
-        > &
-          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>,
+    clientLoaderFn: ClientLoaderResponseFn<
+      TLetsReadyPointType,
+      TRouteDefinition,
+      TClientInputSchema,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TNewClientLoaderOutput
+    > &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'> &
+      AssertNotResponseForMountable<TNewClientLoaderOutput, TLetsReadyPointType>,
   ): NiceStagePoint<
-    TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage', // response can happen only in mutation, so we not care about this happen in mountable
+    TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage',
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TError,
@@ -2768,10 +2756,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
+    // NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
+    TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions // so here we not try to finalize query, becouse for mutation it is not needed at all, and in mountable can not happen becouse it can not return response
+    TQueriesDefinitions // so here we not try to finalize query, becouse for action it is not needed at all, and in mountable can not happen becouse it can not return response
     // WithSelfQueryIfShouldBeFinalized<
     //   TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage',
     //   TLetsReadyPointType,
@@ -2789,10 +2778,10 @@ export class Point0<
     clientLoaderFn ||= (o: any) => o.data
     return this._continue({
       // it should be finalStage if loader returns response, but we know it only by types,
-      // we do not know it in runtime, bu it is ok to have here for runtime serverStage. Not good, but ok.
+      // we do not know it in runtime, but it is ok to have here for runtime serverStage. Not good, but ok.
       // it will be really finalized in runtime in one of next methods
       type: 'clientStage',
-      _queryResultType: this._normalizeQueryResultType('query'),
+      // _queryResultType: this._normalizeQueryResultType('query'),
       _clientExecuteActions: [
         ...this._clientExecuteActions,
         {
@@ -4455,9 +4444,7 @@ export class Point0<
   }
 
   query(
-    // TODO:ACTION it is only for query, remove this block
-    // ...args: TLetsReadyPointType extends Exclude<PointType, MountablePointType>
-    ...args: TLetsReadyPointType extends 'query'
+    ...args: TLetsReadyPointType extends 'action'
       ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
         ? [
             queryOptions?: ExtraUseQueryOptions<
@@ -4470,41 +4457,6 @@ export class Point0<
         : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
           ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
           : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .query()`>]
-      : never
-  ): NiceQueryReadyPoint<
-    'query',
-    undefined,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    'query',
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  query(
-    ...args: TLetsReadyPointType extends 'action'
-      ? TPointType extends 'finalStage'
-        ? [ShowError<`You can not use query() to finalize your query, becouse it is already finalized`>]
-        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
-          ? [
-              queryOptions?: ExtraUseQueryOptions<
-                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                TError,
-                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                QueryKey
-              >,
-            ]
-          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
-            ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
-            : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .query()`>]
       : never
   ): NiceStagePoint<
     'finalStage',
@@ -4583,29 +4535,17 @@ export class Point0<
         ],
       }) as never
     } else {
-      // usual query final
-      if (this._letsReadyPointType === 'query') {
-        return this._continue({
-          type: 'query',
-          _letsReadyPointType: undefined,
-          _queryResultType: 'query',
-          _queryOptions: queryOptions,
-        }) as never
-      } else {
-        // action final
-        return this._continue({
-          type: 'finalStage',
-          _queryResultType: this._queryResultType === 'infiniteQuery' ? 'infiniteQuery' : 'query',
-          _queryOptions: queryOptions,
-        }) as never
-      }
+      // action final
+      return this._continue({
+        type: 'finalStage',
+        _queryResultType: 'query',
+        _queryOptions: queryOptions,
+      }) as never
     }
   }
 
   infiniteQuery(
-    // TODO:ACTION it is only for infiniteQuery, remove this block
-    // ...args: TLetsReadyPointType extends Exclude<PointType, MountablePointType>
-    ...args: TLetsReadyPointType extends 'infiniteQuery'
+    ...args: TLetsReadyPointType extends 'action'
       ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
         ? [
             infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
@@ -4618,50 +4558,9 @@ export class Point0<
             >,
           ]
         : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
-          ? [
-              ShowError<`InfiniteQuery can not return response. Last loader should provide plain object data, not response.`>,
-            ]
+          ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
           : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery()`>]
       : never
-  ): NiceInfiniteQueryReadyPoint<
-    'infiniteQuery',
-    undefined,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    'infiniteQuery',
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  infiniteQuery(
-    ...args: TPointType extends 'finalStage'
-      ? [ShowError<`You can not use query() to finalize your query, becouse it is already finalized`>]
-      : TLetsReadyPointType extends 'action'
-        ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
-          ? [
-              infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-                InputsRaw<TServerInputSchema, TClientInputSchema>,
-                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                TError,
-                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-                QueryKey,
-                unknown
-              >,
-            ]
-          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
-            ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
-            : [
-                ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery()`>,
-              ]
-        : never
   ): NiceStagePoint<
     'finalStage',
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -4744,81 +4643,32 @@ export class Point0<
         ],
       }) as never
     } else {
-      if (this._letsReadyPointType === 'infiniteQuery') {
-        return this._continue({
-          type: 'infiniteQuery',
-          _letsReadyPointType: undefined,
-          _queryResultType: 'infiniteQuery',
-          _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<
-            InputsRaw<TServerInputSchema, TClientInputSchema>,
-            FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-            TError,
-            InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-            QueryKey,
-            unknown
-          >,
-        }) as never
-      } else {
-        // action final
-        return this._continue({
-          type: 'finalStage',
-          _queryResultType: 'infiniteQuery',
-          _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<
-            InputsRaw<TServerInputSchema, TClientInputSchema>,
-            FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-            TError,
-            InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-            QueryKey,
-            unknown
-          >,
-        }) as never
-      }
+      // action final
+      return this._continue({
+        type: 'finalStage',
+        _queryResultType: 'infiniteQuery',
+        _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<
+          InputsRaw<TServerInputSchema, TClientInputSchema>,
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+          TError,
+          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+          QueryKey,
+          unknown
+        >,
+      }) as never
     }
   }
 
   mutation(
-    // TODO:ACTION it is only for mutation, remove this block
-    ...args: TLetsReadyPointType extends 'mutation'
-      ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
-        ? [
-            mutationOptions?: UseMutationOptions<
-              FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
-              TError,
-              InputsRawOrUndefinedOrVoid<TServerInputSchema, TClientInputSchema>
-            >,
-          ]
-        : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .mutation()`>]
-      : never
-  ): NiceMutationReadyPoint<
-    'mutation',
-    UndefinedReadyPointType,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  mutation(
-    ...args: TLetsReadyPointType extends 'action'
-      ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
-        ? [
-            mutationOptions?: UseMutationOptions<
-              FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
-              TError,
-              InputsRawOrUndefinedOrVoid<TServerInputSchema, TClientInputSchema>
-            >,
-          ]
-        : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .mutation()`>]
-      : never
+    ...args: FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
+      ? [
+          mutationOptions?: UseMutationOptions<
+            FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
+            TError,
+            InputsRawOrUndefinedOrVoid<TServerInputSchema, TClientInputSchema>
+          >,
+        ]
+      : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .mutation()`>]
   ): NiceStagePoint<
     'finalStage',
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -4832,7 +4682,7 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    TQueryResultType,
+    UndefinedQueryResultType,
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
@@ -4840,9 +4690,9 @@ export class Point0<
   mutation(...args: any[]) {
     const [mutationOptions = {}] = args as [UseMutationOptions<any> | undefined]
     const point = this._continue({
-      type: 'mutation',
+      type: 'finalStage',
+      _queryResultType: undefined,
       _mutationOptions: mutationOptions,
-      _letsReadyPointType: undefined,
     })
     return point as never
   }
@@ -4963,22 +4813,24 @@ export class Point0<
   // private _isReadyPoint(): boolean {
   //   return Point0._isReadyPointType(this.type)
   // }
-  private static _isQueryableReadyPointType(pointType: PointType): boolean {
-    return (
-      pointType === 'query' ||
-      pointType === 'infiniteQuery' ||
-      pointType === 'page' ||
-      pointType === 'layout' ||
-      pointType === 'component' ||
-      pointType === 'provider'
-    )
-  }
-  private _isQueryableReadyPoint(): boolean {
-    return Point0._isQueryableReadyPointType(this._letsReadyPointType || this.type)
-  }
-  private _normalizeQueryResultType(newQueryResultType: QueryResultType): QueryResultType | UndefinedQueryResultType {
-    return this._isQueryableReadyPoint() ? (this._queryResultType ?? newQueryResultType) : this._queryResultType
-  }
+
+  // private static _isQueryableReadyPointType(pointType: PointType): boolean {
+  //   return (
+  //     pointType === 'action' ||
+  //     pointType === 'page' ||
+  //     pointType === 'layout' ||
+  //     pointType === 'component' ||
+  //     pointType === 'provider'
+  //   )
+  // }
+  // private _isQueryableReadyPoint(): boolean {
+  //   return Point0._isQueryableReadyPointType(this._letsReadyPointType || this.type)
+  // }
+  // private _normalizeQueryResultType(newQueryResultType: QueryResultType): QueryResultType | UndefinedQueryResultType {
+  //   // TODO:ACTION try to remove
+  //   return this._isQueryableReadyPoint() ? (this._queryResultType ?? newQueryResultType) : this._queryResultType
+  // }
+
   private static _isMountablePointType(pointType: PointType): boolean {
     return pointType === 'page' || pointType === 'layout' || pointType === 'component' || pointType === 'provider'
   }
@@ -6709,16 +6561,13 @@ export class Point0<
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>]
       : [input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>]
-  ): Promise<
-    TQueryResultType extends 'infiniteQuery'
-      ? InfiniteData<FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>>
-      : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
-  > => {
-    if (this.type === 'mutation') {
+  ): Promise<FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>> => {
+    if (!this._queryResultType) {
       return this.fetchMutation(...args) as never
     }
     if (this._queryResultType === 'infiniteQuery') {
-      return this.fetchInfiniteQuery(...args) as never
+      const result = await this.fetchInfiniteQuery(...args)
+      return result?.pages[0] as never
     }
     return this.fetchQuery(...args) as never
   }

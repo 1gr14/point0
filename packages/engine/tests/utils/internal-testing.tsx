@@ -505,13 +505,7 @@ export const createTestThings = async ({
   }
   const loadPoint = (async (point: ReadyPoint, ...args: [any]) => {
     return await client.run(async () => {
-      if (point.type === 'infiniteQuery') {
-        return await point.fetchInfiniteQuery(...args)
-      }
-      if (point.type === 'mutation') {
-        return await point.fetchMutation(...args)
-      }
-      return await point.fetchQuery(...args)
+      return await point.fetch(...args)
     })
   }) as unknown as FetchPoint
   const loadPointYml = (async (point: ReadyPoint, ...args: [any]) => {

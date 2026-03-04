@@ -49,7 +49,7 @@ export const filePage = client.lets('page', 'file').page(() => {
 })
 
 export const uploadFileMutation = client
-  .lets('mutation', 'uploadFile')
+  .lets('action', 'uploadFile')
   .input(z.object({ file: z.instanceof(File) }))
   .loader(async ({ input }) => {
     const size = input.file.size
@@ -61,3 +61,4 @@ export const uploadFileMutation = client
     }
   })
   .mutation()
+  .action()

@@ -78,16 +78,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       return undefined
     }
     const searchParams = request.location.searchParams
-    const validPointTypes = [
-      'page',
-      'layout',
-      'component',
-      'provider',
-      'action',
-      'query',
-      'infiniteQuery',
-      'mutation',
-    ] as const
+    const validPointTypes = ['page', 'layout', 'component', 'provider', 'action'] as const
     const validOutputTypes = ['data', 'queryClientDehydratedState'] as const
     const { type: pointType, output: outputType, scope, name: pointName } = searchParams as Record<string, unknown>
     if (typeof scope !== 'string' || scope.length === 0) {

@@ -22,9 +22,10 @@ describe('mutation', () => {
   it.concurrent('simple', async () => {
     const root = createRoot()
     const q = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .loader(() => ({ x: 1 }))
       .mutation()
+      .action()
     const page = root.lets('page', 'home', '/').page(() => {
       const mutation = q.useMutation()
       return (
@@ -65,9 +66,10 @@ describe('mutation', () => {
   it.concurrent('with clientLoader', async () => {
     const root = createRoot()
     const q = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .clientLoader(() => ({ y: 2 }))
       .mutation()
+      .action()
     const page = root.lets('page', 'home', '/').page(() => {
       const mutation = q.useMutation()
       return (
@@ -108,10 +110,11 @@ describe('mutation', () => {
   it.concurrent('with loader and clientLoader', async () => {
     const root = createRoot()
     const q = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .loader(() => ({ x: 1 }))
       .clientLoader(({ data }) => ({ y: 2, ...data }))
       .mutation()
+      .action()
     const page = root.lets('page', 'home', '/').page(() => {
       const mutation = q.useMutation()
       return (
@@ -154,10 +157,11 @@ describe('mutation', () => {
   it.concurrent('with input and loader', async () => {
     const root = createRoot()
     const q = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .input(z.object({ y: z.number() }))
       .loader(({ input }) => ({ x: input.y * 2 }))
       .mutation()
+      .action()
     const page = root.lets('page', 'home', '/').page(() => {
       const mutation = q.useMutation()
       return (
@@ -198,10 +202,11 @@ describe('mutation', () => {
   it.concurrent('with input and clientLoader', async () => {
     const root = createRoot()
     const q = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .clientInput(z.object({ y: z.number() }))
       .clientLoader(({ input }) => ({ x: input.y * 2 }))
       .mutation()
+      .action()
     const page = root.lets('page', 'home', '/').page(() => {
       const mutation = q.useMutation()
       return (
@@ -242,11 +247,12 @@ describe('mutation', () => {
   it.concurrent('with input and clientLoader and loader', async () => {
     const root = createRoot()
     const q = root
-      .lets('mutation', 'test')
+      .lets('action', 'test')
       .sharedInput(z.object({ y: z.number() }))
       .loader(() => ({ z: 3 }))
       .clientLoader(({ input }) => ({ x: input.y * 2 }))
       .mutation()
+      .action()
     const page = root.lets('page', 'home', '/').page(() => {
       const mutation = q.useMutation()
       return (

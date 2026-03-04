@@ -145,9 +145,6 @@ export type PointType =
   | 'layout'
   | 'provider'
   | 'action'
-  | 'query'
-  | 'infiniteQuery'
-  | 'mutation'
   | 'coreStage'
   | 'serverStage'
   | 'clientStage'
@@ -163,15 +160,15 @@ export type ReadyPointTypeOrNever<TPointType extends PointType | UndefinedReadyP
   TPointType extends ReadyPointType ? TPointType : never
 export type StagePointTypeOrNever<TPointType extends PointType | UndefinedReadyPointType> =
   TPointType extends StagePointType ? TPointType : StagePointType
-export type NormalizeQueryResultType<
-  TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
-  TCurrentQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TNewQueryResultType extends QueryResultType,
-> = TCurrentQueryResultType extends QueryResultType
-  ? TCurrentQueryResultType
-  : TLetsReadyPointType extends QueryableReadyPointType
-    ? TNewQueryResultType
-    : UndefinedQueryResultType
+// export type NormalizeQueryResultType<
+//   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
+//   TCurrentQueryResultType extends QueryResultType | UndefinedQueryResultType,
+//   TNewQueryResultType extends QueryResultType,
+// > = TCurrentQueryResultType extends QueryResultType
+//   ? TCurrentQueryResultType
+//   : TLetsReadyPointType extends QueryableReadyPointType
+//     ? TNewQueryResultType
+//     : UndefinedQueryResultType
 
 export type AnyPoint<
   TPointType extends PointType = PointType,
@@ -1338,6 +1335,14 @@ export type AssertNoForbiddenMethodsIfNotSuitableStage<
       : unknown
 export type AssertIsNotNever<TOutput extends LoaderOutput | UndefinedLoaderOutput | Ctx | UndefinedCtx> =
   IsNever<TOutput> extends true ? ShowError<`Output can not be type of "never"`> : unknown
+export type AssertNotResponseForMountable<
+  TOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TPointType extends PointType | undefined,
+> = TPointType extends MountablePointType
+  ? TOutput extends Response
+    ? ShowError<`Output can not be type of "Response" for point of type "${TPointType}"`>
+    : unknown
+  : unknown
 
 export type NiceRootStagePoint<
   TPointType extends StagePointType,
@@ -1778,171 +1783,6 @@ export type NiceActionStagePoint<
   | 'Infer'
 >
 
-export type NiceQueryStagePoint<
-  TPointType extends StagePointType,
-  TLetsReadyPointType extends 'query',
-  TRequiredCtx extends RequiredCtx,
-  TError extends ErrorPoint0,
-  TCtx extends Ctx,
-  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TOuterProps extends Props,
-  TInnerProps extends Props,
-  TQueriesDefinitions extends QueriesDefinitions,
-> = Pick<
-  Point0<
-    TPointType,
-    TLetsReadyPointType,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >,
-  | 'query'
-  | 'on'
-  | 'serverOn'
-  | 'clientOn'
-  | 'middleware'
-  | 'use'
-  | 'fetchOptions'
-  | 'input'
-  | 'clientInput'
-  | 'sharedInput'
-  | 'ctx'
-  | 'loader'
-  | 'clientLoader'
-  // | 'onPrefetchPage'
-  | 'point'
-  | 'type'
-  | 'Infer'
->
-
-export type NiceInfiniteQueryStagePoint<
-  TPointType extends StagePointType,
-  TLetsReadyPointType extends 'infiniteQuery',
-  TRequiredCtx extends RequiredCtx,
-  TError extends ErrorPoint0,
-  TCtx extends Ctx,
-  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TOuterProps extends Props,
-  TInnerProps extends Props,
-  TQueriesDefinitions extends QueriesDefinitions,
-> = Pick<
-  Point0<
-    TPointType,
-    TLetsReadyPointType,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >,
-  | 'infiniteQuery'
-  | 'on'
-  | 'serverOn'
-  | 'clientOn'
-  | 'middleware'
-  | 'use'
-  | 'fetchOptions'
-  | 'input'
-  | 'clientInput'
-  | 'sharedInput'
-  | 'ctx'
-  | 'loader'
-  | 'clientLoader'
-  // | 'onPrefetchPage'
-  | 'point'
-  | 'type'
-  | 'Infer'
->
-
-export type NiceMutationStagePoint<
-  TPointType extends StagePointType,
-  TLetsReadyPointType extends 'mutation',
-  TRequiredCtx extends RequiredCtx,
-  TError extends ErrorPoint0,
-  TCtx extends Ctx,
-  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TOuterProps extends Props,
-  TInnerProps extends Props,
-  TQueriesDefinitions extends QueriesDefinitions,
-> = Pick<
-  Point0<
-    TPointType,
-    TLetsReadyPointType,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >,
-  | 'mutation'
-  | 'on'
-  | 'serverOn'
-  | 'clientOn'
-  | 'middleware'
-  | 'use'
-  // | 'asFormData'
-  | 'fetchOptions'
-  | 'input'
-  | 'clientInput'
-  | 'sharedInput'
-  | 'ctx'
-  | 'loader'
-  | 'clientLoader'
-  | 'point'
-  | 'type'
-  | 'Infer'
->
-
 export type NiceLayoutStagePoint<
   TPointType extends StagePointType,
   TLetsReadyPointType extends 'layout',
@@ -2212,8 +2052,8 @@ export type NiceStagePoint<
                 TInnerProps,
                 TQueriesDefinitions
               >
-            : TLetsReadyPointType extends 'query'
-              ? NiceQueryStagePoint<
+            : TLetsReadyPointType extends 'layout'
+              ? NiceLayoutStagePoint<
                   TPointType,
                   TLetsReadyPointType,
                   TRequiredCtx,
@@ -2231,8 +2071,8 @@ export type NiceStagePoint<
                   TInnerProps,
                   TQueriesDefinitions
                 >
-              : TLetsReadyPointType extends 'infiniteQuery'
-                ? NiceInfiniteQueryStagePoint<
+              : TLetsReadyPointType extends 'provider'
+                ? NiceProviderStagePoint<
                     TPointType,
                     TLetsReadyPointType,
                     TRequiredCtx,
@@ -2250,64 +2090,7 @@ export type NiceStagePoint<
                     TInnerProps,
                     TQueriesDefinitions
                   >
-                : TLetsReadyPointType extends 'mutation'
-                  ? NiceMutationStagePoint<
-                      TPointType,
-                      TLetsReadyPointType,
-                      TRequiredCtx,
-                      TError,
-                      TCtx,
-                      TCtxExposedKeys,
-                      TServerLoaderOutput,
-                      TClientLoaderOutput,
-                      TMapperOutput,
-                      TRouteDefinition,
-                      TServerInputSchema,
-                      TClientInputSchema,
-                      TQueryResultType,
-                      TOuterProps,
-                      TInnerProps,
-                      TQueriesDefinitions
-                    >
-                  : TLetsReadyPointType extends 'layout'
-                    ? NiceLayoutStagePoint<
-                        TPointType,
-                        TLetsReadyPointType,
-                        TRequiredCtx,
-                        TError,
-                        TCtx,
-                        TCtxExposedKeys,
-                        TServerLoaderOutput,
-                        TClientLoaderOutput,
-                        TMapperOutput,
-                        TRouteDefinition,
-                        TServerInputSchema,
-                        TClientInputSchema,
-                        TQueryResultType,
-                        TOuterProps,
-                        TInnerProps,
-                        TQueriesDefinitions
-                      >
-                    : TLetsReadyPointType extends 'provider'
-                      ? NiceProviderStagePoint<
-                          TPointType,
-                          TLetsReadyPointType,
-                          TRequiredCtx,
-                          TError,
-                          TCtx,
-                          TCtxExposedKeys,
-                          TServerLoaderOutput,
-                          TClientLoaderOutput,
-                          TMapperOutput,
-                          TRouteDefinition,
-                          TServerInputSchema,
-                          TClientInputSchema,
-                          TQueryResultType,
-                          TOuterProps,
-                          TInnerProps,
-                          TQueriesDefinitions
-                        >
-                      : never
+                : never
 
 // nice end point
 
@@ -2632,131 +2415,12 @@ export type NiceActionReadyPoint<
     TInnerProps,
     TQueriesDefinitions
   >,
-  WithQueryIfSuitable<
-    TServerLoaderOutput,
-    TQueryResultType,
-    'point' | 'type' | 'Infer' | 'getMutationOptions' | 'useMutation' | 'fetchMutation'
-  >
->
-
-export type NiceQueryReadyPoint<
-  TPointType extends 'query',
-  TLetsReadyPointType extends UndefinedReadyPointType,
-  TRequiredCtx extends RequiredCtx,
-  TError extends ErrorPoint0,
-  TCtx extends Ctx,
-  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TOuterProps extends Props,
-  TInnerProps extends Props,
-  TQueriesDefinitions extends QueriesDefinitions,
-> = Pick<
-  Point0<
-    TPointType,
-    TLetsReadyPointType,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >,
-  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
->
-
-export type NiceInfiniteQueryReadyPoint<
-  TPointType extends 'infiniteQuery',
-  TLetsReadyPointType extends UndefinedReadyPointType,
-  TRequiredCtx extends RequiredCtx,
-  TError extends ErrorPoint0,
-  TCtx extends Ctx,
-  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TOuterProps extends Props,
-  TInnerProps extends Props,
-  TQueriesDefinitions extends QueriesDefinitions,
-> = Pick<
-  Point0<
-    TPointType,
-    TLetsReadyPointType,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >,
-  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
->
-
-export type NiceMutationReadyPoint<
-  TPointType extends 'mutation',
-  TLetsReadyPointType extends UndefinedReadyPointType,
-  TRequiredCtx extends RequiredCtx,
-  TError extends ErrorPoint0,
-  TCtx extends Ctx,
-  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TOuterProps extends Props,
-  TInnerProps extends Props,
-  TQueriesDefinitions extends QueriesDefinitions,
-> = Pick<
-  Point0<
-    TPointType,
-    TLetsReadyPointType,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >,
-  WithFetchIfHasServerLoader<
-    TServerLoaderOutput,
-    'point' | 'type' | 'getMutationOptions' | 'useMutation' | 'fetchMutation' | 'fetch' | 'Infer'
-  >
+  TQueryResultType extends undefined
+    ? WithFetchIfHasServerLoader<
+        TServerLoaderOutput,
+        'point' | 'type' | 'Infer' | 'getMutationOptions' | 'useMutation' | 'fetchMutation'
+      >
+    : WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
 >
 
 export type NiceProviderReadyPoint<
@@ -2914,8 +2578,8 @@ export type NiceReadyPoint<
               TInnerProps,
               TQueriesDefinitions
             >
-          : TPointType extends 'query'
-            ? NiceQueryReadyPoint<
+          : TPointType extends 'layout'
+            ? NiceLayoutReadyPoint<
                 TPointType,
                 TLetsReadyPointType,
                 TRequiredCtx,
@@ -2933,8 +2597,8 @@ export type NiceReadyPoint<
                 TInnerProps,
                 TQueriesDefinitions
               >
-            : TPointType extends 'infiniteQuery'
-              ? NiceInfiniteQueryReadyPoint<
+            : TPointType extends 'provider'
+              ? NiceProviderReadyPoint<
                   TPointType,
                   TLetsReadyPointType,
                   TRequiredCtx,
@@ -2952,64 +2616,7 @@ export type NiceReadyPoint<
                   TInnerProps,
                   TQueriesDefinitions
                 >
-              : TPointType extends 'mutation'
-                ? NiceMutationReadyPoint<
-                    TPointType,
-                    TLetsReadyPointType,
-                    TRequiredCtx,
-                    TError,
-                    TCtx,
-                    TCtxExposedKeys,
-                    TServerLoaderOutput,
-                    TClientLoaderOutput,
-                    TMapperOutput,
-                    TRouteDefinition,
-                    TServerInputSchema,
-                    TClientInputSchema,
-                    TQueryResultType,
-                    TOuterProps,
-                    TInnerProps,
-                    TQueriesDefinitions
-                  >
-                : TPointType extends 'layout'
-                  ? NiceLayoutReadyPoint<
-                      TPointType,
-                      TLetsReadyPointType,
-                      TRequiredCtx,
-                      TError,
-                      TCtx,
-                      TCtxExposedKeys,
-                      TServerLoaderOutput,
-                      TClientLoaderOutput,
-                      TMapperOutput,
-                      TRouteDefinition,
-                      TServerInputSchema,
-                      TClientInputSchema,
-                      TQueryResultType,
-                      TOuterProps,
-                      TInnerProps,
-                      TQueriesDefinitions
-                    >
-                  : TPointType extends 'provider'
-                    ? NiceProviderReadyPoint<
-                        TPointType,
-                        TLetsReadyPointType,
-                        TRequiredCtx,
-                        TError,
-                        TCtx,
-                        TCtxExposedKeys,
-                        TServerLoaderOutput,
-                        TClientLoaderOutput,
-                        TMapperOutput,
-                        TRouteDefinition,
-                        TServerInputSchema,
-                        TClientInputSchema,
-                        TQueryResultType,
-                        TOuterProps,
-                        TInnerProps,
-                        TQueriesDefinitions
-                      >
-                    : never
+              : never
 
 export type AnyNiceReadyPoint<
   TPointType extends ReadyPointType = any,

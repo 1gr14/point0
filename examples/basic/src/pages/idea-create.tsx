@@ -11,7 +11,7 @@ import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 
 export const createIdeaMutation = client
-  .lets('mutation', 'createIdea')
+  .lets('action', 'createIdea')
   // .input(
   //   z.object({
   //     title: z.string().min(1).max(10),
@@ -78,9 +78,10 @@ export const createIdeaMutation = client
       console.info('mutate', x)
     },
   })
+  .action()
 
 export const generateIdeaMutation = client
-  .lets('mutation', 'generateIdea')
+  .lets('action', 'generateIdea')
   .loader(async ({ set, request }) => {
     testCookie.set(Math.random().toString())
     console.info('request from ip', request.from.ip)
@@ -103,27 +104,30 @@ export const generateIdeaMutation = client
     })
   })
   .mutation()
+  .action()
 
 export const clientFnMutation = client
-  .lets('mutation', 'clientFnMutation')
+  .lets('action', 'clientFnMutation')
   .clientLoader(async () => {
     return new Response('HELLO!', {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     })
   })
   .mutation()
+  .action()
 
 export const clientFnMutationX = client
-  .lets('mutation', 'clientFnMutation2')
+  .lets('action', 'clientFnMutation2')
   .loader(async () => {
     return new Response('HELLO!', {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     })
   })
   .mutation()
+  .action()
 
 export const clientFn2Mutation = client
-  .lets('mutation', 'clientFn2Mutation')
+  .lets('action', 'clientFn2Mutation')
   .loader(async () => {
     const stream = new ReadableStream({
       async start(controller) {
@@ -150,6 +154,7 @@ export const clientFn2Mutation = client
     })
   })
   .mutation()
+  .action()
 
 export const ideaCreatePage = generalLayout
   .lets('page', 'newIdea', '/ideas/new')

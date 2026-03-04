@@ -25,6 +25,7 @@ describe('action', () => {
       const q = root
         .lets('action', 'test')
         .loader(() => ({ x: 1 }))
+        .query()
         .action()
       const page = root.lets('page', 'home', '/').page(() => {
         const query = q.useQuery()
@@ -76,6 +77,7 @@ describe('action', () => {
       const q = root
         .lets('action', 'test')
         .clientLoader(() => ({ y: 2 }))
+        .query()
         .action()
       const page = root.lets('page', 'home', '/').page(() => {
         const query = q.useQuery()
@@ -112,6 +114,7 @@ describe('action', () => {
         .lets('action', 'test')
         .loader(() => ({ x: 1 }))
         .clientLoader(({ data }) => ({ y: 2, ...data }))
+        .query()
         .action()
       const page = root.lets('page', 'home', '/').page(() => {
         const query = q.useQuery()
@@ -571,6 +574,7 @@ describe('action', () => {
       const query = root
         .lets('action', 'test')
         .loader(() => ({ x: 1 }))
+        .query()
         .action()
 
       const page = root
