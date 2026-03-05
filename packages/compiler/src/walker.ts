@@ -978,10 +978,11 @@ export const POINT_TYPE_TO_METHOD_MAP: Record<ReadyPointType, ReadyPointType> = 
   page: 'page',
   layout: 'layout',
   component: 'component',
+  provider: 'provider',
   mutation: 'mutation',
   query: 'query',
   infiniteQuery: 'infiniteQuery',
-  provider: 'provider',
+  action: 'action',
   base: 'base',
   root: 'root',
 }

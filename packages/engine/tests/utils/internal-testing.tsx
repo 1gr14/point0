@@ -1,9 +1,9 @@
-import assert from 'node:assert'
-import nodePath from 'node:path'
 import { CookiesStore } from '@point0/cookies-store'
 import type { AnyNiceRequestableReadyPoint, AppComponent, PointsDefinition, ReadyPoint } from '@point0/core'
 import { queryClient as point0QueryClient, QueryClientProvider, UnheadProvider } from '@point0/core'
 import { Router, RouterRoutes } from '@point0/wouter'
+import assert from 'node:assert'
+import nodePath from 'node:path'
 // import { AsyncLocalStorage } from 'node:async_hooks'
 import { notifyManager } from '@tanstack/query-core'
 import type { DehydratedState, QueryClient } from '@tanstack/react-query'
@@ -244,6 +244,12 @@ type FetchPoint = <T extends AnyNiceRequestableReadyPoint>(
     ? [input?: T['Infer']['InputRawOrUndefined']]
     : [input: T['Infer']['InputRawOrUndefined']]
 ) => ReturnType<T['fetch']>
+type FetchPointYml = <T extends AnyNiceRequestableReadyPoint>(
+  point: T,
+  ...args: T['Infer']['IsInputOptional'] extends true
+    ? [input?: T['Infer']['InputRawOrUndefined']]
+    : [input: T['Infer']['InputRawOrUndefined']]
+) => Promise<string>
 type FetchHtmlView = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['IsInputOptional'] extends true
@@ -505,19 +511,13 @@ export const createTestThings = async ({
   }
   const loadPoint = (async (point: ReadyPoint, ...args: [any]) => {
     return await client.run(async () => {
-      if (point.type === 'infiniteQuery') {
-        return await point.fetchInfiniteQuery(...args)
-      }
-      if (point.type === 'mutation') {
-        return await point.fetchMutation(...args)
-      }
-      return await point.fetchQuery(...args)
+      return await point.fetch(...args)
     })
   }) as unknown as FetchPoint
   const loadPointYml = (async (point: ReadyPoint, ...args: [any]) => {
     const result = await loadPoint(point as any, ...args)
     return ymlify(result)
-  }) as unknown as FetchPoint
+  }) as unknown as FetchPointYml
   const fetchView = (async (point: ReadyPoint, ...args: [any]) => {
     return await client.run(async () => {
       const response = await client.fetch(point.route.flat(args[0] || {}, 'http://localhost'), ...args.slice(1))

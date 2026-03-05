@@ -417,7 +417,9 @@ export class SuperStore {
     })()
 
     if (!result) {
-      throw new Error(`State not found for item policy "${policy}". It is a critical bug, please report it`)
+      throw new Error(
+        `State not found for item "${name}" with policy "${policy}". It is a critical bug, please report it`,
+      )
     }
     return result
   }
