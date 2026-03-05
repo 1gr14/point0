@@ -47,7 +47,10 @@ launch
 Выключить хмр проки в сервере
 При невалидных поиниах убедиться, что валидные подгружаются
 Если клиентов больше двух добавить в лог категорию скоуп клиента
-Врапер
+Врапер (Врапер пусть хотбы любой компонент принимает)
+В пабликдир добавить фильтр
+По умолчанию сёрвинг выставить в фалс
+? Добавить префетч полиси, которое определяет что даёт тру значение в двух остальных
 --+
 Континьев фикс сделать, с разрывом цепочки, ради сохранения положения в коде
 Энжин клон с перезаписью конфига
@@ -263,9 +266,15 @@ apply this types to Request0<THeaders, TSearch, TParams, TBody>
 before this we have {parse} in ctx and loadrs fn. there is parse.input() → {input, body, search, params}, parse.body(), parse.search(), parse.params()
 after this we have {parsed} in ctx and loadrs fn. there is parsed.input, parsed.body, parsed.search, parsed.params
 do not apply transformer to action request
+? Сделать трансформер настраиваемым по сравнению с типом поинта
+
 Инпуту можно определить он из серч параметров или из бади или если функция, то тогда как он берётся из реквеста по сути как экшен
 В он саксес и он еррор в квери опшинсах добавить суффикс клиент и сервер
 asFormData it is fetch options
+
+Пока не объявим мутацию она и не произойдёт и ей надо чётко себя определить
+Убедиться, что маунтаблы не имеют квери резалт тайпа без собственных кверей
+? Мутацию добавить в квери резалт тайп
 --?
 __INPUT_RAW__ не хранить в стейте, а геж-то ещё хранить напримерв _state
 remove input from request
@@ -448,6 +457,7 @@ example zustand (usual/persistent)
 docs in comments
 respect /v1/ at start
 Consumer–Source Eversion / Client-Server Eversion
+Отметить в доке, что это всё спа и секретный контент нельзя оставлять на страницах
 
 
 
