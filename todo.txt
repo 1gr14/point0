@@ -266,7 +266,12 @@ apply this types to Request0<THeaders, TSearch, TParams, TBody>
 before this we have {parse} in ctx and loadrs fn. there is parse.input() → {input, body, search, params}, parse.body(), parse.search(), parse.params()
 after this we have {parsed} in ctx and loadrs fn. there is parsed.input, parsed.body, parsed.search, parsed.params
 do not apply transformer to action request
+Оутпут имеют опицию чтобы сравнивать соотетствует ли оутпут дата лоадера с типом оутпута
+Отупут имеет опцию чтобы перед отправкой на клиент парсить переданное значение
+
 ? Сделать трансформер настраиваемым по сравнению с типом поинта
+? Трансформер иммет опцию чтобы быть включённым при прямом запросе к экшену
+? Трансформер может приянть вторым аргументом трансформер для экшенов
 
 Инпуту можно определить он из серч параметров или из бади или если функция, то тогда как он берётся из реквеста по сути как экшен
 В он саксес и он еррор в квери опшинсах добавить суффикс клиент и сервер
@@ -458,6 +463,7 @@ docs in comments
 respect /v1/ at start
 Consumer–Source Eversion / Client-Server Eversion
 Отметить в доке, что это всё спа и секретный контент нельзя оставлять на страницах
+Отметить также, что кткс вызывается тоьлко при условии наличия лоадеров, иначе он не вызовится, по-этому например для только авторизованных надо также использовать with обёртку
 
 
 

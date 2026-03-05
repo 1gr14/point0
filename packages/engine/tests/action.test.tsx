@@ -30,7 +30,7 @@ describe('action', () => {
       // hedares can be defined anywhere and not changes TInput
       .headers(z.object({ x: z.string().min(1) }))
 
-      // defining search or body immediatelly tranform TInputRaw to {search, body} so we can not pass there flat value
+      // defining search or body immediatelly tranform TInputRaw to {search, body, params} so we can not pass there flat value
       // if not provided, then all usual inputs just will be applied to
       // but inside loaders and ctx fns we see flat input as usual
       .search(z.object({ y: z.number().min(1) }))
@@ -84,5 +84,30 @@ describe('action', () => {
         action.test (server) < {}
         "
       `)
+  })
+
+  it.concurrent('GET without params', async () => {
+    const root = createRoot()
+    const q = root
+      .lets('action', 'test')
+
+      // params should be strictly same keys as we see in route params
+      .params(z.object({ a: z.number().min(1) }))
+
+      // hedares can be defined anywhere and not changes TInput
+      .headers(z.object({ x: z.string().min(1) }))
+
+      // defining search or body immediatelly tranform TInputRaw to {search, body} so we can not pass there flat value
+      // if not provided, then all usual inputs just will be applied to
+      // but inside loaders and ctx fns we see flat input as usual
+      .search(z.object({ y: z.number().min(1) }))
+      .body(z.object({ b: z.number().min(1) }))
+
+      .output(z.object({ b: z.number().min(1) }))
+
+      .loader(() => ({ x: 1 }))
+      .query()
+
+      .action()
   })
 })

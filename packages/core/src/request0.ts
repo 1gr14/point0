@@ -257,6 +257,8 @@ export type RequestMethod =
   | 'UNLOCK'
   | 'UNSUBSCRIBE'
 
+export type SimpleRequestMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS' | 'HEAD' | (string & {})
+
 export interface RequestFrom {
   ips: string[]
   ip: string | null

@@ -216,6 +216,7 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
+import type { RequestMethod, SimpleRequestMethod } from './request0.js'
 
 // import stringify from 'safe-stable-stringify'
 
@@ -3496,6 +3497,78 @@ export class Point0<
 
   lets<
     TPointName extends PointName,
+    TProvidedRoute extends RouteDefinition = string,
+    TCheckError = AssertInputSchemaNotWider<
+      RouteDefinitionToRecordValidationSchema<TProvidedRoute>,
+      TServerInputSchema,
+      TClientInputSchema
+    >,
+  >(
+    ...args: TPointType extends 'root' | 'base'
+      ? [letsReadyPointType: 'action', pointName: TPointName, method?: SimpleRequestMethod, route?: TProvidedRoute]
+      : never[]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      'coreStage',
+      'action',
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      UndefinedRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, RouteDefinitionToRecordValidationSchema<TProvidedRoute>>,
+      MergeRecordValidationSchemas<TClientInputSchema, RouteDefinitionToRecordValidationSchema<TProvidedRoute>>,
+      UndefinedQueryResultType,
+      EmptyProps,
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+    >
+  >
+  lets<
+    TPointName extends PointName,
+    TProvidedRoute extends AnyRoute = AnyRoute<string>,
+    TCheckError = AssertInputSchemaNotWider<
+      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
+      TServerInputSchema,
+      TClientInputSchema
+    >,
+  >(
+    ...args: TPointType extends 'root' | 'base'
+      ? [letsReadyPointType: 'action', pointName: TPointName, method: SimpleRequestMethod, route: TProvidedRoute]
+      : never[]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      'coreStage',
+      'action',
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      UndefinedRouteDefinition,
+      MergeRecordValidationSchemas<
+        TServerInputSchema,
+        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
+      >,
+      MergeRecordValidationSchemas<
+        TClientInputSchema,
+        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
+      >,
+      UndefinedQueryResultType,
+      EmptyProps,
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+    >
+  >
+  lets<
+    TPointName extends PointName,
     TProvidedRoute extends RouteDefinition = TPointName,
     TCheckError = AssertInputSchemaNotWider<
       RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
@@ -3695,7 +3768,7 @@ export class Point0<
     TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
   >
   lets<
-    TNewLetsReadyPointType extends Exclude<ReadyPointType, 'page' | 'layout' | 'component' | 'provider'>,
+    TNewLetsReadyPointType extends Exclude<ReadyPointType, 'page' | 'layout' | 'component' | 'provider' | 'action'>,
     TPointName extends PointName,
   >(
     ...args: TPointType extends 'root' | 'base'
@@ -3721,7 +3794,22 @@ export class Point0<
   >
   lets(...args: any[]) {
     const _fsLocation = _point0_env.mode.is.production || _point0_env.build.was ? undefined : getCallerLocation(3)
-    const [letsReadyPointType, pointName, route] = args as [ReadyPointType, PointName, AnyRoute | string | undefined]
+    const [letsReadyPointType, pointName, method, route] = (() => {
+      if (args[0] === 'action') {
+        return [args[0], args[1], args[2], args[3]] as [
+          ReadyPointType,
+          PointName,
+          string | undefined,
+          AnyRoute | string | undefined,
+        ]
+      }
+      return [args[0], args[1], undefined, args[3]] as [
+        ReadyPointType,
+        PointName,
+        undefined,
+        AnyRoute | string | undefined,
+      ]
+    })()
     const prevRoute = this.route
     const newRoute = (() => {
       if (letsReadyPointType === 'page') {
@@ -3748,23 +3836,56 @@ export class Point0<
         }
         return Route0.create(dedupeSlashes(`/${route.definition}`))
       }
+      if (letsReadyPointType === 'action') {
+        return undefined
+      }
       return prevRoute
     })()
+    const endpointRoute = (() => {
+      if (letsReadyPointType === 'action') {
+        if (!route) {
+          return Route0.create(dedupeSlashes(`/${this._endpointPrefix}/action/${pointName}`))
+        }
+        if (typeof route === 'string') {
+          return Route0.create(dedupeSlashes(`/${route}`))
+        }
+        return Route0.create(dedupeSlashes(`/${route.definition}`))
+      } else {
+        return Route0.create(dedupeSlashes(`/${this._endpointPrefix}/${letsReadyPointType}/${pointName}`))
+      }
+    })()
+    const endpoint = {
+      method: method ?? 'POST',
+      route: endpointRoute,
+    }
     const scopes = letsReadyPointType === 'root' ? [pointName, ...this.scopes] : this.scopes
     const scope = letsReadyPointType === 'root' ? pointName : this.scope
     if (letsReadyPointType === 'root' && pointName === 'plugin') {
       throw new Error('Cannot create root point with "plugin" scope, it is internally used name for plugin points')
     }
-    const newInputExecuteAction =
-      prevRoute === newRoute || !newRoute
-        ? []
-        : [
-            {
-              type: 'input' as const,
-              schema: Point0.customValidationFnToInputSchema((input) => newRoute.parseFlatInput(input)),
-              unstableId: 0,
-            },
-          ]
+
+    const routeToInputExecuteAction = (route: AnyRoute | undefined) => {
+      if (!route || route.getFlatKeys().length === 0) {
+        return []
+      }
+      return [
+        {
+          type: 'input' as const,
+          schema: Point0.customValidationFnToInputSchema((input) => route.parseFlatInput(input)),
+          unstableId: Point0._getNextUnstableId(),
+        },
+      ]
+    }
+    const newInputExecuteAction = (() => {
+      if (letsReadyPointType === 'action') {
+        return routeToInputExecuteAction(endpointRoute)
+      } else {
+        if (prevRoute?.definition === newRoute?.definition) {
+          return []
+        }
+        return routeToInputExecuteAction(newRoute)
+      }
+    })()
 
     const serverExecuteActionsAll = [...this._serverExecuteActions, ...newInputExecuteAction]
     const serverExecuteActionsSuitable = serverExecuteActionsAll.filter((action) => action.type !== 'loader')
@@ -3786,6 +3907,7 @@ export class Point0<
       scopes,
       _serverExecuteActions: serverExecuteActionsSuitable,
       _clientExecuteActions: clientExecuteActionsSuitable,
+      _endpoint: endpoint,
       _mountActions: mountActionsSuitable,
       type: 'coreStage',
       _letsReadyPointType: letsReadyPointType,
