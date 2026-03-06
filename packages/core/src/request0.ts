@@ -257,6 +257,8 @@ export type RequestMethod =
   | 'UNLOCK'
   | 'UNSUBSCRIBE'
 
+export type WideRequestMethod = RequestMethod | (string & {})
+
 export interface RequestFrom {
   ips: string[]
   ip: string | null

@@ -25,10 +25,6 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
             }
           }
 
-          // if (filepath.includes('page.tsx')) {
-          //   console.log(111, result.code)
-          // }
-
           return {
             // contents: appendInlineSourceMap(result.code, result.map),
             contents: result.code,

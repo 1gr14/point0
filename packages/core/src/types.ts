@@ -1,10 +1,15 @@
 import type {
   AnyLocation,
+  AnyRoute,
   DescendantLocation,
   ExactLocation,
   Extended,
   FlatInputStringOnly,
   FlatOutput,
+  ParamsInputStringOnly,
+  ParamsOutput,
+  StrictSearchInputStringOnly,
+  StrictSearchOutput,
 } from '@devp0nt/route0'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
 import type {
@@ -85,6 +90,7 @@ export type Infer<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = {
   PointType: TPointType
   LetsReadyPointType: TLetsReadyPointType
@@ -134,6 +140,7 @@ export type Infer<
   ClientQueryData: QueriedData<TQueryResultType, TClientLoaderOutput>
   QueriedData: FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
   ServerExecuteResult: ServerExecuteResult<TCtx, TServerLoaderOutput, TError>
+  Action: TActionDefinition
 }
 
 // points types
@@ -192,6 +199,7 @@ export type AnyPoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = Point0<
   TPointType,
   TLetsReadyPointType,
@@ -208,7 +216,8 @@ export type AnyPoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions
+  TQueriesDefinitions,
+  TActionDefinition
 >
 
 export type RootPoint<
@@ -226,6 +235,7 @@ export type RootPoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'root',
   UndefinedReadyPointType,
@@ -242,7 +252,8 @@ export type RootPoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions
+  TQueriesDefinitions,
+  TActionDefinition
 >
 
 export type PluginPoint<
@@ -260,6 +271,7 @@ export type PluginPoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'plugin',
   UndefinedReadyPointType,
@@ -276,7 +288,8 @@ export type PluginPoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions
+  TQueriesDefinitions,
+  TActionDefinition
 >
 
 export type BasePoint<
@@ -294,6 +307,7 @@ export type BasePoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'base',
   UndefinedReadyPointType,
@@ -310,7 +324,8 @@ export type BasePoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions
+  TQueriesDefinitions,
+  TActionDefinition
 >
 
 export type PagePoint<
@@ -328,6 +343,7 @@ export type PagePoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'page',
   UndefinedReadyPointType,
@@ -344,7 +360,8 @@ export type PagePoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions
+  TQueriesDefinitions,
+  TActionDefinition
 >
 
 export type LayoutPoint<
@@ -362,6 +379,7 @@ export type LayoutPoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'layout',
   UndefinedReadyPointType,
@@ -378,7 +396,8 @@ export type LayoutPoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions
+  TQueriesDefinitions,
+  TActionDefinition
 >
 
 export type ReadyPoint<
@@ -397,6 +416,7 @@ export type ReadyPoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   TPointType,
   UndefinedReadyPointType,
@@ -413,7 +433,8 @@ export type ReadyPoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions
+  TQueriesDefinitions,
+  TActionDefinition
 >
 
 // input
@@ -429,6 +450,10 @@ export type RouteDefinitionToRecordValidationSchema<TRouteDefinition extends Rou
   FlatInputStringOnly<TRouteDefinition>,
   FlatOutput<TRouteDefinition>
 >
+export type RouteDefinitionParamsToRecordValidationSchema<TRouteDefinition extends RouteDefinition> =
+  RecordValidationSchema<ParamsInputStringOnly<TRouteDefinition>, ParamsOutput<TRouteDefinition>>
+export type RouteDefinitionSearchToRecordValidationSchema<TRouteDefinition extends RouteDefinition> =
+  RecordValidationSchema<StrictSearchInputStringOnly<TRouteDefinition>, StrictSearchOutput<TRouteDefinition>>
 export type CustomValidationFn<TOutput extends InputParsed = InputParsed> = (data: InputRawUnknown) => TOutput
 export type RecordSchemaToCustomValidationFn<T extends RecordValidationSchema> = (
   data: InputRawUnknown,
@@ -518,6 +543,14 @@ export type IsRouteDefinitionInputExtends<
     : false
   : true
 
+export type AssertNewInputSchemaNotWider<
+  TNewInputSchema extends InputSchema | UndefinedInputSchema,
+  TPrevInputSchema extends InputSchema | UndefinedInputSchema,
+  TWhat extends string,
+> =
+  IsInputSchemaConflicts<TPrevInputSchema, TNewInputSchema> extends true
+    ? ShowError<`Previous provided ${TWhat} schema is not assignable to new schema`>
+    : unknown
 export type AssertInputSchemaNotWider<
   TNewInputSchema extends InputSchema | UndefinedInputSchema,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
@@ -620,6 +653,39 @@ export type SafeParseInputsResult<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TError = Error,
 > = SafeParseInputResult<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>, TError>
+
+// action
+
+export type ActionDefinition<
+  TMethod extends string,
+  TRoute extends RouteDefinition,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+> = {
+  method: TMethod
+  route: TRoute
+  params: TParamsSchema
+  search: TSearchSchema
+  body: TBodySchema
+}
+export type AnyActionDefinition = ActionDefinition<any, any, any, any, any>
+export type UndefinedActionDefinition = undefined
+export type ActionRuntimeDefinition = {
+  method: string
+  route: AnyRoute
+}
+
+export type ActionParamsSchema<TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition> =
+  TActionDefinition extends ActionDefinition<any, any, infer TParamsSchema, any, any>
+    ? TParamsSchema
+    : UndefinedInputSchema
+export type ActionSearchSchema<TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition> =
+  TActionDefinition extends ActionDefinition<any, any, any, infer TSearchSchema, any>
+    ? TSearchSchema
+    : UndefinedInputSchema
+export type ActionBodySchema<TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition> =
+  TActionDefinition extends ActionDefinition<any, any, any, any, infer TBodySchema> ? TBodySchema : UndefinedInputSchema
 
 // utils
 
@@ -933,7 +999,7 @@ export type UndefinedClientResponse = undefined
 export type UndefinedLastDataOrResponse = undefined
 
 export type ServerExecuteFn = <
-  TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
 >(
   point: TPoint,
   ...args: TPoint['Infer']['IsServerInputOptional'] extends true
@@ -1057,10 +1123,25 @@ export type LoaderDataFn<
   | (TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput)
 
 export type ServerExecuteAction<
-  TType extends 'ctx' | 'loader' | 'input' | 'pluginStart' | 'pluginEnd' =
+  TType extends
     | 'ctx'
     | 'loader'
     | 'input'
+    | 'body'
+    | 'params'
+    | 'search'
+    | 'headers'
+    | 'cookies'
+    | 'pluginStart'
+    | 'pluginEnd' =
+    | 'ctx'
+    | 'loader'
+    | 'input'
+    | 'body'
+    | 'params'
+    | 'search'
+    | 'headers'
+    | 'cookies'
     | 'pluginStart'
     | 'pluginEnd',
 > = TType extends 'ctx'
@@ -1077,12 +1158,22 @@ export type ServerExecuteAction<
         unstableId: number
       }
     : TType extends 'input'
-      ? { type: 'input'; schema: InputSchema; unstableId: number }
-      : TType extends 'pluginStart'
-        ? { type: 'pluginStart'; name: string; unstableId: number }
-        : TType extends 'pluginEnd'
-          ? { type: 'pluginEnd'; name: string; unstableId: number }
-          : never
+      ? { type: 'input'; schema: InputSchema; unstableId: number; policy: 'append' | 'prepend' }
+      : TType extends 'body'
+        ? { type: 'body'; schema: InputSchema; unstableId: number }
+        : TType extends 'params'
+          ? { type: 'params'; schema: InputSchema; unstableId: number }
+          : TType extends 'search'
+            ? { type: 'search'; schema: InputSchema; unstableId: number }
+            : TType extends 'headers'
+              ? { type: 'headers'; schema: InputSchema; unstableId: number }
+              : TType extends 'cookies'
+                ? { type: 'cookies'; schema: InputSchema; unstableId: number }
+                : TType extends 'pluginStart'
+                  ? { type: 'pluginStart'; name: string; unstableId: number }
+                  : TType extends 'pluginEnd'
+                    ? { type: 'pluginEnd'; name: string; unstableId: number }
+                    : never
 
 export type ClientExecuteAction<
   TType extends 'loader' | 'input' | 'pluginStart' | 'pluginEnd' = 'loader' | 'input' | 'pluginStart' | 'pluginEnd',
@@ -1093,7 +1184,7 @@ export type ClientExecuteAction<
       unstableId: number
     }
   : TType extends 'input'
-    ? { type: 'input'; schema: InputSchema; unstableId: number }
+    ? { type: 'input'; schema: InputSchema; unstableId: number; policy: 'append' | 'prepend' }
     : TType extends 'pluginStart'
       ? { type: 'pluginStart'; name: string; unstableId: number }
       : TType extends 'pluginEnd'
@@ -1324,17 +1415,40 @@ export type MiddlewareFn<TError extends ErrorPoint0> = (
 
 export type AssertNoForbiddenMethodsIfNotSuitableStage<
   TPointType extends PointType,
-  TMethod extends 'ctx' | 'loader' | 'use' | 'clientLoader' | 'input' | 'sharedInput' | 'clientInput',
+  TMethod extends
+    | 'ctx'
+    | 'loader'
+    | 'use'
+    | 'clientLoader'
+    | 'input'
+    | 'sharedInput'
+    | 'clientInput'
+    | 'params'
+    | 'search'
+    | 'body'
+    | 'headers'
+    | 'cookies',
 > = TPointType extends 'serverStage'
   ? TMethod extends never // nothing is forbiden
     ? ShowError<`You can not use ${TMethod}() after calling .loader()`>
     : unknown
   : TPointType extends 'clientStage'
-    ? TMethod extends 'loader' | 'ctx' | 'input' | 'sharedInput'
+    ? TMethod extends 'loader' | 'ctx' | 'input' | 'sharedInput' | 'params' | 'search' | 'body' | 'headers' | 'cookies'
       ? ShowError<`You can not use ${TMethod}() in client loaders stage`>
       : unknown
     : TPointType extends 'finalStage'
-      ? TMethod extends 'loader' | 'ctx' | 'input' | 'sharedInput' | 'clientLoader' | 'clientInput'
+      ? TMethod extends
+          | 'loader'
+          | 'ctx'
+          | 'input'
+          | 'sharedInput'
+          | 'clientLoader'
+          | 'clientInput'
+          | 'params'
+          | 'search'
+          | 'body'
+          | 'headers'
+          | 'cookies'
         ? ShowError<`You can not use ${TMethod}() in final stage, add it somewhere earlier`>
         : unknown
       : unknown
@@ -1366,6 +1480,7 @@ export type NiceRootStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -1383,7 +1498,8 @@ export type NiceRootStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   | 'root'
   | 'errorClass'
@@ -1450,6 +1566,7 @@ export type NicePluginStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -1467,7 +1584,8 @@ export type NicePluginStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   | 'plugin'
   | 'use'
@@ -1536,6 +1654,7 @@ export type NiceBaseStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -1553,7 +1672,8 @@ export type NiceBaseStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   | 'base'
   | 'on'
@@ -1616,6 +1736,7 @@ export type NicePageStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -1633,7 +1754,8 @@ export type NicePageStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   | 'page'
   | 'on'
@@ -1685,6 +1807,7 @@ export type NiceComponentStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -1702,7 +1825,8 @@ export type NiceComponentStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   | 'component'
   | 'on'
@@ -1747,6 +1871,7 @@ export type NiceActionStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -1764,7 +1889,8 @@ export type NiceActionStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   | 'action'
   | 'on'
@@ -1798,6 +1924,7 @@ export type NiceQueryStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -1815,7 +1942,8 @@ export type NiceQueryStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   | 'query'
   | 'on'
@@ -1853,6 +1981,7 @@ export type NiceInfiniteQueryStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -1870,7 +1999,8 @@ export type NiceInfiniteQueryStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   | 'infiniteQuery'
   | 'on'
@@ -1908,6 +2038,7 @@ export type NiceMutationStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -1925,7 +2056,8 @@ export type NiceMutationStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   | 'mutation'
   | 'on'
@@ -1963,6 +2095,7 @@ export type NiceLayoutStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -1980,7 +2113,8 @@ export type NiceLayoutStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   | 'layout'
   | 'on'
@@ -2038,6 +2172,7 @@ export type NiceProviderStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2055,7 +2190,8 @@ export type NiceProviderStagePoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   | 'provider'
   | 'on'
@@ -2101,6 +2237,7 @@ export type NiceStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = TLetsReadyPointType extends 'root'
   ? NiceRootStagePoint<
       TPointType,
@@ -2118,7 +2255,8 @@ export type NiceStagePoint<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >
   : TLetsReadyPointType extends 'plugin'
     ? NicePluginStagePoint<
@@ -2137,7 +2275,8 @@ export type NiceStagePoint<
         TQueryResultType,
         TOuterProps,
         TInnerProps,
-        TQueriesDefinitions
+        TQueriesDefinitions,
+        TActionDefinition
       >
     : TLetsReadyPointType extends 'base'
       ? NiceBaseStagePoint<
@@ -2156,7 +2295,8 @@ export type NiceStagePoint<
           TQueryResultType,
           TOuterProps,
           TInnerProps,
-          TQueriesDefinitions
+          TQueriesDefinitions,
+          TActionDefinition
         >
       : TLetsReadyPointType extends 'page'
         ? NicePageStagePoint<
@@ -2175,7 +2315,8 @@ export type NiceStagePoint<
             TQueryResultType,
             TOuterProps,
             TInnerProps,
-            TQueriesDefinitions
+            TQueriesDefinitions,
+            TActionDefinition
           >
         : TLetsReadyPointType extends 'component'
           ? NiceComponentStagePoint<
@@ -2194,7 +2335,8 @@ export type NiceStagePoint<
               TQueryResultType,
               TOuterProps,
               TInnerProps,
-              TQueriesDefinitions
+              TQueriesDefinitions,
+              TActionDefinition
             >
           : TLetsReadyPointType extends 'action'
             ? NiceActionStagePoint<
@@ -2213,7 +2355,8 @@ export type NiceStagePoint<
                 TQueryResultType,
                 TOuterProps,
                 TInnerProps,
-                TQueriesDefinitions
+                TQueriesDefinitions,
+                TActionDefinition
               >
             : TLetsReadyPointType extends 'query'
               ? NiceQueryStagePoint<
@@ -2232,7 +2375,8 @@ export type NiceStagePoint<
                   TQueryResultType,
                   TOuterProps,
                   TInnerProps,
-                  TQueriesDefinitions
+                  TQueriesDefinitions,
+                  TActionDefinition
                 >
               : TLetsReadyPointType extends 'infiniteQuery'
                 ? NiceInfiniteQueryStagePoint<
@@ -2251,7 +2395,8 @@ export type NiceStagePoint<
                     TQueryResultType,
                     TOuterProps,
                     TInnerProps,
-                    TQueriesDefinitions
+                    TQueriesDefinitions,
+                    TActionDefinition
                   >
                 : TLetsReadyPointType extends 'mutation'
                   ? NiceMutationStagePoint<
@@ -2270,7 +2415,8 @@ export type NiceStagePoint<
                       TQueryResultType,
                       TOuterProps,
                       TInnerProps,
-                      TQueriesDefinitions
+                      TQueriesDefinitions,
+                      TActionDefinition
                     >
                   : TLetsReadyPointType extends 'layout'
                     ? NiceLayoutStagePoint<
@@ -2289,7 +2435,8 @@ export type NiceStagePoint<
                         TQueryResultType,
                         TOuterProps,
                         TInnerProps,
-                        TQueriesDefinitions
+                        TQueriesDefinitions,
+                        TActionDefinition
                       >
                     : TLetsReadyPointType extends 'provider'
                       ? NiceProviderStagePoint<
@@ -2308,7 +2455,8 @@ export type NiceStagePoint<
                           TQueryResultType,
                           TOuterProps,
                           TInnerProps,
-                          TQueriesDefinitions
+                          TQueriesDefinitions,
+                          TActionDefinition
                         >
                       : never
 
@@ -2331,6 +2479,7 @@ export type NiceRootReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2348,7 +2497,8 @@ export type NiceRootReadyPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   'lets' | 'point' | 'type' | 'Infer'
 >
@@ -2370,6 +2520,7 @@ export type NicePluginReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2387,7 +2538,8 @@ export type NicePluginReadyPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   'point' | 'type' | 'Infer'
 >
@@ -2408,7 +2560,8 @@ export type NicePristinePluginReadyPoint = NicePluginReadyPoint<
   UndefinedQueryResultType,
   EmptyProps,
   EmptyProps,
-  []
+  [],
+  UndefinedActionDefinition
 >
 
 export type NiceBaseReadyPoint<
@@ -2428,6 +2581,7 @@ export type NiceBaseReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2445,7 +2599,8 @@ export type NiceBaseReadyPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   'lets' | 'point' | 'type' | 'Infer'
 >
@@ -2495,6 +2650,7 @@ export type NicePageReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2512,7 +2668,8 @@ export type NicePageReadyPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Page' | 'X' | 'route'>
 >
@@ -2534,6 +2691,7 @@ export type NiceComponentReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2551,7 +2709,8 @@ export type NiceComponentReadyPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Component' | 'X'>
 >
@@ -2573,6 +2732,7 @@ export type NiceLayoutReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2590,7 +2750,8 @@ export type NiceLayoutReadyPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   WithQueryIfSuitable<
     TServerLoaderOutput,
@@ -2616,6 +2777,7 @@ export type NiceActionReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2633,7 +2795,8 @@ export type NiceActionReadyPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   'point' | 'type' | 'Infer' | 'fetch'
 >
@@ -2655,6 +2818,7 @@ export type NiceQueryReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2672,7 +2836,8 @@ export type NiceQueryReadyPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
 >
@@ -2694,6 +2859,7 @@ export type NiceInfiniteQueryReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2711,7 +2877,8 @@ export type NiceInfiniteQueryReadyPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
 >
@@ -2733,6 +2900,7 @@ export type NiceMutationReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2750,7 +2918,8 @@ export type NiceMutationReadyPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   WithFetchIfHasServerLoader<
     TServerLoaderOutput,
@@ -2775,6 +2944,7 @@ export type NiceProviderReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2792,7 +2962,8 @@ export type NiceProviderReadyPoint<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >,
   WithQueryIfSuitable<
     TServerLoaderOutput,
@@ -2818,6 +2989,7 @@ export type NiceReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = TPointType extends 'root'
   ? NiceRootReadyPoint<
       TPointType,
@@ -2835,7 +3007,8 @@ export type NiceReadyPoint<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >
   : TPointType extends 'plugin'
     ? NicePluginReadyPoint<
@@ -2854,7 +3027,8 @@ export type NiceReadyPoint<
         TQueryResultType,
         TOuterProps,
         TInnerProps,
-        TQueriesDefinitions
+        TQueriesDefinitions,
+        TActionDefinition
       >
     : TPointType extends 'base'
       ? NiceBaseReadyPoint<
@@ -2873,7 +3047,8 @@ export type NiceReadyPoint<
           TQueryResultType,
           TOuterProps,
           TInnerProps,
-          TQueriesDefinitions
+          TQueriesDefinitions,
+          TActionDefinition
         >
       : TPointType extends 'page'
         ? NicePageReadyPoint<
@@ -2892,7 +3067,8 @@ export type NiceReadyPoint<
             TQueryResultType,
             TOuterProps,
             TInnerProps,
-            TQueriesDefinitions
+            TQueriesDefinitions,
+            TActionDefinition
           >
         : TPointType extends 'component'
           ? NiceComponentReadyPoint<
@@ -2911,7 +3087,8 @@ export type NiceReadyPoint<
               TQueryResultType,
               TOuterProps,
               TInnerProps,
-              TQueriesDefinitions
+              TQueriesDefinitions,
+              TActionDefinition
             >
           : TPointType extends 'action'
             ? NiceActionReadyPoint<
@@ -2930,7 +3107,8 @@ export type NiceReadyPoint<
                 TQueryResultType,
                 TOuterProps,
                 TInnerProps,
-                TQueriesDefinitions
+                TQueriesDefinitions,
+                TActionDefinition
               >
             : TPointType extends 'query'
               ? NiceQueryReadyPoint<
@@ -2949,7 +3127,8 @@ export type NiceReadyPoint<
                   TQueryResultType,
                   TOuterProps,
                   TInnerProps,
-                  TQueriesDefinitions
+                  TQueriesDefinitions,
+                  TActionDefinition
                 >
               : TPointType extends 'infiniteQuery'
                 ? NiceInfiniteQueryReadyPoint<
@@ -2968,7 +3147,8 @@ export type NiceReadyPoint<
                     TQueryResultType,
                     TOuterProps,
                     TInnerProps,
-                    TQueriesDefinitions
+                    TQueriesDefinitions,
+                    TActionDefinition
                   >
                 : TPointType extends 'mutation'
                   ? NiceMutationReadyPoint<
@@ -2987,7 +3167,8 @@ export type NiceReadyPoint<
                       TQueryResultType,
                       TOuterProps,
                       TInnerProps,
-                      TQueriesDefinitions
+                      TQueriesDefinitions,
+                      TActionDefinition
                     >
                   : TPointType extends 'layout'
                     ? NiceLayoutReadyPoint<
@@ -3006,7 +3187,8 @@ export type NiceReadyPoint<
                         TQueryResultType,
                         TOuterProps,
                         TInnerProps,
-                        TQueriesDefinitions
+                        TQueriesDefinitions,
+                        TActionDefinition
                       >
                     : TPointType extends 'provider'
                       ? NiceProviderReadyPoint<
@@ -3025,7 +3207,8 @@ export type NiceReadyPoint<
                           TQueryResultType,
                           TOuterProps,
                           TInnerProps,
-                          TQueriesDefinitions
+                          TQueriesDefinitions,
+                          TActionDefinition
                         >
                       : never
 
@@ -3046,6 +3229,7 @@ export type AnyNiceReadyPoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = NiceReadyPoint<
   TPointType,
   TLetsReadyPointType,
@@ -3062,7 +3246,8 @@ export type AnyNiceReadyPoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions
+  TQueriesDefinitions,
+  TActionDefinition
 >
 export type AnyNiceRequestableReadyPoint<
   TPointType extends RequestableReadyPointType = RequestableReadyPointType,
@@ -3081,6 +3266,7 @@ export type AnyNiceRequestableReadyPoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = NiceReadyPoint<
   TPointType,
   TLetsReadyPointType,
@@ -3097,5 +3283,6 @@ export type AnyNiceRequestableReadyPoint<
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions
+  TQueriesDefinitions,
+  TActionDefinition
 >

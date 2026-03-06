@@ -191,7 +191,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
   // >
   async execute<
     TPoint extends
-      | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+      | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
       | ReadyPoint
       | undefined,
     TErrorClass extends ClassLikeError0<ErrorPoint0>,
@@ -202,10 +202,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     ErrorClass,
   }: ExecuteOptions<TPoint, TErrorClass>): Promise<
     ServerExecuteResult<
-      TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+      TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
         ? TPoint['Infer']['Ctx']
         : UnknownCtx,
-      TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+      TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
         ? TPoint['Infer']['ServerLoaderOutput']
         : UnknownData,
       // TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
@@ -760,7 +760,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
 export type ExecuteOptions<
   TPoint extends
     | ReadyPoint
-    | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+    | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
     | undefined,
   TErrorClass extends ClassLikeError0<ErrorPoint0>,
 > = {

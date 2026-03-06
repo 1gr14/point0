@@ -84,14 +84,22 @@ import type {
   WithSelfQueryIfShouldBeFinalized,
   WrapperComponentType,
 } from './mountable.js'
+import type { WideRequestMethod } from './request0.js'
 import type { RouterPageState } from './router.js'
 import { _usePageStateManager, useLocation, useRouterContext } from './router.js'
 import { superstore } from './super-store.js'
 import type {
+  ActionBodySchema,
+  ActionDefinition,
+  ActionParamsSchema,
+  ActionRuntimeDefinition,
+  ActionSearchSchema,
+  AnyActionDefinition,
   AnyPoint,
   AppendCtx,
   AppendCtxExposedKeys,
   AssertInputSchemaNotWider,
+  AssertNewInputSchemaNotWider,
   AssertNoArrayReturn,
   AssertNoForbiddenCtxExposedKeys,
   AssertNoForbiddenMethodsIfNotSuitableStage,
@@ -181,6 +189,8 @@ import type {
   RequiredCtx,
   RootPoint,
   RouteDefinition,
+  RouteDefinitionParamsToRecordValidationSchema,
+  RouteDefinitionSearchToRecordValidationSchema,
   RouteDefinitionToRecordValidationSchema,
   SafeParseInputResult,
   ScrollPositionGetter,
@@ -189,6 +199,7 @@ import type {
   ServerExecuteAction,
   ShowError,
   StagePointTypeOrNever,
+  UndefinedActionDefinition,
   UndefinedCtx,
   UndefinedCtxExposedKeys,
   UndefinedInputSchema,
@@ -297,6 +308,7 @@ export class Point0<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > {
   Infer: Infer<
     TPointType,
@@ -314,7 +326,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > = null as never
 
   point: typeof this // this, needed for generator to collect points
@@ -361,6 +374,8 @@ export class Point0<
   readonly _middlewares: MiddlewareFn<TError>[]
   _serverurl: string | undefined
   readonly _basepath: string | undefined
+  readonly _action: ActionRuntimeDefinition | undefined
+  readonly _endpointPrefix: string | undefined
   readonly type: TPointType
   private readonly _letsReadyPointType: TLetsReadyPointType
   readonly _transformer: DataTransformerExtended | undefined
@@ -501,6 +516,8 @@ export class Point0<
     _middlewares?: MiddlewareFn<TError>[] | undefined
     _serverurl?: string | undefined
     _basepath?: string | undefined
+    _action?: ActionRuntimeDefinition | undefined
+    _endpointPrefix?: string | undefined
     _transformer?: DataTransformerExtended | undefined
     _ssr?: boolean
     _eventerSubscriptions?: EventerSubscription<any, TError>[]
@@ -577,6 +594,8 @@ export class Point0<
     this._eventerSubscriptions = options._eventerSubscriptions ?? []
     this._serverurl = options._serverurl ?? undefined
     this._basepath = options._basepath ?? undefined
+    this._action = options._action ?? undefined
+    this._endpointPrefix = options._endpointPrefix ?? undefined
     this.type = options.type
     this._letsReadyPointType = options._letsReadyPointType
     this._defaultMutationOptions = options._defaultMutationOptions ?? {}
@@ -639,6 +658,7 @@ export class Point0<
     TOuterProps extends Props,
     TInnerProps extends Props,
     TQueriesDefinitions extends QueriesDefinitions,
+    TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
   >(overrides: {
     type?: TPointType
     scope?: PointsScope
@@ -652,6 +672,8 @@ export class Point0<
     _middlewares?: MiddlewareFn<TError>[]
     _serverurl?: string | undefined
     _basepath?: string | undefined
+    _action?: ActionRuntimeDefinition | undefined
+    _endpointPrefix?: string | undefined
     _transformer?: DataTransformerExtended | null
     _ssr?: boolean
     _eventerSubscriptions?: EventerSubscription<any, TError>[]
@@ -729,7 +751,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return new Point0<
       TPointType,
@@ -747,7 +770,8 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >({
       scope: overrides.scope ?? this.scope,
       scopes: overrides.scopes ?? this.scopes,
@@ -761,6 +785,8 @@ export class Point0<
       _middlewares: overrides._middlewares ?? [...this._middlewares],
       _serverurl: overrides._serverurl ?? this._serverurl,
       _basepath: overrides._basepath ?? this._basepath,
+      _action: overrides._action ?? this._action,
+      _endpointPrefix: overrides._endpointPrefix ?? this._endpointPrefix,
       _transformer: overrides._transformer ?? this._transformer,
       _ssr: overrides._ssr ?? this._ssr,
       _eventerSubscriptions: overrides._eventerSubscriptions ?? this._eventerSubscriptions,
@@ -839,7 +865,8 @@ export class Point0<
     UndefinedQueryResultType,
     EmptyProps,
     EmptyProps,
-    []
+    [],
+    UndefinedActionDefinition
   >
   static lets(
     pointType: 'plugin',
@@ -860,7 +887,8 @@ export class Point0<
     UndefinedQueryResultType,
     EmptyProps,
     EmptyProps,
-    []
+    [],
+    UndefinedActionDefinition
   >
   static lets(pointType: 'root' | 'plugin', pointName: string) {
     const _fsLocation = _point0_env.mode.is.production || _point0_env.build.was ? undefined : getCallerLocation(3)
@@ -892,6 +920,529 @@ export class Point0<
     }
   }
 
+  lets<
+    TMethod extends WideRequestMethod,
+    TProvidedRoute extends RouteDefinition = string,
+    TCheckError = AssertInputSchemaNotWider<
+      RouteDefinitionToRecordValidationSchema<TProvidedRoute>,
+      TServerInputSchema,
+      TClientInputSchema
+    >,
+  >(
+    ...args: TPointType extends 'root' | 'base'
+      ? [letsReadyPointType: 'action', pointName: string, method: TMethod, route: TProvidedRoute]
+      : never[]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      'coreStage',
+      'action',
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      TProvidedRoute,
+      // here we prepend types, becouse we want to keep previously parsed params and searcg if it was done
+      MergeRecordValidationSchemas<TServerInputSchema, RouteDefinitionToRecordValidationSchema<TProvidedRoute>>,
+      MergeRecordValidationSchemas<TClientInputSchema, RouteDefinitionToRecordValidationSchema<TProvidedRoute>>,
+      UndefinedQueryResultType,
+      EmptyProps,
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+      TActionDefinition extends ActionDefinition<any, any, infer TParamsSchema, infer TSearchSchema, infer TBodySchema>
+        ? ActionDefinition<
+            TMethod,
+            TProvidedRoute,
+            MergeRecordValidationSchemas<TParamsSchema, RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute>>,
+            MergeRecordValidationSchemas<TSearchSchema, RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute>>,
+            TBodySchema
+          >
+        : ActionDefinition<
+            TMethod,
+            TProvidedRoute,
+            RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute>,
+            RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute>,
+            UndefinedInputSchema
+          >
+    >
+  >
+  lets<
+    TMethod extends WideRequestMethod,
+    TProvidedRoute extends AnyRoute = AnyRoute<string>,
+    TCheckError = AssertInputSchemaNotWider<
+      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
+      TServerInputSchema,
+      TClientInputSchema
+    >,
+  >(
+    ...args: TPointType extends 'root' | 'base'
+      ? [letsReadyPointType: 'action', pointName: string, method: TMethod, route: TProvidedRoute]
+      : never[]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      'coreStage',
+      'action',
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      TProvidedRoute['definition'],
+      MergeRecordValidationSchemas<
+        TServerInputSchema,
+        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
+      >,
+      MergeRecordValidationSchemas<
+        TClientInputSchema,
+        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
+      >,
+      UndefinedQueryResultType,
+      EmptyProps,
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+      TActionDefinition extends ActionDefinition<any, any, infer TParamsSchema, infer TSearchSchema, infer TBodySchema>
+        ? ActionDefinition<
+            TMethod,
+            TProvidedRoute['definition'],
+            MergeRecordValidationSchemas<
+              TParamsSchema,
+              RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>
+            >,
+            MergeRecordValidationSchemas<
+              TSearchSchema,
+              RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute['definition']>
+            >,
+            TBodySchema
+          >
+        : ActionDefinition<
+            TMethod,
+            TProvidedRoute['definition'],
+            RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>,
+            RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute['definition']>,
+            UndefinedInputSchema
+          >
+    >
+  >
+  lets<
+    TPointName extends PointName,
+    TProvidedRoute extends RouteDefinition = TPointName,
+    TCheckError = AssertInputSchemaNotWider<
+      RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+      TServerInputSchema,
+      TClientInputSchema
+    > &
+      AssertRouteDefinitionInputExtends<TRouteDefinition, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+  >(
+    ...args: TPointType extends 'root' | 'base' | 'layout'
+      ? [letsReadyPointType: 'page', pointName: TPointName, route?: TProvidedRoute]
+      : never[]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      'coreStage',
+      'page',
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+      MergeRecordValidationSchemas<
+        TServerInputSchema,
+        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+      >,
+      MergeRecordValidationSchemas<
+        TClientInputSchema,
+        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+      >,
+      UndefinedQueryResultType,
+      EmptyProps,
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+      TActionDefinition
+    >
+  >
+  lets<
+    TPointName extends PointName,
+    TProvidedRoute extends AnyRoute,
+    TCheckError = AssertInputSchemaNotWider<
+      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
+      TServerInputSchema,
+      TClientInputSchema
+    > &
+      AssertRouteDefinitionInputExtends<TRouteDefinition, TProvidedRoute['definition']>,
+  >(
+    ...args: TPointType extends 'root' | 'base' | 'layout'
+      ? [letsReadyPointType: 'page', pointName: TPointName, route: TProvidedRoute]
+      : never[]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      'coreStage',
+      'page',
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
+      MergeRecordValidationSchemas<
+        TServerInputSchema,
+        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
+      >,
+      MergeRecordValidationSchemas<
+        TClientInputSchema,
+        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
+      >,
+      UndefinedQueryResultType,
+      EmptyProps,
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+      TActionDefinition
+    >
+  >
+  lets<
+    TPointName extends PointName,
+    TProvidedRoute extends RouteDefinition = '/',
+    TCheckError = AssertInputSchemaNotWider<
+      RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+      TServerInputSchema,
+      TClientInputSchema
+    > &
+      AssertRouteDefinitionInputExtends<TRouteDefinition, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+  >(
+    ...args: TPointType extends 'root' | 'base' | 'layout'
+      ? [letsReadyPointType: 'layout', pointName: TPointName, route?: TProvidedRoute]
+      : never[]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      'coreStage',
+      'layout',
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+      MergeRecordValidationSchemas<
+        TServerInputSchema,
+        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+      >,
+      MergeRecordValidationSchemas<
+        TClientInputSchema,
+        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+      >,
+      UndefinedQueryResultType,
+      EmptyProps,
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+      TActionDefinition
+    >
+  >
+  lets<
+    TPointName extends PointName,
+    TProvidedRoute extends AnyRoute,
+    TCheckError = AssertInputSchemaNotWider<
+      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
+      TServerInputSchema,
+      TClientInputSchema
+    > &
+      AssertRouteDefinitionInputExtends<TRouteDefinition, TProvidedRoute['definition']>,
+  >(
+    ...args: TPointType extends 'root' | 'base' | 'layout'
+      ? [letsReadyPointType: 'layout', pointName: TPointName, route: TProvidedRoute]
+      : never[]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      'coreStage',
+      'layout',
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
+      MergeRecordValidationSchemas<
+        TServerInputSchema,
+        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
+      >,
+      MergeRecordValidationSchemas<
+        TClientInputSchema,
+        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
+      >,
+      UndefinedQueryResultType,
+      EmptyProps,
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+      TActionDefinition
+    >
+  >
+  lets<TNewOuterProps extends Props = EmptyProps>(
+    ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'component', pointName: string] : never[]
+  ): NiceStagePoint<
+    'coreStage',
+    'component',
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    UndefinedLoaderOutput,
+    UndefinedLoaderOutput,
+    UndefinedMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    UndefinedQueryResultType,
+    TNewOuterProps,
+    TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
+    TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+    TActionDefinition
+  >
+  lets<TNewOuterProps extends Props = EmptyProps>(
+    ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'provider', pointName: string] : never[]
+  ): NiceStagePoint<
+    'coreStage',
+    'provider',
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    UndefinedLoaderOutput,
+    UndefinedLoaderOutput,
+    UndefinedMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    UndefinedQueryResultType,
+    TNewOuterProps,
+    TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
+    TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+    TActionDefinition
+  >
+  lets<
+    TNewLetsReadyPointType extends Exclude<ReadyPointType, 'page' | 'layout' | 'component' | 'provider'>,
+    TPointName extends PointName,
+  >(
+    ...args: TPointType extends 'root' | 'base'
+      ? [letsReadyPointType: TNewLetsReadyPointType, pointName: TPointName]
+      : never[]
+  ): NiceStagePoint<
+    'coreStage',
+    TNewLetsReadyPointType,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    UndefinedLoaderOutput,
+    UndefinedLoaderOutput,
+    UndefinedMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    UndefinedQueryResultType,
+    EmptyProps,
+    TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+    TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+    TActionDefinition
+  >
+  lets(...args: any[]) {
+    const _fsLocation = _point0_env.mode.is.production || _point0_env.build.was ? undefined : getCallerLocation(3)
+    const [letsReadyPointType, pointName, method, route] = (() => {
+      if (args[0] === 'action') {
+        return [args[0], args[1], args[2], args[3]] as [
+          ReadyPointType,
+          PointName,
+          string | undefined,
+          AnyRoute | string | undefined,
+        ]
+      }
+      return [args[0], args[1], undefined, args[2]] as [
+        ReadyPointType,
+        PointName,
+        undefined,
+        AnyRoute | string | undefined,
+      ]
+    })()
+
+    const prevRoute = this.route
+    const newRoute = (() => {
+      if (letsReadyPointType === 'page') {
+        if (typeof route === 'string' || !route) {
+          const routeOrPointName = route ?? pointName
+          if (routeOrPointName === '/') {
+            return prevRoute?.clone() ?? Route0.create('/')
+          }
+          return prevRoute
+            ? prevRoute.extend(routeOrPointName).clone()
+            : Route0.create(dedupeSlashes(`/${routeOrPointName}`))
+        }
+        return Route0.create(dedupeSlashes(`/${route.definition}`))
+      }
+      if (letsReadyPointType === 'layout') {
+        if (typeof route === 'string' || !route) {
+          const routeNormalized = route ?? '/'
+          if (routeNormalized === '/') {
+            return prevRoute?.clone() ?? Route0.create('/')
+          }
+          return prevRoute
+            ? prevRoute.extend(routeNormalized).clone()
+            : Route0.create(dedupeSlashes(`/${routeNormalized}`))
+        }
+        return Route0.create(dedupeSlashes(`/${route.definition}`))
+      }
+      if (letsReadyPointType === 'action') {
+        if (!route) {
+          return undefined // it will be thrown as error
+        }
+        if (typeof route === 'string') {
+          return Route0.create(dedupeSlashes(`/${route}`))
+        }
+        return Route0.create(dedupeSlashes(`/${route.definition}`))
+      }
+      return prevRoute
+    })()
+
+    const _action: ActionRuntimeDefinition | undefined = (() => {
+      if (letsReadyPointType !== 'action') {
+        return undefined
+      }
+      if (!newRoute) {
+        throw new Error(`Action route is required for action point ${this.toStringWithLocation()}`)
+      }
+      if (!method) {
+        throw new Error(`Method is required for action point ${this.toStringWithLocation()}`)
+      }
+      return {
+        method,
+        route: newRoute,
+      }
+    })()
+
+    const scopes = letsReadyPointType === 'root' ? [pointName, ...this.scopes] : this.scopes
+    const scope = letsReadyPointType === 'root' ? pointName : this.scope
+    if (letsReadyPointType === 'root' && pointName === 'plugin') {
+      throw new Error('Cannot create root point with "plugin" scope, it is internally used name for plugin points')
+    }
+
+    const { serverExecuteActionsAll, clientExecuteActionsAll } = (() => {
+      if (_action) {
+        return {
+          serverExecuteActionsAll: [
+            ...this._serverExecuteActions,
+            ...(_action.route.getParamsKeys().length === 0
+              ? []
+              : [
+                  {
+                    type: 'params' as const,
+                    schema: _action.route.paramsInputSchema,
+                    unstableId: Point0._getNextUnstableId(),
+                  },
+                ]),
+            ...(_action.route.getSearchKeys().length === 0
+              ? []
+              : [
+                  {
+                    type: 'search' as const,
+                    schema: _action.route.strictSearchInputSchema,
+                    unstableId: Point0._getNextUnstableId(),
+                  },
+                ]),
+          ],
+          clientExecuteActionsAll: [],
+        }
+      } else {
+        const schema =
+          newRoute?.definition === prevRoute?.definition || !newRoute || newRoute.getFlatKeys().length === 0
+            ? undefined
+            : newRoute.flatInputSchema
+        const executeAction = schema
+          ? [{ type: 'input' as const, schema, unstableId: Point0._getNextUnstableId(), policy: 'prepend' as const }]
+          : []
+        return {
+          serverExecuteActionsAll: [...this._serverExecuteActions, ...executeAction],
+          clientExecuteActionsAll: [...this._clientExecuteActions, ...executeAction],
+        }
+      }
+    })()
+
+    const serverExecuteActionsSuitable = serverExecuteActionsAll.filter((action) => action.type !== 'loader')
+    const clientExecuteActionsSuitable = clientExecuteActionsAll.filter((action) => action.type !== 'loader')
+
+    const mountActionsAll = [...this._mountActions]
+    const mountActionsSuitable =
+      this.type === 'base' || this.type === 'root'
+        ? mountActionsAll
+        : mountActionsAll.filter((action) => action.type === 'globalHead')
+    if (letsReadyPointType === 'component' || letsReadyPointType === 'provider') {
+      mountActionsSuitable.push({ type: 'selfProps', unstableId: Point0._getNextUnstableId(), ssr: this._ssr })
+    }
+
+    return this._continue({
+      scope,
+      scopes,
+      _serverExecuteActions: serverExecuteActionsSuitable,
+      _clientExecuteActions: clientExecuteActionsSuitable,
+      _mountActions: mountActionsSuitable,
+      type: 'coreStage',
+      _letsReadyPointType: letsReadyPointType,
+      name: pointName,
+      _fsLocation,
+      _action,
+      route: newRoute as never,
+      _page: undefined,
+      _component: undefined,
+      _layout: undefined,
+      _ProviderReactContext: undefined,
+      _useValue: undefined,
+      _layouts: this.type === 'layout' ? [...this._layouts, this as unknown as LayoutPoint] : [...this._layouts],
+      _serverurl: this._base?._serverurl,
+      _basepath: this._base?._basepath,
+      _defaultMutationOptions: this._base?._defaultMutationOptions,
+      _mutationOptions: {},
+      _defaultQueryOptions: this._base?._defaultQueryOptions,
+      _defaultInfiniteQueryOptions: this._base?._defaultInfiniteQueryOptions,
+      _defaultPageQueryOptions: this._base?._defaultPageQueryOptions,
+      _defaultComponentQueryOptions: this._base?._defaultComponentQueryOptions,
+      _defaultProviderQueryOptions: this._base?._defaultProviderQueryOptions,
+      _defaultLayoutQueryOptions: this._base?._defaultLayoutQueryOptions,
+      _queryOptions: {},
+      _infiniteQueryOptions: {} as never,
+      _fetchOptions: this._base?._fetchOptions,
+      _scrollPositionGetter: this._base?._scrollPositionGetter,
+      _scrollPositionSetter: this._base?._scrollPositionSetter,
+      _scrollPositionRestorePolicy: this._base?._scrollPositionRestorePolicy,
+      _polhPolicy: this._base?._polhPolicy,
+      _polhDuration: this._base?._polhDuration,
+      _ponPolicy: this._base?._ponPolicy,
+      _onPrefetchMountableFns: this._base?._onPrefetchMountableFns,
+      _errorComponent: undefined,
+      _layoutErrorComponent: this._base?._layoutErrorComponent as never,
+      _pageErrorComponent: this._base?._pageErrorComponent as never,
+      _componentErrorComponent: this._base?._componentErrorComponent as never,
+      _loadingComponent: undefined,
+      _layoutLoadingComponent: this._base?._layoutLoadingComponent as never,
+      _pageLoadingComponent: this._base?._pageLoadingComponent as never,
+      _componentLoadingComponent: this._base?._componentLoadingComponent as never,
+      X: null as never,
+    }) as never
+  }
+
   // root settings
 
   errorClass<TErrorClass extends ClassLikeError0<ErrorPoint0>>(
@@ -912,7 +1463,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue({
       _Error: ErrorClass as never,
@@ -937,7 +1489,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue({
       _serverurl: serverurl,
@@ -965,7 +1518,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     const normalizedBasepath = prependAndDeappendSlash(basepath) || '/'
     const route = Route0.create(dedupeSlashes(`/${normalizedBasepath}`))
@@ -1020,7 +1574,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   on(
     name: 'error',
@@ -1041,7 +1596,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   on<TEventNames extends Array<AnyEventerEventName>>(
     names: TEventNames,
@@ -1062,7 +1618,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   on(
     name: AnyEventerEventName | 'error' | '*' | Array<AnyEventerEventName>,
@@ -1094,7 +1651,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   serverOn(
     name: 'error',
@@ -1115,7 +1673,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   serverOn<TEventNames extends Array<ServerEventerEventName>>(
     names: TEventNames,
@@ -1136,7 +1695,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   serverOn(
     name: ServerEventerEventName | 'error' | '*' | Array<ServerEventerEventName>,
@@ -1168,7 +1728,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   clientOn(
     name: 'error',
@@ -1189,7 +1750,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   clientOn<TEventNames extends Array<ClientEventerEventName>>(
     names: TEventNames,
@@ -1210,7 +1772,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   clientOn(
     name: ClientEventerEventName | 'error' | '*' | Array<ClientEventerEventName>,
@@ -1241,7 +1804,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue({
       _ssr: ssr,
@@ -1266,7 +1830,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue({
       _defaultMutationOptions: mutationOptions,
@@ -1292,7 +1857,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   queryOptions(queryOptions: ExtraUseQueryOptions | undefined = {}) {
     return this._continue({
@@ -1318,7 +1884,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   infiniteQueryOptions(infiniteQueryOptions: PartialUseInfiniteQueryOptions | undefined = {}) {
     return this._continue({
@@ -1347,7 +1914,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue({
       _defaultPageQueryOptions: pageQueryOptions,
@@ -1372,7 +1940,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue({
       _defaultComponentQueryOptions: componentQueryOptions,
@@ -1397,7 +1966,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue({
       _defaultProviderQueryOptions: providerQueryOptions,
@@ -1422,7 +1992,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue({
       _defaultLayoutQueryOptions: layoutQueryOptions,
@@ -1447,7 +2018,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     const newFetchOptionsFn: FetchOptionsFn = () => {
       const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
@@ -1492,7 +2064,8 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >
+    >,
+    TActionDefinition
   >
   error(errorComponent: ErrorComponentType<any, any> | undefined) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
@@ -1547,7 +2120,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   layoutError(layoutErrorComponent: ErrorComponentType<any, TError> | undefined) {
     return this._continue({
@@ -1576,7 +2150,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   pageError(pageErrorComponent: ErrorComponentType<any, TError> | undefined) {
     // this._applyComponentDisplayName(pageErrorComponent, {
@@ -1605,7 +2180,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   componentError(componentErrorComponent: ErrorComponentType<any, TError> | undefined) {
     return this._continue({
@@ -1634,7 +2210,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   layoutLoading(layoutLoadingComponent: LoadingComponentType<any> | undefined) {
     return this._continue({
@@ -1663,7 +2240,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   pageLoading(pageLoadingComponent: LoadingComponentType<any> | undefined) {
     // this._applyComponentDisplayName(pageLoadingComponent, {
@@ -1692,7 +2270,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   componentLoading(componentLoadingComponent: LoadingComponentType<any> | undefined) {
     return this._continue({
@@ -1733,7 +2312,8 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >
+    >,
+    TActionDefinition
   >
   loading(loadingComponent: LoadingComponentType<any> | undefined) {
     // this._applyComponentDisplayName(loadingComponent, {
@@ -1811,7 +2391,8 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >
+    >,
+    TActionDefinition
   >
   wrapper(wrapperComponent: WrapperComponentType<any, any, any, any, any> | undefined) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
@@ -1852,6 +2433,7 @@ export class Point0<
       any,
       any,
       'infiniteQuery' | 'query',
+      any,
       any,
       any,
       any
@@ -1935,7 +2517,8 @@ export class Point0<
         type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
         data: TPoint['Infer']['QueriedData']
       },
-    ]
+    ],
+    TActionDefinition
   >
   with<TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults>(
     withQueryFn: WithQueryFn<
@@ -1987,7 +2570,8 @@ export class Point0<
         : TNewQueries extends UseQueryOrInfiniteQueryResult
           ? [QueryDefinitionByQuery<TNewQueries>]
           : never),
-    ]
+    ],
+    TActionDefinition
   >
   with<TNewInnerProps extends Props>(
     withFn: WithFn<
@@ -2030,7 +2614,8 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >
+    >,
+    TActionDefinition
   >
   with(
     ...args:
@@ -2134,6 +2719,7 @@ export class Point0<
       'infiniteQuery' | 'query',
       any,
       any,
+      any,
       any
     >,
   >(
@@ -2185,7 +2771,8 @@ export class Point0<
         type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
         data: TPoint['Infer']['QueriedData']
       },
-    ]
+    ],
+    TActionDefinition
   >
   relatedQuery(
     ...args: [
@@ -2251,7 +2838,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   scrollPosition(
     selector: string,
@@ -2271,7 +2859,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   scrollPosition(
     getter: ScrollPositionGetter,
@@ -2292,7 +2881,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   scrollPosition(...args: [() => HTMLElement | null] | [string] | [ScrollPositionGetter, ScrollPositionSetter] | []) {
     // [] in case if it was shaked for serverNoSsr
@@ -2332,7 +2922,8 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >({
       _scrollPositionGetter: getter,
       _scrollPositionSetter: setter,
@@ -2358,7 +2949,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue<
       TPointType,
@@ -2375,7 +2967,8 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >({
       _scrollPositionRestorePolicy: typeof policy === 'function' ? policy : () => policy ?? null,
     }) as never
@@ -2403,7 +2996,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue({
       _middlewares: [...this._middlewares, middlewareFn],
@@ -2433,7 +3027,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue<
       TPointType,
@@ -2450,7 +3045,8 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
       _onPrefetchMountableFns: [...this._onPrefetchMountableFns, (fn ?? (() => undefined)) as never],
@@ -2476,7 +3072,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   prefetchPageOnLinkHover(
     policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
@@ -2506,7 +3103,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   prefetchPageOnNavigate(
     policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
@@ -2536,7 +3134,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue({
       _transformer: toExtendedTransformer(transformer),
@@ -2565,7 +3164,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TServerInputSchema, Ctx>>(
     ctxFn: TCtxFn &
@@ -2589,7 +3189,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   ctx<
     TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TServerInputSchema, Ctx>,
@@ -2615,7 +3216,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   ctx<TAppendCtx extends Ctx>(
     ctx: TAppendCtx &
@@ -2637,7 +3239,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   ctx<TAppendCtx extends Ctx>(
     ctx: TAppendCtx &
@@ -2661,7 +3264,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
     ctx: TAppendCtx &
@@ -2684,7 +3288,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   ctx(ctxOrFn?: CtxFn | Ctx, expose?: true | string[]) {
     const ctxFn =
@@ -2724,7 +3329,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   loader(loaderFn: LoaderDataFn<any, any, any, any, any> | LoaderResponseFn<any, any, any, any, any> | boolean) {
     return this._continue({
@@ -2774,7 +3380,7 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions // so here we not try to finalize query, becouse for mutation it is not needed at all, and in mountable can not happen becouse it can not return response
+    TQueriesDefinitions, // so here we not try to finalize query, becouse for mutation it is not needed at all, and in mountable can not happen becouse it can not return response
     // WithSelfQueryIfShouldBeFinalized<
     //   TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage',
     //   TLetsReadyPointType,
@@ -2782,6 +3388,7 @@ export class Point0<
     //   TNewClientLoaderOutput,
     //   TQueriesDefinitions
     // >
+    TActionDefinition
   >
   clientLoader(
     clientLoaderFn:
@@ -2846,7 +3453,8 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >
+    >,
+    TActionDefinition
   >
   mapper(mapperFn: MapperFn<any, any, any, any, any> | undefined) {
     // in case if we shake mapper for server without ssr side
@@ -2972,7 +3580,8 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >
+    >,
+    TActionDefinition
   >
   head<TStatus extends 'loading' | 'error' | 'success' | 'universal' | 'global'>(
     status: TStatus,
@@ -3019,7 +3628,8 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >
+    >,
+    TActionDefinition
   >
   head(..._args: any[]) {
     const args = _args as
@@ -3110,6 +3720,14 @@ export class Point0<
     }) as never
   }
 
+  private static _normalizeInputSchema(inputSchema: InputSchema | CustomValidationFn | undefined): InputSchema {
+    return !inputSchema
+      ? Point0.customValidationFnToInputSchema((x) => x)
+      : '~standard' in inputSchema
+        ? inputSchema
+        : Point0.customValidationFnToInputSchema(inputSchema)
+  }
+
   input<
     TNextServerInputSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
@@ -3134,7 +3752,8 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >
   >
   input<
@@ -3166,7 +3785,8 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >
   >
   input<
@@ -3197,7 +3817,8 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >
   >
   input<
@@ -3222,20 +3843,16 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >
   >
   input(...args: any[]) {
-    const inputSchema = args[0] as InputSchema | CustomValidationFn | undefined
-    const schema = !inputSchema
-      ? Point0.customValidationFnToInputSchema((x) => x)
-      : '~standard' in inputSchema
-        ? inputSchema
-        : Point0.customValidationFnToInputSchema(inputSchema)
+    const schema = Point0._normalizeInputSchema(args[0])
     return this._continue({
       _serverExecuteActions: [
         ...this._serverExecuteActions,
-        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId(), policy: 'append' },
       ],
     }) as never
   }
@@ -3264,7 +3881,8 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >
   >
   clientInput<
@@ -3296,7 +3914,8 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >
   >
   clientInput<
@@ -3327,7 +3946,8 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >
   >
   clientInput<
@@ -3354,20 +3974,16 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >
   >
   clientInput(...args: any[]) {
-    const inputSchema = args[0] as InputSchema | CustomValidationFn | undefined
-    const schema = !inputSchema
-      ? Point0.customValidationFnToInputSchema((x) => x)
-      : '~standard' in inputSchema
-        ? inputSchema
-        : Point0.customValidationFnToInputSchema(inputSchema)
+    const schema = Point0._normalizeInputSchema(args[0])
     return this._continue({
       _clientExecuteActions: [
         ...this._clientExecuteActions,
-        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId(), policy: 'append' },
       ],
     }) as never
   }
@@ -3396,7 +4012,8 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >
   >
   sharedInput<
@@ -3428,7 +4045,8 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >
   >
   sharedInput<
@@ -3459,7 +4077,8 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >
   >
   sharedInput<
@@ -3486,361 +4105,495 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TActionDefinition
     >
   >
   sharedInput(...args: any[]) {
-    const inputSchema = args[0] as InputSchema | CustomValidationFn | undefined
-    const schema = !inputSchema
-      ? Point0.customValidationFnToInputSchema((x) => x)
-      : '~standard' in inputSchema
-        ? inputSchema
-        : Point0.customValidationFnToInputSchema(inputSchema)
+    const schema = Point0._normalizeInputSchema(args[0])
     return this._continue({
       _serverExecuteActions: [
         ...this._serverExecuteActions,
-        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId(), policy: 'append' },
       ],
       _clientExecuteActions: [
         ...this._clientExecuteActions,
-        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId(), policy: 'append' },
       ],
     }) as never
   }
 
-  lets<
-    TPointName extends PointName,
-    TProvidedRoute extends RouteDefinition = TPointName,
-    TCheckError = AssertInputSchemaNotWider<
-      RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
-      TServerInputSchema,
-      TClientInputSchema
-    > &
-      AssertRouteDefinitionInputExtends<TRouteDefinition, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+  params<
+    TNextServerInputSchema extends InputSchema,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'params'> &
+      AssertNewInputSchemaNotWider<TNextServerInputSchema, ActionParamsSchema<TActionDefinition>, 'params'>,
   >(
-    ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsReadyPointType: 'page', pointName: TPointName, route?: TProvidedRoute]
-      : never[]
+    paramsSchema: TNextServerInputSchema,
   ): WithError<
     TCheckError,
     NiceStagePoint<
-      'coreStage',
-      'page',
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
       TError,
       TCtx,
       TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-      MergeRecordValidationSchemas<
-        TServerInputSchema,
-        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-      >,
-      MergeRecordValidationSchemas<
-        TClientInputSchema,
-        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-      >,
-      UndefinedQueryResultType,
-      EmptyProps,
-      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, TNextServerInputSchema>,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TActionDefinition extends ActionDefinition<
+        infer TMethod,
+        infer TActionRoute,
+        infer TParamsSchema,
+        infer TSearchSchema,
+        infer TBodySchema
+      >
+        ? ActionDefinition<
+            TMethod,
+            TActionRoute,
+            MergeRecordValidationSchemas<TParamsSchema, TNextServerInputSchema>,
+            TSearchSchema,
+            TBodySchema
+          >
+        : ActionDefinition<any, any, TNextServerInputSchema, UndefinedInputSchema, UndefinedInputSchema>
     >
   >
-  lets<
-    TPointName extends PointName,
-    TProvidedRoute extends AnyRoute,
-    TCheckError = AssertInputSchemaNotWider<
-      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
-      TServerInputSchema,
-      TClientInputSchema
-    > &
-      AssertRouteDefinitionInputExtends<TRouteDefinition, TProvidedRoute['definition']>,
+  params<
+    TInputRaw extends InputRaw,
+    TInputParsed extends InputParsed = TInputRaw,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'params'> &
+      AssertNewInputSchemaNotWider<
+        RecordValidationSchema<TInputRaw, TInputParsed>,
+        ActionParamsSchema<TActionDefinition>,
+        'params'
+      >,
   >(
-    ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsReadyPointType: 'page', pointName: TPointName, route: TProvidedRoute]
-      : never[]
+    // it is typeguard for overload
+    ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
   ): WithError<
     TCheckError,
     NiceStagePoint<
-      'coreStage',
-      'page',
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
       TError,
       TCtx,
       TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
-      MergeRecordValidationSchemas<
-        TServerInputSchema,
-        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-      >,
-      MergeRecordValidationSchemas<
-        TClientInputSchema,
-        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-      >,
-      UndefinedQueryResultType,
-      EmptyProps,
-      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TActionDefinition extends ActionDefinition<
+        infer TMethod,
+        infer TActionRoute,
+        infer TParamsSchema,
+        infer TSearchSchema,
+        infer TBodySchema
+      >
+        ? ActionDefinition<
+            TMethod,
+            TActionRoute,
+            MergeRecordValidationSchemas<TParamsSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+            TSearchSchema,
+            TBodySchema
+          >
+        : ActionDefinition<
+            any,
+            any,
+            RecordValidationSchema<TInputRaw, TInputParsed>,
+            UndefinedInputSchema,
+            UndefinedInputSchema
+          >
     >
   >
-  lets<
-    TPointName extends PointName,
-    TProvidedRoute extends RouteDefinition = '/',
-    TCheckError = AssertInputSchemaNotWider<
-      RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
-      TServerInputSchema,
-      TClientInputSchema
-    > &
-      AssertRouteDefinitionInputExtends<TRouteDefinition, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+  params<
+    TValidateFn extends CustomValidationFn<any>,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'params'> &
+      AssertNewInputSchemaNotWider<
+        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        ActionParamsSchema<TActionDefinition>,
+        'params'
+      >,
   >(
-    ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsReadyPointType: 'layout', pointName: TPointName, route?: TProvidedRoute]
-      : never[]
+    validateFn: TValidateFn & TCheckError,
   ): WithError<
     TCheckError,
     NiceStagePoint<
-      'coreStage',
-      'layout',
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
       TRequiredCtx,
       TError,
       TCtx,
       TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-      MergeRecordValidationSchemas<
-        TServerInputSchema,
-        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-      >,
-      MergeRecordValidationSchemas<
-        TClientInputSchema,
-        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-      >,
-      UndefinedQueryResultType,
-      EmptyProps,
-      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TActionDefinition extends ActionDefinition<
+        infer TMethod,
+        infer TActionRoute,
+        infer TParamsSchema,
+        infer TSearchSchema,
+        infer TBodySchema
+      >
+        ? ActionDefinition<
+            TMethod,
+            TActionRoute,
+            MergeRecordValidationSchemas<TParamsSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+            TSearchSchema,
+            TBodySchema
+          >
+        : ActionDefinition<
+            any,
+            any,
+            CustomValidationFnToRecordValidationSchema<TValidateFn>,
+            UndefinedInputSchema,
+            UndefinedInputSchema
+          >
     >
   >
-  lets<
-    TPointName extends PointName,
-    TProvidedRoute extends AnyRoute,
-    TCheckError = AssertInputSchemaNotWider<
-      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
-      TServerInputSchema,
-      TClientInputSchema
-    > &
-      AssertRouteDefinitionInputExtends<TRouteDefinition, TProvidedRoute['definition']>,
-  >(
-    ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsReadyPointType: 'layout', pointName: TPointName, route: TProvidedRoute]
-      : never[]
-  ): WithError<
-    TCheckError,
-    NiceStagePoint<
-      'coreStage',
-      'layout',
-      TRequiredCtx,
-      TError,
-      TCtx,
-      TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
-      MergeRecordValidationSchemas<
-        TServerInputSchema,
-        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-      >,
-      MergeRecordValidationSchemas<
-        TClientInputSchema,
-        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-      >,
-      UndefinedQueryResultType,
-      EmptyProps,
-      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-    >
-  >
-  lets<TNewOuterProps extends Props = EmptyProps>(
-    ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'component', pointName: string] : never[]
-  ): NiceStagePoint<
-    'coreStage',
-    'component',
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    UndefinedLoaderOutput,
-    UndefinedLoaderOutput,
-    UndefinedMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    UndefinedQueryResultType,
-    TNewOuterProps,
-    TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
-    TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-  >
-  lets<TNewOuterProps extends Props = EmptyProps>(
-    ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'provider', pointName: string] : never[]
-  ): NiceStagePoint<
-    'coreStage',
-    'provider',
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    UndefinedLoaderOutput,
-    UndefinedLoaderOutput,
-    UndefinedMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    UndefinedQueryResultType,
-    TNewOuterProps,
-    TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
-    TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-  >
-  lets<
-    TNewLetsReadyPointType extends Exclude<ReadyPointType, 'page' | 'layout' | 'component' | 'provider'>,
-    TPointName extends PointName,
-  >(
-    ...args: TPointType extends 'root' | 'base'
-      ? [letsReadyPointType: TNewLetsReadyPointType, pointName: TPointName]
-      : never[]
-  ): NiceStagePoint<
-    'coreStage',
-    TNewLetsReadyPointType,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    UndefinedLoaderOutput,
-    UndefinedLoaderOutput,
-    UndefinedMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    UndefinedQueryResultType,
-    EmptyProps,
-    TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-    TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-  >
-  lets(...args: any[]) {
-    const _fsLocation = _point0_env.mode.is.production || _point0_env.build.was ? undefined : getCallerLocation(3)
-    const [letsReadyPointType, pointName, route] = args as [ReadyPointType, PointName, AnyRoute | string | undefined]
-    const prevRoute = this.route
-    const newRoute = (() => {
-      if (letsReadyPointType === 'page') {
-        if (typeof route === 'string' || !route) {
-          const routeOrPointName = route ?? pointName
-          if (routeOrPointName === '/') {
-            return prevRoute?.clone() ?? Route0.create('/')
-          }
-          return prevRoute
-            ? prevRoute.extend(routeOrPointName).clone()
-            : Route0.create(dedupeSlashes(`/${routeOrPointName}`))
-        }
-        return Route0.create(dedupeSlashes(`/${route.definition}`))
-      }
-      if (letsReadyPointType === 'layout') {
-        if (typeof route === 'string' || !route) {
-          const routeNormalized = route ?? '/'
-          if (routeNormalized === '/') {
-            return prevRoute?.clone() ?? Route0.create('/')
-          }
-          return prevRoute
-            ? prevRoute.extend(routeNormalized).clone()
-            : Route0.create(dedupeSlashes(`/${routeNormalized}`))
-        }
-        return Route0.create(dedupeSlashes(`/${route.definition}`))
-      }
-      return prevRoute
-    })()
-    const scopes = letsReadyPointType === 'root' ? [pointName, ...this.scopes] : this.scopes
-    const scope = letsReadyPointType === 'root' ? pointName : this.scope
-    if (letsReadyPointType === 'root' && pointName === 'plugin') {
-      throw new Error('Cannot create root point with "plugin" scope, it is internally used name for plugin points')
-    }
-    const newInputExecuteAction =
-      prevRoute === newRoute || !newRoute
-        ? []
-        : [
-            {
-              type: 'input' as const,
-              schema: Point0.customValidationFnToInputSchema((input) => newRoute.parseFlatInput(input)),
-              unstableId: 0,
-            },
-          ]
-
-    const serverExecuteActionsAll = [...this._serverExecuteActions, ...newInputExecuteAction]
-    const serverExecuteActionsSuitable = serverExecuteActionsAll.filter((action) => action.type !== 'loader')
-
-    const clientExecuteActionsAll = [...this._clientExecuteActions, ...newInputExecuteAction]
-    const clientExecuteActionsSuitable = clientExecuteActionsAll.filter((action) => action.type !== 'loader')
-
-    const mountActionsAll = [...this._mountActions]
-    const mountActionsSuitable =
-      this.type === 'base' || this.type === 'root'
-        ? mountActionsAll
-        : mountActionsAll.filter((action) => action.type === 'globalHead')
-    if (letsReadyPointType === 'component' || letsReadyPointType === 'provider') {
-      mountActionsSuitable.push({ type: 'selfProps', unstableId: Point0._getNextUnstableId(), ssr: this._ssr })
-    }
-
+  params(...args: any[]) {
+    const schema = Point0._normalizeInputSchema(args[0])
     return this._continue({
-      scope,
-      scopes,
-      _serverExecuteActions: serverExecuteActionsSuitable,
-      _clientExecuteActions: clientExecuteActionsSuitable,
-      _mountActions: mountActionsSuitable,
-      type: 'coreStage',
-      _letsReadyPointType: letsReadyPointType,
-      name: pointName,
-      _fsLocation,
-      route: newRoute as never,
-      _page: undefined,
-      _component: undefined,
-      _layout: undefined,
-      _ProviderReactContext: undefined,
-      _useValue: undefined,
-      _layouts: this.type === 'layout' ? [...this._layouts, this as unknown as LayoutPoint] : [...this._layouts],
-      _serverurl: this._base?._serverurl,
-      _basepath: this._base?._basepath,
-      _defaultMutationOptions: this._base?._defaultMutationOptions,
-      _mutationOptions: {},
-      _defaultQueryOptions: this._base?._defaultQueryOptions,
-      _defaultInfiniteQueryOptions: this._base?._defaultInfiniteQueryOptions,
-      _defaultPageQueryOptions: this._base?._defaultPageQueryOptions,
-      _defaultComponentQueryOptions: this._base?._defaultComponentQueryOptions,
-      _defaultProviderQueryOptions: this._base?._defaultProviderQueryOptions,
-      _defaultLayoutQueryOptions: this._base?._defaultLayoutQueryOptions,
-      _queryOptions: {},
-      _infiniteQueryOptions: {} as never,
-      _fetchOptions: this._base?._fetchOptions,
-      _scrollPositionGetter: this._base?._scrollPositionGetter,
-      _scrollPositionSetter: this._base?._scrollPositionSetter,
-      _scrollPositionRestorePolicy: this._base?._scrollPositionRestorePolicy,
-      _polhPolicy: this._base?._polhPolicy,
-      _polhDuration: this._base?._polhDuration,
-      _ponPolicy: this._base?._ponPolicy,
-      _onPrefetchMountableFns: this._base?._onPrefetchMountableFns,
-      _errorComponent: undefined,
-      _layoutErrorComponent: this._base?._layoutErrorComponent as never,
-      _pageErrorComponent: this._base?._pageErrorComponent as never,
-      _componentErrorComponent: this._base?._componentErrorComponent as never,
-      _loadingComponent: undefined,
-      _layoutLoadingComponent: this._base?._layoutLoadingComponent as never,
-      _pageLoadingComponent: this._base?._pageLoadingComponent as never,
-      _componentLoadingComponent: this._base?._componentLoadingComponent as never,
-      X: null as never,
+      _serverExecuteActions: [
+        ...this._serverExecuteActions,
+        { type: 'params', schema, unstableId: Point0._getNextUnstableId() },
+      ],
+    }) as never
+  }
+
+  search<
+    TNextServerInputSchema extends InputSchema,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'search'> &
+      AssertNewInputSchemaNotWider<TNextServerInputSchema, ActionSearchSchema<TActionDefinition>, 'search'>,
+  >(
+    searchSchema: TNextServerInputSchema,
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, TNextServerInputSchema>,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TActionDefinition extends ActionDefinition<
+        infer TMethod,
+        infer TActionRoute,
+        infer TParamsSchema,
+        infer TSearchSchema,
+        infer TBodySchema
+      >
+        ? ActionDefinition<
+            TMethod,
+            TActionRoute,
+            TParamsSchema,
+            MergeRecordValidationSchemas<TSearchSchema, TNextServerInputSchema>,
+            TBodySchema
+          >
+        : ActionDefinition<any, any, UndefinedInputSchema, TNextServerInputSchema, UndefinedInputSchema>
+    >
+  >
+  search<
+    TInputRaw extends InputRaw,
+    TInputParsed extends InputParsed = TInputRaw,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'search'> &
+      AssertNewInputSchemaNotWider<
+        RecordValidationSchema<TInputRaw, TInputParsed>,
+        ActionSearchSchema<TActionDefinition>,
+        'search'
+      >,
+  >(
+    // it is typeguard for overload
+    ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TActionDefinition extends ActionDefinition<
+        infer TMethod,
+        infer TActionRoute,
+        infer TParamsSchema,
+        infer TSearchSchema,
+        infer TBodySchema
+      >
+        ? ActionDefinition<
+            TMethod,
+            TActionRoute,
+            TParamsSchema,
+            MergeRecordValidationSchemas<TSearchSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+            TBodySchema
+          >
+        : ActionDefinition<
+            any,
+            any,
+            UndefinedInputSchema,
+            RecordValidationSchema<TInputRaw, TInputParsed>,
+            UndefinedInputSchema
+          >
+    >
+  >
+  search<
+    TValidateFn extends CustomValidationFn<any>,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'search'> &
+      AssertNewInputSchemaNotWider<
+        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        ActionSearchSchema<TActionDefinition>,
+        'search'
+      >,
+  >(
+    validateFn: TValidateFn & TCheckError,
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TActionDefinition extends ActionDefinition<
+        infer TMethod,
+        infer TActionRoute,
+        infer TParamsSchema,
+        infer TSearchSchema,
+        infer TBodySchema
+      >
+        ? ActionDefinition<
+            TMethod,
+            TActionRoute,
+            TParamsSchema,
+            MergeRecordValidationSchemas<TSearchSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+            TBodySchema
+          >
+        : ActionDefinition<
+            any,
+            any,
+            UndefinedInputSchema,
+            CustomValidationFnToRecordValidationSchema<TValidateFn>,
+            UndefinedInputSchema
+          >
+    >
+  >
+  search(...args: any[]) {
+    const schema = Point0._normalizeInputSchema(args[0])
+    return this._continue({
+      _serverExecuteActions: [
+        ...this._serverExecuteActions,
+        { type: 'search', schema, unstableId: Point0._getNextUnstableId() },
+      ],
+    }) as never
+  }
+
+  body<
+    TNextServerInputSchema extends InputSchema,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'body'> &
+      AssertNewInputSchemaNotWider<TNextServerInputSchema, ActionBodySchema<TActionDefinition>, 'body'>,
+  >(
+    bodySchema: TNextServerInputSchema,
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, TNextServerInputSchema>,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TActionDefinition extends ActionDefinition<
+        infer TMethod,
+        infer TActionRoute,
+        infer TParamsSchema,
+        infer TSearchSchema,
+        infer TBodySchema
+      >
+        ? ActionDefinition<
+            TMethod,
+            TActionRoute,
+            TParamsSchema,
+            TSearchSchema,
+            MergeRecordValidationSchemas<TBodySchema, TNextServerInputSchema>
+          >
+        : ActionDefinition<any, any, UndefinedInputSchema, UndefinedInputSchema, TNextServerInputSchema>
+    >
+  >
+  body<
+    TInputRaw extends InputRaw,
+    TInputParsed extends InputParsed = TInputRaw,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'body'> &
+      AssertNewInputSchemaNotWider<
+        RecordValidationSchema<TInputRaw, TInputParsed>,
+        ActionBodySchema<TActionDefinition>,
+        'body'
+      >,
+  >(
+    // it is typeguard for overload
+    ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TActionDefinition extends ActionDefinition<
+        infer TMethod,
+        infer TActionRoute,
+        infer TParamsSchema,
+        infer TSearchSchema,
+        infer TBodySchema
+      >
+        ? ActionDefinition<
+            TMethod,
+            TActionRoute,
+            TParamsSchema,
+            TSearchSchema,
+            MergeRecordValidationSchemas<TBodySchema, RecordValidationSchema<TInputRaw, TInputParsed>>
+          >
+        : ActionDefinition<
+            any,
+            any,
+            UndefinedInputSchema,
+            UndefinedInputSchema,
+            RecordValidationSchema<TInputRaw, TInputParsed>
+          >
+    >
+  >
+  body<
+    TValidateFn extends CustomValidationFn<any>,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'body'> &
+      AssertNewInputSchemaNotWider<
+        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        ActionBodySchema<TActionDefinition>,
+        'body'
+      >,
+  >(
+    validateFn: TValidateFn & TCheckError,
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TActionDefinition extends ActionDefinition<
+        infer TMethod,
+        infer TActionRoute,
+        infer TParamsSchema,
+        infer TSearchSchema,
+        infer TBodySchema
+      >
+        ? ActionDefinition<
+            TMethod,
+            TActionRoute,
+            TParamsSchema,
+            TSearchSchema,
+            MergeRecordValidationSchemas<TBodySchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>
+          >
+        : ActionDefinition<
+            any,
+            any,
+            UndefinedInputSchema,
+            UndefinedInputSchema,
+            CustomValidationFnToRecordValidationSchema<TValidateFn>
+          >
+    >
+  >
+  body(...args: any[]) {
+    const schema = Point0._normalizeInputSchema(args[0])
+    return this._continue({
+      _serverExecuteActions: [
+        ...this._serverExecuteActions,
+        { type: 'body', schema, unstableId: Point0._getNextUnstableId() },
+      ],
     }) as never
   }
 
@@ -3860,7 +4613,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue({
       type: 'root',
@@ -3887,7 +4641,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue({
       type: 'plugin',
@@ -3911,7 +4666,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     return this._continue({
       type: 'base',
@@ -3957,7 +4713,8 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >
+    >,
+    TActionDefinition
   >
   page(...args: any[]) {
     const [page = () => null] = args as [PageSuccessComponentType<any, any, any, any> | undefined]
@@ -4018,7 +4775,8 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >
+    >,
+    TActionDefinition
   > {
     const [component = () => null] = args as [ComponentSuccessComponentType<any, any, any> | undefined]
     // this._applyComponentDisplayName(component, { suffix: 'Inner' })
@@ -4081,10 +4839,29 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >
+    >,
+    TActionDefinition
   >
   layout<
-    TPoint extends NiceLayoutReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+    TPoint extends NiceLayoutReadyPoint<
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any
+    >,
   >(
     ...args: TLetsReadyPointType extends 'page'
       ? [
@@ -4120,7 +4897,8 @@ export class Point0<
         TClientLoaderOutput,
         TQueriesDefinitions
       >,
-    ]
+    ],
+    TActionDefinition
   >
   layout(...args: any[]) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
@@ -4150,7 +4928,7 @@ export class Point0<
       return layout as never
     } else {
       const [layoutNicePoint] = args as [
-        | NiceLayoutReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+        | NiceLayoutReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
         | undefined,
       ]
       return this._continue({
@@ -4249,7 +5027,8 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >
+    >,
+    TActionDefinition
   >
   provider(_mapperFn?: any) {
     const mapperFn = _mapperFn as MapperFn<any, any, any, any, any> | undefined
@@ -4284,7 +5063,9 @@ export class Point0<
     return point as never
   }
 
-  use<T extends NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>>(
+  use<
+    T extends NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  >(
     plugin: T &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'use'> &
       AssertInputSchemaNotWider<T['Infer']['ServerInputSchema'], TServerInputSchema, TClientInputSchema> &
@@ -4316,9 +5097,12 @@ export class Point0<
         TQueriesDefinitions
       >,
       T['Infer']['Queries']
-    >
+    >,
+    TActionDefinition
   >
-  use(plugin: NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>) {
+  use(
+    plugin: NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  ) {
     const point = plugin.point
 
     // throw new Error(`Point ${this.toString()} and ${point.toString()} have different ssr settings`)
@@ -4488,7 +5272,8 @@ export class Point0<
     'query',
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   query(
     ...args: TLetsReadyPointType extends MountablePointType
@@ -4528,7 +5313,8 @@ export class Point0<
     AppendQueries<
       TQueriesDefinitions,
       QueryDefinition<'query', FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>
-    >
+    >,
+    TActionDefinition
   >
   query(...args: any) {
     const [queryOptions = {}] = args as [ExtraUseQueryOptions | undefined]
@@ -4598,7 +5384,8 @@ export class Point0<
     'infiniteQuery',
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   >
   infiniteQuery(
     ...args: TLetsReadyPointType extends MountablePointType
@@ -4640,7 +5427,8 @@ export class Point0<
     AppendQueries<
       TQueriesDefinitions,
       QueryDefinition<'infiniteQuery', InfiniteData<FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>>
-    >
+    >,
+    TActionDefinition
   >
   infiniteQuery(...args: any[]) {
     const [infiniteQueryOptions = {}] = args as [ExtraUseInfiniteQueryOptions<any> | undefined]
@@ -4710,7 +5498,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     const [mutationOptions = {}] = args
     const point = this._continue({
@@ -4742,7 +5531,8 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TActionDefinition
   > {
     const point = this._continue({
       type: 'action',
@@ -5377,6 +6167,9 @@ export class Point0<
     const bodySrc = this._getTransformer().serialize(input)
     const body = (() => {
       if (shouldAddMultipartFormDataHeaderToFetchOptions) {
+        // if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+        //   throw new Error(`Method ${method} cannot have body, but tried to do it, to pass there File or Blob objects using FormData. Please change ednptoint method to soemthing more suitable on point ${this.toStringWithLocation()}`)
+        // }
         const formData = new FormData()
         const flattened: Record<string, unknown> = flatten(bodySrc)
         for (const [key, value] of Object.entries(flattened)) {
@@ -5386,6 +6179,7 @@ export class Point0<
             formData.append(key, JSON.stringify(value))
           }
         }
+        headers.set('Content-Type', 'multipart/form-data')
         return formData
       } else {
         headers.set('Content-Type', 'application/json')

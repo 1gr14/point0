@@ -1,6 +1,6 @@
 import type { DehydratedState } from '@tanstack/react-query'
-import type { DataTransformer, DataTransformerExtended, ScrollPositionGetter, ScrollPositionSetter } from './types.js'
 import { stringify } from 'safe-stable-stringify'
+import type { DataTransformer, DataTransformerExtended, ScrollPositionGetter, ScrollPositionSetter } from './types.js'
 
 export function mergeHeaders(base?: HeadersInit, ...extras: Array<HeadersInit | undefined>): Headers {
   const merged = new Headers(base)
@@ -196,13 +196,26 @@ export const toExtendedTransformer = (transformer: DataTransformer): DataTransfo
 
 export const blankDataTransformerExtended: DataTransformerExtended = toExtendedTransformer(blankDataTransformer)
 
-const WORD_SEP = /[^a-zA-Z0-9]+/g
+const WORD_SEP = /[_\-.:/\\\s]+/g
+
+const splitWords = (str: string): string[] => {
+  return (
+    str
+      .normalize('NFKD')
+      // split camelCase / PascalCase boundaries
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+      .replace(WORD_SEP, ' ')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+  )
+}
 
 export const toCapitalized = (str: string): string => (str ? str[0].toUpperCase() + str.slice(1) : '')
 
 export const toCamelCase = (str: string): string => {
-  const words = str.normalize('NFKD').replace(WORD_SEP, ' ').trim().split(/\s+/)
-
+  const words = splitWords(str)
   if (words.length === 0) return ''
 
   return (
@@ -215,12 +228,18 @@ export const toCamelCase = (str: string): string => {
 }
 
 export const toPascalCase = (str: string): string => {
-  // Split camelCase/PascalCase boundaries before camelizing,
-  // so names like "componentLoading" become "ComponentLoading".
-  const normalized = str.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
-  const name = toCamelCase(normalized)
-  const pascal = toCapitalized(name)
+  const words = splitWords(str)
+  if (words.length === 0) return ''
+
+  const pascal = words.map((w) => toCapitalized(w.toLowerCase())).join('')
   return /^[A-Za-z_$]/.test(pascal) ? pascal : `_${pascal}`
+}
+
+export const toKebabCase = (str: string): string => {
+  const words = splitWords(str)
+  if (words.length === 0) return ''
+
+  return words.map((w) => w.toLowerCase()).join('-')
 }
 
 export const generateId = (): string => {
