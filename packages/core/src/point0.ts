@@ -308,6 +308,8 @@ export class Point0<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > {
   Infer: Infer<
@@ -327,6 +329,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > = null as never
 
@@ -658,6 +662,8 @@ export class Point0<
     TOuterProps extends Props,
     TInnerProps extends Props,
     TQueriesDefinitions extends QueriesDefinitions,
+    THeadersSchema extends InputSchema | UndefinedInputSchema,
+    TCookiesSchema extends InputSchema | UndefinedInputSchema,
     TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
   >(overrides: {
     type?: TPointType
@@ -752,6 +758,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return new Point0<
@@ -771,6 +779,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >({
       scope: overrides.scope ?? this.scope,
@@ -866,6 +876,8 @@ export class Point0<
     EmptyProps,
     EmptyProps,
     [],
+    UndefinedInputSchema,
+    UndefinedInputSchema,
     UndefinedActionDefinition
   >
   static lets(
@@ -888,6 +900,8 @@ export class Point0<
     EmptyProps,
     EmptyProps,
     [],
+    UndefinedInputSchema,
+    UndefinedInputSchema,
     UndefinedActionDefinition
   >
   static lets(pointType: 'root' | 'plugin', pointName: string) {
@@ -952,6 +966,8 @@ export class Point0<
       EmptyProps,
       TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
       TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition extends ActionDefinition<any, any, infer TParamsSchema, infer TSearchSchema, infer TBodySchema>
         ? ActionDefinition<
             TMethod,
@@ -1006,6 +1022,8 @@ export class Point0<
       EmptyProps,
       TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
       TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition extends ActionDefinition<any, any, infer TParamsSchema, infer TSearchSchema, infer TBodySchema>
         ? ActionDefinition<
             TMethod,
@@ -1067,6 +1085,8 @@ export class Point0<
       EmptyProps,
       TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
       TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -1108,6 +1128,8 @@ export class Point0<
       EmptyProps,
       TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
       TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -1149,6 +1171,8 @@ export class Point0<
       EmptyProps,
       TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
       TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -1190,6 +1214,8 @@ export class Point0<
       EmptyProps,
       TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
       TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -1212,6 +1238,8 @@ export class Point0<
     TNewOuterProps,
     TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
     TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   lets<TNewOuterProps extends Props = EmptyProps>(
@@ -1233,6 +1261,8 @@ export class Point0<
     TNewOuterProps,
     TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
     TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   lets<
@@ -1259,6 +1289,8 @@ export class Point0<
     EmptyProps,
     TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
     TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   lets(...args: any[]) {
@@ -1464,6 +1496,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue({
@@ -1490,6 +1524,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue({
@@ -1519,6 +1555,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     const normalizedBasepath = prependAndDeappendSlash(basepath) || '/'
@@ -1575,6 +1613,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   on(
@@ -1597,6 +1637,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   on<TEventNames extends Array<AnyEventerEventName>>(
@@ -1619,6 +1661,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   on(
@@ -1652,6 +1696,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   serverOn(
@@ -1674,6 +1720,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   serverOn<TEventNames extends Array<ServerEventerEventName>>(
@@ -1696,6 +1744,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   serverOn(
@@ -1729,6 +1779,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   clientOn(
@@ -1751,6 +1803,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   clientOn<TEventNames extends Array<ClientEventerEventName>>(
@@ -1773,6 +1827,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   clientOn(
@@ -1805,6 +1861,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue({
@@ -1831,6 +1889,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue({
@@ -1858,6 +1918,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   queryOptions(queryOptions: ExtraUseQueryOptions | undefined = {}) {
@@ -1885,6 +1947,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   infiniteQueryOptions(infiniteQueryOptions: PartialUseInfiniteQueryOptions | undefined = {}) {
@@ -1915,6 +1979,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue({
@@ -1941,6 +2007,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue({
@@ -1967,6 +2035,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue({
@@ -1993,6 +2063,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue({
@@ -2019,6 +2091,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     const newFetchOptionsFn: FetchOptionsFn = () => {
@@ -2065,6 +2139,8 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions
     >,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   error(errorComponent: ErrorComponentType<any, any> | undefined) {
@@ -2121,6 +2197,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   layoutError(layoutErrorComponent: ErrorComponentType<any, TError> | undefined) {
@@ -2151,6 +2229,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   pageError(pageErrorComponent: ErrorComponentType<any, TError> | undefined) {
@@ -2181,6 +2261,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   componentError(componentErrorComponent: ErrorComponentType<any, TError> | undefined) {
@@ -2211,6 +2293,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   layoutLoading(layoutLoadingComponent: LoadingComponentType<any> | undefined) {
@@ -2241,6 +2325,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   pageLoading(pageLoadingComponent: LoadingComponentType<any> | undefined) {
@@ -2271,6 +2357,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   componentLoading(componentLoadingComponent: LoadingComponentType<any> | undefined) {
@@ -2313,6 +2401,8 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions
     >,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   loading(loadingComponent: LoadingComponentType<any> | undefined) {
@@ -2392,6 +2482,8 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions
     >,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   wrapper(wrapperComponent: WrapperComponentType<any, any, any, any, any> | undefined) {
@@ -2433,6 +2525,8 @@ export class Point0<
       any,
       any,
       'infiniteQuery' | 'query',
+      any,
+      any,
       any,
       any,
       any,
@@ -2518,6 +2612,8 @@ export class Point0<
         data: TPoint['Infer']['QueriedData']
       },
     ],
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   with<TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults>(
@@ -2571,6 +2667,8 @@ export class Point0<
           ? [QueryDefinitionByQuery<TNewQueries>]
           : never),
     ],
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   with<TNewInnerProps extends Props>(
@@ -2615,6 +2713,8 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions
     >,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   with(
@@ -2720,6 +2820,8 @@ export class Point0<
       any,
       any,
       any,
+      any,
+      any,
       any
     >,
   >(
@@ -2772,6 +2874,8 @@ export class Point0<
         data: TPoint['Infer']['QueriedData']
       },
     ],
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   relatedQuery(
@@ -2839,6 +2943,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   scrollPosition(
@@ -2860,6 +2966,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   scrollPosition(
@@ -2882,6 +2990,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   scrollPosition(...args: [() => HTMLElement | null] | [string] | [ScrollPositionGetter, ScrollPositionSetter] | []) {
@@ -2923,6 +3033,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >({
       _scrollPositionGetter: getter,
@@ -2950,6 +3062,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue<
@@ -2968,6 +3082,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >({
       _scrollPositionRestorePolicy: typeof policy === 'function' ? policy : () => policy ?? null,
@@ -2997,6 +3113,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue({
@@ -3028,6 +3146,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue<
@@ -3046,6 +3166,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
@@ -3073,6 +3195,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   prefetchPageOnLinkHover(
@@ -3104,6 +3228,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   prefetchPageOnNavigate(
@@ -3135,6 +3261,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue({
@@ -3165,6 +3293,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TServerInputSchema, Ctx>>(
@@ -3190,6 +3320,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   ctx<
@@ -3217,6 +3349,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   ctx<TAppendCtx extends Ctx>(
@@ -3240,6 +3374,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   ctx<TAppendCtx extends Ctx>(
@@ -3265,6 +3401,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
@@ -3289,6 +3427,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   ctx(ctxOrFn?: CtxFn | Ctx, expose?: true | string[]) {
@@ -3330,6 +3470,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   loader(loaderFn: LoaderDataFn<any, any, any, any, any> | LoaderResponseFn<any, any, any, any, any> | boolean) {
@@ -3388,6 +3530,8 @@ export class Point0<
     //   TNewClientLoaderOutput,
     //   TQueriesDefinitions
     // >
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   clientLoader(
@@ -3454,6 +3598,8 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions
     >,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   mapper(mapperFn: MapperFn<any, any, any, any, any> | undefined) {
@@ -3581,6 +3727,8 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions
     >,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   head<TStatus extends 'loading' | 'error' | 'success' | 'universal' | 'global'>(
@@ -3629,6 +3777,8 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions
     >,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   head(..._args: any[]) {
@@ -3753,6 +3903,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -3786,6 +3938,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -3818,6 +3972,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -3844,6 +4000,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -3882,6 +4040,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -3915,6 +4075,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -3947,6 +4109,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -3975,6 +4139,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -4013,6 +4179,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -4046,6 +4214,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -4078,6 +4248,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -4106,6 +4278,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   >
@@ -4148,6 +4322,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition extends ActionDefinition<
         infer TMethod,
         infer TActionRoute,
@@ -4196,6 +4372,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition extends ActionDefinition<
         infer TMethod,
         infer TActionRoute,
@@ -4248,6 +4426,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition extends ActionDefinition<
         infer TMethod,
         infer TActionRoute,
@@ -4306,6 +4486,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition extends ActionDefinition<
         infer TMethod,
         infer TActionRoute,
@@ -4354,6 +4536,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition extends ActionDefinition<
         infer TMethod,
         infer TActionRoute,
@@ -4406,6 +4590,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition extends ActionDefinition<
         infer TMethod,
         infer TActionRoute,
@@ -4464,6 +4650,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition extends ActionDefinition<
         infer TMethod,
         infer TActionRoute,
@@ -4512,6 +4700,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition extends ActionDefinition<
         infer TMethod,
         infer TActionRoute,
@@ -4564,6 +4754,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition extends ActionDefinition<
         infer TMethod,
         infer TActionRoute,
@@ -4597,6 +4789,210 @@ export class Point0<
     }) as never
   }
 
+  headers<
+    TNextHeadersSchema extends InputSchema,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'headers'> &
+      AssertNewInputSchemaNotWider<TNextHeadersSchema, THeadersSchema, 'headers'>,
+  >(
+    headersSchema: TNextHeadersSchema,
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      MergeRecordValidationSchemas<THeadersSchema, TNextHeadersSchema>,
+      TCookiesSchema,
+      TActionDefinition
+    >
+  >
+  headers<
+    TInputRaw extends InputRaw,
+    TInputParsed extends InputParsed = TInputRaw,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'headers'> &
+      AssertNewInputSchemaNotWider<RecordValidationSchema<TInputRaw, TInputParsed>, THeadersSchema, 'headers'>,
+  >(
+    // it is typeguard for overload
+    ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      MergeRecordValidationSchemas<THeadersSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      TCookiesSchema,
+      TActionDefinition
+    >
+  >
+  headers<
+    TValidateFn extends CustomValidationFn<any>,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'headers'> &
+      AssertNewInputSchemaNotWider<CustomValidationFnToRecordValidationSchema<TValidateFn>, THeadersSchema, 'headers'>,
+  >(
+    validateFn: TValidateFn & TCheckError,
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      MergeRecordValidationSchemas<THeadersSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TCookiesSchema,
+      TActionDefinition
+    >
+  >
+  headers(...args: any[]) {
+    const schema = Point0._normalizeInputSchema(args[0])
+    return this._continue({
+      _serverExecuteActions: [
+        ...this._serverExecuteActions,
+        { type: 'headers', schema, unstableId: Point0._getNextUnstableId() },
+      ],
+    }) as never
+  }
+
+  cookies<
+    TNextCookiesSchema extends InputSchema,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'cookies'> &
+      AssertNewInputSchemaNotWider<TNextCookiesSchema, TCookiesSchema, 'cookies'>,
+  >(
+    cookiesSchema: TNextCookiesSchema,
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      THeadersSchema,
+      MergeRecordValidationSchemas<TCookiesSchema, TNextCookiesSchema>,
+      TActionDefinition
+    >
+  >
+  cookies<
+    TInputRaw extends InputRaw,
+    TInputParsed extends InputParsed = TInputRaw,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'cookies'> &
+      AssertNewInputSchemaNotWider<RecordValidationSchema<TInputRaw, TInputParsed>, THeadersSchema, 'cookies'>,
+  >(
+    // it is typeguard for overload
+    ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      THeadersSchema,
+      MergeRecordValidationSchemas<TCookiesSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      TActionDefinition
+    >
+  >
+  cookies<
+    TValidateFn extends CustomValidationFn<any>,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'cookies'> &
+      AssertNewInputSchemaNotWider<CustomValidationFnToRecordValidationSchema<TValidateFn>, TCookiesSchema, 'cookies'>,
+  >(
+    validateFn: TValidateFn & TCheckError,
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      THeadersSchema,
+      MergeRecordValidationSchemas<TCookiesSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TActionDefinition
+    >
+  >
+  cookies(...args: any[]) {
+    const schema = Point0._normalizeInputSchema(args[0])
+    return this._continue({
+      _serverExecuteActions: [
+        ...this._serverExecuteActions,
+        { type: 'cookies', schema, unstableId: Point0._getNextUnstableId() },
+      ],
+    }) as never
+  }
+
   root(): NiceRootReadyPoint<
     'root',
     UndefinedReadyPointType,
@@ -4614,6 +5010,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue({
@@ -4642,6 +5040,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue({
@@ -4667,6 +5067,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     return this._continue({
@@ -4714,6 +5116,8 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions
     >,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   page(...args: any[]) {
@@ -4776,6 +5180,8 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions
     >,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     const [component = () => null] = args as [ComponentSuccessComponentType<any, any, any> | undefined]
@@ -4840,10 +5246,14 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions
     >,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   layout<
     TPoint extends NiceLayoutReadyPoint<
+      any,
+      any,
       any,
       any,
       any,
@@ -4898,6 +5308,8 @@ export class Point0<
         TQueriesDefinitions
       >,
     ],
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   layout(...args: any[]) {
@@ -4928,7 +5340,27 @@ export class Point0<
       return layout as never
     } else {
       const [layoutNicePoint] = args as [
-        | NiceLayoutReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+        | NiceLayoutReadyPoint<
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
+            any
+          >
         | undefined,
       ]
       return this._continue({
@@ -5028,6 +5460,8 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions
     >,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   provider(_mapperFn?: any) {
@@ -5064,7 +5498,27 @@ export class Point0<
   }
 
   use<
-    T extends NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+    T extends NicePluginReadyPoint<
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any
+    >,
   >(
     plugin: T &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'use'> &
@@ -5098,10 +5552,32 @@ export class Point0<
       >,
       T['Infer']['Queries']
     >,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   use(
-    plugin: NicePluginReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+    plugin: NicePluginReadyPoint<
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any
+    >,
   ) {
     const point = plugin.point
 
@@ -5273,6 +5749,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   query(
@@ -5314,6 +5792,8 @@ export class Point0<
       TQueriesDefinitions,
       QueryDefinition<'query', FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>
     >,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   query(...args: any) {
@@ -5385,6 +5865,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   infiniteQuery(
@@ -5428,6 +5910,8 @@ export class Point0<
       TQueriesDefinitions,
       QueryDefinition<'infiniteQuery', InfiniteData<FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>>
     >,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >
   infiniteQuery(...args: any[]) {
@@ -5499,6 +5983,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     const [mutationOptions = {}] = args
@@ -5532,6 +6018,8 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   > {
     const point = this._continue({

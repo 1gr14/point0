@@ -90,6 +90,8 @@ export type Infer<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = {
   PointType: TPointType
@@ -140,6 +142,8 @@ export type Infer<
   ClientQueryData: QueriedData<TQueryResultType, TClientLoaderOutput>
   QueriedData: FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
   ServerExecuteResult: ServerExecuteResult<TCtx, TServerLoaderOutput, TError>
+  Headers: InputParsed<THeadersSchema>
+  Cookies: InputParsed<TCookiesSchema>
   Action: TActionDefinition
 }
 
@@ -199,6 +203,8 @@ export type AnyPoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = Point0<
   TPointType,
@@ -217,6 +223,8 @@ export type AnyPoint<
   TOuterProps,
   TInnerProps,
   TQueriesDefinitions,
+  THeadersSchema,
+  TCookiesSchema,
   TActionDefinition
 >
 
@@ -235,6 +243,8 @@ export type RootPoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'root',
@@ -253,6 +263,8 @@ export type RootPoint<
   TOuterProps,
   TInnerProps,
   TQueriesDefinitions,
+  THeadersSchema,
+  TCookiesSchema,
   TActionDefinition
 >
 
@@ -271,6 +283,8 @@ export type PluginPoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'plugin',
@@ -289,6 +303,8 @@ export type PluginPoint<
   TOuterProps,
   TInnerProps,
   TQueriesDefinitions,
+  THeadersSchema,
+  TCookiesSchema,
   TActionDefinition
 >
 
@@ -307,6 +323,8 @@ export type BasePoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'base',
@@ -325,6 +343,8 @@ export type BasePoint<
   TOuterProps,
   TInnerProps,
   TQueriesDefinitions,
+  THeadersSchema,
+  TCookiesSchema,
   TActionDefinition
 >
 
@@ -343,6 +363,8 @@ export type PagePoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'page',
@@ -361,6 +383,8 @@ export type PagePoint<
   TOuterProps,
   TInnerProps,
   TQueriesDefinitions,
+  THeadersSchema,
+  TCookiesSchema,
   TActionDefinition
 >
 
@@ -379,6 +403,8 @@ export type LayoutPoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'layout',
@@ -397,6 +423,8 @@ export type LayoutPoint<
   TOuterProps,
   TInnerProps,
   TQueriesDefinitions,
+  THeadersSchema,
+  TCookiesSchema,
   TActionDefinition
 >
 
@@ -416,6 +444,8 @@ export type ReadyPoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   TPointType,
@@ -434,6 +464,8 @@ export type ReadyPoint<
   TOuterProps,
   TInnerProps,
   TQueriesDefinitions,
+  THeadersSchema,
+  TCookiesSchema,
   TActionDefinition
 >
 
@@ -999,7 +1031,27 @@ export type UndefinedClientResponse = undefined
 export type UndefinedLastDataOrResponse = undefined
 
 export type ServerExecuteFn = <
-  TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  TPoint extends NiceReadyPoint<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
+  >,
 >(
   point: TPoint,
   ...args: TPoint['Infer']['IsServerInputOptional'] extends true
@@ -1480,6 +1532,8 @@ export type NiceRootStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -1499,6 +1553,8 @@ export type NiceRootStagePoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   | 'root'
@@ -1529,6 +1585,11 @@ export type NiceRootStagePoint<
   | 'pageLoading'
   | 'componentLoading'
   | 'loading'
+  | 'headers'
+  | 'cookies'
+  | 'params'
+  | 'search'
+  | 'body'
   | 'input'
   | 'clientInput'
   | 'sharedInput'
@@ -1566,6 +1627,8 @@ export type NicePluginStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -1585,6 +1648,8 @@ export type NicePluginStagePoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   | 'plugin'
@@ -1617,6 +1682,11 @@ export type NicePluginStagePoint<
   | 'pageLoading'
   | 'componentLoading'
   | 'loading'
+  | 'headers'
+  | 'cookies'
+  | 'params'
+  | 'search'
+  | 'body'
   | 'input'
   | 'clientInput'
   | 'sharedInput'
@@ -1654,6 +1724,8 @@ export type NiceBaseStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -1673,6 +1745,8 @@ export type NiceBaseStagePoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   | 'base'
@@ -1701,6 +1775,11 @@ export type NiceBaseStagePoint<
   | 'loading'
   | 'wrapper'
   | 'with'
+  | 'headers'
+  | 'cookies'
+  | 'params'
+  | 'search'
+  | 'body'
   | 'input'
   | 'clientInput'
   | 'sharedInput'
@@ -1736,6 +1815,8 @@ export type NicePageStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -1755,6 +1836,8 @@ export type NicePageStagePoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   | 'page'
@@ -1770,6 +1853,8 @@ export type NicePageStagePoint<
   | 'layout'
   | 'with'
   | 'relatedQuery'
+  | 'headers'
+  | 'cookies'
   | 'input'
   | 'clientInput'
   | 'sharedInput'
@@ -1807,6 +1892,8 @@ export type NiceComponentStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -1826,6 +1913,8 @@ export type NiceComponentStagePoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   | 'component'
@@ -1839,6 +1928,8 @@ export type NiceComponentStagePoint<
   | 'loading'
   | 'wrapper'
   | 'with'
+  | 'headers'
+  | 'cookies'
   | 'input'
   | 'clientInput'
   | 'sharedInput'
@@ -1871,6 +1962,8 @@ export type NiceActionStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -1890,6 +1983,8 @@ export type NiceActionStagePoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   | 'action'
@@ -1899,6 +1994,11 @@ export type NiceActionStagePoint<
   | 'middleware'
   | 'fetchOptions'
   | 'use'
+  | 'headers'
+  | 'cookies'
+  | 'params'
+  | 'search'
+  | 'body'
   | 'input'
   | 'ctx'
   | 'loader'
@@ -1924,6 +2024,8 @@ export type NiceQueryStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -1943,6 +2045,8 @@ export type NiceQueryStagePoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   | 'query'
@@ -1952,6 +2056,8 @@ export type NiceQueryStagePoint<
   | 'middleware'
   | 'use'
   | 'fetchOptions'
+  | 'headers'
+  | 'cookies'
   | 'input'
   | 'clientInput'
   | 'sharedInput'
@@ -1981,6 +2087,8 @@ export type NiceInfiniteQueryStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2000,6 +2108,8 @@ export type NiceInfiniteQueryStagePoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   | 'infiniteQuery'
@@ -2009,6 +2119,8 @@ export type NiceInfiniteQueryStagePoint<
   | 'middleware'
   | 'use'
   | 'fetchOptions'
+  | 'headers'
+  | 'cookies'
   | 'input'
   | 'clientInput'
   | 'sharedInput'
@@ -2038,6 +2150,8 @@ export type NiceMutationStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2057,6 +2171,8 @@ export type NiceMutationStagePoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   | 'mutation'
@@ -2067,6 +2183,8 @@ export type NiceMutationStagePoint<
   | 'use'
   // | 'asFormData'
   | 'fetchOptions'
+  | 'headers'
+  | 'cookies'
   | 'input'
   | 'clientInput'
   | 'sharedInput'
@@ -2095,6 +2213,8 @@ export type NiceLayoutStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2114,6 +2234,8 @@ export type NiceLayoutStagePoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   | 'layout'
@@ -2133,6 +2255,8 @@ export type NiceLayoutStagePoint<
   | 'wrapper'
   | 'with'
   | 'relatedQuery'
+  | 'headers'
+  | 'cookies'
   | 'input'
   | 'clientInput'
   | 'sharedInput'
@@ -2172,6 +2296,8 @@ export type NiceProviderStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2191,6 +2317,8 @@ export type NiceProviderStagePoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   | 'provider'
@@ -2200,6 +2328,8 @@ export type NiceProviderStagePoint<
   | 'middleware'
   | 'use'
   | 'fetchOptions'
+  | 'headers'
+  | 'cookies'
   | 'input'
   | 'clientInput'
   | 'sharedInput'
@@ -2237,6 +2367,8 @@ export type NiceStagePoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = TLetsReadyPointType extends 'root'
   ? NiceRootStagePoint<
@@ -2256,6 +2388,8 @@ export type NiceStagePoint<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   : TLetsReadyPointType extends 'plugin'
@@ -2276,6 +2410,8 @@ export type NiceStagePoint<
         TOuterProps,
         TInnerProps,
         TQueriesDefinitions,
+        THeadersSchema,
+        TCookiesSchema,
         TActionDefinition
       >
     : TLetsReadyPointType extends 'base'
@@ -2296,6 +2432,8 @@ export type NiceStagePoint<
           TOuterProps,
           TInnerProps,
           TQueriesDefinitions,
+          THeadersSchema,
+          TCookiesSchema,
           TActionDefinition
         >
       : TLetsReadyPointType extends 'page'
@@ -2316,6 +2454,8 @@ export type NiceStagePoint<
             TOuterProps,
             TInnerProps,
             TQueriesDefinitions,
+            THeadersSchema,
+            TCookiesSchema,
             TActionDefinition
           >
         : TLetsReadyPointType extends 'component'
@@ -2336,6 +2476,8 @@ export type NiceStagePoint<
               TOuterProps,
               TInnerProps,
               TQueriesDefinitions,
+              THeadersSchema,
+              TCookiesSchema,
               TActionDefinition
             >
           : TLetsReadyPointType extends 'action'
@@ -2356,6 +2498,8 @@ export type NiceStagePoint<
                 TOuterProps,
                 TInnerProps,
                 TQueriesDefinitions,
+                THeadersSchema,
+                TCookiesSchema,
                 TActionDefinition
               >
             : TLetsReadyPointType extends 'query'
@@ -2376,6 +2520,8 @@ export type NiceStagePoint<
                   TOuterProps,
                   TInnerProps,
                   TQueriesDefinitions,
+                  THeadersSchema,
+                  TCookiesSchema,
                   TActionDefinition
                 >
               : TLetsReadyPointType extends 'infiniteQuery'
@@ -2396,6 +2542,8 @@ export type NiceStagePoint<
                     TOuterProps,
                     TInnerProps,
                     TQueriesDefinitions,
+                    THeadersSchema,
+                    TCookiesSchema,
                     TActionDefinition
                   >
                 : TLetsReadyPointType extends 'mutation'
@@ -2416,6 +2564,8 @@ export type NiceStagePoint<
                       TOuterProps,
                       TInnerProps,
                       TQueriesDefinitions,
+                      THeadersSchema,
+                      TCookiesSchema,
                       TActionDefinition
                     >
                   : TLetsReadyPointType extends 'layout'
@@ -2436,6 +2586,8 @@ export type NiceStagePoint<
                         TOuterProps,
                         TInnerProps,
                         TQueriesDefinitions,
+                        THeadersSchema,
+                        TCookiesSchema,
                         TActionDefinition
                       >
                     : TLetsReadyPointType extends 'provider'
@@ -2456,6 +2608,8 @@ export type NiceStagePoint<
                           TOuterProps,
                           TInnerProps,
                           TQueriesDefinitions,
+                          THeadersSchema,
+                          TCookiesSchema,
                           TActionDefinition
                         >
                       : never
@@ -2479,6 +2633,8 @@ export type NiceRootReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2498,6 +2654,8 @@ export type NiceRootReadyPoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   'lets' | 'point' | 'type' | 'Infer'
@@ -2520,6 +2678,8 @@ export type NicePluginReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2539,6 +2699,8 @@ export type NicePluginReadyPoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   'point' | 'type' | 'Infer'
@@ -2561,6 +2723,8 @@ export type NicePristinePluginReadyPoint = NicePluginReadyPoint<
   EmptyProps,
   EmptyProps,
   [],
+  UndefinedInputSchema,
+  UndefinedInputSchema,
   UndefinedActionDefinition
 >
 
@@ -2581,6 +2745,8 @@ export type NiceBaseReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2600,6 +2766,8 @@ export type NiceBaseReadyPoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   'lets' | 'point' | 'type' | 'Infer'
@@ -2650,6 +2818,8 @@ export type NicePageReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2669,6 +2839,8 @@ export type NicePageReadyPoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Page' | 'X' | 'route'>
@@ -2691,6 +2863,8 @@ export type NiceComponentReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2710,6 +2884,8 @@ export type NiceComponentReadyPoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Component' | 'X'>
@@ -2732,6 +2908,8 @@ export type NiceLayoutReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2751,6 +2929,8 @@ export type NiceLayoutReadyPoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   WithQueryIfSuitable<
@@ -2777,6 +2957,8 @@ export type NiceActionReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2796,6 +2978,8 @@ export type NiceActionReadyPoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   'point' | 'type' | 'Infer' | 'fetch'
@@ -2818,6 +3002,8 @@ export type NiceQueryReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2837,6 +3023,8 @@ export type NiceQueryReadyPoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
@@ -2859,6 +3047,8 @@ export type NiceInfiniteQueryReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2878,6 +3068,8 @@ export type NiceInfiniteQueryReadyPoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
@@ -2900,6 +3092,8 @@ export type NiceMutationReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2919,6 +3113,8 @@ export type NiceMutationReadyPoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   WithFetchIfHasServerLoader<
@@ -2944,6 +3140,8 @@ export type NiceProviderReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
@@ -2963,6 +3161,8 @@ export type NiceProviderReadyPoint<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    THeadersSchema,
+    TCookiesSchema,
     TActionDefinition
   >,
   WithQueryIfSuitable<
@@ -2989,6 +3189,8 @@ export type NiceReadyPoint<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = TPointType extends 'root'
   ? NiceRootReadyPoint<
@@ -3008,6 +3210,8 @@ export type NiceReadyPoint<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      THeadersSchema,
+      TCookiesSchema,
       TActionDefinition
     >
   : TPointType extends 'plugin'
@@ -3028,6 +3232,8 @@ export type NiceReadyPoint<
         TOuterProps,
         TInnerProps,
         TQueriesDefinitions,
+        THeadersSchema,
+        TCookiesSchema,
         TActionDefinition
       >
     : TPointType extends 'base'
@@ -3048,6 +3254,8 @@ export type NiceReadyPoint<
           TOuterProps,
           TInnerProps,
           TQueriesDefinitions,
+          THeadersSchema,
+          TCookiesSchema,
           TActionDefinition
         >
       : TPointType extends 'page'
@@ -3068,6 +3276,8 @@ export type NiceReadyPoint<
             TOuterProps,
             TInnerProps,
             TQueriesDefinitions,
+            THeadersSchema,
+            TCookiesSchema,
             TActionDefinition
           >
         : TPointType extends 'component'
@@ -3088,6 +3298,8 @@ export type NiceReadyPoint<
               TOuterProps,
               TInnerProps,
               TQueriesDefinitions,
+              THeadersSchema,
+              TCookiesSchema,
               TActionDefinition
             >
           : TPointType extends 'action'
@@ -3108,6 +3320,8 @@ export type NiceReadyPoint<
                 TOuterProps,
                 TInnerProps,
                 TQueriesDefinitions,
+                THeadersSchema,
+                TCookiesSchema,
                 TActionDefinition
               >
             : TPointType extends 'query'
@@ -3128,6 +3342,8 @@ export type NiceReadyPoint<
                   TOuterProps,
                   TInnerProps,
                   TQueriesDefinitions,
+                  THeadersSchema,
+                  TCookiesSchema,
                   TActionDefinition
                 >
               : TPointType extends 'infiniteQuery'
@@ -3148,6 +3364,8 @@ export type NiceReadyPoint<
                     TOuterProps,
                     TInnerProps,
                     TQueriesDefinitions,
+                    THeadersSchema,
+                    TCookiesSchema,
                     TActionDefinition
                   >
                 : TPointType extends 'mutation'
@@ -3168,6 +3386,8 @@ export type NiceReadyPoint<
                       TOuterProps,
                       TInnerProps,
                       TQueriesDefinitions,
+                      THeadersSchema,
+                      TCookiesSchema,
                       TActionDefinition
                     >
                   : TPointType extends 'layout'
@@ -3188,6 +3408,8 @@ export type NiceReadyPoint<
                         TOuterProps,
                         TInnerProps,
                         TQueriesDefinitions,
+                        THeadersSchema,
+                        TCookiesSchema,
                         TActionDefinition
                       >
                     : TPointType extends 'provider'
@@ -3208,6 +3430,8 @@ export type NiceReadyPoint<
                           TOuterProps,
                           TInnerProps,
                           TQueriesDefinitions,
+                          THeadersSchema,
+                          TCookiesSchema,
                           TActionDefinition
                         >
                       : never
@@ -3229,6 +3453,8 @@ export type AnyNiceReadyPoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = NiceReadyPoint<
   TPointType,
@@ -3247,6 +3473,8 @@ export type AnyNiceReadyPoint<
   TOuterProps,
   TInnerProps,
   TQueriesDefinitions,
+  THeadersSchema,
+  TCookiesSchema,
   TActionDefinition
 >
 export type AnyNiceRequestableReadyPoint<
@@ -3266,6 +3494,8 @@ export type AnyNiceRequestableReadyPoint<
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = NiceReadyPoint<
   TPointType,
@@ -3284,5 +3514,7 @@ export type AnyNiceRequestableReadyPoint<
   TOuterProps,
   TInnerProps,
   TQueriesDefinitions,
+  THeadersSchema,
+  TCookiesSchema,
   TActionDefinition
 >
