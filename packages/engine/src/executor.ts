@@ -396,6 +396,32 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               layers.shift()
               break
             }
+            case 'params': {
+              const safeParseResult = await Executor.parseInputSafeAsync(serverExecuteAction.schema, input)
+              if (safeParseResult.error) {
+                const status = 422
+                const error0 = ErrorClass.from(safeParseResult.error)
+                error0.status = status
+                effects.set.status(status)
+                return {
+                  ctx: this.requiredCtx ?? {},
+                  data: layers[0].data,
+                  error: error0,
+                  status,
+                  response: layers[0].response,
+                  output: layers[0].output,
+                  effects: effects.values,
+                  point,
+                }
+              }
+              layers.forEach((layer) => {
+                layer.inputParsed = {
+                  ...layer.inputParsed,
+                  ...safeParseResult.data,
+                }
+              })
+              break
+            }
             case 'input': {
               const safeParseResult = await Executor.parseInputSafeAsync(serverExecuteAction.schema, input)
               if (safeParseResult.error) {

@@ -91,6 +91,7 @@ import { superstore } from './super-store.js'
 import type {
   ActionBodySchema,
   ActionDefinition,
+  ActionInputRaw,
   ActionParamsSchema,
   ActionRuntimeDefinition,
   ActionSearchSchema,
@@ -139,10 +140,12 @@ import type {
   InferCtxFnOutputCtxAppend,
   InputParsed,
   InputRaw,
+  InputRawUnknown,
   InputSchema,
   InputsRaw,
   InputsRawOrUndefined,
   InputsRawOrUndefinedOrVoid,
+  IsActionInputOptional,
   IsEmptyObject,
   IsInputOptional,
   IsInputsOptional,
@@ -379,6 +382,11 @@ export class Point0<
   _serverurl: string | undefined
   readonly _basepath: string | undefined
   readonly _action: ActionRuntimeDefinition | undefined
+  get method(): TActionDefinition extends AnyActionDefinition ? TActionDefinition['method'] : undefined {
+    return (this._action?.method ?? undefined) as TActionDefinition extends AnyActionDefinition
+      ? TActionDefinition['method']
+      : undefined
+  }
   readonly _endpointPrefix: string | undefined
   readonly type: TPointType
   private readonly _letsReadyPointType: TLetsReadyPointType
@@ -6617,43 +6625,58 @@ export class Point0<
     return undefined
   }
 
-  getFetchServerOptions(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-      ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-          options?: { fetchOptions?: FetchOptions; _outputType?: FetchServerOutputType },
-        ]
-      : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-          options?: { fetchOptions?: FetchOptions; _outputType?: FetchServerOutputType },
-        ]
-  ): { url: string; init: RequestInit; request: Request } {
-    const [input = {}, { fetchOptions: _fetchOptions, _outputType = 'data' } = {}] = args
+  private _getFetchServerOptions({
+    input,
+    fetchOptions: _fetchOptions,
+    _outputType = 'data',
+  }: {
+    input: InputRawUnknown
+    fetchOptions?: FetchOptions
+    _outputType?: FetchServerOutputType
+  }): { url: string; init: RequestInit; request: Request; isAction: boolean } {
     const baseFetchOptions = this._fetchOptions?.() || {}
     const fetchOptions = { ...baseFetchOptions, ..._fetchOptions }
-    const fromScope = _ssItems.__POINT0_CLIENT_POINTS__.getWeak()?.manager.scope ?? _getFakeClient()?.scope
-    const headers = mergeHeaders(baseFetchOptions.headers, _fetchOptions?.headers, {
-      Accept: 'application/json',
-      ...(fromScope ? { 'X-Point0-From-Scope': fromScope } : {}),
-      'X-Point0-Client-Request-Id': generateId(),
-    })
     const serverurl = this.getServerUrl()
     if (!serverurl) {
       throw new Error(`Server URL is not set on point ${this.toStringWithLocation()}`)
     }
-    const url = new URL('/_point0', serverurl)
-    const method = 'POST'
 
-    url.searchParams.set('type', this.type)
-    url.searchParams.set('name', this.name)
-    url.searchParams.set('scope', this.scope)
-    url.searchParams.set('output', _outputType)
+    const { url, method, isAction } = (() => {
+      if (this.type === 'action' && this._action) {
+        return {
+          url: new URL(this._action.route.flat((input as any).params ?? {}), serverurl),
+          method: this._action.method,
+          isAction: true,
+        }
+      }
+      return {
+        url: new URL('/_point0', serverurl),
+        method: 'POST',
+        isAction: false,
+      }
+    })()
 
-    // const shouldAddMultipartFormDataHeaderToFetchOptions = this._asFormData ?? isContainsBinary(input)
-    const shouldAddMultipartFormDataHeaderToFetchOptions = isContainsBinary(input)
+    const fromScope = _ssItems.__POINT0_CLIENT_POINTS__.getWeak()?.manager.scope ?? _getFakeClient()?.scope
+    const headers = mergeHeaders(baseFetchOptions.headers, _fetchOptions?.headers, {
+      ...(isAction ? {} : { Accept: 'application/json' }),
+      ...(fromScope ? { 'X-Point0-From-Scope': fromScope } : {}),
+      'X-Point0-Client-Request-Id': generateId(),
+    })
 
-    const bodySrc = this._getTransformer().serialize(input)
+    if (!isAction) {
+      url.searchParams.set('type', this.type)
+      url.searchParams.set('name', this.name)
+      url.searchParams.set('scope', this.scope)
+      url.searchParams.set('output', _outputType)
+    }
+
     const body = (() => {
+      if (isAction) {
+        return (input as any).body ?? undefined
+      }
+      // const shouldAddMultipartFormDataHeaderToFetchOptions = this._asFormData ?? isContainsBinary(input)
+      const shouldAddMultipartFormDataHeaderToFetchOptions = isContainsBinary(input)
+      const bodySrc = this._getTransformer().serialize(input)
       if (shouldAddMultipartFormDataHeaderToFetchOptions) {
         // if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
         //   throw new Error(`Method ${method} cannot have body, but tried to do it, to pass there File or Blob objects using FormData. Please change ednptoint method to soemthing more suitable on point ${this.toStringWithLocation()}`)
@@ -6687,7 +6710,37 @@ export class Point0<
       url: fetchUrl,
       init: fetchInit,
       request: fetchRequest,
+      isAction,
     }
+  }
+
+  getFetchServerOptions(
+    ...args: TActionDefinition extends AnyActionDefinition
+      ? IsActionInputOptional<TActionDefinition> extends true
+        ? [
+            input?: ActionInputRaw<TActionDefinition> | undefined,
+            fetchOptions?: FetchOptions,
+            options?: { _outputType?: FetchServerOutputType },
+          ]
+        : [
+            input: ActionInputRaw<TActionDefinition>,
+            fetchOptions?: FetchOptions,
+            options?: { _outputType?: FetchServerOutputType },
+          ]
+      : IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+        ? [
+            input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+            fetchOptions?: FetchOptions,
+            options?: { _outputType?: FetchServerOutputType },
+          ]
+        : [
+            input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+            fetchOptions?: FetchOptions,
+            options?: { _outputType?: FetchServerOutputType },
+          ]
+  ): { url: string; init: RequestInit; request: Request; isAction: boolean } {
+    const [input = {}, fetchOptions, { _outputType = 'data' } = {}] = args
+    return this._getFetchServerOptions({ input, fetchOptions, _outputType })
   }
 
   private static readonly nativeFetch = async (request: Request): Promise<Response> => await fetch(request)
@@ -6755,26 +6808,28 @@ export class Point0<
     return updatedRequest
   }
 
-  async fetchServerDetailed(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-      ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-          options?: { fetchOptions?: FetchOptions; _outputType?: FetchServerOutputType },
-        ]
-      : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-          options?: { fetchOptions?: FetchOptions; _outputType?: FetchServerOutputType },
-        ]
-  ): Promise<FetchServerDetailedOutput<TServerLoaderOutput, TError>> {
+  private async _fetchServerDetailed({
+    input,
+    fetchOptions: _fetchOptions,
+    _outputType,
+  }: {
+    input: InputRawUnknown
+    fetchOptions?: FetchOptions
+    _outputType?: FetchServerOutputType
+  }): Promise<FetchServerDetailedOutput<TServerLoaderOutput, TError>> {
     let res: Response | undefined
     const _eventData = {
-      input: args[0] || {},
+      input,
       point: this as never as AnyPoint,
       error: undefined,
       output: undefined,
     }
     try {
-      const fetchOptions = this.getFetchServerOptions(...args)
+      const fetchOptions = this._getFetchServerOptions({
+        input,
+        fetchOptions: _fetchOptions,
+        _outputType,
+      })
       const fetchFn = this.getFetchFn()
       const fetchRequest = this.modifyFetchRequestForServerIfRequired(fetchOptions)
       this._emit('pointFetchServerStart', _eventData)
@@ -6788,8 +6843,6 @@ export class Point0<
           currentEffects?.set.status(res.status)
         }
       }
-      // TODO:ASAP create eventer
-      // CookiesStore.refresh()
       if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
         const result = {
           response: res,
@@ -6806,7 +6859,7 @@ export class Point0<
         return result
       }
       const json = await res.json()
-      const data = this._getTransformer().deserialize(json) ?? json
+      const data = fetchOptions.isAction ? json : (this._getTransformer().deserialize(json) ?? json)
       if (res.ok) {
         const result = {
           response: res,
@@ -6854,22 +6907,77 @@ export class Point0<
     }
   }
 
-  async fetchServer(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-      ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-          options?: { fetchOptions?: FetchOptions; _outputType?: FetchServerOutputType },
-        ]
-      : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-          options?: { fetchOptions?: FetchOptions; _outputType?: FetchServerOutputType },
-        ]
-  ): Promise<FetchServerOutput<TServerLoaderOutput>> {
-    const detailedResult = await this.fetchServerDetailed(...args)
+  async fetchServerDetailed(
+    ...args: TActionDefinition extends AnyActionDefinition
+      ? IsActionInputOptional<TActionDefinition> extends true
+        ? [
+            input?: ActionInputRaw<TActionDefinition> | undefined,
+            fetchOptions?: FetchOptions,
+            options?: { _outputType?: FetchServerOutputType },
+          ]
+        : [
+            input: ActionInputRaw<TActionDefinition>,
+            fetchOptions?: FetchOptions,
+            options?: { _outputType?: FetchServerOutputType },
+          ]
+      : IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+        ? [
+            input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+            fetchOptions?: FetchOptions,
+            options?: { _outputType?: FetchServerOutputType },
+          ]
+        : [
+            input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+            fetchOptions?: FetchOptions,
+            options?: { _outputType?: FetchServerOutputType },
+          ]
+  ): Promise<FetchServerDetailedOutput<TServerLoaderOutput, TError>> {
+    const [input = {}, fetchOptions, options] = args
+    return this._fetchServerDetailed({ input, fetchOptions, _outputType: options?._outputType })
+  }
+
+  private async _fetchServer({
+    input,
+    fetchOptions,
+    _outputType,
+  }: {
+    input: InputRawUnknown
+    fetchOptions?: FetchOptions
+    _outputType?: FetchServerOutputType
+  }): Promise<FetchServerOutput<TServerLoaderOutput>> {
+    const detailedResult = await this._fetchServerDetailed({ input, fetchOptions, _outputType })
     if (detailedResult.error) {
       throw detailedResult.error
     }
     return detailedResult.output as FetchServerOutput<TServerLoaderOutput>
+  }
+  async fetchServer(
+    ...args: TActionDefinition extends AnyActionDefinition
+      ? IsActionInputOptional<TActionDefinition> extends true
+        ? [
+            input?: ActionInputRaw<TActionDefinition> | undefined,
+            fetchOptions?: FetchOptions,
+            options?: { _outputType?: FetchServerOutputType },
+          ]
+        : [
+            input: ActionInputRaw<TActionDefinition>,
+            fetchOptions?: FetchOptions,
+            options?: { _outputType?: FetchServerOutputType },
+          ]
+      : IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+        ? [
+            input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+            fetchOptions?: FetchOptions,
+            options?: { _outputType?: FetchServerOutputType },
+          ]
+        : [
+            input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+            fetchOptions?: FetchOptions,
+            options?: { _outputType?: FetchServerOutputType },
+          ]
+  ): Promise<FetchServerOutput<TServerLoaderOutput>> {
+    const [input = {}, fetchOptions, options] = args
+    return this._fetchServer({ input, fetchOptions, _outputType: options?._outputType })
   }
 
   _getServerQueryKey({
@@ -7026,7 +7134,8 @@ export class Point0<
     const queryFn = async ({ signal }: { signal: AbortSignal }) => {
       this._emit('pointQueryStart', _eventData)
       try {
-        const data = await this.fetchServer(input as never, {
+        const data = await this._fetchServer({
+          input,
           fetchOptions: { signal, ...fetchOptions },
           _outputType: outputType,
         })
@@ -7317,10 +7426,11 @@ export class Point0<
       try {
         this._emit('pointInfiniteQueryStart', _eventData)
         const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
-        const data = await this.fetchServer(
-          { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam } as never,
-          { fetchOptions: { signal, ...fetchOptions }, _outputType: outputType },
-        )
+        const data = await this._fetchServer({
+          input: { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam } as never,
+          fetchOptions: { signal, ...fetchOptions },
+          _outputType: outputType,
+        })
         const eventData = {
           ..._eventData,
           data: data as Data,
@@ -7788,7 +7898,7 @@ export class Point0<
         }
         const serverFetchResult = await (async () => {
           if (this._hasServerLoader()) {
-            return await this.fetchServerDetailed(input as never, options)
+            return await this._fetchServerDetailed({ input, fetchOptions: options?.fetchOptions })
           }
           return undefined
         })()

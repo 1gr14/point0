@@ -115,7 +115,9 @@ export type Infer<
   ClientInputRaw: InputRaw<TClientInputSchema>
   IsClientInputOptional: IsInputOptional<TClientInputSchema>
   ServerInputParsed: InputParsed<TServerInputSchema>
-  ServerInputRaw: InputRaw<TServerInputSchema>
+  ServerInputRaw: TActionDefinition extends AnyActionDefinition
+    ? ActionInputRaw<TActionDefinition>
+    : InputRaw<TServerInputSchema>
   IsServerInputOptional: IsInputOptional<TServerInputSchema>
   OuterProps: TOuterProps
   InnerProps: TInnerProps
@@ -621,6 +623,30 @@ export type InputsRawOrUndefined<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = UndefinedIfEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
+
+type ActionInputRawBySchemaKey<
+  TSchema extends InputSchema | UndefinedInputSchema,
+  TKey extends 'params' | 'search' | 'body',
+> = TSchema extends InputSchema
+  ? IsInputOptional<TSchema> extends true
+    ? {
+        [K in TKey]?: InputRaw<TSchema>
+      }
+    : {
+        [K in TKey]: InputRaw<TSchema>
+      }
+  : EmptyObject
+export type ActionInputRaw<TActionDefinition extends AnyActionDefinition> = Prettify<
+  ActionInputRawBySchemaKey<ActionParamsSchema<TActionDefinition>, 'params'> &
+    ActionInputRawBySchemaKey<ActionSearchSchema<TActionDefinition>, 'search'> &
+    ActionInputRawBySchemaKey<ActionBodySchema<TActionDefinition>, 'body'>
+>
+export type ActionInputRawOrUndefined<TActionDefinition extends AnyActionDefinition> = UndefinedIfEmptyObject<
+  ActionInputRaw<TActionDefinition>
+>
+export type IsActionInputOptional<TActionDefinition extends AnyActionDefinition> =
+  EmptyObject extends ActionInputRaw<TActionDefinition> ? true : false
+
 // biome-ignore lint/suspicious/noConfusingVoidType: VERY IMPORTANT TO KEEP IT
 type UndefinedOrVoidIfEmptyObject<T> = IsEmptyObjectSpecial<T> extends true ? undefined | void : T
 export type InputsRawOrUndefinedOrVoid<
@@ -2982,7 +3008,15 @@ export type NiceActionReadyPoint<
     TCookiesSchema,
     TActionDefinition
   >,
-  'point' | 'type' | 'Infer' | 'fetch'
+  | 'point'
+  | 'route'
+  | 'method'
+  | 'type'
+  | 'Infer'
+  | 'fetch'
+  | 'fetchServer'
+  | 'fetchServerDetailed'
+  | 'getFetchServerOptions'
 >
 
 export type NiceQueryReadyPoint<
