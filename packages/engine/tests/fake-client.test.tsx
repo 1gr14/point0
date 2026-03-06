@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import assert from 'node:assert'
 import { CookiesStore } from '@point0/cookies-store'
+import type { MixedPointsCollectionRecord, RawPointsCollectionRecord } from '@point0/core'
 import { env, Point0, QueryClientProvider } from '@point0/core'
 import { Router } from '@point0/wouter'
 // import '@testing-library/jest-dom'
@@ -357,6 +358,10 @@ describe('FakeClient', () => {
         }
       })
       .mutation()
+
+    const x = root as RawPointsCollectionRecord
+    const y = page as RawPointsCollectionRecord
+    const z = [page] satisfies MixedPointsCollectionRecord[]
     expect(env.side.name).toBe('server')
     const points = [root, page, mutation] as const
     const engine = await Engine.create({

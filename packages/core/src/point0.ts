@@ -967,7 +967,6 @@ export class Point0<
       UndefinedLoaderOutput,
       UndefinedMapperOutput,
       TProvidedRoute,
-      // here we prepend types, becouse we want to keep previously parsed params and searcg if it was done
       MergeRecordValidationSchemas<TServerInputSchema, RouteDefinitionToRecordValidationSchema<TProvidedRoute>>,
       MergeRecordValidationSchemas<TClientInputSchema, RouteDefinitionToRecordValidationSchema<TProvidedRoute>>,
       UndefinedQueryResultType,
@@ -976,21 +975,42 @@ export class Point0<
       TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
       THeadersSchema,
       TCookiesSchema,
-      TActionDefinition extends ActionDefinition<any, any, infer TParamsSchema, infer TSearchSchema, infer TBodySchema>
-        ? ActionDefinition<
-            TMethod,
-            TProvidedRoute,
-            MergeRecordValidationSchemas<TParamsSchema, RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute>>,
-            MergeRecordValidationSchemas<TSearchSchema, RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute>>,
-            TBodySchema
-          >
-        : ActionDefinition<
-            TMethod,
-            TProvidedRoute,
-            RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute>,
-            RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute>,
-            UndefinedInputSchema
-          >
+      IfAnyThenElse<
+        TActionDefinition,
+        AnyActionDefinition,
+        TActionDefinition extends ActionDefinition<
+          any,
+          any,
+          infer TParamsSchema,
+          infer TSearchSchema,
+          infer TBodySchema
+        >
+          ? ActionDefinition<
+              TMethod,
+              TProvidedRoute,
+              MergeRecordValidationSchemas<
+                TParamsSchema,
+                RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute>
+              >,
+              MergeRecordValidationSchemas<
+                TSearchSchema,
+                RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute>
+              >,
+              TBodySchema
+            >
+          : ActionDefinition<
+              TMethod,
+              TProvidedRoute,
+              RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute>,
+              // it is first time when we understand that here will be action, so all previously defined vai input things will be recogized from serch params
+              // actions and non actions is very different by design, so better do actions like backend dev, or just quries and mutations like fullstack dev
+              MergeRecordValidationSchemas<
+                TServerInputSchema,
+                RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute>
+              >,
+              UndefinedInputSchema
+            >
+      >
     >
   >
   lets<
@@ -1032,27 +1052,40 @@ export class Point0<
       TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
       THeadersSchema,
       TCookiesSchema,
-      TActionDefinition extends ActionDefinition<any, any, infer TParamsSchema, infer TSearchSchema, infer TBodySchema>
-        ? ActionDefinition<
-            TMethod,
-            TProvidedRoute['definition'],
-            MergeRecordValidationSchemas<
-              TParamsSchema,
-              RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>
-            >,
-            MergeRecordValidationSchemas<
-              TSearchSchema,
-              RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute['definition']>
-            >,
-            TBodySchema
-          >
-        : ActionDefinition<
-            TMethod,
-            TProvidedRoute['definition'],
-            RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>,
-            RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute['definition']>,
-            UndefinedInputSchema
-          >
+      IfAnyThenElse<
+        TActionDefinition,
+        AnyActionDefinition,
+        TActionDefinition extends ActionDefinition<
+          any,
+          any,
+          infer TParamsSchema,
+          infer TSearchSchema,
+          infer TBodySchema
+        >
+          ? ActionDefinition<
+              TMethod,
+              TProvidedRoute['definition'],
+              MergeRecordValidationSchemas<
+                TParamsSchema,
+                RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>
+              >,
+              MergeRecordValidationSchemas<
+                TSearchSchema,
+                RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute['definition']>
+              >,
+              TBodySchema
+            >
+          : ActionDefinition<
+              TMethod,
+              TProvidedRoute['definition'],
+              RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>,
+              MergeRecordValidationSchemas<
+                TServerInputSchema,
+                RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute['definition']>
+              >,
+              UndefinedInputSchema
+            >
+      >
     >
   >
   lets<
@@ -4346,7 +4379,7 @@ export class Point0<
             TSearchSchema,
             TBodySchema
           >
-        : ActionDefinition<any, any, TNextServerInputSchema, UndefinedInputSchema, UndefinedInputSchema>
+        : ActionDefinition<any, any, TNextServerInputSchema, TServerInputSchema, UndefinedInputSchema>
     >
   >
   params<
@@ -4400,7 +4433,7 @@ export class Point0<
             any,
             any,
             RecordValidationSchema<TInputRaw, TInputParsed>,
-            UndefinedInputSchema,
+            TServerInputSchema,
             UndefinedInputSchema
           >
     >
@@ -4454,7 +4487,7 @@ export class Point0<
             any,
             any,
             CustomValidationFnToRecordValidationSchema<TValidateFn>,
-            UndefinedInputSchema,
+            TServerInputSchema,
             UndefinedInputSchema
           >
     >
@@ -4510,7 +4543,13 @@ export class Point0<
             MergeRecordValidationSchemas<TSearchSchema, TNextServerInputSchema>,
             TBodySchema
           >
-        : ActionDefinition<any, any, UndefinedInputSchema, TNextServerInputSchema, UndefinedInputSchema>
+        : ActionDefinition<
+            any,
+            any,
+            UndefinedInputSchema,
+            MergeRecordValidationSchemas<TServerInputSchema, TNextServerInputSchema>,
+            UndefinedInputSchema
+          >
     >
   >
   search<
@@ -4564,7 +4603,7 @@ export class Point0<
             any,
             any,
             UndefinedInputSchema,
-            RecordValidationSchema<TInputRaw, TInputParsed>,
+            MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
             UndefinedInputSchema
           >
     >
@@ -4618,7 +4657,7 @@ export class Point0<
             any,
             any,
             UndefinedInputSchema,
-            CustomValidationFnToRecordValidationSchema<TValidateFn>,
+            MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
             UndefinedInputSchema
           >
     >
@@ -4674,7 +4713,7 @@ export class Point0<
             TSearchSchema,
             MergeRecordValidationSchemas<TBodySchema, TNextServerInputSchema>
           >
-        : ActionDefinition<any, any, UndefinedInputSchema, UndefinedInputSchema, TNextServerInputSchema>
+        : ActionDefinition<any, any, UndefinedInputSchema, TServerInputSchema, TNextServerInputSchema>
     >
   >
   body<
@@ -4728,7 +4767,7 @@ export class Point0<
             any,
             any,
             UndefinedInputSchema,
-            UndefinedInputSchema,
+            TServerInputSchema,
             RecordValidationSchema<TInputRaw, TInputParsed>
           >
     >
@@ -4782,7 +4821,7 @@ export class Point0<
             any,
             any,
             UndefinedInputSchema,
-            UndefinedInputSchema,
+            TServerInputSchema,
             CustomValidationFnToRecordValidationSchema<TValidateFn>
           >
     >
