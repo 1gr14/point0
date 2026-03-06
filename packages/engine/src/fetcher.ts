@@ -197,6 +197,61 @@ export class Fetcher<TError extends ErrorPoint0> {
     return result
   }
 
+  private readonly _getPointInputFromActionRequest = async ({
+    request,
+    location,
+    point,
+  }: {
+    request: Request0
+    location: KnownLocation
+    point: ActionPoint
+  }): Promise<InputRawUnknown> => {
+    const hasBodyValidator = point._serverExecuteActions.some((action) => action.type === 'body')
+    const body = await (async () => {
+      if (!hasBodyValidator) {
+        return {}
+      }
+      if (request.original.headers.get('Content-Type')?.includes('multipart/form-data')) {
+        const formData = await request.original.formData()
+        const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
+          acc[key] = value
+          return acc
+        }, {})
+        const unflattened = unflatten(parsed)
+        return unflattened
+      }
+      try {
+        return await request.original.json()
+      } catch {
+        return {}
+      }
+    })()
+    const search = (() => {
+      try {
+        return qs.parse(location.search, { ignoreQueryPrefix: true }) as Record<string, unknown>
+      } catch {
+        return {}
+      }
+    })()
+    return { body, search, params: location.params }
+  }
+  getPointInputFromActionRequest = async ({
+    request,
+    location,
+    point,
+  }: {
+    request: Request0
+    location: KnownLocation
+    point: ActionPoint
+  }): Promise<InputRawUnknown> => {
+    if (request.state.__POINT0_RAW_UNKNOWN_INPUT__) {
+      return request.state.__POINT0_RAW_UNKNOWN_INPUT__ as InputRawUnknown
+    }
+    const result = await this._getPointInputFromActionRequest({ request, location, point })
+    request.state.__POINT0_RAW_UNKNOWN_INPUT__ = result
+    return result
+  }
+
   private readonly _getPointInputFormSuitablePageLocation = ({
     pageLocation,
   }: {
@@ -872,18 +927,10 @@ export class Fetcher<TError extends ErrorPoint0> {
         serverStorageState,
       })
 
+      const input = await this.getPointInputFromActionRequest({ request, location, point })
       const executeResult = await executor.execute({
         point,
-        input: {
-          params: location.params,
-          search: (() => {
-            try {
-              return qs.parse(location.search, { ignoreQueryPrefix: true }) as Record<string, unknown>
-            } catch {
-              return {}
-            }
-          })(),
-        },
+        input,
         effects: executor.effects, // here we pass executor effects, becouse we want to apply status and effects to it
         ErrorClass: point._Error,
       })

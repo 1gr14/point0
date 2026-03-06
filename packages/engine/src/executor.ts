@@ -1,6 +1,5 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type {
-  ActionPoint,
   AnyPoint,
   AppComponent,
   ClassLikeError0,
@@ -29,12 +28,11 @@ import type {
   SuperStoreInternalValues,
   SuperStoreInternalValuesOrErrors,
   UndefinedData,
-  UndefinedInputSchema,
   UndefinedLoaderOutput,
   UnknownCtx,
   UnknownData,
 } from '@point0/core'
-import { _ssItems, _ssRunWithServerStorageState, unflatten } from '@point0/core'
+import { _ssItems, _ssRunWithServerStorageState } from '@point0/core'
 import { Effects } from '@point0/core/effects'
 import type { Request0 } from '@point0/core/request0'
 import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
@@ -117,22 +115,18 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     return await _ssRunWithServerStorageState(this.serverStorageState, callback)
   }
 
-  private static async parseInputSafeAsync<TInputSchema extends InputSchema | UndefinedInputSchema>(
-    inputSchema: TInputSchema,
+  // First level key is schema validator object, second level key is input reference.
+  private _parseInputSafeAsyncCache = new WeakMap<object, Map<unknown, Promise<SafeParseInputResult<any, unknown>>>>()
+
+  private static async parseInputSafeAsyncUncached<TInputSchema extends InputSchema>(
+    { schema }: { schema: TInputSchema },
     ...args: IsInputOptional<TInputSchema> extends true
       ? [input?: InputRaw<TInputSchema>]
       : [input: InputRaw<TInputSchema>]
   ): Promise<SafeParseInputResult<TInputSchema, unknown>> {
     const [input = {}] = args
-    if (!inputSchema) {
-      return {
-        success: true,
-        data: {} as InputParsed<TInputSchema>,
-        error: undefined,
-      }
-    }
     try {
-      const result = await inputSchema['~standard'].validate(input)
+      const result = await schema['~standard'].validate(input)
 
       if ('value' in result) {
         return {
@@ -163,21 +157,84 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     }
   }
 
-  private static async parsePointInputSafeAsync<TPoint extends AnyPoint>(
-    point: TPoint,
-    input: TPoint['Infer']['ServerInputRaw'],
-  ): Promise<SafeParseInputResult<TPoint['Infer']['ServerInputSchema']>> {
-    const output = {} as InputParsed<TPoint['Infer']['ServerInputSchema']>
+  private async parseInputSafeAsync<TInputSchema extends InputSchema>(
+    { schema }: { schema: TInputSchema },
+    ...args: IsInputOptional<TInputSchema> extends true
+      ? [input?: InputRaw<TInputSchema>]
+      : [input: InputRaw<TInputSchema>]
+  ): Promise<SafeParseInputResult<TInputSchema, unknown>> {
+    const [input = {}] = args
+    const schemaValidator = schema['~standard'] as object
+    let schemaCache = this._parseInputSafeAsyncCache.get(schemaValidator)
+    if (!schemaCache) {
+      schemaCache = new Map()
+      this._parseInputSafeAsyncCache.set(schemaValidator, schemaCache)
+    }
+    const cachedResult = schemaCache.get(input)
+    if (cachedResult) {
+      return cachedResult as Promise<SafeParseInputResult<TInputSchema, unknown>>
+    }
+    const parsePromise = Executor.parseInputSafeAsyncUncached({ schema }, input as InputRaw<TInputSchema>)
+    schemaCache.set(input, parsePromise)
+    return parsePromise
+  }
+
+  private async validatePointInputSafeAsync<TPoint extends AnyPoint>({
+    point,
+    input,
+    body,
+    params,
+    search,
+    headers,
+    cookies,
+  }: {
+    point: TPoint
+    input: TPoint['Infer']['ServerInputRaw']
+    body: Record<string, unknown>
+    params: Record<string, unknown>
+    search: Record<string, unknown>
+    headers: Record<string, unknown>
+    cookies: Record<string, unknown>
+  }): Promise<{ success: true; error: undefined } | { success: false; error: unknown }> {
     for (const serverExecuteAction of point._serverExecuteActions) {
       if (serverExecuteAction.type === 'input') {
-        const result = await Executor.parseInputSafeAsync(serverExecuteAction.schema, input)
+        const result = await this.parseInputSafeAsync(serverExecuteAction, point.type === 'action' ? search : input)
         if (!result.success) {
-          return result
+          return { success: false, error: result.error }
         }
-        Object.assign(output, result.data)
+      }
+      if (serverExecuteAction.type === 'params') {
+        const result = await this.parseInputSafeAsync(serverExecuteAction, params)
+        if (!result.success) {
+          return { success: false, error: result.error }
+        }
+      }
+      if (serverExecuteAction.type === 'search') {
+        const result = await this.parseInputSafeAsync(serverExecuteAction, search)
+        if (!result.success) {
+          return { success: false, error: result.error }
+        }
+      }
+      if (serverExecuteAction.type === 'body') {
+        const result = await this.parseInputSafeAsync(serverExecuteAction, body)
+        if (!result.success) {
+          return { success: false, error: result.error }
+        }
+      }
+      if (serverExecuteAction.type === 'headers') {
+        const result = await this.parseInputSafeAsync(serverExecuteAction, headers)
+        if (!result.success) {
+          return { success: false, error: result.error }
+        }
+      }
+      if (serverExecuteAction.type === 'cookies') {
+        const result = await this.parseInputSafeAsync(serverExecuteAction, cookies)
+        if (!result.success) {
+          return { success: false, error: result.error }
+        }
       }
     }
-    return { success: true, data: output, error: undefined }
+    return { success: true, error: undefined }
   }
 
   // async execute<
@@ -291,26 +348,28 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     })()
     const search = (point?.type === 'action' ? (input.search ?? {}) : {}) as Record<string, unknown>
     const params = (point?.type === 'action' ? (input.params ?? {}) : {}) as Record<string, unknown>
-    let body = (point?.type === 'action' ? input.body : {}) as undefined | Record<string, unknown>
+    const body = (point?.type === 'action' ? (input.body ?? {}) : {}) as Record<string, unknown>
     const headers = this.request.headers
     const cookies = this.request.cookies
-
     return await this.withServerGlobalState(async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
-      const { parsedInput, inputError } = await (async () => {
+      const { inputError } = await (async () => {
         if (!point) {
           // we will throw 404 later, so input unused
-          return { parsedInput: {}, inputError: undefined }
+          return { inputError: undefined }
         }
-        if (point.type === 'action') {
-          // for action we will parse input step by step, to read read body before it is needed
-          return { parsedInput: {}, inputError: undefined }
-        }
-        const result = await Executor.parsePointInputSafeAsync(point, input)
+        const result = await this.validatePointInputSafeAsync({
+          point,
+          input,
+          body,
+          params,
+          search,
+          headers,
+          cookies,
+        })
         if (!result.success) {
-          return { parsedInput: {}, inputError: result.error }
+          return { inputError: result.error }
         }
-        return { parsedInput: result.data, inputError: undefined }
+        return { inputError: undefined }
       })()
       if (inputError) {
         const status = 422
@@ -422,7 +481,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               break
             }
             case 'params': {
-              const safeParseResult = await Executor.parseInputSafeAsync(serverExecuteAction.schema, params)
+              const safeParseResult = await this.parseInputSafeAsync(serverExecuteAction, params)
               if (!safeParseResult.success) {
                 return triggerInputParseError(safeParseResult)
               }
@@ -439,7 +498,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               break
             }
             case 'search': {
-              const safeParseResult = await Executor.parseInputSafeAsync(serverExecuteAction.schema, search)
+              const safeParseResult = await this.parseInputSafeAsync(serverExecuteAction, search)
               if (!safeParseResult.success) {
                 return triggerInputParseError(safeParseResult)
               }
@@ -456,7 +515,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               break
             }
             case 'headers': {
-              const safeParseResult = await Executor.parseInputSafeAsync(serverExecuteAction.schema, headers)
+              const safeParseResult = await this.parseInputSafeAsync(serverExecuteAction, headers)
               if (!safeParseResult.success) {
                 return triggerInputParseError(safeParseResult)
               }
@@ -469,7 +528,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               break
             }
             case 'cookies': {
-              const safeParseResult = await Executor.parseInputSafeAsync(serverExecuteAction.schema, cookies)
+              const safeParseResult = await this.parseInputSafeAsync(serverExecuteAction, cookies)
               if (!safeParseResult.success) {
                 return triggerInputParseError(safeParseResult)
               }
@@ -482,44 +541,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               break
             }
             case 'body': {
-              if (!body) {
-                body = await (async () => {
-                  try {
-                    const requestBody = this.request.original
-                    if (requestBody.headers.get('Content-Type')?.includes('multipart/form-data')) {
-                      const formData = await requestBody.formData()
-                      const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
-                        acc[key] = value
-                        return acc
-                      }, {})
-                      return unflatten(parsed)
-                    }
-                    const bodyJson = await requestBody.json()
-                    if (bodyJson && typeof bodyJson === 'object' && !Array.isArray(bodyJson)) {
-                      return bodyJson as Record<string, unknown>
-                    }
-                    return undefined
-                  } catch {
-                    return undefined
-                  }
-                })()
-              }
-              if (!body) {
-                const status = 422
-                const error0 = new ErrorClass(`Body required`, { status })
-                effects.set.status(status)
-                return {
-                  ctx: layers[0].ctx,
-                  data: layers[0].data,
-                  error: error0,
-                  status,
-                  response: layers[0].response,
-                  output: layers[0].output,
-                  effects: effects.values,
-                  point,
-                }
-              }
-              const safeParseResult = await Executor.parseInputSafeAsync(serverExecuteAction.schema, body)
+              const safeParseResult = await this.parseInputSafeAsync(serverExecuteAction, body)
               if (!safeParseResult.success) {
                 return triggerInputParseError(safeParseResult)
               }
@@ -536,8 +558,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               break
             }
             case 'input': {
-              const safeParseResult = await Executor.parseInputSafeAsync(
-                serverExecuteAction.schema,
+              const safeParseResult = await this.parseInputSafeAsync(
+                serverExecuteAction,
                 point.type === 'action' ? search : input,
               )
               if (!safeParseResult.success) {
@@ -942,38 +964,11 @@ export type ExecuteOptions<
   TErrorClass extends ClassLikeError0<ErrorPoint0>,
 > = {
   point?: TPoint | undefined
-  input: TPoint extends { point: ActionPoint }
-    ? Omit<TPoint['Infer']['ServerInputRaw'], 'body'>
-    : TPoint extends ReadyPoint
-      ? TPoint['Infer']['ServerInputRaw']
-      : InputRaw
+  input: TPoint extends
+    | ReadyPoint
+    | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+    ? TPoint['Infer']['ServerInputRaw']
+    : InputRaw
   effects?: Effects
   ErrorClass: TErrorClass
 }
-
-// export type ExecuteOptions<
-//   TPoint extends
-//     | ReadyPoint
-//     | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
-//     | undefined,
-//   TErrorClass extends ClassLikeError0<ErrorPoint0>,
-// > = TPoint extends { point: ReadyPoint<infer TPointType> }
-//   ? 'action' extends TPointType
-//     ? {
-//         point: TPoint
-//         input?: TPoint['Infer']['ServerInputRaw']
-//         effects?: Effects
-//         ErrorClass: TErrorClass
-//       }
-//     : {
-//         point: TPoint
-//         input: TPoint['Infer']['ServerInputRaw']
-//         effects?: Effects
-//         ErrorClass: TErrorClass
-//       }
-//   : {
-//       point?: undefined
-//       input?: InputRaw | UndefinedInputSchema
-//       effects?: Effects
-//       ErrorClass: TErrorClass
-//     }

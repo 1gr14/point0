@@ -294,22 +294,30 @@ function bracketToFlatSeparator(key: string) {
 }
 
 export const flatten = (target: Record<string, unknown>): Record<string, unknown> => {
-  const flattened = originalFlatten(target, {
-    delimiter: FLAT_SEPARATOR,
-    safe: true,
-  })
+  try {
+    const flattened = originalFlatten(target, {
+      delimiter: FLAT_SEPARATOR,
+      safe: true,
+    })
 
-  return Object.fromEntries(
-    Object.entries(flattened as Record<string, unknown>).map(([key, value]) => [flatSeparatorToBracket(key), value]),
-  )
+    return Object.fromEntries(
+      Object.entries(flattened as Record<string, unknown>).map(([key, value]) => [flatSeparatorToBracket(key), value]),
+    )
+  } catch {
+    return {}
+  }
 }
 
 export const unflatten = (target: Record<string, unknown>): Record<string, unknown> => {
-  const normalized = Object.fromEntries(
-    Object.entries(target).map(([key, value]) => [bracketToFlatSeparator(key), value]),
-  )
+  try {
+    const normalized = Object.fromEntries(
+      Object.entries(target).map(([key, value]) => [bracketToFlatSeparator(key), value]),
+    )
 
-  return originalUnflatten(normalized as Record<string, unknown>, {
-    delimiter: FLAT_SEPARATOR,
-  })
+    return originalUnflatten(normalized as Record<string, unknown>, {
+      delimiter: FLAT_SEPARATOR,
+    })
+  } catch {
+    return target
+  }
 }

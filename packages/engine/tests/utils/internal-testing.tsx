@@ -3,9 +3,6 @@ import type {
   AnyNiceRequestableReadyPoint,
   AppComponent,
   FetchOptions,
-  FetchOptions,
-  FetchOptions,
-  FetchOptions,
   PointsDefinition,
   ReadyPoint,
 } from '@point0/core'
