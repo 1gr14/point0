@@ -2,6 +2,8 @@ import type { DehydratedState } from '@tanstack/react-query'
 import { stringify } from 'safe-stable-stringify'
 import type { DataTransformer, DataTransformerExtended, ScrollPositionGetter, ScrollPositionSetter } from './types.js'
 
+import { flatten as originalFlatten, unflatten as originalUnflatten } from 'flat'
+
 export function mergeHeaders(base?: HeadersInit, ...extras: Array<HeadersInit | undefined>): Headers {
   const merged = new Headers(base)
   for (const extra of extras) {
@@ -277,4 +279,37 @@ export type FsLocation = {
   path: string
   line: number
   column: number
+}
+
+// flat
+
+const FLAT_SEPARATOR = '__POINT0_DOT__'
+
+function flatSeparatorToBracket(key: string) {
+  return key.replace(new RegExp(`${FLAT_SEPARATOR}([^${FLAT_SEPARATOR}]+)`, 'g'), '[$1]')
+}
+
+function bracketToFlatSeparator(key: string) {
+  return key.replace(/\[([^\]]+)\]/g, `${FLAT_SEPARATOR}$1`)
+}
+
+export const flatten = (target: Record<string, unknown>): Record<string, unknown> => {
+  const flattened = originalFlatten(target, {
+    delimiter: FLAT_SEPARATOR,
+    safe: true,
+  })
+
+  return Object.fromEntries(
+    Object.entries(flattened as Record<string, unknown>).map(([key, value]) => [flatSeparatorToBracket(key), value]),
+  )
+}
+
+export const unflatten = (target: Record<string, unknown>): Record<string, unknown> => {
+  const normalized = Object.fromEntries(
+    Object.entries(target).map(([key, value]) => [bracketToFlatSeparator(key), value]),
+  )
+
+  return originalUnflatten(normalized as Record<string, unknown>, {
+    delimiter: FLAT_SEPARATOR,
+  })
 }

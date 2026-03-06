@@ -1,6 +1,7 @@
-import type { AnyRoute } from '@devp0nt/route0'
+import type { AnyRoute, KnownLocation } from '@devp0nt/route0'
 import { PointsManager } from '@point0/core'
 import type {
+  ActionPoint,
   DataTransformerExtended,
   ErrorPoint0,
   LayoutPoint,
@@ -78,6 +79,38 @@ export class ServerPoints<TError extends ErrorPoint0> {
     for (const { point } of this.manager.collection) {
       if (point.type === type && point.name === name && point.scope === scope) {
         return point
+      }
+    }
+    return undefined
+  }
+
+  findAction = ({
+    method,
+    hrefRel,
+  }: {
+    method: string
+    hrefRel: string
+  }):
+    | {
+        point: ActionPoint
+        location: KnownLocation
+      }
+    | undefined => {
+    this.throwIfNotReady()
+    for (const { point } of this.manager.collection) {
+      // TODO: optimize it later
+      if (point.type !== 'action') {
+        continue
+      }
+      if (point.method !== method) {
+        continue
+      }
+      const location = (point.route as AnyRoute).getLocation(hrefRel)
+      if (location.exact) {
+        return {
+          point: point as ActionPoint,
+          location,
+        }
       }
     }
     return undefined

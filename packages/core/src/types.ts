@@ -6,6 +6,7 @@ import type {
   Extended,
   FlatInputStringOnly,
   FlatOutput,
+  KnownLocation,
   ParamsInputStringOnly,
   ParamsOutput,
   StrictSearchInputStringOnly,
@@ -107,10 +108,18 @@ export type Infer<
   RouteDefinition: TRouteDefinition
   ServerInputSchema: TServerInputSchema
   ClientInputSchema: TClientInputSchema
-  IsInputOptional: IsInputsOptional<TServerInputSchema, TClientInputSchema>
-  IsInputEmpty: IsInputsEmpty<TServerInputSchema, TClientInputSchema>
-  InputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
-  InputRawOrUndefined: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>
+  IsInputOptional: TActionDefinition extends AnyActionDefinition
+    ? IsActionInputOptional<TActionDefinition>
+    : IsInputsOptional<TServerInputSchema, TClientInputSchema>
+  IsInputEmpty: TActionDefinition extends AnyActionDefinition
+    ? IsEmptyObject<ActionInputRaw<TActionDefinition>>
+    : IsInputsEmpty<TServerInputSchema, TClientInputSchema>
+  InputRaw: TActionDefinition extends AnyActionDefinition
+    ? ActionInputRaw<TActionDefinition>
+    : InputsRaw<TServerInputSchema, TClientInputSchema>
+  InputRawOrUndefined: TActionDefinition extends AnyActionDefinition
+    ? ActionInputRaw<TActionDefinition>
+    : InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>
   ClientInputParsed: InputParsed<TClientInputSchema>
   ClientInputRaw: InputRaw<TClientInputSchema>
   IsClientInputOptional: IsInputOptional<TClientInputSchema>
@@ -430,8 +439,89 @@ export type LayoutPoint<
   TActionDefinition
 >
 
+export type ActionPoint<
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TError extends ErrorPoint0 = any,
+  TCtx extends Ctx = any,
+  TCtxExposedKeys extends CtxExposedKeys = any,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
+  TOuterProps extends Props = any,
+  TInnerProps extends Props = any,
+  TQueriesDefinitions extends QueriesDefinitions = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
+> = AnyPoint<
+  'action',
+  UndefinedReadyPointType,
+  TRequiredCtx,
+  TError,
+  TCtx,
+  TCtxExposedKeys,
+  TServerLoaderOutput,
+  TClientLoaderOutput,
+  TMapperOutput,
+  TRouteDefinition,
+  TServerInputSchema,
+  TClientInputSchema,
+  TQueryResultType,
+  TOuterProps,
+  TInnerProps,
+  TQueriesDefinitions,
+  THeadersSchema,
+  TCookiesSchema,
+  TActionDefinition
+>
+
 export type ReadyPoint<
   TPointType extends ReadyPointType = ReadyPointType,
+  TRequiredCtx extends RequiredCtx = any,
+  TError extends ErrorPoint0 = any,
+  TCtx extends Ctx = any,
+  TCtxExposedKeys extends CtxExposedKeys = any,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
+  TOuterProps extends Props = any,
+  TInnerProps extends Props = any,
+  TQueriesDefinitions extends QueriesDefinitions = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
+  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
+> = AnyPoint<
+  TPointType,
+  UndefinedReadyPointType,
+  TRequiredCtx,
+  TError,
+  TCtx,
+  TCtxExposedKeys,
+  TServerLoaderOutput,
+  TClientLoaderOutput,
+  TMapperOutput,
+  TRouteDefinition,
+  TServerInputSchema,
+  TClientInputSchema,
+  TQueryResultType,
+  TOuterProps,
+  TInnerProps,
+  TQueriesDefinitions,
+  THeadersSchema,
+  TCookiesSchema,
+  TActionDefinition
+>
+
+export type RequestableReadyPoint<
+  TPointType extends RequestableReadyPointType = RequestableReadyPointType,
   TRequiredCtx extends RequiredCtx = any,
   TError extends ErrorPoint0 = any,
   TCtx extends Ctx = any,
@@ -595,6 +685,36 @@ export type AssertInputSchemaNotWider<
     : IsInputSchemaConflicts<TClientInputSchema, TNewInputSchema> extends true
       ? ShowError<`Last provided input schema is not assignable to current point client input schema`>
       : unknown
+type IsInputSchemaHasNotAnotherKeys<
+  TPrevInputSchema extends InputSchema | UndefinedInputSchema,
+  TNewInputSchema extends InputSchema | UndefinedInputSchema,
+> = TPrevInputSchema extends InputSchema
+  ? TNewInputSchema extends InputSchema
+    ? Exclude<KeysOfUnion<InputRaw<TPrevInputSchema>>, KeysOfUnion<InputRaw<TNewInputSchema>>> extends never
+      ? false
+      : true
+    : true
+  : false
+type IsInputSchemaHasAllKeys<
+  TNewInputSchema extends InputSchema | UndefinedInputSchema,
+  TPrevInputSchema extends InputSchema | UndefinedInputSchema,
+> = IsInputSchemaHasNotAnotherKeys<TPrevInputSchema, TNewInputSchema> extends true ? false : true
+export type AssertInputSchemaHasAllKeys<
+  TNewInputSchema extends InputSchema | UndefinedInputSchema,
+  TPrevInputSchema extends InputSchema | UndefinedInputSchema,
+  TWhat extends string,
+> =
+  IsInputSchemaHasAllKeys<TNewInputSchema, TPrevInputSchema> extends true
+    ? unknown
+    : ShowError<`Provided ${TWhat} schema should contain all previously defined keys`>
+export type AssertInputSchemaHasNotAnotherKeys<
+  TNewInputSchema extends InputSchema | UndefinedInputSchema,
+  TPrevInputSchema extends InputSchema | UndefinedInputSchema,
+  TWhat extends string,
+> =
+  IsInputSchemaHasNotAnotherKeys<TPrevInputSchema, TNewInputSchema> extends true
+    ? ShowError<`Previous provided ${TWhat} schema has another keys`>
+    : unknown
 
 export type AssertRouteDefinitionInputExtends<
   TCurrentRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
@@ -1115,7 +1235,7 @@ export type CtxFnOptions<
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = ExposedCtxOrEmpty<TCtxPrev, TCtxExposedKeys> & {
-  request: Request0<boolean, TServerInputSchema>
+  request: Request0
   point: ReadyPoint | undefined
   input: InputParsed<TServerInputSchema>
   set: ResponseEffectsSetHelper
@@ -1150,7 +1270,7 @@ export type LoaderResponseFnOptions<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
-  request: Request0<true, TServerInputSchema>
+  request: Request0
   point: ReadyPoint | undefined
   input: InputParsed<TServerInputSchema>
   data: DataOrUndefinedData<TServerLoaderOutput>
@@ -1178,7 +1298,7 @@ export type LoaderDataFnOptions<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
-  request: Request0<true, TServerInputSchema>
+  request: Request0
   point: ReadyPoint | undefined
   input: InputParsed<TServerInputSchema>
   data: DataOrUndefinedData<TServerLoaderOutput>
@@ -1427,6 +1547,12 @@ export type FetcherFetchDetailedResultTask<TError extends ErrorPoint0> = Fetcher
   responseFormat: 'json' | 'html'
   input: InputRawUnknown | undefined
 }
+export type FetcherFetchDetailedResultAction<TError extends ErrorPoint0> = FetcherFetchDetailedResultGeneral<TError> & {
+  variant: 'action'
+  point: ActionPoint
+  data: Data | undefined
+  location: KnownLocation
+}
 export type FetcherFetchDetailedResultUnknown<TError extends ErrorPoint0> =
   FetcherFetchDetailedResultGeneral<TError> & {
     variant: 'unknown'
@@ -1447,6 +1573,7 @@ export type FetcherFetchDetailedResultRedirect<TError extends ErrorPoint0> =
 export type FetcherFetchDetailedResultNoMiddleware<TError extends ErrorPoint0> =
   | FetcherFetchDetailedResultTask<TError>
   | FetcherFetchDetailedResultPage<TError>
+  | FetcherFetchDetailedResultAction<TError>
   | FetcherFetchDetailedResultUnknown<TError>
   | FetcherFetchDetailedResultPublicdir<TError>
   | FetcherFetchDetailedResultOptions<TError>
@@ -1465,15 +1592,17 @@ export type FetcherFetchDetailedResultSpecific<
       ? FetcherFetchDetailedResultPage<TError>
       : TVariant extends 'task'
         ? FetcherFetchDetailedResultTask<TError>
-        : TVariant extends 'unknown'
-          ? FetcherFetchDetailedResultUnknown<TError>
-          : TVariant extends 'publicdir'
-            ? FetcherFetchDetailedResultPublicdir<TError>
-            : TVariant extends 'options'
-              ? FetcherFetchDetailedResultOptions<TError>
-              : TVariant extends 'redirect'
-                ? FetcherFetchDetailedResultRedirect<TError>
-                : never
+        : TVariant extends 'action'
+          ? FetcherFetchDetailedResultAction<TError>
+          : TVariant extends 'unknown'
+            ? FetcherFetchDetailedResultUnknown<TError>
+            : TVariant extends 'publicdir'
+              ? FetcherFetchDetailedResultPublicdir<TError>
+              : TVariant extends 'options'
+                ? FetcherFetchDetailedResultOptions<TError>
+                : TVariant extends 'redirect'
+                  ? FetcherFetchDetailedResultRedirect<TError>
+                  : never
 
 export type MiddlewareNextFn<TError extends ErrorPoint0> = () => Promise<FetcherFetchDetailedResult<TError>>
 export type MiddlewareFnOptions<TError extends ErrorPoint0> = {
@@ -1481,7 +1610,7 @@ export type MiddlewareFnOptions<TError extends ErrorPoint0> = {
   set: ResponseEffectsSetHelper
   point: AnyNiceReadyPoint | undefined
   scope: PointsScope
-  variant: 'task' | 'page' | 'unknown' | 'publicdir' | 'options' | 'redirect'
+  variant: 'task' | 'page' | 'action' | 'unknown' | 'publicdir' | 'options' | 'redirect'
   next: MiddlewareNextFn<TError>
 }
 export type MiddlewareFnOptionsBase<TError extends ErrorPoint0> = Omit<MiddlewareFnOptions<TError>, 'next'>

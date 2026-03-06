@@ -34,6 +34,7 @@ export const ideaPage = ideaLayout
     return {
       ...data,
       zxc: 333,
+      zxccc: 333,
     }
   })
   .with(() => ({ idea: ideaLayout.useValue('idea') }))
@@ -50,7 +51,7 @@ export const ideaPage = ideaLayout
   //   return children
   // })
   .head(({ props }) => props.idea.title)
-  .page(({ props: { idea }, location }) => {
+  .page(({ props: { idea }, location, data: { zxccc } }) => {
     // const x = useNavigate()
     // useEffect(() => {
     //   setTimeout(() => {
@@ -72,7 +73,9 @@ export const ideaPage = ideaLayout
           </b>
         </p>
         <p>
-          <b>location: {JSON.stringify(location)}</b>
+          <b>
+            location: {JSON.stringify(location)} {zxccc}
+          </b>
         </p>
         <p>{idea.content}</p>
         <nav>

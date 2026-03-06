@@ -12,7 +12,6 @@ import type {
 } from '@tanstack/react-query'
 import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
-import { flatten } from 'flat'
 import * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
@@ -99,6 +98,8 @@ import type {
   AnyPoint,
   AppendCtx,
   AppendCtxExposedKeys,
+  AssertInputSchemaHasAllKeys,
+  AssertInputSchemaHasNotAnotherKeys,
   AssertInputSchemaNotWider,
   AssertNewInputSchemaNotWider,
   AssertNoArrayReturn,
@@ -221,6 +222,7 @@ import type { FsLocation } from './utils.js'
 import {
   blankDataTransformerExtended,
   dedupeSlashes,
+  flatten,
   generateId,
   getWindowScrollPositionGetterByElementGetter,
   getWindowScrollPositionGetterBySelector,
@@ -949,7 +951,12 @@ export class Point0<
       RouteDefinitionToRecordValidationSchema<TProvidedRoute>,
       TServerInputSchema,
       TClientInputSchema
-    >,
+    > &
+      AssertInputSchemaHasAllKeys<
+        RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute>,
+        ActionParamsSchema<TActionDefinition>,
+        'params'
+      >,
   >(
     ...args: TPointType extends 'root' | 'base'
       ? [letsReadyPointType: 'action', pointName: string, method: TMethod, route: TProvidedRoute]
@@ -1020,7 +1027,12 @@ export class Point0<
       RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
       TServerInputSchema,
       TClientInputSchema
-    >,
+    > &
+      AssertInputSchemaHasAllKeys<
+        RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>,
+        ActionParamsSchema<TActionDefinition>,
+        'params'
+      >,
   >(
     ...args: TPointType extends 'root' | 'base'
       ? [letsReadyPointType: 'action', pointName: string, method: TMethod, route: TProvidedRoute]
@@ -4341,7 +4353,8 @@ export class Point0<
   params<
     TNextServerInputSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'params'> &
-      AssertNewInputSchemaNotWider<TNextServerInputSchema, ActionParamsSchema<TActionDefinition>, 'params'>,
+      AssertNewInputSchemaNotWider<TNextServerInputSchema, ActionParamsSchema<TActionDefinition>, 'params'> &
+      AssertInputSchemaHasNotAnotherKeys<TNextServerInputSchema, ActionParamsSchema<TActionDefinition>, 'params'>,
   >(
     paramsSchema: TNextServerInputSchema,
   ): WithError<
@@ -4387,6 +4400,11 @@ export class Point0<
     TInputParsed extends InputParsed = TInputRaw,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'params'> &
       AssertNewInputSchemaNotWider<
+        RecordValidationSchema<TInputRaw, TInputParsed>,
+        ActionParamsSchema<TActionDefinition>,
+        'params'
+      > &
+      AssertInputSchemaHasNotAnotherKeys<
         RecordValidationSchema<TInputRaw, TInputParsed>,
         ActionParamsSchema<TActionDefinition>,
         'params'
@@ -4442,6 +4460,11 @@ export class Point0<
     TValidateFn extends CustomValidationFn<any>,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'params'> &
       AssertNewInputSchemaNotWider<
+        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        ActionParamsSchema<TActionDefinition>,
+        'params'
+      > &
+      AssertInputSchemaHasNotAnotherKeys<
         CustomValidationFnToRecordValidationSchema<TValidateFn>,
         ActionParamsSchema<TActionDefinition>,
         'params'
@@ -6707,15 +6730,26 @@ export class Point0<
       url.searchParams.set('name', this.name)
       url.searchParams.set('scope', this.scope)
       url.searchParams.set('output', _outputType)
+    } else {
+      const flattened: Record<string, unknown> = flatten((input as any)?.search ?? {})
+      for (const [key, value] of Object.entries(flattened)) {
+        url.searchParams.set(key, typeof value === 'string' ? value : JSON.stringify(value))
+      }
     }
 
     const body = (() => {
       if (isAction) {
-        return (input as any).body ?? undefined
+        if (!(input as any).body) {
+          return undefined
+        }
+        if ((input as any).body instanceof FormData) {
+          headers.set('Content-Type', 'multipart/form-data')
+          return (input as any).body
+        }
       }
       // const shouldAddMultipartFormDataHeaderToFetchOptions = this._asFormData ?? isContainsBinary(input)
       const shouldAddMultipartFormDataHeaderToFetchOptions = isContainsBinary(input)
-      const bodySrc = this._getTransformer().serialize(input)
+      const bodySrc: Record<string, unknown> = isAction ? (input as any).body : this._getTransformer().serialize(input)
       if (shouldAddMultipartFormDataHeaderToFetchOptions) {
         // if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
         //   throw new Error(`Method ${method} cannot have body, but tried to do it, to pass there File or Blob objects using FormData. Please change ednptoint method to soemthing more suitable on point ${this.toStringWithLocation()}`)
@@ -6726,7 +6760,11 @@ export class Point0<
           if (value instanceof File || value instanceof Blob) {
             formData.append(key, value)
           } else if (value !== undefined) {
-            formData.append(key, JSON.stringify(value))
+            if (isAction) {
+              formData.append(key, typeof value === 'string' ? value : JSON.stringify(value))
+            } else {
+              formData.append(key, JSON.stringify(value))
+            }
           }
         }
         headers.set('Content-Type', 'multipart/form-data')
@@ -8015,17 +8053,18 @@ export class Point0<
 
   fetch = async (
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-      ? [input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>]
-      : [input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>]
+      ? [input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
+      : [input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
   ): Promise<FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>> => {
+    const [input = {}, fetchOptions] = args
     if (!this._queryResultType) {
-      return this.fetchMutation(...args) as never
+      return (this.fetchMutation as (...args: any[]) => never)(input, undefined, { fetchOptions })
     }
     if (this._queryResultType === 'infiniteQuery') {
-      const result = await this.fetchInfiniteQuery(...args)
+      const result = await (this.fetchInfiniteQuery as (...args: any[]) => any)(input, fetchOptions)
       return result?.pages[0] as never
     }
-    return this.fetchQuery(...args) as never
+    return (this.fetchQuery as (...args: any[]) => never)(input, fetchOptions)
   }
 
   // async _callPrefetchFns({ preventPrefetchFns }: { preventPrefetchFns?: boolean | OnPrefetchFn[] }): Promise<void> {

@@ -1,5 +1,14 @@
 import { CookiesStore } from '@point0/cookies-store'
-import type { AnyNiceRequestableReadyPoint, AppComponent, PointsDefinition, ReadyPoint } from '@point0/core'
+import type {
+  AnyNiceRequestableReadyPoint,
+  AppComponent,
+  FetchOptions,
+  FetchOptions,
+  FetchOptions,
+  FetchOptions,
+  PointsDefinition,
+  ReadyPoint,
+} from '@point0/core'
 import { queryClient as point0QueryClient, QueryClientProvider, UnheadProvider } from '@point0/core'
 import { Router, RouterRoutes } from '@point0/wouter'
 import assert from 'node:assert'
@@ -241,14 +250,14 @@ type TestThingsState = {
 type FetchPoint = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['IsInputOptional'] extends true
-    ? [input?: T['Infer']['InputRawOrUndefined']]
-    : [input: T['Infer']['InputRawOrUndefined']]
+    ? [input?: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]
+    : [input: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]
 ) => ReturnType<T['fetch']>
 type FetchPointYml = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['IsInputOptional'] extends true
-    ? [input?: T['Infer']['InputRawOrUndefined']]
-    : [input: T['Infer']['InputRawOrUndefined']]
+    ? [input?: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]
+    : [input: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]
 ) => Promise<string>
 type FetchHtmlView = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
