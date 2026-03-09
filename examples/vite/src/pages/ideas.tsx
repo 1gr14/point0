@@ -6,10 +6,10 @@ import { routes } from '../lib/routes.js'
 
 export const ideasPage = generalLayout
   .lets('page', 'ideas')
-  .input(z.object({ page: z.coerce.number().default(0) }))
-  .loader(async ({ ctx, input }) => {
+  .search(z.object({ page: z.coerce.number().default(0) }))
+  .loader(async ({ ctx, search }) => {
     const ideasCount = await ctx.prisma.idea.count()
-    const page = input.page
+    const page = search.page
     const limit = 2
     const ideas = await ctx.prisma.idea.findMany({ take: limit, skip: page * limit })
     const nextCursor = ideasCount > (page + 1) * limit ? page + 1 : undefined

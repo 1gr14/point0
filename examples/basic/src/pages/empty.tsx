@@ -14,17 +14,17 @@ import { client } from '../lib/client'
 //   .infiniteQuery()
 
 export const empty = client
-  .lets('page', 'empty', 'empty&x')
-  .loader(({ input }) => {
+  .lets('page', 'empty', 'empty/:x')
+  .loader(({ params }) => {
     return {
       title: 'Empty',
-      xserver: input.x,
+      xserver: params.x,
     }
   })
-  .clientLoader(({ data, input }) => {
+  .clientLoader(({ data, params }) => {
     return {
       ...data,
-      xclient: input.x,
+      xclient: params.x,
       ideasCountX3: 27,
     }
   })

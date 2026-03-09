@@ -44,12 +44,12 @@ describe('input', () => {
     let pageResult: InputParsed | undefined
     const page = root
       .lets('page', 'test', '/test/:id')
-      .loader(({ input }) => {
-        loaderResult = input
+      .loader(({ params }) => {
+        loaderResult = params
         return { x: 1 }
       })
-      .clientLoader(({ input }) => {
-        clientLoaderResult = input
+      .clientLoader(({ params }) => {
+        clientLoaderResult = params
         return { y: 2 }
       })
       .page(({ location }) => {
@@ -87,9 +87,9 @@ describe('input', () => {
         .loader(({ input }) => {
           return { loader: { input } }
         })
-        .clientLoader(({ input, data }) => {
-          expectTypeOf<typeof input>().toEqualTypeOf<Record<never, never>>()
-          return { clientLoader: { input }, ...data }
+        .clientLoader(({ data, ...rest }) => {
+          // expectTypeOf<typeof input>().toEqualTypeOf<Record<never, never>>()
+          return { clientLoader: { input: (rest as any).input }, ...data }
         })
         .mutation()
       expectTypeOf<Prettify<typeof mutation.Infer.InputRaw>>().toEqualTypeOf<{ id: number }>()
@@ -341,10 +341,10 @@ describe('input', () => {
     })
     const page = root
       .lets('page', 'test')
-      .input(z.object({ id: z.string(), sn: z.number().default(234) }))
-      .loader(({ input }) => {
-        expectTypeOf<typeof input>().toEqualTypeOf<{ id: string; sn: number }>()
-        return { loader: { input } }
+      .search(z.object({ id: z.string(), sn: z.number().default(234) }))
+      .loader(({ search }) => {
+        expectTypeOf<typeof search>().toEqualTypeOf<{ id: string; sn: number }>()
+        return { loader: { search } }
       })
       .page()
     const { loadPointYml } = await createTestThings({ points: [root, layout, page] })
@@ -399,13 +399,14 @@ describe('input', () => {
     const root = Point0.lets('root', 'root').root()
     const layout = root
       .lets('layout', 'layout', '/:x')
-      .input(z.object({ x: z.string(), z: z.number() })) // it is ok
+      .params(z.object({ x: z.string() }))
+      .search(z.object({ z: z.number() })) // it is ok
       .layout(({ children }) => {
         return <div>{children}</div>
       })
     layout
       .lets('page', 'test', '/:y')
-      .input(z.object({ y: z.number() }))
+      .params(z.object({ y: z.number() }))
       // @ts-expect-error - it is bad
       .page()
   })

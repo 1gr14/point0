@@ -14,11 +14,11 @@ import { ErrorPoint0 } from '@point0/core'
 
 export const ideaPage = ideaLayout
   .lets('page', 'idea', '/')
-  .loader(async ({ ctx, input }) => {
+  .loader(async ({ ctx, params }) => {
     // it excutes on server, but defined in client file,
     // prisma will never come her on client, becouse of dead code optimization on build
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
-      where: { id: +input.id },
+      where: { id: +params.id },
     })
     const error = new ErrorPoint0('test error')
     throw error

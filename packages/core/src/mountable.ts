@@ -13,11 +13,13 @@ import type {
   CurrentRouteDefinition,
   Data,
   EmptyData,
+  EmptyObject,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
   FinalInputRaw,
   FinalLoaderDataOrNever,
   IfAnyThenElse,
+  InputParsed,
   InputSchema,
   IsEmptyObject,
   IsFinalInputOptional,
@@ -261,11 +263,12 @@ export type WithErrorAndLoadingComponents = {
 }
 export type MountableStateError<
   TLocation extends AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TError extends ErrorPoint0,
 > = {
-  location: TLocation
   props: TInnerProps
   // queries: QueriesUnknownStatus<TQueries>
   queries: QueriesByDefinitions<TQueriesDefinitions, TError>
@@ -273,14 +276,16 @@ export type MountableStateError<
   error: TError
   loading: false
   status: 'error'
-}
+  location: TLocation
+} & WithParamsAndSearch<TParamsSchema, TSearchSchema>
 export type MountableStateLoading<
   TLocation extends AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TError extends ErrorPoint0,
 > = {
-  location: TLocation
   props: TInnerProps
   // queries: QueriesUnknownStatus<TQueries>
   queries: QueriesByDefinitions<TQueriesDefinitions, TError>
@@ -288,39 +293,44 @@ export type MountableStateLoading<
   error: undefined
   loading: true
   status: 'loading'
-}
+  location: TLocation
+} & WithParamsAndSearch<TParamsSchema, TSearchSchema>
 export type MountableStateSuccess<
   TLocation extends AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = {
-  location: TLocation
   props: TInnerProps
   queries: SuccessQueriesDefinitions<TQueriesDefinitions>
   data: MountableSuccessData<TQueriesDefinitions, TMapperOutput>
   error: undefined
   loading: false
   status: 'success'
-}
+  location: TLocation
+} & WithParamsAndSearch<TParamsSchema, TSearchSchema>
 export type MountableState<
   TStatus extends 'loading' | 'error' | 'success',
   TLocation extends AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TError extends ErrorPoint0,
 > = IfAnyThenElse<
   TStatus,
-  | MountableStateSuccess<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
-  | MountableStateLoading<TLocation, TInnerProps, TQueriesDefinitions, TError>
-  | MountableStateError<TLocation, TInnerProps, TQueriesDefinitions, TError>,
+  | MountableStateSuccess<TLocation, TParamsSchema, TSearchSchema, TInnerProps, TQueriesDefinitions, TMapperOutput>
+  | MountableStateLoading<TLocation, TParamsSchema, TSearchSchema, TInnerProps, TQueriesDefinitions, TError>
+  | MountableStateError<TLocation, TParamsSchema, TSearchSchema, TInnerProps, TQueriesDefinitions, TError>,
   TStatus extends 'success'
-    ? MountableStateSuccess<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>
+    ? MountableStateSuccess<TLocation, TParamsSchema, TSearchSchema, TInnerProps, TQueriesDefinitions, TMapperOutput>
     : TStatus extends 'loading'
-      ? MountableStateLoading<TLocation, TInnerProps, TQueriesDefinitions, TError>
+      ? MountableStateLoading<TLocation, TParamsSchema, TSearchSchema, TInnerProps, TQueriesDefinitions, TError>
       : TStatus extends 'error'
-        ? MountableStateError<TLocation, TInnerProps, TQueriesDefinitions, TError>
+        ? MountableStateError<TLocation, TParamsSchema, TSearchSchema, TInnerProps, TQueriesDefinitions, TError>
         : never
 >
 
@@ -343,86 +353,176 @@ export type LoadingComponentProps<TDestinationComponentVariant extends Destinati
 export type LoadingComponentType<TDestinationComponentVariant extends DestinationComponentVariant> =
   React.ComponentType<LoadingComponentProps<TDestinationComponentVariant>>
 
+type WithParamsAndSearch<
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+> = IfAnyThenElse<
+  TParamsSchema | TSearchSchema,
+  {
+    params?: any
+    search?: any
+  },
+  (TParamsSchema extends InputSchema
+    ? {
+        params: InputParsed<TParamsSchema>
+      }
+    : EmptyObject) &
+    (TSearchSchema extends InputSchema
+      ? {
+          search: InputParsed<TSearchSchema>
+        }
+      : EmptyObject)
+>
+
 export type SuccessComponentProps<
   TLocation extends AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = {
-  location: TLocation
   props: TInnerProps
   queries: SuccessQueriesDefinitions<TQueriesDefinitions>
   data: MountableSuccessData<TQueriesDefinitions, TMapperOutput>
-} & WithErrorAndLoadingComponents
+  location: TLocation
+} & WithParamsAndSearch<TParamsSchema, TSearchSchema> &
+  WithErrorAndLoadingComponents
 export type SuccessComponentType<
   TLocation extends AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = React.ComponentType<SuccessComponentProps<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>>
+> = React.ComponentType<
+  SuccessComponentProps<TLocation, TParamsSchema, TSearchSchema, TInnerProps, TQueriesDefinitions, TMapperOutput>
+>
 
 export type MapperFnOptions<
   TLocation extends AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = {
-  location: TLocation
   props: TInnerProps
   queries: SuccessQueriesDefinitions<TQueriesDefinitions>
   data: MountableSuccessData<TQueriesDefinitions, TMapperOutput>
-}
+  location: TLocation
+} & WithParamsAndSearch<TParamsSchema, TSearchSchema>
 export type MapperFn<
   TLocation extends AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TNewMapperOutput extends MapperOutput,
-> = (options: MapperFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>) => TNewMapperOutput
+> = (
+  options: MapperFnOptions<TLocation, TParamsSchema, TSearchSchema, TInnerProps, TQueriesDefinitions, TMapperOutput>,
+) => TNewMapperOutput
 
 export type WrapperComponentProps<
   TLocation extends AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TError extends ErrorPoint0,
-> = MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput, TError> & {
+> = MountableState<
+  any,
+  TLocation,
+  TParamsSchema,
+  TSearchSchema,
+  TInnerProps,
+  TQueriesDefinitions,
+  TMapperOutput,
+  TError
+> & {
   children: Exclude<React.ReactNode, Promise<any>> | undefined
 } & WithErrorAndLoadingComponents
 export type WrapperComponentType<
   TLocation extends AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TError extends ErrorPoint0,
 > = (
-  options: WrapperComponentProps<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput, TError>,
+  options: WrapperComponentProps<
+    TLocation,
+    TParamsSchema,
+    TSearchSchema,
+    TInnerProps,
+    TQueriesDefinitions,
+    TMapperOutput,
+    TError
+  >,
 ) => Exclude<React.ReactNode, Promise<any>>
 
 export type WithFnOptions<
   TLocation extends AnyLocation = AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TInnerProps extends Props = Props,
   TQueriesDefinitions extends QueriesDefinitions = QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
   TError extends ErrorPoint0 = ErrorPoint0,
-> = MountableState<any, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput, TError>
+> = MountableState<
+  any,
+  TLocation,
+  TParamsSchema,
+  TSearchSchema,
+  TInnerProps,
+  TQueriesDefinitions,
+  TMapperOutput,
+  TError
+>
 export type WithFn<
   TLocation extends AnyLocation = AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TInnerProps extends Props = Props,
   TQueriesDefinitions extends QueriesDefinitions = QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+  TError extends ErrorPoint0 = ErrorPoint0,
   TNewInnerProps extends Props = TInnerProps,
 > = (
-  options: WithFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>,
+  options: WithFnOptions<
+    TLocation,
+    TParamsSchema,
+    TSearchSchema,
+    TInnerProps,
+    TQueriesDefinitions,
+    TMapperOutput,
+    TError
+  >,
 ) => Error | 'loading' | TNewInnerProps | undefined
 
 export type WithQueryFn<
   TLocation extends AnyLocation = AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TInnerProps extends Props = Props,
   TQueriesDefinitions extends QueriesDefinitions = QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+  TError extends ErrorPoint0 = ErrorPoint0,
   TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults = UseQueryOrInfiniteQueryResult | QueriesResults,
-> = (options: WithFnOptions<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput>) => TNewQueries
+> = (
+  options: WithFnOptions<
+    TLocation,
+    TParamsSchema,
+    TSearchSchema,
+    TInnerProps,
+    TQueriesDefinitions,
+    TMapperOutput,
+    TError
+  >,
+) => TNewQueries
 
 export type RelatedQueryOptions<TLocation extends AnyLocation = any, TOuterProps extends Props = any> = {
   location: TLocation
@@ -448,20 +548,42 @@ export type OnPrefetchMountableFn<TLocation extends AnyLocation | undefined = an
 export type HeadFnOptions<
   TStatus extends 'loading' | 'error' | 'success',
   TLocation extends AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TError extends ErrorPoint0,
-> = MountableState<TStatus, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput, TError>
+> = MountableState<
+  TStatus,
+  TLocation,
+  TParamsSchema,
+  TSearchSchema,
+  TInnerProps,
+  TQueriesDefinitions,
+  TMapperOutput,
+  TError
+>
 export type HeadFn<
   TStatus extends 'loading' | 'error' | 'success' = any,
   TLocation extends AnyLocation = any,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = any,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
   TError extends ErrorPoint0 = ErrorPoint0,
 > = (
-  options: HeadFnOptions<TStatus, TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput, TError>,
+  options: HeadFnOptions<
+    TStatus,
+    TLocation,
+    TParamsSchema,
+    TSearchSchema,
+    TInnerProps,
+    TQueriesDefinitions,
+    TMapperOutput,
+    TError
+  >,
 ) => ResolvableHead | string
 
 export type GlobalHeadFnOptions<
@@ -537,16 +659,36 @@ export type PageLocation<TRouteDefinition extends RouteDefinition | UndefinedRou
 >
 export type PageSuccessComponentProps<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = SuccessComponentProps<PageLocation<TRouteDefinition>, TInnerProps, TQueriesDefinitions, TMapperOutput>
+> = SuccessComponentProps<
+  PageLocation<TRouteDefinition>,
+  TParamsSchema,
+  TSearchSchema,
+  TInnerProps,
+  TQueriesDefinitions,
+  TMapperOutput
+>
 export type PageSuccessComponentType<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = React.ComponentType<PageSuccessComponentProps<TRouteDefinition, TInnerProps, TQueriesDefinitions, TMapperOutput>>
+> = React.ComponentType<
+  PageSuccessComponentProps<
+    TRouteDefinition,
+    TParamsSchema,
+    TSearchSchema,
+    TInnerProps,
+    TQueriesDefinitions,
+    TMapperOutput
+  >
+>
 export type UndefinedSuccessPageComponent = undefined
 
 export type LayoutExtraInnerProps = {
@@ -557,17 +699,37 @@ export type LayoutLocation<TRouteDefinition extends RouteDefinition | UndefinedR
   | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
 export type LayoutSuccessComponentProps<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = SuccessComponentProps<LayoutLocation<TRouteDefinition>, TInnerProps, TQueriesDefinitions, TMapperOutput> &
+> = SuccessComponentProps<
+  LayoutLocation<TRouteDefinition>,
+  TParamsSchema,
+  TSearchSchema,
+  TInnerProps,
+  TQueriesDefinitions,
+  TMapperOutput
+> &
   LayoutExtraInnerProps
 export type LayoutSuccessComponentType<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = React.ComponentType<LayoutSuccessComponentProps<TRouteDefinition, TInnerProps, TQueriesDefinitions, TMapperOutput>>
+> = React.ComponentType<
+  LayoutSuccessComponentProps<
+    TRouteDefinition,
+    TParamsSchema,
+    TSearchSchema,
+    TInnerProps,
+    TQueriesDefinitions,
+    TMapperOutput
+  >
+>
 export type UndefinedLayoutSuccessComponent = undefined
 
 export type ProviderExtraInnerProps = {
@@ -575,30 +737,58 @@ export type ProviderExtraInnerProps = {
 }
 export type ProviderLocation = AnyLocation
 export type ProviderSuccessComponentProps<
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = SuccessComponentProps<ProviderLocation, TInnerProps, TQueriesDefinitions, TMapperOutput> & ProviderExtraInnerProps
+> = SuccessComponentProps<
+  ProviderLocation,
+  TParamsSchema,
+  TSearchSchema,
+  TInnerProps,
+  TQueriesDefinitions,
+  TMapperOutput
+> &
+  ProviderExtraInnerProps
 export type ProviderSuccessComponentType<
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = React.ComponentType<ProviderSuccessComponentProps<TInnerProps, TQueriesDefinitions, TMapperOutput>>
+> = React.ComponentType<
+  ProviderSuccessComponentProps<TParamsSchema, TSearchSchema, TInnerProps, TQueriesDefinitions, TMapperOutput>
+>
 export type UndefinedProviderSuccessComponent = undefined
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type ComponentExtraInnerProps = {}
 export type ComponentLocation = AnyLocation
 export type ComponentSuccessComponentProps<
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = SuccessComponentProps<ComponentLocation, TInnerProps, TQueriesDefinitions, TMapperOutput> & ComponentExtraInnerProps
+> = SuccessComponentProps<
+  ComponentLocation,
+  TParamsSchema,
+  TSearchSchema,
+  TInnerProps,
+  TQueriesDefinitions,
+  TMapperOutput
+> &
+  ComponentExtraInnerProps
 export type ComponentSuccessComponentType<
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = React.ComponentType<ComponentSuccessComponentProps<TInnerProps, TQueriesDefinitions, TMapperOutput>>
+> = React.ComponentType<
+  ComponentSuccessComponentProps<TParamsSchema, TSearchSchema, TInnerProps, TQueriesDefinitions, TMapperOutput>
+>
 export type UndefinedComponentSuccessComponent = undefined
 
 export type MountableLocation<
@@ -616,12 +806,22 @@ export type MountableLocation<
 
 export type MountableSelfChildrenFn<
   TLocation extends AnyLocation,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TExtraInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = (
-  options: SuccessComponentProps<TLocation, TInnerProps, TQueriesDefinitions, TMapperOutput> & TExtraInnerProps,
+  options: SuccessComponentProps<
+    TLocation,
+    TParamsSchema,
+    TSearchSchema,
+    TInnerProps,
+    TQueriesDefinitions,
+    TMapperOutput
+  > &
+    TExtraInnerProps,
 ) => Exclude<React.ReactNode, Promise<any>>
 
 export type MountableSelfProps<
@@ -676,13 +876,29 @@ export type MountableSelfProps<
     ? {
         children:
           | React.ReactNode
-          | MountableSelfChildrenFn<TLocation, TInnerProps, TExtraInnerProps, TQueriesDefinitions, TMapperOutput>
+          | MountableSelfChildrenFn<
+              TLocation,
+              TParamsSchema,
+              TSearchSchema,
+              TInnerProps,
+              TExtraInnerProps,
+              TQueriesDefinitions,
+              TMapperOutput
+            >
       }
     : TWithChildren extends null
       ? {
           children?:
             | React.ReactNode
-            | MountableSelfChildrenFn<TLocation, TInnerProps, TExtraInnerProps, TQueriesDefinitions, TMapperOutput>
+            | MountableSelfChildrenFn<
+                TLocation,
+                TParamsSchema,
+                TSearchSchema,
+                TInnerProps,
+                TExtraInnerProps,
+                TQueriesDefinitions,
+                TMapperOutput
+              >
         }
       : Record<never, never>)
 export type MountableSelfType<
@@ -943,6 +1159,8 @@ export type ProviderSelfType<
 export type MountAction<
   TType extends
     | 'relatedQuery'
+    | 'params'
+    | 'search'
     | 'wrapper'
     | 'with'
     | 'mapper'
@@ -955,6 +1173,8 @@ export type MountAction<
     | 'pluginStart'
     | 'pluginEnd' =
     | 'relatedQuery'
+    | 'params'
+    | 'search'
     | 'wrapper'
     | 'with'
     | 'mapper'
@@ -977,44 +1197,48 @@ export type MountAction<
     }
   : TType extends 'selfQuery'
     ? { type: 'selfQuery'; unstableId: number; ssr: boolean }
-    : TType extends 'wrapper'
-      ? {
-          type: 'wrapper'
-          Component: WrapperComponentType<any, any, any, any, ErrorPoint0>
-          unstableId: number
-          ssr: boolean
-        }
-      : TType extends 'with'
-        ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number; ssr: boolean }
-        : TType extends 'mapper'
-          ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number; ssr: boolean }
-          : TType extends 'selfProps'
-            ? { type: 'selfProps'; unstableId: number; ssr: boolean }
-            : TType extends 'head'
-              ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number; ssr: boolean }
-              : TType extends 'globalHead'
-                ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number; ssr: boolean }
-                : TType extends 'errorComponent'
-                  ? {
-                      type: 'errorComponent'
-                      Component: ErrorComponentType<any, ErrorPoint0>
-                      variant: DestinationComponentVariant | undefined
-                      unstableId: number
-                      ssr: boolean
-                    }
-                  : TType extends 'loadingComponent'
-                    ? {
-                        type: 'loadingComponent'
-                        Component: LoadingComponentType<any>
-                        variant: DestinationComponentVariant | undefined
-                        unstableId: number
-                        ssr: boolean
-                      }
-                    : TType extends 'pluginStart'
-                      ? { type: 'pluginStart'; name: string; unstableId: number; ssr: boolean }
-                      : TType extends 'pluginEnd'
-                        ? { type: 'pluginEnd'; name: string; unstableId: number; ssr: boolean }
-                        : never
+    : TType extends 'params'
+      ? { type: 'params'; schema: InputSchema; unstableId: number }
+      : TType extends 'search'
+        ? { type: 'search'; schema: InputSchema; unstableId: number }
+        : TType extends 'wrapper'
+          ? {
+              type: 'wrapper'
+              Component: WrapperComponentType<any, any, any, any, any, any, ErrorPoint0>
+              unstableId: number
+              ssr: boolean
+            }
+          : TType extends 'with'
+            ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number; ssr: boolean }
+            : TType extends 'mapper'
+              ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any, any, any>; unstableId: number; ssr: boolean }
+              : TType extends 'selfProps'
+                ? { type: 'selfProps'; unstableId: number; ssr: boolean }
+                : TType extends 'head'
+                  ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number; ssr: boolean }
+                  : TType extends 'globalHead'
+                    ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number; ssr: boolean }
+                    : TType extends 'errorComponent'
+                      ? {
+                          type: 'errorComponent'
+                          Component: ErrorComponentType<any, ErrorPoint0>
+                          variant: DestinationComponentVariant | undefined
+                          unstableId: number
+                          ssr: boolean
+                        }
+                      : TType extends 'loadingComponent'
+                        ? {
+                            type: 'loadingComponent'
+                            Component: LoadingComponentType<any>
+                            variant: DestinationComponentVariant | undefined
+                            unstableId: number
+                            ssr: boolean
+                          }
+                        : TType extends 'pluginStart'
+                          ? { type: 'pluginStart'; name: string; unstableId: number; ssr: boolean }
+                          : TType extends 'pluginEnd'
+                            ? { type: 'pluginEnd'; name: string; unstableId: number; ssr: boolean }
+                            : never
 
 export type IsQueryShouldBeFinalized<
   TPointType extends PointType,
