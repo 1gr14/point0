@@ -74,40 +74,40 @@ export class Fetcher<TError extends ErrorPoint0> {
     return undefined
   }
 
-  getTaskFromRequest = async ({ request }: { request: Request0 }): Promise<FetchTask | undefined> => {
-    if (request.location.pathname !== '/_point0') {
-      return undefined
-    }
-    const searchParams = request.location.searchParams
-    const validPointTypes = ['page', 'layout', 'component', 'query', 'infiniteQuery', 'mutation', 'provider'] as const
-    const validOutputTypes = ['data', 'queryClientDehydratedState'] as const
-    const { type: pointType, output: outputType, scope, name: pointName } = searchParams as Record<string, unknown>
-    if (typeof scope !== 'string' || scope.length === 0) {
-      throw new Error(`Invalid scope: must be a non-empty string, got ${typeof scope}`)
-    }
-    if (!validPointTypes.includes(pointType as (typeof validPointTypes)[number])) {
-      throw new Error(`Invalid pointType: must be one of ${validPointTypes.join(', ')}, got ${typeof pointType}`)
-    }
-    if (typeof pointName !== 'string' || pointName.length === 0) {
-      throw new Error(`Invalid pointName: must be a non-empty string, got ${typeof pointName}`)
-    }
-    if (!validOutputTypes.includes(outputType as (typeof validOutputTypes)[number])) {
-      throw new Error(`Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${typeof outputType}`)
-    }
-    // const pointInput = await (async () => {
-    //   if (pointType === 'page' || pointType === 'layout') {
-    //     return await this.getPointInputFromTaskRequest({ request, scope, point: undefined }) // here point undefined, becouse it is needed only for transformer
-    //   }
-    //   return undefined
-    // })()
-    return {
-      pointType: pointType as (typeof validPointTypes)[number],
-      outputType: outputType as (typeof validOutputTypes)[number],
-      scope,
-      pointName,
-      // pointInput,
-    }
-  }
+  // getTaskFromRequest = async ({ request }: { request: Request0 }): Promise<FetchTask | undefined> => {
+  //   if (request.location.pathname !== '/_point0') {
+  //     return undefined
+  //   }
+  //   const searchParams = request.location.searchParams
+  //   const validPointTypes = ['page', 'layout', 'component', 'query', 'infiniteQuery', 'mutation', 'provider'] as const
+  //   const validOutputTypes = ['data', 'queryClientDehydratedState'] as const
+  //   const { type: pointType, output: outputType, scope, name: pointName } = searchParams as Record<string, unknown>
+  //   if (typeof scope !== 'string' || scope.length === 0) {
+  //     throw new Error(`Invalid scope: must be a non-empty string, got ${typeof scope}`)
+  //   }
+  //   if (!validPointTypes.includes(pointType as (typeof validPointTypes)[number])) {
+  //     throw new Error(`Invalid pointType: must be one of ${validPointTypes.join(', ')}, got ${typeof pointType}`)
+  //   }
+  //   if (typeof pointName !== 'string' || pointName.length === 0) {
+  //     throw new Error(`Invalid pointName: must be a non-empty string, got ${typeof pointName}`)
+  //   }
+  //   if (!validOutputTypes.includes(outputType as (typeof validOutputTypes)[number])) {
+  //     throw new Error(`Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${typeof outputType}`)
+  //   }
+  //   // const pointInput = await (async () => {
+  //   //   if (pointType === 'page' || pointType === 'layout') {
+  //   //     return await this.getPointInputFromTaskRequest({ request, scope, point: undefined }) // here point undefined, becouse it is needed only for transformer
+  //   //   }
+  //   //   return undefined
+  //   // })()
+  //   return {
+  //     pointType: pointType as (typeof validPointTypes)[number],
+  //     outputType: outputType as (typeof validOutputTypes)[number],
+  //     scope,
+  //     pointName,
+  //     // pointInput,
+  //   }
+  // }
 
   private _transformers = new Map<PointsScope, DataTransformerExtended>()
   private getTransformer = ({

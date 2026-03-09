@@ -1,8 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
-import assert from 'node:assert'
 import { CookiesStore } from '@point0/cookies-store'
 import { env, Point0, QueryClientProvider } from '@point0/core'
 import { Router } from '@point0/wouter'
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
+import assert from 'node:assert'
 // import '@testing-library/jest-dom'
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react/pure.js'
 import { Engine } from '../src/engine.js'
@@ -189,28 +189,53 @@ describe('FakeClient', () => {
       scope: 'root',
       globals: getFakeBrowserGlobals(),
       cookieGetter: CookiesStore.clientDocumentCookieGetter,
-      cookieSetter: CookiesStore.clientDocumentCookieSetter,
+      cookieSetter: (options) => {
+        if (options.httpOnly) {
+          return
+        }
+        CookiesStore.clientDocumentCookieSetter(options)
+      },
     })
     await client.run(async () => {
       cooka.set('3')
-      expect(await client.getCookies()).toEqual([])
+
+      // httpOnly = false
+      expect(await client.getCookies(undefined, false)).toEqual({
+        z: '3',
+      })
+
+      // httpOnly = true
+      expect(await client.getCookies(undefined, true)).toEqual({})
+
       const { current } = await mutation.fetch()
-      expect(current).toEqual({})
-      const cookies = await client.getCookies(undefined, false)
-      expect(cookies.length).toBe(2)
-      expect(cookies[0].key).toBe('z')
-      expect(cookies[0].value).toBe('3')
-      expect(cookies[1].key).toBe('x')
-      expect(cookies[1].value).toBe('1')
+      expect(current).toEqual({
+        z: '3',
+      })
+
+      // httpOnly = false
+      expect(await client.getCookies(undefined, false)).toEqual({
+        z: '3',
+        x: '1',
+      })
+
+      // httpOnly = true
+      expect(await client.getCookies(undefined, true)).toEqual({
+        y: '2',
+      })
 
       const { current: current2 } = await mutation.fetch()
       expect(current2).toEqual({ x: '1', y: '2', z: '3' })
-      const cookies2 = await client.getCookies(undefined, false)
-      expect(cookies2.length).toBe(2)
-      expect(cookies2[0].key).toBe('z')
-      expect(cookies2[0].value).toBe('3')
-      expect(cookies2[1].key).toBe('x')
-      expect(cookies2[1].value).toBe('1')
+
+      // httpOnly = false
+      expect(await client.getCookies(undefined, false)).toEqual({
+        z: '3',
+        x: '1',
+      })
+
+      // httpOnly = true
+      expect(await client.getCookies(undefined, true)).toEqual({
+        y: '2',
+      })
     })
     expect(env.side.name).toBe('server')
   })

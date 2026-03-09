@@ -84,6 +84,7 @@ export type PlaywrightPageLogEntry = {
 export type PlaywrightPageRequestEntry = {
   timestamp: number
   method: string
+  headers: Record<string, string>
   url: string
   resourceType: string
   result: 'finished' | 'failed'
@@ -255,11 +256,16 @@ export class PlaywrightPage {
     return this.requests.map((request) => {
       try {
         const parsed = new URL(request.url)
-        if (parsed.pathname === '/_point0') {
-          const scope = parsed.searchParams.get('scope')
-          const name = parsed.searchParams.get('name')
-          const type = parsed.searchParams.get('type')
-          const output = parsed.searchParams.get('output')
+        if (parsed.pathname.startsWith('/_point0/')) {
+          const parts = parsed.pathname.split('/')
+          const scope = parts[2]
+          const type = parts[3]
+          const name = parts[4]
+          const output = request.headers['x-point0-output-type'] ?? 'data'
+          // const scope = parsed.searchParams.get('scope')
+          // const name = parsed.searchParams.get('name')
+          // const type = parsed.searchParams.get('type')
+          // const output = parsed.searchParams.get('output')
           if (scope && name && type && output) {
             return {
               scope,
@@ -584,6 +590,7 @@ export class PlaywrightPage {
         result: 'finished',
         status: response?.status() ?? null,
         ok: response?.ok() ?? null,
+        headers: request.headers(),
         failureText: null,
       })
     })
@@ -598,6 +605,7 @@ export class PlaywrightPage {
         result: 'failed',
         status: null,
         ok: null,
+        headers: request.headers(),
         failureText: request.failure()?.errorText ?? null,
       })
     })

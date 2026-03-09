@@ -3787,8 +3787,6 @@ export class Point0<
   clientLoader<TNewClientLoaderOutput extends LoaderOutput = LoaderOutput>(
     clientLoaderFn: TLetsReadyPointType extends 'mutation'
       ? ClientLoaderResponseFn<
-          TLetsReadyPointType,
-          TRouteDefinition,
           TClientInputSchema,
           TParamsSchema,
           TSearchSchema,
@@ -3798,8 +3796,6 @@ export class Point0<
         > &
           AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>
       : ClientLoaderDataFn<
-          TLetsReadyPointType,
-          TRouteDefinition,
           TClientInputSchema,
           TParamsSchema,
           TSearchSchema,
@@ -3841,8 +3837,8 @@ export class Point0<
   >
   clientLoader(
     clientLoaderFn:
-      | ClientLoaderDataFn<any, any, any, any, any, any, any, any>
-      | ClientLoaderResponseFn<any, any, any, any, any, any, any, any>
+      | ClientLoaderDataFn<any, any, any, any, any, any>
+      | ClientLoaderResponseFn<any, any, any, any, any, any>
       | undefined,
   ) {
     clientLoaderFn ||= (o: any) => o.data
@@ -6698,10 +6694,9 @@ export class Point0<
     const location =
       this.type === 'page' || this.type === 'layout'
         ? this._getSelfLocationByAnotherLocationOrInput(providedLocation, input)
-        : (providedLocation ?? _ssItems.__POINT0_CURRENT_LOCATION__.get())
-    console.log('executeClientAsync', { type: this.type, input, location, providedLocation })
-    const params = location.params ?? {}
-    const search = location.searchParams
+        : undefined
+    const params = location?.params ?? {}
+    const search = location?.searchParams ?? {}
     // TODO: add cache for schema parsing results
     const validationResult = this.validateClientInputSafe({ input, params, search })
     if (!validationResult.success) {
@@ -6763,7 +6758,6 @@ export class Point0<
         case 'loader': {
           const promise = clientExecuteAction.fn({
             data: currentClientData ?? {},
-            location,
             response: serverResponse,
             serverData,
             ...getParsed(),
@@ -7197,17 +7191,27 @@ export class Point0<
       })
     }
     const originalRequest = currentRequest0.original
-    const updatedHeaders = new Headers(originalRequest.headers)
-    updatedHeaders.forEach((value, key) => {
-      if (key.startsWith('x-point0-')) {
-        updatedHeaders.delete(key)
+    const updatedHeaders = new Headers(fetchOptions.request.headers)
+    // const updatedHeaders = new Headers(originalRequest.headers)
+    // updatedHeaders.forEach((value, key) => {
+    //   if (key.startsWith('x-point0-')) {
+    //     updatedHeaders.delete(key)
+    //   }
+    // })
+    // fetchOptions.request.headers.forEach((value, key) => {
+    //   // if (key.startsWith('x-point0-')) {
+    //   updatedHeaders.set(key, value)
+    //   // }
+    // })
+
+    const originalRequestCookie = originalRequest.headers.get('cookie')
+    if (originalRequestCookie) {
+      if (updatedHeaders.has('cookie')) {
+        updatedHeaders.set('cookie', `${originalRequestCookie}; ${updatedHeaders.get('cookie')}`)
+      } else {
+        updatedHeaders.set('cookie', originalRequestCookie)
       }
-    })
-    fetchOptions.request.headers.forEach((value, key) => {
-      if (key.startsWith('x-point0-')) {
-        updatedHeaders.set(key, value)
-      }
-    })
+    }
 
     const currentEffects = _ssItems.__POINT0_EFFECTS__.getWeak()
     if (currentEffects) {

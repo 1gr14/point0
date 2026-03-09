@@ -1707,8 +1707,6 @@ type WithClientInputParsed<
   (TParamsSchema extends InputSchema ? { params: InputParsed<TParamsSchema> } : unknown) &
   (TSearchSchema extends InputSchema ? { search: InputParsed<TSearchSchema> } : unknown)
 export type ClientLoaderResponseFnOptions<
-  TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
@@ -1724,12 +1722,9 @@ export type ClientLoaderResponseFnOptions<
         ? TServerLoaderOutput
         : undefined
     : TClientLoaderOutput
-  location: ClientExecuteActionLocation<TLetsReadyPointType, TRouteDefinition>
   serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
 } & WithClientInputParsed<TClientInputSchema, TParamsSchema, TSearchSchema>
 export type ClientLoaderResponseFn<
-  TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType = ReadyPointType | UndefinedReadyPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -1738,8 +1733,6 @@ export type ClientLoaderResponseFn<
   TNewClientLoaderOutput extends LoaderOutput = LoaderOutput,
 > = (
   options: ClientLoaderResponseFnOptions<
-    TLetsReadyPointType,
-    TRouteDefinition,
     TClientInputSchema,
     TParamsSchema,
     TSearchSchema,
@@ -1749,8 +1742,6 @@ export type ClientLoaderResponseFn<
 ) => Promise<TNewClientLoaderOutput> | TNewClientLoaderOutput
 
 export type ClientLoaderDataFnOptions<
-  TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
@@ -1766,12 +1757,9 @@ export type ClientLoaderDataFnOptions<
         ? TServerLoaderOutput
         : undefined
     : TClientLoaderOutput
-  location: ClientExecuteActionLocation<TLetsReadyPointType, TRouteDefinition>
   serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
 } & WithClientInputParsed<TClientInputSchema, TParamsSchema, TSearchSchema>
 export type ClientLoaderDataFn<
-  TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType = ReadyPointType | UndefinedReadyPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -1780,8 +1768,6 @@ export type ClientLoaderDataFn<
   TNewClientLoaderOutput extends Data = Data,
 > = (
   options: ClientLoaderDataFnOptions<
-    TLetsReadyPointType,
-    TRouteDefinition,
     TClientInputSchema,
     TParamsSchema,
     TSearchSchema,

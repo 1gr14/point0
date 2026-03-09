@@ -2,7 +2,6 @@ import type { ClientPoints, ClientRuntime, PointsScope, RichFetchFn } from '@poi
 import { _getSsItemsWithRestErrors, _ssRunWithServerStorageState, generateId, superstore } from '@point0/core'
 import { type CookieOptionsInput, Effects } from '@point0/core/effects'
 import fetchCookie from 'fetch-cookie'
-import type { Cookie } from 'tough-cookie'
 import { CookieJar } from 'tough-cookie'
 import type { EngineClient } from './client.js'
 import type { Engine } from './engine.js'
@@ -222,12 +221,38 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
       }
       return {}
     }
-    const syncJarFromCookieGetter = async (requestUrl: string): Promise<void> => {
+    const addCookiesToRequestFromCookieGetter = (request: Request): void => {
       const cookies = getCookieMap()
-      for (const [name, value] of Object.entries(cookies)) {
-        const serializedCookie = Effects.serializeCookiePair({ name, value })
-        await jar.setCookie(serializedCookie, requestUrl)
+      const existingCookieHeader = request.headers.get('cookie')
+      const mergedCookies = new Map<string, string>()
+      if (existingCookieHeader) {
+        for (const cookiePart of existingCookieHeader.split(';')) {
+          const trimmedCookiePart = cookiePart.trim()
+          if (!trimmedCookiePart) {
+            continue
+          }
+          const separatorIndex = trimmedCookiePart.indexOf('=')
+          if (separatorIndex < 0) {
+            continue
+          }
+          const name = trimmedCookiePart.slice(0, separatorIndex).trim()
+          const value = trimmedCookiePart.slice(separatorIndex + 1).trim()
+          if (name) {
+            mergedCookies.set(name, value)
+          }
+        }
       }
+      for (const [name, value] of Object.entries(cookies)) {
+        mergedCookies.set(name, value)
+      }
+      if (mergedCookies.size === 0) {
+        request.headers.delete('cookie')
+        return
+      }
+      const serializedCookieHeader = [...mergedCookies.entries()]
+        .map(([name, value]) => Effects.serializeCookiePair({ name, value }))
+        .join('; ')
+      request.headers.set('cookie', serializedCookieHeader)
     }
     const syncResponseCookiesToCookieSetter = (response: Response): void => {
       if (!cookieSetter) {
@@ -235,6 +260,9 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
       }
       const cookies = Effects.parseCookies(response)
       for (const cookie of cookies) {
+        // if (cookie.httpOnly) {
+        //   continue
+        // }
         cookieSetter(cookie)
       }
     }
@@ -247,7 +275,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
               init,
             )
 
-      await syncJarFromCookieGetter(request.url)
+      addCookiesToRequestFromCookieGetter(request)
 
       const response = await engine.fetch(request)
       syncResponseCookiesToCookieSetter(response)
@@ -300,12 +328,71 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     return fakeClient as unknown as FakeClient<TState>
   }
 
-  async getCookies(url: string | undefined = undefined, httpOnly: boolean | undefined = undefined): Promise<Cookie[]> {
-    const cookies = await this.jar.getCookies(url ?? `http://localhost:${this.engine.server.port}/`)
-    if (httpOnly === undefined) {
-      return cookies
+  // async getCookies(url: string | undefined = undefined, httpOnly: boolean | undefined = undefined): Promise<Cookie[]> {
+  //   const cookiesFromJar = await this.jar.getCookies(url ?? `http://localhost:${this.engine.server.port}/`)
+  //   if (httpOnly === undefined) {
+  //     return cookiesFromJar
+  //   }
+  //   return cookiesFromJar.filter((cookie) => (httpOnly ? cookie.httpOnly : !cookie.httpOnly))
+  // }
+
+  async getCookies(
+    url: string | undefined = undefined,
+    httpOnly: boolean | undefined = undefined,
+  ): Promise<Record<string, string>> {
+    const cookiesFromJarArray = await this.jar.getCookies(url ?? `http://localhost:${this.engine.server.port}/`)
+    const cookiesFromGetter = this.cookieGetter?.() ?? {}
+    const cookiesGetterExists = !!this.cookieGetter
+    // we get http only cookies from jar
+    // not http only, we get form getter if it is provided
+    if (httpOnly === false) {
+      if (cookiesGetterExists) {
+        return cookiesFromGetter
+      } else {
+        return cookiesFromJarArray.reduce(
+          (acc, cookie) => {
+            if (!cookie.httpOnly) {
+              acc[cookie.key] = cookie.value
+            }
+            return acc
+          },
+          {} as Record<string, string>,
+        )
+      }
     }
-    return cookies.filter((cookie) => (httpOnly ? cookie.httpOnly : !cookie.httpOnly))
+    if (httpOnly === true) {
+      return cookiesFromJarArray.reduce(
+        (acc, cookie) => {
+          if (cookie.httpOnly) {
+            acc[cookie.key] = cookie.value
+          }
+          return acc
+        },
+        {} as Record<string, string>,
+      )
+    }
+    if (cookiesGetterExists) {
+      return {
+        ...cookiesFromGetter,
+        ...cookiesFromJarArray.reduce(
+          (acc, cookie) => {
+            if (cookie.httpOnly) {
+              acc[cookie.key] = cookie.value
+            }
+            return acc
+          },
+          {} as Record<string, string>,
+        ),
+      }
+    } else {
+      return cookiesFromJarArray.reduce(
+        (acc, cookie) => {
+          acc[cookie.key] = cookie.value
+          return acc
+        },
+        {} as Record<string, string>,
+      )
+    }
   }
 
   async destroy() {

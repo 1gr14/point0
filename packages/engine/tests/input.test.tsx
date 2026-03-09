@@ -77,7 +77,7 @@ describe('input', () => {
     `)
   })
 
-  it.concurrent.only(
+  it.concurrent(
     'available in mutation loader by input schema definition, and empty object in clientLoader',
     async () => {
       const root = Point0.lets('root', 'root').ssr(true).root()
@@ -89,7 +89,7 @@ describe('input', () => {
         })
         .clientLoader(({ data, ...rest }) => {
           // expectTypeOf<typeof input>().toEqualTypeOf<Record<never, never>>()
-          return { clientLoader: { input: (rest as any).input }, ...data }
+          return { clientLoader: { input: (rest as any).input || 'undefined' }, ...data }
         })
         .mutation()
       expectTypeOf<Prettify<typeof mutation.Infer.InputRaw>>().toEqualTypeOf<{ id: number }>()
@@ -100,8 +100,7 @@ describe('input', () => {
       expect(result).toMatchInlineSnapshot(`
       "
       clientLoader: 
-        input: 
-          {}
+        input: undefined
       loader: 
         input: 
           id: 123
@@ -352,7 +351,7 @@ describe('input', () => {
     expect(result).toMatchInlineSnapshot(`
       "
       loader: 
-        input: 
+        search: 
           id: "123"
           sn: 234
       "
