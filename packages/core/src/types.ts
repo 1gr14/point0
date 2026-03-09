@@ -658,7 +658,9 @@ type ActionInputParsedBySchemaKey<
       : {
           [K in TKey]: InputParsed<TSchema>
         }
-    : EmptyObject
+    : TKey extends 'body'
+      ? { body?: Data | FormData }
+      : EmptyObject
 >
 export type ActionInputRaw<
   TParamsSchema extends InputSchema | UndefinedInputSchema,
@@ -1363,7 +1365,7 @@ export type UsePointQueryOptions<
 
 export type FetchOptionsFn = () => FetchOptions
 export type FetchOptionsOrFn = FetchOptionsFn | FetchOptions
-export type FetchOptions = RequestInit
+export type FetchOptions = RequestInit & { transform?: boolean }
 
 export type ScrollPositionGetter = () => { x: number; y: number } | undefined
 export type ScrollPositionSetter = (position: { x: number; y: number }) => void

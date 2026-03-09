@@ -7035,76 +7035,81 @@ export class Point0<
     _outputType?: FetchServerOutputType
   }): { url: string; init: RequestInit; request: Request; isAction: boolean } {
     const baseFetchOptions = this._fetchOptions?.() || {}
-    const fetchOptions = { ...baseFetchOptions, ..._fetchOptions }
+    const { transform = true, ...fetchOptions } = { ...baseFetchOptions, ..._fetchOptions }
     const serverurl = this.getServerUrl()
     if (!serverurl) {
       throw new Error(`Server URL is not set on point ${this.toStringWithLocation()}`)
     }
-
-    const { url, method, isAction } = (() => {
-      if (this.type === 'action') {
-        if (!this._endpoint) {
-          throw new Error(`Action definition is not set on point ${this.toStringWithLocation()}`)
-        }
-        return {
-          url: new URL(this._endpoint.route.get((input as any).params ?? {}), serverurl),
-          method: this.method,
-          isAction: true,
-        }
-      }
-      return {
-        url: new URL('/_point0', serverurl),
-        method: 'POST',
-        isAction: false,
-      }
-    })()
+    if (!this._endpoint) {
+      throw new Error(`Endpoint definition is not set on point ${this.toStringWithLocation()}`)
+    }
+    const isAction = this.type === 'action'
+    const isPage = this.type === 'page'
+    const isLayout = this.type === 'layout'
+    const route = this._endpoint.route
+    const url = new URL(
+      isAction
+        ? route.get({ ...((input as any).params ?? {}), search: (input as any).search ?? {} })
+        : isPage || isLayout
+          ? route.flat(input) // pages and layouts struictlu have only params and search
+          : route.get(), // queries can not have nor params, nor search
+      serverurl,
+    )
+    const method = this._endpoint.method
 
     const fromScope = _ssItems.__POINT0_CLIENT_POINTS__.getWeak()?.manager.scope ?? _getFakeClient()?.scope
     const headers = mergeHeaders(baseFetchOptions.headers, _fetchOptions?.headers, {
       ...(isAction ? {} : { Accept: 'application/json' }),
       ...(fromScope ? { 'X-Point0-From-Scope': fromScope } : {}),
+      'X-Point0-To-Scope': this.scope,
       'X-Point0-Client-Request-Id': generateId(),
+      ...(_outputType === 'queryClientDehydratedState' ? { 'X-Point0-Output-Type': _outputType } : {}),
+      ...(transform ? { 'X-Point0-Transform': 'true' } : {}),
     })
 
-    if (!isAction) {
-      url.searchParams.set('type', this.type)
-      url.searchParams.set('name', this.name)
-      url.searchParams.set('scope', this.scope)
-      url.searchParams.set('output', _outputType)
-    } else {
-      const flattened: Record<string, unknown> = flatten((input as any)?.search ?? {})
-      for (const [key, value] of Object.entries(flattened)) {
-        url.searchParams.set(key, typeof value === 'string' ? value : JSON.stringify(value))
-      }
-    }
-
     const body = (() => {
+      if (isPage || isLayout) {
+        return undefined
+      }
       if (isAction) {
         if (!(input as any).body) {
-          return undefined
+          return (input as any).body
         }
         if ((input as any).body instanceof FormData) {
           headers.set('Content-Type', 'multipart/form-data')
           return (input as any).body
         }
+        const currentHeadersContentType = headers.get('Content-Type')
+        if (
+          currentHeadersContentType &&
+          currentHeadersContentType !== 'application/json' &&
+          currentHeadersContentType !== 'multipart/form-data'
+        ) {
+          return (input as any).body
+        }
       }
       // const shouldAddMultipartFormDataHeaderToFetchOptions = this._asFormData ?? isContainsBinary(input)
-      const shouldAddMultipartFormDataHeaderToFetchOptions = isContainsBinary(input)
-      const bodySrc: Record<string, unknown> = isAction ? (input as any).body : this._getTransformer().serialize(input)
-      if (shouldAddMultipartFormDataHeaderToFetchOptions) {
-        // if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
-        //   throw new Error(`Method ${method} cannot have body, but tried to do it, to pass there File or Blob objects using FormData. Please change ednptoint method to soemthing more suitable on point ${this.toStringWithLocation()}`)
-        // }
+      const isFormData = isContainsBinary(input)
+      const bodySrc: Record<string, unknown> = isAction ? (input as any).body : input
+      const bodyTransformed = (transform ? this._getTransformer().serialize(bodySrc) : bodySrc) as
+        | Record<string, unknown>
+        | undefined
+      if (bodyTransformed === undefined) {
+        throw new Error(
+          `Transformer returned undefined for input ${JSON.stringify(input)} on point ${this.toStringWithLocation()}`,
+        )
+      }
+      if (isFormData) {
         const formData = new FormData()
-        const flattened: Record<string, unknown> = flatten(bodySrc)
+        const flattened: Record<string, unknown> = flatten(bodyTransformed)
         for (const [key, value] of Object.entries(flattened)) {
           if (value instanceof File || value instanceof Blob) {
             formData.append(key, value)
           } else if (value !== undefined) {
-            if (isAction) {
-              formData.append(key, typeof value === 'string' ? value : JSON.stringify(value))
-            } else {
+            if (transform) {
               formData.append(key, JSON.stringify(value))
+            } else {
+              formData.append(key, typeof value === 'string' ? value : JSON.stringify(value))
             }
           }
         }
@@ -7112,7 +7117,7 @@ export class Point0<
         return formData
       } else {
         headers.set('Content-Type', 'application/json')
-        return JSON.stringify(bodySrc)
+        return JSON.stringify(bodyTransformed)
       }
     })()
 
