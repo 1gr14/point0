@@ -150,9 +150,9 @@ const createTestPointsAndHelpers = () => {
     })
   const postPage = layout
     .lets('page', 'post', '/posts/:id')
-    .loader(async ({ input }) => {
+    .loader(async ({ params }) => {
       await new Promise((resolve) => setTimeout(resolve, 100))
-      return { post: input.id }
+      return { post: params.id }
     })
     .page(({ data }) => <div id="post">post {data.post}</div>)
   return { root, routes, Link, NavLink, useNavigate, navigate, homePage, aboutPage, postsPage, postPage, layout }

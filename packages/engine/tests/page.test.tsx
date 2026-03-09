@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test'
+import type { FinalLoaderData, ReadyPoint } from '@point0/core'
 import { Point0 } from '@point0/core'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
@@ -242,7 +243,7 @@ describe('page', () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/:id')
-      .loader(({ input }) => ({ x: input.id }))
+      .loader(({ params }) => ({ x: params.id }))
       .page(({ data }) => <div id="page">x={data.x}</div>)
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
@@ -281,9 +282,16 @@ describe('page', () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
-      .input(z.object({ cursor: z.number().optional() }))
-      .loader(({ input }) => {
-        const cursor = input.cursor ?? 0
+      .search(
+        z.object({
+          cursor: z
+            .string()
+            .optional()
+            .transform((val) => (val ? +val : undefined)),
+        }),
+      )
+      .loader(({ search }) => {
+        const cursor = search.cursor ?? 0
         const nextCursor = cursor + 2
         return {
           items: items.slice(cursor, cursor + 2),
@@ -371,9 +379,16 @@ describe('page', () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
-      .clientInput(z.object({ cursor: z.number().optional() }))
-      .clientLoader(({ input }) => {
-        const cursor = input.cursor ?? 0
+      .search(
+        z.object({
+          cursor: z
+            .string()
+            .optional()
+            .transform((val) => (val ? +val : undefined)),
+        }),
+      )
+      .clientLoader(({ search }) => {
+        const cursor = search.cursor ?? 0
         const nextCursor = cursor + 2
         return {
           items: items.slice(cursor, cursor + 2),
@@ -456,9 +471,16 @@ describe('page', () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
-      .sharedInput(z.object({ cursor: z.number().optional() }))
-      .loader(({ input }) => {
-        const cursor = input.cursor ?? 0
+      .search(
+        z.object({
+          cursor: z
+            .string()
+            .optional()
+            .transform((val) => (val ? +val : undefined)),
+        }),
+      )
+      .loader(({ search }) => {
+        const cursor = search.cursor ?? 0
         const nextCursor = cursor + 2
         return {
           items: items.slice(cursor, cursor + 2),
@@ -547,12 +569,19 @@ describe('page', () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
-      .input(z.object({ cursor: z.number().optional() }))
-      .loader(({ input }) => {
+      .search(
+        z.object({
+          cursor: z
+            .string()
+            .optional()
+            .transform((val) => (val ? +val : undefined)),
+        }),
+      )
+      .loader(({ search }) => {
         if (Math.random() + 1) {
           throw new Error('test error')
         }
-        const cursor = input.cursor ?? 0
+        const cursor = search.cursor ?? 0
         const nextCursor = cursor + 2
         return {
           items: items.slice(cursor, cursor + 2),
@@ -614,7 +643,7 @@ describe('page', () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/:id')
-      .loader(({ input }) => ({ x: input.id }))
+      .loader(({ params }) => ({ x: params.id }))
       .wrapper(({ children, queries, location }) => (
         <div id="wrapper">
           <div id="params">{location.params.id}</div>
@@ -667,7 +696,7 @@ describe('page', () => {
         }
         return children
       })
-      .loader(({ input }) => ({ x: input.id }))
+      .loader(({ params }) => ({ x: params.id }))
       .page(({ data }) => <div id="page">x={data.x}</div>)
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
@@ -1715,7 +1744,7 @@ describe('page', () => {
         return <div id="wrapper">{children}</div>
       })
       .with(() => ({ y: 1 }))
-      .loader(({ input }) => ({ x: input.id }))
+      .loader(({ params }) => ({ x: params.id }))
       .wrapper(({ children, queries, props }) => (
         <div id="wrapper1">
           <div id="props">y={props.y}</div>

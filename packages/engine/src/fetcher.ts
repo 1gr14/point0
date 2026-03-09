@@ -1,4 +1,4 @@
-import type { AnyLocation, CallableRoute, ExactLocation, KnownLocation } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, ExactLocation, KnownLocation } from '@devp0nt/route0'
 import type {
   ActionPoint,
   ClassLikeError0,
@@ -18,7 +18,6 @@ import type {
   RootPoint,
   SuperStoreInternalValuesOrErrors,
 } from '@point0/core'
-import qs from 'qs'
 import {
   _getSsItemsWithRestErrors,
   _point0_env,
@@ -31,6 +30,7 @@ import {
 } from '@point0/core'
 import { Effects } from '@point0/core/effects'
 import { Request0 } from '@point0/core/request0'
+import qs from 'qs'
 import type { EngineClient } from './client.js'
 import type { Engine } from './engine.js'
 import { Executor } from './executor.js'
@@ -211,16 +211,16 @@ export class Fetcher<TError extends ErrorPoint0> {
       if (!hasBodyValidator) {
         return {}
       }
-      if (request.original.headers.get('Content-Type')?.includes('multipart/form-data')) {
-        const formData = await request.original.formData()
-        const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
-          acc[key] = value
-          return acc
-        }, {})
-        const unflattened = unflatten(parsed)
-        return unflattened
-      }
       try {
+        if (request.original.headers.get('Content-Type')?.includes('multipart/form-data')) {
+          const formData = await request.original.formData()
+          const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
+            acc[key] = value
+            return acc
+          }, {})
+          const unflattened = unflatten(parsed)
+          return unflattened
+        }
         return await request.original.json()
       } catch {
         return {}
@@ -1062,7 +1062,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           )
         }
         input = await this.getPointInputFromTaskRequest({ request, scope: root.scope, point })
-        const pageLocation = (point.route as CallableRoute).getLocation((point.route as CallableRoute).flat(input))
+        const pageLocation = (point.route as AnyRoute).getLocation((point.route as AnyRoute).flatLoose(input as any))
         const result = await this.fetchPagePoint({
           client,
           point: point as PagePoint | undefined,
@@ -1104,7 +1104,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           )
         }
         input = await this.getPointInputFromTaskRequest({ request, scope: root.scope, point })
-        const pageLocation = (point.route as CallableRoute).getLocation((point.route as CallableRoute).flat(input))
+        const pageLocation = (point.route as AnyRoute).getLocation((point.route as AnyRoute).flatLoose(input as any))
         await client.prefetchAppPagePointDeep({
           executor,
           pagePoint: point as PagePoint,

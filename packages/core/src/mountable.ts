@@ -15,13 +15,12 @@ import type {
   EmptyData,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
+  FinalInputRaw,
   FinalLoaderDataOrNever,
   IfAnyThenElse,
   InputSchema,
-  InputsRaw,
   IsEmptyObject,
-  IsInputsOptional,
-  IsInputsSchemasDefined,
+  IsFinalInputOptional,
   IsNever,
   LoaderOutput,
   MapperOutput,
@@ -627,19 +626,52 @@ export type MountableSelfChildrenFn<
 
 export type MountableSelfProps<
   TLocation extends AnyLocation,
+  TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TExtraInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TWithChildren extends boolean | null,
-> = (IsInputsSchemasDefined<TServerInputSchema, TClientInputSchema> extends true
-  ? IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-    ? { input?: InputsRaw<TServerInputSchema, TClientInputSchema> } & TOuterProps
-    : { input: InputsRaw<TServerInputSchema, TClientInputSchema> } & TOuterProps
-  : TOuterProps) &
+  // > = (IsInputsSchemasDefined<TServerInputSchema, TClientInputSchema> extends true
+  //   ? IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+  //     ? { input?: InputsRaw<TServerInputSchema, TClientInputSchema> } & TOuterProps
+  //     : { input: InputsRaw<TServerInputSchema, TClientInputSchema> } & TOuterProps
+  //   : TOuterProps) &
+> = (IsFinalInputOptional<
+  TPointType,
+  TServerInputSchema,
+  TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema
+> extends true
+  ? {
+      input?: FinalInputRaw<
+        TPointType,
+        TServerInputSchema,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema
+      >
+    }
+  : {
+      input: FinalInputRaw<
+        TPointType,
+        TServerInputSchema,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema
+      >
+    }) &
+  TOuterProps &
   (TWithChildren extends true
     ? {
         children:
@@ -655,8 +687,12 @@ export type MountableSelfProps<
       : Record<never, never>)
 export type MountableSelfType<
   TLocation extends AnyLocation,
+  TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TExtraInnerProps extends Props,
@@ -666,8 +702,12 @@ export type MountableSelfType<
 > = React.ComponentType<
   MountableSelfProps<
     TLocation,
+    TPointType,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
     TOuterProps,
     TInnerProps,
     TExtraInnerProps,
@@ -688,16 +728,24 @@ export type MountableSelfType<
 //       : null
 export type LayoutSelfProps<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   LayoutLocation<TRouteDefinition>,
+  TPointType,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
   TOuterProps,
   TInnerProps,
   LayoutExtraInnerProps,
@@ -707,8 +755,12 @@ export type LayoutSelfProps<
 >
 export type LayoutSelfType<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
@@ -716,8 +768,12 @@ export type LayoutSelfType<
 > = React.ComponentType<
   LayoutSelfProps<
     TRouteDefinition,
+    TPointType,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
@@ -727,16 +783,24 @@ export type LayoutSelfType<
 
 export type PageSelfProps<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   PageLocation<TRouteDefinition>,
+  TPointType,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
   TOuterProps,
   TInnerProps,
   PageExtraInnerProps,
@@ -746,8 +810,12 @@ export type PageSelfProps<
 >
 export type PageSelfType<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
@@ -755,8 +823,12 @@ export type PageSelfType<
 > = React.ComponentType<
   PageSelfProps<
     TRouteDefinition,
+    TPointType,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
@@ -765,16 +837,24 @@ export type PageSelfType<
 >
 
 export type ComponentSelfProps<
+  TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   ComponentLocation,
+  TPointType,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
   TOuterProps,
   TInnerProps,
   ComponentExtraInnerProps,
@@ -783,16 +863,24 @@ export type ComponentSelfProps<
   false
 >
 export type ComponentSelfType<
+  TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
   ComponentSelfProps<
+    TPointType,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
@@ -801,16 +889,24 @@ export type ComponentSelfType<
 >
 
 export type ProviderSelfProps<
+  TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   ProviderLocation,
+  TPointType,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
   TOuterProps,
   TInnerProps,
   ProviderExtraInnerProps,
@@ -819,16 +915,24 @@ export type ProviderSelfProps<
   null
 >
 export type ProviderSelfType<
+  TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
   ProviderSelfProps<
+    TPointType,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,

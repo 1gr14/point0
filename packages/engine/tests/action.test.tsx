@@ -38,7 +38,7 @@ describe('action', () => {
 
       // .output(z.object({ b: z.number().min(1) }))
 
-      .loader(({ input }) => ({ x: 1 }))
+      .loader(({}) => ({ x: 1 }))
       .action()
 
     const { loadPoint } = await createTestThings({

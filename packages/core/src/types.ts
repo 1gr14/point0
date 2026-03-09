@@ -24,7 +24,7 @@ import type { ResponseEffectsSetHelper, ResponseEffectsValues } from './effects.
 import type { ErrorPoint0 } from './error.js'
 import type { EmptyProps, Props, QueriesDefinitions } from './mountable.js'
 import type { Point0 } from './point0.js'
-import type { Request0 } from './request0.js'
+import type { Request0, WideRequestMethod } from './request0.js'
 
 // basic
 
@@ -87,13 +87,15 @@ export type Infer<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = {
   PointType: TPointType
   LetsReadyPointType: TLetsReadyPointType
@@ -108,33 +110,62 @@ export type Infer<
   RouteDefinition: TRouteDefinition
   ServerInputSchema: TServerInputSchema
   ClientInputSchema: TClientInputSchema
-  IsInputOptional: TActionDefinition extends AnyActionDefinition
-    ? IsActionInputOptional<TActionDefinition>
-    : IsInputsOptional<TServerInputSchema, TClientInputSchema>
-  IsInputEmpty: TActionDefinition extends AnyActionDefinition
-    ? IsEmptyObject<ActionInputRaw<TActionDefinition>>
-    : IsInputsEmpty<TServerInputSchema, TClientInputSchema>
-  InputRaw: TActionDefinition extends AnyActionDefinition
-    ? ActionInputRaw<TActionDefinition>
-    : InputsRaw<TServerInputSchema, TClientInputSchema>
-  InputRawOrUndefined: TActionDefinition extends AnyActionDefinition
-    ? ActionInputRaw<TActionDefinition>
-    : InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>
-  ClientInputParsed: InputParsed<TClientInputSchema>
+  IsInputOptional: IsFinalInputOptional<
+    TPointType,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema
+  >
+  // IsInputEmpty: IsInputsEmpty<TServerInputSchema, TClientInputSchema>
+  InputRaw: FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>
+  InputRawOrUndefined: FinalInputRawOrUndefined<
+    TPointType,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema
+  >
   ClientInputRaw: InputRaw<TClientInputSchema>
-  IsClientInputOptional: IsInputOptional<TClientInputSchema>
-  ServerInputParsed: InputParsed<TServerInputSchema>
-  ServerInputRaw: TActionDefinition extends AnyActionDefinition
-    ? ActionInputRaw<TActionDefinition>
-    : InputRaw<TServerInputSchema>
-  IsServerInputOptional: IsInputOptional<TServerInputSchema>
+  ClientInputParsed: InputParsed<TClientInputSchema>
+  IsClientInputOptional: IsSchemaOptional<TClientInputSchema>
+  ServerInputRaw: FinalServerInputRaw<TPointType, TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema>
+  ServerInputParsed: FinalServerInputParsed<TPointType, TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema>
+  IsServerInputOptional: IsFinalServerInputOptional<
+    TPointType,
+    TServerInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema
+  >
+  ParamsSchema: TParamsSchema
+  ParamsRaw: InputRaw<TParamsSchema>
+  ParamsParsed: InputParsed<TParamsSchema>
+  SearchSchema: TSearchSchema
+  SearchRaw: InputRaw<TSearchSchema>
+  SearchParsed: InputParsed<TSearchSchema>
+  BodySchema: TBodySchema
+  BodyRaw: InputRaw<TBodySchema>
+  BodyParsed: InputParsed<TBodySchema>
+  HeadersSchema: THeadersSchema
+  HeadersRaw: InputRaw<THeadersSchema>
+  HeadersParsed: InputParsed<THeadersSchema>
+  CookiesSchema: TCookiesSchema
+  CookiesRaw: InputRaw<TCookiesSchema>
+  CookiesParsed: InputParsed<TCookiesSchema>
   OuterProps: TOuterProps
   InnerProps: TInnerProps
   QueryResultType: TQueryResultType
   Queries: TQueriesDefinitions
   UseQueryOptions: UsePointQueryOptions<
+    TPointType,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
     TQueryResultType,
     TServerLoaderOutput,
     TClientLoaderOutput,
@@ -153,9 +184,6 @@ export type Infer<
   ClientQueryData: QueriedData<TQueryResultType, TClientLoaderOutput>
   QueriedData: FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
   ServerExecuteResult: ServerExecuteResult<TCtx, TServerLoaderOutput, TError>
-  Headers: InputParsed<THeadersSchema>
-  Cookies: InputParsed<TCookiesSchema>
-  Action: TActionDefinition
 }
 
 // points types
@@ -210,13 +238,15 @@ export type AnyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = any,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = any,
+  TBodySchema extends InputSchema | UndefinedInputSchema = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
-  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = Point0<
   TPointType,
   TLetsReadyPointType,
@@ -230,13 +260,15 @@ export type AnyPoint<
   TRouteDefinition,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
+  THeadersSchema,
+  TCookiesSchema,
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions,
-  THeadersSchema,
-  TCookiesSchema,
-  TActionDefinition
+  TQueriesDefinitions
 >
 
 export type RootPoint<
@@ -250,13 +282,15 @@ export type RootPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = any,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = any,
+  TBodySchema extends InputSchema | UndefinedInputSchema = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
-  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'root',
   UndefinedReadyPointType,
@@ -270,13 +304,15 @@ export type RootPoint<
   TRouteDefinition,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
+  THeadersSchema,
+  TCookiesSchema,
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions,
-  THeadersSchema,
-  TCookiesSchema,
-  TActionDefinition
+  TQueriesDefinitions
 >
 
 export type PluginPoint<
@@ -290,13 +326,15 @@ export type PluginPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = any,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = any,
+  TBodySchema extends InputSchema | UndefinedInputSchema = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
-  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'plugin',
   UndefinedReadyPointType,
@@ -310,13 +348,15 @@ export type PluginPoint<
   TRouteDefinition,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
+  THeadersSchema,
+  TCookiesSchema,
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions,
-  THeadersSchema,
-  TCookiesSchema,
-  TActionDefinition
+  TQueriesDefinitions
 >
 
 export type BasePoint<
@@ -330,13 +370,15 @@ export type BasePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = any,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = any,
+  TBodySchema extends InputSchema | UndefinedInputSchema = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
-  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'base',
   UndefinedReadyPointType,
@@ -350,13 +392,15 @@ export type BasePoint<
   TRouteDefinition,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
+  THeadersSchema,
+  TCookiesSchema,
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions,
-  THeadersSchema,
-  TCookiesSchema,
-  TActionDefinition
+  TQueriesDefinitions
 >
 
 export type PagePoint<
@@ -370,13 +414,15 @@ export type PagePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = any,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = any,
+  TBodySchema extends InputSchema | UndefinedInputSchema = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
-  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'page',
   UndefinedReadyPointType,
@@ -390,13 +436,15 @@ export type PagePoint<
   TRouteDefinition,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
+  THeadersSchema,
+  TCookiesSchema,
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions,
-  THeadersSchema,
-  TCookiesSchema,
-  TActionDefinition
+  TQueriesDefinitions
 >
 
 export type LayoutPoint<
@@ -410,13 +458,15 @@ export type LayoutPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = any,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = any,
+  TBodySchema extends InputSchema | UndefinedInputSchema = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
-  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'layout',
   UndefinedReadyPointType,
@@ -430,13 +480,15 @@ export type LayoutPoint<
   TRouteDefinition,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
+  THeadersSchema,
+  TCookiesSchema,
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions,
-  THeadersSchema,
-  TCookiesSchema,
-  TActionDefinition
+  TQueriesDefinitions
 >
 
 export type ActionPoint<
@@ -450,13 +502,15 @@ export type ActionPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = any,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = any,
+  TBodySchema extends InputSchema | UndefinedInputSchema = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
-  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   'action',
   UndefinedReadyPointType,
@@ -470,13 +524,15 @@ export type ActionPoint<
   TRouteDefinition,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
+  THeadersSchema,
+  TCookiesSchema,
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions,
-  THeadersSchema,
-  TCookiesSchema,
-  TActionDefinition
+  TQueriesDefinitions
 >
 
 export type ReadyPoint<
@@ -491,13 +547,15 @@ export type ReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = any,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = any,
+  TBodySchema extends InputSchema | UndefinedInputSchema = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
-  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   TPointType,
   UndefinedReadyPointType,
@@ -511,13 +569,15 @@ export type ReadyPoint<
   TRouteDefinition,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
+  THeadersSchema,
+  TCookiesSchema,
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions,
-  THeadersSchema,
-  TCookiesSchema,
-  TActionDefinition
+  TQueriesDefinitions
 >
 
 export type RequestableReadyPoint<
@@ -532,13 +592,15 @@ export type RequestableReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = any,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = any,
+  TBodySchema extends InputSchema | UndefinedInputSchema = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
-  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = AnyPoint<
   TPointType,
   UndefinedReadyPointType,
@@ -552,14 +614,80 @@ export type RequestableReadyPoint<
   TRouteDefinition,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
+  THeadersSchema,
+  TCookiesSchema,
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions,
-  THeadersSchema,
-  TCookiesSchema,
-  TActionDefinition
+  TQueriesDefinitions
 >
+
+// action
+
+export type EndpointDefinition = {
+  method: WideRequestMethod
+  route: AnyRoute
+}
+
+type ActionInputRawBySchemaKey<
+  TSchema extends InputSchema | UndefinedInputSchema,
+  TKey extends 'params' | 'search' | 'body',
+> = TSchema extends InputSchema
+  ? IsSchemaOptional<TSchema> extends true
+    ? {
+        [K in TKey]?: InputRaw<TSchema>
+      }
+    : {
+        [K in TKey]: InputRaw<TSchema>
+      }
+  : EmptyObject
+type ActionInputParsedBySchemaKey<
+  TSchema extends InputSchema | UndefinedInputSchema,
+  TKey extends 'params' | 'search' | 'body',
+> = IfAnyThenElse<
+  TSchema,
+  any,
+  TSchema extends InputSchema
+    ? IsSchemaOptional<TSchema> extends true
+      ? {
+          [K in TKey]?: InputParsed<TSchema>
+        }
+      : {
+          [K in TKey]: InputParsed<TSchema>
+        }
+    : EmptyObject
+>
+export type ActionInputRaw<
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+> = PrettifyOrEmptyObject<
+  ActionInputRawBySchemaKey<TParamsSchema, 'params'> &
+    ActionInputRawBySchemaKey<TSearchSchema, 'search'> &
+    ActionInputRawBySchemaKey<TBodySchema, 'body'>
+>
+export type ActionInputParsed<
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+> = PrettifyOrEmptyObject<
+  ActionInputParsedBySchemaKey<TParamsSchema, 'params'> &
+    ActionInputParsedBySchemaKey<TSearchSchema, 'search'> &
+    ActionInputParsedBySchemaKey<TBodySchema, 'body'>
+>
+export type ActionInputRawOrUndefined<
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+> = UndefinedIfEmptyObject<ActionInputRaw<TParamsSchema, TSearchSchema, TBodySchema>>
+export type IsActionInputOptional<
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+> = EmptyObject extends ActionInputRaw<TParamsSchema, TSearchSchema, TBodySchema> ? true : false
 
 // input
 
@@ -615,19 +743,19 @@ export type MergeRecordValidationSchemas<
 // export type HasRequiredKeysInValidationSchema<S extends RecordValidationSchema | undefined> =
 //   S extends RecordValidationSchema ? (RequiredKeys<RecordValidationSchemaInput<S>> extends never ? false : true) : false
 
+export type IsObjectOptional<T> = EmptyObject extends T ? true : false
 export type HasRequiredKeysInValidationSchema<S extends RecordValidationSchema | undefined> =
   S extends RecordValidationSchema ? (EmptyObject extends RecordValidationSchemaInput<S> ? false : true) : false
-
-export type IsInputOptional<
+export type IsSchemaOptional<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = HasRequiredKeysInValidationSchema<TInputSchema> extends true ? false : true
-export type IsInputsOptional<
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> =
-  HasRequiredKeysInValidationSchema<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>> extends true
-    ? false
-    : true
+// export type IsInputsOptional<
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+// > =
+//   HasRequiredKeysInValidationSchema<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>> extends true
+//     ? false
+//     : true
 
 // type OverlapKeys<A, B> = keyof A & keyof B
 // type IsNarrowerOrEqual<New, Prev> = [New] extends [Prev] ? true : false
@@ -667,7 +795,7 @@ export type IsRouteDefinitionInputExtends<
     : false
   : true
 
-export type AssertNewInputSchemaNotWider<
+export type AssertSchemaNotWider<
   TNewInputSchema extends InputSchema | UndefinedInputSchema,
   TPrevInputSchema extends InputSchema | UndefinedInputSchema,
   TWhat extends string,
@@ -726,62 +854,136 @@ export type AssertRouteDefinitionInputExtends<
 
 export type InputSchema = RecordValidationSchema
 export type UndefinedInputSchema = undefined
+export type FinalServerInputRaw<
+  TPointType extends PointType,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = TPointType extends 'action'
+  ? ActionInputRaw<TParamsSchema, TSearchSchema, TBodySchema>
+  : TPointType extends 'page' | 'layout'
+    ? InputRaw<MergeRecordValidationSchemas<TSearchSchema, TParamsSchema>>
+    : TPointType extends 'component' | 'provider' | 'query' | 'infiniteQuery' | 'mutation'
+      ? InputRaw<TServerInputSchema>
+      : InputRaw
+export type FinalServerInputParsed<
+  TPointType extends PointType,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = TPointType extends 'action'
+  ? ActionInputParsed<TParamsSchema, TSearchSchema, TBodySchema>
+  : TPointType extends 'page' | 'layout'
+    ? InputParsed<MergeRecordValidationSchemas<TSearchSchema, TParamsSchema>>
+    : TPointType extends 'component' | 'provider' | 'query' | 'infiniteQuery' | 'mutation'
+      ? InputParsed<TServerInputSchema>
+      : InputParsed
+export type FinalInputRaw<
+  TPointType extends PointType,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = TPointType extends 'action'
+  ? ActionInputRaw<TParamsSchema, TSearchSchema, TBodySchema>
+  : TPointType extends 'page' | 'layout'
+    ? InputRaw<MergeRecordValidationSchemas<TSearchSchema, TParamsSchema>>
+    : TPointType extends 'component' | 'provider' | 'query' | 'infiniteQuery' | 'mutation'
+      ? InputRaw<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+      : InputRaw
+export type FinalInputParsed<
+  TPointType extends PointType,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = TPointType extends 'action'
+  ? ActionInputParsed<TParamsSchema, TSearchSchema, TBodySchema>
+  : TPointType extends 'page' | 'layout'
+    ? InputParsed<MergeRecordValidationSchemas<TSearchSchema, TParamsSchema>>
+    : TPointType extends 'component' | 'provider' | 'query' | 'infiniteQuery' | 'mutation'
+      ? InputParsed<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+      : InputParsed
+export type IsFinalInputOptional<
+  TPointType extends PointType,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = IsObjectOptional<
+  FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>
+>
+export type IsFinalServerInputOptional<
+  TPointType extends PointType,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = IsObjectOptional<FinalServerInputRaw<TPointType, TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema>>
 export type InputParsed<TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema> =
   TInputSchema extends RecordValidationSchema ? RecordValidationSchemaOutput<TInputSchema> : EmptyObject
-export type InputsParsed<
-  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = InputParsed<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+// export type InputsParsed<
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+// > = InputParsed<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
 export type InputRaw<TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema> =
   TInputSchema extends RecordValidationSchema ? RecordValidationSchemaInput<TInputSchema> : EmptyObject
-export type InputsRaw<
-  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = InputRaw<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+// export type InputsRaw<
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+// > = InputRaw<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
 type UndefinedIfEmptyObject<T> = IsEmptyObjectSpecial<T> extends true ? undefined : T
-export type InputsRawOrUndefined<
+// export type InputsRawOrUndefined<
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+// > = UndefinedIfEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
+export type FinalInputRawOrUndefined<
+  TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = UndefinedIfEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
-
-type ActionInputRawBySchemaKey<
-  TSchema extends InputSchema | UndefinedInputSchema,
-  TKey extends 'params' | 'search' | 'body',
-> = TSchema extends InputSchema
-  ? IsInputOptional<TSchema> extends true
-    ? {
-        [K in TKey]?: InputRaw<TSchema>
-      }
-    : {
-        [K in TKey]: InputRaw<TSchema>
-      }
-  : EmptyObject
-export type ActionInputRaw<TActionDefinition extends AnyActionDefinition> = Prettify<
-  ActionInputRawBySchemaKey<ActionParamsSchema<TActionDefinition>, 'params'> &
-    ActionInputRawBySchemaKey<ActionSearchSchema<TActionDefinition>, 'search'> &
-    ActionInputRawBySchemaKey<ActionBodySchema<TActionDefinition>, 'body'>
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = UndefinedIfEmptyObject<
+  FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>
 >
-export type ActionInputRawOrUndefined<TActionDefinition extends AnyActionDefinition> = UndefinedIfEmptyObject<
-  ActionInputRaw<TActionDefinition>
->
-export type IsActionInputOptional<TActionDefinition extends AnyActionDefinition> =
-  EmptyObject extends ActionInputRaw<TActionDefinition> ? true : false
 
-// biome-ignore lint/suspicious/noConfusingVoidType: VERY IMPORTANT TO KEEP IT
+// TO KEEP IT, DO NOT REMOVE
 type UndefinedOrVoidIfEmptyObject<T> = IsEmptyObjectSpecial<T> extends true ? undefined | void : T
-export type InputsRawOrUndefinedOrVoid<
+// export type InputsRawOrUndefinedOrVoid<
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+// > = UndefinedOrVoidIfEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
+export type FinalInputRawOrUndefinedOrVoid<
+  TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = UndefinedOrVoidIfEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
-export type IsInputsEmpty<
-  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = IsEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = UndefinedOrVoidIfEmptyObject<
+  FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>
+>
+// export type IsInputsEmpty<
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+// > = IsEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
 
 export type IsInputsSchemasDefined<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = TServerInputSchema extends InputSchema ? true : TClientInputSchema extends InputSchema ? true : false
+
+export type IsInputFlat<
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = TBodySchema extends InputSchema ? (TSearchSchema extends InputSchema ? false : true) : true
+
 // export type InputRawMaybeOptional<
 //   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 // > =
@@ -794,25 +996,51 @@ export type IsInputsSchemasDefined<
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 // > = InputRawMaybeOptional<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
 export type InputRawUnknown = Record<string, unknown>
-export type InputParseResult<
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TError extends ErrorPoint0 = ErrorPoint0,
-> =
-  | {
-      inputParsed: InputParsed<TInputSchema>
-      inputParseError: null
-    }
-  | {
-      inputParsed: null // TODO: to undefined
-      inputParseError: TError
-    }
-export type InputsParseResult<
-  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TError extends ErrorPoint0 = ErrorPoint0,
-> = InputParseResult<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>, TError>
+// export type InputParseResult<
+//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TError extends ErrorPoint0 = ErrorPoint0,
+// > =
+//   | {
+//       inputParsed: InputParsed<TInputSchema>
+//       inputParseError: null
+//     }
+//   | {
+//       inputParsed: null // TODO: to undefined
+//       inputParseError: TError
+//     }
+// export type InputsParseResult<
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TError extends ErrorPoint0 = ErrorPoint0,
+// > = InputParseResult<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>, TError>
 
 export type SafeParseInputResult<
+  TPointType extends PointType,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TError = unknown,
+> =
+  | {
+      success: true
+      data: FinalInputParsed<
+        TPointType,
+        TServerInputSchema,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema
+      >
+      error: undefined
+    }
+  | {
+      success: false
+      data: undefined
+      error: TError
+    }
+export type SimpleSafeParseInputResult<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TError = unknown,
 > =
@@ -827,49 +1055,29 @@ export type SafeParseInputResult<
       error: TError
     }
 export type SafeParseInputsResult<
+  TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TError = Error,
-> = SafeParseInputResult<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>, TError>
-
-// action
-
-export type ActionDefinition<
-  TMethod extends string,
-  TRoute extends RouteDefinition,
-  TParamsSchema extends InputSchema | UndefinedInputSchema,
-  TSearchSchema extends InputSchema | UndefinedInputSchema,
-  TBodySchema extends InputSchema | UndefinedInputSchema,
-> = {
-  method: TMethod
-  route: TRoute
-  params: TParamsSchema
-  search: TSearchSchema
-  body: TBodySchema
-}
-export type AnyActionDefinition = ActionDefinition<any, any, any, any, any>
-export type UndefinedActionDefinition = undefined
-export type ActionRuntimeDefinition = {
-  method: string
-  route: AnyRoute
-}
-
-export type ActionParamsSchema<TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition> =
-  TActionDefinition extends ActionDefinition<any, any, infer TParamsSchema, any, any>
-    ? TParamsSchema
-    : UndefinedInputSchema
-export type ActionSearchSchema<TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition> =
-  TActionDefinition extends ActionDefinition<any, any, any, infer TSearchSchema, any>
-    ? TSearchSchema
-    : UndefinedInputSchema
-export type ActionBodySchema<TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition> =
-  TActionDefinition extends ActionDefinition<any, any, any, any, infer TBodySchema> ? TBodySchema : UndefinedInputSchema
+> = SafeParseInputResult<
+  TPointType,
+  TServerInputSchema,
+  TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
+  TError
+>
 
 // utils
 
 export type Prettify<T extends object> = {
   [K in keyof T]: T[K]
 }
+export type PrettifyOrEmptyObject<T extends object> = IsEmptyObject<T> extends true ? EmptyObject : Prettify<T>
 // export type PrettifyOrUndefined<T> = T extends object ? Prettify<T> : undefined
 
 export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends UnknownCtx> = TCtx extends Ctx
@@ -1123,15 +1331,19 @@ export type UsePointQueryResult<
     ? UseClientQueryResult<TQueryResultType, TClientLoaderOutput, TError, TStatus>
     : never
 export type UsePointQueryOptions<
+  TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TError extends ErrorPoint0,
 > = TQueryResultType extends 'infiniteQuery'
   ? ExtraUseInfiniteQueryOptions<
-      InputsRaw<TServerInputSchema, TClientInputSchema>,
+      FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
       FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
       TError,
       InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -1196,6 +1408,8 @@ export type ServerExecuteFn = <
     any,
     any,
     any,
+    any,
+    any,
     any
   >,
 >(
@@ -1230,26 +1444,60 @@ export type ServerExecuteResult<
       point: ReadyPoint | undefined
     }
 
+type WithInputParsed<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
+> = (TServerInputSchema extends InputSchema ? { input: InputParsed<TServerInputSchema> } : unknown) &
+  (TParamsSchema extends InputSchema ? { params: InputParsed<TParamsSchema> } : unknown) &
+  (TSearchSchema extends InputSchema ? { search: InputParsed<TSearchSchema> } : unknown) &
+  (TBodySchema extends InputSchema ? { body: InputParsed<TBodySchema> } : unknown) &
+  (THeadersSchema extends InputSchema ? { headers: InputParsed<THeadersSchema> } : unknown) &
+  (TCookiesSchema extends InputSchema ? { cookies: InputParsed<TCookiesSchema> } : unknown)
+
 export type CtxFnOptions<
   TCtxPrev extends Ctx = Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = ExposedCtxOrEmpty<TCtxPrev, TCtxExposedKeys> & {
   request: Request0
   point: ReadyPoint | undefined
-  input: InputParsed<TServerInputSchema>
   set: ResponseEffectsSetHelper
   // execute: ServerExecuteFn
   ctx: TCtxPrev
-}
+} & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
 export type CtxFn<
   TCtxPrev extends Ctx = Ctx,
   TCtxPrevExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCtxAppend extends Ctx = Ctx,
-> = (props: CtxFnOptions<TCtxPrev, TCtxPrevExposedKeys, TServerInputSchema>) => Promise<TCtxAppend> | TCtxAppend
+> = (
+  props: CtxFnOptions<
+    TCtxPrev,
+    TCtxPrevExposedKeys,
+    TServerInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema
+  >,
+) => Promise<TCtxAppend> | TCtxAppend
 
-export type CtxFnOutput<TCtxFn extends CtxFn<any, any, any, any>> = Awaited<ReturnType<TCtxFn>>
+export type CtxFnOutput<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any>> = Awaited<ReturnType<TCtxFn>>
 export type ForbiddenCtxExposedKeys = 'request' | 'input' | 'inputRaw' | 'data' | 'set' | 'execute' | 'ctx'
 export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] extends [never]
   ? unknown
@@ -1258,9 +1506,9 @@ export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] exten
     : [Extract<TExposedKeys, ForbiddenCtxExposedKeys>] extends [never]
       ? unknown
       : ShowError<`Forbidden to expose ctx keys: ${Extract<TExposedKeys, ForbiddenCtxExposedKeys> & string}`>
-export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any>> =
-  TCtxFn extends CtxFn<any, any, any, infer TCtxAppend> ? TCtxAppend : never
-export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, any>> = Extract<
+export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any>> =
+  TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, infer TCtxAppend> ? TCtxAppend : never
+export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any>> = Extract<
   keyof InferCtxFnOutputCtxAppend<TCtxFn>,
   string
 >
@@ -1269,23 +1517,42 @@ export type LoaderResponseFnOptions<
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
   request: Request0
   point: ReadyPoint | undefined
-  input: InputParsed<TServerInputSchema>
   data: DataOrUndefinedData<TServerLoaderOutput>
   set: ResponseEffectsSetHelper
   // execute: ServerExecuteFn
   ctx: TCtx
-}
+} & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
 export type LoaderResponseFn<
   TCtx extends Ctx = Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TNewServerLoaderOutput extends LoaderOutput = LoaderOutput,
 > = (
-  options: LoaderResponseFnOptions<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema>,
+  options: LoaderResponseFnOptions<
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TServerInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema
+  >,
 ) =>
   | Promise<[number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]>
   | [number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]
@@ -1297,23 +1564,42 @@ export type LoaderDataFnOptions<
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
   request: Request0
   point: ReadyPoint | undefined
-  input: InputParsed<TServerInputSchema>
   data: DataOrUndefinedData<TServerLoaderOutput>
   set: ResponseEffectsSetHelper
   // execute: ServerExecuteFn
   ctx: TCtx
-}
+} & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
 export type LoaderDataFn<
   TCtx extends Ctx = Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TNewServerLoaderOutput extends Data = Data,
 > = (
-  options: LoaderDataFnOptions<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema>,
+  options: LoaderDataFnOptions<
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TServerInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema
+  >,
 ) =>
   | Promise<[number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]>
   | [number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]
@@ -1356,7 +1642,7 @@ export type ServerExecuteAction<
         unstableId: number
       }
     : TType extends 'input'
-      ? { type: 'input'; schema: InputSchema; unstableId: number; policy: 'append' | 'prepend' }
+      ? { type: 'input'; schema: InputSchema; unstableId: number }
       : TType extends 'body'
         ? { type: 'body'; schema: InputSchema; unstableId: number }
         : TType extends 'params'
@@ -1374,7 +1660,13 @@ export type ServerExecuteAction<
                     : never
 
 export type ClientExecuteAction<
-  TType extends 'loader' | 'input' | 'pluginStart' | 'pluginEnd' = 'loader' | 'input' | 'pluginStart' | 'pluginEnd',
+  TType extends 'loader' | 'input' | 'params' | 'search' | 'pluginStart' | 'pluginEnd' =
+    | 'loader'
+    | 'input'
+    | 'params'
+    | 'search'
+    | 'pluginStart'
+    | 'pluginEnd',
 > = TType extends 'loader'
   ? {
       type: 'loader'
@@ -1382,12 +1674,16 @@ export type ClientExecuteAction<
       unstableId: number
     }
   : TType extends 'input'
-    ? { type: 'input'; schema: InputSchema; unstableId: number; policy: 'append' | 'prepend' }
-    : TType extends 'pluginStart'
-      ? { type: 'pluginStart'; name: string; unstableId: number }
-      : TType extends 'pluginEnd'
-        ? { type: 'pluginEnd'; name: string; unstableId: number }
-        : never
+    ? { type: 'input'; schema: InputSchema; unstableId: number }
+    : TType extends 'params'
+      ? { type: 'params'; schema: InputSchema; unstableId: number }
+      : TType extends 'search'
+        ? { type: 'search'; schema: InputSchema; unstableId: number }
+        : TType extends 'pluginStart'
+          ? { type: 'pluginStart'; name: string; unstableId: number }
+          : TType extends 'pluginEnd'
+            ? { type: 'pluginEnd'; name: string; unstableId: number }
+            : never
 
 export type ClientExecuteActionLocation<
   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType = ReadyPointType | UndefinedReadyPointType,
@@ -1402,10 +1698,19 @@ export type ClientExecuteActionLocation<
       ? AnyLocation
       : AnyLocation
 
+type WithClientInputParsed<
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+> = (TClientInputSchema extends InputSchema ? { input: InputParsed<TClientInputSchema> } : unknown) &
+  (TParamsSchema extends InputSchema ? { params: InputParsed<TParamsSchema> } : unknown) &
+  (TSearchSchema extends InputSchema ? { search: InputParsed<TSearchSchema> } : unknown)
 export type ClientLoaderResponseFnOptions<
   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
 > = {
@@ -1419,13 +1724,14 @@ export type ClientLoaderResponseFnOptions<
         : undefined
     : TClientLoaderOutput
   location: ClientExecuteActionLocation<TLetsReadyPointType, TRouteDefinition>
-  input: InputParsed<TClientInputSchema>
   serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
-}
+} & WithClientInputParsed<TClientInputSchema, TParamsSchema, TSearchSchema>
 export type ClientLoaderResponseFn<
   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType = ReadyPointType | UndefinedReadyPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TNewClientLoaderOutput extends LoaderOutput = LoaderOutput,
@@ -1434,6 +1740,8 @@ export type ClientLoaderResponseFn<
     TLetsReadyPointType,
     TRouteDefinition,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
     TServerLoaderOutput,
     TClientLoaderOutput
   >,
@@ -1443,6 +1751,8 @@ export type ClientLoaderDataFnOptions<
   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
 > = {
@@ -1456,13 +1766,14 @@ export type ClientLoaderDataFnOptions<
         : undefined
     : TClientLoaderOutput
   location: ClientExecuteActionLocation<TLetsReadyPointType, TRouteDefinition>
-  input: InputParsed<TClientInputSchema>
   serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
-}
+} & WithClientInputParsed<TClientInputSchema, TParamsSchema, TSearchSchema>
 export type ClientLoaderDataFn<
   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType = ReadyPointType | UndefinedReadyPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TNewClientLoaderOutput extends Data = Data,
@@ -1471,6 +1782,8 @@ export type ClientLoaderDataFn<
     TLetsReadyPointType,
     TRouteDefinition,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
     TServerLoaderOutput,
     TClientLoaderOutput
   >,
@@ -1669,6 +1982,24 @@ export type AssertNotResponseForMountable<
     ? ShowError<`Output can not be type of "Response" for point of type "${TPointType}"`>
     : unknown
   : unknown
+type MashSchemaHint =
+  `"input" is only for query, infinitieQuery, mutation, component, provider. "params" and "search" for action, page, layout. "body" for action only`
+export type AsserNotMashInputSchemas<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+> =
+  MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema> extends InputSchema
+    ? TParamsSchema extends InputSchema
+      ? ShowError<`You can not define input schema and params schema at the same time. ${MashSchemaHint}`>
+      : TSearchSchema extends InputSchema
+        ? ShowError<`You can not define input schema and search schema at the same time. ${MashSchemaHint}`>
+        : TBodySchema extends InputSchema
+          ? ShowError<`You can not define input schema and body schema at the same time. ${MashSchemaHint}`>
+          : unknown
+    : unknown
 
 export type NiceRootStagePoint<
   TPointType extends StagePointType,
@@ -1683,13 +2014,15 @@ export type NiceRootStagePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -1704,13 +2037,15 @@ export type NiceRootStagePoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   | 'root'
   | 'errorClass'
@@ -1778,13 +2113,15 @@ export type NicePluginStagePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -1799,13 +2136,15 @@ export type NicePluginStagePoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   | 'plugin'
   | 'use'
@@ -1875,13 +2214,15 @@ export type NiceBaseStagePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -1896,13 +2237,15 @@ export type NiceBaseStagePoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   | 'base'
   | 'on'
@@ -1966,13 +2309,15 @@ export type NicePageStagePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -1987,13 +2332,15 @@ export type NicePageStagePoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   | 'page'
   | 'on'
@@ -2010,9 +2357,8 @@ export type NicePageStagePoint<
   | 'relatedQuery'
   | 'headers'
   | 'cookies'
-  | 'input'
-  | 'clientInput'
-  | 'sharedInput'
+  | 'params'
+  | 'search'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -2043,13 +2389,15 @@ export type NiceComponentStagePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2064,13 +2412,15 @@ export type NiceComponentStagePoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   | 'component'
   | 'on'
@@ -2113,13 +2463,15 @@ export type NiceActionStagePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2134,13 +2486,15 @@ export type NiceActionStagePoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   | 'action'
   | 'on'
@@ -2175,13 +2529,15 @@ export type NiceQueryStagePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2196,13 +2552,15 @@ export type NiceQueryStagePoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   | 'query'
   | 'on'
@@ -2238,13 +2596,15 @@ export type NiceInfiniteQueryStagePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2259,13 +2619,15 @@ export type NiceInfiniteQueryStagePoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   | 'infiniteQuery'
   | 'on'
@@ -2301,13 +2663,15 @@ export type NiceMutationStagePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2322,13 +2686,15 @@ export type NiceMutationStagePoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   | 'mutation'
   | 'on'
@@ -2364,13 +2730,15 @@ export type NiceLayoutStagePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2385,13 +2753,15 @@ export type NiceLayoutStagePoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   | 'layout'
   | 'on'
@@ -2412,9 +2782,8 @@ export type NiceLayoutStagePoint<
   | 'relatedQuery'
   | 'headers'
   | 'cookies'
-  | 'input'
-  | 'clientInput'
-  | 'sharedInput'
+  | 'params'
+  | 'search'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -2447,13 +2816,15 @@ export type NiceProviderStagePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2468,13 +2839,15 @@ export type NiceProviderStagePoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   | 'provider'
   | 'on'
@@ -2518,13 +2891,15 @@ export type NiceStagePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = TLetsReadyPointType extends 'root'
   ? NiceRootStagePoint<
       TPointType,
@@ -2539,13 +2914,15 @@ export type NiceStagePoint<
       TRouteDefinition,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   : TLetsReadyPointType extends 'plugin'
     ? NicePluginStagePoint<
@@ -2561,13 +2938,15 @@ export type NiceStagePoint<
         TRouteDefinition,
         TServerInputSchema,
         TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
         TQueryResultType,
         TOuterProps,
         TInnerProps,
-        TQueriesDefinitions,
-        THeadersSchema,
-        TCookiesSchema,
-        TActionDefinition
+        TQueriesDefinitions
       >
     : TLetsReadyPointType extends 'base'
       ? NiceBaseStagePoint<
@@ -2583,13 +2962,15 @@ export type NiceStagePoint<
           TRouteDefinition,
           TServerInputSchema,
           TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema,
+          THeadersSchema,
+          TCookiesSchema,
           TQueryResultType,
           TOuterProps,
           TInnerProps,
-          TQueriesDefinitions,
-          THeadersSchema,
-          TCookiesSchema,
-          TActionDefinition
+          TQueriesDefinitions
         >
       : TLetsReadyPointType extends 'page'
         ? NicePageStagePoint<
@@ -2605,13 +2986,15 @@ export type NiceStagePoint<
             TRouteDefinition,
             TServerInputSchema,
             TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema,
+            THeadersSchema,
+            TCookiesSchema,
             TQueryResultType,
             TOuterProps,
             TInnerProps,
-            TQueriesDefinitions,
-            THeadersSchema,
-            TCookiesSchema,
-            TActionDefinition
+            TQueriesDefinitions
           >
         : TLetsReadyPointType extends 'component'
           ? NiceComponentStagePoint<
@@ -2627,13 +3010,15 @@ export type NiceStagePoint<
               TRouteDefinition,
               TServerInputSchema,
               TClientInputSchema,
+              TParamsSchema,
+              TSearchSchema,
+              TBodySchema,
+              THeadersSchema,
+              TCookiesSchema,
               TQueryResultType,
               TOuterProps,
               TInnerProps,
-              TQueriesDefinitions,
-              THeadersSchema,
-              TCookiesSchema,
-              TActionDefinition
+              TQueriesDefinitions
             >
           : TLetsReadyPointType extends 'action'
             ? NiceActionStagePoint<
@@ -2649,13 +3034,15 @@ export type NiceStagePoint<
                 TRouteDefinition,
                 TServerInputSchema,
                 TClientInputSchema,
+                TParamsSchema,
+                TSearchSchema,
+                TBodySchema,
+                THeadersSchema,
+                TCookiesSchema,
                 TQueryResultType,
                 TOuterProps,
                 TInnerProps,
-                TQueriesDefinitions,
-                THeadersSchema,
-                TCookiesSchema,
-                TActionDefinition
+                TQueriesDefinitions
               >
             : TLetsReadyPointType extends 'query'
               ? NiceQueryStagePoint<
@@ -2671,13 +3058,15 @@ export type NiceStagePoint<
                   TRouteDefinition,
                   TServerInputSchema,
                   TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema,
+                  THeadersSchema,
+                  TCookiesSchema,
                   TQueryResultType,
                   TOuterProps,
                   TInnerProps,
-                  TQueriesDefinitions,
-                  THeadersSchema,
-                  TCookiesSchema,
-                  TActionDefinition
+                  TQueriesDefinitions
                 >
               : TLetsReadyPointType extends 'infiniteQuery'
                 ? NiceInfiniteQueryStagePoint<
@@ -2693,13 +3082,15 @@ export type NiceStagePoint<
                     TRouteDefinition,
                     TServerInputSchema,
                     TClientInputSchema,
+                    TParamsSchema,
+                    TSearchSchema,
+                    TBodySchema,
+                    THeadersSchema,
+                    TCookiesSchema,
                     TQueryResultType,
                     TOuterProps,
                     TInnerProps,
-                    TQueriesDefinitions,
-                    THeadersSchema,
-                    TCookiesSchema,
-                    TActionDefinition
+                    TQueriesDefinitions
                   >
                 : TLetsReadyPointType extends 'mutation'
                   ? NiceMutationStagePoint<
@@ -2715,13 +3106,15 @@ export type NiceStagePoint<
                       TRouteDefinition,
                       TServerInputSchema,
                       TClientInputSchema,
+                      TParamsSchema,
+                      TSearchSchema,
+                      TBodySchema,
+                      THeadersSchema,
+                      TCookiesSchema,
                       TQueryResultType,
                       TOuterProps,
                       TInnerProps,
-                      TQueriesDefinitions,
-                      THeadersSchema,
-                      TCookiesSchema,
-                      TActionDefinition
+                      TQueriesDefinitions
                     >
                   : TLetsReadyPointType extends 'layout'
                     ? NiceLayoutStagePoint<
@@ -2737,13 +3130,15 @@ export type NiceStagePoint<
                         TRouteDefinition,
                         TServerInputSchema,
                         TClientInputSchema,
+                        TParamsSchema,
+                        TSearchSchema,
+                        TBodySchema,
+                        THeadersSchema,
+                        TCookiesSchema,
                         TQueryResultType,
                         TOuterProps,
                         TInnerProps,
-                        TQueriesDefinitions,
-                        THeadersSchema,
-                        TCookiesSchema,
-                        TActionDefinition
+                        TQueriesDefinitions
                       >
                     : TLetsReadyPointType extends 'provider'
                       ? NiceProviderStagePoint<
@@ -2759,13 +3154,15 @@ export type NiceStagePoint<
                           TRouteDefinition,
                           TServerInputSchema,
                           TClientInputSchema,
+                          TParamsSchema,
+                          TSearchSchema,
+                          TBodySchema,
+                          THeadersSchema,
+                          TCookiesSchema,
                           TQueryResultType,
                           TOuterProps,
                           TInnerProps,
-                          TQueriesDefinitions,
-                          THeadersSchema,
-                          TCookiesSchema,
-                          TActionDefinition
+                          TQueriesDefinitions
                         >
                       : never
 
@@ -2784,13 +3181,15 @@ export type NiceRootReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2805,13 +3204,15 @@ export type NiceRootReadyPoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   'lets' | 'point' | 'type' | 'Infer'
 >
@@ -2829,13 +3230,15 @@ export type NicePluginReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2850,13 +3253,15 @@ export type NicePluginReadyPoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   'point' | 'type' | 'Infer'
 >
@@ -2872,15 +3277,17 @@ export type NicePristinePluginReadyPoint = NicePluginReadyPoint<
   UndefinedLoaderOutput,
   UndefinedMapperOutput,
   UndefinedRoute,
-  UndefinedRoute,
+  UndefinedInputSchema,
+  UndefinedInputSchema,
+  UndefinedInputSchema,
+  UndefinedInputSchema,
+  UndefinedInputSchema,
+  UndefinedInputSchema,
   UndefinedInputSchema,
   UndefinedQueryResultType,
   EmptyProps,
   EmptyProps,
-  [],
-  UndefinedInputSchema,
-  UndefinedInputSchema,
-  UndefinedActionDefinition
+  []
 >
 
 export type NiceBaseReadyPoint<
@@ -2896,13 +3303,15 @@ export type NiceBaseReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2917,13 +3326,15 @@ export type NiceBaseReadyPoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   'lets' | 'point' | 'type' | 'Infer'
 >
@@ -2969,13 +3380,15 @@ export type NicePageReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -2990,13 +3403,15 @@ export type NicePageReadyPoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Page' | 'X' | 'route'>
 >
@@ -3014,13 +3429,15 @@ export type NiceComponentReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -3035,13 +3452,15 @@ export type NiceComponentReadyPoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Component' | 'X'>
 >
@@ -3059,13 +3478,15 @@ export type NiceLayoutReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -3080,13 +3501,15 @@ export type NiceLayoutReadyPoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   WithQueryIfSuitable<
     TServerLoaderOutput,
@@ -3108,13 +3531,15 @@ export type NiceActionReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -3129,13 +3554,15 @@ export type NiceActionReadyPoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   | 'point'
   | 'route'
@@ -3161,13 +3588,15 @@ export type NiceQueryReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -3182,13 +3611,15 @@ export type NiceQueryReadyPoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
 >
@@ -3206,13 +3637,15 @@ export type NiceInfiniteQueryReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -3227,13 +3660,15 @@ export type NiceInfiniteQueryReadyPoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
 >
@@ -3251,13 +3686,15 @@ export type NiceMutationReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -3272,13 +3709,15 @@ export type NiceMutationReadyPoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   WithFetchIfHasServerLoader<
     TServerLoaderOutput,
@@ -3299,13 +3738,15 @@ export type NiceProviderReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = Pick<
   Point0<
     TPointType,
@@ -3320,13 +3761,15 @@ export type NiceProviderReadyPoint<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >,
   WithQueryIfSuitable<
     TServerLoaderOutput,
@@ -3348,13 +3791,15 @@ export type NiceReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > = TPointType extends 'root'
   ? NiceRootReadyPoint<
       TPointType,
@@ -3369,13 +3814,15 @@ export type NiceReadyPoint<
       TRouteDefinition,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   : TPointType extends 'plugin'
     ? NicePluginReadyPoint<
@@ -3391,13 +3838,15 @@ export type NiceReadyPoint<
         TRouteDefinition,
         TServerInputSchema,
         TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
         TQueryResultType,
         TOuterProps,
         TInnerProps,
-        TQueriesDefinitions,
-        THeadersSchema,
-        TCookiesSchema,
-        TActionDefinition
+        TQueriesDefinitions
       >
     : TPointType extends 'base'
       ? NiceBaseReadyPoint<
@@ -3413,13 +3862,15 @@ export type NiceReadyPoint<
           TRouteDefinition,
           TServerInputSchema,
           TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema,
+          THeadersSchema,
+          TCookiesSchema,
           TQueryResultType,
           TOuterProps,
           TInnerProps,
-          TQueriesDefinitions,
-          THeadersSchema,
-          TCookiesSchema,
-          TActionDefinition
+          TQueriesDefinitions
         >
       : TPointType extends 'page'
         ? NicePageReadyPoint<
@@ -3435,13 +3886,15 @@ export type NiceReadyPoint<
             TRouteDefinition,
             TServerInputSchema,
             TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema,
+            THeadersSchema,
+            TCookiesSchema,
             TQueryResultType,
             TOuterProps,
             TInnerProps,
-            TQueriesDefinitions,
-            THeadersSchema,
-            TCookiesSchema,
-            TActionDefinition
+            TQueriesDefinitions
           >
         : TPointType extends 'component'
           ? NiceComponentReadyPoint<
@@ -3457,13 +3910,15 @@ export type NiceReadyPoint<
               TRouteDefinition,
               TServerInputSchema,
               TClientInputSchema,
+              TParamsSchema,
+              TSearchSchema,
+              TBodySchema,
+              THeadersSchema,
+              TCookiesSchema,
               TQueryResultType,
               TOuterProps,
               TInnerProps,
-              TQueriesDefinitions,
-              THeadersSchema,
-              TCookiesSchema,
-              TActionDefinition
+              TQueriesDefinitions
             >
           : TPointType extends 'action'
             ? NiceActionReadyPoint<
@@ -3479,13 +3934,15 @@ export type NiceReadyPoint<
                 TRouteDefinition,
                 TServerInputSchema,
                 TClientInputSchema,
+                TParamsSchema,
+                TSearchSchema,
+                TBodySchema,
+                THeadersSchema,
+                TCookiesSchema,
                 TQueryResultType,
                 TOuterProps,
                 TInnerProps,
-                TQueriesDefinitions,
-                THeadersSchema,
-                TCookiesSchema,
-                TActionDefinition
+                TQueriesDefinitions
               >
             : TPointType extends 'query'
               ? NiceQueryReadyPoint<
@@ -3501,13 +3958,15 @@ export type NiceReadyPoint<
                   TRouteDefinition,
                   TServerInputSchema,
                   TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema,
+                  THeadersSchema,
+                  TCookiesSchema,
                   TQueryResultType,
                   TOuterProps,
                   TInnerProps,
-                  TQueriesDefinitions,
-                  THeadersSchema,
-                  TCookiesSchema,
-                  TActionDefinition
+                  TQueriesDefinitions
                 >
               : TPointType extends 'infiniteQuery'
                 ? NiceInfiniteQueryReadyPoint<
@@ -3523,13 +3982,15 @@ export type NiceReadyPoint<
                     TRouteDefinition,
                     TServerInputSchema,
                     TClientInputSchema,
+                    TParamsSchema,
+                    TSearchSchema,
+                    TBodySchema,
+                    THeadersSchema,
+                    TCookiesSchema,
                     TQueryResultType,
                     TOuterProps,
                     TInnerProps,
-                    TQueriesDefinitions,
-                    THeadersSchema,
-                    TCookiesSchema,
-                    TActionDefinition
+                    TQueriesDefinitions
                   >
                 : TPointType extends 'mutation'
                   ? NiceMutationReadyPoint<
@@ -3545,13 +4006,15 @@ export type NiceReadyPoint<
                       TRouteDefinition,
                       TServerInputSchema,
                       TClientInputSchema,
+                      TParamsSchema,
+                      TSearchSchema,
+                      TBodySchema,
+                      THeadersSchema,
+                      TCookiesSchema,
                       TQueryResultType,
                       TOuterProps,
                       TInnerProps,
-                      TQueriesDefinitions,
-                      THeadersSchema,
-                      TCookiesSchema,
-                      TActionDefinition
+                      TQueriesDefinitions
                     >
                   : TPointType extends 'layout'
                     ? NiceLayoutReadyPoint<
@@ -3567,13 +4030,15 @@ export type NiceReadyPoint<
                         TRouteDefinition,
                         TServerInputSchema,
                         TClientInputSchema,
+                        TParamsSchema,
+                        TSearchSchema,
+                        TBodySchema,
+                        THeadersSchema,
+                        TCookiesSchema,
                         TQueryResultType,
                         TOuterProps,
                         TInnerProps,
-                        TQueriesDefinitions,
-                        THeadersSchema,
-                        TCookiesSchema,
-                        TActionDefinition
+                        TQueriesDefinitions
                       >
                     : TPointType extends 'provider'
                       ? NiceProviderReadyPoint<
@@ -3589,13 +4054,15 @@ export type NiceReadyPoint<
                           TRouteDefinition,
                           TServerInputSchema,
                           TClientInputSchema,
+                          TParamsSchema,
+                          TSearchSchema,
+                          TBodySchema,
+                          THeadersSchema,
+                          TCookiesSchema,
                           TQueryResultType,
                           TOuterProps,
                           TInnerProps,
-                          TQueriesDefinitions,
-                          THeadersSchema,
-                          TCookiesSchema,
-                          TActionDefinition
+                          TQueriesDefinitions
                         >
                       : never
 
@@ -3612,13 +4079,15 @@ export type AnyNiceReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = any,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = any,
+  TBodySchema extends InputSchema | UndefinedInputSchema = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
-  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = NiceReadyPoint<
   TPointType,
   TLetsReadyPointType,
@@ -3632,13 +4101,15 @@ export type AnyNiceReadyPoint<
   TRouteDefinition,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
+  THeadersSchema,
+  TCookiesSchema,
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions,
-  THeadersSchema,
-  TCookiesSchema,
-  TActionDefinition
+  TQueriesDefinitions
 >
 export type AnyNiceRequestableReadyPoint<
   TPointType extends RequestableReadyPointType = RequestableReadyPointType,
@@ -3653,13 +4124,15 @@ export type AnyNiceRequestableReadyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = any,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = any,
+  TBodySchema extends InputSchema | UndefinedInputSchema = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TOuterProps extends Props = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
-  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition = any,
 > = NiceReadyPoint<
   TPointType,
   TLetsReadyPointType,
@@ -3673,11 +4146,13 @@ export type AnyNiceRequestableReadyPoint<
   TRouteDefinition,
   TServerInputSchema,
   TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
+  THeadersSchema,
+  TCookiesSchema,
   TQueryResultType,
   TOuterProps,
   TInnerProps,
-  TQueriesDefinitions,
-  THeadersSchema,
-  TCookiesSchema,
-  TActionDefinition
+  TQueriesDefinitions
 >

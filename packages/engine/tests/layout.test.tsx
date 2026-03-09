@@ -167,7 +167,7 @@ describe('layout', () => {
     const root = createRoot()
     const layout = root
       .lets('layout', 'app', '/:id')
-      .loader(({ input }) => ({ x: input.id }))
+      .loader(({ params }) => ({ x: params.id }))
       .layout(({ data, children }) => (
         <div id="layout">
           <div id="layout-input">x={data.x}</div>
@@ -211,7 +211,7 @@ describe('layout', () => {
     const root = createRoot()
     const layout = root
       .lets('layout', 'app', '/:id')
-      .loader(({ input }) => ({ x: input.id }))
+      .loader(({ params }) => ({ x: params.id }))
       .layout(({ data, children, location }) => {
         return (
           <div id="layout">
@@ -281,7 +281,7 @@ describe('layout', () => {
     const root = createRoot()
     const layout = root
       .lets('layout', 'app', 'one/:id')
-      .loader(({ input }) => ({ x: input.id }))
+      .loader(({ params }) => ({ x: params.id }))
       .layout(({ data, children, location }) => {
         return (
           <div id="layout">
@@ -351,7 +351,7 @@ describe('layout', () => {
     const root = createRoot()
     const layout = root
       .lets('layout', 'app', '/:id')
-      .loader(({ input }) => ({ x: input.id }))
+      .loader(({ params }) => ({ x: params.id }))
       .wrapper(({ children, queries, location }) => (
         <div id="wrapper">
           <div id="input">{location.params.id}</div>

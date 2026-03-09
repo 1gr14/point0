@@ -1,4 +1,4 @@
-import type { AnyLocation } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute } from '@devp0nt/route0'
 import type {
   AnyPoint,
   AppComponent,
@@ -12,7 +12,7 @@ import type {
   InputParsed,
   InputRaw,
   InputSchema,
-  IsInputOptional,
+  IsSchemaOptional,
   LoaderOutput,
   NiceReadyPoint,
   PagePoint,
@@ -22,9 +22,9 @@ import type {
   ReadyPoint,
   ReadyPointType,
   RequiredCtx,
-  SafeParseInputResult,
   // ServerExecuteAction,
   ServerExecuteResult,
+  SimpleSafeParseInputResult,
   SuperStoreInternalValues,
   SuperStoreInternalValuesOrErrors,
   UndefinedData,
@@ -116,14 +116,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
   }
 
   // First level key is schema validator object, second level key is input reference.
-  private _parseInputSafeAsyncCache = new WeakMap<object, Map<unknown, Promise<SafeParseInputResult<any, unknown>>>>()
+  private _parseInputSafeAsyncCache = new WeakMap<object, Map<unknown, Promise<SimpleSafeParseInputResult>>>()
 
   private static async parseInputSafeAsyncUncached<TInputSchema extends InputSchema>(
     { schema }: { schema: TInputSchema },
-    ...args: IsInputOptional<TInputSchema> extends true
+    ...args: IsSchemaOptional<TInputSchema> extends true
       ? [input?: InputRaw<TInputSchema>]
       : [input: InputRaw<TInputSchema>]
-  ): Promise<SafeParseInputResult<TInputSchema, unknown>> {
+  ): Promise<SimpleSafeParseInputResult> {
     const [input = {}] = args
     try {
       const result = await schema['~standard'].validate(input)
@@ -159,11 +159,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
 
   private async parseInputSafeAsync<TInputSchema extends InputSchema>(
     { schema }: { schema: TInputSchema },
-    ...args: IsInputOptional<TInputSchema> extends true
-      ? [input?: InputRaw<TInputSchema>]
-      : [input: InputRaw<TInputSchema>]
-  ): Promise<SafeParseInputResult<TInputSchema, unknown>> {
-    const [input = {}] = args
+    input: InputRaw,
+  ): Promise<SimpleSafeParseInputResult> {
     const schemaValidator = schema['~standard'] as object
     let schemaCache = this._parseInputSafeAsyncCache.get(schemaValidator)
     if (!schemaCache) {
@@ -172,7 +169,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     }
     const cachedResult = schemaCache.get(input)
     if (cachedResult) {
-      return cachedResult as Promise<SafeParseInputResult<TInputSchema, unknown>>
+      return cachedResult as Promise<SimpleSafeParseInputResult>
     }
     const parsePromise = Executor.parseInputSafeAsyncUncached({ schema }, input as InputRaw<TInputSchema>)
     schemaCache.set(input, parsePromise)
@@ -189,12 +186,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     cookies,
   }: {
     point: TPoint
-    input: TPoint['Infer']['ServerInputRaw']
-    body: Record<string, unknown>
-    params: Record<string, unknown>
-    search: Record<string, unknown>
-    headers: Record<string, unknown>
-    cookies: Record<string, unknown>
+    input: InputRaw
+    body: InputRaw
+    params: InputRaw
+    search: InputRaw
+    headers: InputRaw
+    cookies: InputRaw
   }): Promise<{ success: true; error: undefined } | { success: false; error: unknown }> {
     for (const serverExecuteAction of point._serverExecuteActions) {
       if (serverExecuteAction.type === 'input') {
@@ -249,7 +246,29 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
   // >
   async execute<
     TPoint extends
-      | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+      | NiceReadyPoint<
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any
+        >
       | ReadyPoint
       | undefined,
     TErrorClass extends ClassLikeError0<ErrorPoint0>,
@@ -261,6 +280,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
   }: ExecuteOptions<TPoint, TErrorClass>): Promise<
     ServerExecuteResult<
       TPoint extends NiceReadyPoint<
+        any,
+        any,
         any,
         any,
         any,
@@ -302,6 +323,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         any,
         any,
         any,
+        any,
+        any,
         any
       >
         ? TPoint['Infer']['ServerLoaderOutput']
@@ -325,12 +348,19 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
   ): Promise<ServerExecuteResult<any, any, any>> {
     const {
       point,
-      input = {},
+      inputProvided = {},
+      _known,
       effects = Effects.create(),
       ErrorClass,
     } = ((): {
       point: ReadyPoint | undefined
-      input: Record<string, unknown>
+      inputProvided: Record<string, unknown>
+      _known?: {
+        input?: InputRaw
+        search?: Record<string, unknown>
+        params?: Record<string, unknown>
+        body?: Record<string, unknown>
+      }
       effects?: Effects
       ErrorClass: ClassLikeError0<ErrorPoint0>
     } => {
@@ -341,14 +371,52 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       // so it is ReadyPoint provided in object
       return {
         point: args[0].point,
-        input: args[0].input,
+        inputProvided: args[0].input,
+        _known: args[0]._known,
         effects: args[0].effects,
         ErrorClass: args[0].ErrorClass,
       }
     })()
-    const search = (point?.type === 'action' ? (input.search ?? {}) : {}) as Record<string, unknown>
-    const params = (point?.type === 'action' ? (input.params ?? {}) : {}) as Record<string, unknown>
-    const body = (point?.type === 'action' ? (input.body ?? {}) : {}) as Record<string, unknown>
+    // const search = (point?.type === 'action' ? (input.search) : undefined) as Record<string, unknown>
+    // const params = (point?.type === 'action' ? (input.params) : undefined) as Record<string, unknown>
+    // const body = (point?.type === 'action' ? (input.body) : undefined) as Record<string, unknown>
+    const { search, params, body, input } = (() => {
+      if (_known) {
+        return {
+          search: _known.search || {},
+          params: _known.params || {},
+          body: _known.body || {},
+          input: _known.input || {},
+        }
+      }
+      if (point?.type === 'action') {
+        return {
+          search: inputProvided.search || {},
+          params: inputProvided.params || {},
+          body: inputProvided.body || {},
+          input: {},
+        }
+      }
+      if (point?.type === 'page' || point?.type === 'layout') {
+        const route = point.point.route as AnyRoute | undefined
+        if (!route) {
+          return {
+            search: {},
+            params: {},
+            body: {},
+            input: {},
+          }
+        }
+        const location = route.getLocation(route.flatLoose(inputProvided as any))
+        return {
+          search: location.searchParams,
+          params: location.params,
+          body: {},
+          input: {},
+        }
+      }
+      return { search: {}, params: {}, body: {}, input: inputProvided }
+    })()
     const headers = this.request.headers
     const cookies = this.request.cookies
     return await this.withServerGlobalState(async () => {
@@ -395,12 +463,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         data: UnknownData | UndefinedData
         response: Response | undefined
         output: LoaderOutput | UndefinedLoaderOutput
-        inputParsed: InputParsed
-        paramsParsed: InputParsed
-        searchParsed: InputParsed
-        headersParsed: InputParsed
-        cookiesParsed: InputParsed
-        bodyParsed: InputParsed
+        inputParsed: InputParsed | undefined
+        paramsParsed: InputParsed | undefined
+        searchParsed: InputParsed | undefined
+        headersParsed: InputParsed | undefined
+        cookiesParsed: InputParsed | undefined
+        bodyParsed: InputParsed | undefined
       }
       const getCleanLayer = (): Branch => {
         return {
@@ -410,12 +478,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           data: undefined,
           response: undefined,
           output: undefined,
-          inputParsed: {},
-          paramsParsed: {},
-          searchParsed: {},
-          headersParsed: {},
-          cookiesParsed: {},
-          bodyParsed: {},
+          inputParsed: undefined,
+          paramsParsed: undefined,
+          searchParsed: undefined,
+          headersParsed: undefined,
+          cookiesParsed: undefined,
+          bodyParsed: undefined,
         }
       }
       const layers = [getCleanLayer()]
@@ -453,7 +521,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           }
         }
 
-        const triggerInputParseError = (safeParseResult: Extract<SafeParseInputResult<any>, { success: false }>) => {
+        const triggerSchemaParseError = (safeParseResult: Extract<SimpleSafeParseInputResult, { success: false }>) => {
           const status = 422
           const error0 = ErrorClass.from(safeParseResult.error)
           error0.status = status
@@ -470,6 +538,18 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           }
         }
 
+        const getParsed = () => {
+          const { inputParsed, paramsParsed, searchParsed, headersParsed, cookiesParsed, bodyParsed } = layers[0]
+          return {
+            ...(inputParsed ? { input: inputParsed } : {}),
+            ...(paramsParsed ? { params: paramsParsed } : {}),
+            ...(searchParsed ? { search: searchParsed } : {}),
+            ...(headersParsed ? { headers: headersParsed } : {}),
+            ...(cookiesParsed ? { cookies: cookiesParsed } : {}),
+            ...(bodyParsed ? { body: bodyParsed } : {}),
+          }
+        }
+
         for (const serverExecuteAction of point._serverExecuteActions) {
           switch (serverExecuteAction.type) {
             case 'pluginStart': {
@@ -483,7 +563,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
             case 'params': {
               const safeParseResult = await this.parseInputSafeAsync(serverExecuteAction, params)
               if (!safeParseResult.success) {
-                return triggerInputParseError(safeParseResult)
+                return triggerSchemaParseError(safeParseResult)
               }
               layers.forEach((layer) => {
                 layer.inputParsed = {
@@ -500,7 +580,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
             case 'search': {
               const safeParseResult = await this.parseInputSafeAsync(serverExecuteAction, search)
               if (!safeParseResult.success) {
-                return triggerInputParseError(safeParseResult)
+                return triggerSchemaParseError(safeParseResult)
               }
               layers.forEach((layer) => {
                 layer.inputParsed = {
@@ -517,7 +597,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
             case 'headers': {
               const safeParseResult = await this.parseInputSafeAsync(serverExecuteAction, headers)
               if (!safeParseResult.success) {
-                return triggerInputParseError(safeParseResult)
+                return triggerSchemaParseError(safeParseResult)
               }
               layers.forEach((layer) => {
                 layer.headersParsed = {
@@ -530,7 +610,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
             case 'cookies': {
               const safeParseResult = await this.parseInputSafeAsync(serverExecuteAction, cookies)
               if (!safeParseResult.success) {
-                return triggerInputParseError(safeParseResult)
+                return triggerSchemaParseError(safeParseResult)
               }
               layers.forEach((layer) => {
                 layer.cookiesParsed = {
@@ -543,7 +623,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
             case 'body': {
               const safeParseResult = await this.parseInputSafeAsync(serverExecuteAction, body)
               if (!safeParseResult.success) {
-                return triggerInputParseError(safeParseResult)
+                return triggerSchemaParseError(safeParseResult)
               }
               layers.forEach((layer) => {
                 layer.inputParsed = {
@@ -563,7 +643,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 point.type === 'action' ? search : input,
               )
               if (!safeParseResult.success) {
-                return triggerInputParseError(safeParseResult)
+                return triggerSchemaParseError(safeParseResult)
               }
               layers.forEach((layer) => {
                 layer.inputParsed = {
@@ -602,7 +682,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               const result = await serverExecuteAction.fn({
                 ...layers[0].ctxExposed,
                 ctx: { ...layers[0].ctx },
-                input: layers[0].inputParsed,
                 // execute: (
                 //   point:
                 //     | ReadyPoint
@@ -615,6 +694,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 request: this.request,
                 set: effects.set,
                 point,
+                ...getParsed(),
               })
               const appendCtxExposedKeys = !serverExecuteAction.expose
                 ? []
@@ -667,7 +747,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 ...layers[0].ctxExposed,
                 ctx: { ...layers[0].ctx },
                 data: { ...layers[0].data },
-                input: layers[0].inputParsed,
                 // execute: (
                 //   point:
                 //     | ReadyPoint
@@ -680,6 +759,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 request: this.request as never,
                 set: effects.set,
                 point,
+                ...getParsed(),
               })
               const result = (await (promise as any)) as [number, Data | Response] | Data | Response
               if (Array.isArray(result)) {
@@ -959,16 +1039,66 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
 export type ExecuteOptions<
   TPoint extends
     | ReadyPoint
-    | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+    | NiceReadyPoint<
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any
+      >
     | undefined,
   TErrorClass extends ClassLikeError0<ErrorPoint0>,
 > = {
   point?: TPoint | undefined
   input: TPoint extends
     | ReadyPoint
-    | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+    | NiceReadyPoint<
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any,
+        any
+      >
     ? TPoint['Infer']['ServerInputRaw']
     : InputRaw
   effects?: Effects
   ErrorClass: TErrorClass
+  _known?: {
+    input?: InputRaw
+    search?: InputRaw
+    params?: InputRaw
+    body?: InputRaw
+  }
 }

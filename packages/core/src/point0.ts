@@ -1,4 +1,12 @@
-import type { AnyLocation, AnyRoute, CallableRoute, FlatInputStringOnly, KnownLocation } from '@devp0nt/route0'
+import type {
+  AnyLocation,
+  AnyRoute,
+  CallableRoute,
+  FlatInputStringOnly,
+  KnownLocation,
+  ParamsOutput,
+  StrictSearchOutput,
+} from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type {
   DehydratedState,
@@ -88,25 +96,19 @@ import type { RouterPageState } from './router.js'
 import { _usePageStateManager, useLocation, useRouterContext } from './router.js'
 import { superstore } from './super-store.js'
 import type {
-  ActionBodySchema,
-  ActionDefinition,
-  ActionInputRaw,
-  ActionParamsSchema,
-  ActionRuntimeDefinition,
-  ActionSearchSchema,
-  AnyActionDefinition,
   AnyPoint,
   AppendCtx,
   AppendCtxExposedKeys,
+  AsserNotMashInputSchemas,
   AssertInputSchemaHasAllKeys,
   AssertInputSchemaHasNotAnotherKeys,
   AssertInputSchemaNotWider,
-  AssertNewInputSchemaNotWider,
   AssertNoArrayReturn,
   AssertNoForbiddenCtxExposedKeys,
   AssertNoForbiddenMethodsIfNotSuitableStage,
   AssertNotFunction,
   AssertRouteDefinitionInputExtends,
+  AssertSchemaNotWider,
   BasePoint,
   ClientExecuteAction,
   ClientLoaderDataFn,
@@ -122,6 +124,7 @@ import type {
   DataTransformerExtended,
   EmptyCtx,
   EmptyData,
+  EndpointDefinition,
   ExtendRouteDefinition,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
@@ -132,6 +135,9 @@ import type {
   FetchServerDetailedOutput,
   FetchServerOutput,
   FetchServerOutputType,
+  FinalInputRaw,
+  FinalInputRawOrUndefined,
+  FinalInputRawOrUndefinedOrVoid,
   FinalLoaderData,
   FinalLoaderDataOrNever,
   FinalLoaderOutput,
@@ -143,13 +149,9 @@ import type {
   InputRaw,
   InputRawUnknown,
   InputSchema,
-  InputsRaw,
-  InputsRawOrUndefined,
-  InputsRawOrUndefinedOrVoid,
-  IsActionInputOptional,
   IsEmptyObject,
-  IsInputOptional,
-  IsInputsOptional,
+  IsFinalInputOptional,
+  IsSchemaOptional,
   LayoutPoint,
   LoaderDataFn,
   LoaderOutput,
@@ -190,20 +192,20 @@ import type {
   ReadyPointType,
   ReadyPointTypeOrNever,
   RecordValidationSchema,
+  RequestableReadyPointType,
   RequiredCtx,
   RootPoint,
   RouteDefinition,
   RouteDefinitionParamsToRecordValidationSchema,
   RouteDefinitionSearchToRecordValidationSchema,
   RouteDefinitionToRecordValidationSchema,
-  SafeParseInputResult,
   ScrollPositionGetter,
   ScrollPositionRestorePolicy,
   ScrollPositionSetter,
   ServerExecuteAction,
   ShowError,
+  SimpleSafeParseInputResult,
   StagePointTypeOrNever,
-  UndefinedActionDefinition,
   UndefinedCtx,
   UndefinedCtxExposedKeys,
   UndefinedInputSchema,
@@ -232,6 +234,7 @@ import {
   mergeHeaders,
   prependAndDeappendSlash,
   toExtendedTransformer,
+  toKebabCase,
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
@@ -309,13 +312,15 @@ export class Point0<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  THeadersSchema extends InputSchema | UndefinedInputSchema,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
-  THeadersSchema extends InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema,
-  TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
 > {
   Infer: Infer<
     TPointType,
@@ -330,13 +335,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > = null as never
 
   point: typeof this // this, needed for generator to collect points
@@ -383,10 +390,10 @@ export class Point0<
   readonly _middlewares: MiddlewareFn<TError>[]
   _serverurl: string | undefined
   readonly _basepath: string | undefined
-  readonly _action: ActionRuntimeDefinition | undefined
-  get method(): TActionDefinition extends AnyActionDefinition ? TActionDefinition['method'] : undefined {
-    return (this._action?.method ?? undefined) as TActionDefinition extends AnyActionDefinition
-      ? TActionDefinition['method']
+  readonly _endpoint: EndpointDefinition | undefined
+  get method(): TPointType extends RequestableReadyPointType ? WideRequestMethod : undefined {
+    return (this._endpoint?.method ?? undefined) as TPointType extends RequestableReadyPointType
+      ? WideRequestMethod
       : undefined
   }
   readonly _endpointPrefix: string | undefined
@@ -408,7 +415,7 @@ export class Point0<
   private readonly _defaultProviderQueryOptions: ExtraUseQueryOptions | undefined
   private readonly _queryOptions: ExtraUseQueryOptions
   readonly _infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-    InputsRaw<TServerInputSchema, TClientInputSchema>,
+    FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     TError,
     InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -482,8 +489,12 @@ export class Point0<
   X: TPointType extends 'layout'
     ? LayoutSelfType<
         TRouteDefinition,
+        TPointType,
         TServerInputSchema,
         TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
         TOuterProps,
         TInnerProps,
         TQueriesDefinitions,
@@ -492,8 +503,12 @@ export class Point0<
     : TPointType extends 'page'
       ? PageSelfType<
           TRouteDefinition,
+          TPointType,
           TServerInputSchema,
           TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema,
           TOuterProps,
           TInnerProps,
           TQueriesDefinitions,
@@ -501,8 +516,12 @@ export class Point0<
         >
       : TPointType extends 'component'
         ? ComponentSelfType<
+            TPointType,
             TServerInputSchema,
             TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema,
             TOuterProps,
             TInnerProps,
             TQueriesDefinitions,
@@ -510,8 +529,12 @@ export class Point0<
           >
         : TPointType extends 'provider'
           ? ProviderSelfType<
+              TPointType,
               TServerInputSchema,
               TClientInputSchema,
+              TParamsSchema,
+              TSearchSchema,
+              TBodySchema,
               TOuterProps,
               TInnerProps,
               TQueriesDefinitions,
@@ -530,7 +553,7 @@ export class Point0<
     _middlewares?: MiddlewareFn<TError>[] | undefined
     _serverurl?: string | undefined
     _basepath?: string | undefined
-    _action?: ActionRuntimeDefinition | undefined
+    _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
     _transformer?: DataTransformerExtended | undefined
     _ssr?: boolean
@@ -548,7 +571,14 @@ export class Point0<
     _queryOptions?: ExtraUseQueryOptions
     _infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
-          InputsRaw<TServerInputSchema, TClientInputSchema>,
+          FinalInputRaw<
+            ReadyPointTypeOrNever<TPointType>,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -591,7 +621,7 @@ export class Point0<
     _layoutLoadingComponent?: LoadingComponentType<any>
     _pageLoadingComponent?: LoadingComponentType<any>
     _componentLoadingComponent?: LoadingComponentType<any>
-    X?: MountableSelfType<any, any, any, any, any, any, any, any, any> | null
+    X?: MountableSelfType<any, any, any, any, any, any, any, any, any, any, any, any, any> | null
     _unstableId?: number
   }) {
     this.point = this
@@ -608,7 +638,7 @@ export class Point0<
     this._eventerSubscriptions = options._eventerSubscriptions ?? []
     this._serverurl = options._serverurl ?? undefined
     this._basepath = options._basepath ?? undefined
-    this._action = options._action ?? undefined
+    this._endpoint = options._endpoint ?? undefined
     this._endpointPrefix = options._endpointPrefix ?? undefined
     this.type = options.type
     this._letsReadyPointType = options._letsReadyPointType
@@ -668,15 +698,17 @@ export class Point0<
     TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
     TServerInputSchema extends InputSchema | UndefinedInputSchema,
     TClientInputSchema extends InputSchema | UndefinedInputSchema,
+    TParamsSchema extends InputSchema | UndefinedInputSchema,
+    TSearchSchema extends InputSchema | UndefinedInputSchema,
+    TBodySchema extends InputSchema | UndefinedInputSchema,
+    THeadersSchema extends InputSchema | UndefinedInputSchema,
+    TCookiesSchema extends InputSchema | UndefinedInputSchema,
     TQueryResultType extends QueryResultType | UndefinedQueryResultType,
     TOuterProps extends Props,
     TInnerProps extends Props,
     TQueriesDefinitions extends QueriesDefinitions,
-    THeadersSchema extends InputSchema | UndefinedInputSchema,
-    TCookiesSchema extends InputSchema | UndefinedInputSchema,
-    TActionDefinition extends AnyActionDefinition | UndefinedActionDefinition,
   >(overrides: {
-    type?: TPointType
+    type?: PointType
     scope?: PointsScope
     scopes?: PointsScope[]
     _letsReadyPointType?: TLetsReadyPointType
@@ -688,7 +720,7 @@ export class Point0<
     _middlewares?: MiddlewareFn<TError>[]
     _serverurl?: string | undefined
     _basepath?: string | undefined
-    _action?: ActionRuntimeDefinition | undefined
+    _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
     _transformer?: DataTransformerExtended | null
     _ssr?: boolean
@@ -704,7 +736,14 @@ export class Point0<
     _queryOptions?: ExtraUseQueryOptions | undefined
     _infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
-          InputsRaw<TServerInputSchema, TClientInputSchema>,
+          FinalInputRaw<
+            ReadyPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -750,7 +789,7 @@ export class Point0<
     _layoutLoadingComponent?: LoadingComponentType<any> | undefined
     _pageLoadingComponent?: LoadingComponentType<any> | undefined
     _componentLoadingComponent?: LoadingComponentType<any> | undefined
-    X?: MountableSelfType<any, any, any, any, any, any, any, any, any> | null
+    X?: MountableSelfType<any, any, any, any, any, any, any, any, any, any, any, any, any> | null
   }): Point0<
     TPointType,
     TLetsReadyPointType,
@@ -764,13 +803,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return new Point0<
       TPointType,
@@ -785,13 +826,15 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >({
       scope: overrides.scope ?? this.scope,
       scopes: overrides.scopes ?? this.scopes,
@@ -805,7 +848,7 @@ export class Point0<
       _middlewares: overrides._middlewares ?? [...this._middlewares],
       _serverurl: overrides._serverurl ?? this._serverurl,
       _basepath: overrides._basepath ?? this._basepath,
-      _action: overrides._action ?? this._action,
+      _endpoint: overrides._endpoint ?? this._endpoint,
       _endpointPrefix: overrides._endpointPrefix ?? this._endpointPrefix,
       _transformer: overrides._transformer ?? this._transformer,
       _ssr: overrides._ssr ?? this._ssr,
@@ -826,7 +869,14 @@ export class Point0<
       _infiniteQueryOptions: (overrides._infiniteQueryOptions ?? {
         ...this._infiniteQueryOptions,
       }) as ExtraUseInfiniteQueryOptions<
-        InputsRaw<TServerInputSchema, TClientInputSchema>,
+        FinalInputRaw<
+          ReadyPointTypeOrNever<TPointType>,
+          TServerInputSchema,
+          TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema
+        >,
         FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
         TError,
         InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -880,15 +930,17 @@ export class Point0<
     UndefinedLoaderOutput,
     UndefinedMapperOutput,
     UndefinedRoute,
-    UndefinedRoute,
+    UndefinedInputSchema,
+    UndefinedInputSchema,
+    UndefinedInputSchema,
+    UndefinedInputSchema,
+    UndefinedInputSchema,
+    UndefinedInputSchema,
     UndefinedInputSchema,
     UndefinedQueryResultType,
     EmptyProps,
     EmptyProps,
-    [],
-    UndefinedInputSchema,
-    UndefinedInputSchema,
-    UndefinedActionDefinition
+    []
   >
   static lets(
     pointType: 'plugin',
@@ -904,15 +956,17 @@ export class Point0<
     UndefinedLoaderOutput,
     UndefinedMapperOutput,
     UndefinedRoute,
-    UndefinedRoute,
+    UndefinedInputSchema,
+    UndefinedInputSchema,
+    UndefinedInputSchema,
+    UndefinedInputSchema,
+    UndefinedInputSchema,
+    UndefinedInputSchema,
     UndefinedInputSchema,
     UndefinedQueryResultType,
     EmptyProps,
     EmptyProps,
-    [],
-    UndefinedInputSchema,
-    UndefinedInputSchema,
-    UndefinedActionDefinition
+    []
   >
   static lets(pointType: 'root' | 'plugin', pointName: string) {
     const _fsLocation = _point0_env.mode.is.production || _point0_env.build.was ? undefined : getCallerLocation(3)
@@ -954,7 +1008,7 @@ export class Point0<
     > &
       AssertInputSchemaHasAllKeys<
         RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute>,
-        ActionParamsSchema<TActionDefinition>,
+        TParamsSchema,
         'params'
       >,
   >(
@@ -974,50 +1028,21 @@ export class Point0<
       UndefinedLoaderOutput,
       UndefinedMapperOutput,
       TProvidedRoute,
-      MergeRecordValidationSchemas<TServerInputSchema, RouteDefinitionToRecordValidationSchema<TProvidedRoute>>,
-      MergeRecordValidationSchemas<TClientInputSchema, RouteDefinitionToRecordValidationSchema<TProvidedRoute>>,
+      TServerInputSchema,
+      TClientInputSchema,
+      IsEmptyObject<ParamsOutput<TProvidedRoute>> extends true
+        ? TParamsSchema
+        : MergeRecordValidationSchemas<TParamsSchema, RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute>>,
+      IsEmptyObject<StrictSearchOutput<TProvidedRoute>> extends true
+        ? TSearchSchema
+        : MergeRecordValidationSchemas<TSearchSchema, RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute>>,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
-      THeadersSchema,
-      TCookiesSchema,
-      IfAnyThenElse<
-        TActionDefinition,
-        AnyActionDefinition,
-        TActionDefinition extends ActionDefinition<
-          any,
-          any,
-          infer TParamsSchema,
-          infer TSearchSchema,
-          infer TBodySchema
-        >
-          ? ActionDefinition<
-              TMethod,
-              TProvidedRoute,
-              MergeRecordValidationSchemas<
-                TParamsSchema,
-                RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute>
-              >,
-              MergeRecordValidationSchemas<
-                TSearchSchema,
-                RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute>
-              >,
-              TBodySchema
-            >
-          : ActionDefinition<
-              TMethod,
-              TProvidedRoute,
-              RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute>,
-              // it is first time when we understand that here will be action, so all previously defined vai input things will be recogized from serch params
-              // actions and non actions is very different by design, so better do actions like backend dev, or just quries and mutations like fullstack dev
-              MergeRecordValidationSchemas<
-                TServerInputSchema,
-                RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute>
-              >,
-              UndefinedInputSchema
-            >
-      >
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
     >
   >
   lets<
@@ -1030,7 +1055,7 @@ export class Point0<
     > &
       AssertInputSchemaHasAllKeys<
         RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>,
-        ActionParamsSchema<TActionDefinition>,
+        TParamsSchema,
         'params'
       >,
   >(
@@ -1050,54 +1075,27 @@ export class Point0<
       UndefinedLoaderOutput,
       UndefinedMapperOutput,
       TProvidedRoute['definition'],
-      MergeRecordValidationSchemas<
-        TServerInputSchema,
-        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-      >,
-      MergeRecordValidationSchemas<
-        TClientInputSchema,
-        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-      >,
+      TServerInputSchema,
+      TClientInputSchema,
+      IsEmptyObject<ParamsOutput<TProvidedRoute['definition']>> extends true
+        ? TParamsSchema
+        : MergeRecordValidationSchemas<
+            TParamsSchema,
+            RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>
+          >,
+      IsEmptyObject<StrictSearchOutput<TProvidedRoute['definition']>> extends true
+        ? TSearchSchema
+        : MergeRecordValidationSchemas<
+            TSearchSchema,
+            RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute['definition']>
+          >,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
-      THeadersSchema,
-      TCookiesSchema,
-      IfAnyThenElse<
-        TActionDefinition,
-        AnyActionDefinition,
-        TActionDefinition extends ActionDefinition<
-          any,
-          any,
-          infer TParamsSchema,
-          infer TSearchSchema,
-          infer TBodySchema
-        >
-          ? ActionDefinition<
-              TMethod,
-              TProvidedRoute['definition'],
-              MergeRecordValidationSchemas<
-                TParamsSchema,
-                RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>
-              >,
-              MergeRecordValidationSchemas<
-                TSearchSchema,
-                RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute['definition']>
-              >,
-              TBodySchema
-            >
-          : ActionDefinition<
-              TMethod,
-              TProvidedRoute['definition'],
-              RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>,
-              MergeRecordValidationSchemas<
-                TServerInputSchema,
-                RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute['definition']>
-              >,
-              UndefinedInputSchema
-            >
-      >
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
     >
   >
   lets<
@@ -1126,21 +1124,27 @@ export class Point0<
       UndefinedLoaderOutput,
       UndefinedMapperOutput,
       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-      MergeRecordValidationSchemas<
-        TServerInputSchema,
-        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-      >,
-      MergeRecordValidationSchemas<
-        TClientInputSchema,
-        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-      >,
+      TServerInputSchema,
+      TClientInputSchema,
+      IsEmptyObject<ParamsOutput<TProvidedRoute>> extends true
+        ? TParamsSchema
+        : MergeRecordValidationSchemas<
+            TParamsSchema,
+            RouteDefinitionParamsToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+          >,
+      IsEmptyObject<StrictSearchOutput<TProvidedRoute>> extends true
+        ? TSearchSchema
+        : MergeRecordValidationSchemas<
+            TSearchSchema,
+            RouteDefinitionSearchToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+          >,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
     >
   >
   lets<
@@ -1169,21 +1173,27 @@ export class Point0<
       UndefinedLoaderOutput,
       UndefinedMapperOutput,
       ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
-      MergeRecordValidationSchemas<
-        TServerInputSchema,
-        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-      >,
-      MergeRecordValidationSchemas<
-        TClientInputSchema,
-        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-      >,
+      TServerInputSchema,
+      TClientInputSchema,
+      IsEmptyObject<ParamsOutput<TProvidedRoute['definition']>> extends true
+        ? TParamsSchema
+        : MergeRecordValidationSchemas<
+            TParamsSchema,
+            RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
+          >,
+      IsEmptyObject<StrictSearchOutput<TProvidedRoute['definition']>> extends true
+        ? TSearchSchema
+        : MergeRecordValidationSchemas<
+            TSearchSchema,
+            RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
+          >,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
     >
   >
   lets<
@@ -1212,21 +1222,27 @@ export class Point0<
       UndefinedLoaderOutput,
       UndefinedMapperOutput,
       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-      MergeRecordValidationSchemas<
-        TServerInputSchema,
-        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-      >,
-      MergeRecordValidationSchemas<
-        TClientInputSchema,
-        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-      >,
+      TServerInputSchema,
+      TClientInputSchema,
+      IsEmptyObject<ParamsOutput<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>> extends true
+        ? TParamsSchema
+        : MergeRecordValidationSchemas<
+            TParamsSchema,
+            RouteDefinitionParamsToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+          >,
+      IsEmptyObject<StrictSearchOutput<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>> extends true
+        ? TSearchSchema
+        : MergeRecordValidationSchemas<
+            TSearchSchema,
+            RouteDefinitionSearchToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+          >,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
     >
   >
   lets<
@@ -1255,21 +1271,27 @@ export class Point0<
       UndefinedLoaderOutput,
       UndefinedMapperOutput,
       ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
-      MergeRecordValidationSchemas<
-        TServerInputSchema,
-        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-      >,
-      MergeRecordValidationSchemas<
-        TClientInputSchema,
-        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-      >,
+      TServerInputSchema,
+      TClientInputSchema,
+      IsEmptyObject<ParamsOutput<TProvidedRoute['definition']>> extends true
+        ? TParamsSchema
+        : MergeRecordValidationSchemas<
+            TParamsSchema,
+            RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>
+          >,
+      IsEmptyObject<StrictSearchOutput<TProvidedRoute['definition']>> extends true
+        ? TSearchSchema
+        : MergeRecordValidationSchemas<
+            TSearchSchema,
+            RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute['definition']>
+          >,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
     >
   >
   lets<TNewOuterProps extends Props = EmptyProps>(
@@ -1287,13 +1309,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     UndefinedQueryResultType,
     TNewOuterProps,
     TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
-    TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
   >
   lets<TNewOuterProps extends Props = EmptyProps>(
     ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'provider', pointName: string] : never[]
@@ -1310,16 +1334,18 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     UndefinedQueryResultType,
     TNewOuterProps,
     TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
-    TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
   >
   lets<
-    TNewLetsReadyPointType extends Exclude<ReadyPointType, 'page' | 'layout' | 'component' | 'provider'>,
+    TNewLetsReadyPointType extends Exclude<ReadyPointType, 'page' | 'layout' | 'component' | 'provider' | 'action'>,
     TPointName extends PointName,
   >(
     ...args: TPointType extends 'root' | 'base'
@@ -1338,17 +1364,19 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     UndefinedQueryResultType,
     EmptyProps,
     TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-    TPointType extends 'root' | 'base' ? TQueriesDefinitions : [],
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
   >
   lets(...args: any[]) {
     const _fsLocation = _point0_env.mode.is.production || _point0_env.build.was ? undefined : getCallerLocation(3)
-    const [letsReadyPointType, pointName, method, route] = (() => {
+    const [letsReadyPointType, pointName, providedMethod, route] = (() => {
       if (args[0] === 'action') {
         return [args[0], args[1], args[2], args[3]] as [
           ReadyPointType,
@@ -1364,10 +1392,13 @@ export class Point0<
         AnyRoute | string | undefined,
       ]
     })()
+    const isLayout = letsReadyPointType === 'layout'
+    const isAction = letsReadyPointType === 'action'
+    const isPage = letsReadyPointType === 'page'
 
     const prevRoute = this.route
     const newRoute = (() => {
-      if (letsReadyPointType === 'page') {
+      if (isPage) {
         if (typeof route === 'string' || !route) {
           const routeOrPointName = route ?? pointName
           if (routeOrPointName === '/') {
@@ -1379,7 +1410,7 @@ export class Point0<
         }
         return Route0.create(dedupeSlashes(`/${route.definition}`))
       }
-      if (letsReadyPointType === 'layout') {
+      if (isLayout) {
         if (typeof route === 'string' || !route) {
           const routeNormalized = route ?? '/'
           if (routeNormalized === '/') {
@@ -1391,9 +1422,9 @@ export class Point0<
         }
         return Route0.create(dedupeSlashes(`/${route.definition}`))
       }
-      if (letsReadyPointType === 'action') {
+      if (isAction) {
         if (!route) {
-          return undefined // it will be thrown as error
+          return undefined // error will be thrown below
         }
         if (typeof route === 'string') {
           return Route0.create(dedupeSlashes(`/${route}`))
@@ -1403,19 +1434,52 @@ export class Point0<
       return prevRoute
     })()
 
-    const _action: ActionRuntimeDefinition | undefined = (() => {
-      if (letsReadyPointType !== 'action') {
+    const _endpoint = (() => {
+      if (
+        !['page', 'layout', 'component', 'provider', 'action', 'query', 'infiniteQuery', 'mutation'].includes(
+          letsReadyPointType,
+        )
+      ) {
         return undefined
       }
-      if (!newRoute) {
-        throw new Error(`Action route is required for action point ${this.toStringWithLocation()}`)
-      }
-      if (!method) {
-        throw new Error(`Method is required for action point ${this.toStringWithLocation()}`)
-      }
+      const method = (() => {
+        if (providedMethod) {
+          return providedMethod.toUpperCase()
+        }
+        if (isAction) {
+          throw new Error(`Method is required for action point ${this.toStringWithLocation()}`)
+        }
+        if (isPage || isLayout) {
+          return 'GET'
+        }
+        return 'POST'
+      })()
+      const route = (() => {
+        if (isAction) {
+          if (!newRoute) {
+            throw new Error(`Route is required for action point ${this.toStringWithLocation()}`)
+          }
+          return newRoute
+        }
+        const scopeKebab = toKebabCase(this.scope)
+        const typeKebab = letsReadyPointType === 'infiniteQuery' ? 'infinite-query' : letsReadyPointType
+        const nameKebab = toKebabCase(pointName)
+        const routeGeneralPart = `/${this._endpointPrefix || '_point0'}/${scopeKebab}/${typeKebab}/${nameKebab}`
+        if (isPage || isLayout) {
+          if (!newRoute) {
+            throw new Error(`Route is required for page or layout point ${this.toStringWithLocation()}`)
+          }
+          // TODO: just end with params and search params
+          if (!newRoute.definition || newRoute.definition === '/') {
+            return Route0.create(dedupeSlashes(routeGeneralPart))
+          }
+          return Route0.create(dedupeSlashes(`${routeGeneralPart}/${newRoute.definition}`))
+        }
+        return Route0.create(dedupeSlashes(routeGeneralPart))
+      })()
       return {
         method,
-        route: newRoute,
+        route,
       }
     })()
 
@@ -1425,46 +1489,49 @@ export class Point0<
       throw new Error('Cannot create root point with "plugin" scope, it is internally used name for plugin points')
     }
 
-    const { serverExecuteActionsAll, clientExecuteActionsAll } = (() => {
-      if (_action) {
-        return {
-          serverExecuteActionsAll: [
-            ...this._serverExecuteActions,
-            ...(_action.route.getParamsKeys().length === 0
-              ? []
-              : [
-                  {
-                    type: 'params' as const,
-                    schema: _action.route.paramsInputSchema,
-                    unstableId: Point0._getNextUnstableId(),
-                  },
-                ]),
-            ...(_action.route.getSearchKeys().length === 0
-              ? []
-              : [
-                  {
-                    type: 'search' as const,
-                    schema: _action.route.strictSearchInputSchema,
-                    unstableId: Point0._getNextUnstableId(),
-                  },
-                ]),
-          ],
-          clientExecuteActionsAll: [],
-        }
-      } else {
-        const schema =
-          newRoute?.definition === prevRoute?.definition || !newRoute || newRoute.getFlatKeys().length === 0
-            ? undefined
-            : newRoute.flatInputSchema
-        const executeAction = schema
-          ? [{ type: 'input' as const, schema, unstableId: Point0._getNextUnstableId(), policy: 'prepend' as const }]
-          : []
-        return {
-          serverExecuteActionsAll: [...this._serverExecuteActions, ...executeAction],
-          clientExecuteActionsAll: [...this._clientExecuteActions, ...executeAction],
+    const newExecuteActions = (() => {
+      if ((!isAction && !isPage && !isLayout) || !newRoute) {
+        return []
+      }
+      if (isPage || isLayout) {
+        if (newRoute.definition === prevRoute?.definition || newRoute.getFlatKeys().length === 0) {
+          return []
         }
       }
+      return [
+        ...(newRoute.getParamsKeys().length === 0
+          ? []
+          : [
+              {
+                type: 'params' as const,
+                schema: newRoute.paramsInputSchema,
+              },
+            ]),
+        ...(newRoute.getSearchKeys().length === 0
+          ? []
+          : [
+              {
+                type: 'search' as const,
+                schema: newRoute.strictSearchInputSchema,
+              },
+            ]),
+      ]
     })()
+
+    const serverExecuteActionsAll = [
+      ...this._serverExecuteActions,
+      ...newExecuteActions.map((action) => ({
+        ...action,
+        unstableId: Point0._getNextUnstableId(),
+      })),
+    ]
+    const clientExecuteActionsAll = [
+      ...this._clientExecuteActions,
+      ...newExecuteActions.map((action) => ({
+        ...action,
+        unstableId: Point0._getNextUnstableId(),
+      })),
+    ]
 
     const serverExecuteActionsSuitable = serverExecuteActionsAll.filter((action) => action.type !== 'loader')
     const clientExecuteActionsSuitable = clientExecuteActionsAll.filter((action) => action.type !== 'loader')
@@ -1488,7 +1555,7 @@ export class Point0<
       _letsReadyPointType: letsReadyPointType,
       name: pointName,
       _fsLocation,
-      _action,
+      _endpoint,
       route: newRoute as never,
       _page: undefined,
       _component: undefined,
@@ -1545,13 +1612,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue({
       _Error: ErrorClass as never,
@@ -1573,13 +1642,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue({
       _serverurl: serverurl,
@@ -1604,13 +1675,15 @@ export class Point0<
     ExtendRouteDefinition<'/', TBasepath>,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     const normalizedBasepath = prependAndDeappendSlash(basepath) || '/'
     const route = Route0.create(dedupeSlashes(`/${normalizedBasepath}`))
@@ -1662,13 +1735,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   on(
     name: 'error',
@@ -1686,13 +1761,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   on<TEventNames extends Array<AnyEventerEventName>>(
     names: TEventNames,
@@ -1710,13 +1787,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   on(
     name: AnyEventerEventName | 'error' | '*' | Array<AnyEventerEventName>,
@@ -1745,13 +1824,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   serverOn(
     name: 'error',
@@ -1769,13 +1850,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   serverOn<TEventNames extends Array<ServerEventerEventName>>(
     names: TEventNames,
@@ -1793,13 +1876,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   serverOn(
     name: ServerEventerEventName | 'error' | '*' | Array<ServerEventerEventName>,
@@ -1828,13 +1913,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   clientOn(
     name: 'error',
@@ -1852,13 +1939,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   clientOn<TEventNames extends Array<ClientEventerEventName>>(
     names: TEventNames,
@@ -1876,13 +1965,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   clientOn(
     name: ClientEventerEventName | 'error' | '*' | Array<ClientEventerEventName>,
@@ -1910,13 +2001,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue({
       _ssr: ssr,
@@ -1938,13 +2031,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue({
       _defaultMutationOptions: mutationOptions,
@@ -1967,13 +2062,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   queryOptions(queryOptions: ExtraUseQueryOptions | undefined = {}) {
     return this._continue({
@@ -1996,13 +2093,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   infiniteQueryOptions(infiniteQueryOptions: PartialUseInfiniteQueryOptions | undefined = {}) {
     return this._continue({
@@ -2028,13 +2127,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue({
       _defaultPageQueryOptions: pageQueryOptions,
@@ -2056,13 +2157,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue({
       _defaultComponentQueryOptions: componentQueryOptions,
@@ -2084,13 +2187,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue({
       _defaultProviderQueryOptions: providerQueryOptions,
@@ -2112,13 +2217,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue({
       _defaultLayoutQueryOptions: layoutQueryOptions,
@@ -2140,13 +2247,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     const newFetchOptionsFn: FetchOptionsFn = () => {
       const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
@@ -2182,6 +2291,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -2191,10 +2305,7 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    >
   >
   error(errorComponent: ErrorComponentType<any, any> | undefined) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
@@ -2246,13 +2357,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   layoutError(layoutErrorComponent: ErrorComponentType<any, TError> | undefined) {
     return this._continue({
@@ -2278,13 +2391,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   pageError(pageErrorComponent: ErrorComponentType<any, TError> | undefined) {
     // this._applyComponentDisplayName(pageErrorComponent, {
@@ -2310,13 +2425,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   componentError(componentErrorComponent: ErrorComponentType<any, TError> | undefined) {
     return this._continue({
@@ -2342,13 +2459,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   layoutLoading(layoutLoadingComponent: LoadingComponentType<any> | undefined) {
     return this._continue({
@@ -2374,13 +2493,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   pageLoading(pageLoadingComponent: LoadingComponentType<any> | undefined) {
     // this._applyComponentDisplayName(pageLoadingComponent, {
@@ -2406,13 +2527,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   componentLoading(componentLoadingComponent: LoadingComponentType<any> | undefined) {
     return this._continue({
@@ -2444,6 +2567,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -2453,10 +2581,7 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    >
   >
   loading(loadingComponent: LoadingComponentType<any> | undefined) {
     // this._applyComponentDisplayName(loadingComponent, {
@@ -2525,6 +2650,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -2534,10 +2664,7 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    >
   >
   wrapper(wrapperComponent: WrapperComponentType<any, any, any, any, any> | undefined) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
@@ -2577,10 +2704,12 @@ export class Point0<
       any,
       any,
       any,
+      any,
+      any,
+      any,
+      any,
+      any,
       'infiniteQuery' | 'query',
-      any,
-      any,
-      any,
       any,
       any,
       any
@@ -2649,6 +2778,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -2664,10 +2798,7 @@ export class Point0<
         type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
         data: TPoint['Infer']['QueriedData']
       },
-    ],
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    ]
   >
   with<TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults>(
     withQueryFn: WithQueryFn<
@@ -2698,6 +2829,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -2719,10 +2855,7 @@ export class Point0<
         : TNewQueries extends UseQueryOrInfiniteQueryResult
           ? [QueryDefinitionByQuery<TNewQueries>]
           : never),
-    ],
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    ]
   >
   with<TNewInnerProps extends Props>(
     withFn: WithFn<
@@ -2756,6 +2889,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     AppendProps<TInnerProps, TNewInnerProps>,
@@ -2765,10 +2903,7 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    >
   >
   with(
     ...args:
@@ -2869,10 +3004,12 @@ export class Point0<
       any,
       any,
       any,
+      any,
+      any,
+      any,
+      any,
+      any,
       'infiniteQuery' | 'query',
-      any,
-      any,
-      any,
       any,
       any,
       any
@@ -2911,6 +3048,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -2926,10 +3068,7 @@ export class Point0<
         type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
         data: TPoint['Infer']['QueriedData']
       },
-    ],
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    ]
   >
   relatedQuery(
     ...args: [
@@ -2992,13 +3131,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   scrollPosition(
     selector: string,
@@ -3015,13 +3156,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   scrollPosition(
     getter: ScrollPositionGetter,
@@ -3039,13 +3182,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   scrollPosition(...args: [() => HTMLElement | null] | [string] | [ScrollPositionGetter, ScrollPositionSetter] | []) {
     // [] in case if it was shaked for serverNoSsr
@@ -3082,13 +3227,15 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >({
       _scrollPositionGetter: getter,
       _scrollPositionSetter: setter,
@@ -3111,13 +3258,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue<
       TPointType,
@@ -3131,13 +3280,15 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >({
       _scrollPositionRestorePolicy: typeof policy === 'function' ? policy : () => policy ?? null,
     }) as never
@@ -3162,13 +3313,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue({
       _middlewares: [...this._middlewares, middlewareFn],
@@ -3195,13 +3348,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue<
       TPointType,
@@ -3215,13 +3370,15 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
       _onPrefetchMountableFns: [...this._onPrefetchMountableFns, (fn ?? (() => undefined)) as never],
@@ -3244,13 +3401,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   prefetchPageOnLinkHover(
     policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
@@ -3277,13 +3436,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   prefetchPageOnNavigate(
     policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
@@ -3310,13 +3471,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue({
       _transformer: toExtendedTransformer(transformer),
@@ -3325,7 +3488,19 @@ export class Point0<
 
   // middlewares
 
-  ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TServerInputSchema, Ctx>>(
+  ctx<
+    TCtxFn extends CtxFn<
+      TCtx,
+      TCtxExposedKeys,
+      TServerInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      Ctx
+    >,
+  >(
     ctxFn: TCtxFn &
       AssertNoArrayReturn<Awaited<ReturnType<TCtxFn>>, 'Ctx fn should not return array'> &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
@@ -3342,15 +3517,29 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
-  ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TServerInputSchema, Ctx>>(
+  ctx<
+    TCtxFn extends CtxFn<
+      TCtx,
+      TCtxExposedKeys,
+      TServerInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      Ctx
+    >,
+  >(
     ctxFn: TCtxFn &
       AssertNoArrayReturn<Awaited<ReturnType<TCtxFn>>, 'Ctx fn should not return array'> &
       AssertNoForbiddenCtxExposedKeys<Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>> &
@@ -3369,16 +3558,28 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   ctx<
-    TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TServerInputSchema, Ctx>,
+    TCtxFn extends CtxFn<
+      TCtx,
+      TCtxExposedKeys,
+      TServerInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      Ctx
+    >,
     TCtxFnExposedKeys extends Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>,
   >(
     ctxFn: TCtxFn &
@@ -3398,13 +3599,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   ctx<TAppendCtx extends Ctx>(
     ctx: TAppendCtx &
@@ -3423,13 +3626,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   ctx<TAppendCtx extends Ctx>(
     ctx: TAppendCtx &
@@ -3450,13 +3655,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
     ctx: TAppendCtx &
@@ -3476,13 +3683,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   ctx(ctxOrFn?: CtxFn | Ctx, expose?: true | string[]) {
     const ctxFn =
@@ -3501,9 +3710,31 @@ export class Point0<
 
   loader<TNewServerLoaderOutput extends LoaderOutput = LoaderOutput>(
     loaderFn: TLetsReadyPointType extends 'mutation' | 'action'
-      ? LoaderResponseFn<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema, TNewServerLoaderOutput> &
+      ? LoaderResponseFn<
+          TCtx,
+          TCtxExposedKeys,
+          TServerLoaderOutput,
+          TServerInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema,
+          THeadersSchema,
+          TCookiesSchema,
+          TNewServerLoaderOutput
+        > &
           AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>
-      : LoaderDataFn<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema, TNewServerLoaderOutput> &
+      : LoaderDataFn<
+          TCtx,
+          TCtxExposedKeys,
+          TServerLoaderOutput,
+          TServerInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema,
+          THeadersSchema,
+          TCookiesSchema,
+          TNewServerLoaderOutput
+        > &
           AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>,
   ): NiceStagePoint<
     TNewServerLoaderOutput extends Response ? 'clientStage' : 'serverStage',
@@ -3518,16 +3749,23 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     // NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
-  loader(loaderFn: LoaderDataFn<any, any, any, any, any> | LoaderResponseFn<any, any, any, any, any> | boolean) {
+  loader(
+    loaderFn:
+      | LoaderDataFn<any, any, any, any, any, any, any, any>
+      | LoaderResponseFn<any, any, any, any, any, any, any, any>
+      | boolean,
+  ) {
     return this._continue({
       type: 'serverStage', // it should be clientStage if loader returns response, but we know it only by types, we do not know it in runtime, bu it is ok to have here for runtime serverStage. Not good, but ok.
       // _queryResultType: this._normalizeQueryResultType('query'),
@@ -3544,6 +3782,8 @@ export class Point0<
           TLetsReadyPointType,
           TRouteDefinition,
           TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
           TServerLoaderOutput,
           TClientLoaderOutput,
           TNewClientLoaderOutput
@@ -3553,6 +3793,8 @@ export class Point0<
           TLetsReadyPointType,
           TRouteDefinition,
           TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
           TServerLoaderOutput,
           TClientLoaderOutput,
           TNewClientLoaderOutput
@@ -3571,11 +3813,16 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     // NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions, // so here we not try to finalize query, becouse for mutation it is not needed at all, and in mountable can not happen becouse it can not return response
+    TQueriesDefinitions // so here we not try to finalize query, becouse for mutation it is not needed at all, and in mountable can not happen becouse it can not return response
     // WithSelfQueryIfShouldBeFinalized<
     //   TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage',
     //   TLetsReadyPointType,
@@ -3583,14 +3830,11 @@ export class Point0<
     //   TNewClientLoaderOutput,
     //   TQueriesDefinitions
     // >
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
   >
   clientLoader(
     clientLoaderFn:
-      | ClientLoaderDataFn<any, any, any, any, any, any>
-      | ClientLoaderResponseFn<any, any, any, any, any, any>
+      | ClientLoaderDataFn<any, any, any, any, any, any, any, any>
+      | ClientLoaderResponseFn<any, any, any, any, any, any, any, any>
       | undefined,
   ) {
     clientLoaderFn ||= (o: any) => o.data
@@ -3641,6 +3885,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -3650,10 +3899,7 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    >
   >
   mapper(mapperFn: MapperFn<any, any, any, any, any> | undefined) {
     // in case if we shake mapper for server without ssr side
@@ -3770,6 +4016,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -3779,10 +4030,7 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    >
   >
   head<TStatus extends 'loading' | 'error' | 'success' | 'universal' | 'global'>(
     status: TStatus,
@@ -3820,6 +4068,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -3829,10 +4082,7 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    >
   >
   head(..._args: any[]) {
     const args = _args as
@@ -3934,7 +4184,8 @@ export class Point0<
   input<
     TNextServerInputSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
-      AssertInputSchemaNotWider<TNextServerInputSchema, TServerInputSchema, TClientInputSchema>,
+      AssertInputSchemaNotWider<TNextServerInputSchema, TServerInputSchema, TClientInputSchema> &
+      AsserNotMashInputSchemas<TNextServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
   >(
     inputSchema: TNextServerInputSchema,
   ): WithError<
@@ -3952,13 +4203,15 @@ export class Point0<
       TRouteDefinition,
       MergeRecordValidationSchemas<TServerInputSchema, TNextServerInputSchema>,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   input<
@@ -3969,6 +4222,13 @@ export class Point0<
         RecordValidationSchema<TInputRaw, TInputParsed>,
         TServerInputSchema,
         TClientInputSchema
+      > &
+      AsserNotMashInputSchemas<
+        RecordValidationSchema<TInputRaw, TInputParsed>,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema
       >,
   >(
     ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
@@ -3987,13 +4247,15 @@ export class Point0<
       TRouteDefinition,
       MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   input<
@@ -4003,6 +4265,13 @@ export class Point0<
         CustomValidationFnToRecordValidationSchema<TValidateFn>,
         TServerInputSchema,
         TClientInputSchema
+      > &
+      AsserNotMashInputSchemas<
+        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema
       >,
   >(
     validateFn: TValidateFn & TCheckError,
@@ -4021,19 +4290,28 @@ export class Point0<
       TRouteDefinition,
       MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   input<
     TInput extends InputRaw,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
-      AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
+      AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema> &
+      AsserNotMashInputSchemas<
+        RecordValidationSchema<TInput, TInput>,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema
+      >,
   >(): WithError<
     TCheckError,
     NiceStagePoint<
@@ -4049,13 +4327,15 @@ export class Point0<
       TRouteDefinition,
       MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInput, TInput>>,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   input(...args: any[]) {
@@ -4063,7 +4343,7 @@ export class Point0<
     return this._continue({
       _serverExecuteActions: [
         ...this._serverExecuteActions,
-        { type: 'input', schema, unstableId: Point0._getNextUnstableId(), policy: 'append' },
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
       ],
     }) as never
   }
@@ -4071,7 +4351,8 @@ export class Point0<
   clientInput<
     TNextClientInputSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
-      AssertInputSchemaNotWider<TNextClientInputSchema, TServerInputSchema, TClientInputSchema>,
+      AssertInputSchemaNotWider<TNextClientInputSchema, TServerInputSchema, TClientInputSchema> &
+      AsserNotMashInputSchemas<TServerInputSchema, TNextClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
   >(
     inputSchema: TNextClientInputSchema,
   ): WithError<
@@ -4089,13 +4370,15 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       MergeRecordValidationSchemas<TClientInputSchema, TNextClientInputSchema>,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   clientInput<
@@ -4106,6 +4389,13 @@ export class Point0<
         RecordValidationSchema<TInputRaw, TInputParsed>,
         TServerInputSchema,
         TClientInputSchema
+      > &
+      AsserNotMashInputSchemas<
+        TServerInputSchema,
+        RecordValidationSchema<TInputRaw, TInputParsed>,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema
       >,
   >(
     validateFn: CustomValidationFn<TInputParsed> & TCheckError,
@@ -4124,13 +4414,15 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   clientInput<
@@ -4140,6 +4432,13 @@ export class Point0<
         CustomValidationFnToRecordValidationSchema<TValidateFn>,
         TServerInputSchema,
         TClientInputSchema
+      > &
+      AsserNotMashInputSchemas<
+        TServerInputSchema,
+        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema
       >,
   >(
     validateFn: TValidateFn & TCheckError,
@@ -4158,19 +4457,28 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       MergeRecordValidationSchemas<TClientInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   clientInput<
     TInput extends InputRaw,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
-      AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
+      AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema> &
+      AsserNotMashInputSchemas<
+        TServerInputSchema,
+        RecordValidationSchema<TInput, TInput>,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema
+      >,
   >(
     ...args: unknown extends TCheckError ? [] : [TCheckError]
   ): WithError<
@@ -4188,13 +4496,15 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInput, TInput>>,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   clientInput(...args: any[]) {
@@ -4202,7 +4512,7 @@ export class Point0<
     return this._continue({
       _clientExecuteActions: [
         ...this._clientExecuteActions,
-        { type: 'input', schema, unstableId: Point0._getNextUnstableId(), policy: 'append' },
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
       ],
     }) as never
   }
@@ -4210,7 +4520,8 @@ export class Point0<
   sharedInput<
     TNextInputSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
-      AssertInputSchemaNotWider<TNextInputSchema, TServerInputSchema, TClientInputSchema>,
+      AssertInputSchemaNotWider<TNextInputSchema, TServerInputSchema, TClientInputSchema> &
+      AsserNotMashInputSchemas<TNextInputSchema, TNextInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
   >(
     inputSchema: TNextInputSchema,
   ): WithError<
@@ -4228,13 +4539,15 @@ export class Point0<
       TRouteDefinition,
       MergeRecordValidationSchemas<TServerInputSchema, TNextInputSchema>,
       MergeRecordValidationSchemas<TClientInputSchema, TNextInputSchema>,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   sharedInput<
@@ -4245,6 +4558,13 @@ export class Point0<
         RecordValidationSchema<TInputRaw, TInputParsed>,
         TServerInputSchema,
         TClientInputSchema
+      > &
+      AsserNotMashInputSchemas<
+        RecordValidationSchema<TInputRaw, TInputParsed>,
+        RecordValidationSchema<TInputRaw, TInputParsed>,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema
       >,
   >(
     validateFn: CustomValidationFn<TInputParsed> & TCheckError,
@@ -4263,13 +4583,15 @@ export class Point0<
       TRouteDefinition,
       MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
       MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   sharedInput<
@@ -4279,6 +4601,13 @@ export class Point0<
         CustomValidationFnToRecordValidationSchema<TValidateFn>,
         TServerInputSchema,
         TClientInputSchema
+      > &
+      AsserNotMashInputSchemas<
+        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema
       >,
   >(
     validateFn: TValidateFn & TCheckError,
@@ -4297,19 +4626,28 @@ export class Point0<
       TRouteDefinition,
       MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
       MergeRecordValidationSchemas<TClientInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   sharedInput<
     TInput extends InputRaw,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
-      AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
+      AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema> &
+      AsserNotMashInputSchemas<
+        RecordValidationSchema<TInput, TInput>,
+        RecordValidationSchema<TInput, TInput>,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema
+      >,
   >(
     ...args: unknown extends TCheckError ? [] : [TCheckError]
   ): WithError<
@@ -4327,13 +4665,15 @@ export class Point0<
       TRouteDefinition,
       MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInput, TInput>>,
       MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInput, TInput>>,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   sharedInput(...args: any[]) {
@@ -4341,22 +4681,23 @@ export class Point0<
     return this._continue({
       _serverExecuteActions: [
         ...this._serverExecuteActions,
-        { type: 'input', schema, unstableId: Point0._getNextUnstableId(), policy: 'append' },
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
       ],
       _clientExecuteActions: [
         ...this._clientExecuteActions,
-        { type: 'input', schema, unstableId: Point0._getNextUnstableId(), policy: 'append' },
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
       ],
     }) as never
   }
 
   params<
-    TNextServerInputSchema extends InputSchema,
+    TNextParamsSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'params'> &
-      AssertNewInputSchemaNotWider<TNextServerInputSchema, ActionParamsSchema<TActionDefinition>, 'params'> &
-      AssertInputSchemaHasNotAnotherKeys<TNextServerInputSchema, ActionParamsSchema<TActionDefinition>, 'params'>,
+      AssertSchemaNotWider<TNextParamsSchema, TParamsSchema, 'params'> &
+      AssertInputSchemaHasNotAnotherKeys<TNextParamsSchema, TParamsSchema, 'params'> &
+      AsserNotMashInputSchemas<TServerInputSchema, TClientInputSchema, TNextParamsSchema, TSearchSchema, TBodySchema>,
   >(
-    paramsSchema: TNextServerInputSchema,
+    paramsSchema: TNextParamsSchema,
   ): WithError<
     TCheckError,
     NiceStagePoint<
@@ -4370,104 +4711,34 @@ export class Point0<
       TClientLoaderOutput,
       TMapperOutput,
       TRouteDefinition,
-      MergeRecordValidationSchemas<TServerInputSchema, TNextServerInputSchema>,
+      TServerInputSchema,
       TClientInputSchema,
+      MergeRecordValidationSchemas<TParamsSchema, TNextParamsSchema>,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition extends ActionDefinition<
-        infer TMethod,
-        infer TActionRoute,
-        infer TParamsSchema,
-        infer TSearchSchema,
-        infer TBodySchema
-      >
-        ? ActionDefinition<
-            TMethod,
-            TActionRoute,
-            MergeRecordValidationSchemas<TParamsSchema, TNextServerInputSchema>,
-            TSearchSchema,
-            TBodySchema
-          >
-        : ActionDefinition<any, any, TNextServerInputSchema, TServerInputSchema, UndefinedInputSchema>
-    >
-  >
-  params<
-    TInputRaw extends InputRaw,
-    TInputParsed extends InputParsed = TInputRaw,
-    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'params'> &
-      AssertNewInputSchemaNotWider<
-        RecordValidationSchema<TInputRaw, TInputParsed>,
-        ActionParamsSchema<TActionDefinition>,
-        'params'
-      > &
-      AssertInputSchemaHasNotAnotherKeys<
-        RecordValidationSchema<TInputRaw, TInputParsed>,
-        ActionParamsSchema<TActionDefinition>,
-        'params'
-      >,
-  >(
-    // it is typeguard for overload
-    ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
-  ): WithError<
-    TCheckError,
-    NiceStagePoint<
-      StagePointTypeOrNever<TPointType>,
-      ReadyPointTypeOrNever<TLetsReadyPointType>,
-      TRequiredCtx,
-      TError,
-      TCtx,
-      TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TMapperOutput,
-      TRouteDefinition,
-      MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
-      TClientInputSchema,
-      TQueryResultType,
-      TOuterProps,
-      TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition extends ActionDefinition<
-        infer TMethod,
-        infer TActionRoute,
-        infer TParamsSchema,
-        infer TSearchSchema,
-        infer TBodySchema
-      >
-        ? ActionDefinition<
-            TMethod,
-            TActionRoute,
-            MergeRecordValidationSchemas<TParamsSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
-            TSearchSchema,
-            TBodySchema
-          >
-        : ActionDefinition<
-            any,
-            any,
-            RecordValidationSchema<TInputRaw, TInputParsed>,
-            TServerInputSchema,
-            UndefinedInputSchema
-          >
+      TQueriesDefinitions
     >
   >
   params<
     TValidateFn extends CustomValidationFn<any>,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'params'> &
-      AssertNewInputSchemaNotWider<
-        CustomValidationFnToRecordValidationSchema<TValidateFn>,
-        ActionParamsSchema<TActionDefinition>,
-        'params'
-      > &
+      AssertSchemaNotWider<CustomValidationFnToRecordValidationSchema<TValidateFn>, TParamsSchema, 'params'> &
       AssertInputSchemaHasNotAnotherKeys<
         CustomValidationFnToRecordValidationSchema<TValidateFn>,
-        ActionParamsSchema<TActionDefinition>,
+        TParamsSchema,
         'params'
+      > &
+      AsserNotMashInputSchemas<
+        TServerInputSchema,
+        TClientInputSchema,
+        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        TSearchSchema,
+        TBodySchema
       >,
   >(
     validateFn: TValidateFn & TCheckError,
@@ -4484,35 +4755,17 @@ export class Point0<
       TClientLoaderOutput,
       TMapperOutput,
       TRouteDefinition,
-      MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TServerInputSchema,
       TClientInputSchema,
+      MergeRecordValidationSchemas<TParamsSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition extends ActionDefinition<
-        infer TMethod,
-        infer TActionRoute,
-        infer TParamsSchema,
-        infer TSearchSchema,
-        infer TBodySchema
-      >
-        ? ActionDefinition<
-            TMethod,
-            TActionRoute,
-            MergeRecordValidationSchemas<TParamsSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
-            TSearchSchema,
-            TBodySchema
-          >
-        : ActionDefinition<
-            any,
-            any,
-            CustomValidationFnToRecordValidationSchema<TValidateFn>,
-            TServerInputSchema,
-            UndefinedInputSchema
-          >
+      TQueriesDefinitions
     >
   >
   params(...args: any[]) {
@@ -4526,11 +4779,12 @@ export class Point0<
   }
 
   search<
-    TNextServerInputSchema extends InputSchema,
+    TNextSearchSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'search'> &
-      AssertNewInputSchemaNotWider<TNextServerInputSchema, ActionSearchSchema<TActionDefinition>, 'search'>,
+      AssertSchemaNotWider<TNextSearchSchema, TSearchSchema, 'search'> &
+      AsserNotMashInputSchemas<TServerInputSchema, TClientInputSchema, TParamsSchema, TNextSearchSchema, TBodySchema>,
   >(
-    searchSchema: TNextServerInputSchema,
+    searchSchema: TNextSearchSchema,
   ): WithError<
     TCheckError,
     NiceStagePoint<
@@ -4544,100 +4798,29 @@ export class Point0<
       TClientLoaderOutput,
       TMapperOutput,
       TRouteDefinition,
-      MergeRecordValidationSchemas<TServerInputSchema, TNextServerInputSchema>,
+      TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      MergeRecordValidationSchemas<TSearchSchema, TNextSearchSchema>,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition extends ActionDefinition<
-        infer TMethod,
-        infer TActionRoute,
-        infer TParamsSchema,
-        infer TSearchSchema,
-        infer TBodySchema
-      >
-        ? ActionDefinition<
-            TMethod,
-            TActionRoute,
-            TParamsSchema,
-            MergeRecordValidationSchemas<TSearchSchema, TNextServerInputSchema>,
-            TBodySchema
-          >
-        : ActionDefinition<
-            any,
-            any,
-            UndefinedInputSchema,
-            MergeRecordValidationSchemas<TServerInputSchema, TNextServerInputSchema>,
-            UndefinedInputSchema
-          >
-    >
-  >
-  search<
-    TInputRaw extends InputRaw,
-    TInputParsed extends InputParsed = TInputRaw,
-    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'search'> &
-      AssertNewInputSchemaNotWider<
-        RecordValidationSchema<TInputRaw, TInputParsed>,
-        ActionSearchSchema<TActionDefinition>,
-        'search'
-      >,
-  >(
-    // it is typeguard for overload
-    ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
-  ): WithError<
-    TCheckError,
-    NiceStagePoint<
-      StagePointTypeOrNever<TPointType>,
-      ReadyPointTypeOrNever<TLetsReadyPointType>,
-      TRequiredCtx,
-      TError,
-      TCtx,
-      TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TMapperOutput,
-      TRouteDefinition,
-      MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
-      TClientInputSchema,
-      TQueryResultType,
-      TOuterProps,
-      TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition extends ActionDefinition<
-        infer TMethod,
-        infer TActionRoute,
-        infer TParamsSchema,
-        infer TSearchSchema,
-        infer TBodySchema
-      >
-        ? ActionDefinition<
-            TMethod,
-            TActionRoute,
-            TParamsSchema,
-            MergeRecordValidationSchemas<TSearchSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
-            TBodySchema
-          >
-        : ActionDefinition<
-            any,
-            any,
-            UndefinedInputSchema,
-            MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
-            UndefinedInputSchema
-          >
+      TQueriesDefinitions
     >
   >
   search<
     TValidateFn extends CustomValidationFn<any>,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'search'> &
-      AssertNewInputSchemaNotWider<
+      AssertSchemaNotWider<CustomValidationFnToRecordValidationSchema<TValidateFn>, TSearchSchema, 'search'> &
+      AsserNotMashInputSchemas<
+        TServerInputSchema,
+        TClientInputSchema,
+        TParamsSchema,
         CustomValidationFnToRecordValidationSchema<TValidateFn>,
-        ActionSearchSchema<TActionDefinition>,
-        'search'
+        TBodySchema
       >,
   >(
     validateFn: TValidateFn & TCheckError,
@@ -4654,35 +4837,17 @@ export class Point0<
       TClientLoaderOutput,
       TMapperOutput,
       TRouteDefinition,
-      MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      MergeRecordValidationSchemas<TSearchSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition extends ActionDefinition<
-        infer TMethod,
-        infer TActionRoute,
-        infer TParamsSchema,
-        infer TSearchSchema,
-        infer TBodySchema
-      >
-        ? ActionDefinition<
-            TMethod,
-            TActionRoute,
-            TParamsSchema,
-            MergeRecordValidationSchemas<TSearchSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
-            TBodySchema
-          >
-        : ActionDefinition<
-            any,
-            any,
-            UndefinedInputSchema,
-            MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
-            UndefinedInputSchema
-          >
+      TQueriesDefinitions
     >
   >
   search(...args: any[]) {
@@ -4696,11 +4861,12 @@ export class Point0<
   }
 
   body<
-    TNextServerInputSchema extends InputSchema,
+    TNextBodySchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'body'> &
-      AssertNewInputSchemaNotWider<TNextServerInputSchema, ActionBodySchema<TActionDefinition>, 'body'>,
+      AssertSchemaNotWider<TNextBodySchema, TBodySchema, 'body'> &
+      AsserNotMashInputSchemas<TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TNextBodySchema>,
   >(
-    bodySchema: TNextServerInputSchema,
+    bodySchema: TNextBodySchema,
   ): WithError<
     TCheckError,
     NiceStagePoint<
@@ -4714,43 +4880,33 @@ export class Point0<
       TClientLoaderOutput,
       TMapperOutput,
       TRouteDefinition,
-      MergeRecordValidationSchemas<TServerInputSchema, TNextServerInputSchema>,
+      TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      MergeRecordValidationSchemas<TBodySchema, TNextBodySchema>,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition extends ActionDefinition<
-        infer TMethod,
-        infer TActionRoute,
-        infer TParamsSchema,
-        infer TSearchSchema,
-        infer TBodySchema
-      >
-        ? ActionDefinition<
-            TMethod,
-            TActionRoute,
-            TParamsSchema,
-            TSearchSchema,
-            MergeRecordValidationSchemas<TBodySchema, TNextServerInputSchema>
-          >
-        : ActionDefinition<any, any, UndefinedInputSchema, TServerInputSchema, TNextServerInputSchema>
+      TQueriesDefinitions
     >
   >
   body<
-    TInputRaw extends InputRaw,
-    TInputParsed extends InputParsed = TInputRaw,
+    TBodyRaw extends InputRaw,
+    TBodyParsed extends InputParsed = TBodyRaw,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'body'> &
-      AssertNewInputSchemaNotWider<
-        RecordValidationSchema<TInputRaw, TInputParsed>,
-        ActionBodySchema<TActionDefinition>,
-        'body'
+      AssertSchemaNotWider<RecordValidationSchema<TBodyRaw, TBodyParsed>, TBodySchema, 'body'> &
+      AsserNotMashInputSchemas<
+        TServerInputSchema,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        RecordValidationSchema<TBodyRaw, TBodyParsed>
       >,
   >(
-    // it is typeguard for overload
-    ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
+    ...args: TBodyParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TBodyParsed> & TCheckError]
   ): WithError<
     TCheckError,
     NiceStagePoint<
@@ -4764,44 +4920,29 @@ export class Point0<
       TClientLoaderOutput,
       TMapperOutput,
       TRouteDefinition,
-      MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      MergeRecordValidationSchemas<TBodySchema, RecordValidationSchema<TBodyRaw, TBodyParsed>>,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition extends ActionDefinition<
-        infer TMethod,
-        infer TActionRoute,
-        infer TParamsSchema,
-        infer TSearchSchema,
-        infer TBodySchema
-      >
-        ? ActionDefinition<
-            TMethod,
-            TActionRoute,
-            TParamsSchema,
-            TSearchSchema,
-            MergeRecordValidationSchemas<TBodySchema, RecordValidationSchema<TInputRaw, TInputParsed>>
-          >
-        : ActionDefinition<
-            any,
-            any,
-            UndefinedInputSchema,
-            TServerInputSchema,
-            RecordValidationSchema<TInputRaw, TInputParsed>
-          >
+      TQueriesDefinitions
     >
   >
   body<
     TValidateFn extends CustomValidationFn<any>,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'body'> &
-      AssertNewInputSchemaNotWider<
-        CustomValidationFnToRecordValidationSchema<TValidateFn>,
-        ActionBodySchema<TActionDefinition>,
-        'body'
+      AssertSchemaNotWider<CustomValidationFnToRecordValidationSchema<TValidateFn>, TBodySchema, 'body'> &
+      AsserNotMashInputSchemas<
+        TServerInputSchema,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        CustomValidationFnToRecordValidationSchema<TValidateFn>
       >,
   >(
     validateFn: TValidateFn & TCheckError,
@@ -4818,35 +4959,17 @@ export class Point0<
       TClientLoaderOutput,
       TMapperOutput,
       TRouteDefinition,
-      MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      MergeRecordValidationSchemas<TBodySchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      THeadersSchema,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      TCookiesSchema,
-      TActionDefinition extends ActionDefinition<
-        infer TMethod,
-        infer TActionRoute,
-        infer TParamsSchema,
-        infer TSearchSchema,
-        infer TBodySchema
-      >
-        ? ActionDefinition<
-            TMethod,
-            TActionRoute,
-            TParamsSchema,
-            TSearchSchema,
-            MergeRecordValidationSchemas<TBodySchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>
-          >
-        : ActionDefinition<
-            any,
-            any,
-            UndefinedInputSchema,
-            TServerInputSchema,
-            CustomValidationFnToRecordValidationSchema<TValidateFn>
-          >
+      TQueriesDefinitions
     >
   >
   body(...args: any[]) {
@@ -4862,7 +4985,7 @@ export class Point0<
   headers<
     TNextHeadersSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'headers'> &
-      AssertNewInputSchemaNotWider<TNextHeadersSchema, THeadersSchema, 'headers'>,
+      AssertSchemaNotWider<TNextHeadersSchema, THeadersSchema, 'headers'>,
   >(
     headersSchema: TNextHeadersSchema,
   ): WithError<
@@ -4880,20 +5003,22 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      MergeRecordValidationSchemas<THeadersSchema, TNextHeadersSchema>,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      MergeRecordValidationSchemas<THeadersSchema, TNextHeadersSchema>,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   headers<
     TInputRaw extends InputRaw,
     TInputParsed extends InputParsed = TInputRaw,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'headers'> &
-      AssertNewInputSchemaNotWider<RecordValidationSchema<TInputRaw, TInputParsed>, THeadersSchema, 'headers'>,
+      AssertSchemaNotWider<RecordValidationSchema<TInputRaw, TInputParsed>, THeadersSchema, 'headers'>,
   >(
     // it is typeguard for overload
     ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
@@ -4912,19 +5037,21 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      MergeRecordValidationSchemas<THeadersSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      MergeRecordValidationSchemas<THeadersSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   headers<
     TValidateFn extends CustomValidationFn<any>,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'headers'> &
-      AssertNewInputSchemaNotWider<CustomValidationFnToRecordValidationSchema<TValidateFn>, THeadersSchema, 'headers'>,
+      AssertSchemaNotWider<CustomValidationFnToRecordValidationSchema<TValidateFn>, THeadersSchema, 'headers'>,
   >(
     validateFn: TValidateFn & TCheckError,
   ): WithError<
@@ -4942,13 +5069,15 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      MergeRecordValidationSchemas<THeadersSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TCookiesSchema,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      MergeRecordValidationSchemas<THeadersSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
-      TCookiesSchema,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   headers(...args: any[]) {
@@ -4964,7 +5093,7 @@ export class Point0<
   cookies<
     TNextCookiesSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'cookies'> &
-      AssertNewInputSchemaNotWider<TNextCookiesSchema, TCookiesSchema, 'cookies'>,
+      AssertSchemaNotWider<TNextCookiesSchema, TCookiesSchema, 'cookies'>,
   >(
     cookiesSchema: TNextCookiesSchema,
   ): WithError<
@@ -4982,20 +5111,22 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      MergeRecordValidationSchemas<TCookiesSchema, TNextCookiesSchema>,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      MergeRecordValidationSchemas<TCookiesSchema, TNextCookiesSchema>,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   cookies<
     TInputRaw extends InputRaw,
     TInputParsed extends InputParsed = TInputRaw,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'cookies'> &
-      AssertNewInputSchemaNotWider<RecordValidationSchema<TInputRaw, TInputParsed>, THeadersSchema, 'cookies'>,
+      AssertSchemaNotWider<RecordValidationSchema<TInputRaw, TInputParsed>, THeadersSchema, 'cookies'>,
   >(
     // it is typeguard for overload
     ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
@@ -5014,19 +5145,21 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      MergeRecordValidationSchemas<TCookiesSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      MergeRecordValidationSchemas<TCookiesSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   cookies<
     TValidateFn extends CustomValidationFn<any>,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'cookies'> &
-      AssertNewInputSchemaNotWider<CustomValidationFnToRecordValidationSchema<TValidateFn>, TCookiesSchema, 'cookies'>,
+      AssertSchemaNotWider<CustomValidationFnToRecordValidationSchema<TValidateFn>, TCookiesSchema, 'cookies'>,
   >(
     validateFn: TValidateFn & TCheckError,
   ): WithError<
@@ -5044,13 +5177,15 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      MergeRecordValidationSchemas<TCookiesSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions,
-      THeadersSchema,
-      MergeRecordValidationSchemas<TCookiesSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
-      TActionDefinition
+      TQueriesDefinitions
     >
   >
   cookies(...args: any[]) {
@@ -5076,13 +5211,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue({
       type: 'root',
@@ -5106,13 +5243,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue({
       type: 'plugin',
@@ -5133,13 +5272,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     return this._continue({
       type: 'base',
@@ -5176,6 +5317,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -5185,10 +5331,7 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    >
   >
   page(...args: any[]) {
     const [page = () => null] = args as [PageSuccessComponentType<any, any, any, any> | undefined]
@@ -5240,6 +5383,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -5249,10 +5397,7 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    >
   > {
     const [component = () => null] = args as [ComponentSuccessComponentType<any, any, any> | undefined]
     // this._applyComponentDisplayName(component, { suffix: 'Inner' })
@@ -5306,6 +5451,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -5315,13 +5465,12 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    >
   >
   layout<
     TPoint extends NiceLayoutReadyPoint<
+      any,
+      any,
       any,
       any,
       any,
@@ -5346,9 +5495,9 @@ export class Point0<
     ...args: TLetsReadyPointType extends 'page'
       ? [
           layout: TPoint,
-          ...error: InputsRaw<TServerInputSchema, TClientInputSchema> extends TPoint['Infer']['InputRaw']
+          ...error: InputRaw<TParamsSchema> extends TPoint['Infer']['ParamsRaw']
             ? []
-            : [ShowError<`Layout input not compatible to current page input`>],
+            : [ShowError<`Layout params not compatible to current page params`>],
         ]
       : never
   ): NiceStagePoint<
@@ -5366,6 +5515,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -5377,10 +5531,7 @@ export class Point0<
         TClientLoaderOutput,
         TQueriesDefinitions
       >,
-    ],
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    ]
   >
   layout(...args: any[]) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
@@ -5411,6 +5562,8 @@ export class Point0<
     } else {
       const [layoutNicePoint] = args as [
         | NiceLayoutReadyPoint<
+            any,
+            any,
             any,
             any,
             any,
@@ -5520,6 +5673,11 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -5529,10 +5687,7 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TQueriesDefinitions
-    >,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    >
   >
   provider(_mapperFn?: any) {
     const mapperFn = _mapperFn as MapperFn<any, any, any, any, any> | undefined
@@ -5587,6 +5742,8 @@ export class Point0<
       any,
       any,
       any,
+      any,
+      any,
       any
     >,
   >(
@@ -5609,6 +5766,12 @@ export class Point0<
     TRouteDefinition,
     MergeRecordValidationSchemas<TServerInputSchema, T['Infer']['ServerInputSchema']>,
     MergeRecordValidationSchemas<TClientInputSchema, T['Infer']['ClientInputSchema']>,
+    // TODO:ASAP fix plugin
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     AppendProps<TInnerProps, T['Infer']['InnerProps']>,
@@ -5621,13 +5784,12 @@ export class Point0<
         TQueriesDefinitions
       >,
       T['Infer']['Queries']
-    >,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    >
   >
   use(
     plugin: NicePluginReadyPoint<
+      any,
+      any,
       any,
       any,
       any,
@@ -5815,13 +5977,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     'query',
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   query(
     ...args: TLetsReadyPointType extends MountablePointType
@@ -5855,16 +6019,18 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     'query',
     TOuterProps,
     TInnerProps,
     AppendQueries<
       TQueriesDefinitions,
       QueryDefinition<'query', FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>
-    >,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    >
   >
   query(...args: any) {
     const [queryOptions = {}] = args as [ExtraUseQueryOptions | undefined]
@@ -5904,7 +6070,14 @@ export class Point0<
       ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
         ? [
             infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-              InputsRaw<TServerInputSchema, TClientInputSchema>,
+              FinalInputRaw<
+                TLetsReadyPointType,
+                TServerInputSchema,
+                TClientInputSchema,
+                TParamsSchema,
+                TSearchSchema,
+                TBodySchema
+              >,
               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
               TError,
               InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -5931,13 +6104,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     'infiniteQuery',
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   >
   infiniteQuery(
     ...args: TLetsReadyPointType extends MountablePointType
@@ -5946,7 +6121,14 @@ export class Point0<
         : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
           ? [
               infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-                InputsRaw<TServerInputSchema, TClientInputSchema>,
+                FinalInputRaw<
+                  TLetsReadyPointType,
+                  TServerInputSchema,
+                  TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema
+                >,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -5973,16 +6155,18 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     'infiniteQuery',
     TOuterProps,
     TInnerProps,
     AppendQueries<
       TQueriesDefinitions,
       QueryDefinition<'infiniteQuery', InfiniteData<FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>>
-    >,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    >
   >
   infiniteQuery(...args: any[]) {
     const [infiniteQueryOptions = {}] = args as [ExtraUseInfiniteQueryOptions<any> | undefined]
@@ -6012,7 +6196,14 @@ export class Point0<
           _letsReadyPointType: undefined,
           _queryResultType: 'infiniteQuery',
           _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<
-            InputsRaw<TServerInputSchema, TClientInputSchema>,
+            FinalInputRaw<
+              ReadyPointType,
+              TServerInputSchema,
+              TClientInputSchema,
+              TParamsSchema,
+              TSearchSchema,
+              TBodySchema
+            >,
             FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
             TError,
             InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -6032,7 +6223,14 @@ export class Point0<
           mutationOptions?: UseMutationOptions<
             FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
             TError,
-            InputsRawOrUndefinedOrVoid<TServerInputSchema, TClientInputSchema>
+            FinalInputRawOrUndefinedOrVoid<
+              TPointType,
+              TServerInputSchema,
+              TClientInputSchema,
+              TParamsSchema,
+              TSearchSchema,
+              TBodySchema
+            >
           >,
         ]
       : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .mutation()`>]
@@ -6049,13 +6247,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     const [mutationOptions = {}] = args
     const point = this._continue({
@@ -6084,13 +6284,15 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions,
-    THeadersSchema,
-    TCookiesSchema,
-    TActionDefinition
+    TQueriesDefinitions
   > {
     const point = this._continue({
       type: 'action',
@@ -6347,10 +6549,10 @@ export class Point0<
 
   private parseInputSafeSync<TInputSchema extends InputSchema | UndefinedInputSchema>(
     inputSchema: TInputSchema,
-    ...args: IsInputOptional<TInputSchema> extends true
+    ...args: IsSchemaOptional<TInputSchema> extends true
       ? [input?: InputRaw<TInputSchema>]
       : [input: InputRaw<TInputSchema>]
-  ): SafeParseInputResult<TInputSchema, TError> {
+  ): SimpleSafeParseInputResult<TInputSchema, TError> {
     const [input = {}] = args
     if (!inputSchema) {
       return {
@@ -6401,10 +6603,10 @@ export class Point0<
   }
 
   parseClientInputSafe(
-    ...args: IsInputOptional<TClientInputSchema> extends true
+    ...args: IsSchemaOptional<TClientInputSchema> extends true
       ? [input?: InputRaw<TClientInputSchema>]
       : [input: InputRaw<TClientInputSchema>]
-  ): SafeParseInputResult<TClientInputSchema, TError> {
+  ): SimpleSafeParseInputResult<TClientInputSchema, TError> {
     const output = {} as InputParsed<TClientInputSchema>
     for (const clientExecuteAction of this._clientExecuteActions) {
       if (clientExecuteAction.type === 'input') {
@@ -6419,7 +6621,7 @@ export class Point0<
   }
 
   parseClientInput(
-    ...args: IsInputOptional<TClientInputSchema> extends true
+    ...args: IsSchemaOptional<TClientInputSchema> extends true
       ? [input?: InputRaw<TClientInputSchema>]
       : [input: InputRaw<TClientInputSchema>]
   ): InputParsed<TClientInputSchema> {
@@ -6444,11 +6646,22 @@ export class Point0<
     clientData: Data | undefined
     clientResponse: Response | undefined
     clientOutput: Data | Response | undefined
-    clientInput: InputParsed<TClientInputSchema>
+    clientInput: InputParsed<TClientInputSchema> | undefined
+    clientParams: InputParsed<TParamsSchema> | undefined
+    clientSearch: InputParsed<TSearchSchema> | undefined
   }> {
     let currentClientData: Data | undefined = serverData
     let currentClientResponse: Response | undefined = serverResponse
     let currentClientOutput: Data | Response | undefined = serverResponse ?? serverData
+    let currentInputParsed = undefined as InputParsed | undefined
+    let currentParamsParsed = undefined as InputParsed | undefined
+    let currentSearchParsed = undefined as InputParsed | undefined
+    location ??=
+      this.type === 'page' || this.type === 'layout'
+        ? this._getSelfLocationByAnotherLocationOrInput(location, input)
+        : _ssItems.__POINT0_CURRENT_LOCATION__.get()
+    const params = location.params
+    const search = location.searchParams
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result. We do it to not even start loaders if input invalid
     const { parsedInput, inputError } = (() => {
       const result = this.parseClientInputSafe(input)
@@ -6460,11 +6673,18 @@ export class Point0<
     if (inputError) {
       throw inputError
     }
-    let currentInputParsed = {} as InputParsed<TClientInputSchema>
-    location ??=
-      this.type === 'page' || this.type === 'layout'
-        ? this._getSelfLocationByAnotherLocationOrInput(location, input)
-        : _ssItems.__POINT0_CURRENT_LOCATION__.get()
+    // const parsed: {
+    //   input?: InputParsed
+    //   params?: InputParsed
+    //   search?: InputParsed
+    // } = {}
+    const getParsed = () => {
+      return {
+        ...(currentInputParsed ? { input: currentInputParsed } : {}),
+        ...(currentParamsParsed ? { params: currentParamsParsed } : {}),
+        ...(currentSearchParsed ? { search: currentSearchParsed } : {}),
+      }
+    }
     for (const clientExecuteAction of this._clientExecuteActions) {
       switch (clientExecuteAction.type) {
         case 'pluginStart': {
@@ -6484,13 +6704,35 @@ export class Point0<
           }
           break
         }
+        case 'params': {
+          const result = this.parseInputSafeSync(clientExecuteAction.schema, params)
+          if (result.error) {
+            throw result.error
+          }
+          currentParamsParsed = {
+            ...currentParamsParsed,
+            ...result.data,
+          }
+          break
+        }
+        case 'search': {
+          const result = this.parseInputSafeSync(clientExecuteAction.schema, search)
+          if (result.error) {
+            throw result.error
+          }
+          currentSearchParsed = {
+            ...currentSearchParsed,
+            ...result.data,
+          }
+          break
+        }
         case 'loader': {
           const promise = clientExecuteAction.fn({
             data: currentClientData ?? {},
             location,
             response: serverResponse,
-            input: currentInputParsed,
             serverData,
+            ...getParsed(),
           })
           const result = (await (promise as any)) as Awaited<ReturnType<ClientLoaderResponseFn | ClientLoaderDataFn>>
           if (result instanceof Response) {
@@ -6515,7 +6757,9 @@ export class Point0<
       clientData: currentClientData,
       clientResponse: currentClientResponse,
       clientOutput: currentClientOutput,
-      clientInput: currentInputParsed,
+      clientInput: currentInputParsed as InputParsed<TClientInputSchema> | undefined,
+      clientParams: currentParamsParsed as InputParsed<TParamsSchema> | undefined,
+      clientSearch: currentSearchParsed as InputParsed<TSearchSchema> | undefined,
     }
   }
 
@@ -6524,7 +6768,7 @@ export class Point0<
     if (!route) {
       return _ssItems.__POINT0_CURRENT_LOCATION__.get()
     }
-    return route.getLocation(route.flat({ ...location.searchParams, ...location.params })) as KnownLocation<
+    return route.getLocation(route.flatLoose({ ...location.searchParams, ...location.params })) as KnownLocation<
       CurrentRouteDefinition<TRouteDefinition>
     >
   }
@@ -6541,9 +6785,9 @@ export class Point0<
       return _ssItems.__POINT0_CURRENT_LOCATION__.get()
     }
     if (location) {
-      return route.getLocation(route.flat({ ...location.searchParams, ...location.params, ...input }))
+      return route.getLocation(route.flatLoose({ ...location.searchParams, ...location.params, ...input }))
     }
-    return route.getLocation(route.flat({ ...(input || {}) }))
+    return route.getLocation(route.flatLoose({ ...(input || {}) }))
   }
 
   _getUnsafeInputRawByLocation(location: AnyLocation): InputRaw<TClientInputSchema> {
@@ -6554,14 +6798,35 @@ export class Point0<
   // fetching and queries
 
   useQuery(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
       ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: { fetchOptions?: FetchOptions | undefined },
         ]
       : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: { fetchOptions?: FetchOptions | undefined },
         ]
@@ -6605,12 +6870,33 @@ export class Point0<
   }
 
   useInfiniteQuery(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
       ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
-                InputsRaw<TServerInputSchema, TClientInputSchema>,
+                FinalInputRaw<
+                  TPointType,
+                  TServerInputSchema,
+                  TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema
+                >,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -6621,10 +6907,24 @@ export class Point0<
           options?: { fetchOptions?: FetchOptions | undefined },
         ]
       : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
-                InputsRaw<TServerInputSchema, TClientInputSchema>,
+                FinalInputRaw<
+                  TPointType,
+                  TServerInputSchema,
+                  TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema
+                >,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -6704,10 +7004,13 @@ export class Point0<
     }
 
     const { url, method, isAction } = (() => {
-      if (this.type === 'action' && this._action) {
+      if (this.type === 'action') {
+        if (!this._endpoint) {
+          throw new Error(`Action definition is not set on point ${this.toStringWithLocation()}`)
+        }
         return {
-          url: new URL(this._action.route.flat((input as any).params ?? {}), serverurl),
-          method: this._action.method,
+          url: new URL(this._endpoint.route.get((input as any).params ?? {}), serverurl),
+          method: this.method,
           isAction: true,
         }
       }
@@ -6792,29 +7095,38 @@ export class Point0<
   }
 
   getFetchServerOptions(
-    ...args: TActionDefinition extends AnyActionDefinition
-      ? IsActionInputOptional<TActionDefinition> extends true
-        ? [
-            input?: ActionInputRaw<TActionDefinition> | undefined,
-            fetchOptions?: FetchOptions,
-            options?: { _outputType?: FetchServerOutputType },
-          ]
-        : [
-            input: ActionInputRaw<TActionDefinition>,
-            fetchOptions?: FetchOptions,
-            options?: { _outputType?: FetchServerOutputType },
-          ]
-      : IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-        ? [
-            input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-            fetchOptions?: FetchOptions,
-            options?: { _outputType?: FetchServerOutputType },
-          ]
-        : [
-            input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-            fetchOptions?: FetchOptions,
-            options?: { _outputType?: FetchServerOutputType },
-          ]
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
+      ? [
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+          fetchOptions?: FetchOptions,
+          options?: { _outputType?: FetchServerOutputType },
+        ]
+      : [
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+          fetchOptions?: FetchOptions,
+          options?: { _outputType?: FetchServerOutputType },
+        ]
   ): { url: string; init: RequestInit; request: Request; isAction: boolean } {
     const [input = {}, fetchOptions, { _outputType = 'data' } = {}] = args
     return this._getFetchServerOptions({ input, fetchOptions, _outputType })
@@ -6985,29 +7297,38 @@ export class Point0<
   }
 
   async fetchServerDetailed(
-    ...args: TActionDefinition extends AnyActionDefinition
-      ? IsActionInputOptional<TActionDefinition> extends true
-        ? [
-            input?: ActionInputRaw<TActionDefinition> | undefined,
-            fetchOptions?: FetchOptions,
-            options?: { _outputType?: FetchServerOutputType },
-          ]
-        : [
-            input: ActionInputRaw<TActionDefinition>,
-            fetchOptions?: FetchOptions,
-            options?: { _outputType?: FetchServerOutputType },
-          ]
-      : IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-        ? [
-            input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-            fetchOptions?: FetchOptions,
-            options?: { _outputType?: FetchServerOutputType },
-          ]
-        : [
-            input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-            fetchOptions?: FetchOptions,
-            options?: { _outputType?: FetchServerOutputType },
-          ]
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
+      ? [
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+          fetchOptions?: FetchOptions,
+          options?: { _outputType?: FetchServerOutputType },
+        ]
+      : [
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+          fetchOptions?: FetchOptions,
+          options?: { _outputType?: FetchServerOutputType },
+        ]
   ): Promise<FetchServerDetailedOutput<TServerLoaderOutput, TError>> {
     const [input = {}, fetchOptions, options] = args
     return this._fetchServerDetailed({ input, fetchOptions, _outputType: options?._outputType })
@@ -7029,29 +7350,38 @@ export class Point0<
     return detailedResult.output as FetchServerOutput<TServerLoaderOutput>
   }
   async fetchServer(
-    ...args: TActionDefinition extends AnyActionDefinition
-      ? IsActionInputOptional<TActionDefinition> extends true
-        ? [
-            input?: ActionInputRaw<TActionDefinition> | undefined,
-            fetchOptions?: FetchOptions,
-            options?: { _outputType?: FetchServerOutputType },
-          ]
-        : [
-            input: ActionInputRaw<TActionDefinition>,
-            fetchOptions?: FetchOptions,
-            options?: { _outputType?: FetchServerOutputType },
-          ]
-      : IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-        ? [
-            input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-            fetchOptions?: FetchOptions,
-            options?: { _outputType?: FetchServerOutputType },
-          ]
-        : [
-            input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
-            fetchOptions?: FetchOptions,
-            options?: { _outputType?: FetchServerOutputType },
-          ]
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
+      ? [
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+          fetchOptions?: FetchOptions,
+          options?: { _outputType?: FetchServerOutputType },
+        ]
+      : [
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+          fetchOptions?: FetchOptions,
+          options?: { _outputType?: FetchServerOutputType },
+        ]
   ): Promise<FetchServerOutput<TServerLoaderOutput>> {
     const [input = {}, fetchOptions, options] = args
     return this._fetchServer({ input, fetchOptions, _outputType: options?._outputType })
@@ -7062,7 +7392,7 @@ export class Point0<
     outputType = 'data',
     isInfiniteQuery,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     outputType?: FetchServerOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
@@ -7082,7 +7412,7 @@ export class Point0<
     input = {} as never,
     isInfiniteQuery,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     isInfiniteQuery: boolean
   }): QueryKey {
     return [
@@ -7102,7 +7432,7 @@ export class Point0<
     outputType = 'data',
     isInfiniteQuery,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     outputType?: FetchServerOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
@@ -7123,7 +7453,7 @@ export class Point0<
     options = {},
     queryResultType,
   }: {
-    input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>
+    input?: InputRaw
     options?: { _outputType?: FetchServerOutputType }
     queryResultType: QueryResultType
   }): QueryKey {
@@ -7154,13 +7484,34 @@ export class Point0<
   }
 
   getQueryKey(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
       ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           options?: { _outputType?: FetchServerOutputType },
         ]
       : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           options?: { _outputType?: FetchServerOutputType },
         ]
   ): QueryKey {
@@ -7169,13 +7520,34 @@ export class Point0<
   }
 
   getInfiniteQueryKey(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
       ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           options?: { _outputType?: FetchServerOutputType },
         ]
       : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           options?: { _outputType?: FetchServerOutputType },
         ]
   ): QueryKey {
@@ -7189,7 +7561,7 @@ export class Point0<
     fetchOptions,
     outputType,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchServerOutputType
@@ -7258,7 +7630,7 @@ export class Point0<
     location,
     serverData,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
     serverData?: Data
@@ -7328,7 +7700,7 @@ export class Point0<
     queryOptions,
     fetchOptions,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     location?: AnyLocation
     queryClient?: QueryClient
     queryOptions?: ExtraUseQueryOptions | undefined
@@ -7405,9 +7777,23 @@ export class Point0<
   }
 
   getQueryOptions(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
       ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
             location?: AnyLocation
@@ -7418,7 +7804,14 @@ export class Point0<
           },
         ]
       : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
             location?: AnyLocation
@@ -7471,10 +7864,10 @@ export class Point0<
     fetchOptions,
     outputType,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     infiniteQueryOptions:
       | ExtraUseInfiniteQueryOptions<
-          InputsRaw<TServerInputSchema, TClientInputSchema>,
+          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -7485,6 +7878,7 @@ export class Point0<
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchServerOutputType
   }): UseInfiniteQueryOptions<
+    FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
     InfiniteData<FetchServerOutput<TServerLoaderOutput>>,
     TError,
     FetchServerOutput<TServerLoaderOutput>,
@@ -7543,12 +7937,12 @@ export class Point0<
     serverData,
     location,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     serverData?: Data
     location?: AnyLocation
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
-          InputsRaw<TServerInputSchema, TClientInputSchema>,
+          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -7557,9 +7951,8 @@ export class Point0<
         >
       | undefined
   }): UseInfiniteQueryOptions<
-    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> extends Data
-      ? FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>
-      : never,
+    FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     TError,
     InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
     QueryKey
@@ -7621,12 +8014,12 @@ export class Point0<
     location,
     queryClient,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     location?: AnyLocation
     fetchOptions?: FetchOptions | undefined
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
-          InputsRaw<TServerInputSchema, TClientInputSchema>,
+          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -7636,9 +8029,8 @@ export class Point0<
       | undefined
     queryClient?: QueryClient
   }): UseInfiniteQueryOptions<
-    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> extends Data
-      ? FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>
-      : never,
+    FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     TError,
     InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
     QueryKey
@@ -7731,12 +8123,33 @@ export class Point0<
   }
 
   getInfiniteQueryOptions(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
       ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
-                InputsRaw<TServerInputSchema, TClientInputSchema>,
+                FinalInputRaw<
+                  TPointType,
+                  TServerInputSchema,
+                  TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema
+                >,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -7753,10 +8166,24 @@ export class Point0<
           },
         ]
       : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
-                InputsRaw<TServerInputSchema, TClientInputSchema>,
+                FinalInputRaw<
+                  TPointType,
+                  TServerInputSchema,
+                  TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema
+                >,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -7773,7 +8200,7 @@ export class Point0<
           },
         ]
   ): UseInfiniteQueryOptions<
-    InputsRaw<TServerInputSchema, TClientInputSchema>,
+    FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     TError,
     InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -7816,7 +8243,7 @@ export class Point0<
     fetchOptions,
     outputType,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchServerOutputType
@@ -7829,7 +8256,7 @@ export class Point0<
     queryOptions,
     location,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
   }): UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, TError> {
@@ -7848,7 +8275,7 @@ export class Point0<
     location,
     fetchOptions,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
@@ -7871,10 +8298,10 @@ export class Point0<
     fetchOptions,
     outputType,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     infiniteQueryOptions:
       | ExtraUseInfiniteQueryOptions<
-          InputsRaw<TServerInputSchema, TClientInputSchema>,
+          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -7899,11 +8326,11 @@ export class Point0<
     infiniteQueryOptions: providedInfiniteQueryOptions,
     location,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     location?: AnyLocation
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
-          InputsRaw<TServerInputSchema, TClientInputSchema>,
+          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -7926,11 +8353,11 @@ export class Point0<
     fetchOptions,
     location,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     location?: AnyLocation
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
-          InputsRaw<TServerInputSchema, TClientInputSchema>,
+          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
           InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -7957,7 +8384,14 @@ export class Point0<
   ): MutationOptions<
     FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
     TError,
-    InputsRawOrUndefinedOrVoid<TServerInputSchema, TClientInputSchema>
+    FinalInputRawOrUndefinedOrVoid<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    >
   > {
     const mutationFn = async (input: Record<string, any> = {}) => {
       const eventData = {
@@ -8016,7 +8450,14 @@ export class Point0<
     } as MutationOptions<
       FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
       TError,
-      InputsRawOrUndefinedOrVoid<TServerInputSchema, TClientInputSchema>
+      FinalInputRawOrUndefinedOrVoid<
+        TPointType,
+        TServerInputSchema,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema
+      >
     >
   }
 
@@ -8026,20 +8467,48 @@ export class Point0<
   ): UseMutationResult<
     FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
     TError,
-    InputsRawOrUndefinedOrVoid<TServerInputSchema, TClientInputSchema>
+    FinalInputRawOrUndefinedOrVoid<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    >
   > => {
     return useMutation(this.getMutationOptions(mutationOptions, options))
   }
 
   fetchMutation = async (
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
       ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           mutationOptions?: MutationOptions | undefined,
           options?: { fetchOptions?: FetchOptions | undefined },
         ]
       : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           mutationOptions?: MutationOptions | undefined,
           options?: { fetchOptions?: FetchOptions | undefined },
         ]
@@ -8052,9 +8521,36 @@ export class Point0<
   }
 
   fetch = async (
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-      ? [input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
-      : [input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
+      ? [
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+          fetchOptions?: FetchOptions,
+        ]
+      : [
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+          fetchOptions?: FetchOptions,
+        ]
   ): Promise<FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>> => {
     const [input = {}, fetchOptions] = args
     if (!this._queryResultType) {
@@ -8093,7 +8589,7 @@ export class Point0<
     outputType,
     location,
   }: {
-    input: InputsRawOrUndefined<any, any>
+    input: InputRaw
     mode: QueryMode
     queryClient?: QueryClient
     queryOptions?: ExtraUseQueryOptions
@@ -8134,9 +8630,23 @@ export class Point0<
   }
 
   async fetchQuery<TMode extends QueryMode = 'serverAndClient', TCacheOnly extends boolean = false>(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
       ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
             location?: AnyLocation
@@ -8149,7 +8659,14 @@ export class Point0<
           },
         ]
       : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
             location?: AnyLocation
@@ -8180,7 +8697,7 @@ export class Point0<
                   : never)
           | undefined
   > {
-    const [input, providedQueryOptions, options = {}] = args
+    const [input = {}, providedQueryOptions, options = {}] = args
     const {
       location,
       queryClient: providedQueryClient,
@@ -8213,9 +8730,23 @@ export class Point0<
   }
 
   async prefetchQuery(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
       ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
             location?: AnyLocation
@@ -8227,7 +8758,14 @@ export class Point0<
           },
         ]
       : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
             location?: AnyLocation
@@ -8239,7 +8777,7 @@ export class Point0<
           },
         ]
   ): Promise<void> {
-    const [input, providedQueryOptions, options = {}] = args
+    const [input = {}, providedQueryOptions, options = {}] = args
     const {
       location,
       queryClient: providedQueryClient,
@@ -8277,7 +8815,7 @@ export class Point0<
     outputType,
     location,
   }: {
-    input: InputsRawOrUndefined<any, any>
+    input: InputRaw
     mode: QueryMode
     queryClient?: QueryClient
     infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<any, any, any, any, any, any>
@@ -8288,7 +8826,7 @@ export class Point0<
     | false
     | {
         cacheData: QueriedInfiniteData<any>
-        infiniteQueryOptions: UseInfiniteQueryOptions<any, any, any, any>
+        infiniteQueryOptions: UseInfiniteQueryOptions<any, any, any, any, any, any>
         queryClient: QueryClient
       } {
     if (!this._hasServerLoader() && !this._hasClientLoader()) {
@@ -8318,12 +8856,33 @@ export class Point0<
   }
 
   async fetchInfiniteQuery<TMode extends QueryMode = 'serverAndClient', TCacheOnly extends boolean = false>(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
       ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
-                InputsRaw<TServerInputSchema, TClientInputSchema>,
+                FinalInputRaw<
+                  TPointType,
+                  TServerInputSchema,
+                  TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema
+                >,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -8342,10 +8901,24 @@ export class Point0<
           },
         ]
       : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
-                InputsRaw<TServerInputSchema, TClientInputSchema>,
+                FinalInputRaw<
+                  TPointType,
+                  TServerInputSchema,
+                  TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema
+                >,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -8382,7 +8955,7 @@ export class Point0<
                   : never)
           | undefined
   > {
-    const [input, providedInfiniteQueryOptions, options = {}] = args
+    const [input = {}, providedInfiniteQueryOptions, options = {}] = args
     const {
       location,
       queryClient: providedQueryClient,
@@ -8415,12 +8988,33 @@ export class Point0<
   }
 
   async prefetchInfiniteQuery(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
       ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
-                InputsRaw<TServerInputSchema, TClientInputSchema>,
+                FinalInputRaw<
+                  TPointType,
+                  TServerInputSchema,
+                  TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema
+                >,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -8438,10 +9032,24 @@ export class Point0<
           },
         ]
       : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
-                InputsRaw<TServerInputSchema, TClientInputSchema>,
+                FinalInputRaw<
+                  TPointType,
+                  TServerInputSchema,
+                  TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema
+                >,
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 TError,
                 InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -8459,7 +9067,7 @@ export class Point0<
           },
         ]
   ): Promise<void> {
-    const [input, providedInfiniteQueryOptions, options = {}] = args
+    const [input = {}, providedInfiniteQueryOptions, options = {}] = args
     const {
       location,
       queryClient: providedQueryClient,
@@ -8498,7 +9106,7 @@ export class Point0<
     fetchOptions,
     force,
   }: {
-    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    input: InputRaw
     queryClient?: QueryClient
     queryOptions?: ExtraUseQueryOptions
     fetchOptions?: FetchOptions
@@ -8529,9 +9137,23 @@ export class Point0<
   }
 
   async prefetchPage(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
       ? [
-          input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           options?: {
             location?: AnyLocation
             queryClient?: QueryClient
@@ -8542,7 +9164,14 @@ export class Point0<
           },
         ]
       : [
-          input: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
           options?: {
             location?: AnyLocation
             queryClient?: QueryClient
@@ -8575,7 +9204,7 @@ export class Point0<
       this._emit('pointPrefetchPageError', { ...eventData, error })
       throw error
     }
-    const location = providedLocation ?? this.route.getLocation(this.route.flat(input))
+    const location = providedLocation ?? this.route.getLocation(this.route.flatLoose(input))
 
     const queryClientDehydratedStateWasPrefetched = await (async () => {
       if (policy === 'ssrDehydratedState' || policy === 'ssrDehydratedStateAndClientQuery') {
@@ -8859,7 +9488,7 @@ export class Point0<
       setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
     }
     layers: Array<{
-      inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+      inputRaw: InputRaw
       outerProps: TOuterProps
       queryIndex?: number
       prev?: {
@@ -9043,7 +9672,7 @@ export class Point0<
         mappedData: nextMappedData,
       }
       const _nextLayers: Array<{
-        inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+        inputRaw: InputRaw
         outerProps: TOuterProps
         queryIndex?: number
         prev?: {
@@ -9316,8 +9945,12 @@ export class Point0<
   Page = (
     props: PageSelfProps<
       TRouteDefinition,
+      TPointType,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
@@ -9327,7 +9960,7 @@ export class Point0<
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
 
     const { inputRaw, restProps } = React.useMemo<{
-      inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+      inputRaw: InputRaw
       restProps: TOuterProps
     }>(() => {
       const { input: providedInput, ...restProps } = props as any
@@ -9390,8 +10023,12 @@ export class Point0<
 
   Component = (
     props: ComponentSelfProps<
+      TPointType,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
@@ -9399,7 +10036,7 @@ export class Point0<
     >,
   ): React.ReactNode => {
     const { inputRaw, restProps } = React.useMemo<{
-      inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+      inputRaw: InputRaw
       restProps: TOuterProps
     }>(() => {
       const { input: providedInput = {}, ...restProps } = props as any
@@ -9424,8 +10061,12 @@ export class Point0<
   Layout = (
     props: LayoutSelfProps<
       TRouteDefinition,
+      TPointType,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
@@ -9435,7 +10076,7 @@ export class Point0<
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
 
     const { inputRaw, children, restProps } = React.useMemo<{
-      inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+      inputRaw: InputRaw
       children: React.ReactNode
       restProps: TOuterProps
     }>(() => {
@@ -9471,7 +10112,7 @@ export class Point0<
   }
 
   // provider
-  private getSsProviderValueKey(input?: InputsRaw<TServerInputSchema, TClientInputSchema>): string {
+  private getSsProviderValueKey(input?: InputRaw | undefined): string {
     const start = `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}`
     if (!input) {
       return start
@@ -9483,7 +10124,14 @@ export class Point0<
     // ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
     //   ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
     //   : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
-    input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+    input?: FinalInputRawOrUndefined<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    >,
   ): MountableSuccessData<TQueriesDefinitions, TMapperOutput> {
     const value = superstore.getValue<MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
       this.getSsProviderValueKey(input),
@@ -9501,7 +10149,14 @@ export class Point0<
     // ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
     //   ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
     //   : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
-    input?: InputsRawOrUndefined<TServerInputSchema, TClientInputSchema>,
+    input?: FinalInputRawOrUndefined<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    >,
   ): MountableSuccessData<TQueriesDefinitions, TMapperOutput> | undefined {
     const value = superstore.getValueWeak<MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
       this.getSsProviderValueKey(input),
@@ -9512,8 +10167,12 @@ export class Point0<
 
   Provider = (
     props: ProviderSelfProps<
+      TPointType,
       TServerInputSchema,
       TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
@@ -9521,7 +10180,7 @@ export class Point0<
     >,
   ): React.ReactNode => {
     const { inputRaw, children, restProps } = React.useMemo<{
-      inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+      inputRaw: InputRaw
       children: React.ReactNode
       restProps: TOuterProps
     }>(() => {
