@@ -15,7 +15,6 @@ import type {
   PointsScope,
   ReadyPoint,
   RequiredCtx,
-  RootPoint,
   SuperStoreInternalValuesOrErrors,
 } from '@point0/core'
 import {
@@ -30,9 +29,9 @@ import {
 } from '@point0/core'
 import { Effects } from '@point0/core/effects'
 import { Request0 } from '@point0/core/request0'
-import qs from 'qs'
 import type { EngineClient } from './client.js'
 import type { Engine } from './engine.js'
+import type { ExecuteOptionsKnownInput } from './executor.js'
 import { Executor } from './executor.js'
 import type { Publicdir } from './publicdir.js'
 import type { EngineServer } from './server.js'
@@ -114,10 +113,15 @@ export class Fetcher<TError extends ErrorPoint0> {
   private getTransformer = ({
     scope,
     point,
+    transform,
   }: {
     scope: PointsScope
     point: ReadyPoint | undefined
+    transform: boolean
   }): DataTransformerExtended => {
+    if (!transform) {
+      return blankDataTransformerExtended
+    }
     if (point?._transformer) {
       return point._transformer
     }
@@ -133,89 +137,151 @@ export class Fetcher<TError extends ErrorPoint0> {
     return transformer
   }
 
-  private readonly _getPointInputFromTaskRequest = async ({
-    request,
-    scope,
-    point,
-  }: {
-    request: Request0
-    scope: PointsScope
-    point: ReadyPoint | undefined
-  }): Promise<InputRawUnknown> => {
-    if (request.location.pathname !== '/_point0') {
-      return {}
-    }
-    const inputRawNotTransformed = await (async () => {
-      if (request.original.headers.get('Content-Type')?.includes('multipart/form-data')) {
-        const formData = await request.original.formData()
-        const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
-          if (typeof value === 'string') {
-            try {
-              acc[key] = JSON.parse(value)
-            } catch {
-              acc[key] = value
-            }
-          } else {
-            acc[key] = value
-          }
-          return acc
-        }, {})
-        const unflattened = unflatten(parsed)
-        return unflattened
-      }
-      try {
-        return await request.original.json()
-      } catch {
-        return {}
-      }
-    })()
-    if (
-      !inputRawNotTransformed ||
-      typeof inputRawNotTransformed !== 'object' ||
-      Array.isArray(inputRawNotTransformed)
-    ) {
-      throw new Error(`Invalid body point input: must be an object, got ${typeof inputRawNotTransformed}`)
-    }
-    const transformer = this.getTransformer({ scope, point })
-    const inputRaw = transformer.deserialize<InputRawUnknown>(inputRawNotTransformed)
-    return inputRaw
-  }
-  getPointInputFromTaskRequest = async ({
-    request,
-    scope,
-    point,
-  }: {
-    request: Request0
-    scope: PointsScope
-    point: ReadyPoint | undefined
-  }): Promise<InputRawUnknown> => {
-    if (request.state.__POINT0_RAW_UNKNOWN_INPUT__) {
-      return request.state.__POINT0_RAW_UNKNOWN_INPUT__ as InputRawUnknown
-    }
-    const result = await this._getPointInputFromTaskRequest({ request, scope, point })
-    request.state.__POINT0_RAW_UNKNOWN_INPUT__ = result
-    return result
-  }
+  // private readonly _getPointInputFromTaskRequest = async ({
+  //   request,
+  //   scope,
+  //   point,
+  // }: {
+  //   request: Request0
+  //   scope: PointsScope
+  //   point: ReadyPoint | undefined
+  // }): Promise<InputRawUnknown> => {
+  //   if (request.location.pathname !== '/_point0') {
+  //     return {}
+  //   }
+  //   const inputRawNotTransformed = await (async () => {
+  //     if (request.original.headers.get('Content-Type')?.includes('multipart/form-data')) {
+  //       const formData = await request.original.formData()
+  //       const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
+  //         if (typeof value === 'string') {
+  //           try {
+  //             acc[key] = JSON.parse(value)
+  //           } catch {
+  //             acc[key] = value
+  //           }
+  //         } else {
+  //           acc[key] = value
+  //         }
+  //         return acc
+  //       }, {})
+  //       const unflattened = unflatten(parsed)
+  //       return unflattened
+  //     }
+  //     try {
+  //       return await request.original.json()
+  //     } catch {
+  //       return {}
+  //     }
+  //   })()
+  //   if (
+  //     !inputRawNotTransformed ||
+  //     typeof inputRawNotTransformed !== 'object' ||
+  //     Array.isArray(inputRawNotTransformed)
+  //   ) {
+  //     throw new Error(`Invalid body point input: must be an object, got ${typeof inputRawNotTransformed}`)
+  //   }
+  //   const transformer = this.getTransformer({ scope, point })
+  //   const inputRaw = transformer.deserialize<InputRawUnknown>(inputRawNotTransformed)
+  //   return inputRaw
+  // }
+  // getPointInputFromTaskRequest = async ({
+  //   request,
+  //   scope,
+  //   point,
+  // }: {
+  //   request: Request0
+  //   scope: PointsScope
+  //   point: ReadyPoint | undefined
+  // }): Promise<InputRawUnknown> => {
+  //   if (request.state.__POINT0_RAW_KNOWN_INPUT__) {
+  //     return request.state.__POINT0_RAW_KNOWN_INPUT__ as InputRawUnknown
+  //   }
+  //   const result = await this._getPointInputFromTaskRequest({ request, scope, point })
+  //   request.state.__POINT0_RAW_KNOWN_INPUT__ = result
+  //   return result
+  // }
 
-  private readonly _getPointInputFromActionRequest = async ({
+  // private readonly _getPointInputFromActionRequest = async ({
+  //   request,
+  //   location,
+  //   point,
+  // }: {
+  //   request: Request0
+  //   location: KnownLocation
+  //   point: ActionPoint
+  // }): Promise<InputRawUnknown> => {
+  //   const hasBodyValidator = point._serverExecuteActions.some((action) => action.type === 'body')
+  //   const body = await (async () => {
+  //     if (!hasBodyValidator) {
+  //       return {}
+  //     }
+  //     try {
+  //       if (request.original.headers.get('Content-Type')?.includes('multipart/form-data')) {
+  //         const formData = await request.original.formData()
+  //         const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
+  //           acc[key] = value
+  //           return acc
+  //         }, {})
+  //         const unflattened = unflatten(parsed)
+  //         return unflattened
+  //       }
+  //       return await request.original.json()
+  //     } catch {
+  //       return {}
+  //     }
+  //   })()
+  //   const search = (() => {
+  //     try {
+  //       return qs.parse(location.search, { ignoreQueryPrefix: true }) as Record<string, unknown>
+  //     } catch {
+  //       return {}
+  //     }
+  //   })()
+  //   return { body, search, params: location.params }
+  // }
+  // getPointInputFromActionRequest = async ({
+  //   request,
+  //   location,
+  //   point,
+  // }: {
+  //   request: Request0
+  //   location: KnownLocation
+  //   point: ActionPoint
+  // }): Promise<InputRawUnknown> => {
+  //   if (request.state.__POINT0_RAW_KNOWN_INPUT__) {
+  //     return request.state.__POINT0_RAW_KNOWN_INPUT__ as InputRawUnknown
+  //   }
+  //   const result = await this._getPointInputFromActionRequest({ request, location, point })
+  //   request.state.__POINT0_RAW_KNOWN_INPUT__ = result
+  //   return result
+  // }
+
+  private readonly _getPointInputFromEndpointRequest = async ({
     request,
     location,
     point,
+    transform,
   }: {
     request: Request0
     location: KnownLocation
-    point: ActionPoint
+    point: ReadyPoint
+    transform: boolean
   }): Promise<InputRawUnknown> => {
-    const hasBodyValidator = point._serverExecuteActions.some((action) => action.type === 'body')
+    const isAction = point.type === 'action'
+    const isPage = point.type === 'page'
+    const isLayout = point.type === 'layout'
+    const shouldReadBody = isAction
+      ? point._serverExecuteActions.some((action) => action.type === 'body')
+      : !isPage && !isLayout
     const body = await (async () => {
-      if (!hasBodyValidator) {
+      if (!shouldReadBody) {
         return {}
       }
       try {
         if (request.original.headers.get('Content-Type')?.includes('multipart/form-data')) {
           const formData = await request.original.formData()
           const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
-            acc[key] = value
+            acc[key] = typeof value === 'string' ? (transform ? JSON.parse(value) : value) : value
             return acc
           }, {})
           const unflattened = unflatten(parsed)
@@ -226,29 +292,33 @@ export class Fetcher<TError extends ErrorPoint0> {
         return {}
       }
     })()
-    const search = (() => {
-      try {
-        return qs.parse(location.search, { ignoreQueryPrefix: true }) as Record<string, unknown>
-      } catch {
-        return {}
-      }
-    })()
-    return { body, search, params: location.params }
+    const bodyParsed = transform
+      ? this.getTransformer({ scope: point.scope, point, transform }).deserialize(body)
+      : body
+    if (isAction) {
+      return { body: bodyParsed, search: location.searchParams, params: location.params, input: {} }
+    }
+    if (isPage || isLayout) {
+      return { body: {}, search: location.searchParams, params: location.params, input: {} }
+    }
+    return { body: {}, search: {}, params: {}, input: bodyParsed }
   }
-  getPointInputFromActionRequest = async ({
+  getPointInputFromEndpointRequest = async ({
     request,
     location,
     point,
+    transform,
   }: {
     request: Request0
     location: KnownLocation
-    point: ActionPoint
-  }): Promise<InputRawUnknown> => {
-    if (request.state.__POINT0_RAW_UNKNOWN_INPUT__) {
-      return request.state.__POINT0_RAW_UNKNOWN_INPUT__ as InputRawUnknown
+    point: ReadyPoint
+    transform: boolean
+  }): Promise<ExecuteOptionsKnownInput> => {
+    if (request.state.__POINT0_RAW_KNOWN_INPUT__) {
+      return request.state.__POINT0_RAW_KNOWN_INPUT__ as ExecuteOptionsKnownInput
     }
-    const result = await this._getPointInputFromActionRequest({ request, location, point })
-    request.state.__POINT0_RAW_UNKNOWN_INPUT__ = result
+    const result = await this._getPointInputFromEndpointRequest({ request, location, point, transform })
+    request.state.__POINT0_RAW_KNOWN_INPUT__ = result
     return result
   }
 
@@ -267,7 +337,7 @@ export class Fetcher<TError extends ErrorPoint0> {
     request: Request0
   }): InputRawUnknown => {
     const result = this._getPointInputFormSuitablePageLocation({ pageLocation })
-    request.state.__POINT0_RAW_UNKNOWN_INPUT__ = result
+    request.state.__POINT0_RAW_KNOWN_INPUT__ = result
     return result
   }
 
@@ -308,7 +378,7 @@ export class Fetcher<TError extends ErrorPoint0> {
   //   request: Request0
   // }): Promise<InputRawUnknown> => {
   //   const result = await this._getPointInput({ suitable, task, request })
-  //   request.state.__POINT0_RAW_UNKNOWN_INPUT__ = result
+  //   request.state.__POINT0_RAW_KNOWN_INPUT__ = result
   //   return result
   // }
 
@@ -327,6 +397,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       id: generateId(),
       isFromServer,
     })
+    const transform = request.headers['x-point0-transform'] === 'true'
     if (request.headers['x-point0-client-request-id']) {
       effects.set.headers('x-point0-request-id', request.id)
       effects.set.headers('x-point0-client-request-id', request.headers['x-point0-client-request-id'])
@@ -358,71 +429,113 @@ export class Fetcher<TError extends ErrorPoint0> {
         })
       }
 
-      for (const publicdir of this.server.publicdirs) {
-        const staticResponse = await publicdir.fetch({ request })
-        if (staticResponse) {
-          const scope = publicdir.scope
-          return {
-            scope,
-            request,
-            effects,
-            middlewares:
-              this.server.points?.middlewares.get(publicdir.scope) ??
-              this.server.points?.middlewares.get(this.server.scope) ??
-              [],
-            middlewareOptions: {
-              request,
-              set: effects.set,
-              point: undefined,
+      if (request.method === 'GET' || request.method === 'HEAD' || request.method === 'OPTIONS') {
+        for (const publicdir of this.server.publicdirs) {
+          const staticResponse = await publicdir.fetch({ request })
+          if (staticResponse) {
+            const scope = publicdir.scope
+            return {
+              transform,
               scope,
-              variant: 'publicdir',
-            },
-            publicdirResult: { publicdir, response: staticResponse },
-            taskPointResult: undefined,
-            pagePointResult: undefined,
-            actionPointResult: undefined,
-            errorResult: undefined,
-            optionsResult: undefined,
-            redirectResult: undefined,
-          }
-        }
-      }
-
-      const task = await this.getTaskFromRequest({ request })
-
-      if (!task) {
-        const action = this.server.points?.findAction({
-          method: request.method,
-          hrefRel: request.location.hrefRel,
-        })
-        if (action) {
-          return {
-            scope: action.point.scope,
-            request,
-            effects,
-            middlewares: action.point._middlewares,
-            middlewareOptions: {
               request,
-              set: effects.set,
-              point: action.point,
-              scope: action.point.scope,
-              variant: 'action',
-            },
-            publicdirResult: undefined,
-            taskPointResult: undefined,
-            pagePointResult: undefined,
-            actionPointResult: { location: action.location, point: action.point },
-            errorResult: undefined,
-            optionsResult: undefined,
-            redirectResult: undefined,
+              effects,
+              middlewares:
+                this.server.points?.middlewares.get(publicdir.scope) ??
+                this.server.points?.middlewares.get(this.server.scope) ??
+                [],
+              middlewareOptions: {
+                request,
+                set: effects.set,
+                point: undefined,
+                scope,
+                variant: 'publicdir',
+              },
+              publicdirResult: { publicdir, response: staticResponse },
+              endpointResult: undefined,
+              pageResult: undefined,
+              errorResult: undefined,
+              optionsResult: undefined,
+              redirectResult: undefined,
+            }
           }
         }
       }
 
-      if (!task) {
+      const endpoint = this.server.points?.findEndpoint({
+        method: request.method,
+        location: request.location,
+      })
+
+      if (endpoint) {
+        const outputTypeRaw = request.headers['x-point0-output-type'] as
+          | 'html'
+          | 'data'
+          | 'queryClientDehydratedState'
+          | undefined
+        const outputType =
+          outputTypeRaw === 'queryClientDehydratedState'
+            ? 'queryClientDehydratedState'
+            : outputTypeRaw === 'html'
+              ? 'html'
+              : 'data'
+        return {
+          transform,
+          scope: endpoint.point.scope,
+          request,
+          effects,
+          middlewares: endpoint.point._middlewares,
+          middlewareOptions: {
+            request,
+            set: effects.set,
+            point: endpoint.point,
+            scope: endpoint.point.scope,
+            variant: 'endpoint',
+          },
+          publicdirResult: undefined,
+          endpointResult: { location: endpoint.location, point: endpoint.point, outputType },
+          pageResult: undefined,
+          errorResult: undefined,
+          optionsResult: undefined,
+          redirectResult: undefined,
+        }
+      }
+
+      // const task = await this.getTaskFromRequest({ request })
+
+      // if (!task) {
+      //   const action = this.server.points?.findAction({
+      //     method: request.method,
+      //     hrefRel: request.location.hrefRel,
+      //   })
+      //   if (action) {
+      //     return {
+      //       scope: action.point.scope,
+      //       request,
+      //       effects,
+      //       middlewares: action.point._middlewares,
+      //       middlewareOptions: {
+      //         request,
+      //         set: effects.set,
+      //         point: action.point,
+      //         scope: action.point.scope,
+      //         variant: 'action',
+      //       },
+      //       publicdirResult: undefined,
+      //       taskPointResult: undefined,
+      //       pagePointResult: undefined,
+      //       actionPointResult: { location: action.location, point: action.point },
+      //       errorResult: undefined,
+      //       optionsResult: undefined,
+      //       redirectResult: undefined,
+      //     }
+      //   }
+      // }
+
+      if (process.env.NODE_ENV !== 'production') {
         const responseFromAbsFilePath = await Fetcher.fetchAbsFilePathOnDevServer({ request })
         if (responseFromAbsFilePath) {
           return {
+            transform,
             scope: this.engine.server.scope,
             request,
             effects,
@@ -435,9 +548,8 @@ export class Fetcher<TError extends ErrorPoint0> {
               variant: '' as never, // it is dev only thing, lets forget about it
             },
             publicdirResult: { publicdir: undefined, response: responseFromAbsFilePath },
-            taskPointResult: undefined,
-            pagePointResult: undefined,
-            actionPointResult: undefined,
+            endpointResult: undefined,
+            pageResult: undefined,
             errorResult: undefined,
             optionsResult: undefined,
             redirectResult: undefined,
@@ -445,63 +557,63 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
       }
 
-      if (task) {
-        const exact = this.server.points?.findExact({
-          scope: task.scope,
-          type: task.pointType,
-          name: task.pointName,
-        })
-        const root = exact?._root ?? this.server.points?.roots.get(task.scope)
-        const ErrorClass = (root?._Error ?? ErrorPoint0) as ClassLikeError0<TError>
-        if (!root) {
-          return {
-            scope: task.scope,
-            request,
-            effects,
-            middlewares: [],
-            middlewareOptions: {
-              request,
-              set: effects.set,
-              point: undefined,
-              scope: task.scope,
-              variant: 'unknown',
-            },
-            publicdirResult: undefined,
-            taskPointResult: undefined,
-            pagePointResult: undefined,
-            actionPointResult: undefined,
-            errorResult: new ErrorClass(
-              `Root for point "${task.scope}.${task.pointType}.${task.pointName}" not found`,
-              {
-                status: 404,
-              },
-            ),
-            optionsResult: undefined,
-            redirectResult: undefined,
-          }
-        } else {
-          return {
-            scope: task.scope,
-            request,
-            effects,
-            middlewares: exact?._middlewares ?? root._middlewares,
-            middlewareOptions: {
-              request,
-              set: effects.set,
-              point: exact,
-              scope: task.scope,
-              variant: 'task',
-            },
-            publicdirResult: undefined,
-            taskPointResult: { task, point: exact, root },
-            pagePointResult: undefined,
-            actionPointResult: undefined,
-            errorResult: undefined,
-            optionsResult: undefined,
-            redirectResult: undefined,
-          }
-        }
-      }
+      // if (task) {
+      //   const exact = this.server.points?.findExact({
+      //     scope: task.scope,
+      //     type: task.pointType,
+      //     name: task.pointName,
+      //   })
+      //   const root = exact?._root ?? this.server.points?.roots.get(task.scope)
+      //   const ErrorClass = (root?._Error ?? ErrorPoint0) as ClassLikeError0<TError>
+      //   if (!root) {
+      //     return {
+      //       scope: task.scope,
+      //       request,
+      //       effects,
+      //       middlewares: [],
+      //       middlewareOptions: {
+      //         request,
+      //         set: effects.set,
+      //         point: undefined,
+      //         scope: task.scope,
+      //         variant: 'unknown',
+      //       },
+      //       publicdirResult: undefined,
+      //       taskPointResult: undefined,
+      //       pagePointResult: undefined,
+      //       actionPointResult: undefined,
+      //       errorResult: new ErrorClass(
+      //         `Root for point "${task.scope}.${task.pointType}.${task.pointName}" not found`,
+      //         {
+      //           status: 404,
+      //         },
+      //       ),
+      //       optionsResult: undefined,
+      //       redirectResult: undefined,
+      //     }
+      //   } else {
+      //     return {
+      //       scope: task.scope,
+      //       request,
+      //       effects,
+      //       middlewares: exact?._middlewares ?? root._middlewares,
+      //       middlewareOptions: {
+      //         request,
+      //         set: effects.set,
+      //         point: exact,
+      //         scope: task.scope,
+      //         variant: 'task',
+      //       },
+      //       publicdirResult: undefined,
+      //       taskPointResult: { task, point: exact, root },
+      //       pagePointResult: undefined,
+      //       actionPointResult: undefined,
+      //       errorResult: undefined,
+      //       optionsResult: undefined,
+      //       redirectResult: undefined,
+      //     }
+      //   }
+      // }
 
       const pageLocation = request.location
 
@@ -528,6 +640,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         const redirectResponse = redirectToDifferentDevClientIfNotThatPort(foundExactPage.page.scope)
         if (redirectResponse) {
           return {
+            transform,
             scope: foundExactPage.page.scope,
             request,
             effects,
@@ -540,15 +653,15 @@ export class Fetcher<TError extends ErrorPoint0> {
               variant: 'redirect',
             },
             publicdirResult: undefined,
-            taskPointResult: undefined,
-            pagePointResult: undefined,
-            actionPointResult: undefined,
+            endpointResult: undefined,
+            pageResult: undefined,
             errorResult: undefined,
             optionsResult: undefined,
             redirectResult: { response: redirectResponse },
           }
         }
         return {
+          transform,
           scope: foundExactPage.client.scope,
           request,
           effects,
@@ -561,13 +674,12 @@ export class Fetcher<TError extends ErrorPoint0> {
             variant: 'page',
           },
           publicdirResult: undefined,
-          taskPointResult: undefined,
-          pagePointResult: {
+          endpointResult: undefined,
+          pageResult: {
             client: foundExactPage.client,
             pageLocation: foundExactPage.pageLocation,
             point: foundExactPage.page,
           },
-          actionPointResult: undefined,
           errorResult: undefined,
           optionsResult: undefined,
           redirectResult: undefined,
@@ -590,6 +702,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         const redirectResponse = redirectToDifferentDevClientIfNotThatPort(foundSuitableClient.scope)
         if (redirectResponse) {
           return {
+            transform,
             scope: foundSuitableClient.scope,
             request,
             effects,
@@ -602,15 +715,15 @@ export class Fetcher<TError extends ErrorPoint0> {
               variant: 'redirect',
             },
             publicdirResult: undefined,
-            taskPointResult: undefined,
-            pagePointResult: undefined,
-            actionPointResult: undefined,
+            endpointResult: undefined,
+            pageResult: undefined,
             errorResult: undefined,
             optionsResult: undefined,
             redirectResult: { response: redirectResponse },
           }
         }
         return {
+          transform,
           scope: foundSuitableClient.scope,
           request,
           effects,
@@ -623,13 +736,12 @@ export class Fetcher<TError extends ErrorPoint0> {
             variant: 'unknown',
           },
           publicdirResult: undefined,
-          taskPointResult: undefined,
-          pagePointResult: {
+          endpointResult: undefined,
+          pageResult: {
             client: foundSuitableClient,
             pageLocation,
             point: undefined,
           },
-          actionPointResult: undefined,
           errorResult: undefined,
           optionsResult: undefined,
           redirectResult: undefined,
@@ -638,6 +750,7 @@ export class Fetcher<TError extends ErrorPoint0> {
 
       const ErrorClass = (this.server.points?.manager.root._Error ?? ErrorPoint0) as ClassLikeError0<TError>
       return {
+        transform,
         scope: this.server.scope,
         request,
         effects,
@@ -650,9 +763,8 @@ export class Fetcher<TError extends ErrorPoint0> {
           variant: 'unknown',
         },
         publicdirResult: undefined,
-        taskPointResult: undefined,
-        pagePointResult: undefined,
-        actionPointResult: undefined,
+        endpointResult: undefined,
+        pageResult: undefined,
         errorResult: new ErrorClass(`Not Found`, { status: 404 }),
         optionsResult: undefined,
         redirectResult: undefined,
@@ -661,6 +773,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       const ErrorClass = this.server.points?.manager.root._Error ?? ErrorPoint0
       const error0 = ErrorClass.from(error)
       return {
+        transform,
         scope: this.server.scope,
         request,
         effects,
@@ -673,9 +786,8 @@ export class Fetcher<TError extends ErrorPoint0> {
           variant: 'unknown',
         },
         publicdirResult: undefined,
-        taskPointResult: undefined,
-        pagePointResult: undefined,
-        actionPointResult: undefined,
+        endpointResult: undefined,
+        pageResult: undefined,
         errorResult: error0,
         optionsResult: undefined,
         redirectResult: undefined,
@@ -683,168 +795,266 @@ export class Fetcher<TError extends ErrorPoint0> {
     }
   }
 
-  // private readonly fetchPoint = async ({
-  //   suitable,
+  // private readonly fetchActionPoint = async ({
+  //   point,
+  //   location,
+  //   request,
+  //   requiredCtx,
+  //   effects,
+  //   serverStorageState,
+  // }: {
+  //   point: ActionPoint
+  //   location: KnownLocation
+  //   request: Request0
+  //   requiredCtx: RequiredCtx
+  //   effects: Effects
+  //   serverStorageState: SuperStoreInternalValuesOrErrors
+  // }): Promise<FetcherFetchActionPointResult> => {
+  //   const client = this.server.clients.find((client) => client.scope === point.scope)
+  //   const partialResult = {
+  //     request,
+  //     scope: point.scope,
+  //     point,
+  //     client,
+  //     variant: 'action' as const,
+  //     data: undefined,
+  //     error: undefined,
+  //   }
+
+  //   try {
+  //     const executor = await Executor.create({
+  //       engine: this.engine,
+  //       request,
+  //       requiredCtx,
+  //       effects,
+  //       serverStorageState,
+  //     })
+
+  //     const input = await this.getPointInputFromActionRequest({ request, location, point })
+  //     const executeResult = await executor.execute({
+  //       point,
+  //       input,
+  //       effects: executor.effects, // here we pass executor effects, becouse we want to apply status and effects to it
+  //       ErrorClass: point._Error,
+  //     })
+
+  //     if (executeResult.error) {
+  //       const response = this.toJsonErrorResponse({
+  //         ErrorClass: point._Error,
+  //         error: executeResult.error,
+  //         // status: executeResult.effects.status >=  ?? 500,
+  //         status:
+  //           executeResult.error.status ??
+  //           (!executeResult.effects.status ||
+  //           (executeResult.effects.status >= 200 && executeResult.effects.status < 400)
+  //             ? undefined
+  //             : executeResult.effects.status),
+  //         transformer: false,
+  //       })
+  //       return {
+  //         ...partialResult,
+  //         response,
+  //         error: executeResult.error,
+  //       }
+  //     }
+
+  //     if (executeResult.output instanceof Response) {
+  //       if (request.headers['x-point0-client-request-id']) {
+  //         executeResult.output.headers.set('X-Point0-Not-Json-Data', 'true')
+  //       }
+  //       return {
+  //         ...partialResult,
+  //         response: executeResult.output,
+  //       }
+  //     }
+
+  //     if (!executeResult.output) {
+  //       const error = new point._Error('No output')
+  //       const response = this.toJsonErrorResponse({
+  //         ErrorClass: point._Error,
+  //         error,
+  //         status: 404,
+  //         transformer: false,
+  //       })
+  //       return {
+  //         ...partialResult,
+  //         response,
+  //         error,
+  //       }
+  //     }
+
+  //     // else we try to get endpoint json
+  //     const response = new Response(JSON.stringify(executeResult.output), {
+  //       headers: { 'Content-Type': 'application/json' },
+  //       status: executeResult.effects.status ?? 200,
+  //     })
+  //     return {
+  //       ...partialResult,
+  //       response,
+  //       data: executeResult.output,
+  //     }
+  //   } catch (error) {
+  //     const ErrorClass = point._Error
+  //     const error0 = ErrorClass.from(error)
+  //     const response = this.toJsonErrorResponse({
+  //       ErrorClass,
+  //       error: error0,
+  //       status: 500,
+  //       transformer: false,
+  //     })
+  //     return {
+  //       ...partialResult,
+  //       response,
+  //       error: error0,
+  //     }
+  //   }
+  // }
+
+  // private readonly fetchTaskPoint = async ({
+  //   root,
+  //   point,
   //   task,
   //   request,
   //   requiredCtx,
   //   effects,
   //   serverStorageState,
   // }: {
-  //   suitable: GetSuitableResult
-  //   task: FetchTask | undefined
+  //   root: RootPoint
+  //   point: ReadyPoint | undefined
+  //   task: FetchTask
   //   request: Request0
   //   requiredCtx: RequiredCtx
   //   effects: Effects
   //   serverStorageState: SuperStoreInternalValuesOrErrors
-  // }): Promise<FetcherFetchPointResult> => {
-  //   const meta: Record<string, any> = {
-  //     url: request.original.url,
-  //     scope: suitable.pointsManager.scope,
-  //   }
+  // }): Promise<FetcherFetchTaskPointResult> => {
+  //   const client = this.server.clients.find((client) => client.scope === root.scope)
+  //   // const meta: Record<string, any> = {
+  //   //   url: request.original.url,
+  //   //   scope: root.scope,
+  //   //   pointType: task.pointType,
+  //   //   outputType: task.outputType,
+  //   //   pointName: task.pointName,
+  //   //   pointInput: task.pointInput,
+  //   // }
   //   const partialResult = {
   //     request,
-  //     scope: suitable.pointsManager.scope,
+  //     scope: root.scope,
   //     task,
-  //     point: suitable.point,
+  //     point,
+  //     client,
   //     variant: 'point' as const,
   //     data: undefined,
-  //     error: null,
+  //     error: undefined,
   //   }
+  //   let input: InputRawUnknown = {}
+  //   const transformer = this.getTransformer({ scope: root.scope, point })
 
   //   try {
-  //     // TODO: lets provide here wrapResponse and wrapRequest and call it
-  //     // TODO: also there on error fo input not throw it but return as error
-
-  //     if (request.original.method === 'OPTIONS') {
-  //       // TODO: when we will have headers midlewares, remove this
-  //       const response = new Response(null, {
-  //         status: 204,
+  //     if (task.outputType === 'html' && task.pointType === 'page') {
+  //       if (!client) {
+  //         throw new Error(`Client for scope "${root.scope}" not found while requested page html via task`)
+  //       }
+  //       if (!point) {
+  //         throw new Error(
+  //           `Point "${task.scope}.${task.pointType}.${task.pointName}" not found while requested page html via task`,
+  //         )
+  //       }
+  //       if (!point.route) {
+  //         throw new Error(
+  //           `Point "${task.scope}.${task.pointType}.${task.pointName}" has no route while requested page html via task`,
+  //         )
+  //       }
+  //       input = await this.getPointInputFromTaskRequest({ request, scope: root.scope, point })
+  //       const pageLocation = (point.route as AnyRoute).getLocation((point.route as AnyRoute).flatLoose(input as any))
+  //       const result = await this.fetchPagePoint({
+  //         client,
+  //         point: point as PagePoint | undefined,
+  //         pageLocation: pageLocation as ExactLocation | AnyLocation,
+  //         request,
+  //         effects,
+  //         serverStorageState,
+  //         requiredCtx,
   //       })
   //       return {
   //         ...partialResult,
-  //         response,
-  //         responseFormat: 'headers',
+  //         ...result,
   //       }
   //     }
 
   //     const executor = await Executor.create({
   //       engine: this.engine,
   //       request,
-  //       points: suitable.pointsManager,
-  //       pageLocation: suitable.pageLocation,
-  //       currentLocation: suitable.pageLocation ?? Route0.toRelLocation(request.location),
   //       requiredCtx,
   //       effects,
   //       serverStorageState,
   //     })
-  //     meta.scope = suitable.pointsManager.scope
 
-  //     const pointType = task?.pointType ?? 'page'
-  //     const outputType = task?.outputType ?? 'html'
-  //     meta.pointType = pointType
-  //     meta.outputType = outputType
-  //     meta.pointName = task?.pointName
-  //     meta.pointType = task?.pointType
-
-  //     const relatedClient = this.server.clients.find(
-  //       (client) => client.pointsManager.scope === suitable.pointsManager.scope,
-  //     )
-
-  //     if (relatedClient) {
-  //       if (relatedClient.ssr && outputType === 'html' && pointType === 'page') {
-  //         try {
-  //           if (!suitable.pageLocation) {
-  //             // I think it will never throw, but who knows
-  //             throw new Error('Page Critical Error: Not Found')
-  //           }
-  //           const input = await this.getPointInput({ suitable, task, request })
-  //           const readableStream = await relatedClient.renderAsReadableStream({
-  //             executor,
-  //             pagePoint: suitable.point as PagePoint | undefined,
-  //             pageLocation: suitable.pageLocation,
-  //             input,
-  //           })
-  //           const response = new Response(readableStream, {
-  //             headers: { 'Content-Type': 'text/html' },
-  //           })
-  //           return {
-  //             ...partialResult,
-  //             response,
-  //             responseFormat: 'html',
-  //           }
-  //         } catch (error) {
-  //           // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
-  //           if (error instanceof Error && error.message.includes('<!-- __Target__ --> not found')) {
-  //             const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.original.url)
-  //             const response = new Response(indexHtml, {
-  //               headers: { 'Content-Type': 'text/html' },
-  //               status: 500,
-  //             })
-  //             return {
-  //               ...partialResult,
-  //               response,
-  //               error: Error0.from(error),
-  //               responseFormat: 'html',
-  //             }
-  //           }
-  //           throw error
-  //         }
-  //       } else if (!relatedClient.ssr && outputType === 'html' && pointType === 'page' && relatedClient.indexHtml) {
-  //         const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.original.url)
-  //         const response = new Response(indexHtml, {
-  //           headers: { 'Content-Type': 'text/html' },
-  //           status: 200,
-  //         })
-  //         return {
-  //           ...partialResult,
-  //           response,
-  //           responseFormat: 'html',
-  //         }
-  //       } else if (outputType === 'queryClientDehydratedState' && pointType === 'page') {
-  //         if (!suitable.pageLocation) {
-  //           // I think it will never throw, but who knows
-  //           throw new Error('Page Critical Error: Not Found')
-  //         }
-  //         await relatedClient.prefetchAppPagePointDeep({
-  //           executor,
-  //           pagePoint: suitable.point as PagePoint | undefined,
-  //           pageLocation: suitable.pageLocation,
-  //           input: await this.getPointInput({ suitable, task, request }),
-  //         })
-  //         const dehydratedState = await executor.getQueryClientReadyDehydratedState()
-  //         const response = new Response(executor.pointsManager.transformer.stringify({ dehydratedState }), {
-  //           headers: { 'Content-Type': 'application/json' },
-  //           status: 200,
-  //         })
-  //         return {
-  //           ...partialResult,
-  //           response,
-  //           data: { dehydratedState },
-  //           responseFormat: 'json',
-  //         }
+  //     if (task.outputType === 'queryClientDehydratedState') {
+  //       if (task.pointType !== 'page') {
+  //         throw new Error(`Point type "${task.pointType}" is not supported for queryClientDehydratedState output type`)
   //       }
-  //     } else if (outputType === 'html' && pointType === 'page') {
-  //       throw new Error(`Client not found for point "${suitable.point?.name ?? 'unknown'}" while requested page html`)
-  //     }
-
-  //     const executeResult = await executor.execute({
-  //       point: suitable.point,
-  //       // TODO: wehn openapi will be ready, do not send here parsed input for this type of points
-  //       input: await this.getPointInput({ suitable, task, request }),
-  //       effects: executor.effects, // here we pass executor effects, becouse we want to apply status and effects to it
-  //     })
-  //     if (executeResult.error) {
-  //       this.server.logger.error(executeResult.error, meta)
-  //     }
-
-  //     if (executeResult.error) {
-  //       const response = this.toJsonErrorResponse(executeResult.error, executeResult.status)
+  //       if (!client) {
+  //         throw new Error(`Client for scope "${root.scope}" not found while requested page html via task`)
+  //       }
+  //       if (!point) {
+  //         throw new Error(
+  //           `Point "${task.scope}.${task.pointType}.${task.pointName}" not found while requested page html via task`,
+  //         )
+  //       }
+  //       if (!point.route) {
+  //         throw new Error(
+  //           `Point "${task.scope}.${task.pointType}.${task.pointName}" has no route while requested page html via task`,
+  //         )
+  //       }
+  //       input = await this.getPointInputFromTaskRequest({ request, scope: root.scope, point })
+  //       const pageLocation = (point.route as AnyRoute).getLocation((point.route as AnyRoute).flatLoose(input as any))
+  //       await client.prefetchAppPagePointDeep({
+  //         executor,
+  //         pagePoint: point as PagePoint,
+  //         pageLocation: pageLocation as ExactLocation | AnyLocation,
+  //         input,
+  //       })
+  //       const dehydratedState = await executor.getQueryClientReadyDehydratedState()
+  //       const response = new Response(transformer.stringify({ dehydratedState }), {
+  //         headers: { 'Content-Type': 'application/json' },
+  //         status: 200,
+  //       })
   //       return {
   //         ...partialResult,
+  //         input,
+  //         response,
+  //         data: { dehydratedState },
+  //         pageLocation,
+  //       }
+  //     }
+
+  //     input = await this.getPointInputFromTaskRequest({ request, scope: root.scope, point })
+  //     const executeResult = await executor.execute({
+  //       point,
+  //       input,
+  //       effects: executor.effects, // here we pass executor effects, becouse we want to apply status and effects to it
+  //       ErrorClass: point?._Error ?? root._Error,
+  //     })
+
+  //     if (executeResult.error) {
+  //       const response = this.toJsonErrorResponse({
+  //         ErrorClass: point?._Error ?? root._Error,
+  //         error: executeResult.error,
+  //         // status: executeResult.effects.status >=  ?? 500,
+  //         status:
+  //           executeResult.error.status ??
+  //           (!executeResult.effects.status ||
+  //           (executeResult.effects.status >= 200 && executeResult.effects.status < 400)
+  //             ? undefined
+  //             : executeResult.effects.status),
+  //         transformer,
+  //       })
+  //       return {
+  //         ...partialResult,
+  //         input,
   //         response,
   //         error: executeResult.error,
-  //         responseFormat: 'json',
+  //         pageLocation: undefined,
   //       }
   //     }
 
@@ -852,73 +1062,122 @@ export class Fetcher<TError extends ErrorPoint0> {
   //       executeResult.output.headers.set('X-Point0-Not-Json-Data', 'true')
   //       return {
   //         ...partialResult,
+  //         input,
   //         response: executeResult.output,
-  //         responseFormat: 'json',
+  //         pageLocation: undefined,
   //       }
   //     }
 
   //     if (!executeResult.output) {
-  //       const error = new Error0('No output')
-  //       const response = this.toJsonErrorResponse(error, 404)
+  //       const error = new Error('No output')
+  //       const response = this.toJsonErrorResponse({
+  //         ErrorClass: root._Error,
+  //         error,
+  //         status: 404,
+  //         transformer,
+  //       })
   //       return {
   //         ...partialResult,
+  //         input,
   //         response,
   //         error,
-  //         responseFormat: 'json',
+  //         pageLocation: undefined,
   //       }
   //     }
 
   //     // else we try to get endpoint json
-  //     const response = new Response(executor.pointsManager.transformer.stringify(executeResult.output), {
+  //     const response = new Response(transformer.stringify(executeResult.output), {
   //       headers: { 'Content-Type': 'application/json' },
-  //       status: executeResult.status,
+  //       status: executeResult.effects.status ?? 200,
   //     })
   //     return {
   //       ...partialResult,
+  //       input,
   //       response,
   //       data: executeResult.output,
-  //       responseFormat: 'json',
+  //       pageLocation: undefined,
   //     }
   //   } catch (error) {
-  //     this.server.logger.error(error, meta)
-  //     const error0 = Error0.from(error)
-  //     const response = this.toJsonErrorResponse(error0)
+  //     const ErrorClass = root._Error
+  //     const error0 = ErrorClass.from(error)
+  //     const response = this.toJsonErrorResponse({
+  //       ErrorClass,
+  //       error: error0,
+  //       status: 500,
+  //       transformer,
+  //     })
   //     return {
   //       ...partialResult,
+  //       input,
   //       response,
   //       error: error0,
-  //       responseFormat: 'json',
+  //       pageLocation: undefined,
   //     }
   //   }
   // }
 
-  private readonly fetchActionPoint = async ({
+  private readonly fetchEndpoint = async ({
     point,
+    transform,
     location,
     request,
     requiredCtx,
     effects,
     serverStorageState,
+    outputType,
   }: {
-    point: ActionPoint
+    point: ReadyPoint
+    transform: boolean
     location: KnownLocation
     request: Request0
     requiredCtx: RequiredCtx
     effects: Effects
     serverStorageState: SuperStoreInternalValuesOrErrors
-  }): Promise<FetcherFetchActionPointResult> => {
+    outputType: 'html' | 'data' | 'queryClientDehydratedState'
+  }): Promise<FetcherFetchEndpointResult> => {
     const client = this.server.clients.find((client) => client.scope === point.scope)
     const partialResult = {
       request,
       scope: point.scope,
       point,
       client,
-      variant: 'action' as const,
+      variant: 'endpoint' as const,
       data: undefined,
       error: undefined,
     }
+    const input = await this.getPointInputFromEndpointRequest({ request, location, point, transform })
+    const transformer = this.getTransformer({ scope: point.scope, point, transform })
 
     try {
+      if (outputType === 'html') {
+        if (point.type !== 'page') {
+          throw new Error(`Point type "${point.type}" is not supported for html output type`)
+        }
+        if (!client) {
+          throw new Error(`Client for scope "${point.scope}" not found while requested page html via endpoint`)
+        }
+        const route = point.route as AnyRoute | undefined
+        if (!route) {
+          throw new Error(`Point "${point.toString()}" has no route while requested page html via task`)
+        }
+        const pageLocation = route.getLocation(route.get({ ...input.params, search: input.search } as never))
+        const result = await this.fetchPage({
+          client,
+          point: point as PagePoint | undefined,
+          pageLocation: pageLocation as ExactLocation | AnyLocation,
+          request,
+          effects,
+          serverStorageState,
+          requiredCtx,
+          transform,
+        })
+        return {
+          ...partialResult,
+          ...result,
+          point,
+        }
+      }
+
       const executor = await Executor.create({
         engine: this.engine,
         request,
@@ -927,10 +1186,39 @@ export class Fetcher<TError extends ErrorPoint0> {
         serverStorageState,
       })
 
-      const input = await this.getPointInputFromActionRequest({ request, location, point })
+      if (outputType === 'queryClientDehydratedState') {
+        if (point.type !== 'page') {
+          throw new Error(`Point type "${point.type}" is not supported for queryClientDehydratedState output type`)
+        }
+        if (!client) {
+          throw new Error(`Client for scope "${point.scope}" not found while requested page html via endpoint`)
+        }
+        const route = point.route as AnyRoute | undefined
+        if (!route) {
+          throw new Error(`Point "${point.toString()}" has no route while requested page html via endpoint`)
+        }
+        const pageLocation = route.getLocation(route.get({ ...input.params, search: input.search } as never))
+        await client.prefetchAppPagePointDeep({
+          executor,
+          pagePoint: point as PagePoint,
+          pageLocation: pageLocation as ExactLocation | AnyLocation,
+        })
+        const dehydratedState = await executor.getQueryClientReadyDehydratedState()
+        const response = new Response(transformer.stringify({ dehydratedState }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        })
+        return {
+          ...partialResult,
+          response,
+          data: { dehydratedState },
+        }
+      }
+
       const executeResult = await executor.execute({
         point,
-        input,
+        input: null as never,
+        _known: input,
         effects: executor.effects, // here we pass executor effects, becouse we want to apply status and effects to it
         ErrorClass: point._Error,
       })
@@ -946,7 +1234,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             (executeResult.effects.status >= 200 && executeResult.effects.status < 400)
               ? undefined
               : executeResult.effects.status),
-          transformer: false,
+          transformer,
         })
         return {
           ...partialResult,
@@ -966,12 +1254,12 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       if (!executeResult.output) {
-        const error = new point._Error('No output')
+        const error = new Error('No output')
         const response = this.toJsonErrorResponse({
           ErrorClass: point._Error,
           error,
           status: 404,
-          transformer: false,
+          transformer,
         })
         return {
           ...partialResult,
@@ -981,7 +1269,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       // else we try to get endpoint json
-      const response = new Response(JSON.stringify(executeResult.output), {
+      const response = new Response(transformer.stringify(executeResult.output), {
         headers: { 'Content-Type': 'application/json' },
         status: executeResult.effects.status ?? 200,
       })
@@ -997,229 +1285,18 @@ export class Fetcher<TError extends ErrorPoint0> {
         ErrorClass,
         error: error0,
         status: 500,
-        transformer: false,
-      })
-      return {
-        ...partialResult,
-        response,
-        error: error0,
-      }
-    }
-  }
-
-  private readonly fetchTaskPoint = async ({
-    root,
-    point,
-    task,
-    request,
-    requiredCtx,
-    effects,
-    serverStorageState,
-  }: {
-    root: RootPoint
-    point: ReadyPoint | undefined
-    task: FetchTask
-    request: Request0
-    requiredCtx: RequiredCtx
-    effects: Effects
-    serverStorageState: SuperStoreInternalValuesOrErrors
-  }): Promise<FetcherFetchTaskPointResult> => {
-    const client = this.server.clients.find((client) => client.scope === root.scope)
-    // const meta: Record<string, any> = {
-    //   url: request.original.url,
-    //   scope: root.scope,
-    //   pointType: task.pointType,
-    //   outputType: task.outputType,
-    //   pointName: task.pointName,
-    //   pointInput: task.pointInput,
-    // }
-    const partialResult = {
-      request,
-      scope: root.scope,
-      task,
-      point,
-      client,
-      variant: 'point' as const,
-      data: undefined,
-      error: undefined,
-    }
-    let input: InputRawUnknown = {}
-    const transformer = this.getTransformer({ scope: root.scope, point })
-
-    try {
-      if (task.outputType === 'html' && task.pointType === 'page') {
-        if (!client) {
-          throw new Error(`Client for scope "${root.scope}" not found while requested page html via task`)
-        }
-        if (!point) {
-          throw new Error(
-            `Point "${task.scope}.${task.pointType}.${task.pointName}" not found while requested page html via task`,
-          )
-        }
-        if (!point.route) {
-          throw new Error(
-            `Point "${task.scope}.${task.pointType}.${task.pointName}" has no route while requested page html via task`,
-          )
-        }
-        input = await this.getPointInputFromTaskRequest({ request, scope: root.scope, point })
-        const pageLocation = (point.route as AnyRoute).getLocation((point.route as AnyRoute).flatLoose(input as any))
-        const result = await this.fetchPagePoint({
-          client,
-          point: point as PagePoint | undefined,
-          pageLocation: pageLocation as ExactLocation | AnyLocation,
-          request,
-          effects,
-          serverStorageState,
-          requiredCtx,
-        })
-        return {
-          ...partialResult,
-          ...result,
-        }
-      }
-
-      const executor = await Executor.create({
-        engine: this.engine,
-        request,
-        requiredCtx,
-        effects,
-        serverStorageState,
-      })
-
-      if (task.outputType === 'queryClientDehydratedState') {
-        if (task.pointType !== 'page') {
-          throw new Error(`Point type "${task.pointType}" is not supported for queryClientDehydratedState output type`)
-        }
-        if (!client) {
-          throw new Error(`Client for scope "${root.scope}" not found while requested page html via task`)
-        }
-        if (!point) {
-          throw new Error(
-            `Point "${task.scope}.${task.pointType}.${task.pointName}" not found while requested page html via task`,
-          )
-        }
-        if (!point.route) {
-          throw new Error(
-            `Point "${task.scope}.${task.pointType}.${task.pointName}" has no route while requested page html via task`,
-          )
-        }
-        input = await this.getPointInputFromTaskRequest({ request, scope: root.scope, point })
-        const pageLocation = (point.route as AnyRoute).getLocation((point.route as AnyRoute).flatLoose(input as any))
-        await client.prefetchAppPagePointDeep({
-          executor,
-          pagePoint: point as PagePoint,
-          pageLocation: pageLocation as ExactLocation | AnyLocation,
-          input,
-        })
-        const dehydratedState = await executor.getQueryClientReadyDehydratedState()
-        const response = new Response(transformer.stringify({ dehydratedState }), {
-          headers: { 'Content-Type': 'application/json' },
-          status: 200,
-        })
-        return {
-          ...partialResult,
-          input,
-          response,
-          data: { dehydratedState },
-          pageLocation,
-          responseFormat: 'json',
-        }
-      }
-
-      input = await this.getPointInputFromTaskRequest({ request, scope: root.scope, point })
-      const executeResult = await executor.execute({
-        point,
-        input,
-        effects: executor.effects, // here we pass executor effects, becouse we want to apply status and effects to it
-        ErrorClass: point?._Error ?? root._Error,
-      })
-
-      if (executeResult.error) {
-        const response = this.toJsonErrorResponse({
-          ErrorClass: point?._Error ?? root._Error,
-          error: executeResult.error,
-          // status: executeResult.effects.status >=  ?? 500,
-          status:
-            executeResult.error.status ??
-            (!executeResult.effects.status ||
-            (executeResult.effects.status >= 200 && executeResult.effects.status < 400)
-              ? undefined
-              : executeResult.effects.status),
-          transformer,
-        })
-        return {
-          ...partialResult,
-          input,
-          response,
-          error: executeResult.error,
-          responseFormat: 'json',
-          pageLocation: undefined,
-        }
-      }
-
-      if (executeResult.output instanceof Response) {
-        executeResult.output.headers.set('X-Point0-Not-Json-Data', 'true')
-        return {
-          ...partialResult,
-          input,
-          response: executeResult.output,
-          responseFormat: 'json',
-          pageLocation: undefined,
-        }
-      }
-
-      if (!executeResult.output) {
-        const error = new Error('No output')
-        const response = this.toJsonErrorResponse({
-          ErrorClass: root._Error,
-          error,
-          status: 404,
-          transformer,
-        })
-        return {
-          ...partialResult,
-          input,
-          response,
-          error,
-          responseFormat: 'json',
-          pageLocation: undefined,
-        }
-      }
-
-      // else we try to get endpoint json
-      const response = new Response(transformer.stringify(executeResult.output), {
-        headers: { 'Content-Type': 'application/json' },
-        status: executeResult.effects.status ?? 200,
-      })
-      return {
-        ...partialResult,
-        input,
-        response,
-        data: executeResult.output,
-        responseFormat: 'json',
-        pageLocation: undefined,
-      }
-    } catch (error) {
-      const ErrorClass = root._Error
-      const error0 = ErrorClass.from(error)
-      const response = this.toJsonErrorResponse({
-        ErrorClass,
-        error: error0,
-        status: 500,
         transformer,
       })
       return {
         ...partialResult,
-        input,
         response,
         error: error0,
-        responseFormat: 'json',
-        pageLocation: undefined,
       }
     }
   }
 
-  private readonly fetchPagePoint = async ({
+  private readonly fetchPage = async ({
+    transform,
     client,
     point,
     pageLocation,
@@ -1228,6 +1305,7 @@ export class Fetcher<TError extends ErrorPoint0> {
     effects,
     serverStorageState,
   }: {
+    transform: boolean
     client: EngineClient<true>
     point: PagePoint | undefined
     pageLocation: AnyLocation | ExactLocation
@@ -1235,16 +1313,7 @@ export class Fetcher<TError extends ErrorPoint0> {
     requiredCtx: RequiredCtx
     effects: Effects
     serverStorageState: SuperStoreInternalValuesOrErrors
-  }): Promise<FetcherFetchPagePointResult> => {
-    const input = this.getPointInputFormSuitablePageLocation({ pageLocation, request })
-    // const meta: Record<string, any> = {
-    //   url: request.original.url,
-    //   scope: client.scope,
-    //   pointType: 'page',
-    //   outputType: 'html',
-    //   pointName: point?.name,
-    //   pointInput: input,
-    // }
+  }): Promise<FetcherFetchPageResult> => {
     const partialResult = {
       client,
       pageLocation,
@@ -1254,8 +1323,6 @@ export class Fetcher<TError extends ErrorPoint0> {
       variant: 'page' as const,
       data: undefined,
       error: undefined,
-      responseFormat: 'html' as const,
-      input,
     }
 
     try {
@@ -1276,7 +1343,6 @@ export class Fetcher<TError extends ErrorPoint0> {
             executor,
             pagePoint: point,
             pageLocation,
-            input,
           })
           const response = new Response(readableStream, {
             headers: { 'Content-Type': 'text/html' },
@@ -1320,7 +1386,7 @@ export class Fetcher<TError extends ErrorPoint0> {
     } catch (error) {
       const ErrorClass = client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
       const error0 = ErrorClass.from(error)
-      const transformer = this.getTransformer({ scope: client.scope, point })
+      const transformer = this.getTransformer({ scope: client.scope, point, transform })
       const response = this.toJsonErrorResponse({
         ErrorClass,
         error: error0,
@@ -1339,10 +1405,12 @@ export class Fetcher<TError extends ErrorPoint0> {
     middlewares,
     finalHandler,
     baseOptions,
+    transform,
   }: {
     middlewares: MiddlewareFn<any>[]
     finalHandler: () => Promise<FetcherFetchDetailedResultNoMiddleware<any>>
     baseOptions: MiddlewareFnOptionsBase<any>
+    transform: boolean
   }): Promise<FetcherFetchDetailedResult<any>> {
     let index = -1
     let isMiddleware = true as boolean
@@ -1399,7 +1467,11 @@ export class Fetcher<TError extends ErrorPoint0> {
     } catch (error) {
       const ErrorClass = this.server.points?.manager.root._Error ?? ErrorPoint0
       const error0 = ErrorClass.from(error)
-      const transformer = this.getTransformer({ scope: baseOptions.scope, point: undefined })
+      const transformer = this.getTransformer({
+        scope: baseOptions.scope,
+        point: undefined,
+        transform,
+      })
       return {
         request: baseOptions.request,
         scope: baseOptions.scope,
@@ -1435,19 +1507,20 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
       }
 
-      if (prepareFetchResult.actionPointResult) {
-        const fetchActionPointResult = await this.fetchActionPoint({
-          point: prepareFetchResult.actionPointResult.point,
-          location: prepareFetchResult.actionPointResult.location,
+      if (prepareFetchResult.endpointResult) {
+        const fetchEndpointResult = await this.fetchEndpoint({
+          point: prepareFetchResult.endpointResult.point,
+          location: prepareFetchResult.endpointResult.location,
           request: prepareFetchResult.request,
           requiredCtx,
           effects: prepareFetchResult.effects,
           serverStorageState,
+          transform: prepareFetchResult.transform,
+          outputType: prepareFetchResult.endpointResult.outputType,
         })
         return {
-          ...fetchActionPointResult,
-          variant: 'action',
-          location: prepareFetchResult.actionPointResult.location,
+          ...fetchEndpointResult,
+          variant: 'endpoint',
         }
       }
 
@@ -1469,7 +1542,11 @@ export class Fetcher<TError extends ErrorPoint0> {
           response: this.toJsonErrorResponse({
             ErrorClass,
             error: prepareFetchResult.errorResult,
-            transformer: this.getTransformer({ scope: prepareFetchResult.scope, point: undefined }),
+            transformer: this.getTransformer({
+              scope: prepareFetchResult.scope,
+              point: undefined,
+              transform: prepareFetchResult.transform,
+            }),
           }),
           variant: 'unknown',
           error: prepareFetchResult.errorResult,
@@ -1487,35 +1564,20 @@ export class Fetcher<TError extends ErrorPoint0> {
       //   }
       // }
 
-      if (prepareFetchResult.pagePointResult) {
-        const fetchPagePointResult = await this.fetchPagePoint({
-          client: prepareFetchResult.pagePointResult.client,
-          point: prepareFetchResult.pagePointResult.point,
-          pageLocation: prepareFetchResult.pagePointResult.pageLocation,
+      if (prepareFetchResult.pageResult) {
+        const fetchPagePointResult = await this.fetchPage({
+          client: prepareFetchResult.pageResult.client,
+          point: prepareFetchResult.pageResult.point,
+          pageLocation: prepareFetchResult.pageResult.pageLocation,
           request: prepareFetchResult.request,
           requiredCtx,
           effects: prepareFetchResult.effects,
           serverStorageState,
+          transform: prepareFetchResult.transform,
         })
         return {
           ...fetchPagePointResult,
           variant: 'page',
-        }
-      }
-
-      if (prepareFetchResult.taskPointResult) {
-        const fetchTaskPointResult = await this.fetchTaskPoint({
-          root: prepareFetchResult.taskPointResult.root,
-          point: prepareFetchResult.taskPointResult.point,
-          task: prepareFetchResult.taskPointResult.task,
-          request: prepareFetchResult.request,
-          requiredCtx,
-          effects: prepareFetchResult.effects,
-          serverStorageState,
-        })
-        return {
-          ...fetchTaskPointResult,
-          variant: 'task',
         }
       }
 
@@ -1532,13 +1594,17 @@ export class Fetcher<TError extends ErrorPoint0> {
       const ErrorClass = (this.server.points?.manager.root._Error ?? ErrorPoint0) as ClassLikeError0<TError>
       const error = new ErrorClass(`Critical Error: Not Found`, { status: 404 })
       return {
-        request: (prepareFetchResult as any).request,
-        scope: (prepareFetchResult as any).scope,
+        request: prepareFetchResult.request,
+        scope: prepareFetchResult.scope,
         response: this.toJsonErrorResponse({
           ErrorClass,
           error,
           status: 404,
-          transformer: this.getTransformer({ scope: (prepareFetchResult as any).scope, point: undefined }),
+          transformer: this.getTransformer({
+            scope: prepareFetchResult.scope,
+            point: undefined,
+            transform: prepareFetchResult.transform,
+          }),
         }),
         variant: 'unknown',
         error,
@@ -1559,7 +1625,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       //     task: fetchPointResult.task,
       //     variant: 'point',
       //     response: fetchPointResult.response,
-      //     input: fetchPointResult.request.state.__POINT0_RAW_UNKNOWN_INPUT__ as InputRawUnknown | undefined,
+      //     input: fetchPointResult.request.state.__POINT0_RAW_KNOWN_INPUT__ as InputRawUnknown | undefined,
       //   }
       // }
 
@@ -1568,7 +1634,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       //     ...fetchPointResult,
       //     variant: 'page',
       //     response: fetchPointResult.response,
-      //     input: fetchPointResult.request.state.__POINT0_RAW_UNKNOWN_INPUT__ as InputRawUnknown | undefined,
+      //     input: fetchPointResult.request.state.__POINT0_RAW_KNOWN_INPUT__ as InputRawUnknown | undefined,
       //   }
       // }
 
@@ -1581,12 +1647,16 @@ export class Fetcher<TError extends ErrorPoint0> {
       const ErrorClass = (this.server.points?.manager.root._Error ?? ErrorPoint0) as ClassLikeError0<TError>
       const error0 = ErrorClass.from(error)
       return {
-        request: (prepareFetchResult as any).request,
-        scope: (prepareFetchResult as any).scope,
+        request: prepareFetchResult.request,
+        scope: prepareFetchResult.scope,
         response: this.toJsonErrorResponse({
           ErrorClass,
           error: error0,
-          transformer: this.getTransformer({ scope: prepareFetchResult.scope, point: undefined }),
+          transformer: this.getTransformer({
+            scope: prepareFetchResult.scope,
+            point: undefined,
+            transform: prepareFetchResult.transform,
+          }),
         }),
         variant: 'unknown',
         error: error0,
@@ -1655,6 +1725,7 @@ export class Fetcher<TError extends ErrorPoint0> {
               serverStorageState,
             }),
           baseOptions: middlewareOptions,
+          transform: prepareFetchResult.transform,
         })
         const response = prepareFetchResult.effects.apply(result.response)
         const finalResult = {
@@ -1678,7 +1749,11 @@ export class Fetcher<TError extends ErrorPoint0> {
           response: this.toJsonErrorResponse({
             ErrorClass,
             error: error0,
-            transformer: this.getTransformer({ scope: prepareFetchResult.scope, point: undefined }),
+            transformer: this.getTransformer({
+              scope: prepareFetchResult.scope,
+              point: undefined,
+              transform: prepareFetchResult.transform,
+            }),
           }),
           variant: 'unknown' as const,
           error: error0,
@@ -1746,89 +1821,84 @@ export class Fetcher<TError extends ErrorPoint0> {
 
 type PrepareFetchResult<TError extends ErrorPoint0> =
   | {
+      transform: boolean
       scope: PointsScope
       request: Request0
       effects: Effects
       middlewares: MiddlewareFn<any>[]
       middlewareOptions: MiddlewareFnOptionsBase<any>
       publicdirResult: { publicdir: Publicdir<true> | undefined; response: Response } // in case if it is bun dev server try to fetch abs path
-      taskPointResult: undefined
-      pagePointResult: undefined
-      actionPointResult: undefined
+      endpointResult: undefined
+      pageResult: undefined
       errorResult: undefined
       optionsResult: undefined
       redirectResult: undefined
     }
   | {
+      transform: boolean
       scope: PointsScope
       request: Request0
       effects: Effects
       middlewares: MiddlewareFn<any>[]
       middlewareOptions: MiddlewareFnOptionsBase<any>
       publicdirResult: undefined
-      taskPointResult: undefined
-      pagePointResult: undefined
-      actionPointResult: { location: KnownLocation; point: ActionPoint }
+      endpointResult: {
+        location: KnownLocation
+        // params: Record<string, unknown> | undefined
+        // search: Record<string, unknown> | undefined
+        // body: unknown | undefined
+        // input: InputRawUnknown | undefined
+        point: ActionPoint
+        outputType: 'html' | 'data' | 'queryClientDehydratedState'
+        // outputType: undefined | 'queryClientDehydratedState'
+      }
+      pageResult: undefined
       errorResult: undefined
       optionsResult: undefined
       redirectResult: undefined
     }
   | {
+      transform: boolean
       scope: PointsScope
       request: Request0
       effects: Effects
       middlewares: MiddlewareFn<any>[]
       middlewareOptions: MiddlewareFnOptionsBase<any>
       publicdirResult: undefined
-      taskPointResult: { task: FetchTask; point: ReadyPoint | undefined; root: RootPoint }
-      pagePointResult: undefined
-      actionPointResult: undefined
-      errorResult: undefined
-      optionsResult: undefined
-      redirectResult: undefined
-    }
-  | {
-      scope: PointsScope
-      request: Request0
-      effects: Effects
-      middlewares: MiddlewareFn<any>[]
-      middlewareOptions: MiddlewareFnOptionsBase<any>
-      publicdirResult: undefined
-      taskPointResult: undefined
-      pagePointResult: {
+      endpointResult: undefined
+      pageResult: {
         pageLocation: ExactLocation | AnyLocation
         point: PagePoint | undefined
         client: EngineClient<true>
       }
-      actionPointResult: undefined
       errorResult: undefined
       optionsResult: undefined
       redirectResult: undefined
     }
   | {
+      transform: boolean
       scope: PointsScope
       request: Request0
       effects: Effects
       middlewares: MiddlewareFn<any>[]
       middlewareOptions: MiddlewareFnOptionsBase<any>
       publicdirResult: undefined
-      taskPointResult: undefined
-      pagePointResult: undefined
-      actionPointResult: undefined
+      endpointResult: undefined
+      pageResult: undefined
       errorResult: undefined
       optionsResult: undefined
       redirectResult: { response: Response }
     }
   | {
+      transform: boolean
       scope: PointsScope
       request: Request0
       effects: Effects
       middlewares: MiddlewareFn<any>[]
       middlewareOptions: MiddlewareFnOptionsBase<any>
       publicdirResult: undefined
-      taskPointResult: undefined
-      pagePointResult: undefined
-      actionPointResult: undefined
+      endpointResult: undefined
+      pageResult: undefined
       errorResult: TError
       optionsResult: undefined
       redirectResult: undefined
@@ -1900,30 +1970,15 @@ type PrepareFetchResult<TError extends ErrorPoint0> =
 //   pointInput: InputRawUnknown | undefined // in case if it is page or layout, we will parse input on task level, becouse we need it to extract totally match pageLocation
 // }
 
-type FetcherFetchPagePointResult = Omit<FetcherFetchDetailedResultGeneral<any>, 'response'> & {
+type FetcherFetchPageResult = FetcherFetchDetailedResultGeneral<any> & {
   response: Response
   point: ReadyPoint | undefined
   pageLocation: AnyLocation
   client: EngineClient<true>
-  scope: PointsScope
-  responseFormat: 'html'
-  input: InputRawUnknown
 }
-type FetcherFetchTaskPointResult = Omit<FetcherFetchDetailedResultGeneral<any>, 'response'> & {
+type FetcherFetchEndpointResult = FetcherFetchDetailedResultGeneral<any> & {
   response: Response
-  point: ReadyPoint | undefined
-  pageLocation: AnyLocation | undefined
+  point: ReadyPoint
   client: EngineClient<true> | undefined
-  scope: PointsScope
-  task: FetchTask
-  data: Data | undefined
-  responseFormat: 'json' | 'html'
-  input: InputRawUnknown
-}
-type FetcherFetchActionPointResult = Omit<FetcherFetchDetailedResultGeneral<any>, 'response'> & {
-  response: Response
-  point: ActionPoint
-  client: EngineClient<true> | undefined
-  scope: PointsScope
   data: Data | undefined
 }

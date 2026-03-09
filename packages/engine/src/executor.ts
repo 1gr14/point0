@@ -905,7 +905,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     renderToReadableStream,
     pagePoint,
     pageLocation,
-    input,
     seenQueryHashes = new Set<string>(),
     level = 0,
   }: {
@@ -914,7 +913,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     renderToReadableStream: typeof RenderToReadableStream
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
-    input: InputRaw
     seenQueryHashes?: Set<string>
     level?: number
   }): Promise<void> {
@@ -954,7 +952,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
 
       if (suitableMarkers.length === 0) {
         if (level === 0 && pagePoint) {
-          await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input })
+          await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, pageLocation })
         }
         return
       }
@@ -980,13 +978,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         pagePoint,
         pageLocation,
         clientPoints,
-        input,
         seenQueryHashes,
         level: level + 1,
       })
 
       if (level === 0 && pagePoint) {
-        await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input })
+        await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, pageLocation })
       }
     })
   }
@@ -1007,16 +1004,20 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
 
   async addPrefetchPageDehydratedStateToQueryClient({
     pagePoint,
-    input,
+    pageLocation,
   }: {
     pagePoint: ReadyPoint
-    input: InputRaw
+    pageLocation: AnyLocation
   }): Promise<void> {
     await this.withServerGlobalState(async () => {
       // do not uncomment it. If page itself has no loaders, it does not mean, that it not has any components which has loaders
       // if (!pagePoint._hasLoader()) {
       //   return
       // }
+      const input = {
+        ...pageLocation.searchParams,
+        ...pageLocation.params,
+      }
       const prefetchPageQueryOptions = pagePoint._getServerQueryOptions({
         input,
         queryOptions: undefined,
@@ -1095,10 +1096,12 @@ export type ExecuteOptions<
     : InputRaw
   effects?: Effects
   ErrorClass: TErrorClass
-  _known?: {
-    input?: InputRaw
-    search?: InputRaw
-    params?: InputRaw
-    body?: InputRaw
-  }
+  _known?: ExecuteOptionsKnownInput
+}
+
+export type ExecuteOptionsKnownInput = {
+  input?: InputRaw
+  search?: Record<string, unknown>
+  params?: Record<string, unknown>
+  body?: Record<string, unknown>
 }

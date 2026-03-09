@@ -6,7 +6,6 @@ import type {
   Extended,
   FlatInputStringOnly,
   FlatOutput,
-  KnownLocation,
   ParamsInputStringOnly,
   ParamsOutput,
   StrictSearchInputStringOnly,
@@ -1852,22 +1851,13 @@ export type FetcherFetchDetailedResultMiddleware<TError extends ErrorPoint0> =
 export type FetcherFetchDetailedResultPage<TError extends ErrorPoint0> = FetcherFetchDetailedResultGeneral<TError> & {
   variant: 'page'
   point: ReadyPoint | undefined
-  input: InputRawUnknown | undefined
 }
-export type FetcherFetchDetailedResultTask<TError extends ErrorPoint0> = FetcherFetchDetailedResultGeneral<TError> & {
-  variant: 'task'
-  point: ReadyPoint | undefined
-  task: FetchTask
-  data: Data | undefined
-  responseFormat: 'json' | 'html'
-  input: InputRawUnknown | undefined
-}
-export type FetcherFetchDetailedResultAction<TError extends ErrorPoint0> = FetcherFetchDetailedResultGeneral<TError> & {
-  variant: 'action'
-  point: ActionPoint
-  data: Data | undefined
-  location: KnownLocation
-}
+export type FetcherFetchDetailedResultEndpoint<TError extends ErrorPoint0> =
+  FetcherFetchDetailedResultGeneral<TError> & {
+    variant: 'endpoint'
+    point: ReadyPoint
+    data: Data | undefined
+  }
 export type FetcherFetchDetailedResultUnknown<TError extends ErrorPoint0> =
   FetcherFetchDetailedResultGeneral<TError> & {
     variant: 'unknown'
@@ -1886,9 +1876,8 @@ export type FetcherFetchDetailedResultRedirect<TError extends ErrorPoint0> =
   }
 
 export type FetcherFetchDetailedResultNoMiddleware<TError extends ErrorPoint0> =
-  | FetcherFetchDetailedResultTask<TError>
+  | FetcherFetchDetailedResultEndpoint<TError>
   | FetcherFetchDetailedResultPage<TError>
-  | FetcherFetchDetailedResultAction<TError>
   | FetcherFetchDetailedResultUnknown<TError>
   | FetcherFetchDetailedResultPublicdir<TError>
   | FetcherFetchDetailedResultOptions<TError>
@@ -1905,19 +1894,17 @@ export type FetcherFetchDetailedResultSpecific<
     ? FetcherFetchDetailedResultMiddleware<TError>
     : TVariant extends 'page'
       ? FetcherFetchDetailedResultPage<TError>
-      : TVariant extends 'task'
-        ? FetcherFetchDetailedResultTask<TError>
-        : TVariant extends 'action'
-          ? FetcherFetchDetailedResultAction<TError>
-          : TVariant extends 'unknown'
-            ? FetcherFetchDetailedResultUnknown<TError>
-            : TVariant extends 'publicdir'
-              ? FetcherFetchDetailedResultPublicdir<TError>
-              : TVariant extends 'options'
-                ? FetcherFetchDetailedResultOptions<TError>
-                : TVariant extends 'redirect'
-                  ? FetcherFetchDetailedResultRedirect<TError>
-                  : never
+      : TVariant extends 'endpoint'
+        ? FetcherFetchDetailedResultEndpoint<TError>
+        : TVariant extends 'unknown'
+          ? FetcherFetchDetailedResultUnknown<TError>
+          : TVariant extends 'publicdir'
+            ? FetcherFetchDetailedResultPublicdir<TError>
+            : TVariant extends 'options'
+              ? FetcherFetchDetailedResultOptions<TError>
+              : TVariant extends 'redirect'
+                ? FetcherFetchDetailedResultRedirect<TError>
+                : never
 
 export type MiddlewareNextFn<TError extends ErrorPoint0> = () => Promise<FetcherFetchDetailedResult<TError>>
 export type MiddlewareFnOptions<TError extends ErrorPoint0> = {
@@ -1925,7 +1912,7 @@ export type MiddlewareFnOptions<TError extends ErrorPoint0> = {
   set: ResponseEffectsSetHelper
   point: AnyNiceReadyPoint | undefined
   scope: PointsScope
-  variant: 'task' | 'page' | 'action' | 'unknown' | 'publicdir' | 'options' | 'redirect'
+  variant: 'endpoint' | 'page' | 'unknown' | 'publicdir' | 'options' | 'redirect'
   next: MiddlewareNextFn<TError>
 }
 export type MiddlewareFnOptionsBase<TError extends ErrorPoint0> = Omit<MiddlewareFnOptions<TError>, 'next'>

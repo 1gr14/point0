@@ -359,9 +359,9 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      page.home (client) < {"cursor":0}
-      page.home (client) < {"cursor":2}
-      page.home (client) < {"cursor":4}
+      page.home (client) < {"cursor":"0"}
+      page.home (client) < {"cursor":"2"}
+      page.home (client) < {"cursor":"4"}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -552,9 +552,9 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      page.home (client) < {"cursor":0}
-      page.home (client) < {"cursor":2}
-      page.home (client) < {"cursor":4}
+      page.home (client) < {"cursor":"0"}
+      page.home (client) < {"cursor":"2"}
+      page.home (client) < {"cursor":"4"}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -628,7 +628,7 @@ describe('page', () => {
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
-      page.home (client) < {"cursor":0}
+      page.home (client) < {"cursor":"0"}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`

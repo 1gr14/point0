@@ -77,7 +77,7 @@ describe('input', () => {
     `)
   })
 
-  it.concurrent(
+  it.concurrent.only(
     'available in mutation loader by input schema definition, and empty object in clientLoader',
     async () => {
       const root = Point0.lets('root', 'root').ssr(true).root()

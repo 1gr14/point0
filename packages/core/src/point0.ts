@@ -151,7 +151,6 @@ import type {
   InputSchema,
   IsEmptyObject,
   IsFinalInputOptional,
-  IsSchemaOptional,
   LayoutPoint,
   LoaderDataFn,
   LoaderOutput,
@@ -4794,6 +4793,11 @@ export class Point0<
         ...this._serverExecuteActions,
         { type: 'params', schema, unstableId: Point0._getNextUnstableId() },
       ],
+      _clientExecuteActions: [
+        ...this._clientExecuteActions,
+        { type: 'params', schema, unstableId: Point0._getNextUnstableId() },
+      ],
+      _mountActions: [...this._mountActions, { type: 'params', schema, unstableId: Point0._getNextUnstableId() }],
     }) as never
   }
 
@@ -4876,6 +4880,11 @@ export class Point0<
         ...this._serverExecuteActions,
         { type: 'search', schema, unstableId: Point0._getNextUnstableId() },
       ],
+      _clientExecuteActions: [
+        ...this._clientExecuteActions,
+        { type: 'search', schema, unstableId: Point0._getNextUnstableId() },
+      ],
+      _mountActions: [...this._mountActions, { type: 'search', schema, unstableId: Point0._getNextUnstableId() }],
     }) as never
   }
 
@@ -6585,22 +6594,12 @@ export class Point0<
     } satisfies InputSchema
   }
 
-  private parseInputSafeSync<TInputSchema extends InputSchema | UndefinedInputSchema>(
-    inputSchema: TInputSchema,
-    ...args: IsSchemaOptional<TInputSchema> extends true
-      ? [input?: InputRaw<TInputSchema>]
-      : [input: InputRaw<TInputSchema>]
+  private parseInputSafeSync<TInputSchema extends InputSchema>(
+    schema: TInputSchema,
+    input: InputRaw | undefined,
   ): SimpleSafeParseInputResult<TInputSchema, TError> {
-    const [input = {}] = args
-    if (!inputSchema) {
-      return {
-        success: true,
-        data: {} as InputParsed<TInputSchema>,
-        error: undefined,
-      }
-    }
     try {
-      const result = inputSchema['~standard'].validate(input)
+      const result = schema['~standard'].validate(input)
 
       // if promise throw error, promise not allowed
       if (result instanceof Promise) {
@@ -6640,40 +6639,42 @@ export class Point0<
     }
   }
 
-  parseClientInputSafe(
-    ...args: IsSchemaOptional<TClientInputSchema> extends true
-      ? [input?: InputRaw<TClientInputSchema>]
-      : [input: InputRaw<TClientInputSchema>]
-  ): SimpleSafeParseInputResult<TClientInputSchema, TError> {
-    const output = {} as InputParsed<TClientInputSchema>
+  private validateClientInputSafe({
+    input,
+    params,
+    search,
+  }: {
+    input: InputRaw
+    params: InputRaw | undefined
+    search: InputRaw
+  }): { success: true; error: undefined } | { success: false; error: unknown } {
     for (const clientExecuteAction of this._clientExecuteActions) {
       if (clientExecuteAction.type === 'input') {
-        const result = this.parseInputSafeSync(clientExecuteAction.schema, ...args)
+        const result = this.parseInputSafeSync(clientExecuteAction.schema, input)
         if (!result.success) {
           return result
         }
-        Object.assign(output, result.data)
+      }
+      if (clientExecuteAction.type === 'params') {
+        const result = this.parseInputSafeSync(clientExecuteAction.schema, params)
+        if (!result.success) {
+          return result
+        }
+      }
+      if (clientExecuteAction.type === 'search') {
+        const result = this.parseInputSafeSync(clientExecuteAction.schema, search)
+        if (!result.success) {
+          return result
+        }
       }
     }
-    return { success: true, data: output, error: undefined }
+    return { success: true, error: undefined }
   }
-
-  // parseClientInput(
-  //   ...args: IsSchemaOptional<TClientInputSchema> extends true
-  //     ? [input?: InputRaw<TClientInputSchema>]
-  //     : [input: InputRaw<TClientInputSchema>]
-  // ): InputParsed<TClientInputSchema> {
-  //   const result = this.parseClientInputSafe(...args)
-  //   if (!result.success) {
-  //     throw result.error
-  //   }
-  //   return result.data
-  // }
 
   private async _executeClientAsync({
     serverData,
     serverResponse,
-    location,
+    location: providedLocation,
     input,
   }: {
     serverData: Data | undefined
@@ -6694,22 +6695,17 @@ export class Point0<
     let currentInputParsed = undefined as InputParsed | undefined
     let currentParamsParsed = undefined as InputParsed | undefined
     let currentSearchParsed = undefined as InputParsed | undefined
-    location ??=
+    const location =
       this.type === 'page' || this.type === 'layout'
-        ? this._getSelfLocationByAnotherLocationOrInput(location, input)
-        : _ssItems.__POINT0_CURRENT_LOCATION__.get()
-    const params = location.params
+        ? this._getSelfLocationByAnotherLocationOrInput(providedLocation, input)
+        : (providedLocation ?? _ssItems.__POINT0_CURRENT_LOCATION__.get())
+    console.log('executeClientAsync', { type: this.type, input, location, providedLocation })
+    const params = location.params ?? {}
     const search = location.searchParams
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result. We do it to not even start loaders if input invalid
-    const { parsedInput, inputError } = (() => {
-      const result = this.parseClientInputSafe(input)
-      if (!result.success) {
-        return { parsedInput: {}, inputError: result.error }
-      }
-      return { parsedInput: result.data, inputError: undefined }
-    })()
-    if (inputError) {
-      throw inputError
+    // TODO: add cache for schema parsing results
+    const validationResult = this.validateClientInputSafe({ input, params, search })
+    if (!validationResult.success) {
+      throw validationResult.error
     }
     // const parsed: {
     //   input?: InputParsed
@@ -6806,9 +6802,9 @@ export class Point0<
     if (!route) {
       return _ssItems.__POINT0_CURRENT_LOCATION__.get()
     }
-    return route.getLocation(route.flatLoose({ ...location.searchParams, ...location.params })) as KnownLocation<
-      CurrentRouteDefinition<TRouteDefinition>
-    >
+    return route.getLocation(
+      route.get({ ...location.params, search: location.searchParams } as never),
+    ) as KnownLocation<CurrentRouteDefinition<TRouteDefinition>>
   }
 
   private _getSelfLocationByAnotherLocationOrInput(
@@ -7051,7 +7047,7 @@ export class Point0<
       isAction
         ? route.get({ ...((input as any).params ?? {}), search: (input as any).search ?? {} })
         : isPage || isLayout
-          ? route.flat(input) // pages and layouts struictlu have only params and search
+          ? route.flatLoose(input as never) // pages and layouts strictly have only params and search
           : route.get(), // queries can not have nor params, nor search
       serverurl,
     )
@@ -7205,6 +7201,11 @@ export class Point0<
     updatedHeaders.forEach((value, key) => {
       if (key.startsWith('x-point0-')) {
         updatedHeaders.delete(key)
+      }
+    })
+    fetchOptions.request.headers.forEach((value, key) => {
+      if (key.startsWith('x-point0-')) {
+        updatedHeaders.set(key, value)
       }
     })
 

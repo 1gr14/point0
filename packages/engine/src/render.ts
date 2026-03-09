@@ -1,5 +1,5 @@
 import type { AnyLocation } from '@devp0nt/route0'
-import type { AppComponent, ClientPoints, InputRaw, PagePoint } from '@point0/core'
+import type { AppComponent, ClientPoints, PagePoint } from '@point0/core'
 import { superstore } from '@point0/core'
 import { transformHtmlTemplate } from '@unhead/react/server'
 import { uneval } from 'devalue'
@@ -373,7 +373,6 @@ export async function renderAppAsReadableStream({
   executor,
   pagePoint,
   pageLocation,
-  input,
   clientPoints,
   ...props
 }: {
@@ -381,7 +380,6 @@ export async function renderAppAsReadableStream({
   executor: Executor
   pagePoint: PagePoint | undefined
   pageLocation: AnyLocation
-  input: InputRaw
   clientPoints: ClientPoints
   envVars?: Record<string, string | number | boolean | undefined>
   envConsts?: Record<string, string | number | boolean | undefined>
@@ -396,7 +394,6 @@ export async function renderAppAsReadableStream({
     clientPoints,
     pagePoint,
     pageLocation,
-    input,
   })
   return await renderReadableStream({
     ...props,

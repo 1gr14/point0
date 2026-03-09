@@ -1,5 +1,5 @@
-import type { AnyRoute, KnownLocation } from '@devp0nt/route0'
-import { PointsManager } from '@point0/core'
+import type { AnyLocation, AnyRoute, KnownLocation } from '@devp0nt/route0'
+import { Route0 } from '@devp0nt/route0'
 import type {
   ActionPoint,
   DataTransformerExtended,
@@ -17,6 +17,7 @@ import type {
   RequiredCtx,
   RootPoint,
 } from '@point0/core'
+import { PointsManager } from '@point0/core'
 
 export class ServerPoints<TError extends ErrorPoint0> {
   manager: PointsManager<true, RequiredCtx, TError>
@@ -84,28 +85,62 @@ export class ServerPoints<TError extends ErrorPoint0> {
     return undefined
   }
 
-  findAction = ({
-    method,
-    hrefRel,
-  }: {
-    method: string
-    hrefRel: string
-  }):
+  // findAction = ({
+  //   method,
+  //   hrefRel,
+  // }: {
+  //   method: string
+  //   hrefRel: string
+  // }):
+  //   | {
+  //       point: ActionPoint
+  //       location: KnownLocation
+  //     }
+  //   | undefined => {
+  //   this.throwIfNotReady()
+  //   for (const { point } of this.manager.collection) {
+  //     // TODO: optimize it later
+  //     if (point.type !== 'action') {
+  //       continue
+  //     }
+  //     if (point.method !== method) {
+  //       continue
+  //     }
+  //     const location = (point.route as AnyRoute).getLocation(hrefRel)
+  //     if (location.exact) {
+  //       return {
+  //         point: point as ActionPoint,
+  //         location,
+  //       }
+  //     }
+  //   }
+  //   return undefined
+  // }
+
+  findEndpoint = (
+    options:
+      | { method: string; location: AnyLocation }
+      | {
+          method: string
+          path: string
+        },
+  ):
     | {
         point: ActionPoint
         location: KnownLocation
       }
     | undefined => {
     this.throwIfNotReady()
+    const providedLocation = 'location' in options ? options.location : Route0.getLocation(options.path)
     for (const { point } of this.manager.collection) {
       // TODO: optimize it later
-      if (point.type !== 'action') {
+      if (!point._endpoint) {
         continue
       }
-      if (point.method !== method) {
+      if (point._endpoint.method !== options.method) {
         continue
       }
-      const location = (point.route as AnyRoute).getLocation(hrefRel)
+      const location = point._endpoint.route.getLocation(providedLocation)
       if (location.exact) {
         return {
           point: point as ActionPoint,

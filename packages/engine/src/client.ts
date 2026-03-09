@@ -1,7 +1,6 @@
 import { type AnyLocation, Route0 } from '@devp0nt/route0'
 import type {
   AppComponent,
-  InputParsed,
   LoggerFn,
   NormalizedNodeEnv,
   PagePoint,
@@ -1118,12 +1117,10 @@ try {
     executor,
     pagePoint,
     pageLocation,
-    input,
   }: {
     executor: Executor<RequiredCtx, any>
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
-    input: InputParsed
   }): Promise<ReadableStream> {
     if (!this.points) {
       throw new Error('Client points not provided, so we can not render app as readable stream')
@@ -1133,7 +1130,6 @@ try {
       executor,
       pagePoint,
       pageLocation,
-      input,
       envVars: this.envVars,
       envConsts: this.envConsts,
       clientPoints: this.points,
@@ -1146,12 +1142,10 @@ try {
     executor,
     pagePoint,
     pageLocation,
-    input,
   }: {
     executor: Executor<RequiredCtx, any>
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
-    input: InputParsed
   }): Promise<void> {
     if (!this.points) {
       throw new Error('Client points not provided, so we can not prefetch app page point deep')
@@ -1161,7 +1155,6 @@ try {
       renderToReadableStream,
       pageLocation,
       pagePoint,
-      input,
       clientPoints: this.points,
     })
   }

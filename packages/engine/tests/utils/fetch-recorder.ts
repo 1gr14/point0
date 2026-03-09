@@ -7,6 +7,7 @@ import type {
   ErrorPoint0,
 } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
+import type { ExecuteOptionsKnownInput } from '../../src/executor.js'
 
 export class FetchRecorder<TError extends ErrorPoint0 = ErrorPoint0> {
   records: FetchRecorderRecord[]
@@ -64,7 +65,7 @@ export class FetchRecorder<TError extends ErrorPoint0 = ErrorPoint0> {
       if (filter.scope && record.result.scope !== filter.scope) {
         return false
       }
-      if (filter.pointType && record.result.variant === 'task' && record.result.point?.type !== filter.pointType) {
+      if (filter.pointType && record.result.variant === 'endpoint' && record.result.point.type !== filter.pointType) {
         return false
       }
       return true
@@ -139,11 +140,29 @@ export class FetchRecorder<TError extends ErrorPoint0 = ErrorPoint0> {
   tale = async () => {
     const results = await this.waitFinishedResults()
     const lines = results.flatMap((result) => {
-      if (result.variant !== 'page' && result.variant !== 'task') {
+      if (result.variant !== 'page' && result.variant !== 'endpoint') {
         return []
       }
       const pointString = 'point' in result && result.point ? `${result.point.type}.${result.point.name}` : 'unknown'
-      const inputString = 'input' in result && result.input ? JSON.stringify(result.input) : 'undefined'
+      // const inputString = 'input' in result && result.input ? JSON.stringify(result.input) : 'undefined'
+      // const inputString = result.request.state.__POINT0_RAW_KNOWN_INPUT__
+      //   ? JSON.stringify(result.request.state.__POINT0_RAW_KNOWN_INPUT__)
+      //   : 'undefined'
+      const inputString = (() => {
+        const inputKnown = result.request.state.__POINT0_RAW_KNOWN_INPUT__ as ExecuteOptionsKnownInput | undefined
+        if (!inputKnown) {
+          return JSON.stringify({})
+        }
+        if (result.point?.type === 'action') {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { input, ...inputAction } = inputKnown
+          return JSON.stringify(inputAction)
+        }
+        if (result.point?.type === 'page' || result.point?.type === 'layout') {
+          return JSON.stringify({ ...inputKnown.search, ...inputKnown.params })
+        }
+        return JSON.stringify(inputKnown.input)
+      })()
       const serverOrClient = result.request.from.server ? 'server' : 'client'
       if (result.variant === 'page') {
         return `${pointString} (${serverOrClient}) (page) < ${inputString}`
