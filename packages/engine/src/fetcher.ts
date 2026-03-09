@@ -1204,6 +1204,9 @@ export class Fetcher<TError extends ErrorPoint0> {
           pageLocation: pageLocation as ExactLocation | AnyLocation,
         })
         const dehydratedState = await executor.getQueryClientReadyDehydratedState()
+        dehydratedState.queries = dehydratedState.queries.filter(
+          (query) => query.queryKey.at(-1) !== 'queryClientDehydratedState',
+        )
         const response = new Response(transformer.stringify({ dehydratedState }), {
           headers: { 'Content-Type': 'application/json' },
           status: 200,
