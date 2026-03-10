@@ -588,12 +588,15 @@ try {
             }
             const forwardedHeaders = new Headers(request.headers)
             forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client', this.scope)
-            const res = await fetch(`http://localhost:${this.server.port}${location.pathname}${location.search}`, {
-              method: request.method,
-              headers: forwardedHeaders,
-              body: request.body,
-              redirect: 'manual',
-            })
+            const res = await fetch(
+              `http://localhost:${this.server.port}${location.pathname}${location.searchString}`,
+              {
+                method: request.method,
+                headers: forwardedHeaders,
+                body: request.body,
+                redirect: 'manual',
+              },
+            )
             return res
           },
         }),

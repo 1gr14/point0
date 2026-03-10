@@ -53,19 +53,20 @@
   },
   "dependencies": {
     "@standard-schema/spec": "^1.1.0",
-    "flat": "^6.0.1",
     "react-ssr-prepass": "^1.6.0",
     "safe-stable-stringify": "^2.5.0",
     "use-context-selector": "^2.0.0"
   },
   "peerDependencies": {
     "react": "catalog:",
-    "react-dom": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@devp0nt/route0": "catalog:",
+    "@devp0nt/flat0": "catalog:",
     "@unhead/react": "catalog:"
   },
   "devDependencies": {
+    "@devp0nt/route0": "catalog:",
+    "@devp0nt/flat0": "catalog:",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
     "esbuild-fix-imports-plugin": "^1.0.22",

@@ -40,7 +40,10 @@ describe('infinityQuery', () => {
         }
       })
       .infiniteQuery({
-        pageParamFromInput: 'cursor',
+        pageParamFromInput: {
+          get: ({ input, get }) => get(input, 'cursor'),
+          set: ({ input, value, set }) => set(input, 'cursor', value),
+        },
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: 0,
       })

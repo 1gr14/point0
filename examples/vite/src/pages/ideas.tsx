@@ -22,7 +22,7 @@ export const ideasPage = generalLayout
   .infiniteQuery({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: 0,
-    pageParamFromInput: 'page',
+    pageParamFromInput: '?.page',
   })
   .head('success', ({ data }) => {
     return `${data.pages[0].ideasCount} ideas`

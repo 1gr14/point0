@@ -4,12 +4,9 @@ import type {
   DescendantLocation,
   ExactLocation,
   Extended,
-  FlatInputStringOnly,
-  FlatOutput,
-  ParamsInputStringOnly,
+  ParamsInput,
   ParamsOutput,
-  StrictSearchInputStringOnly,
-  StrictSearchOutput,
+  UnknownSearchInput,
 } from '@devp0nt/route0'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
 import type {
@@ -24,6 +21,7 @@ import type { ErrorPoint0 } from './error.js'
 import type { EmptyProps, Props, QueriesDefinitions } from './mountable.js'
 import type { Point0 } from './point0.js'
 import type { Request0, WideRequestMethod } from './request0.js'
+import type { GetByPath, SetByPath } from './utils.js'
 
 // basic
 
@@ -699,14 +697,10 @@ export type RecordValidationSchema<
 export type RecordValidationSchemaInput<S extends RecordValidationSchema> = StandardSchemaV1.InferInput<S>
 export type RecordValidationSchemaOutput<S extends RecordValidationSchema> = StandardSchemaV1.InferOutput<S>
 
-export type RouteDefinitionToRecordValidationSchema<TRouteDefinition extends RouteDefinition> = RecordValidationSchema<
-  FlatInputStringOnly<TRouteDefinition>,
-  FlatOutput<TRouteDefinition>
+export type RouteSchema<TRouteDefinition extends RouteDefinition> = RecordValidationSchema<
+  ParamsInput<TRouteDefinition>,
+  ParamsOutput<TRouteDefinition>
 >
-export type RouteDefinitionParamsToRecordValidationSchema<TRouteDefinition extends RouteDefinition> =
-  RecordValidationSchema<ParamsInputStringOnly<TRouteDefinition>, ParamsOutput<TRouteDefinition>>
-export type RouteDefinitionSearchToRecordValidationSchema<TRouteDefinition extends RouteDefinition> =
-  RecordValidationSchema<StrictSearchInputStringOnly<TRouteDefinition>, StrictSearchOutput<TRouteDefinition>>
 export type CustomValidationFn<TOutput extends InputParsed = InputParsed> = (data: InputRawUnknown) => TOutput
 export type RecordSchemaToCustomValidationFn<T extends RecordValidationSchema> = (
   data: InputRawUnknown,
@@ -785,12 +779,12 @@ export type IsInputSchemaConflicts<
     : false
   : false
 
-export type IsRouteDefinitionInputExtends<
+export type IsRouteSchemaExtends<
   TCurrentRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TNewRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 > = TCurrentRouteDefinition extends RouteDefinition
   ? TNewRouteDefinition extends RouteDefinition
-    ? RouteDefinitionToRecordValidationSchema<TNewRouteDefinition> extends RouteDefinitionToRecordValidationSchema<TCurrentRouteDefinition>
+    ? RouteSchema<TNewRouteDefinition> extends RouteSchema<TCurrentRouteDefinition>
       ? true
       : false
     : false
@@ -845,14 +839,72 @@ export type AssertInputSchemaHasNotAnotherKeys<
     ? ShowError<`Previous provided ${TWhat} schema has another keys`>
     : unknown
 
-export type AssertRouteDefinitionInputExtends<
+export type AssertRouteSchemaExtends<
   TCurrentRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TNewRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 > =
-  IsRouteDefinitionInputExtends<TCurrentRouteDefinition, TNewRouteDefinition> extends true
+  IsRouteSchemaExtends<TCurrentRouteDefinition, TNewRouteDefinition> extends true
     ? unknown
     : ShowError<`Provided route definition is not assignable to current point route definition`>
 
+// FlattenInput
+
+// // 1. Bail-out list: Stops TS from recursively mapping over built-in prototypes.
+// // (This is the secret to preventing the "excessively deep" error).
+// type TerminalType =
+//   | string
+//   | number
+//   | boolean
+//   | bigint
+//   | symbol
+//   | undefined
+//   | null
+//   | Date
+//   | RegExp
+//   | Error
+//   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+//   | Function
+//   | Blob
+//   | File
+
+// // 2. Safely joins the dot-notation path
+// type JoinPath<P extends string, K extends string | number> = P extends '' ? `${K}` : `${P}.${K}`
+
+// // 3. Core recursive extraction that returns a union of single-key objects
+// type FlattenEntries<T, P extends string = ''> = T extends TerminalType
+//   ? P extends ''
+//     ? never
+//     : { [K in P]: T }
+//   : T extends readonly (infer U)[]
+//     ? // Safely grab the array items WITHOUT mapping over Array.prototype methods
+//       FlattenEntries<U, JoinPath<P, number>>
+//     : T extends Record<string, unknown>
+//       ? keyof T extends never
+//         ? // Handles explicitly empty objects {} safely
+//           P extends ''
+//           ? never
+//           : { [K in P]: T }
+//         : // Maps over keys, recursively flattening them
+//           { [K in keyof T & string]: FlattenEntries<T[K], JoinPath<P, K>> }[keyof T & string]
+//       : P extends ''
+//         ? never
+//         : { [K in P]: T }
+
+// // 4. Utility to squash the union back into a single object
+// type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
+
+// // 5. Final Export (The `extends infer O` trick forces TS to compute a clean tooltip)
+// export type FlattenInput<T> = UnionToIntersection<FlattenEntries<T>> extends infer O ? { [K in keyof O]: O[K] } : never
+
+export type RoutedInputRaw<
+  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = (TParamsSchema extends InputSchema ? InputRaw<TParamsSchema> : EmptyObject) &
+  (TSearchSchema extends InputSchema
+    ? IsSchemaOptional<TSearchSchema> extends true
+      ? { '?'?: InputRaw<TSearchSchema> }
+      : { '?': InputRaw<TSearchSchema> }
+    : { '?'?: UnknownSearchInput })
 export type InputSchema = RecordValidationSchema
 export type UndefinedInputSchema = undefined
 export type FinalServerInputRaw<
@@ -864,7 +916,7 @@ export type FinalServerInputRaw<
 > = TPointType extends 'action'
   ? ActionInputRaw<TParamsSchema, TSearchSchema, TBodySchema>
   : TPointType extends 'page' | 'layout'
-    ? InputRaw<MergeRecordValidationSchemas<TSearchSchema, TParamsSchema>>
+    ? RoutedInputRaw<TParamsSchema, TSearchSchema>
     : TPointType extends 'component' | 'provider' | 'query' | 'infiniteQuery' | 'mutation'
       ? InputRaw<TServerInputSchema>
       : InputRaw
@@ -891,24 +943,33 @@ export type FinalInputRaw<
 > = TPointType extends 'action'
   ? ActionInputRaw<TParamsSchema, TSearchSchema, TBodySchema>
   : TPointType extends 'page' | 'layout'
-    ? InputRaw<MergeRecordValidationSchemas<TSearchSchema, TParamsSchema>>
+    ? RoutedInputRaw<TParamsSchema, TSearchSchema>
     : TPointType extends 'component' | 'provider' | 'query' | 'infiniteQuery' | 'mutation'
       ? InputRaw<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
       : InputRaw
-export type FinalInputParsed<
-  TPointType extends PointType,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = TPointType extends 'action'
-  ? ActionInputParsed<TParamsSchema, TSearchSchema, TBodySchema>
-  : TPointType extends 'page' | 'layout'
-    ? InputParsed<MergeRecordValidationSchemas<TSearchSchema, TParamsSchema>>
-    : TPointType extends 'component' | 'provider' | 'query' | 'infiniteQuery' | 'mutation'
-      ? InputParsed<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
-      : InputParsed
+// export type RoutedInputParsed<
+//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+// > = (TParamsSchema extends InputSchema ? InputRaw<TParamsSchema> : EmptyObject) &
+//   (TSearchSchema extends InputSchema
+//     ? IsSchemaOptional<TSearchSchema> extends true
+//       ? { '?'?: InputParsed<TSearchSchema> }
+//       : { '?': InputParsed<TSearchSchema> }
+//     : { '?'?: UnknownSearchInput })
+// export type FinalInputParsed<
+//   TPointType extends PointType,
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+// > = TPointType extends 'action'
+//   ? ActionInputParsed<TParamsSchema, TSearchSchema, TBodySchema>
+//   : TPointType extends 'page' | 'layout'
+//     ? RoutedInputParsed<TSearchSchema, TParamsSchema>
+//     : TPointType extends 'component' | 'provider' | 'query' | 'infiniteQuery' | 'mutation'
+//       ? InputParsed<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+//       : InputParsed
 export type IsFinalInputOptional<
   TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -1015,32 +1076,32 @@ export type InputRawUnknown = Record<string, unknown>
 //   TError extends ErrorPoint0 = ErrorPoint0,
 // > = InputParseResult<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>, TError>
 
-export type SafeParseInputResult<
-  TPointType extends PointType,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TError = unknown,
-> =
-  | {
-      success: true
-      data: FinalInputParsed<
-        TPointType,
-        TServerInputSchema,
-        TClientInputSchema,
-        TParamsSchema,
-        TSearchSchema,
-        TBodySchema
-      >
-      error: undefined
-    }
-  | {
-      success: false
-      data: undefined
-      error: TError
-    }
+// export type SafeParseInputResult<
+//   TPointType extends PointType,
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TError = unknown,
+// > =
+//   | {
+//       success: true
+//       data: FinalInputParsed<
+//         TPointType,
+//         TServerInputSchema,
+//         TClientInputSchema,
+//         TParamsSchema,
+//         TSearchSchema,
+//         TBodySchema
+//       >
+//       error: undefined
+//     }
+//   | {
+//       success: false
+//       data: undefined
+//       error: TError
+//     }
 export type SimpleSafeParseInputResult<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TError = unknown,
@@ -1055,23 +1116,23 @@ export type SimpleSafeParseInputResult<
       data: undefined
       error: TError
     }
-export type SafeParseInputsResult<
-  TPointType extends PointType,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TError = Error,
-> = SafeParseInputResult<
-  TPointType,
-  TServerInputSchema,
-  TClientInputSchema,
-  TParamsSchema,
-  TSearchSchema,
-  TBodySchema,
-  TError
->
+// export type SafeParseInputsResult<
+//   TPointType extends PointType,
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TError = Error,
+// > = SafeParseInputResult<
+//   TPointType,
+//   TServerInputSchema,
+//   TClientInputSchema,
+//   TParamsSchema,
+//   TSearchSchema,
+//   TBodySchema,
+//   TError
+// >
 
 // utils
 
@@ -1192,10 +1253,6 @@ export type IsAny<T> = 0 extends 1 & T ? true : false
 
 export type IfNeverThen<TElse, TThen> = [TElse] extends [never] ? TThen : TElse
 
-export type OmitUnnamedKeys<T> = {
-  [K in keyof T as string extends K ? never : K]: T[K]
-}
-
 export type FetchFn = (request: Request) => Promise<Response>
 export type RichFetchFn = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
 
@@ -1208,7 +1265,11 @@ export type AssertNoArrayReturn<TValue, TMessage extends string> = TValue extend
 export type AssertNotFunction<TValue, TMessage extends string> = TValue extends (...args: any[]) => any
   ? ShowError<TMessage>
   : unknown
-export type WithError<TError, T> = unknown extends TError ? T : TError
+export type WithError<TError, T> = unknown extends TError
+  ? T
+  : TError extends ShowError<infer TMessage>
+    ? ShowError<`↑ Error in previous method: ${TMessage}`>
+    : TError
 
 // '/' → '/'
 // '/my/path' → '/my/path'
@@ -1240,6 +1301,16 @@ export type ExtraUseQueryOptions<
   TData = any,
   TQueryKey extends QueryKey = QueryKey,
 > = Omit<UseQueryOptions<TQueryFnData, TError, TData, TQueryKey>, 'queryFn' | 'queryKey'>
+type PathKeys<T> =
+  T extends Record<string, unknown>
+    ? {
+        [K in keyof T]-?: K extends string
+          ? NonNullable<T[K]> extends Record<string, unknown>
+            ? K | `${K}.${PathKeys<NonNullable<T[K]>>}`
+            : K
+          : never
+      }[keyof T]
+    : never
 export type UseInfiniteQueryOptions<
   TInput extends InputRaw,
   TQueryFnData = any,
@@ -1248,8 +1319,14 @@ export type UseInfiniteQueryOptions<
   TQueryKey extends QueryKey = QueryKey,
   TPageParam = any,
 > = OriginalUseInfiniteQueryOptions<TQueryFnData, TError, TData, TQueryKey, TPageParam> & {
-  pageParamFromInput: keyof TInput
+  pageParamFromInput:
+    | PathKeys<TInput>
+    | {
+        set: ({ input, value, set }: { input: TInput; value: TPageParam; set: SetByPath }) => void
+        get: ({ input, get }: { input: TInput; get: GetByPath }) => unknown
+      }
 }
+
 export type ExtraUseInfiniteQueryOptions<
   TInput extends InputRaw,
   TQueryFnData = any,
@@ -1259,12 +1336,13 @@ export type ExtraUseInfiniteQueryOptions<
   TPageParam = any,
 > = Omit<UseInfiniteQueryOptions<TInput, TQueryFnData, TError, TData, TQueryKey, TPageParam>, 'queryFn' | 'queryKey'>
 export type PartialUseInfiniteQueryOptions<
+  TInput extends InputRaw = InputRaw,
   TQueryFnData = any,
   TError = any,
   TData = any,
   TQueryKey extends QueryKey = QueryKey,
   TPageParam = any,
-> = Partial<ExtraUseInfiniteQueryOptions<InputRaw, TQueryFnData, TError, TData, TQueryKey, TPageParam>>
+> = Partial<ExtraUseInfiniteQueryOptions<TInput, TQueryFnData, TError, TData, TQueryKey, TPageParam>>
 
 type NarrowQueryComponentPropStatus<
   T extends { status: 'pending' | 'error' | 'success' },
@@ -1974,6 +2052,39 @@ export type AsserNotMashInputSchemas<
         : TBodySchema extends InputSchema
           ? ShowError<`You can not define input schema and body schema at the same time. ${MashSchemaHint}`>
           : unknown
+    : unknown
+export type AssertRoutedInputSchemaOnly<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  TWhat extends string,
+> = TServerInputSchema extends InputSchema
+  ? ShowError<`For "${TWhat}" not allowed "input" schema. Only "params" and "search" are allowed.`>
+  : TClientInputSchema extends InputSchema
+    ? ShowError<`For "${TWhat}" not allowed "input" schema. Only "params" and "search" are allowed.`>
+    : TBodySchema extends InputSchema
+      ? ShowError<`For "${TWhat}" not allowed "body" schema. Only "params" and "search" are allowed.`>
+      : unknown
+export type AssertUsualInputSchemaOnly<
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TBodySchema extends InputSchema | UndefinedInputSchema,
+  TWhat extends string,
+> = TParamsSchema extends InputSchema
+  ? ShowError<`For "${TWhat}" not allowed "params" schema. Only "input" are allowed.`>
+  : TSearchSchema extends InputSchema
+    ? ShowError<`For "${TWhat}" not allowed "search" schema. Only "input" are allowed.`>
+    : TBodySchema extends InputSchema
+      ? ShowError<`For "${TWhat}" not allowed "body" schema. Only "input" are allowed.`>
+      : unknown
+export type AssertActionSchemaOnly<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TWhat extends string,
+> = TServerInputSchema extends InputSchema
+  ? ShowError<`For "${TWhat}" not allowed "input" schema. Only "params", "search" and "body" are allowed.`>
+  : TClientInputSchema extends InputSchema
+    ? ShowError<`For "${TWhat}" not allowed "input" schema. Only "params", "search" and "body" are allowed.`>
     : unknown
 
 export type NiceRootStagePoint<

@@ -146,7 +146,7 @@ describe('midleware', () => {
         </div>
       ))
     const { fetch } = await createTestThings({ points: [root, page] })
-    const response = await fetch(page.route.flat({}, 'http://localhost'))
+    const response = await fetch(page.route.get({}, 'http://localhost'))
     expect(await response.text()).toBe('custom response')
   })
 
@@ -170,7 +170,7 @@ describe('midleware', () => {
         </div>
       ))
     const { fetch } = await createTestThings({ points: [root, page] })
-    const response = await fetch(page.route.flat({}, 'http://localhost'))
+    const response = await fetch(page.route.get({}, 'http://localhost'))
     expect(response.status).toBe(500)
     expect(response.headers.get('y')).toBe('3')
     expect(await response.text()).toContain('custom error')
@@ -200,7 +200,7 @@ describe('midleware', () => {
         </div>
       ))
     const { fetch } = await createTestThings({ points: [root, page] })
-    const response = await fetch(page.route.flat({}, 'http://localhost'))
+    const response = await fetch(page.route.get({}, 'http://localhost'))
     expect(response.status).toBe(200)
     expect(response.headers.get('y')).toBe('3')
     expect(await response.text()).toContain('overriden page response')

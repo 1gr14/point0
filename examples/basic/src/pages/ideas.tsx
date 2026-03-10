@@ -21,7 +21,9 @@ export const ideasPage = generalLayout
   .infiniteQuery({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: 0,
-    pageParamFromInput: 'page',
+    pageParamFromInput: '?.page',
+    // getPageParamFromInput: ({ input, get }) => get(input, '?.page'),
+    // setPageParamToInput: ({ input, value, set }) => set(input, '?.page', value),
   })
   .mapper(({ data }) => {
     return {
@@ -54,7 +56,7 @@ export const ideasPage = generalLayout
             <div key={idea.id} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #ccc' }}>
               <h3>
                 {/* <Link to={routes.idea.get({ id: idea.id })}>{idea.title}</Link> */}
-                <Link route="idea" input={{ id: idea.id, hash: 'xcv' }}>
+                <Link route="idea" input={{ id: idea.id, '#': 'xcv' }}>
                   {idea.title}
                 </Link>
               </h3>
@@ -65,7 +67,7 @@ export const ideasPage = generalLayout
               </p>
               <p>
                 {/* <Link to={routes.ideaNews.get({ id: idea.id })}>News</Link> */}
-                <Link route="ideaNews" input={{ id: idea.id, hash: 'zxc' }}>
+                <Link route="ideaNews" input={{ id: idea.id, '#': 'zxc' }}>
                   News
                 </Link>
               </p>

@@ -4,6 +4,7 @@ import type { InputParsed, Prettify } from '@point0/core'
 import { Point0 } from '@point0/core'
 import { z } from 'zod'
 import { createTestThings, ymlify } from './utils/internal-testing.js'
+import type { UnknownSearchInput } from '@devp0nt/route0'
 
 describe('input', () => {
   it.concurrent('empty and available in page component by location params', async () => {
@@ -13,8 +14,8 @@ describe('input', () => {
       result = location.params
       return <div />
     })
-    expectTypeOf<Prettify<typeof page.Infer.InputRaw>>().toEqualTypeOf<Record<never, never>>()
-    expectTypeOf<typeof page.Infer.InputRawOrUndefined>().toEqualTypeOf<undefined>()
+    expectTypeOf<Prettify<typeof page.Infer.InputRaw>>().toEqualTypeOf<{ '?'?: UnknownSearchInput }>()
+    // expectTypeOf<typeof page.Infer.InputRawOrUndefined>().toEqualTypeOf<{ '?'?: UnknownSearchInput }>()
     expectTypeOf<typeof page.Infer.IsInputOptional>().toEqualTypeOf<true>()
     const { fetchSsr } = await createTestThings({ points: [root, page] })
     await fetchSsr(page)
@@ -347,7 +348,7 @@ describe('input', () => {
       })
       .page()
     const { loadPointYml } = await createTestThings({ points: [root, layout, page] })
-    const result = await loadPointYml(page, { id: '123' })
+    const result = await loadPointYml(page, { '?': { id: '123' } })
     expect(result).toMatchInlineSnapshot(`
       "
       loader: 

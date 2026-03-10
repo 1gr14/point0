@@ -15,15 +15,6 @@ export default {
           },
         ]
       : '@semantic-release/commit-analyzer',
-    branch === 'next'
-      ? undefined
-      : [
-          '@semantic-release/git',
-          {
-            assets: ['package.json', 'packages/*/package.json', 'CHANGELOG.md'],
-            message: 'chore(release): ${nextRelease.version} --skip-ci',
-          },
-        ],
     '@semantic-release/release-notes-generator',
     '@semantic-release/changelog',
     [
@@ -68,6 +59,15 @@ export default {
         pkgRoot: 'packages/cors',
       },
     ],
+    branch === 'next'
+      ? undefined
+      : [
+          '@semantic-release/git',
+          {
+            assets: ['package.json', 'packages/*/package.json', 'CHANGELOG.md'],
+            message: 'chore(release): ${nextRelease.version} --skip-ci',
+          },
+        ],
     '@semantic-release/github',
   ].filter(Boolean),
 }

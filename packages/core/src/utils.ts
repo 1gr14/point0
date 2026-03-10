@@ -2,8 +2,6 @@ import type { DehydratedState } from '@tanstack/react-query'
 import { stringify } from 'safe-stable-stringify'
 import type { DataTransformer, DataTransformerExtended, ScrollPositionGetter, ScrollPositionSetter } from './types.js'
 
-import { flatten as originalFlatten, unflatten as originalUnflatten } from 'flat'
-
 export function mergeHeaders(base?: HeadersInit, ...extras: Array<HeadersInit | undefined>): Headers {
   const merged = new Headers(base)
   for (const extra of extras) {
@@ -281,43 +279,62 @@ export type FsLocation = {
   column: number
 }
 
-// flat
+const toPathParts = (path: string): string[] => path.split('.').filter(Boolean)
+const isArrayIndex = (part: string): boolean => /^\d+$/.test(part)
 
-const FLAT_SEPARATOR = '__POINT0_DOT__'
+// inspired by https://github.com/envindavsorg/ts-safe-path/blob/main/src/types.ts
 
-function flatSeparatorToBracket(key: string) {
-  return key.replace(new RegExp(`${FLAT_SEPARATOR}([^${FLAT_SEPARATOR}]+)`, 'g'), '[$1]')
-}
+type PathKeys<T> =
+  T extends Record<string, unknown>
+    ? {
+        [K in keyof T]-?: K extends string
+          ? NonNullable<T[K]> extends Record<string, unknown>
+            ? K | `${K}.${PathKeys<NonNullable<T[K]>>}`
+            : K
+          : never
+      }[keyof T]
+    : never
 
-function bracketToFlatSeparator(key: string) {
-  return key.replace(/\[([^\]]+)\]/g, `${FLAT_SEPARATOR}$1`)
-}
+export type SetByPath = <T extends Record<string, unknown>>(target: T, path: PathKeys<T>, value: unknown) => void
+export const setByPath: SetByPath = (target, path, value) => {
+  const parts = toPathParts(path)
+  if (parts.length === 0) return
 
-export const flatten = (target: Record<string, unknown>): Record<string, unknown> => {
-  try {
-    const flattened = originalFlatten(target, {
-      delimiter: FLAT_SEPARATOR,
-      safe: true,
-    })
+  let current: unknown = target
+  for (let i = 0; i < parts.length; i += 1) {
+    if (current === null || typeof current !== 'object') return
 
-    return Object.fromEntries(
-      Object.entries(flattened as Record<string, unknown>).map(([key, value]) => [flatSeparatorToBracket(key), value]),
-    )
-  } catch {
-    return {}
+    const part = parts[i]!
+    const key: string | number = isArrayIndex(part) ? Number(part) : part
+    const currentObject = current as Record<string | number, unknown>
+    const isLast = i === parts.length - 1
+
+    if (isLast) {
+      currentObject[key] = value
+      return
+    }
+
+    const nextPart = parts[i + 1]!
+    const shouldBeArray = isArrayIndex(nextPart)
+    const nextValue = currentObject[key]
+    if (nextValue === null || typeof nextValue !== 'object') {
+      currentObject[key] = shouldBeArray ? [] : {}
+    }
+    current = currentObject[key]
   }
 }
 
-export const unflatten = (target: Record<string, unknown>): Record<string, unknown> => {
-  try {
-    const normalized = Object.fromEntries(
-      Object.entries(target).map(([key, value]) => [bracketToFlatSeparator(key), value]),
-    )
+export type GetByPath = <T extends Record<string, unknown>>(target: T, path: PathKeys<T>) => unknown
+export const getByPath: GetByPath = (target, path) => {
+  const parts = toPathParts(path)
+  if (parts.length === 0) return target
 
-    return originalUnflatten(normalized as Record<string, unknown>, {
-      delimiter: FLAT_SEPARATOR,
-    })
-  } catch {
-    return target
+  let current: unknown = target
+  for (const part of parts) {
+    if (current === null || typeof current !== 'object') return undefined
+
+    const key: string | number = isArrayIndex(part) ? Number(part) : part
+    current = (current as Record<string | number, unknown>)[key]
   }
+  return current
 }

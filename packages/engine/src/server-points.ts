@@ -1,5 +1,4 @@
 import type { AnyLocation, AnyRoute, KnownLocation } from '@devp0nt/route0'
-import { Route0 } from '@devp0nt/route0'
 import type {
   ActionPoint,
   DataTransformerExtended,
@@ -26,6 +25,13 @@ export class ServerPoints<TError extends ErrorPoint0> {
   roots = new Map<PointsScope, RootPoint>()
   scopes = new Set<PointsScope>()
   middlewares = new Map<PointsScope, MiddlewareFn<any>[]>()
+
+  // TODO:L optimize later
+  // // <method, Routes0>
+  // private readonly endpointsRoutesByMethods = new Map<WideRequestMethod, Routes0>()
+
+  // // <method, <route.definition, point>>
+  // private readonly endpointsByDefinitionsByMethods = new Map<WideRequestMethod, Map<string, ReadyPoint>>()
 
   private constructor({ manager }: { manager: PointsManager }) {
     this.manager = manager as never
@@ -122,7 +128,7 @@ export class ServerPoints<TError extends ErrorPoint0> {
       | { method: string; location: AnyLocation }
       | {
           method: string
-          path: string
+          hrefRel: string
         },
   ):
     | {
@@ -131,16 +137,20 @@ export class ServerPoints<TError extends ErrorPoint0> {
       }
     | undefined => {
     this.throwIfNotReady()
-    const providedLocation = 'location' in options ? options.location : Route0.getLocation(options.path)
+    // const providedLocation = 'location' in options ? options.location : Route0.getLocation(options.path)
+    const pathname = 'hrefRel' in options ? options.hrefRel.split('?')[0] : options.location.pathname
     for (const { point } of this.manager.collection) {
-      // TODO: optimize it later
       if (!point._endpoint) {
         continue
       }
       if (point._endpoint.method !== options.method) {
         continue
       }
-      const location = point._endpoint.route.getLocation(providedLocation)
+      if (!point._endpoint.route.isExactPathnameMatch(pathname)) {
+        continue
+      }
+      // TODO: optimize it later
+      const location = point._endpoint.route.getLocation('location' in options ? options.location : options.hrefRel)
       if (location.exact) {
         return {
           point: point as ActionPoint,

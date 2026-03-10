@@ -526,19 +526,19 @@ export const createTestThings = async ({
   }) as unknown as FetchPointYml
   const fetchView = (async (point: ReadyPoint, ...args: [any]) => {
     return await client.run(async () => {
-      const response = await client.fetch(point.route.flat(args[0] || {}, 'http://localhost'), ...args.slice(1))
+      const response = await client.fetch(point.route.get(args[0] || {}, 'http://localhost'), ...args.slice(1))
       return await HtmlView.parse(await response.text())
     })
   }) as unknown as FetchHtmlView
   const fetchPreview = (async (point: ReadyPoint, ...args: [any]) => {
     return await client.run(async () => {
-      const response = await client.fetch(point.route.flat(args[0] || {}, 'http://localhost'), ...args.slice(1))
+      const response = await client.fetch(point.route.get(args[0] || {}, 'http://localhost'), ...args.slice(1))
       return (await HtmlView.parse(await response.text())).preview
     })
   }) as unknown as FetchHtmlPreview
   const fetchSsr = (async (point: ReadyPoint, ...args: [any]) => {
     return await client.run(async () => {
-      const url = point.route.flat(args[0] || {}, 'http://localhost')
+      const url = point.route.get(args[0] || {}, 'http://localhost')
       const response = await client.fetch(url, ...args.slice(1))
       const transformer = point.point._getTransformer()
       const view = await HtmlView.parse(await response.text())

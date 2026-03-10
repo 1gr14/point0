@@ -1,4 +1,5 @@
 import type { AnyLocation, AnyRoute, ExactLocation, KnownLocation } from '@devp0nt/route0'
+import * as flat0 from '@devp0nt/flat0'
 import type {
   ActionPoint,
   ClassLikeError0,
@@ -24,7 +25,6 @@ import {
   blankDataTransformerExtended,
   ErrorPoint0,
   generateId,
-  unflatten,
 } from '@point0/core'
 import { Effects } from '@point0/core/effects'
 import { Request0 } from '@point0/core/request0'
@@ -129,7 +129,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             acc[key] = typeof value === 'string' ? (transform ? JSON.parse(value) : value) : value
             return acc
           }, {})
-          const unflattened = unflatten(parsed)
+          const unflattened = flat0.deserialize(parsed)
           return unflattened
         }
         return await request.original.json()
@@ -141,10 +141,10 @@ export class Fetcher<TError extends ErrorPoint0> {
       ? this.getTransformer({ scope: point.scope, point, transform }).deserialize(body)
       : body
     if (isAction) {
-      return { body: bodyParsed, search: location.searchParams, params: location.params, input: {} }
+      return { body: bodyParsed, search: location.search, params: location.params, input: {} }
     }
     if (isPage || isLayout) {
-      return { body: {}, search: location.searchParams, params: location.params, input: {} }
+      return { body: {}, search: location.search, params: location.params, input: {} }
     }
     return { body: {}, search: {}, params: {}, input: bodyParsed }
   }
@@ -167,24 +167,24 @@ export class Fetcher<TError extends ErrorPoint0> {
     return result
   }
 
-  private readonly _getPointInputFormSuitablePageLocation = ({
-    pageLocation,
-  }: {
-    pageLocation: ExactLocation | AnyLocation
-  }): InputRawUnknown => {
-    return { ...pageLocation.searchParams, ...pageLocation.params }
-  }
-  getPointInputFormSuitablePageLocation = ({
-    pageLocation,
-    request,
-  }: {
-    pageLocation: ExactLocation | AnyLocation
-    request: Request0
-  }): InputRawUnknown => {
-    const result = this._getPointInputFormSuitablePageLocation({ pageLocation })
-    request.state.__POINT0_RAW_KNOWN_INPUT__ = result
-    return result
-  }
+  // private readonly _getPointInputFormSuitablePageLocation = ({
+  //   pageLocation,
+  // }: {
+  //   pageLocation: ExactLocation | AnyLocation
+  // }): InputRawUnknown => {
+  //   return { ...pageLocation.searchParams, ...pageLocation.params }
+  // }
+  // getPointInputFormSuitablePageLocation = ({
+  //   pageLocation,
+  //   request,
+  // }: {
+  //   pageLocation: ExactLocation | AnyLocation
+  //   request: Request0
+  // }): InputRawUnknown => {
+  //   const result = this._getPointInputFormSuitablePageLocation({ pageLocation })
+  //   request.state.__POINT0_RAW_KNOWN_INPUT__ = result
+  //   return result
+  // }
 
   prepareFetch = async ({
     originalRequest,
@@ -228,7 +228,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         return new Response('Redirecting to different dev client', {
           status: 302,
           headers: {
-            Location: `http://localhost:${thatClient.port}${request.location.pathname}${request.location.search}`,
+            Location: `http://localhost:${thatClient.port}${request.location.pathname}${request.location.searchString}`,
           },
         })
       }
@@ -554,7 +554,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         if (!route) {
           throw new Error(`Point "${point.toString()}" has no route while requested page html via task`)
         }
-        const pageLocation = route.getLocation(route.get({ ...input.params, search: input.search } as never))
+        const pageLocation = route.getLocation(route.get({ ...input.params, '?': input.search } as never))
         const result = await this.fetchPage({
           client,
           point: point as PagePoint | undefined,
@@ -591,7 +591,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         if (!route) {
           throw new Error(`Point "${point.toString()}" has no route while requested page html via endpoint`)
         }
-        const pageLocation = route.getLocation(route.get({ ...input.params, search: input.search } as never))
+        const pageLocation = route.getLocation(route.get({ ...input.params, '?': input.search } as never))
         await client.prefetchAppPagePointDeep({
           executor,
           pagePoint: point as PagePoint,

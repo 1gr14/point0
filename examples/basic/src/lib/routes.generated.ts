@@ -2,7 +2,7 @@ import { Routes } from '@devp0nt/route0'
 
 export const routes = Routes.create({
   'home': '/',
-  'empty': '/empty&x',
+  'empty': '/empty/:x',
   'file': '/file',
   'gi1': '/gi1',
   'gi2': '/gi2',

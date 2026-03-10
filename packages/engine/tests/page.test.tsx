@@ -298,7 +298,11 @@ describe('page', () => {
         }
       })
       .infiniteQuery({
-        pageParamFromInput: 'cursor',
+        // pageParamFromInput: {
+        //   get: ({ input, get }) => get(input, '?.cursor'),
+        //   set: ({ input, value, set }) => set(input, '?.cursor', value),
+        // },
+        pageParamFromInput: '?.cursor',
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: 0,
       })
@@ -395,7 +399,7 @@ describe('page', () => {
         }
       })
       .infiniteQuery({
-        pageParamFromInput: 'cursor',
+        pageParamFromInput: '?.cursor',
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: 0,
       })
@@ -491,7 +495,10 @@ describe('page', () => {
         items: data.items.map((item) => ({ ...item, name: item.name.toUpperCase() })),
       }))
       .infiniteQuery({
-        pageParamFromInput: 'cursor',
+        pageParamFromInput: {
+          get: ({ input, get }) => get(input, '?.cursor'),
+          set: ({ input, value, set }) => set(input, '?.cursor', value),
+        },
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: 0,
       })
@@ -588,7 +595,7 @@ describe('page', () => {
         }
       })
       .infiniteQuery({
-        pageParamFromInput: 'cursor',
+        pageParamFromInput: '?.cursor',
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: 0,
       })
@@ -1035,7 +1042,10 @@ describe('page', () => {
         }
       })
       .infiniteQuery({
-        pageParamFromInput: 'cursor',
+        pageParamFromInput: {
+          get: ({ input, get }) => get(input, 'cursor'),
+          set: ({ input, value, set }) => set(input, 'cursor', value),
+        },
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: 0,
       })
@@ -1128,7 +1138,10 @@ describe('page', () => {
         }
       })
       .infiniteQuery({
-        pageParamFromInput: 'cursor',
+        pageParamFromInput: {
+          get: ({ input, get }) => get(input, 'cursor'),
+          set: ({ input, value, set }) => set(input, 'cursor', value),
+        },
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: 0,
       })

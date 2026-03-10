@@ -1,10 +1,9 @@
+import type { GetPathInputByRoute, IsParamsOptional } from '@devp0nt/route0'
 import {
   type AnyLocation,
   type AnyRoute,
   type ExtractRoute,
   type ExtractRoutesKeys,
-  type FlatInputWithHash,
-  type HasParams,
   Route0,
   type RoutesPretty,
 } from '@devp0nt/route0'
@@ -72,7 +71,7 @@ export const useSimpleNavigate = _wrapUseNavigate(_useNativeNavigate, ErrorPoint
 //     if (!route) {
 //       throw new Error0(`Route "${routeName}" not found`)
 //     }
-//     const to = route.flat(input || {}) as string
+//     const to = route.get(input || {}) as string
 //     return await wrappedNavigate(...([to, ...rest] as unknown as Parameters<TNavigate>))
 //   }
 //   return navigate0
@@ -89,15 +88,15 @@ export const createNavigate = <
 ) => {
   const wrappedNavigate = _wrapNavigate(navigate, ErrorClass)
   async function navigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
-    ...args: HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
+    ...args: IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
       ? [
           route: TRouteName,
-          input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+          input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
           ...rest: Tail<Parameters<TNavigate>>,
         ]
       : [
           route: TRouteName,
-          input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+          input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
           ...rest: Tail<Parameters<TNavigate>>,
         ]
   ): Promise<{ location: AnyLocation; error: InstanceType<TErrorClass> | undefined }> {
@@ -107,20 +106,20 @@ export const createNavigate = <
       throw new ErrorClass(`Route "${routeName}" not found`)
     }
 
-    const to = route.flat(input || {}) as string
+    const to = route.get(input || {}) as string
     return await wrappedNavigate(...([to, ...rest] as unknown as Parameters<TNavigate>))
   }
   return Object.assign(navigate0, { to: wrappedNavigate }) as never as {
     <TRouteName extends ExtractRoutesKeys<TRoutes>>(
-      ...args: HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
+      ...args: IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
         ? [
             route: TRouteName,
-            input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+            input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
             ...rest: Tail<Parameters<TNavigate>>,
           ]
         : [
             route: TRouteName,
-            input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+            input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
             ...rest: Tail<Parameters<TNavigate>>,
           ]
     ): Promise<{ location: AnyLocation; error: InstanceType<TErrorClass> | undefined }>
@@ -138,15 +137,15 @@ export const createUseNavigate = <TRoutes extends RoutesPretty, TError extends E
     const useSimpleNaviate = _wrapUseNavigate(_useNativeNavigate, ErrorClass ?? ErrorPoint0)
     const simpleNavigate = useSimpleNaviate()
     function useNavigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
-      ...args: HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
+      ...args: IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
         ? [
             route: TRouteName,
-            input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+            input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
             ...rest: Tail<Parameters<ReturnType<typeof useSimpleNavigate>>>,
           ]
         : [
             route: TRouteName,
-            input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+            input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
             ...rest: Tail<Parameters<ReturnType<typeof useSimpleNavigate>>>,
           ]
     ): Promise<{ location: AnyLocation; error: TError | undefined }>
@@ -184,7 +183,7 @@ export const createUseNavigate = <TRoutes extends RoutesPretty, TError extends E
             throw new Error(`Route "${args[0]}" not found`)
           }
           return {
-            to: route.flat(args[1] || {}),
+            to: route.get(args[1] || {}),
             rest: args.slice(2) as Tail<Parameters<ReturnType<typeof useSimpleNavigate>>>,
           }
         }
@@ -200,7 +199,7 @@ export const createUseNavigate = <TRoutes extends RoutesPretty, TError extends E
     //     : [route: TRouteName, input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>]
     // ) => {
     //   const [route, input] = args
-    //   return await navigate(routes[route].flat(input || {}))
+    //   return await navigate(routes[route].get(input || {}))
     // }
   }
 }
@@ -451,9 +450,9 @@ export const createLink = <
   type LinkRouteProps = {
     [TRouteName in ExtractRoutesKeys<TRoutes>]: {
       route: TRouteName
-    } & (HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
-      ? { input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>> }
-      : { input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>> }) &
+    } & (IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
+      ? { input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }
+      : { input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }) &
       LinkAsChildProps &
       HookNavigationOptions<TBaseLocationHook>
   }[ExtractRoutesKeys<TRoutes>]
@@ -493,7 +492,7 @@ export const createLink = <
         logger({ level: 'error', category: ['wouter'], message: `Route "${routeName}" not found` })
         return '#'
       }
-      return route.flat(input)
+      return route.get(input)
     }, [routeName, JSON.stringify(input), providedTo, providedHref])
     return <SimpleLink {...(rest as Record<string, unknown>)} to={finalTo} />
   }
@@ -509,9 +508,9 @@ export const createNavLink = <
   type NavLinkRouteProps = {
     [TRouteName in ExtractRoutesKeys<TRoutes>]: {
       route: TRouteName
-    } & (HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
-      ? { input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>> }
-      : { input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>> }) &
+    } & (IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
+      ? { input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }
+      : { input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }) &
       NavLinkAsChildProps &
       HookNavigationOptions<TBaseLocationHook> &
       NavLinkClassNameProps
@@ -556,7 +555,7 @@ export const createNavLink = <
         logger({ level: 'error', category: ['wouter'], message: `Route "${routeName}" not found` })
         return '#'
       }
-      return route.flat(input)
+      return route.get(input)
     }, [routeName, JSON.stringify(input), providedTo, providedHref])
     return <SimpleNavLink {...(rest as Record<string, unknown>)} to={finalTo} />
   }
@@ -589,7 +588,7 @@ export const Router = ({
     if (!ssrLocation) {
       throw new Error(`ssrLocation is required on ssr`)
     }
-    return { ssrPath: ssrLocation.pathname, ssrSearch: ssrLocation.search }
+    return { ssrPath: ssrLocation.pathname, ssrSearch: ssrLocation.searchString }
   }, [ssrLocation])
 
   const useAdapterLocation: UseAdapterLocationFn = useCallback(() => {
@@ -627,7 +626,7 @@ export const RouterRoutes = ({
 }
 
 const combinePagesRoutesToRegexForLayout = (routes: AnyRoute[]) => {
-  const compiled = routes.map((r) => r.getRegexBaseString())
+  const compiled = routes.map((r) => r.regexBaseString)
   const pattern = `^(${compiled.join('|')})(?:/|$)`
   return new RegExp(pattern)
 }
@@ -654,7 +653,7 @@ export const RenderPagesTree = ({
                 <Switch>
                   {node.pages.map(({ pageRoute, Page }) => {
                     return (
-                      <Route key={pageRoute.getDefinition()} path={pageRoute.getDefinition()}>
+                      <Route key={pageRoute.definition} path={pageRoute.definition}>
                         <Page />
                       </Route>
                     )
@@ -673,7 +672,7 @@ export const RenderPagesTree = ({
           <Fragment key={`nolayout-${node.layoutName}`}>
             {node.pages.map(({ pageRoute, Page }) => {
               return (
-                <Route key={pageRoute.getDefinition()} path={pageRoute.getDefinition()}>
+                <Route key={pageRoute.definition} path={pageRoute.definition}>
                   <Page />
                 </Route>
               )

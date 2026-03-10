@@ -23,7 +23,7 @@ describe('cors', () => {
       })
     const tt = await createTestThings({ points: [root, page] })
     const fetch = async (options?: RequestInit) => {
-      return await tt.fetch(page.route.flat({}, 'http://localhost:3001'), options)
+      return await tt.fetch(page.route.get({}, 'http://localhost:3001'), options)
     }
     return { root, page, fetch }
   }

@@ -173,10 +173,8 @@ describe('route', () => {
     expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/my/path/extra/:x/:y'>()
   })
 
-  it('basepath with params or search params not allowed', async () => {
+  it('basepath with params not allowed', async () => {
     // @ts-expect-error - it is bad
     expect(() => Point0.lets('root', 'root').basepath('/my/:id').root()).toThrow()
-    // @ts-expect-error - it is bad
-    expect(() => Point0.lets('root', 'root').basepath('/my&id').root()).toThrow()
   })
 })

@@ -10,7 +10,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/devp0nt/point0.git",
-    "directory": "packages/react-dom"
+    "directory": "packages/cookies-store"
   },
   "bugs": {
     "url": "https://github.com/devp0nt/point0/issues"
@@ -45,9 +45,7 @@
   },
   "peerDependencies": {
     "@point0/core": "workspace:*",
-    "@point0/engine": "workspace:*",
-    "react": "catalog:",
-    "react-dom": "catalog:"
+    "@point0/engine": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "^1.2.22",

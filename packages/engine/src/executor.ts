@@ -407,9 +407,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
             input: {},
           }
         }
-        const location = route.getLocation(route.flatLoose(inputProvided as any))
+        const location = route.getLocation(route.get(inputProvided as any))
         return {
-          search: location.searchParams,
+          search: location.search,
           params: location.params,
           body: {},
           input: {},
@@ -1015,8 +1015,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       //   return
       // }
       const input = {
-        ...pageLocation.searchParams,
         ...pageLocation.params,
+        ...(pageLocation.searchString ? { '?': pageLocation.search } : {}),
       }
       const prefetchPageQueryOptions = pagePoint._getServerQueryOptions({
         input,

@@ -13,7 +13,7 @@ export default [
   {
     type: 'page',
     name: 'empty',
-    route: '/empty&x',
+    route: '/empty/:x',
     polh: true,
     point: async () => (await import('../pages/empty.js')).empty,
   },

@@ -1,12 +1,5 @@
-import type {
-  AnyLocation,
-  AnyRoute,
-  CallableRoute,
-  FlatInputStringOnly,
-  KnownLocation,
-  ParamsOutput,
-  StrictSearchOutput,
-} from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, CallableRoute, HasParams, KnownLocation } from '@devp0nt/route0'
+import * as flat0 from '@devp0nt/flat0'
 import { Route0 } from '@devp0nt/route0'
 import type {
   DehydratedState,
@@ -100,6 +93,7 @@ import type {
   AppendCtx,
   AppendCtxExposedKeys,
   AsserNotMashInputSchemas,
+  AssertActionSchemaOnly,
   AssertInputSchemaHasAllKeys,
   AssertInputSchemaHasNotAnotherKeys,
   AssertInputSchemaNotWider,
@@ -107,7 +101,7 @@ import type {
   AssertNoForbiddenCtxExposedKeys,
   AssertNoForbiddenMethodsIfNotSuitableStage,
   AssertNotFunction,
-  AssertRouteDefinitionInputExtends,
+  AssertRoutedInputSchemaOnly,
   AssertSchemaNotWider,
   BasePoint,
   ClientExecuteAction,
@@ -149,7 +143,6 @@ import type {
   InputRaw,
   InputRawUnknown,
   InputSchema,
-  IsEmptyObject,
   IsFinalInputOptional,
   LayoutPoint,
   LoaderDataFn,
@@ -195,9 +188,7 @@ import type {
   RequiredCtx,
   RootPoint,
   RouteDefinition,
-  RouteDefinitionParamsToRecordValidationSchema,
-  RouteDefinitionSearchToRecordValidationSchema,
-  RouteDefinitionToRecordValidationSchema,
+  RouteSchema,
   ScrollPositionGetter,
   ScrollPositionRestorePolicy,
   ScrollPositionSetter,
@@ -224,8 +215,8 @@ import type { FsLocation } from './utils.js'
 import {
   blankDataTransformerExtended,
   dedupeSlashes,
-  flatten,
   generateId,
+  getByPath,
   getWindowScrollPositionGetterByElementGetter,
   getWindowScrollPositionGetterBySelector,
   getWindowScrollPositionSetterByElementGetter,
@@ -233,6 +224,7 @@ import {
   isContainsBinary,
   mergeHeaders,
   prependAndDeappendSlash,
+  setByPath,
   toExtendedTransformer,
   toKebabCase,
   windowScrollPositionGetter,
@@ -991,16 +983,8 @@ export class Point0<
   lets<
     TMethod extends WideRequestMethod,
     TProvidedRoute extends RouteDefinition = string,
-    TCheckError = AssertInputSchemaNotWider<
-      RouteDefinitionToRecordValidationSchema<TProvidedRoute>,
-      TServerInputSchema,
-      TClientInputSchema
-    > &
-      AssertInputSchemaHasAllKeys<
-        RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute>,
-        TParamsSchema,
-        'params'
-      >,
+    TCheckError = AssertInputSchemaHasAllKeys<RouteSchema<TProvidedRoute>, TParamsSchema, 'params'> &
+      AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
   >(
     ...args: TPointType extends 'root' | 'base'
       ? [letsReadyPointType: 'action', pointName: string, method: TMethod, route: TProvidedRoute]
@@ -1020,12 +1004,10 @@ export class Point0<
       TProvidedRoute,
       TServerInputSchema,
       TClientInputSchema,
-      IsEmptyObject<ParamsOutput<TProvidedRoute>> extends true
-        ? TParamsSchema
-        : MergeRecordValidationSchemas<TParamsSchema, RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute>>,
-      IsEmptyObject<StrictSearchOutput<TProvidedRoute>> extends true
-        ? TSearchSchema
-        : MergeRecordValidationSchemas<TSearchSchema, RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute>>,
+      HasParams<TProvidedRoute> extends true
+        ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute>>
+        : TParamsSchema,
+      TSearchSchema,
       TBodySchema,
       THeadersSchema,
       TCookiesSchema,
@@ -1038,16 +1020,8 @@ export class Point0<
   lets<
     TMethod extends WideRequestMethod,
     TProvidedRoute extends AnyRoute = AnyRoute<string>,
-    TCheckError = AssertInputSchemaNotWider<
-      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
-      TServerInputSchema,
-      TClientInputSchema
-    > &
-      AssertInputSchemaHasAllKeys<
-        RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>,
-        TParamsSchema,
-        'params'
-      >,
+    TCheckError = AssertInputSchemaHasAllKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
+      AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
   >(
     ...args: TPointType extends 'root' | 'base'
       ? [letsReadyPointType: 'action', pointName: string, method: TMethod, route: TProvidedRoute]
@@ -1067,18 +1041,10 @@ export class Point0<
       TProvidedRoute['definition'],
       TServerInputSchema,
       TClientInputSchema,
-      IsEmptyObject<ParamsOutput<TProvidedRoute['definition']>> extends true
-        ? TParamsSchema
-        : MergeRecordValidationSchemas<
-            TParamsSchema,
-            RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>
-          >,
-      IsEmptyObject<StrictSearchOutput<TProvidedRoute['definition']>> extends true
-        ? TSearchSchema
-        : MergeRecordValidationSchemas<
-            TSearchSchema,
-            RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute['definition']>
-          >,
+      HasParams<TProvidedRoute['definition']> extends true
+        ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
+        : TParamsSchema,
+      TSearchSchema,
       TBodySchema,
       THeadersSchema,
       TCookiesSchema,
@@ -1091,12 +1057,12 @@ export class Point0<
   lets<
     TPointName extends PointName,
     TProvidedRoute extends RouteDefinition = TPointName,
-    TCheckError = AssertInputSchemaNotWider<
-      RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
-      TServerInputSchema,
-      TClientInputSchema
+    TCheckError = AssertInputSchemaHasAllKeys<
+      RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+      TParamsSchema,
+      'params'
     > &
-      AssertRouteDefinitionInputExtends<TRouteDefinition, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+      AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'page'>,
   >(
     ...args: TPointType extends 'root' | 'base' | 'layout'
       ? [letsReadyPointType: 'page', pointName: TPointName, route?: TProvidedRoute]
@@ -1116,18 +1082,13 @@ export class Point0<
       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
       TServerInputSchema,
       TClientInputSchema,
-      IsEmptyObject<ParamsOutput<TProvidedRoute>> extends true
-        ? TParamsSchema
-        : MergeRecordValidationSchemas<
+      HasParams<TProvidedRoute> extends true
+        ? MergeRecordValidationSchemas<
             TParamsSchema,
-            RouteDefinitionParamsToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-          >,
-      IsEmptyObject<StrictSearchOutput<TProvidedRoute>> extends true
-        ? TSearchSchema
-        : MergeRecordValidationSchemas<
-            TSearchSchema,
-            RouteDefinitionSearchToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-          >,
+            RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+          >
+        : TParamsSchema,
+      TSearchSchema,
       TBodySchema,
       THeadersSchema,
       TCookiesSchema,
@@ -1140,12 +1101,8 @@ export class Point0<
   lets<
     TPointName extends PointName,
     TProvidedRoute extends AnyRoute,
-    TCheckError = AssertInputSchemaNotWider<
-      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
-      TServerInputSchema,
-      TClientInputSchema
-    > &
-      AssertRouteDefinitionInputExtends<TRouteDefinition, TProvidedRoute['definition']>,
+    TCheckError = AssertInputSchemaHasAllKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
+      AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'page'>,
   >(
     ...args: TPointType extends 'root' | 'base' | 'layout'
       ? [letsReadyPointType: 'page', pointName: TPointName, route: TProvidedRoute]
@@ -1165,18 +1122,10 @@ export class Point0<
       ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
       TServerInputSchema,
       TClientInputSchema,
-      IsEmptyObject<ParamsOutput<TProvidedRoute['definition']>> extends true
-        ? TParamsSchema
-        : MergeRecordValidationSchemas<
-            TParamsSchema,
-            RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-          >,
-      IsEmptyObject<StrictSearchOutput<TProvidedRoute['definition']>> extends true
-        ? TSearchSchema
-        : MergeRecordValidationSchemas<
-            TSearchSchema,
-            RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-          >,
+      HasParams<TProvidedRoute['definition']> extends true
+        ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
+        : TParamsSchema,
+      TSearchSchema,
       TBodySchema,
       THeadersSchema,
       TCookiesSchema,
@@ -1189,12 +1138,12 @@ export class Point0<
   lets<
     TPointName extends PointName,
     TProvidedRoute extends RouteDefinition = '/',
-    TCheckError = AssertInputSchemaNotWider<
-      RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
-      TServerInputSchema,
-      TClientInputSchema
+    TCheckError = AssertInputSchemaHasAllKeys<
+      RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+      TParamsSchema,
+      'params'
     > &
-      AssertRouteDefinitionInputExtends<TRouteDefinition, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+      AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'layout'>,
   >(
     ...args: TPointType extends 'root' | 'base' | 'layout'
       ? [letsReadyPointType: 'layout', pointName: TPointName, route?: TProvidedRoute]
@@ -1214,18 +1163,13 @@ export class Point0<
       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
       TServerInputSchema,
       TClientInputSchema,
-      IsEmptyObject<ParamsOutput<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>> extends true
-        ? TParamsSchema
-        : MergeRecordValidationSchemas<
+      HasParams<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>> extends true
+        ? MergeRecordValidationSchemas<
             TParamsSchema,
-            RouteDefinitionParamsToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-          >,
-      IsEmptyObject<StrictSearchOutput<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>> extends true
-        ? TSearchSchema
-        : MergeRecordValidationSchemas<
-            TSearchSchema,
-            RouteDefinitionSearchToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-          >,
+            RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+          >
+        : TParamsSchema,
+      TSearchSchema,
       TBodySchema,
       THeadersSchema,
       TCookiesSchema,
@@ -1238,12 +1182,8 @@ export class Point0<
   lets<
     TPointName extends PointName,
     TProvidedRoute extends AnyRoute,
-    TCheckError = AssertInputSchemaNotWider<
-      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
-      TServerInputSchema,
-      TClientInputSchema
-    > &
-      AssertRouteDefinitionInputExtends<TRouteDefinition, TProvidedRoute['definition']>,
+    TCheckError = AssertInputSchemaHasAllKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
+      AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'layout'>,
   >(
     ...args: TPointType extends 'root' | 'base' | 'layout'
       ? [letsReadyPointType: 'layout', pointName: TPointName, route: TProvidedRoute]
@@ -1263,18 +1203,10 @@ export class Point0<
       ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
       TServerInputSchema,
       TClientInputSchema,
-      IsEmptyObject<ParamsOutput<TProvidedRoute['definition']>> extends true
-        ? TParamsSchema
-        : MergeRecordValidationSchemas<
-            TParamsSchema,
-            RouteDefinitionParamsToRecordValidationSchema<TProvidedRoute['definition']>
-          >,
-      IsEmptyObject<StrictSearchOutput<TProvidedRoute['definition']>> extends true
-        ? TSearchSchema
-        : MergeRecordValidationSchemas<
-            TSearchSchema,
-            RouteDefinitionSearchToRecordValidationSchema<TProvidedRoute['definition']>
-          >,
+      HasParams<TProvidedRoute['definition']> extends true
+        ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
+        : TParamsSchema,
+      TSearchSchema,
       TBodySchema,
       THeadersSchema,
       TCookiesSchema,
@@ -1423,6 +1355,18 @@ export class Point0<
       }
       return prevRoute
     })()
+    const newRouteTokens = newRoute?.getTokens()
+    const hasWildcard = !!newRouteTokens?.some((token) => token.kind === 'wildcard')
+    if (hasWildcard && isLayout) {
+      throw new Error(
+        `Wildcard is not allowed in layout point ${this.toStringWithLocation()}. You should just attach your pages to layout points instead.`,
+      )
+    }
+    if (hasWildcard && isAction) {
+      throw new Error(
+        `Wildcard is not allowed in action point ${this.toStringWithLocation()}. Use middleware instead, or add ctx methods before.`,
+      )
+    }
 
     const _endpoint = (() => {
       if (
@@ -1454,19 +1398,21 @@ export class Point0<
         const scopeKebab = toKebabCase(this.scope)
         const typeKebab = letsReadyPointType === 'infiniteQuery' ? 'infinite-query' : letsReadyPointType
         const nameKebab = toKebabCase(pointName)
-        const routeGeneralPart = `/${this._endpointPrefix || '_point0'}/${scopeKebab}/${typeKebab}/${nameKebab}`
+        const routeGeneral = Route0.create(
+          dedupeSlashes(`/${this._endpointPrefix || '_point0'}/${scopeKebab}/${typeKebab}/${nameKebab}`),
+        )
         if (isPage || isLayout) {
-          if (!newRoute) {
+          if (!newRoute || !newRouteTokens) {
             throw new Error(`Route is required for page or layout point ${this.toStringWithLocation()}`)
           }
-          const paramsKeys = newRoute.getParamsKeys()
-          if (!paramsKeys.length) {
-            return Route0.create(dedupeSlashes(routeGeneralPart))
+          const paramsTokens = newRouteTokens.filter((token) => token.kind === 'param')
+          if (!paramsTokens.length) {
+            return routeGeneral
           }
-          const paramsString = paramsKeys.map((key) => `:${key}`).join('/')
-          return Route0.create(dedupeSlashes(`${routeGeneralPart}/${paramsString}`))
+          const paramsString = paramsTokens.map((token) => `:${token.name}${token.optional ? '?' : ''}`).join('/')
+          return routeGeneral.extend(paramsString)
         }
-        return Route0.create(dedupeSlashes(routeGeneralPart))
+        return routeGeneral
       })()
       return {
         method,
@@ -1484,26 +1430,19 @@ export class Point0<
       if ((!isAction && !isPage && !isLayout) || !newRoute) {
         return []
       }
+      const paramsKeys = newRoute.getParamsKeys()
       if (isPage || isLayout) {
-        if (newRoute.definition === prevRoute?.definition || newRoute.getFlatKeys().length === 0) {
+        if (newRoute.definition === prevRoute?.definition || paramsKeys.length === 0) {
           return []
         }
       }
       return [
-        ...(newRoute.getParamsKeys().length === 0
+        ...(paramsKeys.length === 0
           ? []
           : [
               {
                 type: 'params' as const,
-                schema: newRoute.paramsInputSchema,
-              },
-            ]),
-        ...(newRoute.getSearchKeys().length === 0
-          ? []
-          : [
-              {
-                type: 'search' as const,
-                schema: newRoute.strictSearchInputSchema,
+                schema: newRoute.schema,
               },
             ]),
       ]
@@ -1649,10 +1588,7 @@ export class Point0<
   }
 
   basepath<TBasepath extends string>(
-    basepath: TBasepath &
-      (IsEmptyObject<FlatInputStringOnly<TBasepath>> extends true
-        ? unknown
-        : ShowError<'basepath can not contain params or search params'>),
+    basepath: TBasepath & (HasParams<TBasepath> extends true ? ShowError<'basepath can not contain params'> : unknown),
   ): NiceRootStagePoint<
     StagePointTypeOrNever<TPointType>,
     'root',
@@ -1678,8 +1614,8 @@ export class Point0<
   > {
     const normalizedBasepath = prependAndDeappendSlash(basepath) || '/'
     const route = Route0.create(dedupeSlashes(`/${normalizedBasepath}`))
-    if (route.getParamsKeys().length > 0 || route.getSearchKeys().length > 0) {
-      throw new Error(`basepath can not contain params or search params on point ${this.toStringWithLocation()}`)
+    if (route.getParamsKeys().length > 0) {
+      throw new Error(`basepath can not contain params on point ${this.toStringWithLocation()}`)
     }
     return this._continue({
       _basepath: normalizedBasepath,
@@ -6696,7 +6632,7 @@ export class Point0<
         ? this._getSelfLocationByAnotherLocationOrInput(providedLocation, input)
         : undefined
     const params = location?.params ?? {}
-    const search = location?.searchParams ?? {}
+    const search = location?.search ?? {}
     // TODO: add cache for schema parsing results
     const validationResult = this.validateClientInputSafe({ input, params, search })
     if (!validationResult.success) {
@@ -6797,14 +6733,14 @@ export class Point0<
       return _ssItems.__POINT0_CURRENT_LOCATION__.get()
     }
     return route.getLocation(
-      route.get({ ...location.params, search: location.searchParams } as never),
+      route.get({
+        ...location.params,
+        ...(location.searchString ? { '?': location.search } : {}),
+      } as never),
     ) as KnownLocation<CurrentRouteDefinition<TRouteDefinition>>
   }
 
-  private _getSelfLocationByAnotherLocationOrInput(
-    location?: AnyLocation | undefined,
-    input?: InputRaw<TClientInputSchema>,
-  ): AnyLocation {
+  private _getSelfLocationByAnotherLocationOrInput(location?: AnyLocation | undefined, input?: InputRaw): AnyLocation {
     const route = this.route
     if (!route) {
       return location ?? _ssItems.__POINT0_CURRENT_LOCATION__.get()
@@ -6813,14 +6749,23 @@ export class Point0<
       return _ssItems.__POINT0_CURRENT_LOCATION__.get()
     }
     if (location) {
-      return route.getLocation(route.flatLoose({ ...location.searchParams, ...location.params, ...input }))
+      return route.getLocation(
+        route.get({
+          ...location.params,
+          ...input,
+          ...(location.searchString ? { '?': location.search } : {}),
+        }),
+      )
     }
-    return route.getLocation(route.flatLoose({ ...(input || {}) }))
+    return route.getLocation(route.get({ ...(input || {}) }))
   }
 
-  _getUnsafeInputRawByLocation(location: AnyLocation): InputRaw<TClientInputSchema> {
+  _getUnsafeInputRawByLocation(location: AnyLocation): InputRaw {
     const selfLocation = this._getSelfLocationByAnotherLocation(location)
-    return { ...selfLocation.searchParams, ...selfLocation.params } as InputRaw<TClientInputSchema>
+    return {
+      ...selfLocation.params,
+      ...(selfLocation.searchString ? { '?': selfLocation.search } : {}),
+    } as InputRaw
   }
 
   // fetching and queries
@@ -7039,9 +6984,9 @@ export class Point0<
     const route = this._endpoint.route
     const url = new URL(
       isAction
-        ? route.get({ ...((input as any).params ?? {}), search: (input as any).search ?? {} })
+        ? route.get({ ...((input as any).params ?? {}), '?': (input as any).search ?? {} })
         : isPage || isLayout
-          ? route.flatLoose(input as never) // pages and layouts strictly have only params and search
+          ? route.get(input as never) // pages and layouts strictly have only params and search
           : route.get(), // queries can not have nor params, nor search
       serverurl,
     )
@@ -7091,7 +7036,7 @@ export class Point0<
       }
       if (isFormData) {
         const formData = new FormData()
-        const flattened: Record<string, unknown> = flatten(bodyTransformed)
+        const flattened = flat0.serialize(bodyTransformed)
         for (const [key, value] of Object.entries(flattened)) {
           if (value instanceof File || value instanceof Blob) {
             formData.append(key, value)
@@ -7270,7 +7215,6 @@ export class Point0<
       const fetchFn = this.getFetchFn()
       const fetchRequest = this.modifyFetchRequestForServerIfRequired(fetchOptions)
       this._emit('pointFetchServerStart', _eventData)
-
       res = await fetchFn(fetchRequest)
       // Bubble up non-default status codes from nested server point fetches
       // to the current outer request (e.g. SSR page render request).
@@ -7451,7 +7395,7 @@ export class Point0<
       this.name,
       'server',
       isInfiniteQuery ? 'infinite' : 'finite',
-      this._getTransformer().stringify(input) as string,
+      this._getTransformer().stringify(this._toSafeRoutedRawInput({ inputRaw: input as never })) as string,
       outputType,
     ]
   }
@@ -7470,7 +7414,7 @@ export class Point0<
       this.name,
       'client',
       isInfiniteQuery ? 'infinite' : 'finite',
-      this._getTransformer().stringify(input) as string,
+      this._getTransformer().stringify(this._toSafeRoutedRawInput({ inputRaw: input as never })) as string,
       'data',
     ]
   }
@@ -7491,7 +7435,7 @@ export class Point0<
       this.name,
       'combined',
       isInfiniteQuery ? 'infinite' : 'finite',
-      this._getTransformer().stringify(input) as string,
+      this._getTransformer().stringify(this._toSafeRoutedRawInput({ inputRaw: input as never })) as string,
       outputType,
     ]
   }
@@ -7906,6 +7850,35 @@ export class Point0<
     throw new Error(`No loader found on point ${this.toStringWithLocation()}`)
   }
 
+  private _toInputWithPageParam({ input, pageParam }: { input: InputRaw; pageParam: unknown }): InputRaw {
+    const inputWithPageParam = { ...input } as Record<string, unknown>
+    const { getPageParamFromInput, setPageParamToInput, pageParamFromInput } = (() => {
+      if (typeof this._infiniteQueryOptions.pageParamFromInput === 'string') {
+        return {
+          pageParamFromInput: this._infiniteQueryOptions.pageParamFromInput,
+          getPageParamFromInput: undefined,
+          setPageParamToInput: undefined,
+        }
+      }
+      return {
+        pageParamFromInput: undefined,
+        getPageParamFromInput: this._infiniteQueryOptions.pageParamFromInput.get,
+        setPageParamToInput: this._infiniteQueryOptions.pageParamFromInput.set,
+      }
+    })()
+    const pageParamFromInputValue =
+      pageParam ??
+      (getPageParamFromInput
+        ? getPageParamFromInput({ input: inputWithPageParam as never, get: getByPath })
+        : getByPath(inputWithPageParam as never, pageParamFromInput as never))
+    if (setPageParamToInput) {
+      setPageParamToInput({ input: inputWithPageParam as never, value: pageParamFromInputValue, set: setByPath })
+    } else {
+      setByPath(inputWithPageParam as never, pageParamFromInput as never, pageParamFromInputValue)
+    }
+    return inputWithPageParam as InputRaw
+  }
+
   private _getServerInfiniteQueryOptions({
     input = {} as never,
     infiniteQueryOptions,
@@ -7944,9 +7917,9 @@ export class Point0<
     const queryFn = async ({ pageParam, signal }: { pageParam: unknown; signal: AbortSignal }) => {
       try {
         this._emit('pointInfiniteQueryStart', _eventData)
-        const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
+        const inputWithPageParam = this._toInputWithPageParam({ input, pageParam })
         const data = await this._fetchServer({
-          input: { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam } as never,
+          input: inputWithPageParam as never,
           fetchOptions: { signal, ...fetchOptions },
           _outputType: outputType,
         })
@@ -8017,15 +7990,12 @@ export class Point0<
     const queryFn = async ({ pageParam }: { pageParam: unknown }) => {
       try {
         this._emit('pointInfiniteQueryStart', _eventData)
-        const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
+        const inputWithPageParam = this._toInputWithPageParam({ input, pageParam })
         const { clientData } = await this._executeClientAsync({
           serverData,
           location,
           serverResponse: undefined,
-          input: {
-            ...input,
-            [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam,
-          } as InputRaw<TClientInputSchema>,
+          input: inputWithPageParam as InputRaw<TClientInputSchema>,
         })
         const eventData = {
           ..._eventData,
@@ -8108,7 +8078,7 @@ export class Point0<
               return (infiniteCachedServerData as any).pages[pageParamIndex]
             }
           }
-          const inputWithPageParam = { ...input, [this._infiniteQueryOptions.pageParamFromInput]: pageParam }
+          const inputWithPageParam = this._toInputWithPageParam({ input, pageParam })
           const finiteServerKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
           const finiteCachedServerData = queryClient.getQueryData(finiteServerKey)
           if (finiteCachedServerData) {
@@ -9252,7 +9222,7 @@ export class Point0<
       this._emit('pointPrefetchPageError', { ...eventData, error })
       throw error
     }
-    const location = providedLocation ?? this.route.getLocation(this.route.flatLoose(input))
+    const location = providedLocation ?? this.route.getLocation(this.route.get(input))
 
     const queryClientDehydratedStateWasPrefetched = await (async () => {
       if (policy === 'ssrDehydratedState' || policy === 'ssrDehydratedStateAndClientQuery') {
@@ -9263,7 +9233,7 @@ export class Point0<
         }
         await this._prefetchPageQueryClientDehydratedState({
           queryClient,
-          input: input as never,
+          input,
           fetchOptions,
           force,
         })
@@ -9530,6 +9500,45 @@ export class Point0<
         error: error0,
       })
     }
+  }
+
+  private readonly _toSafeRoutedRawInput = <TInputRaw extends InputRaw>({
+    inputRaw,
+    searchParsed,
+  }: {
+    inputRaw: TInputRaw
+    searchParsed?: InputParsed | undefined
+  }): TInputRaw => {
+    if (this.type !== 'page' && this.type !== 'layout') {
+      return inputRaw as TInputRaw
+    }
+    // in case if we fix input when developer provides input by itself with nmber and other things in search params
+    if (!searchParsed) {
+      return flat0.parse(flat0.stringify(inputRaw)) as TInputRaw
+    }
+
+    // in case if we fix mountable page or layout input, it is already stringified
+    // but can contain trash in search params, like utm, etc
+    const { '?': searchRaw = {}, ...paramsRaw } = inputRaw as Record<string, unknown> & {
+      '?'?: Record<string, unknown>
+    }
+    const searchParsedKeys = Object.keys(searchParsed)
+    const safeSearchRawInput =
+      searchParsedKeys.length > 0
+        ? searchParsedKeys.reduce(
+            (acc, key) => {
+              if (key in searchRaw) {
+                acc[key] = searchRaw[key]
+              }
+              return acc
+            },
+            {} as Record<string, unknown>,
+          )
+        : {}
+    return {
+      ...paramsRaw,
+      ...(Object.keys(safeSearchRawInput).length > 0 ? { '?': safeSearchRawInput } : {}),
+    } as TInputRaw
   }
 
   private readonly _Mountable = (props: {
@@ -9889,7 +9898,7 @@ export class Point0<
           }
         }
         case 'search': {
-          const result = this.parseInputSafeSync(action.schema, location.searchParams)
+          const result = this.parseInputSafeSync(action.schema, location.search)
           if (!result.success) {
             return React.createElement(ErrorComponent, {
               error: result.error,
@@ -10001,10 +10010,24 @@ export class Point0<
           })
         }
         case 'selfQuery': {
+          // const safeInput =
+          //   this.type === 'page' || this.type === 'layout'
+          //     ? {
+          //         ...currentLayer.prev?.paramsParsed,
+          //         ...(Object.keys(currentLayer.prev?.searchParsed ?? {}).length > 0
+          //           ? { '?': currentLayer.prev?.searchParsed }
+          //           : {}),
+          //       }
+          //     : (currentLayer.inputRaw as never)
+          const safeInput = this._toSafeRoutedRawInput({
+            inputRaw: currentLayer.inputRaw as never,
+            searchParsed: currentLayer.prev?.searchParsed,
+          })
+          // const safeInput = currentLayer.inputRaw as never
           const queryResult =
             this._queryResultType === 'infiniteQuery'
-              ? this.useInfiniteQuery(currentLayer.inputRaw as never)
-              : this.useQuery(currentLayer.inputRaw as never)
+              ? this.useInfiniteQuery(safeInput as never)
+              : this.useQuery(safeInput as never)
           const queries = [queryResult]
           return React.createElement(this._Mountable, {
             ..._nextMountableProps,
