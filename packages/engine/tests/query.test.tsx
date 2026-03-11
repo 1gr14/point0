@@ -296,4 +296,35 @@ describe('query', () => {
         "
       `)
   })
+
+  it('type error when schema, params or body schema provided', () => {
+    const root = createRoot()
+    const baseParams = root
+      .lets('base', 'baseWithParams')
+      .params(z.object({ id: z.string() }))
+      .base()
+    const baseSearch = root
+      .lets('base', 'baseWithSearch')
+      .search(z.object({ id: z.string() }))
+      .base()
+    const baseBody = root
+      .lets('base', 'baseWithBody')
+      .body(z.object({ id: z.string() }))
+      .base()
+    baseParams
+      .lets('query', 'test')
+      // @ts-expect-error - params schema not allowed for query
+      .loader(() => ({ x: 1 }))
+      .query()
+    baseSearch
+      .lets('query', 'test')
+      // @ts-expect-error - search schema not allowed for query
+      .loader(() => ({ x: 1 }))
+      .query()
+    baseBody
+      .lets('query', 'test')
+      // @ts-expect-error - body schema not allowed for query
+      .loader(() => ({ x: 1 }))
+      .query()
+  })
 })

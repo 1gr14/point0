@@ -505,7 +505,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           }
         }
 
-        if (!point._hasServerLoader()) {
+        if (!point._hasServerLoader) {
           const status = 500
           const error0 = new ErrorClass(`Point "${point.toString()}" has no server loader`, { status })
           effects.set.status(status)

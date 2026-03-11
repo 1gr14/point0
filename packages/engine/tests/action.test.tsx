@@ -2,6 +2,7 @@ import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
 import { z } from 'zod'
 import { createTestThings } from './utils/internal-testing.js'
+import superjson from 'superjson'
 
 describe('action', () => {
   const createRoot = () =>
@@ -9,6 +10,7 @@ describe('action', () => {
       .ssr(true)
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
+      .transformer(superjson)
       .queryOptions({
         retry: false,
         refetchOnMount: false,
@@ -22,23 +24,21 @@ describe('action', () => {
   it.concurrent('general', async () => {
     const root = createRoot()
     const action = root
-      .lets('action', 'test', 'GET', '/api/my-test/:id')
-
-      // params should be strictly same keys as we see in route params
+      .lets('action', 'test', 'POST', '/api/my-test/:id')
       .params(z.object({ id: z.string().min(1) }))
-
-      // hedares can be defined anywhere and not changes TInput
       .headers(z.object({ x: z.string().min(1) }))
-
-      // defining search or body immediatelly tranform TInputRaw to {search, body, params} so we can not pass there flat value
-      // if not provided, then all usual inputs just will be applied to
-      // but inside loaders and ctx fns we see flat input as usual
       .search(z.object({ y: z.string().min(1) }))
-      .body(z.object({ b: z.number().min(1) }))
-
-      // .output(z.object({ b: z.number().min(1) }))
-
-      .loader(({}) => ({ x: 1 }))
+      .body(z.object({ b: z.number().min(1), d: z.bigint() }))
+      .loader(({ request, headers, search, body, params }) => {
+        return {
+          headers,
+          search,
+          params,
+          body,
+          bodyUsed: request.original.bodyUsed,
+          date: new Date('2026-03-11T12:00:00.000Z'),
+        }
+      })
       .action()
 
     const { loadPoint } = await createTestThings({
@@ -46,9 +46,274 @@ describe('action', () => {
     })
     const result = await loadPoint(
       action,
-      { body: { b: 3 }, search: { y: '2' }, params: { id: '1' } },
+      { body: { b: 3, d: 100n }, search: { y: '2' }, params: { id: '1' } },
       { headers: { x: '1' } },
     )
-    expect(result).toEqual({ x: 1 })
+    expect(result).toEqual({
+      headers: { x: '1' },
+      search: { y: '2' },
+      params: { id: '1' },
+      body: { b: 3, d: 100n },
+      bodyUsed: true,
+      date: new Date('2026-03-11T12:00:00.000Z'),
+    })
+  })
+
+  it.concurrent('body not used if body schema not provided', async () => {
+    const root = createRoot()
+    const action = root
+      .lets('action', 'test', 'POST', '/api/my-test/:id')
+      .params(z.object({ id: z.string().min(1) }))
+      .headers(z.object({ x: z.string().min(1) }))
+      .search(z.object({ y: z.string().min(1) }))
+      .action(({ request, headers, search, params }) => {
+        return { headers, search, params, bodyUsed: request.original.bodyUsed }
+      })
+
+    const { loadPoint } = await createTestThings({
+      points: [root, action],
+    })
+    const result = await loadPoint(action, { search: { y: '2' }, params: { id: '1' } }, { headers: { x: '1' } })
+    expect(result).toEqual({ headers: { x: '1' }, search: { y: '2' }, params: { id: '1' }, bodyUsed: false })
+  })
+
+  it.concurrent('do not transform when fetch not from point0', async () => {
+    const root = createRoot()
+    const action = root
+      .lets('action', 'test', 'GET', '/api/my-test/:id')
+      .loader(({ params }) => {
+        return { c: new Date('2026-03-11T12:00:00.000Z'), id: params.id }
+      })
+      .action()
+
+    const { engine } = await createTestThings({
+      points: [root, action],
+    })
+    const request = new Request('http://localhost:3000/api/my-test/1', {
+      headers: { 'Content-Type': 'application/json' },
+    })
+    const result = await engine.fetch(request)
+    const json = await result.json()
+    expect(json).toEqual({ c: '2026-03-11T12:00:00.000Z', id: '1' })
+  })
+
+  it.concurrent('can be query', async () => {
+    const root = createRoot()
+    const action = root
+      .lets('action', 'test', 'GET', '/api/my-test/:id')
+      .loader(({ params }) => {
+        return { date: new Date('2026-03-11T12:00:00.000Z'), id: params.id }
+      })
+      .query()
+    const page = root
+      .lets('page', 'home', '/:id')
+      .with(action, ({ params }) => ({ params }))
+      .page(({ data }) => (
+        <div id="page">
+          date={data.date.toISOString()},id={data.id}
+        </div>
+      ))
+
+    const { render, fetchPreview } = await createTestThings({ points: [root, page, action] })
+    await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /zxc
+          #loading: ...
+
+          #page: date=2026-03-11T12:00:00.000Z,id=zxc
+        "
+      `)
+    })
+
+    expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
+      "
+      #page: date=2026-03-11T12:00:00.000Z,id=zxc
+      "
+    `)
+  })
+
+  it.concurrent('returns error when not found', async () => {
+    const root = createRoot()
+    const action = root
+      .lets('action', 'test', 'GET', '/api/my-test/:id')
+      .loader(({ params }) => {
+        return { date: new Date('2026-03-11T12:00:00.000Z'), id: params.id }
+      })
+      .query()
+    const page = root
+      .lets('page', 'home', '/:id')
+      .with(action, ({ params }) => ({ params }))
+      .page(({ data }) => (
+        <div id="page">
+          date={data.date.toISOString()},id={data.id}
+        </div>
+      ))
+
+    // we do not add action to points, to imitate point deletion o server and stale client
+    const { render, engine } = await createTestThings({ points: [root, page] })
+    await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
+      await waitContent('#error')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /zxc
+          #loading: ...
+
+          #error: Not Found
+        "
+      `)
+    })
+
+    const request = new Request('http://localhost:3000/api/my-test/123', {
+      headers: { Accept: 'application/json' },
+    })
+    const result = await engine.fetch(request)
+    const json = await result.json()
+    delete json.stack
+    expect(json).toEqual({ message: 'Not Found' })
+  })
+
+  it.concurrent('can be infinite query', async () => {
+    const items: Array<{ id: number; name: string }> = [
+      { id: 1, name: 'Item 1' },
+      { id: 2, name: 'Item 2' },
+      { id: 3, name: 'Item 3' },
+      { id: 4, name: 'Item 4' },
+      { id: 5, name: 'Item 5' },
+    ]
+
+    const root = createRoot()
+    const action = root
+      .lets('action', 'test', 'POST', '/api/my-test')
+      .body(z.object({ cursor: z.number().optional() }))
+      .loader(({ body }) => {
+        const cursor = body.cursor ?? 0
+        const nextCursor = cursor + 2
+        return {
+          items: items.slice(cursor, cursor + 2),
+          nextCursor: nextCursor < items.length ? nextCursor : undefined,
+        }
+      })
+      .infiniteQuery({
+        // pageParamFromInput: {
+        //   get: ({ input, get }) => get(input, '?.cursor'),
+        //   set: ({ input, value, set }) => set(input, '?.cursor', value),
+        // },
+        pageParamFromInput: 'body.cursor',
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialPageParam: 0,
+      })
+    const page = root
+      .lets('page', 'home', '/')
+      .with(action)
+      .page(({ data, queries: [query] }) => {
+        const itms = data.pages.flatMap((page) => page.items)
+        const nextCursor = data.pages.at(-1)?.nextCursor
+        return (
+          <div id="page">
+            {itms.map((item) => (
+              <div key={item.id}>{item.name}</div>
+            ))}
+            {nextCursor && (
+              <button
+                id="more"
+                onClick={() => {
+                  void query.fetchNextPage()
+                }}
+              >
+                Load more
+              </button>
+            )}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview } = await createTestThings({ points: [root, page, action] })
+    await render(page.route(), async ({ waitContent, tale, click }) => {
+      await waitContent('#more')
+      await click('#more')
+      await waitContent('Item 4')
+      await click('#more')
+      await waitContent('Item 5')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /
+          #loading: ...
+
+          #page:
+            div: Item 1
+            div: Item 2
+            #more: Load more
+
+          #page:
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            #more: Load more
+
+          #page:
+            div: Item 1
+            div: Item 2
+            div: Item 3
+            div: Item 4
+            div: Item 5
+        "
+      `)
+    })
+
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page:
+        div: Item 1
+        div: Item 2
+        #more: Load more
+      "
+    `)
+  })
+
+  it.concurrent('can be mutation', async () => {
+    const root = createRoot()
+    const action = root
+      .lets('action', 'test', 'POST', '/api/my-test')
+      .body(z.object({ y: z.number() }))
+      .loader(({ body }) => ({ x: body.y * 2 }))
+      .mutation()
+    const page = root.lets('page', 'home', '/').page(() => {
+      const mutation = action.useMutation()
+      return (
+        <div id="page">
+          <div id="data">x={mutation.data?.x ?? 'nothing'}</div>
+          <button id="mutate" onClick={() => mutation.mutate({ body: { y: 123 } })}>
+            Mutate
+          </button>
+        </div>
+      )
+    })
+
+    const { render, fetchesTale } = await createTestThings({ points: [root, action, page] })
+    await render(page.route(), async ({ waitContent, tale, click }) => {
+      await waitContent('#data')
+      await click('#mutate')
+      await waitContent('x=246')
+      expect(await tale()).toMatchInlineSnapshot(`
+          "
+          /
+            #page:
+              #data: x=nothing
+              #mutate: Mutate
+
+            #page:
+              #data: x=246
+              #mutate: Mutate
+          "
+        `)
+      expect(await fetchesTale()).toMatchInlineSnapshot(`
+        "
+        action.test (client) < {"body":{"y":123},"search":{},"params":{}}
+        "
+      `)
+    })
   })
 })

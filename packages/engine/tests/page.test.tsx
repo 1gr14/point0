@@ -27,22 +27,50 @@ describe('page', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-          "
-          /
-            #page: x=nothing
-          "
-        `)
+              "
+              /
+                #page: x=nothing
+              "
+            `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "
-
-        "
-      `)
+            "
+    
+            "
+          `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "
-        #page: x=nothing
-        "
-      `)
+            "
+            #page: x=nothing
+            "
+          `)
+  })
+
+  it('not found', async () => {
+    const root = createRoot()
+    const page = root.lets('page', 'home', '/').page(() => <div id="page">x=nothing</div>)
+    const pageNotFound = root.lets('page', 'not-done', '/never').page(() => <div id="never">never</div>)
+    // we do not pass it to client points
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
+    await render('/not-found', async ({ waitContent, tale }) => {
+      // we see this message becouse of default 404 error page component in Router which can be customized
+      await waitContent('Page Not Found')
+      expect(await tale()).toMatchInlineSnapshot(`
+              "
+              /not-found
+                Page Not Found
+              "
+            `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+            "
+    
+            "
+          `)
+    expect(await fetchPreview(pageNotFound)).toMatchInlineSnapshot(`
+            "
+            Page Not Found
+            "
+          `)
   })
 
   it('page param', async () => {
@@ -1823,5 +1851,21 @@ describe('page', () => {
             #page: x=zxc y=1 z=1
       "
     `)
+  })
+
+  it('type error when input or body schema provided', () => {
+    const root = createRoot()
+    const baseBody = root
+      .lets('base', 'baseWithBody')
+      .body(z.object({ id: z.string() }))
+      .base()
+    const baseInput = root
+      .lets('base', 'baseWithInput')
+      .input(z.object({ id: z.string() }))
+      .base()
+    // @ts-expect-error - body schema not allowed for page
+    baseBody.lets('page', 'home', '/:id').page()
+    // @ts-expect-error - input schema not allowed for page
+    baseInput.lets('page', 'home', '/:id').page()
   })
 })

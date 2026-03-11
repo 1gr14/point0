@@ -1,4 +1,12 @@
-import type { AnyLocation, AnyRoute, CallableRoute, HasParams, KnownLocation } from '@devp0nt/route0'
+import type {
+  AnyLocation,
+  AnyRoute,
+  CallableRoute,
+  HasParams,
+  KnownLocation,
+  UnknownSearchInput,
+  UnknownSearchParsed,
+} from '@devp0nt/route0'
 import * as flat0 from '@devp0nt/flat0'
 import { Route0 } from '@devp0nt/route0'
 import type {
@@ -103,6 +111,7 @@ import type {
   AssertNotFunction,
   AssertRoutedInputSchemaOnly,
   AssertSchemaNotWider,
+  AssertUsualInputSchemaOnly,
   BasePoint,
   ClientExecuteAction,
   ClientLoaderDataFn,
@@ -113,6 +122,8 @@ import type {
   CurrentRouteDefinition,
   CustomValidationFn,
   CustomValidationFnToRecordValidationSchema,
+  CustomValidationFnWithKnownInput,
+  CustomValidationFnWithKnownInputToRecordValidationSchema,
   Data,
   DataTransformer,
   DataTransformerExtended,
@@ -381,6 +392,7 @@ export class Point0<
   readonly _Error: ClassLikeError0<TError>
   readonly _middlewares: MiddlewareFn<TError>[]
   _serverurl: string | undefined
+  readonly _hasServerLoader: boolean | undefined
   readonly _basepath: string | undefined
   readonly _endpoint: EndpointDefinition | undefined
   get method(): TPointType extends RequestableReadyPointType ? WideRequestMethod : undefined {
@@ -419,7 +431,9 @@ export class Point0<
   private readonly _clientExecuteActions: ClientExecuteAction[]
   private readonly _mountActions: MountAction[]
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
-  readonly route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
+  readonly route: TRouteDefinition extends RouteDefinition
+    ? CallableRoute<TRouteDefinition, TSearchSchema extends InputSchema ? InputRaw<TSearchSchema> : UnknownSearchInput>
+    : UndefinedRoute
   private readonly _page: PageSuccessComponentType<any, any, any, any, any, any> | UndefinedSuccessPageComponent
   private readonly _component:
     | ComponentSuccessComponentType<any, any, any, any, any>
@@ -546,6 +560,7 @@ export class Point0<
     _Error?: ClassLikeError0<TError>
     _middlewares?: MiddlewareFn<TError>[] | undefined
     _serverurl?: string | undefined
+    _hasServerLoader?: boolean | undefined
     _basepath?: string | undefined
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
@@ -625,6 +640,7 @@ export class Point0<
     this._ssr = options._ssr ?? false
     this._eventerSubscriptions = options._eventerSubscriptions ?? []
     this._serverurl = options._serverurl ?? undefined
+    this._hasServerLoader = options._hasServerLoader ?? undefined
     this._basepath = options._basepath ?? undefined
     this._endpoint = options._endpoint ?? undefined
     this._endpointPrefix = options._endpointPrefix ?? undefined
@@ -647,9 +663,12 @@ export class Point0<
     this._mountActions = options._mountActions ?? []
     this._ProviderReactContext = options._ProviderReactContext ?? undefined
     this._useValue = options._useValue ? options._useValue.bind(this) : undefined
-    this.route =
-      options.route ??
-      (undefined as TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute)
+    this.route = (options.route ?? undefined) as TRouteDefinition extends RouteDefinition
+      ? CallableRoute<
+          TRouteDefinition,
+          TSearchSchema extends InputSchema ? InputRaw<TSearchSchema> : UnknownSearchInput
+        >
+      : UndefinedRoute
     this._page = options._page ?? undefined
     this._component = options._component ?? undefined
     this._layout = options._layout ?? undefined
@@ -707,6 +726,7 @@ export class Point0<
     _Error?: ClassLikeError0<TError> | undefined
     _middlewares?: MiddlewareFn<TError>[]
     _serverurl?: string | undefined
+    _hasServerLoader?: boolean | undefined
     _basepath?: string | undefined
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
@@ -795,6 +815,16 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   > {
+    const set = (...args: [key: keyof typeof overrides, value?: any]) => {
+      const [key, value] = args
+      if (key in overrides) {
+        return overrides[key as keyof typeof overrides]
+      }
+      if (args.length > 1) {
+        return value
+      }
+      return this[key as keyof this]
+    }
     return new Point0<
       TPointType,
       TLetsReadyPointType,
@@ -818,83 +848,70 @@ export class Point0<
       TInnerProps,
       TQueriesDefinitions
     >({
-      scope: overrides.scope ?? this.scope,
-      scopes: overrides.scopes ?? this.scopes,
-      _base: overrides._base ?? this._base,
-      _root: overrides._root ?? this._root,
-      _fsLocation: overrides._fsLocation ?? this._fsLocation,
-      _logger: overrides._logger ?? this._logger,
-      _Error: overrides._Error ?? this._Error,
-      type: (overrides.type ?? this.type) as TPointType,
-      _letsReadyPointType: (overrides._letsReadyPointType ?? this._letsReadyPointType) as TLetsReadyPointType,
-      _middlewares: overrides._middlewares ?? [...this._middlewares],
-      _serverurl: overrides._serverurl ?? this._serverurl,
-      _basepath: overrides._basepath ?? this._basepath,
-      _endpoint: overrides._endpoint ?? this._endpoint,
-      _endpointPrefix: overrides._endpointPrefix ?? this._endpointPrefix,
-      _transformer: overrides._transformer ?? this._transformer,
-      _ssr: overrides._ssr ?? this._ssr,
-      _eventerSubscriptions: overrides._eventerSubscriptions ?? this._eventerSubscriptions,
-      _defaultMutationOptions: overrides._defaultMutationOptions ?? { ...this._defaultMutationOptions },
-      _mutationOptions: overrides._mutationOptions ?? { ...this._mutationOptions },
-      _defaultQueryOptions: overrides._defaultQueryOptions ?? { ...this._defaultQueryOptions },
-      _defaultInfiniteQueryOptions: overrides._defaultInfiniteQueryOptions ?? { ...this._defaultInfiniteQueryOptions },
-      _defaultPageQueryOptions: overrides._defaultPageQueryOptions ?? { ...this._defaultPageQueryOptions },
-      _defaultLayoutQueryOptions: overrides._defaultLayoutQueryOptions ?? { ...this._defaultLayoutQueryOptions },
-      _defaultComponentQueryOptions: overrides._defaultComponentQueryOptions ?? {
+      scope: set('scope'),
+      scopes: set('scopes'),
+      _base: set('_base'),
+      _root: set('_root'),
+      _fsLocation: set('_fsLocation'),
+      _logger: set('_logger'),
+      _Error: set('_Error'),
+      type: set('type') as TPointType,
+      _letsReadyPointType: set('_letsReadyPointType') as TLetsReadyPointType,
+      _middlewares: set('_middlewares', [...this._middlewares]),
+      _serverurl: set('_serverurl'),
+      _hasServerLoader: set('_hasServerLoader'),
+      _basepath: set('_basepath'),
+      _endpoint: set('_endpoint'),
+      _endpointPrefix: set('_endpointPrefix'),
+      _transformer: set('_transformer'),
+      _ssr: set('_ssr'),
+      _eventerSubscriptions: set('_eventerSubscriptions'),
+      _defaultMutationOptions: set('_defaultMutationOptions', { ...this._defaultMutationOptions }),
+      _mutationOptions: set('_mutationOptions', { ...this._mutationOptions }),
+      _defaultQueryOptions: set('_defaultQueryOptions', { ...this._defaultQueryOptions }),
+      _defaultInfiniteQueryOptions: set('_defaultInfiniteQueryOptions', { ...this._defaultInfiniteQueryOptions }),
+      _defaultPageQueryOptions: set('_defaultPageQueryOptions', { ...this._defaultPageQueryOptions }),
+      _defaultLayoutQueryOptions: set('_defaultLayoutQueryOptions', { ...this._defaultLayoutQueryOptions }),
+      _defaultComponentQueryOptions: set('_defaultComponentQueryOptions', {
         ...this._defaultComponentQueryOptions,
-      },
-      _defaultProviderQueryOptions: overrides._defaultProviderQueryOptions ?? {
+      }),
+      _defaultProviderQueryOptions: set('_defaultProviderQueryOptions', {
         ...this._defaultProviderQueryOptions,
-      },
-      _queryOptions: overrides._queryOptions ?? { ...this._queryOptions },
-      _infiniteQueryOptions: (overrides._infiniteQueryOptions ?? {
+      }),
+      _queryOptions: set('_queryOptions', { ...this._queryOptions }),
+      _infiniteQueryOptions: set('_infiniteQueryOptions', {
         ...this._infiniteQueryOptions,
-      }) as ExtraUseInfiniteQueryOptions<
-        FinalInputRaw<
-          ReadyPointTypeOrNever<TPointType>,
-          TServerInputSchema,
-          TClientInputSchema,
-          TParamsSchema,
-          TSearchSchema,
-          TBodySchema
-        >,
-        FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-        TError,
-        InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-        QueryKey,
-        unknown
-      >,
-      _queryResultType: (overrides._queryResultType ?? this._queryResultType) as TQueryResultType,
+      }),
+      _queryResultType: set('_queryResultType'),
       // _asFormData: overrides._asFormData ?? this._asFormData,
-      _serverExecuteActions: overrides._serverExecuteActions ?? this._serverExecuteActions,
-      _clientExecuteActions: overrides._clientExecuteActions ?? this._clientExecuteActions,
-      _mountActions: overrides._mountActions ?? this._mountActions,
-      _ProviderReactContext: (overrides._ProviderReactContext ?? this._ProviderReactContext) as never,
-      _useValue: overrides._useValue ?? this._useValue,
-      route: (overrides.route ?? this.route) as never,
-      _page: (overrides._page ?? this._page) as never,
-      _component: (overrides._component ?? this._component) as never,
-      _layout: (overrides._layout ?? this._layout) as never,
-      _layouts: overrides._layouts ?? this._layouts,
-      name: overrides.name ?? this.name,
-      _fetchOptions: overrides._fetchOptions ?? this._fetchOptions,
-      _scrollPositionGetter: overrides._scrollPositionGetter ?? this._scrollPositionGetter,
-      _scrollPositionSetter: overrides._scrollPositionSetter ?? this._scrollPositionSetter,
-      _scrollPositionRestorePolicy: overrides._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy,
-      _polhPolicy: overrides._polhPolicy ?? this._polhPolicy,
-      _polhDuration: overrides._polhDuration ?? this._polhDuration,
-      _ponPolicy: overrides._ponPolicy ?? this._ponPolicy,
-      _onPrefetchMountableFns: overrides._onPrefetchMountableFns ?? this._onPrefetchMountableFns,
-      _errorComponent: (overrides._errorComponent ?? this._errorComponent) as never,
-      _layoutErrorComponent: (overrides._layoutErrorComponent ?? this._layoutErrorComponent) as never,
-      _pageErrorComponent: (overrides._pageErrorComponent ?? this._pageErrorComponent) as never,
-      _componentErrorComponent: (overrides._componentErrorComponent ?? this._componentErrorComponent) as never,
-      _loadingComponent: (overrides._loadingComponent ?? this._loadingComponent) as never,
-      _layoutLoadingComponent: (overrides._layoutLoadingComponent ?? this._layoutLoadingComponent) as never,
-      _pageLoadingComponent: (overrides._pageLoadingComponent ?? this._pageLoadingComponent) as never,
-      _componentLoadingComponent: (overrides._componentLoadingComponent ?? this._componentLoadingComponent) as never,
-      X: (overrides.X ?? this.X) as never,
+      _serverExecuteActions: set('_serverExecuteActions'),
+      _clientExecuteActions: set('_clientExecuteActions'),
+      _mountActions: set('_mountActions'),
+      _ProviderReactContext: set('_ProviderReactContext') as never,
+      _useValue: set('_useValue'),
+      route: set('route'),
+      _page: set('_page') as never,
+      _component: set('_component') as never,
+      _layout: set('_layout') as never,
+      _layouts: set('_layouts'),
+      name: set('name'),
+      _fetchOptions: set('_fetchOptions'),
+      _scrollPositionGetter: set('_scrollPositionGetter'),
+      _scrollPositionSetter: set('_scrollPositionSetter'),
+      _scrollPositionRestorePolicy: set('_scrollPositionRestorePolicy'),
+      _polhPolicy: set('_polhPolicy'),
+      _polhDuration: set('_polhDuration'),
+      _ponPolicy: set('_ponPolicy'),
+      _onPrefetchMountableFns: set('_onPrefetchMountableFns'),
+      _errorComponent: set('_errorComponent') as never,
+      _layoutErrorComponent: set('_layoutErrorComponent') as never,
+      _pageErrorComponent: set('_pageErrorComponent') as never,
+      _componentErrorComponent: set('_componentErrorComponent') as never,
+      _loadingComponent: set('_loadingComponent') as never,
+      _layoutLoadingComponent: set('_layoutLoadingComponent') as never,
+      _pageLoadingComponent: set('_pageLoadingComponent') as never,
+      _componentLoadingComponent: set('_componentLoadingComponent') as never,
+      X: set('X') as never,
     })
   }
 
@@ -964,7 +981,6 @@ export class Point0<
         name: pointName,
         _fsLocation,
       }) as never
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (pointType === 'plugin') {
       return new Point0({
         type: 'coreStage',
@@ -1216,58 +1232,111 @@ export class Point0<
       TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
     >
   >
-  lets<TNewOuterProps extends Props = EmptyProps>(
+  lets<
+    TNewOuterProps extends Props = EmptyProps,
+    TCheckError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'component'>,
+  >(
     ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'component', pointName: string] : never[]
-  ): NiceStagePoint<
-    'coreStage',
-    'component',
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    UndefinedLoaderOutput,
-    UndefinedLoaderOutput,
-    UndefinedMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    UndefinedQueryResultType,
-    TNewOuterProps,
-    TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
-    TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-  >
-  lets<TNewOuterProps extends Props = EmptyProps>(
-    ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'provider', pointName: string] : never[]
-  ): NiceStagePoint<
-    'coreStage',
-    'provider',
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    UndefinedLoaderOutput,
-    UndefinedLoaderOutput,
-    UndefinedMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    UndefinedQueryResultType,
-    TNewOuterProps,
-    TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
-    TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      'coreStage',
+      'component',
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      UndefinedQueryResultType,
+      TNewOuterProps,
+      TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+    >
   >
   lets<
-    TNewLetsReadyPointType extends Exclude<ReadyPointType, 'page' | 'layout' | 'component' | 'provider' | 'action'>,
+    TNewOuterProps extends Props = EmptyProps,
+    TCheckError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'provider'>,
+  >(
+    ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'provider', pointName: string] : never[]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      'coreStage',
+      'provider',
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      UndefinedQueryResultType,
+      TNewOuterProps,
+      TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+    >
+  >
+  lets<
+    TNewLetsReadyPointType extends 'query' | 'infiniteQuery' | 'mutation',
+    TCheckError = AssertUsualInputSchemaOnly<
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      'query' | 'infiniteQuery' | 'mutation'
+    >,
+  >(
+    ...args: TPointType extends 'root' | 'base'
+      ? [letsReadyPointType: TNewLetsReadyPointType, pointName: string]
+      : never[]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      'coreStage',
+      TNewLetsReadyPointType,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      UndefinedQueryResultType,
+      EmptyProps,
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+    >
+  >
+  lets<
+    TNewLetsReadyPointType extends Exclude<
+      ReadyPointType,
+      'page' | 'layout' | 'component' | 'provider' | 'action' | 'query' | 'infiniteQuery' | 'mutation'
+    >,
     TPointName extends PointName,
   >(
     ...args: TPointType extends 'root' | 'base'
@@ -1466,7 +1535,13 @@ export class Point0<
     const serverExecuteActionsSuitable = serverExecuteActionsAll.filter((action) => action.type !== 'loader')
     const clientExecuteActionsSuitable = clientExecuteActionsAll.filter((action) => action.type !== 'loader')
 
-    const mountActionsAll = [...this._mountActions]
+    const mountActionsAll = [
+      ...this._mountActions,
+      ...newExecuteActions.map((action) => ({
+        ...action,
+        unstableId: Point0._getNextUnstableId(),
+      })),
+    ]
     const mountActionsSuitable =
       this.type === 'base' || this.type === 'root'
         ? mountActionsAll
@@ -1494,6 +1569,7 @@ export class Point0<
       _useValue: undefined,
       _layouts: this.type === 'layout' ? [...this._layouts, this as unknown as LayoutPoint] : [...this._layouts],
       _serverurl: this._base?._serverurl,
+      _hasServerLoader: undefined,
       _basepath: this._base?._basepath,
       _defaultMutationOptions: this._base?._defaultMutationOptions,
       _mutationOptions: {},
@@ -3324,7 +3400,6 @@ export class Point0<
       TInnerProps,
       TQueriesDefinitions
     >({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
       _onPrefetchMountableFns: [...this._onPrefetchMountableFns, (fn ?? (() => undefined)) as never],
     }) as never
   }
@@ -3708,11 +3783,12 @@ export class Point0<
     loaderFn:
       | LoaderDataFn<any, any, any, any, any, any, any, any>
       | LoaderResponseFn<any, any, any, any, any, any, any, any>
-      | boolean,
+      | undefined,
   ) {
     return this._continue({
       type: 'serverStage', // it should be clientStage if loader returns response, but we know it only by types, we do not know it in runtime, bu it is ok to have here for runtime serverStage. Not good, but ok.
       // _queryResultType: this._normalizeQueryResultType('query'),
+      _hasServerLoader: true,
       _serverExecuteActions: [
         ...this._serverExecuteActions,
         { type: 'loader', fn: (loaderFn as unknown) ?? ((c: any) => c.data), unstableId: Point0._getNextUnstableId() },
@@ -3788,7 +3864,7 @@ export class Point0<
         ...this._clientExecuteActions,
         {
           type: 'loader',
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
           fn: clientLoaderFn || ((o: any) => o.data), // in case if we shake clientLoader for server without ssr side
           unstableId: Point0._getNextUnstableId(),
         },
@@ -4066,7 +4142,6 @@ export class Point0<
     const [providedStatus, providedHead] = (() => {
       if (args.length === 2) {
         return args
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake head for server without ssr side
       } else if (args.length === 1) {
         return ['success', args[0]]
       } else {
@@ -4224,7 +4299,7 @@ export class Point0<
         TBodySchema
       >,
   >(
-    validateFn: TValidateFn & TCheckError,
+    validateFn: TValidateFn,
   ): WithError<
     TCheckError,
     NiceStagePoint<
@@ -4391,7 +4466,7 @@ export class Point0<
         TBodySchema
       >,
   >(
-    validateFn: TValidateFn & TCheckError,
+    validateFn: TValidateFn,
   ): WithError<
     TCheckError,
     NiceStagePoint<
@@ -4560,7 +4635,7 @@ export class Point0<
         TBodySchema
       >,
   >(
-    validateFn: TValidateFn & TCheckError,
+    validateFn: TValidateFn,
   ): WithError<
     TCheckError,
     NiceStagePoint<
@@ -4675,23 +4750,27 @@ export class Point0<
     >
   >
   params<
-    TValidateFn extends CustomValidationFn<any>,
+    TValidateFn extends CustomValidationFnWithKnownInput<Record<string, string>, any>,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'params'> &
-      AssertSchemaNotWider<CustomValidationFnToRecordValidationSchema<TValidateFn>, TParamsSchema, 'params'> &
+      AssertSchemaNotWider<
+        CustomValidationFnWithKnownInputToRecordValidationSchema<TValidateFn>,
+        TParamsSchema,
+        'params'
+      > &
       AssertInputSchemaHasNotAnotherKeys<
-        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        CustomValidationFnWithKnownInputToRecordValidationSchema<TValidateFn>,
         TParamsSchema,
         'params'
       > &
       AsserNotMashInputSchemas<
         TServerInputSchema,
         TClientInputSchema,
-        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        CustomValidationFnWithKnownInputToRecordValidationSchema<TValidateFn>,
         TSearchSchema,
         TBodySchema
       >,
   >(
-    validateFn: TValidateFn & TCheckError,
+    validateFn: TValidateFn,
   ): WithError<
     TCheckError,
     NiceStagePoint<
@@ -4707,7 +4786,10 @@ export class Point0<
       TRouteDefinition,
       TServerInputSchema,
       TClientInputSchema,
-      MergeRecordValidationSchemas<TParamsSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      MergeRecordValidationSchemas<
+        TParamsSchema,
+        CustomValidationFnWithKnownInputToRecordValidationSchema<TValidateFn>
+      >,
       TSearchSchema,
       TBodySchema,
       THeadersSchema,
@@ -4767,18 +4849,22 @@ export class Point0<
     >
   >
   search<
-    TValidateFn extends CustomValidationFn<any>,
+    TValidateFn extends CustomValidationFnWithKnownInput<UnknownSearchParsed, any>,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'search'> &
-      AssertSchemaNotWider<CustomValidationFnToRecordValidationSchema<TValidateFn>, TSearchSchema, 'search'> &
+      AssertSchemaNotWider<
+        CustomValidationFnWithKnownInputToRecordValidationSchema<TValidateFn>,
+        TSearchSchema,
+        'search'
+      > &
       AsserNotMashInputSchemas<
         TServerInputSchema,
         TClientInputSchema,
         TParamsSchema,
-        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        CustomValidationFnWithKnownInputToRecordValidationSchema<TValidateFn>,
         TBodySchema
       >,
   >(
-    validateFn: TValidateFn & TCheckError,
+    validateFn: TValidateFn,
   ): WithError<
     TCheckError,
     NiceStagePoint<
@@ -4795,7 +4881,47 @@ export class Point0<
       TServerInputSchema,
       TClientInputSchema,
       TParamsSchema,
-      MergeRecordValidationSchemas<TSearchSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      MergeRecordValidationSchemas<
+        TSearchSchema,
+        CustomValidationFnWithKnownInputToRecordValidationSchema<TValidateFn>
+      >,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions
+    >
+  >
+  search<
+    TInput extends InputRaw,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'search'> &
+      AssertSchemaNotWider<RecordValidationSchema<TInput, TInput>, TSearchSchema, 'search'> &
+      AsserNotMashInputSchemas<
+        TServerInputSchema,
+        TClientInputSchema,
+        TParamsSchema,
+        RecordValidationSchema<TInput, TInput>,
+        TBodySchema
+      >,
+  >(): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      MergeRecordValidationSchemas<TSearchSchema, RecordValidationSchema<TInput, TInput>>,
       TBodySchema,
       THeadersSchema,
       TCookiesSchema,
@@ -4905,7 +5031,7 @@ export class Point0<
         CustomValidationFnToRecordValidationSchema<TValidateFn>
       >,
   >(
-    validateFn: TValidateFn & TCheckError,
+    validateFn: TValidateFn,
   ): WithError<
     TCheckError,
     NiceStagePoint<
@@ -5013,7 +5139,7 @@ export class Point0<
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'headers'> &
       AssertSchemaNotWider<CustomValidationFnToRecordValidationSchema<TValidateFn>, THeadersSchema, 'headers'>,
   >(
-    validateFn: TValidateFn & TCheckError,
+    validateFn: TValidateFn,
   ): WithError<
     TCheckError,
     NiceStagePoint<
@@ -5121,7 +5247,7 @@ export class Point0<
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'cookies'> &
       AssertSchemaNotWider<CustomValidationFnToRecordValidationSchema<TValidateFn>, TCookiesSchema, 'cookies'>,
   >(
-    validateFn: TValidateFn & TCheckError,
+    validateFn: TValidateFn,
   ): WithError<
     TCheckError,
     NiceStagePoint<
@@ -5308,6 +5434,8 @@ export class Point0<
       type: 'page',
       _page: page,
       _letsReadyPointType: undefined,
+      // preserve endpoint for queryClientDehydratedState prefetching
+      // _endpoint: this.undefinedEndpointIfHasNotServerLoader(),
       _mountActions: [...this._mountActions, ...selfQueryAction],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query' } : {}),
     })
@@ -5379,6 +5507,7 @@ export class Point0<
       type: 'component',
       _component: component,
       _letsReadyPointType: undefined,
+      _endpoint: this.undefinedEndpointIfHasNotServerLoader(),
       _mountActions: [...this._mountActions, ...selfQueryAction],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query' } : {}),
     })
@@ -5520,6 +5649,7 @@ export class Point0<
         _layout: layout as never,
         _letsReadyPointType: undefined,
         _base: this as never as BasePoint,
+        _endpoint: this.undefinedEndpointIfHasNotServerLoader(),
         ...this._getProviderLikeProps(),
         _mountActions: [...this._mountActions, ...selfQueryAction],
         ...(queryShouldBeFinalized ? { _queryResultType: 'query' } : {}),
@@ -5674,6 +5804,7 @@ export class Point0<
     const point = this._continue({
       type: 'provider',
       _letsReadyPointType: undefined,
+      _endpoint: this.undefinedEndpointIfHasNotServerLoader(),
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
@@ -5967,6 +6098,46 @@ export class Point0<
     TQueriesDefinitions
   >
   query(
+    ...args: TLetsReadyPointType extends 'action'
+      ? TPointType extends 'finalStage'
+        ? [ShowError<`You can not use query() to finalize your query, becouse it is already finalized`>]
+        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+          ? [
+              queryOptions?: ExtraUseQueryOptions<
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                TError,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                QueryKey
+              >,
+            ]
+          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+            ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
+            : [ShowError<`Point has no loaders. Please add .loader() before calling .query() to finalize action`>]
+      : never
+  ): NiceActionReadyPoint<
+    'action',
+    UndefinedReadyPointType,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    'query',
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  query(
     ...args: TLetsReadyPointType extends MountablePointType
       ? TPointType extends 'finalStage'
         ? [ShowError<`You can not use query() to finalize yout query, becouse it is already finalized`>]
@@ -6029,18 +6200,27 @@ export class Point0<
           { type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr },
         ],
       }) as never
-    } else {
-      // usual query final
-      if (this._letsReadyPointType === 'query') {
-        return this._continue({
-          type: 'query',
-          _letsReadyPointType: undefined,
-          _queryResultType: 'query',
-          _queryOptions: queryOptions,
-        }) as never
-      } else {
-        throw new Error(`Unknown condition, please report this issue on point ${this.toStringWithLocation()}`)
+    } else if (this._letsReadyPointType === 'query') {
+      return this._continue({
+        type: 'query',
+        _letsReadyPointType: undefined,
+        _endpoint: this.undefinedEndpointIfHasNotServerLoader(),
+        _queryResultType: 'query',
+        _queryOptions: queryOptions,
+      }) as never
+    } else if (this._letsReadyPointType === 'action') {
+      // action
+      if (!this._hasServerLoader) {
+        throw new Error(`Point has no server loader. Please add .loader() before calling .query() to finalize action`)
       }
+      return this._continue({
+        type: 'action',
+        _letsReadyPointType: undefined,
+        _queryResultType: 'query',
+        _queryOptions: queryOptions,
+      }) as never
+    } else {
+      throw new Error(`Unknown condition, please report this issue on point ${this.toStringWithLocation()}`)
     }
   }
 
@@ -6073,6 +6253,59 @@ export class Point0<
   ): NiceInfiniteQueryReadyPoint<
     'infiniteQuery',
     undefined,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    'infiniteQuery',
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  infiniteQuery(
+    ...args: TLetsReadyPointType extends 'action'
+      ? TPointType extends 'finalStage'
+        ? [ShowError<`You can not use infiniteQuery() to finalize, becouse it is already finalized`>]
+        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+          ? [
+              infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+                FinalInputRaw<
+                  TLetsReadyPointType,
+                  TServerInputSchema,
+                  TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema
+                >,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                TError,
+                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+                QueryKey,
+                unknown
+              >,
+            ]
+          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+            ? [
+                ShowError<`InfiniteQuery can not return response. Last loader should provide plain object data, not response.`>,
+              ]
+            : [
+                ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery()`>,
+              ]
+      : never
+  ): NiceActionReadyPoint<
+    'action',
+    UndefinedReadyPointType,
     TRequiredCtx,
     TError,
     TCtx,
@@ -6168,51 +6401,64 @@ export class Point0<
           },
         ],
       }) as never
-    } else {
-      if (this._letsReadyPointType === 'infiniteQuery') {
-        return this._continue({
-          type: 'infiniteQuery',
-          _letsReadyPointType: undefined,
-          _queryResultType: 'infiniteQuery',
-          _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<
-            FinalInputRaw<
-              ReadyPointType,
-              TServerInputSchema,
-              TClientInputSchema,
-              TParamsSchema,
-              TSearchSchema,
-              TBodySchema
-            >,
-            FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-            TError,
-            InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-            QueryKey,
-            unknown
+    } else if (this._letsReadyPointType === 'infiniteQuery') {
+      return this._continue({
+        type: 'infiniteQuery',
+        _letsReadyPointType: undefined,
+        _endpoint: this.undefinedEndpointIfHasNotServerLoader(),
+        _queryResultType: 'infiniteQuery',
+        _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<
+          FinalInputRaw<
+            ReadyPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
           >,
-        }) as never
-      } else {
-        throw new Error(`Unknown condition, please report this issue on point ${this.toStringWithLocation()}`)
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+          TError,
+          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+          QueryKey,
+          unknown
+        >,
+      }) as never
+    } else if (this._letsReadyPointType === 'action') {
+      if (!this._hasServerLoader) {
+        throw new Error(
+          `Point has no server loader. Please add .loader() before calling .infiniteQuery() to finalize action`,
+        )
       }
+      return this._continue({
+        type: 'action',
+        _letsReadyPointType: undefined,
+        _queryResultType: 'infiniteQuery',
+        _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<any>,
+      }) as never
+    } else {
+      throw new Error(`Unknown condition, please report this issue on point ${this.toStringWithLocation()}`)
     }
   }
 
   mutation(
-    ...args: FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
-      ? [
-          mutationOptions?: UseMutationOptions<
-            FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
-            TError,
-            FinalInputRawOrUndefinedOrVoid<
-              TPointType,
-              TServerInputSchema,
-              TClientInputSchema,
-              TParamsSchema,
-              TSearchSchema,
-              TBodySchema
-            >
-          >,
-        ]
-      : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .mutation()`>]
+    ...args: TLetsReadyPointType extends 'mutation'
+      ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
+        ? [
+            mutationOptions?: UseMutationOptions<
+              FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
+              TError,
+              FinalInputRawOrUndefinedOrVoid<
+                TPointType,
+                TServerInputSchema,
+                TClientInputSchema,
+                TParamsSchema,
+                TSearchSchema,
+                TBodySchema
+              >
+            >,
+          ]
+        : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .mutation()`>]
+      : never
   ): NiceMutationReadyPoint<
     'mutation',
     UndefinedReadyPointType,
@@ -6235,18 +6481,114 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
-    const [mutationOptions = {}] = args
-    const point = this._continue({
-      type: 'mutation',
-      _mutationOptions: mutationOptions as UseMutationOptions,
-      _letsReadyPointType: undefined,
-    })
-    return point as never
+  >
+  mutation(
+    ...args: TLetsReadyPointType extends 'action'
+      ? TPointType extends 'finalStage'
+        ? [ShowError<`You can not use mutation() to finalize action, becouse it is already finalized`>]
+        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
+          ? [
+              mutationOptions?: UseMutationOptions<
+                FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
+                TError,
+                FinalInputRawOrUndefinedOrVoid<
+                  TPointType,
+                  TServerInputSchema,
+                  TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema
+                >
+              >,
+            ]
+          : [ShowError<`Point has no loaders. Please add .loader() before calling .mutation() to finalize action`>]
+      : never
+  ): NiceActionReadyPoint<
+    'action',
+    UndefinedReadyPointType,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    UndefinedQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  mutation(...args: any) {
+    const [mutationOptions = {}] = args as [UseMutationOptions<any, any, any, any> | undefined]
+    if (this._letsReadyPointType === 'mutation') {
+      return this._continue({
+        type: 'mutation',
+        _mutationOptions: mutationOptions as UseMutationOptions,
+        _letsReadyPointType: undefined,
+        _endpoint: this.undefinedEndpointIfHasNotServerLoader(),
+      }) as never
+    } else if (this._letsReadyPointType === 'action') {
+      if (!this._hasServerLoader) {
+        throw new Error(
+          `Point has no server loader. Please add .loader() before calling .mutation() to finalize action`,
+        )
+      }
+      return this._continue({
+        type: 'action',
+        _letsReadyPointType: undefined,
+        _mutationOptions: mutationOptions as UseMutationOptions,
+      }) as never
+    } else {
+      throw new Error(`Unknown condition, please report this issue on point ${this.toStringWithLocation()}`)
+    }
   }
 
+  action<TNewServerLoaderOutput extends LoaderOutput = LoaderOutput>(
+    loaderFn: LoaderResponseFn<
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TServerInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      TNewServerLoaderOutput
+    > &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>,
+  ): NiceActionReadyPoint<
+    'action',
+    UndefinedReadyPointType,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    IfNeverThen<TNewServerLoaderOutput, EmptyData>,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
   action(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ...args: FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
       ? []
       : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .action()`>]
@@ -6272,10 +6614,21 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
+  >
+  action(...args: any[]) {
+    const [loaderFn] = args as [LoaderResponseFn<any, any, any, any, any, any, any, any, any> | undefined]
     const point = this._continue({
       type: 'action',
       _letsReadyPointType: undefined,
+      _hasServerLoader: true,
+      ...(loaderFn
+        ? {
+            _serverExecuteActions: [
+              ...this._serverExecuteActions,
+              { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
+            ] as never,
+          }
+        : {}),
     })
     return point as never
   }
@@ -6287,6 +6640,10 @@ export class Point0<
   }
 
   // internal utils
+
+  private undefinedEndpointIfHasNotServerLoader(): EndpointDefinition | undefined {
+    return this._hasServerLoader ? this._endpoint : undefined
+  }
 
   private static _assignNicePointMethodsToComponent({
     component,
@@ -6433,10 +6790,6 @@ export class Point0<
   //       : Point0.DefaultErrorComponent)
   //   )
   // }
-
-  _hasServerLoader(): boolean {
-    return this._serverExecuteActions.length > 0 && this._serverExecuteActions.some((fn) => fn.type === 'loader')
-  }
 
   _hasClientLoader(): boolean {
     return this._clientExecuteActions.length > 0 && this._clientExecuteActions.some((fn) => fn.type === 'loader')
@@ -6754,7 +7107,7 @@ export class Point0<
           ...location.params,
           ...input,
           ...(location.searchString ? { '?': location.search } : {}),
-        }),
+        } as never),
       )
     }
     return route.getLocation(route.get({ ...(input || {}) }))
@@ -6806,7 +7159,7 @@ export class Point0<
   ): UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput, any> {
     const [input = {}, queryOptions, { fetchOptions } = {}] = args
     const location = useLocation()
-    const serverQueryEnabled = this._hasServerLoader()
+    const serverQueryEnabled = !!this._hasServerLoader
     const clientQueryEnabled = this._hasClientLoader()
     // if (this._queryResultType === 'infiniteQuery') {
     //   throw new Error(`It is not a finite query on point ${this.toStringWithLocation()} `)
@@ -6910,7 +7263,7 @@ export class Point0<
   ): UsePointQueryResult<'infiniteQuery', TServerLoaderOutput, TClientLoaderOutput, any> {
     const [input = {}, infiniteQueryOptions, { fetchOptions } = {}] = args
     const location = useLocation()
-    const serverQueryEnabled = this._hasServerLoader()
+    const serverQueryEnabled = !!this._hasServerLoader
     const clientQueryEnabled = this._hasClientLoader()
     // if (this._queryResultType !== 'infiniteQuery') {
     //   throw new Error(`It is not an infinite query on point ${this.toStringWithLocation()} `)
@@ -6968,7 +7321,7 @@ export class Point0<
     input: InputRawUnknown
     fetchOptions?: FetchOptions
     _outputType?: FetchServerOutputType
-  }): { url: string; init: RequestInit; request: Request; isAction: boolean } {
+  }): { url: string; init: RequestInit; request: Request; transform: boolean } {
     const baseFetchOptions = this._fetchOptions?.() || {}
     const { transform = true, ...fetchOptions } = { ...baseFetchOptions, ..._fetchOptions }
     const serverurl = this.getServerUrl()
@@ -6993,8 +7346,9 @@ export class Point0<
     const method = this._endpoint.method
 
     const fromScope = _ssItems.__POINT0_CLIENT_POINTS__.getWeak()?.manager.scope ?? _getFakeClient()?.scope
-    const headers = mergeHeaders(baseFetchOptions.headers, _fetchOptions?.headers, {
-      ...(isAction ? {} : { Accept: 'application/json' }),
+    const baseHeaders = mergeHeaders(baseFetchOptions.headers, _fetchOptions?.headers)
+    const headers = mergeHeaders(baseHeaders, {
+      ...(baseHeaders.has('Accept') ? {} : { Accept: 'application/json' }),
       ...(fromScope ? { 'X-Point0-From-Scope': fromScope } : {}),
       'X-Point0-To-Scope': this.scope,
       'X-Point0-Client-Request-Id': generateId(),
@@ -7068,7 +7422,7 @@ export class Point0<
       url: fetchUrl,
       init: fetchInit,
       request: fetchRequest,
-      isAction,
+      transform,
     }
   }
 
@@ -7105,7 +7459,7 @@ export class Point0<
           fetchOptions?: FetchOptions,
           options?: { _outputType?: FetchServerOutputType },
         ]
-  ): { url: string; init: RequestInit; request: Request; isAction: boolean } {
+  ): { url: string; init: RequestInit; request: Request; transform: boolean } {
     const [input = {}, fetchOptions, { _outputType = 'data' } = {}] = args
     return this._getFetchServerOptions({ input, fetchOptions, _outputType })
   }
@@ -7240,7 +7594,7 @@ export class Point0<
         return result
       }
       const json = await res.json()
-      const data = fetchOptions.isAction ? json : (this._getTransformer().deserialize(json) ?? json)
+      const data = fetchOptions.transform ? (this._getTransformer().deserialize(json) ?? json) : json
       if (res.ok) {
         const result = {
           response: res,
@@ -7451,7 +7805,7 @@ export class Point0<
   }): QueryKey {
     const { _outputType } = options
     const hasClientLoader = this._hasClientLoader()
-    const hasServerLoader = this._hasServerLoader()
+    const hasServerLoader = !!this._hasServerLoader
     if (hasClientLoader && hasServerLoader) {
       return this._getCombinedQueryKey({
         input: input as never,
@@ -7820,7 +8174,7 @@ export class Point0<
     QueryKey
   > {
     const hasClientLoader = this._hasClientLoader()
-    const hasServerLoader = this._hasServerLoader()
+    const hasServerLoader = !!this._hasServerLoader
     const [input, queryOptions, options = {}] = args
     const { location, queryClient, fetchOptions, outputType, mode = 'serverAndClient' } = options
     if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'serverAndClient')) {
@@ -8227,7 +8581,7 @@ export class Point0<
     const [input, infiniteQueryOptions, options = {}] = args
     const { location, queryClient, fetchOptions, outputType, mode = 'serverAndClient' } = options
     const hasClientLoader = this._hasClientLoader()
-    const hasServerLoader = this._hasServerLoader()
+    const hasServerLoader = !!this._hasServerLoader
     if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'serverAndClient')) {
       return this._getCombinedInfiniteQueryOptions({
         input: input as never,
@@ -8426,7 +8780,7 @@ export class Point0<
           )
         }
         const serverFetchResult = await (async () => {
-          if (this._hasServerLoader()) {
+          if (this._hasServerLoader) {
             return await this._fetchServerDetailed({ input, fetchOptions: options?.fetchOptions })
           }
           return undefined
@@ -8621,16 +8975,17 @@ export class Point0<
         queryOptions: UseQueryOptions<any, any, any, any>
         queryClient: QueryClient
       } {
-    if (!this._hasServerLoader() && !this._hasClientLoader()) {
+    const hasClientLoader = this._hasClientLoader()
+    if (!this._hasServerLoader && !hasClientLoader) {
       return false
     }
-    if (!this._hasClientLoader() && mode === 'client') {
+    if (!hasClientLoader && mode === 'client') {
       return false
     }
-    if (!this._hasServerLoader() && mode === 'server') {
+    if (!this._hasServerLoader && mode === 'server') {
       return false
     }
-    const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'provider']
+    const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'action', 'component', 'layout', 'provider']
     if (!suitablePointTypes.includes(this.type)) {
       return false
     }
@@ -8847,16 +9202,17 @@ export class Point0<
         infiniteQueryOptions: UseInfiniteQueryOptions<any, any, any, any, any, any>
         queryClient: QueryClient
       } {
-    if (!this._hasServerLoader() && !this._hasClientLoader()) {
+    const hasClientLoader = this._hasClientLoader()
+    if (!this._hasServerLoader && !hasClientLoader) {
       return false
     }
-    if (!this._hasClientLoader() && mode === 'client') {
+    if (!hasClientLoader && mode === 'client') {
       return false
     }
-    if (!this._hasServerLoader() && mode === 'server') {
+    if (!this._hasServerLoader && mode === 'server') {
       return false
     }
-    const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'provider']
+    const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'action', 'component', 'layout', 'provider']
     if (!suitablePointTypes.includes(this.type)) {
       return false
     }
@@ -9877,7 +10233,16 @@ export class Point0<
 
       switch (action.type) {
         case 'params': {
-          const result = this.parseInputSafeSync(action.schema, location.params)
+          if (this.type !== 'layout' && this.type !== 'page') {
+            return React.createElement(ErrorComponent, {
+              error: new this._Error(
+                `Params input schema are not allowed for this point: ${this.toStringWithLocation()}`,
+              ),
+            })
+          }
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { '?': search, ...params } = currentLayer.inputRaw as any
+          const result = this.parseInputSafeSync(action.schema, params)
           if (!result.success) {
             return React.createElement(ErrorComponent, {
               error: result.error,
@@ -9898,7 +10263,14 @@ export class Point0<
           }
         }
         case 'search': {
-          const result = this.parseInputSafeSync(action.schema, location.search)
+          if (this.type !== 'layout' && this.type !== 'page') {
+            return React.createElement(ErrorComponent, {
+              error: new this._Error(
+                `Search input schema are not allowed for this point: ${this.toStringWithLocation()}`,
+              ),
+            })
+          }
+          const result = this.parseInputSafeSync(action.schema, (currentLayer.inputRaw as any)['?'] || {})
           if (!result.success) {
             return React.createElement(ErrorComponent, {
               error: result.error,

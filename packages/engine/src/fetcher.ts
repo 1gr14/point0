@@ -109,15 +109,17 @@ export class Fetcher<TError extends ErrorPoint0> {
   }: {
     request: Request0
     location: KnownLocation
-    point: ReadyPoint
+    point: ReadyPoint | undefined
     transform: boolean
   }): Promise<InputRawUnknown> => {
+    if (!point) {
+      return { body: {}, search: {}, params: {}, input: {} }
+    }
     const isAction = point.type === 'action'
     const isPage = point.type === 'page'
     const isLayout = point.type === 'layout'
-    const shouldReadBody = isAction
-      ? point._serverExecuteActions.some((action) => action.type === 'body')
-      : !isPage && !isLayout
+    const shouldReadBody =
+      !!point && isAction ? point._serverExecuteActions.some((action) => action.type === 'body') : !isPage && !isLayout
     const body = await (async () => {
       if (!shouldReadBody) {
         return {}
@@ -156,7 +158,7 @@ export class Fetcher<TError extends ErrorPoint0> {
   }: {
     request: Request0
     location: KnownLocation
-    point: ReadyPoint
+    point: ReadyPoint | undefined
     transform: boolean
   }): Promise<ExecuteOptionsKnownInput> => {
     if (request.state.__POINT0_RAW_KNOWN_INPUT__) {
@@ -239,6 +241,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           if (staticResponse) {
             const scope = publicdir.scope
             return {
+              variant: 'publicdir',
               transform,
               scope,
               request,
@@ -283,6 +286,7 @@ export class Fetcher<TError extends ErrorPoint0> {
               ? 'html'
               : 'data'
         return {
+          variant: 'endpoint',
           transform,
           scope: endpoint.point.scope,
           request,
@@ -308,6 +312,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         const responseFromAbsFilePath = await Fetcher.fetchAbsFilePathOnDevServer({ request })
         if (responseFromAbsFilePath) {
           return {
+            variant: 'publicdir',
             transform,
             scope: this.engine.server.scope,
             request,
@@ -355,6 +360,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         const redirectResponse = redirectToDifferentDevClientIfNotThatPort(foundExactPage.page.scope)
         if (redirectResponse) {
           return {
+            variant: 'redirect',
             transform,
             scope: foundExactPage.page.scope,
             request,
@@ -376,6 +382,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           }
         }
         return {
+          variant: 'page',
           transform,
           scope: foundExactPage.client.scope,
           request,
@@ -413,10 +420,15 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
         return undefined
       })()
-      if (foundSuitableClient) {
+
+      const accept = request.headers['accept']
+      const isMayBePage = !accept || accept.includes('text/html')
+
+      if (foundSuitableClient && isMayBePage) {
         const redirectResponse = redirectToDifferentDevClientIfNotThatPort(foundSuitableClient.scope)
         if (redirectResponse) {
           return {
+            variant: 'redirect',
             transform,
             scope: foundSuitableClient.scope,
             request,
@@ -438,6 +450,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           }
         }
         return {
+          variant: 'page',
           transform,
           scope: foundSuitableClient.scope,
           request,
@@ -448,7 +461,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             set: effects.set,
             point: undefined,
             scope: foundSuitableClient.scope,
-            variant: 'unknown',
+            variant: 'page',
           },
           publicdirResult: undefined,
           endpointResult: undefined,
@@ -463,8 +476,13 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
       }
 
-      const ErrorClass = (this.server.points?.manager.root._Error ?? ErrorPoint0) as ClassLikeError0<TError>
+      const toScope = request.headers['x-point0-to-scope']
+      const clientByToScope = toScope ? this.server.clients.find((client) => client.scope === toScope) : undefined
+      const ErrorClass =
+        clientByToScope?.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
+
       return {
+        variant: 'error',
         transform,
         scope: this.server.scope,
         request,
@@ -475,7 +493,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           set: effects.set,
           point: undefined,
           scope: this.server.scope,
-          variant: 'unknown',
+          variant: 'error',
         },
         publicdirResult: undefined,
         endpointResult: undefined,
@@ -488,6 +506,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       const ErrorClass = this.server.points?.manager.root._Error ?? ErrorPoint0
       const error0 = ErrorClass.from(error)
       return {
+        variant: 'error',
         transform,
         scope: this.server.scope,
         request,
@@ -498,7 +517,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           set: effects.set,
           point: undefined,
           scope: this.server.scope,
-          variant: 'unknown',
+          variant: 'error',
         },
         publicdirResult: undefined,
         endpointResult: undefined,
@@ -539,20 +558,21 @@ export class Fetcher<TError extends ErrorPoint0> {
       data: undefined,
       error: undefined,
     }
-    const input = await this.getPointInputFromEndpointRequest({ request, location, point, transform })
     const transformer = this.getTransformer({ scope: point.scope, point, transform })
+    const ErrorClass = client?.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
 
     try {
+      const input = await this.getPointInputFromEndpointRequest({ request, location, point, transform })
       if (outputType === 'html') {
         if (point.type !== 'page') {
-          throw new Error(`Point type "${point.type}" is not supported for html output type`)
+          throw new ErrorClass(`Point type "${point.type}" is not supported for html output type`)
         }
         if (!client) {
-          throw new Error(`Client for scope "${point.scope}" not found while requested page html via endpoint`)
+          throw new ErrorClass(`Client for scope "${point.scope}" not found while requested page html via endpoint`)
         }
         const route = point.route as AnyRoute | undefined
         if (!route) {
-          throw new Error(`Point "${point.toString()}" has no route while requested page html via task`)
+          throw new ErrorClass(`Point "${point.toString()}" has no route while requested page html via task`)
         }
         const pageLocation = route.getLocation(route.get({ ...input.params, '?': input.search } as never))
         const result = await this.fetchPage({
@@ -582,14 +602,14 @@ export class Fetcher<TError extends ErrorPoint0> {
 
       if (outputType === 'queryClientDehydratedState') {
         if (point.type !== 'page') {
-          throw new Error(`Point type "${point.type}" is not supported for queryClientDehydratedState output type`)
+          throw new ErrorClass(`Point type "${point.type}" is not supported for queryClientDehydratedState output type`)
         }
         if (!client) {
-          throw new Error(`Client for scope "${point.scope}" not found while requested page html via endpoint`)
+          throw new ErrorClass(`Client for scope "${point.scope}" not found while requested page html via endpoint`)
         }
         const route = point.route as AnyRoute | undefined
         if (!route) {
-          throw new Error(`Point "${point.toString()}" has no route while requested page html via endpoint`)
+          throw new ErrorClass(`Point "${point.toString()}" has no route while requested page html via endpoint`)
         }
         const pageLocation = route.getLocation(route.get({ ...input.params, '?': input.search } as never))
         await client.prefetchAppPagePointDeep({
@@ -617,12 +637,12 @@ export class Fetcher<TError extends ErrorPoint0> {
         input: null as never,
         _known: input,
         effects: executor.effects, // here we pass executor effects, becouse we want to apply status and effects to it
-        ErrorClass: point._Error,
+        ErrorClass,
       })
 
       if (executeResult.error) {
         const response = this.toJsonErrorResponse({
-          ErrorClass: point._Error,
+          ErrorClass,
           error: executeResult.error,
           // status: executeResult.effects.status >=  ?? 500,
           status:
@@ -651,9 +671,9 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       if (!executeResult.output) {
-        const error = new Error('No output')
+        const error = new ErrorClass('No output')
         const response = this.toJsonErrorResponse({
-          ErrorClass: point._Error,
+          ErrorClass,
           error,
           status: 404,
           transformer,
@@ -676,7 +696,6 @@ export class Fetcher<TError extends ErrorPoint0> {
         data: executeResult.output,
       }
     } catch (error) {
-      const ErrorClass = point._Error
       const error0 = ErrorClass.from(error)
       const response = this.toJsonErrorResponse({
         ErrorClass,
@@ -721,6 +740,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       data: undefined,
       error: undefined,
     }
+    const ErrorClass = client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
 
     try {
       // TODO: lets provide here wrapResponse and wrapRequest and call it
@@ -756,8 +776,8 @@ export class Fetcher<TError extends ErrorPoint0> {
               headers: { 'Content-Type': 'text/html' },
               status: 500,
             })
-            const ErrorClass =
-              client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
+            // const ErrorClass =
+            //   client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
             const error0 = ErrorClass.from(error)
             return {
               ...partialResult,
@@ -778,10 +798,10 @@ export class Fetcher<TError extends ErrorPoint0> {
           response,
         }
       } else {
-        throw new Error(`Client "${client.scope}" has no indexHtml`)
+        throw new ErrorClass(`Client "${client.scope}" has no indexHtml`)
       }
     } catch (error) {
-      const ErrorClass = client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
+      // const ErrorClass = client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
       const error0 = ErrorClass.from(error)
       const transformer = this.getTransformer({ scope: client.scope, point, transform })
       const response = this.toJsonErrorResponse({
@@ -878,7 +898,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           status: 500,
           transformer,
         }),
-        variant: isMiddleware ? 'middleware' : 'unknown',
+        variant: isMiddleware ? 'middleware' : 'error',
         error: error0,
       }
     }
@@ -945,7 +965,7 @@ export class Fetcher<TError extends ErrorPoint0> {
               transform: prepareFetchResult.transform,
             }),
           }),
-          variant: 'unknown',
+          variant: 'error',
           error: prepareFetchResult.errorResult,
         }
       }
@@ -1003,7 +1023,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             transform: prepareFetchResult.transform,
           }),
         }),
-        variant: 'unknown',
+        variant: 'error',
         error,
       }
     } catch (error) {
@@ -1021,7 +1041,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             transform: prepareFetchResult.transform,
           }),
         }),
-        variant: 'unknown',
+        variant: 'error',
         error: error0,
       }
     }
@@ -1118,7 +1138,7 @@ export class Fetcher<TError extends ErrorPoint0> {
               transform: prepareFetchResult.transform,
             }),
           }),
-          variant: 'unknown' as const,
+          variant: 'error' as const,
           error: error0,
         }
         emit?.('engineFetchSettled', { ..._eventData, error: error0, result: finalResult })
@@ -1161,7 +1181,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       const serialized = ErrorClass.serialize(error0)
       const stringified = transformer ? transformer.stringify(serialized) : JSON.stringify(serialized)
       if (!stringified) {
-        throw new Error('Failed to stringify error', { cause: error0 })
+        throw new ErrorClass('Failed to stringify error', { cause: error0 })
       }
       return new Response(stringified, {
         headers: { 'Content-Type': 'application/json' },
@@ -1184,6 +1204,7 @@ export class Fetcher<TError extends ErrorPoint0> {
 
 type PrepareFetchResult<TError extends ErrorPoint0> =
   | {
+      variant: 'publicdir'
       transform: boolean
       scope: PointsScope
       request: Request0
@@ -1198,6 +1219,7 @@ type PrepareFetchResult<TError extends ErrorPoint0> =
       redirectResult: undefined
     }
   | {
+      variant: 'endpoint'
       transform: boolean
       scope: PointsScope
       request: Request0
@@ -1221,6 +1243,7 @@ type PrepareFetchResult<TError extends ErrorPoint0> =
       redirectResult: undefined
     }
   | {
+      variant: 'page'
       transform: boolean
       scope: PointsScope
       request: Request0
@@ -1239,6 +1262,7 @@ type PrepareFetchResult<TError extends ErrorPoint0> =
       redirectResult: undefined
     }
   | {
+      variant: 'redirect'
       transform: boolean
       scope: PointsScope
       request: Request0
@@ -1253,6 +1277,7 @@ type PrepareFetchResult<TError extends ErrorPoint0> =
       redirectResult: { response: Response }
     }
   | {
+      variant: 'error'
       transform: boolean
       scope: PointsScope
       request: Request0

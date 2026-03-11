@@ -111,7 +111,7 @@ const Page = () => {
                 const decoder = new TextDecoder()
                 let result = ''
 
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                 
                 while (true) {
                   const { done, value } = await reader.read()
                   if (done) break

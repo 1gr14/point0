@@ -1,6 +1,6 @@
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import type { PrefetchPagePolicy } from '@point0/core'
+import { mergeHeaders, type PrefetchPagePolicy } from '@point0/core'
 import type { Engine } from '../../src/engine.js'
 import type { FileGeneratorProcessResult } from '../../src/generator.js'
 import { killPort } from '../../src/port.js'
@@ -301,7 +301,11 @@ export class TestProjectTwoClient {
   }
 
   async fetchServer(path: string, options?: Parameters<typeof fetch>[1]): Promise<Response> {
-    return await fetch(`${localhost}:${this.serverPort}${path}`, options)
+    const providedHeaders = mergeHeaders(options?.headers)
+    const providedAccept = providedHeaders.get('Accept')
+    const fixedHeaders = mergeHeaders(options?.headers, { accept: providedAccept ?? 'text/html' })
+    const fixedOptions: Parameters<typeof fetch>[1] = { ...options, headers: fixedHeaders }
+    return await fetch(`${localhost}:${this.serverPort}${path}`, fixedOptions)
   }
 
   async fetchServerHtml(path: string, options?: Parameters<typeof fetch>[1]): Promise<string> {
@@ -310,7 +314,11 @@ export class TestProjectTwoClient {
   }
 
   async fetchClient1(path: string, options?: Parameters<typeof fetch>[1]): Promise<Response> {
-    return await fetch(`${localhost}:${this.client1Port}${path}`, options)
+    const providedHeaders = mergeHeaders(options?.headers)
+    const providedAccept = providedHeaders.get('Accept')
+    const fixedHeaders = mergeHeaders(options?.headers, { accept: providedAccept ?? 'text/html' })
+    const fixedOptions: Parameters<typeof fetch>[1] = { ...options, headers: fixedHeaders }
+    return await fetch(`${localhost}:${this.client1Port}${path}`, fixedOptions)
   }
 
   async fetchClient1Html(path: string, options?: Parameters<typeof fetch>[1]): Promise<string> {
@@ -319,7 +327,11 @@ export class TestProjectTwoClient {
   }
 
   async fetchClient2(path: string, options?: Parameters<typeof fetch>[1]): Promise<Response> {
-    return await fetch(`${localhost}:${this.client2Port}${path}`, options)
+    const providedHeaders = mergeHeaders(options?.headers)
+    const providedAccept = providedHeaders.get('Accept')
+    const fixedHeaders = mergeHeaders(options?.headers, { accept: providedAccept ?? 'text/html' })
+    const fixedOptions: Parameters<typeof fetch>[1] = { ...options, headers: fixedHeaders }
+    return await fetch(`${localhost}:${this.client2Port}${path}`, fixedOptions)
   }
 
   async fetchClient2Html(path: string, options?: Parameters<typeof fetch>[1]): Promise<string> {

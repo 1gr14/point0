@@ -1,81 +1,261 @@
-// import '@testing-library/jest-dom'
-import { describe, expect, expectTypeOf, it } from 'bun:test'
-import type { InputParsed, Prettify } from '@point0/core'
+import type { Prettify } from '@point0/core'
 import { Point0 } from '@point0/core'
+import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { z } from 'zod'
-import { createTestThings, ymlify } from './utils/internal-testing.js'
-import type { UnknownSearchInput } from '@devp0nt/route0'
+import { createTestThings } from './utils/internal-testing.js'
 
 describe('input', () => {
-  it.concurrent('empty and available in page component by location params', async () => {
+  it.concurrent('params by route definition', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
-    let result: InputParsed | undefined
-    const page = root.lets('page', 'test', '/test').page(({ location }) => {
-      result = location.params
-      return <div />
-    })
-    expectTypeOf<Prettify<typeof page.Infer.InputRaw>>().toEqualTypeOf<{ '?'?: UnknownSearchInput }>()
-    // expectTypeOf<typeof page.Infer.InputRawOrUndefined>().toEqualTypeOf<{ '?'?: UnknownSearchInput }>()
-    expectTypeOf<typeof page.Infer.IsInputOptional>().toEqualTypeOf<true>()
-    const { fetchSsr } = await createTestThings({ points: [root, page] })
-    await fetchSsr(page)
-    expect(result).toMatchInlineSnapshot(`{}`)
-  })
-
-  it.concurrent('available in page component by location params', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
-    let result: InputParsed | undefined
-    const page = root.lets('page', 'test', '/test/:id').page(({ location }) => {
-      result = location.params
-      return <div />
-    })
-    const { fetchSsr } = await createTestThings({ points: [root, page] })
-    await fetchSsr(page, { id: '123' })
-    expect(result).toMatchInlineSnapshot(`
-      {
-        "id": "123",
-      }
-    `)
-  })
-
-  it.concurrent('available in page component and loader and clientLoader by route definition', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
-    let loaderResult: InputParsed | undefined
-    let clientLoaderResult: InputParsed | undefined
-    let pageResult: InputParsed | undefined
     const page = root
       .lets('page', 'test', '/test/:id')
       .loader(({ params }) => {
-        loaderResult = params
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
         return { x: 1 }
       })
-      .clientLoader(({ params }) => {
-        clientLoaderResult = params
-        return { y: 2 }
+      .clientLoader(({ params, data }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        return { y: 2, ...data }
       })
-      .page(({ location }) => {
-        pageResult = location.params
-        return <div id="page" />
+      .page(({ params, data }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        return (
+          <div id="page">
+            {data.x},{data.y}
+          </div>
+        )
       })
     const { render } = await createTestThings({ points: [root, page] })
-    await render(page.route({ id: '123' }), async ({ waitContent }) => {
+    await render(page.route({ id: '123' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /test/123
+          Loading...
+
+          #page: 1,2
+        "
+      `)
     })
-    expect(ymlify(loaderResult)).toMatchInlineSnapshot(`
-      "
-      id: "123"
-      "
-    `)
-    expect(ymlify(clientLoaderResult)).toMatchInlineSnapshot(`
-      "
-      id: "123"
-      "
-    `)
-    expect(ymlify(pageResult)).toMatchInlineSnapshot(`
-      "
-      id: "123"
-      "
-    `)
+  })
+
+  it.concurrent('params by schema', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const page = root
+      .lets('page', 'test', '/test/:id')
+      .params(z.object({ id: z.string().transform((val) => +val) }))
+      .loader(({ params }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: number }>()
+        expect(params).toEqual({ id: 123 })
+        return { x: 1 }
+      })
+      .clientLoader(({ params, data }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: number }>()
+        expect(params).toEqual({ id: 123 })
+        return { y: 2, ...data }
+      })
+      .page(({ params, data }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: number }>()
+        expect(params).toEqual({ id: 123 })
+        return (
+          <div id="page">
+            {data.x},{data.y}
+          </div>
+        )
+      })
+    const { render } = await createTestThings({ points: [root, page] })
+    await render(page.route({ id: '123' }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /test/123
+          Loading...
+
+          #page: 1,2
+        "
+      `)
+    })
+  })
+
+  it.concurrent('params by custom validate fn', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const page = root
+      .lets('page', 'test', '/test/:id')
+      .params((params) => {
+        return {
+          id: +params.id,
+        }
+      })
+      .loader(({ params }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: number }>()
+        expect(params).toEqual({ id: 123 })
+        return { x: 1 }
+      })
+      .clientLoader(({ params, data }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: number }>()
+        expect(params).toEqual({ id: 123 })
+        return { y: 2, ...data }
+      })
+      .page(({ params, data }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: number }>()
+        expect(params).toEqual({ id: 123 })
+        return (
+          <div id="page">
+            {data.x},{data.y}
+          </div>
+        )
+      })
+    const { render } = await createTestThings({ points: [root, page] })
+    await render(page.route({ id: '123' }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /test/123
+          Loading...
+
+          #page: 1,2
+        "
+      `)
+    })
+  })
+
+  it.concurrent('search by schema', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const page = root
+      .lets('page', 'test', '/test/:id')
+      .search(z.object({ cursor: z.string().transform((val) => +val) }))
+      .loader(({ params, search }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor: number }>()
+        expect(search).toEqual({ cursor: 777 })
+        return { x: 1 }
+      })
+      .clientLoader(({ params, search, data }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor: number }>()
+        expect(search).toEqual({ cursor: 777 })
+        return { y: 2, ...data }
+      })
+      .page(({ params, search, data }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor: number }>()
+        expect(search).toEqual({ cursor: 777 })
+        return (
+          <div id="page">
+            {data.x},{data.y}
+          </div>
+        )
+      })
+    const { render } = await createTestThings({ points: [root, page] })
+    await render(page.route({ id: '123', '?': { cursor: '777' } }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /test/123?cursor=777
+          Loading...
+
+          #page: 1,2
+        "
+      `)
+    })
+  })
+
+  it.concurrent('search by custom validate fn', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const page = root
+      .lets('page', 'test', '/test/:id')
+      .search((search) => {
+        return {
+          cursor: +search.cursor,
+        }
+      })
+      .loader(({ params, search }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor: number }>()
+        expect(search).toEqual({ cursor: 777 })
+        return { x: 1 }
+      })
+      .clientLoader(({ params, search, data }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor: number }>()
+        expect(search).toEqual({ cursor: 777 })
+        return { y: 2, ...data }
+      })
+      .page(({ params, search, data }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor: number }>()
+        expect(search).toEqual({ cursor: 777 })
+        return (
+          <div id="page">
+            {data.x},{data.y}
+          </div>
+        )
+      })
+    const { render } = await createTestThings({ points: [root, page] })
+    await render(page.route({ id: '123', '?': { cursor: '777' } }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /test/123?cursor=777
+          Loading...
+
+          #page: 1,2
+        "
+      `)
+    })
+  })
+
+  it.concurrent('search by type (unsafe)', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const page = root
+      .lets('page', 'test', '/test/:id')
+      .search<{ cursor?: string }>()
+      .loader(({ params, search }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor?: string }>()
+        expect(search).toEqual({ cursor: '777' })
+        return { x: 1 }
+      })
+      .clientLoader(({ params, search, data }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor?: string }>()
+        expect(search).toEqual({ cursor: '777' })
+        return { y: 2, ...data }
+      })
+      .page(({ params, search, data }) => {
+        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor?: string }>()
+        expect(search).toEqual({ cursor: '777' })
+        return (
+          <div id="page">
+            {data.x},{data.y}
+          </div>
+        )
+      })
+    const { render } = await createTestThings({ points: [root, page] })
+    await render(page.route({ id: '123', '?': { cursor: '777' } }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /test/123?cursor=777
+          Loading...
+
+          #page: 1,2
+        "
+      `)
+    })
   })
 
   it.concurrent(

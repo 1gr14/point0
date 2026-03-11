@@ -66,9 +66,8 @@ export class ErrorPoint0 extends Error {
     // })()
     const isStacktracePublic = process.env.NODE_ENV !== 'production'
     return {
-      name: 'ErrorPoint0',
       message: error.message,
-      ...(error.status ? { status: error.status } : {}),
+      // ...(error.status ? { status: error.status } : {}),
       ...(error.code ? { code: error.code } : {}),
       // ...(meta ? { meta } : {}),
       ...(!isStacktracePublic || !error.stack ? {} : { stack: error.stack }),

@@ -833,7 +833,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     }
     if (side === 'client') {
       this.shakeMethodsForClient()
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+       
     } else if (side === 'server') {
       this.shakeMethodsForServer()
     } else {

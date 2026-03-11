@@ -37,12 +37,6 @@ export default defineConfig([
       },
     },
     rules: {
-      // '@typescript-eslint/only-throw-error': [
-      //   'error',
-      //   {
-      //     allow: [{ from: 'package', name: 'Error0', package: '@devp0nt/error0' }],
-      //   },
-      // ],
       '@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
       curly: ['error', 'all'],
       '@typescript-eslint/no-unused-vars': [
@@ -57,13 +51,14 @@ export default defineConfig([
           allow: ['error', 'info', 'warn'],
         },
       ],
-      '@typescript-eslint/no-unnecessary-condition': ['error'],
       '@typescript-eslint/restrict-template-expressions': ['error'],
-      '@typescript-eslint/no-floating-promises': ['error'],
       '@typescript-eslint/switch-exhaustiveness-check': ['error'],
       // overrides for enabled recommended rules
       '@typescript-eslint/no-namespace': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
+      // slo rules
+      // '@typescript-eslint/no-unnecessary-condition': ['error'],
+      // '@typescript-eslint/no-floating-promises': ['error'],
     },
   },
   {

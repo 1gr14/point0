@@ -6,7 +6,7 @@ export const waitUntilFileChanged = async (file: Bun.BunFile | string, limit = 5
   const bunFile = typeof file === 'string' ? Bun.file(file) : file
   const stats = await bunFile.stat()
   const currentTimestamp = stats.mtimeMs
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+   
   while (true) {
     const newStats = await bunFile.stat()
     if (newStats.mtimeMs !== currentTimestamp) {
@@ -42,7 +42,7 @@ export const waitResponse = async (
         : Array.from({ length: 200 }, (_, i) => 400 + i)
       : [status]
   let response: Response | undefined
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+   
   while (true) {
     if (isTimeout()) {
       const err = new Error(

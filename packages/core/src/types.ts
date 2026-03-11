@@ -702,6 +702,9 @@ export type RouteSchema<TRouteDefinition extends RouteDefinition> = RecordValida
   ParamsOutput<TRouteDefinition>
 >
 export type CustomValidationFn<TOutput extends InputParsed = InputParsed> = (data: InputRawUnknown) => TOutput
+export type CustomValidationFnWithKnownInput<TInput extends InputRaw, TOutput extends InputParsed> = (
+  data: TInput,
+) => TOutput
 export type RecordSchemaToCustomValidationFn<T extends RecordValidationSchema> = (
   data: InputRawUnknown,
 ) => RecordValidationSchemaOutput<T>
@@ -709,6 +712,12 @@ export type CustomValidationFnToRecordValidationSchema<T extends CustomValidatio
   ReturnType<T>,
   ReturnType<T>
 >
+export type CustomValidationFnWithKnownInputToRecordValidationSchema<
+  T extends CustomValidationFnWithKnownInput<any, any>,
+> =
+  T extends CustomValidationFnWithKnownInput<infer TInput, infer TOutput>
+    ? RecordValidationSchema<TInput, TOutput>
+    : never
 
 type MergeObjectsSingle<A, B> =
   IsEmptyObject<B> extends true ? A : IsEmptyObject<A> extends true ? B : Omit<A, keyof B> & B
@@ -1922,10 +1931,17 @@ export type FetcherFetchDetailedResultEndpoint<TError extends ErrorPoint0> =
     point: ReadyPoint
     data: Data | undefined
   }
-export type FetcherFetchDetailedResultUnknown<TError extends ErrorPoint0> =
-  FetcherFetchDetailedResultGeneral<TError> & {
-    variant: 'unknown'
-  }
+// export type FetcherFetchDetailedResultUnknown<TError extends ErrorPoint0> =
+//   FetcherFetchDetailedResultGeneral<TError> & {
+//     variant: 'unknown'
+//   }
+export type FetcherFetchDetailedResultError<TError extends ErrorPoint0> = Omit<
+  FetcherFetchDetailedResultGeneral<TError>,
+  'error'
+> & {
+  variant: 'error'
+  error: TError
+}
 export type FetcherFetchDetailedResultPublicdir<TError extends ErrorPoint0> =
   FetcherFetchDetailedResultGeneral<TError> & {
     variant: 'publicdir'
@@ -1942,7 +1958,8 @@ export type FetcherFetchDetailedResultRedirect<TError extends ErrorPoint0> =
 export type FetcherFetchDetailedResultNoMiddleware<TError extends ErrorPoint0> =
   | FetcherFetchDetailedResultEndpoint<TError>
   | FetcherFetchDetailedResultPage<TError>
-  | FetcherFetchDetailedResultUnknown<TError>
+  // | FetcherFetchDetailedResultUnknown<TError>
+  | FetcherFetchDetailedResultError<TError>
   | FetcherFetchDetailedResultPublicdir<TError>
   | FetcherFetchDetailedResultOptions<TError>
   | FetcherFetchDetailedResultRedirect<TError>
@@ -1960,9 +1977,11 @@ export type FetcherFetchDetailedResultSpecific<
       ? FetcherFetchDetailedResultPage<TError>
       : TVariant extends 'endpoint'
         ? FetcherFetchDetailedResultEndpoint<TError>
-        : TVariant extends 'unknown'
-          ? FetcherFetchDetailedResultUnknown<TError>
-          : TVariant extends 'publicdir'
+        : TVariant extends 'error'
+          ? FetcherFetchDetailedResultError<TError>
+          : // : TVariant extends 'unknown'
+            //   ? FetcherFetchDetailedResultUnknown<TError>
+            TVariant extends 'publicdir'
             ? FetcherFetchDetailedResultPublicdir<TError>
             : TVariant extends 'options'
               ? FetcherFetchDetailedResultOptions<TError>
@@ -1976,7 +1995,7 @@ export type MiddlewareFnOptions<TError extends ErrorPoint0> = {
   set: ResponseEffectsSetHelper
   point: AnyNiceReadyPoint | undefined
   scope: PointsScope
-  variant: 'endpoint' | 'page' | 'unknown' | 'publicdir' | 'options' | 'redirect'
+  variant: 'endpoint' | 'page' | 'error' | 'publicdir' | 'options' | 'redirect'
   next: MiddlewareNextFn<TError>
 }
 export type MiddlewareFnOptionsBase<TError extends ErrorPoint0> = Omit<MiddlewareFnOptions<TError>, 'next'>
@@ -2583,6 +2602,9 @@ export type NiceActionStagePoint<
     TQueriesDefinitions
   >,
   | 'action'
+  | 'query'
+  | 'infiniteQuery'
+  | 'mutation'
   | 'on'
   | 'serverOn'
   | 'clientOn'
@@ -3659,6 +3681,17 @@ export type NiceActionReadyPoint<
   | 'fetchServer'
   | 'fetchServerDetailed'
   | 'getFetchServerOptions'
+  | (TQueryResultType extends 'query'
+      ? 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'fetchQuery' | 'prefetchQuery' | 'fetch'
+      : TQueryResultType extends 'infiniteQuery'
+        ?
+            | 'useInfiniteQuery'
+            | 'getQueryKey'
+            | 'getInfiniteQueryOptions'
+            | 'fetchInfiniteQuery'
+            | 'prefetchInfiniteQuery'
+            | 'fetch'
+        : 'useMutation' | 'getMutationOptions' | 'fetchMutation' | 'fetch')
 >
 
 export type NiceQueryReadyPoint<

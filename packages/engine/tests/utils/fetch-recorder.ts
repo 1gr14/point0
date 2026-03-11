@@ -94,7 +94,7 @@ export class FetchRecorder<TError extends ErrorPoint0 = ErrorPoint0> {
     const wait = async () => {
       return await new Promise((resolve) => setTimeout(resolve, 10))
     }
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
     while (true) {
       if (Date.now() - startTime > maxDuration) {
         throw new Error('Timeout waiting for fetch recorder to be stable')
@@ -140,10 +140,15 @@ export class FetchRecorder<TError extends ErrorPoint0 = ErrorPoint0> {
   tale = async () => {
     const results = await this.waitFinishedResults()
     const lines = results.flatMap((result) => {
-      if (result.variant !== 'page' && result.variant !== 'endpoint') {
+      if (result.variant !== 'page' && result.variant !== 'endpoint' && result.variant !== 'error') {
         return []
       }
-      const pointString = 'point' in result && result.point ? `${result.point.type}.${result.point.name}` : 'unknown'
+      const pointString =
+        'point' in result && result.point
+          ? `${result.point.type}.${result.point.name}`
+          : result.variant === 'error'
+            ? 'error'
+            : 'unknown'
       // const inputString = 'input' in result && result.input ? JSON.stringify(result.input) : 'undefined'
       // const inputString = result.request.state.__POINT0_RAW_KNOWN_INPUT__
       //   ? JSON.stringify(result.request.state.__POINT0_RAW_KNOWN_INPUT__)
@@ -152,6 +157,9 @@ export class FetchRecorder<TError extends ErrorPoint0 = ErrorPoint0> {
         const inputKnown = result.request.state.__POINT0_RAW_KNOWN_INPUT__ as ExecuteOptionsKnownInput | undefined
         if (!inputKnown) {
           return JSON.stringify({})
+        }
+        if (result.variant === 'error') {
+          return JSON.stringify(inputKnown.input)
         }
         if (result.point?.type === 'action') {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
