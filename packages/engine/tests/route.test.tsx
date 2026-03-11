@@ -131,6 +131,14 @@ describe('route', () => {
     layout.lets('page', 'test', Route0.create('/:y')).page()
   })
 
+  it('allow extended route by route', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const layout = root.lets('layout', 'layout', '/:x').layout(({ children }) => {
+      return <div>{children}</div>
+    })
+    layout.lets('page', 'test', Route0.create('/:x/zxc/:y')).page()
+  })
+
   it('basepath / is used to extend route', async () => {
     const root = Point0.lets('root', 'root').root()
     const layout = root.lets('layout', 'layout', '/:x').layout(({ children }) => {

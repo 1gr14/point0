@@ -210,6 +210,8 @@ export type RequestMethod =
 
 export type WideRequestMethod = RequestMethod | (string & {})
 
+export type PopularRequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+
 export interface RequestFrom {
   ips: string[]
   ip: string | null

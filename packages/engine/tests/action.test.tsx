@@ -59,6 +59,46 @@ describe('action', () => {
     })
   })
 
+  it.concurrent('short notation', async () => {
+    const root = createRoot()
+    const action = root
+      .lets('POST', '/api/my-test/:id')
+      .params(z.object({ id: z.string().min(1) }))
+      .headers(z.object({ x: z.string().min(1) }))
+      .search(z.object({ y: z.string().min(1) }))
+      .body(z.object({ b: z.number().min(1), d: z.bigint() }))
+      .action(({ request, headers, search, body, params }) => {
+        return {
+          headers,
+          search,
+          params,
+          body,
+          bodyUsed: request.original.bodyUsed,
+          date: new Date('2026-03-11T12:00:00.000Z'),
+        }
+      })
+
+    const { loadPoint } = await createTestThings({
+      points: [root, action],
+    })
+    const result = await loadPoint(
+      action,
+      { body: { b: 3, d: 100n }, search: { y: '2' }, params: { id: '1' } },
+      { headers: { x: '1' } },
+    )
+    expect(action.point.name).toBe('POST /api/my-test/:id')
+    expect(action.point.route.definition).toBe('/api/my-test/:id')
+    expect(action.point.method).toBe('POST')
+    expect(result).toEqual({
+      headers: { x: '1' },
+      search: { y: '2' },
+      params: { id: '1' },
+      body: { b: 3, d: 100n },
+      bodyUsed: true,
+      date: new Date('2026-03-11T12:00:00.000Z'),
+    })
+  })
+
   it.concurrent('body not used if body schema not provided', async () => {
     const root = createRoot()
     const action = root

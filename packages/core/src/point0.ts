@@ -1,3 +1,4 @@
+import * as flat0 from '@devp0nt/flat0'
 import type {
   AnyLocation,
   AnyRoute,
@@ -7,7 +8,6 @@ import type {
   UnknownSearchInput,
   UnknownSearchParsed,
 } from '@devp0nt/route0'
-import * as flat0 from '@devp0nt/flat0'
 import { Route0 } from '@devp0nt/route0'
 import type {
   DehydratedState,
@@ -92,7 +92,7 @@ import type {
   WithSelfQueryIfShouldBeFinalized,
   WrapperComponentType,
 } from './mountable.js'
-import type { WideRequestMethod } from './request0.js'
+import type { PopularRequestMethod, WideRequestMethod } from './request0.js'
 import type { RouterPageState } from './router.js'
 import { _usePageStateManager, useLocation, useRouterContext } from './router.js'
 import { superstore } from './super-store.js'
@@ -102,8 +102,9 @@ import type {
   AppendCtxExposedKeys,
   AsserNotMashInputSchemas,
   AssertActionSchemaOnly,
-  AssertInputSchemaHasAllKeys,
   AssertInputSchemaHasNotAnotherKeys,
+  AssertInputSchemaHasSameKeys,
+  AssertInputSchemaIncludesKeys,
   AssertInputSchemaNotWider,
   AssertNoArrayReturn,
   AssertNoForbiddenCtxExposedKeys,
@@ -998,8 +999,8 @@ export class Point0<
 
   lets<
     TMethod extends WideRequestMethod,
-    TProvidedRoute extends RouteDefinition = string,
-    TCheckError = AssertInputSchemaHasAllKeys<RouteSchema<TProvidedRoute>, TParamsSchema, 'params'> &
+    TProvidedRoute extends RouteDefinition,
+    TCheckError = AssertInputSchemaHasSameKeys<RouteSchema<TProvidedRoute>, TParamsSchema, 'params'> &
       AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
   >(
     ...args: TPointType extends 'root' | 'base'
@@ -1035,8 +1036,8 @@ export class Point0<
   >
   lets<
     TMethod extends WideRequestMethod,
-    TProvidedRoute extends AnyRoute = AnyRoute<string>,
-    TCheckError = AssertInputSchemaHasAllKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
+    TProvidedRoute extends AnyRoute,
+    TCheckError = AssertInputSchemaHasSameKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
       AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
   >(
     ...args: TPointType extends 'root' | 'base'
@@ -1071,14 +1072,79 @@ export class Point0<
     >
   >
   lets<
+    TMethod extends PopularRequestMethod,
+    TProvidedRoute extends RouteDefinition,
+    TCheckError = AssertInputSchemaHasSameKeys<RouteSchema<TProvidedRoute>, TParamsSchema, 'params'> &
+      AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
+  >(
+    ...args: TPointType extends 'root' | 'base' ? [method: TMethod, route: TProvidedRoute] : never[]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      'coreStage',
+      'action',
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      TProvidedRoute,
+      TServerInputSchema,
+      TClientInputSchema,
+      HasParams<TProvidedRoute> extends true
+        ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute>>
+        : TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      UndefinedQueryResultType,
+      EmptyProps,
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+    >
+  >
+  lets<
+    TMethod extends PopularRequestMethod,
+    TProvidedRoute extends AnyRoute,
+    TCheckError = AssertInputSchemaHasSameKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
+      AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
+  >(
+    ...args: TPointType extends 'root' | 'base' ? [method: TMethod, route: TProvidedRoute] : never[]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      'coreStage',
+      'action',
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      TProvidedRoute['definition'],
+      TServerInputSchema,
+      TClientInputSchema,
+      HasParams<TProvidedRoute['definition']> extends true
+        ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
+        : TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      UndefinedQueryResultType,
+      EmptyProps,
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+    >
+  >
+  lets<
     TPointName extends PointName,
     TProvidedRoute extends RouteDefinition = TPointName,
-    TCheckError = AssertInputSchemaHasAllKeys<
-      RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
-      TParamsSchema,
-      'params'
-    > &
-      AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'page'>,
+    TCheckError = AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'page'>,
   >(
     ...args: TPointType extends 'root' | 'base' | 'layout'
       ? [letsReadyPointType: 'page', pointName: TPointName, route?: TProvidedRoute]
@@ -1117,7 +1183,7 @@ export class Point0<
   lets<
     TPointName extends PointName,
     TProvidedRoute extends AnyRoute,
-    TCheckError = AssertInputSchemaHasAllKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
+    TCheckError = AssertInputSchemaIncludesKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
       AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'page'>,
   >(
     ...args: TPointType extends 'root' | 'base' | 'layout'
@@ -1154,12 +1220,7 @@ export class Point0<
   lets<
     TPointName extends PointName,
     TProvidedRoute extends RouteDefinition = '/',
-    TCheckError = AssertInputSchemaHasAllKeys<
-      RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
-      TParamsSchema,
-      'params'
-    > &
-      AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'layout'>,
+    TCheckError = AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'layout'>,
   >(
     ...args: TPointType extends 'root' | 'base' | 'layout'
       ? [letsReadyPointType: 'layout', pointName: TPointName, route?: TProvidedRoute]
@@ -1198,7 +1259,7 @@ export class Point0<
   lets<
     TPointName extends PointName,
     TProvidedRoute extends AnyRoute,
-    TCheckError = AssertInputSchemaHasAllKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
+    TCheckError = AssertInputSchemaIncludesKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
       AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'layout'>,
   >(
     ...args: TPointType extends 'root' | 'base' | 'layout'
@@ -1376,6 +1437,14 @@ export class Point0<
           AnyRoute | string | undefined,
         ]
       }
+      if (['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].includes(args[0])) {
+        return ['action', undefined, args[0], args[1]] as [
+          ReadyPointType,
+          undefined,
+          PopularRequestMethod,
+          AnyRoute | string | undefined,
+        ]
+      }
       return [args[0], args[1], undefined, args[2]] as [
         ReadyPointType,
         PointName,
@@ -1396,7 +1465,7 @@ export class Point0<
             return prevRoute?.clone() ?? Route0.create('/')
           }
           return prevRoute
-            ? prevRoute.extend(routeOrPointName).clone()
+            ? prevRoute.extend(routeOrPointName ?? '/').clone() // error will be thrown below if routeOrPointName is undefined (it is in case of action was defined without name)
             : Route0.create(dedupeSlashes(`/${routeOrPointName}`))
         }
         return Route0.create(dedupeSlashes(`/${route.definition}`))
@@ -1437,6 +1506,16 @@ export class Point0<
       )
     }
 
+    const normalizedPointName = (() => {
+      if (isAction && !pointName) {
+        return `${providedMethod?.toUpperCase()} ${newRoute?.definition}`
+      }
+      if (!pointName) {
+        throw new Error(`Point name is required for point ${this.toStringWithLocation()}`)
+      }
+      return pointName
+    })()
+
     const _endpoint = (() => {
       if (
         !['page', 'layout', 'component', 'provider', 'action', 'query', 'infiniteQuery', 'mutation'].includes(
@@ -1466,7 +1545,7 @@ export class Point0<
         }
         const scopeKebab = toKebabCase(this.scope)
         const typeKebab = letsReadyPointType === 'infiniteQuery' ? 'infinite-query' : letsReadyPointType
-        const nameKebab = toKebabCase(pointName)
+        const nameKebab = toKebabCase(normalizedPointName)
         const routeGeneral = Route0.create(
           dedupeSlashes(`/${this._endpointPrefix || '_point0'}/${scopeKebab}/${typeKebab}/${nameKebab}`),
         )
@@ -1489,9 +1568,9 @@ export class Point0<
       }
     })()
 
-    const scopes = letsReadyPointType === 'root' ? [pointName, ...this.scopes] : this.scopes
-    const scope = letsReadyPointType === 'root' ? pointName : this.scope
-    if (letsReadyPointType === 'root' && pointName === 'plugin') {
+    const scopes = letsReadyPointType === 'root' ? [normalizedPointName, ...this.scopes] : this.scopes
+    const scope = letsReadyPointType === 'root' ? normalizedPointName : this.scope
+    if (letsReadyPointType === 'root' && normalizedPointName === 'plugin') {
       throw new Error('Cannot create root point with "plugin" scope, it is internally used name for plugin points')
     }
 
@@ -1558,7 +1637,7 @@ export class Point0<
       _mountActions: mountActionsSuitable,
       type: 'coreStage',
       _letsReadyPointType: letsReadyPointType,
-      name: pointName,
+      name: normalizedPointName,
       _fsLocation,
       _endpoint,
       route: newRoute as never,
@@ -5856,8 +5935,21 @@ export class Point0<
   >(
     plugin: T &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'use'> &
+      AssertInputSchemaHasNotAnotherKeys<T['Infer']['ParamsSchema'], TParamsSchema, 'params'> &
       AssertInputSchemaNotWider<T['Infer']['ServerInputSchema'], TServerInputSchema, TClientInputSchema> &
-      AssertInputSchemaNotWider<T['Infer']['ClientInputSchema'], TServerInputSchema, TClientInputSchema>,
+      AssertInputSchemaNotWider<T['Infer']['ClientInputSchema'], TServerInputSchema, TClientInputSchema> &
+      AssertSchemaNotWider<T['Infer']['ParamsSchema'], TParamsSchema, 'params'> &
+      AssertSchemaNotWider<T['Infer']['SearchSchema'], TParamsSchema, 'search'> &
+      AssertSchemaNotWider<T['Infer']['BodySchema'], TParamsSchema, 'body'> &
+      AssertSchemaNotWider<T['Infer']['HeadersSchema'], TParamsSchema, 'headers'> &
+      AssertSchemaNotWider<T['Infer']['CookiesSchema'], TParamsSchema, 'cookies'> &
+      AsserNotMashInputSchemas<
+        MergeRecordValidationSchemas<TServerInputSchema, T['Infer']['ServerInputSchema']>,
+        MergeRecordValidationSchemas<TClientInputSchema, T['Infer']['ClientInputSchema']>,
+        MergeRecordValidationSchemas<TParamsSchema, T['Infer']['ParamsSchema']>,
+        MergeRecordValidationSchemas<TSearchSchema, T['Infer']['SearchSchema']>,
+        MergeRecordValidationSchemas<TBodySchema, T['Infer']['BodySchema']>
+      >,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -5873,12 +5965,11 @@ export class Point0<
     TRouteDefinition,
     MergeRecordValidationSchemas<TServerInputSchema, T['Infer']['ServerInputSchema']>,
     MergeRecordValidationSchemas<TClientInputSchema, T['Infer']['ClientInputSchema']>,
-    // TODO:ASAP fix plugin
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
+    MergeRecordValidationSchemas<TParamsSchema, T['Infer']['ParamsSchema']>,
+    MergeRecordValidationSchemas<TSearchSchema, T['Infer']['SearchSchema']>,
+    MergeRecordValidationSchemas<TBodySchema, T['Infer']['BodySchema']>,
+    MergeRecordValidationSchemas<THeadersSchema, T['Infer']['HeadersSchema']>,
+    MergeRecordValidationSchemas<TCookiesSchema, T['Infer']['CookiesSchema']>,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     AppendProps<TInnerProps, T['Infer']['InnerProps']>,

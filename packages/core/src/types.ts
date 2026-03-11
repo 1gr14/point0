@@ -817,35 +817,63 @@ export type AssertInputSchemaNotWider<
     : IsInputSchemaConflicts<TClientInputSchema, TNewInputSchema> extends true
       ? ShowError<`Last provided input schema is not assignable to current point client input schema`>
       : unknown
-type IsInputSchemaHasNotAnotherKeys<
-  TPrevInputSchema extends InputSchema | UndefinedInputSchema,
+type IsInputSchemaHasAnotherKeys<
   TNewInputSchema extends InputSchema | UndefinedInputSchema,
+  TPrevInputSchema extends InputSchema | UndefinedInputSchema,
 > = TPrevInputSchema extends InputSchema
   ? TNewInputSchema extends InputSchema
     ? Exclude<KeysOfUnion<InputRaw<TPrevInputSchema>>, KeysOfUnion<InputRaw<TNewInputSchema>>> extends never
-      ? false
-      : true
-    : true
-  : false
-type IsInputSchemaHasAllKeys<
+      ? false // has not another keys
+      : true // has another keys
+    : false // no new schema, so has not another keys
+  : TNewInputSchema extends InputSchema
+    ? true // no previous schema, so has another keys
+    : false // no new schema, so has not another keys
+type IsInputSchemaHasSameKeys<
   TNewInputSchema extends InputSchema | UndefinedInputSchema,
   TPrevInputSchema extends InputSchema | UndefinedInputSchema,
-> = IsInputSchemaHasNotAnotherKeys<TPrevInputSchema, TNewInputSchema> extends true ? false : true
-export type AssertInputSchemaHasAllKeys<
+> = TPrevInputSchema extends InputSchema
+  ? TNewInputSchema extends InputSchema
+    ? Exclude<KeysOfUnion<InputRaw<TPrevInputSchema>>, KeysOfUnion<InputRaw<TNewInputSchema>>> extends never
+      ? Exclude<KeysOfUnion<InputRaw<TNewInputSchema>>, KeysOfUnion<InputRaw<TPrevInputSchema>>> extends never
+        ? true
+        : false
+      : false
+    : false
+  : true
+type IsInputSchemaIncludesKeys<
+  TNewInputSchema extends InputSchema | UndefinedInputSchema,
+  TPrevInputSchema extends InputSchema | UndefinedInputSchema,
+> = TPrevInputSchema extends InputSchema
+  ? TNewInputSchema extends InputSchema
+    ? Exclude<KeysOfUnion<InputRaw<TPrevInputSchema>>, KeysOfUnion<InputRaw<TNewInputSchema>>> extends never
+      ? true
+      : false
+    : false
+  : true
+export type AssertInputSchemaHasSameKeys<
   TNewInputSchema extends InputSchema | UndefinedInputSchema,
   TPrevInputSchema extends InputSchema | UndefinedInputSchema,
   TWhat extends string,
 > =
-  IsInputSchemaHasAllKeys<TNewInputSchema, TPrevInputSchema> extends true
-    ? unknown
-    : ShowError<`Provided ${TWhat} schema should contain all previously defined keys`>
+  IsInputSchemaHasSameKeys<TNewInputSchema, TPrevInputSchema> extends false
+    ? ShowError<`Provided ${TWhat} schema should contain same keys as previously defined`>
+    : unknown
 export type AssertInputSchemaHasNotAnotherKeys<
   TNewInputSchema extends InputSchema | UndefinedInputSchema,
   TPrevInputSchema extends InputSchema | UndefinedInputSchema,
   TWhat extends string,
 > =
-  IsInputSchemaHasNotAnotherKeys<TPrevInputSchema, TNewInputSchema> extends true
-    ? ShowError<`Previous provided ${TWhat} schema has another keys`>
+  IsInputSchemaHasAnotherKeys<TNewInputSchema, TPrevInputSchema> extends true
+    ? ShowError<`Previous provided ${TWhat} should not have another keys that was previously defined`>
+    : unknown
+export type AssertInputSchemaIncludesKeys<
+  TNewInputSchema extends InputSchema | UndefinedInputSchema,
+  TPrevInputSchema extends InputSchema | UndefinedInputSchema,
+  TWhat extends string,
+> =
+  IsInputSchemaIncludesKeys<TNewInputSchema, TPrevInputSchema> extends false
+    ? ShowError<`Provided ${TWhat} schema should include keys from previously defined`>
     : unknown
 
 export type AssertRouteSchemaExtends<
@@ -2182,7 +2210,7 @@ export type NiceRootStagePoint<
   | 'loading'
   | 'headers'
   | 'cookies'
-  | 'params'
+  // | 'params'
   | 'search'
   | 'body'
   | 'input'
@@ -2283,7 +2311,7 @@ export type NicePluginStagePoint<
   | 'loading'
   | 'headers'
   | 'cookies'
-  | 'params'
+  // | 'params'
   | 'search'
   | 'body'
   | 'input'
@@ -2380,7 +2408,7 @@ export type NiceBaseStagePoint<
   | 'with'
   | 'headers'
   | 'cookies'
-  | 'params'
+  // | 'params'
   | 'search'
   | 'body'
   | 'input'
@@ -2616,7 +2644,6 @@ export type NiceActionStagePoint<
   | 'params'
   | 'search'
   | 'body'
-  | 'input'
   | 'ctx'
   | 'loader'
   | 'point'

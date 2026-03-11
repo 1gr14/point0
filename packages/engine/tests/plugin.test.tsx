@@ -143,6 +143,8 @@ describe('plugin', () => {
       .input(z.object({ query: z.number().transform((v) => v * 3) }))
       .loader(({ input }) => {
         expectTypeOf<Prettify<typeof input>>().toEqualTypeOf<{ plugin: number; query: number }>()
+        expect(input.plugin).toBe(200)
+        expect(input.query).toBe(600)
         return input
       })
       .query()
@@ -155,6 +157,88 @@ describe('plugin', () => {
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #page: plugin: 200, query: 600
+      "
+    `)
+  })
+
+  it.concurrent('merges headers', async () => {
+    const plugin = Point0.lets('plugin', 'test-plugin')
+      .headers(z.object({ 'x-plugin': z.string().transform((v) => +v * 2) }))
+      .plugin()
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const query = root
+      .lets('query', 'test')
+      .use(plugin)
+      .fetchOptions(() => ({ headers: { 'X-Plugin': '100' } }))
+      .loader(({ headers }) => {
+        expectTypeOf<Prettify<typeof headers>>().toEqualTypeOf<{ 'x-plugin': number }>()
+        expect(headers['x-plugin']).toBe(200)
+        return headers
+      })
+      .query()
+    const page = root
+      .lets('page', 'home', '/')
+      .with(query)
+      .page(({ data }) => <div id="page">{ymlifyline(data)}</div>)
+
+    const { fetchPreview } = await createTestThings({ points: [root, page, query] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page: x-plugin: 200
+      "
+    `)
+  })
+
+  it.concurrent('merges search', async () => {
+    const plugin = Point0.lets('plugin', 'test-plugin')
+      .search(z.object({ plugin: z.string().transform((v) => +v * 2) }))
+      .plugin()
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const action = root
+      .lets('action', 'test', 'GET', '/test')
+      .use(plugin)
+      .loader(({ search }) => {
+        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ plugin: number }>()
+        expect(search.plugin).toBe(200)
+        return search
+      })
+      .query()
+    const page = root
+      .lets('page', 'home', '/')
+      .with(action, { search: { plugin: '100' } })
+      .page(({ data }) => <div id="page">{ymlifyline(data)}</div>)
+
+    const { fetchPreview } = await createTestThings({ points: [root, page, action] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page: plugin: 200
+      "
+    `)
+  })
+
+  it.concurrent('merges body', async () => {
+    const plugin = Point0.lets('plugin', 'test-plugin')
+      .body(z.object({ plugin: z.number().transform((v) => v * 2) }))
+      .plugin()
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const action = root
+      .lets('action', 'test', 'GET', '/test')
+      .use(plugin)
+      .loader(({ body }) => {
+        expectTypeOf<Prettify<typeof body>>().toEqualTypeOf<{ plugin: number }>()
+        expect(body.plugin).toBe(200)
+        return body
+      })
+      .query()
+    const page = root
+      .lets('page', 'home', '/')
+      .with(action, { body: { plugin: 100 } })
+      .page(({ data }) => <div id="page">{ymlifyline(data)}</div>)
+
+    const { fetchPreview } = await createTestThings({ points: [root, page, action] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page: plugin: 200
       "
     `)
   })

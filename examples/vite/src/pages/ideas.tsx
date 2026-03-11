@@ -5,7 +5,7 @@ import { generalLayout } from '../layouts/general.js'
 import { routes } from '../lib/routes.js'
 
 export const ideasPage = generalLayout
-  .lets('page', 'ideas')
+  .lets('page', 'ideas', '/ideas')
   .search(z.object({ page: z.coerce.number().default(0) }))
   .loader(async ({ ctx, search }) => {
     const ideasCount = await ctx.prisma.idea.count()
