@@ -7,29 +7,24 @@
 
 
 
-error0
-logger
-mcp
-
 action
 better-auth
-? init
-
-1gpt
+mdx
+mcp
 
 expo
 electron
 
-mdx
-file-routing
+docs
+devp0nt
 
++init
++file-routing
 +redirect
 +static
 +channel
 
 examples
-docs
-devp0nt
 start0
 
 launch
@@ -44,15 +39,23 @@ launch
 
 
 === REFACTOING 3000 ===
+Убедиться что астериск и парам в одном роуте получится из сейм
+Написать тест на страницу и лэйоут с опциональным параметром
+Добавить тест на загрузку файлов
+TWithError recursive type so any recordinside show this error
+Пусть роут0 всегда подставляет слеш вначале роута и по типам и по дефенишену
+tranformerSerializeWithErrorLogging (and deserialize)
 Выключить хмр проки в сервере
 При невалидных поиниах убедиться, что валидные подгружаются
 Если клиентов больше двух добавить в лог категорию скоуп клиента
 Врапер (Врапер пусть хотбы любой компонент принимает)
 В пабликдир добавить фильтр
 По умолчанию сёрвинг выставить в фалс
+Роутер перенести в реактдом (когда будем проверять экспо)
+При подстановке версий из каталога скриптом делать это также и в момент, когда релизсемантик происходит
+? Вариант мидлвары перенести в реквест пусть там будет вариант
 ? Добавить префетч полиси, которое определяет что даёт тру значение в двух остальных
 --+
-Континьев фикс сделать, с разрывом цепочки, ради сохранения положения в коде
 Энжин клон с перезаписью конфига
 В инфер добавить инфер добавить иннер компонент чтобы легко было его вынести
 test onPrefetchPage and other prefetchModes
@@ -79,6 +82,7 @@ shrink core/index.ts size, by remove code duplicates
 find TODO in code
 Перепроверить все публичные названия методов и если надо то поменять
 ---
+Континьев фикс сделать, с разрывом цепочки, ради сохранения положения в коде
 Если роуты переданы в клиент, то не будет 404 в случае ненахода поинта при запросе страницы (чтобы можно было использовать кастомный роутинг)
 Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп
 На фронте в хтмл вырезать изэнвов констсы
@@ -215,6 +219,7 @@ check bun compiler, and vite compiler creates correct sourcemaps
 При подмене фетча на серверный убедиться что он относится к одному из родительских скоупов, иначе не подменять
 Two servers
 ---
+? Сделать сервер опциональным в конфиге, но при запросе к серверу в таком случае всё ломать
 ? Если лиент не сервится то и запросы его к нему же не перенаправлять на сервер (так он уже не сервится)
 ssr as option in engine, so we can by default prune or not prune plugins
 Проверить что при бейзпасе /x/404 404 ошибка будет отдана от нужного клиента
@@ -257,66 +262,29 @@ binary, just throw error if some engine distdirs not inside firstlevel server di
 
 
 === ACTION ===
-Всё что касается таска передаётся в хедерах
-Все экшены ходят не на _point0 а по реальному нормальному урлу
-Позволить определить дефолтный префикс для урлов по мимо _point0
-THeaders, TSearch, TParams(?), TBody, TUnassignedInput
-apply this types to Request0<THeaders, TSearch, TParams, TBody>
-.parseInput() as chain method
-before this we have {parse} in ctx and loadrs fn. there is parse.input() → {input, body, search, params}, parse.body(), parse.search(), parse.params()
-after this we have {parsed} in ctx and loadrs fn. there is parsed.input, parsed.body, parsed.search, parsed.params
-do not apply transformer to action request
-Оутпут имеют опицию чтобы сравнивать соотетствует ли оутпут дата лоадера с типом оутпута
-Отупут имеет опцию чтобы перед отправкой на клиент парсить переданное значение
+basepath is route
+basepath not overrides it extends route
+action route extends basepath
 
-? Сделать трансформер настраиваемым по сравнению с типом поинта
-? Трансформер иммет опцию чтобы быть включённым при прямом запросе к экшену
-? Трансформер может приянть вторым аргументом трансформер для экшенов
+compiler pruner (.action().headers().cookies().body())
+compiler GET|POST|... detecter
+compiler ending action|query|mutation|infiniteQuery detecter
 
-Инпуту можно определить он из серч параметров или из бади или если функция, то тогда как он берётся из реквеста по сути как экшен
-В он саксес и он еррор в квери опшинсах добавить суффикс клиент и сервер
-asFormData it is fetch options
+Роут пейджа и лэйоута прибалвять как есть а не фильтровать
+При загрузке пейджа с сервера всегдаэкзекьютить пейдж, даже если он не имеет лоадеров
+В Файнд эндпоинт передаём урл а не хрефрел
+В кткс и лоадер фн добавить локацию которая будет туда проброшена если это запрос к лэйоуту или пейджу
+validate conflicted methods via map in server-points
+Экзекьют валидация ол сетлед
+default endpoint path cusomization (before point, and inside point)
+execute
 
-Пока не объявим мутацию она и не произойдёт и ей надо чётко себя определить
-Убедиться, что маунтаблы не имеют квери резалт тайпа без собственных кверей
-? Мутацию добавить в квери резалт тайп
---?
-__INPUT_RAW__ не хранить в стейте, а геж-то ещё хранить напримерв _state
-remove input from request
-test body really has raw body after request
---?
-А экшен это заранее хоть что хоть квери хоть инфинитиквери хоть мутация, просто последний метод позволяет задать лоадер у которого инпут не прочитан... Так можно и ладерам не давать прочитать инпут до вызова парсИнаут
-Вызов Экшена из кода фронта вызывает его по реальному урлу с реальными параметрами
-Любая кверянка может принять тчк экшен где укажет путь и метод
-Разрешить летс от любой кверянки до экшена
-Экшен после объявления себя имеет инпут как гет параметры или боди в зависимости от метода
-Мидлвара также должна иметь доступ ко всем поинтам, как лоадеры, и ктксы, и так скалар сделаем
-Парс инпута делать при экзекьюте на первом встречающемся
-Кткс имеет парс инпут при условии наличия клиент схемы, по умолчанию там нет инпута
-Тчк ридинпут это сервер экшен и он объявляет генерик, который добавит в кткс инпут, а до этого там будет ридинпут функция внутри 
-↑ (that no needed?) В экшене последний метод если вызвать то экшен превращается в контроллед, и там мы уже можем сами вызвать всю прежнюю цепочку, иначе он анконтролед
---?
-Кткс всегда имеет инпут спокойно, экшен же всё равно отдельно дёргается
-add "parse" to options, like parse.input(), parse.body() etc
-? and myabe in ctx fns we also need parse, not parsed input
-we do not need THeaders as generic, it will be jsut in TSpecial
-request0.body.parsed/parse/wasRead/raw/json/text/validate/...
-!!! Before openapi endpoint we call only middlewares, and provide ({executeSelf}), when you call executeSelf() then input will be parsed, then will be called all previous loaders and ctx fns, and it will not be pased before
-if it is openapi request, then we do not manually parse body for input, else we just provide helpers in loader to get and parse input (search, body, params) from request
-Я могу те же самые йиэлд, возврат текста, и возврат форм даты просто опираясь на возвращаемый тип, когда буду делать опенапи поинт, ничего там такого нет
-Хеадерс фн должны принимать всё что и обычный лоадер, но может не быть дата и инпута если это опшонс реквест
-× .lets('openapi', 'my endpoint', {method: 'get' | 'post' | 'put' | 'delete', route: string, input: z.object({}), output: z.object({}), ... , variants: [] })
-! .lets('action', 'myAction', 'get').action({method: 'post', route: '', body: z(), params: z(), search: z(), headers: z(), cookies: z(), output: {like hono}, handler })
-× .cookies(z()) (ЗКуки не нужны и зхедеры тоже, это все нужно только опенапишникам)
-× .headers(z())
-add generics TRoute, THeaders, TCookies to Request0
-return type of loaders to response type, yield, etc
-TOpenapi, and if exists, then loaders has .loader({openapi}: {openapi: TOpenapi})
-if TOpenapi, then it can be query or infiniteQuery or mutation, based on what was provided .query(), .infiniteQuery(), .mutation()
-_slug ← name
-Под опенапи сделать Парсинг каеристринг через ту штуку чтобы массивы и объекты дали
-Опенапи фн а опшинсах имеет селф, который и можно передать в экзекьют, если нужны прежние лоадеры и контекст
----
+openapi
+scalar
+
+При генерации роутов в генериках передавать серч инпут схему
+
+
 
 
 
@@ -360,7 +328,10 @@ somehow wh we have now in client-server, have same ot main-renderer process, via
 === COMPILER ===
 Компилером вырезать из чужих скоупов вообще всё и лоадеры и компоненты, но родительские не трогать, только полностью инородные
 ? Компилер пусть компилит все файлы и не фильтрует
+--!
+export const ideaQuery automatically add 'idea' as name, and it can be enabled or disabled in compiler
 ---
+? Тчк сервер онли, которая вырежет всё ниже если найдёт, и также тчк клиентонли, и генерик тсайд
 Отключение фичей через флаги в компилере
 root.lets('exclude', 'backend').exclude() → создаётся base, но но у него выпиивается этот скоуп бэка например, и так эти поинты не попадут в сервер поинтсы, но надо убдеиться нужно ли это, учитывая что экспо клиенту ничгео не мешает с самого начала вообще не экстендится от бэкенда
 ? Выкидывать ошибку при попытке гидрировать вне сервер стороджа, и препарить вне клиента
@@ -516,6 +487,15 @@ and how cool it be to set init points just in usual ctx of points. Incredible co
 
 === DEFINE ===
 Добавить дефайн, он такой же как инит, но не вызывает, но может объявить что угодно нужен для мсп
+Дефайн отдаёт либо функцию которая мигом вызывается, либо объект с функциями под сервер и клиент
+
+
+
+
+=== ? CLI ===
+lets command для создания кли и вэнжине добавить раздел cli
+
+
 
 
 
