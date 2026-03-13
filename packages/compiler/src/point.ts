@@ -363,6 +363,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   }
 
   getBasepath(): string {
+    // TODO: now we found not first basepath, but all basepaths and combine them
     // Go through self and parents (from child to parent)
     // Return the first basepath value found, or '/' if none found
     for (const method of [...this.chainMethods].reverse()) {
@@ -833,7 +834,6 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     }
     if (side === 'client') {
       this.shakeMethodsForClient()
-       
     } else if (side === 'server') {
       this.shakeMethodsForServer()
     } else {

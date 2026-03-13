@@ -259,8 +259,8 @@ export class Walker {
       // Extract the point type and name from the lets() call
       // Example: root.lets('page', 'mypage') → pointType = 'page', pointName = 'mypage'
       // Special:
-      //   root.lets('GET', '/my/:path') → pointType = 'action', pointName = 'GET /my/:path' (just join method and route with space)
-      //   later in point.ts we will fix name to append basepath if it is exists somewhere up in the chain
+      //   root.lets('GET', '/my/:path') → pointType = 'action', pointName = 'pending...'
+      //   later in point.ts we will fix name to append basepath ane it bacomes pointName = `GET ${basepath}/my/:path` if it is exists somewhere up in the chain
       //   first method name can be only ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
       const pointType: ReadyPointType | undefined =
         firstLetsArgNodePath?.node.type === 'StringLiteral'
