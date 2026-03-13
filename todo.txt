@@ -39,6 +39,9 @@ launch
 
 
 === REFACTOING 3000 ===
+При загрузке пейджа с сервера всегдаэкзекьютить пейдж, даже если он не имеет лоадеров
+В кткс и лоадер фн добавить локацию которая будет туда проброшена если это запрос к лэйоуту или пейджу
+
 Убедиться что астериск и парам в одном роуте получится из сейм
 Написать тест на страницу и лэйоут с опциональным параметром
 Добавить тест на загрузку файлов
@@ -263,28 +266,20 @@ binary, just throw error if some engine distdirs not inside firstlevel server di
 
 
 === ACTION ===
-basepath is route
-basepath not overrides it extends route
-action route extends basepath
-
 compiler pruner (.action().headers().cookies().body())
-compiler GET|POST|... detecter
-compiler ending action|query|mutation|infiniteQuery detecter
 
 Роут пейджа и лэйоута прибалвять как есть а не фильтровать
-При загрузке пейджа с сервера всегдаэкзекьютить пейдж, даже если он не имеет лоадеров
 В Файнд эндпоинт передаём урл а не хрефрел
-В кткс и лоадер фн добавить локацию которая будет туда проброшена если это запрос к лэйоуту или пейджу
 validate conflicted methods via map in server-points
-Экзекьют валидация ол сетлед
-default endpoint path cusomization (before point, and inside point)
 execute
 
 openapi
 scalar
 
 При генерации роутов в генериках передавать серч инпут схему
-
+---
+Экзекьют валидация ол сетлед
+default endpoint path cusomization (before point, and inside point)
 
 
 
