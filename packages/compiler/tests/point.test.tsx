@@ -582,6 +582,9 @@ export const root6 = root.lets('root', 'root6').basepath('/my/base').root()
 export const p6 = root6.lets('page', 'p6', '/').page(() => <div>Hello</div>)
 export const root7 = root.lets('root', 'root7').basepath('/my/base/extra/path').root()
 export const p7 = root7.lets('page', 'p7', '/').page(() => <div>Hello</div>)
+export const root8 = root4.lets('root', 'root8').basepath('/child').basepath('/one').root()
+export const base8 = root8.lets('root', 'root8').basepath('/two').root()
+export const p8 = base8.lets('page', 'p8', '/three').page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -656,6 +659,16 @@ export const p7 = root7.lets('page', 'p7', '/').page(() => <div>Hello</div>)
           name: 'p7',
           basepath: '/my/base/extra/path',
         })
+        expect(parsed[14]).toMatchObject({
+          valid: true,
+          name: 'root8',
+          basepath: '/my/base/child/one',
+        })
+        expect(parsed[16]).toMatchObject({
+          valid: true,
+          name: 'p8',
+          basepath: '/my/base/child/one/two',
+        })
       }),
     )
 
@@ -672,6 +685,7 @@ export const p7 = root7.lets('page', 'p7', '/').page(() => <div>Hello</div>)
         await file.write(`import {Point0} from '@point0/core'
 import { Route0, Routes } from '@devp0nt/route0'
 export const root = Point0.lets('root', 'myroot').basepath('/my/base').root()
+export const base = root.lets('base', 'base').basepath('/another').basepath('/:x/prefix').base()
 const routes = Routes.create({
   r1: Route0.create('/r1'),
 })
@@ -679,6 +693,7 @@ export const p1 = root.lets('page', 'p1', '/').page(() => <div>Hello</div>)
 export const p2 = root.lets('page', 'p2', 'p2').page(() => <div>Hello</div>)
 export const p3 = root.lets('page', 'p3', Route0.create('/p3')).page(() => <div>Hello</div>)
 export const p4 = root.lets('page', 'p4', routes.r1).page(() => <div>Hello</div>)
+export const p5 = base.lets('page', 'p5', '/my/route').page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -702,6 +717,11 @@ export const p4 = root.lets('page', 'p4', routes.r1).page(() => <div>Hello</div>
           valid: true,
           name: 'p4',
           route: '/my/base/r1',
+        })
+        expect(parsed[4]).toMatchObject({
+          valid: true,
+          name: 'p5',
+          route: '/my/base/another/:x/prefix/my/route',
         })
       }),
     )
@@ -818,6 +838,29 @@ const page0 = root0.lets('page', 'page0', '/').page(() => <div>Hello</div>)
         expect(parsed1.valid).toBe(false)
         expect(parsed1.errors).toHaveLength(1)
         expect((parsed1.errors[0] as Error).message).toBe(`Point not exported. Please, add export to the point.`)
+      }),
+    )
+
+    it.concurrent(
+      'action shorthand supports query/mutation/infiniteQuery endings and uses combined basepath in name',
+      helper(async ({ files: [file], walker }) => {
+        await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').basepath('/api').root()
+export const nested = root.lets('root', 'nested').basepath('/v1').root()
+export const a1 = nested.lets('GET', '/users').loader(() => ({ ok: true })).query()
+export const a2 = nested.lets('POST', '/users').loader(() => ({ ok: true })).mutation()
+export const a3 = nested.lets('PUT', '/users').loader(() => ({ ok: true })).infiniteQuery()
+export const a4 = nested.lets('PATCH', '/users').loader(() => ({ ok: true })).action()
+        `)
+        const result = walker.collectPointsFromFile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+
+        const parsed = result.points.filter((p) => p.type === 'action').map((p) => p.parse())
+        expect(parsed).toHaveLength(4)
+        expect(parsed[0]).toMatchObject({ valid: true, name: 'GET /api/v1/users' })
+        expect(parsed[1]).toMatchObject({ valid: true, name: 'POST /api/v1/users' })
+        expect(parsed[2]).toMatchObject({ valid: true, name: 'PUT /api/v1/users' })
+        expect(parsed[3]).toMatchObject({ valid: true, name: 'PATCH /api/v1/users' })
       }),
     )
   })

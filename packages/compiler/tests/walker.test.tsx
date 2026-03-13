@@ -170,6 +170,40 @@ describe('Walker', () => {
     )
 
     it.concurrent(
+      'can recognize action shorthand points',
+      helper(async ({ files: [f0], walker }) => {
+        await f0.write(`import {Point0} from '@point0/core'
+          export const root = Point0.lets('root', 'root').root()
+          export const a1 = root.lets('GET', '/users').loader(() => ({ ok: true })).query()
+          export const a2 = root.lets('POST', '/users').loader(() => ({ ok: true })).mutation()
+          export const a3 = root.lets('DELETE', '/users/:id').loader(() => ({ ok: true })).action()
+        `)
+        const result = walker.collectPointsFromFile({ file: f0.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.points).toHaveLength(4)
+        const simplified = result.points.map((p) => p.simplify())
+        expect(simplified[1]).toMatchObject({
+          type: 'action',
+          name: 'GET /users',
+          exportName: 'a1',
+          valid: true,
+        })
+        expect(simplified[2]).toMatchObject({
+          type: 'action',
+          name: 'POST /users',
+          exportName: 'a2',
+          valid: true,
+        })
+        expect(simplified[3]).toMatchObject({
+          type: 'action',
+          name: 'DELETE /users/:id',
+          exportName: 'a3',
+          valid: true,
+        })
+      }),
+    )
+
+    it.concurrent(
       'can recognize nested points in same file',
       helper(async ({ files: [f0], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'

@@ -363,10 +363,8 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   }
 
   getBasepath(): string {
-    // TODO: now we found not first basepath, but all basepaths and combine them
-    // Go through self and parents (from child to parent)
-    // Return the first basepath value found, or '/' if none found
-    for (const method of [...this.chainMethods].reverse()) {
+    const basepaths: string[] = []
+    for (const method of this.chainMethods) {
       if (method.name === 'basepath') {
         const nodePath = method.nodePath
         if (nodePath.node.type !== 'CallExpression' || nodePath.node.arguments.length === 0) {
@@ -376,11 +374,48 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         if (firstArg.type === 'StringLiteral') {
           const normalizeBasepath = (value: string) =>
             deappendSlash(dedupeSlashes(prependAndDeappendSlash(value) || '/')) || '/'
-          return normalizeBasepath(firstArg.value)
+          const normalized = normalizeBasepath(firstArg.value)
+          if (normalized !== '/') {
+            basepaths.push(normalized.slice(1))
+          }
         }
       }
     }
+    if (basepaths.length > 0) {
+      return deappendSlash(dedupeSlashes(`/${basepaths.join('/')}`)) || '/'
+    }
     return '/'
+  }
+
+  private getActionShorthandMethodAndRoute():
+    | {
+        method: string
+        route: string
+      }
+    | undefined {
+    const letsNode = this.letsNodePath.node
+    if (letsNode.type !== 'CallExpression') {
+      return undefined
+    }
+    const firstArg = letsNode.arguments.at(0)
+    const secondArg = letsNode.arguments.at(1)
+    if (firstArg?.type !== 'StringLiteral' || secondArg?.type !== 'StringLiteral') {
+      return undefined
+    }
+    if (!ACTION_METHODS.has(firstArg.value)) {
+      return undefined
+    }
+    return { method: firstArg.value, route: secondArg.value }
+  }
+
+  private getAllowedLastMethodNames(): string[] {
+    if (this.type !== 'action') {
+      return [this.type]
+    }
+    if (!this.getActionShorthandMethodAndRoute()) {
+      return [this.type]
+    }
+    return ['action', 'query', 'mutation', 'infiniteQuery']
   }
 
   getLayouts(): string[] {
@@ -513,6 +548,16 @@ export class CompilerPoint<TValid extends boolean = boolean> {
 
       this.polh = this.getPrefetchOnLinkHover()
       this.basepath = this.getBasepath()
+      const actionShorthand = this.getActionShorthandMethodAndRoute()
+      if (this.type === 'action' && actionShorthand) {
+        const normalizedRoute = dedupeSlashes(prependAndDeappendSlash(actionShorthand.route) || '/')
+        const fullRoute = dedupeSlashes(
+          [this.basepath === '/' ? '' : this.basepath, normalizedRoute === '/' ? '' : normalizedRoute]
+            .filter(Boolean)
+            .join('/'),
+        )
+        this.name = `${actionShorthand.method.toUpperCase()} ${fullRoute || '/'}`
+      }
 
       const { route, errors: routeErrors } = this.scope
         ? this.getRoute({ scope: this.scope })
@@ -523,10 +568,12 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       this.layouts = this.getLayouts()
 
       const lastCalledMethodName = this.selfMethods.at(-1)?.name
-      if (lastCalledMethodName !== this.type) {
+      const allowedLastMethodNames = this.getAllowedLastMethodNames()
+      if (!lastCalledMethodName || !allowedLastMethodNames.includes(lastCalledMethodName)) {
+        const expectedTailMethods = allowedLastMethodNames.map((methodName) => `.${methodName}()`).join(' or ')
         this.errors.push(
           new Error(
-            `Last called method name '${lastCalledMethodName || typeof lastCalledMethodName}' does not match point type '${this.type}'. Please, use .${this.type}() in end of point chain`,
+            `Last called method name '${lastCalledMethodName || typeof lastCalledMethodName}' does not match point type '${this.type}'. Please, use ${expectedTailMethods} in end of point chain`,
           ),
         )
       }
@@ -1088,3 +1135,5 @@ export type CompilerPointChainMethod = {
   underSsr: boolean
   point: CompilerPoint
 }
+
+const ACTION_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])

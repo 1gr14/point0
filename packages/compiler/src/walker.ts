@@ -262,15 +262,23 @@ export class Walker {
       //   root.lets('GET', '/my/:path') → pointType = 'action', pointName = 'pending...'
       //   later in point.ts we will fix name to append basepath ane it bacomes pointName = `GET ${basepath}/my/:path` if it is exists somewhere up in the chain
       //   first method name can be only ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
-      const pointType: ReadyPointType | undefined =
-        firstLetsArgNodePath?.node.type === 'StringLiteral'
-          ? (firstLetsArgNodePath.node.value as ReadyPointType)
+      const firstLetsArg =
+        firstLetsArgNodePath?.node.type === 'StringLiteral' ? firstLetsArgNodePath.node.value : undefined
+      const actionMethodShorthand = firstLetsArg && ACTION_METHODS.has(firstLetsArg) ? firstLetsArg : undefined
+      const pointType: ReadyPointType | undefined = actionMethodShorthand
+        ? 'action'
+        : firstLetsArg
+          ? (firstLetsArg as ReadyPointType)
           : undefined
       if (secondLetsArgNodePath?.node.type === 'TemplateLiteral') {
         errors.push(new Error('.lets() second argument must be a regular string literal, not a template string.'))
       }
       const pointName =
-        secondLetsArgNodePath?.node.type === 'StringLiteral' ? secondLetsArgNodePath.node.value : undefined
+        secondLetsArgNodePath?.node.type === 'StringLiteral'
+          ? actionMethodShorthand
+            ? `pending...`
+            : secondLetsArgNodePath.node.value
+          : undefined
 
       if (!pointName) {
         return { point: null, errors }
@@ -990,6 +998,7 @@ export const POINT_TYPE_TO_METHOD_MAP: Record<ReadyPointType, ReadyPointType> = 
   base: 'base',
   root: 'root',
 }
+export const ACTION_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
 export const POINT_METHOD_TO_TYPE_MAP: Record<string, ReadyPointType> = Object.fromEntries(
   Object.entries(POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as ReadyPointType]),
 )
