@@ -119,6 +119,7 @@ ServerClient with own fetching like FakeClient
 В реквест0 пометить это сервер а также последовательность предыдущих запросов
 on fetch error maybe no json, then if it is thore, do res.text()
 при запросах с сревреа к самому себе учитывать максимальную рекурсию
+_middleware
 ---
 ? queryClientDehydratedState always should be returned additionally to data if it has more then only what we requests, we hydrate it, but then immediately remove and it not comes to query client cache
 ? between server calls we should have shared queryClientState
@@ -291,6 +292,7 @@ scalar
 === AUTH ===
 better auth plugin
 Куки босс знает все куки и может сериалайзить и десериалайзиться разберёмся на беттер асунктически
+Эндпоинт инжектед как объект который мы можем добавить в рут типо как мидлвару, и она же попадёт в поинты
 
 
 

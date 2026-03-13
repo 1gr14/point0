@@ -394,7 +394,7 @@ export class Point0<
   readonly _middlewares: MiddlewareFn<TError>[]
   _serverurl: string | undefined
   readonly _hasServerLoader: boolean | undefined
-  readonly _basepath: string | undefined
+  readonly _basepath: AnyRoute | undefined
   readonly _endpoint: EndpointDefinition | undefined
   get method(): TPointType extends RequestableReadyPointType ? WideRequestMethod : undefined {
     return (this._endpoint?.method ?? undefined) as TPointType extends RequestableReadyPointType
@@ -562,7 +562,7 @@ export class Point0<
     _middlewares?: MiddlewareFn<TError>[] | undefined
     _serverurl?: string | undefined
     _hasServerLoader?: boolean | undefined
-    _basepath?: string | undefined
+    _basepath?: AnyRoute | undefined
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
     _transformer?: DataTransformerExtended | undefined
@@ -728,7 +728,7 @@ export class Point0<
     _middlewares?: MiddlewareFn<TError>[]
     _serverurl?: string | undefined
     _hasServerLoader?: boolean | undefined
-    _basepath?: string | undefined
+    _basepath?: AnyRoute | undefined
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
     _transformer?: DataTransformerExtended | null
@@ -1000,7 +1000,11 @@ export class Point0<
   lets<
     TMethod extends WideRequestMethod,
     TProvidedRoute extends RouteDefinition,
-    TCheckError = AssertInputSchemaHasSameKeys<RouteSchema<TProvidedRoute>, TParamsSchema, 'params'> &
+    TCheckError = AssertInputSchemaHasSameKeys<
+      RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+      TParamsSchema,
+      'params'
+    > &
       AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
   >(
     ...args: TPointType extends 'root' | 'base'
@@ -1018,11 +1022,14 @@ export class Point0<
       UndefinedLoaderOutput,
       UndefinedLoaderOutput,
       UndefinedMapperOutput,
-      TProvidedRoute,
+      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
       TServerInputSchema,
       TClientInputSchema,
       HasParams<TProvidedRoute> extends true
-        ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute>>
+        ? MergeRecordValidationSchemas<
+            TParamsSchema,
+            RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+          >
         : TParamsSchema,
       TSearchSchema,
       TBodySchema,
@@ -1037,7 +1044,11 @@ export class Point0<
   lets<
     TMethod extends WideRequestMethod,
     TProvidedRoute extends AnyRoute,
-    TCheckError = AssertInputSchemaHasSameKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
+    TCheckError = AssertInputSchemaHasSameKeys<
+      RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>,
+      TParamsSchema,
+      'params'
+    > &
       AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
   >(
     ...args: TPointType extends 'root' | 'base'
@@ -1055,11 +1066,14 @@ export class Point0<
       UndefinedLoaderOutput,
       UndefinedLoaderOutput,
       UndefinedMapperOutput,
-      TProvidedRoute['definition'],
+      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>,
       TServerInputSchema,
       TClientInputSchema,
       HasParams<TProvidedRoute['definition']> extends true
-        ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
+        ? MergeRecordValidationSchemas<
+            TParamsSchema,
+            RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>
+          >
         : TParamsSchema,
       TSearchSchema,
       TBodySchema,
@@ -1074,7 +1088,11 @@ export class Point0<
   lets<
     TMethod extends PopularRequestMethod,
     TProvidedRoute extends RouteDefinition,
-    TCheckError = AssertInputSchemaHasSameKeys<RouteSchema<TProvidedRoute>, TParamsSchema, 'params'> &
+    TCheckError = AssertInputSchemaHasSameKeys<
+      RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+      TParamsSchema,
+      'params'
+    > &
       AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
   >(
     ...args: TPointType extends 'root' | 'base' ? [method: TMethod, route: TProvidedRoute] : never[]
@@ -1090,11 +1108,14 @@ export class Point0<
       UndefinedLoaderOutput,
       UndefinedLoaderOutput,
       UndefinedMapperOutput,
-      TProvidedRoute,
+      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
       TServerInputSchema,
       TClientInputSchema,
       HasParams<TProvidedRoute> extends true
-        ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute>>
+        ? MergeRecordValidationSchemas<
+            TParamsSchema,
+            RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+          >
         : TParamsSchema,
       TSearchSchema,
       TBodySchema,
@@ -1109,7 +1130,11 @@ export class Point0<
   lets<
     TMethod extends PopularRequestMethod,
     TProvidedRoute extends AnyRoute,
-    TCheckError = AssertInputSchemaHasSameKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
+    TCheckError = AssertInputSchemaHasSameKeys<
+      RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>,
+      TParamsSchema,
+      'params'
+    > &
       AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
   >(
     ...args: TPointType extends 'root' | 'base' ? [method: TMethod, route: TProvidedRoute] : never[]
@@ -1125,11 +1150,14 @@ export class Point0<
       UndefinedLoaderOutput,
       UndefinedLoaderOutput,
       UndefinedMapperOutput,
-      TProvidedRoute['definition'],
+      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>,
       TServerInputSchema,
       TClientInputSchema,
       HasParams<TProvidedRoute['definition']> extends true
-        ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
+        ? MergeRecordValidationSchemas<
+            TParamsSchema,
+            RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>
+          >
         : TParamsSchema,
       TSearchSchema,
       TBodySchema,
@@ -1465,7 +1493,7 @@ export class Point0<
             return prevRoute?.clone() ?? Route0.create('/')
           }
           return prevRoute
-            ? prevRoute.extend(routeOrPointName ?? '/').clone() // error will be thrown below if routeOrPointName is undefined (it is in case of action was defined without name)
+            ? prevRoute.extend(routeOrPointName ?? '/') // error will be thrown below if routeOrPointName is undefined (it is in case of action was defined without name)
             : Route0.create(dedupeSlashes(`/${routeOrPointName}`))
         }
         return Route0.create(dedupeSlashes(`/${route.definition}`))
@@ -1476,9 +1504,7 @@ export class Point0<
           if (routeNormalized === '/') {
             return prevRoute?.clone() ?? Route0.create('/')
           }
-          return prevRoute
-            ? prevRoute.extend(routeNormalized).clone()
-            : Route0.create(dedupeSlashes(`/${routeNormalized}`))
+          return prevRoute ? prevRoute.extend(routeNormalized) : Route0.create(dedupeSlashes(`/${routeNormalized}`))
         }
         return Route0.create(dedupeSlashes(`/${route.definition}`))
       }
@@ -1487,9 +1513,17 @@ export class Point0<
           return undefined // error will be thrown below
         }
         if (typeof route === 'string') {
-          return Route0.create(dedupeSlashes(`/${route}`))
+          if (route === '/') {
+            return prevRoute?.clone() ?? Route0.create('/')
+          }
+          return prevRoute ? prevRoute.extend(route) : Route0.create(dedupeSlashes(`/${route}`))
         }
-        return Route0.create(dedupeSlashes(`/${route.definition}`))
+        if (route.definition === '/') {
+          return prevRoute?.clone() ?? Route0.create('/')
+        }
+        return prevRoute
+          ? prevRoute.extend(route.definition).clone()
+          : Route0.create(dedupeSlashes(`/${route.definition}`))
       }
       return prevRoute
     })()
@@ -1742,11 +1776,13 @@ export class Point0<
     }) as never
   }
 
+  // general settings
+
   basepath<TBasepath extends string>(
-    basepath: TBasepath & (HasParams<TBasepath> extends true ? ShowError<'basepath can not contain params'> : unknown),
-  ): NiceRootStagePoint<
+    basepath: TBasepath,
+  ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    'root',
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TError,
     TCtx,
@@ -1754,7 +1790,7 @@ export class Point0<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TMapperOutput,
-    ExtendRouteDefinition<'/', TBasepath>,
+    ExtendRouteDefinition<TRouteDefinition, TBasepath>,
     TServerInputSchema,
     TClientInputSchema,
     TParamsSchema,
@@ -1768,17 +1804,12 @@ export class Point0<
     TQueriesDefinitions
   > {
     const normalizedBasepath = prependAndDeappendSlash(basepath) || '/'
-    const route = Route0.create(dedupeSlashes(`/${normalizedBasepath}`))
-    if (route.getParamsKeys().length > 0) {
-      throw new Error(`basepath can not contain params on point ${this.toStringWithLocation()}`)
-    }
+    const newBasepath = this.route ? this.route.extend(normalizedBasepath) : Route0.create(normalizedBasepath)
     return this._continue({
-      _basepath: normalizedBasepath,
-      route,
+      _basepath: newBasepath,
+      route: newBasepath,
     }) as never
   }
-
-  // general settings
 
   // asFormData(
   //   shouldAddMultipartFormDataHeaderToFetchOptions = true,
