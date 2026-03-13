@@ -181,7 +181,6 @@ export type Infer<
   ClientQueryData: QueriedData<TQueryResultType, TClientLoaderOutput>
   QueriedData: FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
   ServerExecuteResult: ServerExecuteResult<TCtx, TServerLoaderOutput, TError>
-  RouteDefinition: TRouteDefinition
 }
 
 // points types

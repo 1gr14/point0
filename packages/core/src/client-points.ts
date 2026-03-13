@@ -29,7 +29,7 @@ import type {
 export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
   manager: PointsManager
 
-  basepath: string
+  basepath: AnyRoute | undefined
   ssr: boolean
   middlewares: MiddlewareFn<TError>[]
   transformer: DataTransformerExtended
@@ -55,7 +55,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     routesHash: string
     pagesTreeSource: PagesTreeSource
     pagesTree: PagesTree
-    basepath: string
+    basepath: AnyRoute | undefined
     ssr: boolean
     middlewares: MiddlewareFn<TError>[]
     transformer: DataTransformerExtended
@@ -93,7 +93,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     const pagesTree = ClientPoints.toPagesTree({ points: manager.collection, pagesTreeSource })
     const routesHash = routes._.pathsOrdering.join(',')
 
-    const basepath = root._basepath ?? '/'
+    const basepath = root._basepath
     const ssr = root._ssr
     const middlewares = root._middlewares
     const transformer = root._getTransformer()
@@ -464,17 +464,11 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     basepath,
     pageLocation,
   }: {
-    basepath: string | null
+    basepath: AnyRoute | undefined
     pageLocation: AnyLocation
   }): boolean => {
     if (basepath) {
-      if (pageLocation.pathname === basepath) {
-        return true
-      }
-      if (pageLocation.pathname.startsWith(appendSlash(basepath))) {
-        return true
-      }
-      return false
+      return basepath.isExactOrAncestorPathnameMatch(pageLocation.pathname)
     }
     return true
   }

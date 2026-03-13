@@ -181,8 +181,16 @@ describe('route', () => {
     expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/my/path/extra/:x/:y'>()
   })
 
-  it('basepath with params not allowed', async () => {
-    // @ts-expect-error - it is bad
-    expect(() => Point0.lets('root', 'root').basepath('/my/:id').root()).toThrow()
+  it('mutiple basepath is used to extend route', async () => {
+    const root = Point0.lets('root', 'root').basepath('/my').root()
+    const base1 = root.lets('base', 'base').basepath('/path').base()
+    const base2 = base1.lets('base', 'base').basepath('/extra').base()
+    expectTypeOf<typeof base2.Infer.RouteDefinition>().toEqualTypeOf<'/my/path/extra'>()
+    const layout = base2.lets('layout', 'layout', '/:x').layout(({ children }) => {
+      return <div>{children}</div>
+    })
+    const page = layout.lets('page', 'test', '/:y').page()
+    expect(page.route({ y: '123', x: '456' })).toBe('/my/path/extra/456/123')
+    expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/my/path/extra/:x/:y'>()
   })
 })

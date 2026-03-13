@@ -1,3 +1,4 @@
+import type { AnyRoute } from '@devp0nt/route0'
 import { type AnyLocation, Route0 } from '@devp0nt/route0'
 import type {
   AppComponent,
@@ -54,7 +55,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
   appProvided: EngineOptionsAppComponent | null
   App: TPrepared extends true ? AppComponent | null : undefined
   // appDistFile: string | null
-  basepath: string | null
+  basepath: AnyRoute | undefined
   serving: EngineOptionsServing
   indexHtml: string | null
   // indexHtmlDistFile: string | null
@@ -122,7 +123,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     this.pointsProvided = input.pointsProvided
     this.appProvided = input.appProvided
     // this.appDistFile = input.appDistFile
-    this.basepath = null
+    this.basepath = undefined
     this.serving = input.serving
     this.indexHtml = input.indexHtml
     // this.indexHtmlDistFile = input.indexHtmlDistFile
@@ -271,7 +272,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
 
     const points = await this.readClientPoints()
 
-    this.basepath = points?.basepath ?? null
+    this.basepath = points?.basepath
 
     await this.readAppComponent()
 
