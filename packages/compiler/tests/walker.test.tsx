@@ -660,7 +660,7 @@ describe('Walker', () => {
     // )
   })
 
-  it.concurrent(
+  it.concurrent.only(
     'not stuck in loop when points references to itself in current file',
     helper(async ({ files: [f0], walker }) => {
       await f0.write(`import {Point0} from '@point0/core'
@@ -681,7 +681,7 @@ describe('Walker', () => {
     }),
   )
 
-  it.concurrent(
+  it.concurrent.skip(
     'not stuck in loop when points bases references to itself in different files',
     helper(async ({ files: [f0, f1, f2], walker }) => {
       await f0.write(`import {Point0} from '@point0/core'

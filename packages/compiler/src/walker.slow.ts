@@ -12,6 +12,11 @@ const traverse = ((traverseModule as any).default ?? traverseModule) as typeof t
   ? T
   : typeof traverseType
 
+type WalkerResolveContext = {
+  activeBaseResolutions: Set<string>
+  activeExportResolutions: Set<string>
+}
+
 // Glossary: Babel AST Node Types and Concepts
 //
 // This glossary explains the AST (Abstract Syntax Tree) node types used in this file
@@ -125,6 +130,7 @@ const traverse = ((traverseModule as any).default ?? traverseModule) as typeof t
 
 export class Walker {
   readonly files = new Map<string, CompilerFile<boolean>>()
+  readonly activePointCollections = new Set<string>()
 
   // <scope, Routes>
   readonly routes: Record<string, RoutesPretty>
@@ -225,11 +231,18 @@ export class Walker {
     errors: unknown[]
   } {
     const errors: unknown[] = []
+    let currentCollectionKey: string | undefined
     try {
       const pointFromMemory = file.getPointFormMemoryByLetsNodePath(letsNodePath)
       if (pointFromMemory) {
         return { point: pointFromMemory, errors }
       }
+      currentCollectionKey = this.getLetsNodeResolutionKey({ letsNodePath, file })
+      if (this.activePointCollections.has(currentCollectionKey)) {
+        errors.push(new Error(`Circular point collection detected at ${currentCollectionKey}`))
+        return { point: null, errors }
+      }
+      this.activePointCollections.add(currentCollectionKey)
       const letsNode = letsNodePath.node
 
       // CallExpression: A function call with parentheses and arguments
@@ -363,7 +376,25 @@ export class Walker {
     } catch (e) {
       errors.push(e)
       return { point: undefined, errors }
+    } finally {
+      if (currentCollectionKey) {
+        this.activePointCollections.delete(currentCollectionKey)
+      }
     }
+  }
+
+  private getLetsNodeResolutionKey({
+    letsNodePath,
+    file,
+  }: {
+    letsNodePath: NodePath<Node>
+    file: CompilerFile<true>
+  }): string {
+    const start = letsNodePath.node.loc?.start
+    if (start) {
+      return `${file.abs}:${start.line}:${start.column}`
+    }
+    return `${file.abs}:${letsNodePath.node.start ?? -1}:${letsNodePath.node.end ?? -1}`
   }
 
   collectParentPointByPoint({ point }: { point: CompilerPoint }): {
@@ -398,8 +429,15 @@ export class Walker {
   collectParentPointsByPoint({ point }: { point: CompilerPoint }): { parents: CompilerPoint[]; errors: unknown[] } {
     const errors: unknown[] = []
     const parents: CompilerPoint[] = []
+    const visitedParentPoints = new Set<string>()
     let currentPoint = point as CompilerPoint | undefined
     while (currentPoint) {
+      const currentPointKey = currentPoint.strpos
+      if (visitedParentPoints.has(currentPointKey)) {
+        errors.push(new Error(`Circular parent relation detected while resolving point chain at ${currentPointKey}`))
+        break
+      }
+      visitedParentPoints.add(currentPointKey)
       const result = this.collectParentPointByPoint({ point: currentPoint })
       errors.push(...result.errors)
       if (!result.parent) {
@@ -415,9 +453,11 @@ export class Walker {
   findBaseLetsNodePathByBaseNodePath({
     baseNodePath,
     file,
+    context,
   }: {
     baseNodePath: NodePath<Node>
     file: CompilerFile<true>
+    context?: WalkerResolveContext
   }):
     | {
         isFound: true
@@ -432,6 +472,11 @@ export class Walker {
         errors: unknown[]
       } {
     const errors: unknown[] = []
+    const safeContext = context ?? {
+      activeBaseResolutions: new Set<string>(),
+      activeExportResolutions: new Set<string>(),
+    }
+    let currentResolutionKey: string | undefined
 
     try {
       // Step 1: Check if baseNodePath is an Identifier (e.g., "y" in "y.lets('page')")
@@ -441,6 +486,14 @@ export class Walker {
       }
 
       const baseIdentifierName = baseNodePath.node.name
+      currentResolutionKey = `${file.abs}::${baseIdentifierName}`
+      if (safeContext.activeBaseResolutions.has(currentResolutionKey)) {
+        errors.push(
+          new Error(`Circular base identifier resolution detected for '${baseIdentifierName}' in '${file.abs}'`),
+        )
+        return { isFound: false, baseLetsNodePath: undefined, baseFile: undefined, errors }
+      }
+      safeContext.activeBaseResolutions.add(currentResolutionKey)
 
       // Step 2: Search in the current file for where this identifier is defined
       // It could be:
@@ -558,6 +611,7 @@ export class Walker {
               const result = this.findLetsNodePathByExportName({
                 exportName: importedName,
                 file: importedFile,
+                context: safeContext,
               })
               errors.push(...result.errors)
               if (result.isFound) {
@@ -613,6 +667,7 @@ export class Walker {
             const result = this.findBaseLetsNodePathByBaseNodePath({
               baseNodePath: identifierNodePath,
               file: assignmentFile,
+              context: safeContext,
             })
             errors.push(...result.errors)
             if (result.isFound) {
@@ -631,6 +686,10 @@ export class Walker {
     } catch (e) {
       errors.push(e)
       return { isFound: false, baseLetsNodePath: undefined, baseFile: undefined, errors }
+    } finally {
+      if (currentResolutionKey) {
+        safeContext.activeBaseResolutions.delete(currentResolutionKey)
+      }
     }
   }
 
@@ -778,9 +837,11 @@ export class Walker {
   findLetsNodePathByExportName({
     exportName,
     file,
+    context,
   }: {
     exportName: string // The export name to search for (e.g., 'root' or 'default')
     file: CompilerFile<true> // The parsed file to search in
+    context?: WalkerResolveContext
   }):
     | { isFound: boolean; foundFile: CompilerFile<true>; letsNodePath: NodePath<Node>; errors: unknown[] }
     | {
@@ -790,12 +851,23 @@ export class Walker {
         errors: unknown[]
       } {
     const errors: unknown[] = []
+    const safeContext = context ?? {
+      activeBaseResolutions: new Set<string>(),
+      activeExportResolutions: new Set<string>(),
+    }
     let foundLetsNodePath: NodePath<Node> | undefined
     let foundFile: CompilerFile<true> | undefined
     const reExportsToResolve: Array<{ sourcePath: string; nameToFind: string }> = []
     const identifierExportsToResolve: Array<{ identifierName: string }> = []
+    const currentResolutionKey = `${file.abs}::${exportName}`
 
     try {
+      if (safeContext.activeExportResolutions.has(currentResolutionKey)) {
+        errors.push(new Error(`Circular export resolution detected for '${exportName}' in '${file.abs}'`))
+        return { isFound: false, foundFile: undefined, letsNodePath: undefined, errors }
+      }
+      safeContext.activeExportResolutions.add(currentResolutionKey)
+
       // First pass: Traverse the AST to find exports matching the exportName
       traverse(file.ast, {
         // Case 1: Named export - export const root = Point0.lets(...) or export {root} from './file'
@@ -898,6 +970,7 @@ export class Walker {
               const result = this.findLetsNodePathByExportName({
                 exportName: nameToFind,
                 file: sourceFile,
+                context: safeContext,
               })
               errors.push(...result.errors)
               if (result.isFound) {
@@ -926,6 +999,7 @@ export class Walker {
           const result = this.findLetsNodePathByExportName({
             exportName: identifierName,
             file,
+            context: safeContext,
           })
           errors.push(...result.errors)
           if (result.isFound) {
@@ -962,6 +1036,7 @@ export class Walker {
             const baseResult = this.findBaseLetsNodePathByBaseNodePath({
               baseNodePath: identifierNodePath,
               file,
+              context: safeContext,
             })
             errors.push(...baseResult.errors)
             if (baseResult.isFound) {
@@ -981,6 +1056,8 @@ export class Walker {
     } catch (e) {
       errors.push(e)
       return { isFound: false, foundFile: undefined, letsNodePath: undefined, errors }
+    } finally {
+      safeContext.activeExportResolutions.delete(currentResolutionKey)
     }
   }
 }
