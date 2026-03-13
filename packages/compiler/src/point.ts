@@ -39,7 +39,6 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   errors: unknown[]
   valid: TValid extends true ? true : false
   parsed: boolean
-  parsing: boolean
   basepath: string
 
   constructor({
@@ -79,7 +78,6 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     this.errors = []
     this.valid = false as TValid extends true ? true : false
     this.parsed = false
-    this.parsing = false
     this.selfMethods = []
     this.chainMethods = []
     this.basepath = '/'
@@ -524,12 +522,6 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     if (this.parsed) {
       return this
     }
-    if (this.parsing) {
-      this.errors.push(new Error(`Circular parse detected for point '${this.name}' at ${this.strpos}`))
-      this.valid = false as TValid extends true ? true : false
-      return this
-    }
-    this.parsing = true
     try {
       const parentsResult = this.walker.collectParentPointsByPoint({ point: this })
       this.errors.push(...parentsResult.errors)
@@ -600,8 +592,6 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       this.errors.push(e)
       this.valid = false as TValid extends true ? true : false
       this.parsed = true
-    } finally {
-      this.parsing = false
     }
     return this
   }
