@@ -1,8 +1,11 @@
-import { beforeAll, describe, expect, it } from 'bun:test'
+import { beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { Walker } from '../src/walker.js'
 import { toText } from './utils.js'
+import assert from 'node:assert'
+
+setDefaultTimeout(10000)
 
 type TestFile = Bun.BunFile & { path: string; basename: string; importpath: string }
 
@@ -656,4 +659,52 @@ describe('Walker', () => {
     //   }),
     // )
   })
+
+  it.concurrent(
+    'not stuck in loop when points references to itself in current file',
+    helper(async ({ files: [f0], walker }) => {
+      await f0.write(`import {Point0} from '@point0/core'
+                    export const root1 = Point0.lets('root', 'root1').root()  
+                    export const root2 = root2.lets('root', 'root2').root()                     
+      `)
+      const result = walker.collectPointsFromFile({ file: f0.path })
+      const selfReferencedPoint = result.points.find((p) => p.name === 'root2')
+      assert(selfReferencedPoint)
+      expect(selfReferencedPoint.valid).toBe(false)
+      expect(selfReferencedPoint.errors.length).toBe(2)
+      const error1 = selfReferencedPoint.errors[0]
+      assert(error1 instanceof Error)
+      expect(error1.message).toContain('Circular parent relation detected while resolving point chain at')
+      const error2 = selfReferencedPoint.errors[1]
+      assert(error2 instanceof Error)
+      expect(error2.message).toContain('Earliest point is not related to Point0')
+    }),
+  )
+
+  it.concurrent(
+    'not stuck in loop when points bases references to itself in different files',
+    helper(async ({ files: [f0, f1, f2], walker }) => {
+      await f0.write(`import {Point0} from '@point0/core'
+                    export const root1 = Point0.lets('root', 'root1').root()                      
+      `)
+      await f1.write(`import {root1} from '${f0.importpath}'
+                    import {root3} from '${f2.importpath}'
+                    export const root2 = root3.lets('root', 'root2').root()
+      `)
+      await f2.write(`import {root2} from '${f1.importpath}'
+                    export const root3 = root2.lets('root', 'root3').root()
+      `)
+      const result = walker.collectPointsFromFile({ file: f2.path })
+      expect(result.points).toHaveLength(1)
+      expect(result.points[0].name).toBe('root3')
+      expect(result.points[0].valid).toBe(false)
+      expect(result.points[0].errors.length).toBe(2)
+      const error1 = result.points[0].errors[0]
+      assert(error1 instanceof Error)
+      expect(error1.message).toContain('Circular parent relation detected while resolving point chain at')
+      const error2 = result.points[0].errors[1]
+      assert(error2 instanceof Error)
+      expect(error2.message).toContain('Earliest point is not related to Point0')
+    }),
+  )
 })
