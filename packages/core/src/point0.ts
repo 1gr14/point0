@@ -1587,12 +1587,7 @@ export class Point0<
           if (!newRoute || !newRouteTokens) {
             throw new Error(`Route is required for page or layout point ${this.toStringWithLocation()}`)
           }
-          const paramsTokens = newRouteTokens.filter((token) => token.kind === 'param')
-          if (!paramsTokens.length) {
-            return routeGeneral
-          }
-          const paramsString = paramsTokens.map((token) => `:${token.name}${token.optional ? '?' : ''}`).join('/')
-          return routeGeneral.extend(paramsString)
+          return routeGeneral.extend(newRoute.definition)
         }
         return routeGeneral
       })()

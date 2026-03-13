@@ -40,6 +40,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   valid: TValid extends true ? true : false
   parsed: boolean
   basepath: string
+  endpoint: undefined | { method: string; route: AnyRoute }
 
   constructor({
     walker,
@@ -176,7 +177,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     return scopes.reverse()
   }
 
-  getRoute({ scope }: { scope: string }): {
+  getPageOrLayoutRoute({ scope }: { scope: string }): {
     errors: unknown[]
     route: AnyRoute | undefined
   } {
@@ -192,33 +193,31 @@ export class CompilerPoint<TValid extends boolean = boolean> {
 
     // Process from child to parent (as returned by getSelfAndParents)
     for (const point of points) {
-      if (!['page', 'layout'].includes(point.type)) {
-        continue
-      }
+      if (['page', 'layout'].includes(point.type)) {
+        const routeInfo = this.extractRouteFromPageOrLayoutLetsCall({
+          letsNodePath: point.letsNodePath,
+          pointType: point.type,
+          pointName: point.name,
+          scope,
+        })
+        errors.push(...routeInfo.errors)
 
-      const routeInfo = this.extractRouteFromLetsCall({
-        letsNodePath: point.letsNodePath,
-        pointType: point.type,
-        pointName: point.name,
-        scope,
-      })
-      errors.push(...routeInfo.errors)
-
-      // If we found a full route (from routes.xxx or Route0.create), it's final
-      // only in case if it is self point
-      // else we collect segments
-      const routeFull = routeInfo.routeFull
-      if (routeFull) {
-        if (point === this) {
-          return { errors, route: this.respectBasepath(routeFull) }
-        } else {
-          routeSegments.splice(0, routeSegments.length, routeFull.definition)
+        // If we found a full route (from routes.xxx or Route0.create), it's final
+        // only in case if it is self point
+        // else we collect segments
+        const routeFull = routeInfo.routeFull
+        if (routeFull) {
+          if (point === this) {
+            return { errors, route: this.respectBasepath(routeFull) }
+          } else {
+            routeSegments.splice(0, routeSegments.length, routeFull.definition)
+          }
         }
-      }
 
-      // Otherwise, collect the segment for later concatenation
-      if (routeInfo.routeSegment !== undefined) {
-        routeSegments.push(routeInfo.routeSegment) // Add to end (child segments first in array)
+        // Otherwise, collect the segment for later concatenation
+        if (routeInfo.routeSegment !== undefined) {
+          routeSegments.push(routeInfo.routeSegment) // Add to end (child segments first in array)
+        }
       }
     }
 
@@ -252,7 +251,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     )
   }
 
-  private extractRouteFromLetsCall({
+  private extractRouteFromPageOrLayoutLetsCall({
     letsNodePath,
     pointType,
     pointName,
@@ -332,6 +331,89 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     return { routeSegment: undefined, routeFull: undefined, errors }
   }
 
+  private getMethodRoutePolicyFromActionLetsCall({ scope }: { scope: string }): {
+    method?: string
+    route?: AnyRoute
+    policy: 'full' | 'short'
+    errors: unknown[]
+  } {
+    // full: lets('action', 'actionName', 'POST', '/api/users')
+    // short: lets('POST', '/api/users')
+    // in route we still can have Route0.create('api/users') then it is route, then we do not respect basepath as usual in page
+    const errors: unknown[] = []
+    const letsNode = this.letsNodePath.node
+
+    if (this.type !== 'action') {
+      return { method: undefined, route: undefined, policy: 'full', errors }
+    }
+
+    if (letsNode.type !== 'CallExpression') {
+      errors.push(new Error('Action lets() node is not a CallExpression.'))
+      return { method: undefined, route: undefined, policy: 'full', errors }
+    }
+
+    const firstArg = letsNode.arguments.at(0)
+    const isShorthand = firstArg?.type === 'StringLiteral' && ACTION_METHODS.has(firstArg.value)
+    const policy: 'full' | 'short' = isShorthand ? 'short' : 'full'
+
+    const methodArg = letsNode.arguments.at(isShorthand ? 0 : 2)
+    const routeArg = letsNode.arguments.at(isShorthand ? 1 : 3)
+
+    const method = methodArg?.type === 'StringLiteral' ? methodArg.value.toUpperCase() : undefined
+    if (!method) {
+      errors.push(new Error('Action method not found or invalid.'))
+    }
+
+    if (!routeArg) {
+      errors.push(new Error('Action route not found.'))
+      return { method, route: undefined, policy, errors }
+    }
+
+    if (routeArg.type === 'StringLiteral') {
+      return { method, route: this.respectBasepath(Route0.from(routeArg.value)), policy, errors }
+    }
+
+    if (routeArg.type === 'MemberExpression') {
+      const prop = routeArg.property
+      if (prop.type === 'Identifier') {
+        const routeKey = prop.name
+        const scopeRoute = this.walker.getRouteByScope(scope, routeKey)
+        if (scopeRoute) {
+          return { method, route: this.respectBasepath(scopeRoute), policy, errors }
+        }
+        errors.push(
+          new Error(
+            `unknown route key '${routeKey}' for scope '${scope}', you not provide routes, or provide routes for wrong scope`,
+          ),
+        )
+        return { method, route: undefined, policy, errors }
+      }
+    }
+
+    if (routeArg.type === 'CallExpression') {
+      const callee = routeArg.callee
+      if (
+        callee.type === 'MemberExpression' &&
+        callee.property.type === 'Identifier' &&
+        callee.property.name === 'create' &&
+        callee.object.type === 'Identifier' &&
+        callee.object.name === 'Route0'
+      ) {
+        const createArg = routeArg.arguments.at(0)
+        if (createArg?.type === 'StringLiteral') {
+          return { method, route: this.respectBasepath(Route0.from(createArg.value)), policy, errors }
+        }
+        errors.push(new Error(`Route0.create() first argument must be a string literal`))
+        return { method, route: undefined, policy, errors }
+      }
+      errors.push(new Error(`invalid route argument CallExpression`))
+      return { method, route: undefined, policy, errors }
+    }
+
+    errors.push(new Error(`invalid route argument ${routeArg.type}`))
+    return { method, route: undefined, policy, errors }
+  }
+
   getPrefetchOnLinkHover(): boolean | number {
     // Go through chain methods (from child to parent), return first prefetchPageOnLinkHover value found.
     for (const method of [...this.chainMethods].reverse()) {
@@ -387,35 +469,15 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     return '/'
   }
 
-  private getActionShorthandMethodAndRoute():
-    | {
-        method: string
-        route: string
-      }
-    | undefined {
-    const letsNode = this.letsNodePath.node
-    if (letsNode.type !== 'CallExpression') {
-      return undefined
-    }
-    const firstArg = letsNode.arguments.at(0)
-    const secondArg = letsNode.arguments.at(1)
-    if (firstArg?.type !== 'StringLiteral' || secondArg?.type !== 'StringLiteral') {
-      return undefined
-    }
-    if (!ACTION_METHODS.has(firstArg.value)) {
-      return undefined
-    }
-    return { method: firstArg.value, route: secondArg.value }
-  }
-
   private getAllowedLastMethodNames(): string[] {
     if (this.type !== 'action') {
       return [this.type]
     }
-    if (!this.getActionShorthandMethodAndRoute()) {
-      return [this.type]
-    }
     return ['action', 'query', 'mutation', 'infiniteQuery']
+  }
+
+  hasLoaders(): boolean {
+    return this.selfMethods.some((method) => method.name === 'loader')
   }
 
   getLayouts(): string[] {
@@ -502,6 +564,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       isBasePoint0: this.isBasePoint0,
       parents: this.parents.map((p) => p.extraSimplify()),
       selfMethods: this.selfMethods.map((m) => ({ name: m.name, index: m.index })),
+      endpoint: this.endpoint ? { method: this.endpoint.method, route: this.endpoint.route.definition } : undefined,
       chainMethods: this.chainMethods.map((m) => ({
         name: m.name,
         index: m.index,
@@ -548,22 +611,47 @@ export class CompilerPoint<TValid extends boolean = boolean> {
 
       this.polh = this.getPrefetchOnLinkHover()
       this.basepath = this.getBasepath()
-      const actionShorthand = this.getActionShorthandMethodAndRoute()
-      if (this.type === 'action' && actionShorthand) {
-        const normalizedRoute = dedupeSlashes(prependAndDeappendSlash(actionShorthand.route) || '/')
-        const fullRoute = dedupeSlashes(
-          [this.basepath === '/' ? '' : this.basepath, normalizedRoute === '/' ? '' : normalizedRoute]
-            .filter(Boolean)
-            .join('/'),
-        )
-        this.name = `${actionShorthand.method.toUpperCase()} ${fullRoute || '/'}`
+
+      if (this.type === 'action') {
+        const {
+          route,
+          method,
+          policy,
+          errors: routeErrors,
+        } = this.scope
+          ? this.getMethodRoutePolicyFromActionLetsCall({ scope: this.scope })
+          : { route: undefined, errors: [new Error('Scope not found. Looks like point not attached to any scope.')] }
+        this.route = route
+        if (method && route) {
+          this.endpoint = { method, route }
+          if (policy === 'short') {
+            this.name = `${method?.toUpperCase()} ${route?.definition}`
+          }
+        } else {
+          this.errors.push(new Error('Method and route not found. Please, check your lets() call.'))
+        }
+        this.errors.push(...routeErrors)
+      } else if (this.type === 'page' || this.type === 'layout') {
+        const { route, errors: routeErrors } = this.scope
+          ? this.getPageOrLayoutRoute({ scope: this.scope })
+          : { route: undefined, errors: [new Error('Scope not found. Looks like point not attached to any scope.')] }
+        this.route = route
+        this.errors.push(...routeErrors)
       }
 
-      const { route, errors: routeErrors } = this.scope
-        ? this.getRoute({ scope: this.scope })
-        : { route: undefined, errors: [] }
-      this.route = route
-      this.errors.push(...routeErrors)
+      // for action we set endpoint in previouse step, because we need to know method and route first
+      if (this.type !== 'action') {
+        // pages always has endpoint, becouse they can be called to get queryClientDehydratedState
+        if (this.type === 'page' || this.hasLoaders()) {
+          const endpointRouteBase = Route0.create(`/_point0/${this.scope}/${this.type}/${this.name}`)
+          const endpointRoute =
+            !this.route?.definition || this.route.definition === '/'
+              ? endpointRouteBase
+              : endpointRouteBase.extend(this.route.definition)
+          const endpointMethod = this.type === 'page' || this.type === 'layout' ? 'GET' : 'POST'
+          this.endpoint = { method: endpointMethod, route: endpointRoute }
+        }
+      }
 
       this.layouts = this.getLayouts()
 
@@ -665,18 +753,21 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     const chainMethods: CompilerPointChainMethod[] = []
     let chainIndex = 0
     let underSsr = false
+    let underAction = false
     for (const point of [this, ...this.parents].reverse()) {
       const methods = point.getSelfMethods()
       for (const method of methods) {
         if (method.name === 'ssr') {
           underSsr = this.getFirstArgBooleanLiteral({ nodePath: method.nodePath, name: 'ssr', fallback: underSsr })
         }
+        underAction = underAction || point.type === 'action'
         chainMethods.push({
           nodePath: method.nodePath,
           name: method.name,
           index: method.index,
           chainIndex,
           underSsr,
+          underAction,
           point,
         })
         chainIndex++
@@ -805,17 +896,34 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       if (method.name === 'loader') {
         this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
       }
+      if (method.name === 'action') {
+        this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
+      }
+      if (method.name === 'headers') {
+        this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
+      }
+      if (method.name === 'cookies') {
+        this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
+      }
+      if (method.name === 'body') {
+        this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
+      }
       if (method.name === 'input') {
         this.replaceAllArgsWithArrowFnReturnEmptyObject({ nodePath: method.nodePath })
       }
       if (method.name === 'serverOn') {
         this.removeLastMethodArg({ nodePath: method.nodePath })
       }
+      if (method.underAction && method.name === 'params') {
+        this.removeMethodArgs({ nodePath: method.nodePath })
+      }
+      if (method.underAction && method.name === 'search') {
+        this.removeMethodArgs({ nodePath: method.nodePath })
+      }
     }
   }
 
   private shakeMethodsForServer(): void {
-    // TODO: add all pruners for server side
     // when method underSsr, then we prune on nossr-server
     for (const method of this.getSelfRichMethods()) {
       if (method.name === 'clientLoader') {
@@ -1107,6 +1215,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
 export type CompilerPointSimplified = {
   file: string
   route: string | undefined
+  endpoint: { method: string; route: string } | undefined
   valid: boolean
   type: ReadyPointType
   name: PointName
@@ -1133,6 +1242,7 @@ export type CompilerPointChainMethod = {
   index: number
   chainIndex: number
   underSsr: boolean
+  underAction: boolean
   point: CompilerPoint
 }
 

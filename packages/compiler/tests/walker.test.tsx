@@ -173,6 +173,46 @@ describe('Walker', () => {
     )
 
     it.concurrent(
+      'recognize usual action',
+      helper(async ({ files: [f0], walker }) => {
+        await f0.write(`import {Point0} from '@point0/core'
+          export const root = Point0.lets('root', 'root').root()
+          export const a1 = root.lets('action', 'action1', 'GET', '/users').loader(() => ({ ok: true })).query()
+          export const a2 = root.lets('action', 'action2', 'POST', '/users').loader(() => ({ ok: true })).mutation()
+          export const a3 = root.lets('action', 'action3', 'DELETE', '/users/:id').loader(() => ({ ok: true })).action()
+        `)
+        const result = walker.collectPointsFromFile({ file: f0.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.points).toHaveLength(4)
+        const simplified = result.points.map((p) => p.simplify())
+        expect(simplified[1]).toMatchObject({
+          type: 'action',
+          name: 'action1',
+          exportName: 'a1',
+          route: '/users',
+          valid: true,
+          endpoint: { method: 'GET', route: '/users' },
+        })
+        expect(simplified[2]).toMatchObject({
+          type: 'action',
+          name: 'action2',
+          exportName: 'a2',
+          route: '/users',
+          valid: true,
+          endpoint: { method: 'POST', route: '/users' },
+        })
+        expect(simplified[3]).toMatchObject({
+          type: 'action',
+          name: 'action3',
+          exportName: 'a3',
+          route: '/users/:id',
+          valid: true,
+          endpoint: { method: 'DELETE', route: '/users/:id' },
+        })
+      }),
+    )
+
+    it.concurrent(
       'can recognize action shorthand points',
       helper(async ({ files: [f0], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
@@ -189,19 +229,215 @@ describe('Walker', () => {
           type: 'action',
           name: 'GET /users',
           exportName: 'a1',
+          route: '/users',
           valid: true,
+          endpoint: { method: 'GET', route: '/users' },
         })
         expect(simplified[2]).toMatchObject({
           type: 'action',
           name: 'POST /users',
           exportName: 'a2',
+          route: '/users',
           valid: true,
+          endpoint: { method: 'POST', route: '/users' },
         })
         expect(simplified[3]).toMatchObject({
           type: 'action',
           name: 'DELETE /users/:id',
           exportName: 'a3',
+          route: '/users/:id',
           valid: true,
+          endpoint: { method: 'DELETE', route: '/users/:id' },
+        })
+      }),
+    )
+
+    it.concurrent(
+      'recognize usual action with basepath',
+      helper(async ({ files: [f0], walker }) => {
+        await f0.write(`import {Point0} from '@point0/core'
+          export const root = Point0.lets('root', 'root').basepath('/api').basepath('/:x').root()
+          export const a1 = root.lets('action', 'action1', 'GET', '/users').loader(() => ({ ok: true })).query()
+          export const a2 = root.lets('action', 'action2', 'POST', '/users').loader(() => ({ ok: true })).mutation()
+          export const a3 = root.lets('action', 'action3', 'DELETE', '/users/:id').loader(() => ({ ok: true })).action()
+        `)
+        const result = walker.collectPointsFromFile({ file: f0.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.points).toHaveLength(4)
+        const simplified = result.points.map((p) => p.simplify())
+        expect(simplified[1]).toMatchObject({
+          type: 'action',
+          name: 'action1',
+          exportName: 'a1',
+          route: '/api/:x/users',
+          valid: true,
+          endpoint: { method: 'GET', route: '/api/:x/users' },
+        })
+        expect(simplified[2]).toMatchObject({
+          type: 'action',
+          name: 'action2',
+          exportName: 'a2',
+          route: '/api/:x/users',
+          valid: true,
+          endpoint: { method: 'POST', route: '/api/:x/users' },
+        })
+        expect(simplified[3]).toMatchObject({
+          type: 'action',
+          name: 'action3',
+          exportName: 'a3',
+          route: '/api/:x/users/:id',
+          valid: true,
+          endpoint: { method: 'DELETE', route: '/api/:x/users/:id' },
+        })
+      }),
+    )
+
+    it.concurrent(
+      'can recognize action shorthand points with basepath',
+      helper(async ({ files: [f0], walker }) => {
+        await f0.write(`import {Point0} from '@point0/core'
+          export const root = Point0.lets('root', 'root').basepath('/api').basepath('/:x').root()
+          export const a1 = root.lets('GET', '/users').loader(() => ({ ok: true })).query()
+          export const a2 = root.lets('POST', '/users').loader(() => ({ ok: true })).mutation()
+          export const a3 = root.lets('DELETE', '/users/:id').loader(() => ({ ok: true })).action()
+        `)
+        const result = walker.collectPointsFromFile({ file: f0.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.points).toHaveLength(4)
+        const simplified = result.points.map((p) => p.simplify())
+        expect(simplified[1]).toMatchObject({
+          type: 'action',
+          name: 'GET /api/:x/users',
+          exportName: 'a1',
+          route: '/api/:x/users',
+          valid: true,
+          endpoint: { method: 'GET', route: '/api/:x/users' },
+        })
+        expect(simplified[2]).toMatchObject({
+          type: 'action',
+          name: 'POST /api/:x/users',
+          exportName: 'a2',
+          route: '/api/:x/users',
+          valid: true,
+          endpoint: { method: 'POST', route: '/api/:x/users' },
+        })
+        expect(simplified[3]).toMatchObject({
+          type: 'action',
+          name: 'DELETE /api/:x/users/:id',
+          exportName: 'a3',
+          route: '/api/:x/users/:id',
+          valid: true,
+          endpoint: { method: 'DELETE', route: '/api/:x/users/:id' },
+        })
+      }),
+    )
+
+    it.concurrent(
+      'recognize non action endpoints',
+      helper(async ({ files: [f0], walker }) => {
+        await f0.write(`import {Point0} from '@point0/core'
+          export const root = Point0.lets('root', 'root').basepath('/api').basepath('/:x').root()
+          export const q1 = root.lets('query', 'query1').loader(() => ({ ok: true })).query()
+          export const q2 = root.lets('query', 'query2').query()
+          export const m1 = root.lets('mutation', 'mutation1').loader(() => ({ ok: true })).mutation()
+          export const m2 = root.lets('mutation', 'mutation2').mutation()
+          export const iq1 = root.lets('infiniteQuery', 'infiniteQuery1').loader(() => ({ ok: true })).infiniteQuery()
+          export const iq2 = root.lets('infiniteQuery', 'infiniteQuery2').infiniteQuery()
+          export const pr1 = root.lets('provider', 'provider1').loader(() => ({ ok: true })).provider()
+          export const pr2 = root.lets('provider', 'provider2').provider()
+          export const l1 = root.lets('layout', 'layout1', '/zxc/:x').loader(() => ({ ok: true })).layout(() => <div>Hello</div>)
+          export const l2 = root.lets('layout', 'layout2', '/zxc/:x').layout(() => <div>Hello</div>)
+          export const c1 = root.lets('component', 'component1').loader(() => ({ ok: true })).component(() => <div>Hello</div>)
+          export const c2 = root.lets('component', 'component2').component(() => <div>Hello</div>)
+          export const p1 = l1.lets('page', 'page1', '/abc/:y').loader(() => ({ ok: true })).page(() => <div>Hello</div>)
+          export const p2 = l2.lets('page', 'page2', '/abc/:y').page(() => <div>Hello</div>)
+          export const l3 = l1.lets('layout', 'layout3', '/qqq/:y').loader(() => ({ ok: true })).layout(() => <div>Hello</div>)
+          export const l4 = l2.lets('layout', 'layout4', '/qqq/:y').layout(() => <div>Hello</div>)
+        `)
+        const result = walker.collectPointsFromFile({ file: f0.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.points).toHaveLength(17)
+        const simplified = result.points.map((p) => p.simplify())
+        expect(simplified[1]).toMatchObject({
+          type: 'query',
+          name: 'query1',
+          endpoint: { method: 'POST', route: '/_point0/root/query/query1' },
+        })
+        expect(simplified[2]).toMatchObject({
+          type: 'query',
+          name: 'query2',
+          endpoint: undefined,
+        })
+        expect(simplified[3]).toMatchObject({
+          type: 'mutation',
+          name: 'mutation1',
+          endpoint: { method: 'POST', route: '/_point0/root/mutation/mutation1' },
+        })
+        expect(simplified[4]).toMatchObject({
+          type: 'mutation',
+          name: 'mutation2',
+          endpoint: undefined,
+        })
+        expect(simplified[5]).toMatchObject({
+          type: 'infiniteQuery',
+          name: 'infiniteQuery1',
+          endpoint: { method: 'POST', route: '/_point0/root/infiniteQuery/infiniteQuery1' },
+        })
+        expect(simplified[6]).toMatchObject({
+          type: 'infiniteQuery',
+          name: 'infiniteQuery2',
+          endpoint: undefined,
+        })
+        expect(simplified[7]).toMatchObject({
+          type: 'provider',
+          name: 'provider1',
+          endpoint: { method: 'POST', route: '/_point0/root/provider/provider1' },
+        })
+        expect(simplified[8]).toMatchObject({
+          type: 'provider',
+          name: 'provider2',
+          endpoint: undefined,
+        })
+        expect(simplified[9]).toMatchObject({
+          type: 'layout',
+          name: 'layout1',
+          endpoint: { method: 'GET', route: '/_point0/root/layout/layout1/api/:x/zxc/:x' },
+        })
+        expect(simplified[10]).toMatchObject({
+          type: 'layout',
+          name: 'layout2',
+          endpoint: undefined,
+        })
+        expect(simplified[11]).toMatchObject({
+          type: 'component',
+          name: 'component1',
+          endpoint: { method: 'POST', route: '/_point0/root/component/component1' },
+        })
+        expect(simplified[12]).toMatchObject({
+          type: 'component',
+          name: 'component2',
+          endpoint: undefined,
+        })
+        expect(simplified[13]).toMatchObject({
+          type: 'page',
+          name: 'page1',
+          endpoint: { method: 'GET', route: '/_point0/root/page/page1/api/:x/zxc/:x/abc/:y' },
+        })
+        // pages always has endpoint, becouse they can be called to get queryClientDehydratedState
+        expect(simplified[14]).toMatchObject({
+          type: 'page',
+          name: 'page2',
+          endpoint: { method: 'GET', route: '/_point0/root/page/page2/api/:x/zxc/:x/abc/:y' },
+        })
+        expect(simplified[15]).toMatchObject({
+          type: 'layout',
+          name: 'layout3',
+          endpoint: { method: 'GET', route: '/_point0/root/layout/layout3/api/:x/zxc/:x/qqq/:y' },
+        })
+        expect(simplified[16]).toMatchObject({
+          type: 'layout',
+          name: 'layout4',
+          endpoint: undefined,
         })
       }),
     )
