@@ -484,7 +484,7 @@ export const l3 = b2.lets('layout', 'l3').layout()
         valid: point.valid,
         name: point.name,
         polh: point.polh,
-        basepath: point.basepath,
+        basepath: point.basepath?.definition,
       }
     }
 
@@ -515,43 +515,43 @@ export const p6 = p5.lets('page', 'p6', '/r6').prefetchPageOnLinkHover('none', 1
           valid: true,
           name: 'root',
           polh: true,
-          basepath: '/',
+          basepath: undefined,
         })
         expect(parsed[1]).toMatchObject({
           valid: true,
           name: 'p1',
           polh: false,
-          basepath: '/',
+          basepath: undefined,
         })
         expect(parsed[2]).toMatchObject({
           valid: true,
           name: 'p2',
           polh: false,
-          basepath: '/',
+          basepath: undefined,
         })
         expect(parsed[3]).toMatchObject({
           valid: true,
           name: 'p3',
           polh: true,
-          basepath: '/',
+          basepath: undefined,
         })
         expect(parsed[4]).toMatchObject({
           valid: true,
           name: 'p4',
           polh: false,
-          basepath: '/',
+          basepath: undefined,
         })
         expect(parsed[5]).toMatchObject({
           valid: true,
           name: 'p5',
           polh: 100,
-          basepath: '/',
+          basepath: undefined,
         })
         expect(parsed[6]).toMatchObject({
           valid: true,
           name: 'p6',
           polh: false,
-          basepath: '/',
+          basepath: undefined,
         })
       }),
     )

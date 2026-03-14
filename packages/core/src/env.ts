@@ -21,7 +21,7 @@ export const getEnvVars = (): EnvVars => {
         }
       }
     }
-     
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (typeof process !== 'undefined' && process.env) {
       return process.env
     }

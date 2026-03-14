@@ -832,7 +832,7 @@ export class CompilerFile<THasContent extends boolean> {
                   p.replaceWith(makeNullLiteral())
                   modified = true
                   passModified = true
-                   
+                  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 } else if (desiredValue === undefined) {
                   p.replaceWith(makeUndefined())
                   modified = true
@@ -1182,7 +1182,7 @@ export class CompilerFile<THasContent extends boolean> {
       const makeArrayExpression = (): t.ArrayExpression => t.arrayExpression([])
 
       const processObjectExpression = (objExpr: ObjectExpression): void => {
-         
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (objExpr.type !== 'ObjectExpression') return
 
         const propertiesToReplace = [

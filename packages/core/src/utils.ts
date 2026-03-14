@@ -65,9 +65,9 @@ export type ParsedUrl = {
 //   return baseurl
 // }
 
-export const dedupeSlashes = (path: string) => {
-  return path.replace(/\/\/+/g, '/')
-}
+// export const dedupeSlashes = (path: string) => {
+//   return path.replace(/\/\/+/g, '/')
+// }
 
 export const prependAndDeappendSlash = <T extends string | undefined | null>(path: T): T => {
   if (!path) {
@@ -79,33 +79,33 @@ export const prependAndDeappendSlash = <T extends string | undefined | null>(pat
   return result as T
 }
 
-export const prependAndAppendSlash = <T extends string | undefined | null>(path: T): T => {
-  if (!path) {
-    return undefined as T
-  }
-  return (prependAndDeappendSlash(path) + '/') as T
-}
+// export const prependAndAppendSlash = <T extends string | undefined | null>(path: T): T => {
+//   if (!path) {
+//     return undefined as T
+//   }
+//   return (prependAndDeappendSlash(path) + '/') as T
+// }
 
-export const appendSlash = <T extends string | undefined | null>(path: T): T => {
-  if (!path) {
-    return undefined as T
-  }
-  return (path + '/').replace(/\/\/+/g, '/') as T
-}
+// export const appendSlash = <T extends string | undefined | null>(path: T): T => {
+//   if (!path) {
+//     return undefined as T
+//   }
+//   return (path + '/').replace(/\/\/+/g, '/') as T
+// }
 
-export const deprependSlash = <T extends string | undefined | null>(path: T): T => {
-  if (!path) {
-    return undefined as T
-  }
-  return path.replace(/^\/+/, '') as T
-}
+// export const deprependSlash = <T extends string | undefined | null>(path: T): T => {
+//   if (!path) {
+//     return undefined as T
+//   }
+//   return path.replace(/^\/+/, '') as T
+// }
 
-export const deappendSlash = <T extends string | undefined | null>(path: T): T => {
-  if (!path) {
-    return undefined as T
-  }
-  return path.replace(/\/+$/, '') as T
-}
+// export const deappendSlash = <T extends string | undefined | null>(path: T): T => {
+//   if (!path) {
+//     return undefined as T
+//   }
+//   return path.replace(/\/+$/, '') as T
+// }
 
 export const windowScrollPositionGetter: ScrollPositionGetter = () => {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -113,17 +113,17 @@ export const windowScrollPositionGetter: ScrollPositionGetter = () => {
   }
   const doc = document.documentElement
   const body = document.body
-   
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const x = window.pageXOffset !== undefined ? window.pageXOffset : doc.scrollLeft || body.scrollLeft || 0
-   
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const y = window.pageYOffset !== undefined ? window.pageYOffset : doc.scrollTop || body.scrollTop || 0
   return { x, y }
 }
 
 export const windowScrollPositionSetter: ScrollPositionSetter = ({ x, y }: { x: number; y: number }) => {
-   
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   x ??= 0
-   
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   y ??= 0
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return

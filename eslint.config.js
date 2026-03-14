@@ -56,9 +56,9 @@ export default defineConfig([
       // overrides for enabled recommended rules
       '@typescript-eslint/no-namespace': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
-      // slo rules
-      // '@typescript-eslint/no-unnecessary-condition': ['error'],
-      // '@typescript-eslint/no-floating-promises': ['error'],
+      // slow rules
+      '@typescript-eslint/no-unnecessary-condition': ['error'],
+      '@typescript-eslint/no-floating-promises': ['error'],
     },
   },
   {

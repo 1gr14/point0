@@ -52,7 +52,10 @@ tranformerSerializeWithErrorLogging (and deserialize)
 При невалидных поиниах убедиться, что валидные подгружаются
 Если клиентов больше двух добавить в лог категорию скоуп клиента
 Врапер (Врапер пусть хотбы любой компонент принимает)
-В пабликдир добавить фильтр
+Remove X-Point0-NO-Json-Data but add just X-Point0-Json-Data
+В пабликдир генератор добавить фильтр
+В роутер генератор добавить фильтры
+При генерации роутов в генериках передавать серч инпут схему
 По умолчанию сёрвинг выставить в фалс
 Роутер перенести в реактдом (когда будем проверять экспо)
 При подстановке версий из каталога скриптом делать это также и в момент, когда релизсемантик происходит
@@ -62,6 +65,7 @@ tranformerSerializeWithErrorLogging (and deserialize)
 Энжин клон с перезаписью конфига
 В инфер добавить инфер добавить иннер компонент чтобы легко было его вынести
 test onPrefetchPage and other prefetchModes
+? Серверурл с большой буквы
 ? Сделать чтобы роут когда сделан от эни всё равно возвращал будто он от строки, а когда он от строки там все варианты и любой роут от него экстендится
 ? bun watcher, not parcel watcher
 ? html transformer not regex hack
@@ -268,9 +272,8 @@ binary, just throw error if some engine distdirs not inside firstlevel server di
 === ACTION ===
 В Файнд эндпоинт передаём урл а не хрефрел
 validate conflicted methods via map in server-points
-При генерации роутов в генериках передавать серч инпут схему
 execute
-
+? headers as action input
 openapi
 scalar
 ---

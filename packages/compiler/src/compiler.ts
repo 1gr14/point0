@@ -108,11 +108,13 @@ export class Compiler {
     file,
     tryIndex = 0,
     map: sourceMaps = false,
+    pruneWalkerPoints = true,
   }: {
     content?: string
     file: string
     tryIndex?: number
     map?: boolean
+    pruneWalkerPoints?: boolean
   }): {
     file: CompilerFile<true> | undefined
     code: string
@@ -122,6 +124,9 @@ export class Compiler {
     modified: boolean
     tryIndex: number
   } {
+    if (pruneWalkerPoints) {
+      this.walker.prunePoints()
+    }
     const side = this.side
     const scope = this.scope
     const consts = this.consts
@@ -164,7 +169,7 @@ export class Compiler {
       if (tryIndex >= 10) {
         throw new Error('Too many tries to compile file. Looks like it is endless loop of changes.')
       }
-      return this.compile({ content, file, tryIndex: tryIndex + 1, map: sourceMaps })
+      return this.compile({ content, file, tryIndex: tryIndex + 1, map: sourceMaps, pruneWalkerPoints: false })
     }
     const { code, map } = (() => {
       if (cf.modified) {

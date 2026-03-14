@@ -226,7 +226,6 @@ import type {
 import type { FsLocation } from './utils.js'
 import {
   blankDataTransformerExtended,
-  dedupeSlashes,
   generateId,
   getByPath,
   getWindowScrollPositionGetterByElementGetter,
@@ -235,7 +234,6 @@ import {
   getWindowScrollPositionSetterBySelector,
   isContainsBinary,
   mergeHeaders,
-  prependAndDeappendSlash,
   setByPath,
   toExtendedTransformer,
   toKebabCase,
@@ -982,6 +980,7 @@ export class Point0<
         name: pointName,
         _fsLocation,
       }) as never
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (pointType === 'plugin') {
       return new Point0({
         type: 'coreStage',
@@ -1492,11 +1491,12 @@ export class Point0<
           if (routeOrPointName === '/') {
             return prevRoute?.clone() ?? Route0.create('/')
           }
-          return prevRoute
-            ? prevRoute.extend(routeOrPointName ?? '/') // error will be thrown below if routeOrPointName is undefined (it is in case of action was defined without name)
-            : Route0.create(dedupeSlashes(`/${routeOrPointName}`))
+          if (routeOrPointName === undefined) {
+            return undefined // error will be thrown below (it is in case of action was defined without name)
+          }
+          return prevRoute ? prevRoute.extend(routeOrPointName) : Route0.create(routeOrPointName)
         }
-        return Route0.create(dedupeSlashes(`/${route.definition}`))
+        return route
       }
       if (isLayout) {
         if (typeof route === 'string' || !route) {
@@ -1504,9 +1504,9 @@ export class Point0<
           if (routeNormalized === '/') {
             return prevRoute?.clone() ?? Route0.create('/')
           }
-          return prevRoute ? prevRoute.extend(routeNormalized) : Route0.create(dedupeSlashes(`/${routeNormalized}`))
+          return prevRoute ? prevRoute.extend(routeNormalized) : Route0.create(routeNormalized)
         }
-        return Route0.create(dedupeSlashes(`/${route.definition}`))
+        return route
       }
       if (isAction) {
         if (!route) {
@@ -1516,14 +1516,9 @@ export class Point0<
           if (route === '/') {
             return prevRoute?.clone() ?? Route0.create('/')
           }
-          return prevRoute ? prevRoute.extend(route) : Route0.create(dedupeSlashes(`/${route}`))
+          return prevRoute ? prevRoute.extend(route) : Route0.create(route)
         }
-        if (route.definition === '/') {
-          return prevRoute?.clone() ?? Route0.create('/')
-        }
-        return prevRoute
-          ? prevRoute.extend(route.definition).clone()
-          : Route0.create(dedupeSlashes(`/${route.definition}`))
+        return route
       }
       return prevRoute
     })()
@@ -1581,7 +1576,7 @@ export class Point0<
         const typeKebab = letsReadyPointType === 'infiniteQuery' ? 'infinite-query' : letsReadyPointType
         const nameKebab = toKebabCase(normalizedPointName)
         const routeGeneral = Route0.create(
-          dedupeSlashes(`/${this._endpointPrefix || '_point0'}/${scopeKebab}/${typeKebab}/${nameKebab}`),
+          `/${this._endpointPrefix || '_point0'}/${scopeKebab}/${typeKebab}/${nameKebab}`,
         )
         if (isPage || isLayout) {
           if (!newRoute || !newRouteTokens) {
@@ -1798,8 +1793,7 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   > {
-    const normalizedBasepath = prependAndDeappendSlash(basepath) || '/'
-    const newBasepath = this.route ? this.route.extend(normalizedBasepath) : Route0.create(normalizedBasepath)
+    const newBasepath: CallableRoute = this._basepath ? this._basepath.extend(basepath) : Route0.create(basepath)
     return this._continue({
       _basepath: newBasepath,
       route: newBasepath,
@@ -3505,6 +3499,7 @@ export class Point0<
       TInnerProps,
       TQueriesDefinitions
     >({
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _onPrefetchMountableFns: [...this._onPrefetchMountableFns, (fn ?? (() => undefined)) as never],
     }) as never
   }
@@ -3958,6 +3953,7 @@ export class Point0<
       | ClientLoaderResponseFn<any, any, any, any, any, any>
       | undefined,
   ) {
+    // in case if we shake clientLoader for server without ssr side
     clientLoaderFn ||= (o: any) => o.data
     return this._continue({
       // it should be finalStage if loader returns response, but we know it only by types,
@@ -3970,7 +3966,7 @@ export class Point0<
         {
           type: 'loader',
 
-          fn: clientLoaderFn || ((o: any) => o.data), // in case if we shake clientLoader for server without ssr side
+          fn: clientLoaderFn,
           unstableId: Point0._getNextUnstableId(),
         },
       ] as never,
@@ -4247,6 +4243,7 @@ export class Point0<
     const [providedStatus, providedHead] = (() => {
       if (args.length === 2) {
         return args
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       } else if (args.length === 1) {
         return ['success', args[0]]
       } else {

@@ -18,6 +18,7 @@ import type { EngineOptions } from './config.js'
 import { parseEngineOptions } from './config.js'
 import type { FileGeneratorProcessResult, FilesGeneratorPointsFilesChangeWatcher } from './generator.js'
 import { FilesGenerator } from './generator.js'
+import { killPort } from './port.js'
 import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
@@ -181,6 +182,51 @@ export class Engine<
       cwd = process.cwd(),
     } = options ?? {}
     normalizeAndValidateNodeEnv('development')
+
+    const registerKillPortsOnSelfProcessEnding = (): void => {
+      const ports = [
+        ...(clientDevServersOnly ? [] : [this.server.port, this.server.hmrPort]),
+        ...this.clients.flatMap((client) => [client.port, client.hmrPort]),
+      ].flatMap((port) => (typeof port === 'number' ? [port] : []))
+      const uniqPorts = [...new Set(ports)]
+      if (uniqPorts.length === 0) {
+        return
+      }
+      let inProgress = false
+      const onEnd = async (): Promise<void> => {
+        if (inProgress) {
+          return
+        }
+        inProgress = true
+        try {
+          await killPort(uniqPorts, {
+            force: true,
+            silent: true,
+            category: ['engine', 'dev', 'shutdown'],
+          })
+        } finally {
+          inProgress = false
+        }
+      }
+      process.once('beforeExit', () => {
+        void onEnd()
+      })
+      process.once('exit', () => {
+        void onEnd()
+      })
+      process.once('SIGINT', () => {
+        void onEnd().finally(() => {
+          process.exit(130)
+        })
+      })
+      process.once('SIGTERM', () => {
+        void onEnd().finally(() => {
+          process.exit(143)
+        })
+      })
+    }
+    registerKillPortsOnSelfProcessEnding()
+
     // const generatorProcess = generateFiles ? (watch ? this.generateWatch() : this.generate()) : null
     if (generateFiles) {
       await this.generate({ logOnNotWritten: false })
@@ -199,20 +245,29 @@ export class Engine<
           await this.server.startViteDevServer()
           return [this.server.loadViteDevEntries({ watch, entriesFiles })]
         } else {
-          const start = () =>
-            Object.values(this.server.entry || [])
+          let isFirstStart = true
+          const start = () => {
+            const overridenPortPolicyEnv = isFirstStart
+              ? {}
+              : {
+                  [`POINT0_PORT_POLICY_${this.server.scope.toUpperCase()}_SERVER`]: 'kill',
+                }
+            isFirstStart = false
+            return Object.values(this.server.entry || [])
               .filter((entryFile) => entriesFiles.includes(entryFile))
               .map((entryFile) => {
                 return Bun.spawn({
                   cmd: ['bun', 'run', ...(watch ? ['--watch'] : []), ...bunRunArgs, entryFile],
                   env: {
                     ...process.env,
+                    ...overridenPortPolicyEnv,
                     POINT0_PREVENT_CLIENT_DEV_SERVER: 'true',
                   },
                   stdout: 'inherit',
                   stderr: 'inherit',
                 })
               })
+          }
 
           let processes = start()
           this.onPointFileChange((_event, _path, _points) => {

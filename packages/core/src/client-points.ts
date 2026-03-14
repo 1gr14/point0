@@ -2,7 +2,7 @@ import { Route0, Routes } from '@devp0nt/route0'
 import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ErrorPoint0, LoggerFn } from './index.js'
-import { _defaultLoggerFn, _point0_env, _ssClientLogger, appendSlash } from './index.js'
+import { _defaultLoggerFn, _point0_env, _ssClientLogger } from './index.js'
 import { _getFakeClient, _ssItems } from './internals.js'
 import { PointsManager } from './points-manager.js'
 import type {

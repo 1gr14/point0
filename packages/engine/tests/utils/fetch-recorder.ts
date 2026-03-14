@@ -94,7 +94,7 @@ export class FetchRecorder<TError extends ErrorPoint0 = ErrorPoint0> {
     const wait = async () => {
       return await new Promise((resolve) => setTimeout(resolve, 10))
     }
-
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     while (true) {
       if (Date.now() - startTime > maxDuration) {
         throw new Error('Timeout waiting for fetch recorder to be stable')

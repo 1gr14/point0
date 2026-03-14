@@ -3,15 +3,7 @@ import type { NodePath } from '@babel/traverse'
 import type { Node } from '@babel/types'
 import type { AnyRoute } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import {
-  dedupeSlashes,
-  deappendSlash,
-  type PointName,
-  type PointsScope,
-  prependAndDeappendSlash,
-  type ReadyPointType,
-  toPascalCase,
-} from '@point0/core'
+import { type PointName, type PointsScope, type ReadyPointType, toPascalCase } from '@point0/core'
 import type { CompilerFile } from './file.js'
 import type { Walker } from './walker.js'
 
@@ -39,7 +31,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   errors: unknown[]
   valid: TValid extends true ? true : false
   parsed: boolean
-  basepath: string
+  basepath: AnyRoute | undefined
   endpoint: undefined | { method: string; route: AnyRoute }
 
   constructor({
@@ -81,7 +73,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     this.parsed = false
     this.selfMethods = []
     this.chainMethods = []
-    this.basepath = '/'
+    this.basepath = undefined
 
     file.addPointToMemory(this)
   }
@@ -234,7 +226,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       }
 
       // Start with first segment as base route
-      let finalRoute: AnyRoute = Route0.from(dedupeSlashes(`/${nonEmptySegments[0]}`))
+      let finalRoute: AnyRoute = Route0.from(nonEmptySegments[0])
       // Extend with remaining segments
       for (let i = 1; i < nonEmptySegments.length; i++) {
         finalRoute = finalRoute.extend(nonEmptySegments[i]) as AnyRoute
@@ -246,9 +238,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   }
 
   private respectBasepath(route: AnyRoute): AnyRoute {
-    return Route0.create(
-      dedupeSlashes([this.basepath, route.definition === '/' ? '' : route.definition].filter(Boolean).join('/') || '/'),
-    )
+    return this.basepath ? this.basepath.extend(route.definition) : route
   }
 
   private extractRouteFromPageOrLayoutLetsCall({
@@ -444,8 +434,8 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     return false
   }
 
-  getBasepath(): string {
-    const basepaths: string[] = []
+  getBasepath(): AnyRoute | undefined {
+    let basepath = undefined as AnyRoute | undefined
     for (const method of this.chainMethods) {
       if (method.name === 'basepath') {
         const nodePath = method.nodePath
@@ -454,19 +444,11 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         }
         const firstArg = nodePath.node.arguments[0]
         if (firstArg.type === 'StringLiteral') {
-          const normalizeBasepath = (value: string) =>
-            deappendSlash(dedupeSlashes(prependAndDeappendSlash(value) || '/')) || '/'
-          const normalized = normalizeBasepath(firstArg.value)
-          if (normalized !== '/') {
-            basepaths.push(normalized.slice(1))
-          }
+          basepath = basepath ? basepath.extend(firstArg.value) : Route0.create(firstArg.value)
         }
       }
     }
-    if (basepaths.length > 0) {
-      return deappendSlash(dedupeSlashes(`/${basepaths.join('/')}`)) || '/'
-    }
-    return '/'
+    return basepath
   }
 
   private getAllowedLastMethodNames(): string[] {
@@ -625,7 +607,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         if (method && route) {
           this.endpoint = { method, route }
           if (policy === 'short') {
-            this.name = `${method?.toUpperCase()} ${route?.definition}`
+            this.name = `${method.toUpperCase()} ${route.definition}`
           }
         } else {
           this.errors.push(new Error('Method and route not found. Please, check your lets() call.'))
@@ -989,6 +971,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     }
     if (side === 'client') {
       this.shakeMethodsForClient()
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (side === 'server') {
       this.shakeMethodsForServer()
     } else {

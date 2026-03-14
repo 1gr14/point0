@@ -143,6 +143,10 @@ export class Walker {
     return routes?.[routeKey]
   }
 
+  prunePoints(): void {
+    this.points.clear()
+  }
+
   async readManyAsync({ files }: { files: string[]; fresh: boolean }): Promise<Array<CompilerFile<true>>> {
     return await Promise.all(
       files.map(async (file) => await CompilerFile.readAsync({ walker: this, file, fresh: false })),

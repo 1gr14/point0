@@ -118,8 +118,9 @@ export class Fetcher<TError extends ErrorPoint0> {
     const isAction = point.type === 'action'
     const isPage = point.type === 'page'
     const isLayout = point.type === 'layout'
-    const shouldReadBody =
-      !!point && isAction ? point._serverExecuteActions.some((action) => action.type === 'body') : !isPage && !isLayout
+    const shouldReadBody = isAction
+      ? point._serverExecuteActions.some((action) => action.type === 'body')
+      : !isPage && !isLayout
     const body = await (async () => {
       if (!shouldReadBody) {
         return {}
