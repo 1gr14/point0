@@ -54,9 +54,6 @@ Remove X-Point0-NO-Json-Data but add just X-Point0-Json-Data
 ? Вариант мидлвары перенести в реквест пусть там будет вариант
 ? При загрузке пейджа с сервера всегдаэкзекьютить пейдж, даже если он не имеет лоадеров (не по дизайну же)
 --+
-Роутер перенести в реактдом (когда будем проверять экспо)
-При подстановке версий из каталога скриптом делать это также и в момент, когда релизсемантик происходит
---+
 Энжин клон с перезаписью конфига
 tranformerSerializeWithErrorLogging (and deserialize)
 Если клиентов больше двух добавить в лог категорию скоуп клиента
@@ -276,19 +273,11 @@ default endpoint path cusomization (before point, and inside point)
 
 
 
+
 === AUTH ===
 better auth plugin
 Куки босс знает все куки и может сериалайзить и десериалайзиться разберёмся на беттер асунктически
 Эндпоинт инжектед как объект который мы можем добавить в рут типо как мидлвару, и она же попадёт в поинты
-
-
-
-=== NPM ===
-sematic release + protected branches (main, next)
-private publish
-protected github branches next and amin
-
-
 
 
 
@@ -297,6 +286,7 @@ protected github branches next and amin
 
 
 === EXPO ===
+Роутер перенести в реактдом (когда будем проверять экспо)
 --?  
 expo example
 expo router
@@ -306,11 +296,24 @@ check if there is no client port defined if there is no App and indexhtml, so it
 
 
 
+
+
 === ELECTRON ===
 --?
 Все нукролино и прочие делаются через сетФетч в поинте, чтобы сказать там мол все запросы отправляй в реквест бан айписи, а уже в коде своего бан вызываем при приходе сообщения  engine.fetch() вот этот запрос
 somehow wh we have now in client-server, have same ot main-renderer process, via replace fetch implementation
 Надо сразу чекнуть электрон, вероятно консумХэндлер достаточно добавить, чтобы поинт просто взял и стал чем угодно, но будто бы тут лучше отдельную разработку для электорна делать, это подождёт
+
+
+
+
+
+=== NPM ===
+sematic release + protected branches (main, next)
+При подстановке версий из каталога скриптом делать это также и в момент, когда релизсемантик происходит
+private publish
+protected github branches next and amin
+
 
 
 
