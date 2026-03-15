@@ -262,7 +262,7 @@ export type WithErrorAndLoadingComponents = {
   ErrorComponent: React.ComponentType<{ error: Error }>
 }
 export type MountableStateError<
-  TLocation extends AnyLocation,
+  TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -277,10 +277,10 @@ export type MountableStateError<
   error: TError
   loading: false
   status: 'error'
-  location: TLocation
-} & WithParamsAndSearchAndInput<TParamsSchema, TSearchSchema, TClientInputSchema>
+} & WithParamsAndSearchAndInput<TParamsSchema, TSearchSchema, TClientInputSchema> &
+  WithLocationIfExists<TLocation>
 export type MountableStateLoading<
-  TLocation extends AnyLocation,
+  TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -295,10 +295,10 @@ export type MountableStateLoading<
   error: undefined
   loading: true
   status: 'loading'
-  location: TLocation
-} & WithParamsAndSearchAndInput<TParamsSchema, TSearchSchema, TClientInputSchema>
+} & WithParamsAndSearchAndInput<TParamsSchema, TSearchSchema, TClientInputSchema> &
+  WithLocationIfExists<TLocation>
 export type MountableStateSuccess<
-  TLocation extends AnyLocation,
+  TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -312,11 +312,11 @@ export type MountableStateSuccess<
   error: undefined
   loading: false
   status: 'success'
-  location: TLocation
-} & WithParamsAndSearchAndInput<TParamsSchema, TSearchSchema, TClientInputSchema>
+} & WithParamsAndSearchAndInput<TParamsSchema, TSearchSchema, TClientInputSchema> &
+  WithLocationIfExists<TLocation>
 export type MountableState<
   TStatus extends 'loading' | 'error' | 'success',
-  TLocation extends AnyLocation,
+  TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -434,7 +434,7 @@ type WithParamsAndSearchAndInput<
 >
 
 export type SuccessComponentProps<
-  TLocation extends AnyLocation,
+  TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -445,11 +445,11 @@ export type SuccessComponentProps<
   props: TInnerProps
   queries: SuccessQueriesDefinitions<TQueriesDefinitions>
   data: MountableSuccessData<TQueriesDefinitions, TMapperOutput>
-  location: TLocation
 } & WithParamsAndSearchAndInput<TParamsSchema, TSearchSchema, TClientInputSchema> &
-  WithErrorAndLoadingComponents
+  WithErrorAndLoadingComponents &
+  WithLocationIfExists<TLocation>
 export type SuccessComponentType<
-  TLocation extends AnyLocation,
+  TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -469,7 +469,7 @@ export type SuccessComponentType<
 >
 
 export type MapperFnOptions<
-  TLocation extends AnyLocation,
+  TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -480,10 +480,10 @@ export type MapperFnOptions<
   props: TInnerProps
   queries: SuccessQueriesDefinitions<TQueriesDefinitions>
   data: MountableSuccessData<TQueriesDefinitions, TMapperOutput>
-  location: TLocation
-} & WithParamsAndSearchAndInput<TParamsSchema, TSearchSchema, TClientInputSchema>
+} & WithParamsAndSearchAndInput<TParamsSchema, TSearchSchema, TClientInputSchema> &
+  WithLocationIfExists<TLocation>
 export type MapperFn<
-  TLocation extends AnyLocation,
+  TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -504,7 +504,7 @@ export type MapperFn<
 ) => TNewMapperOutput
 
 export type WrapperComponentProps<
-  TLocation extends AnyLocation,
+  TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -526,7 +526,7 @@ export type WrapperComponentProps<
   children: Exclude<React.ReactNode, Promise<any>> | undefined
 } & WithErrorAndLoadingComponents
 export type WrapperComponentType<
-  TLocation extends AnyLocation,
+  TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -548,7 +548,7 @@ export type WrapperComponentType<
 ) => Exclude<React.ReactNode, Promise<any>>
 
 export type WithFnOptions<
-  TLocation extends AnyLocation = AnyLocation,
+  TLocation extends AnyLocation | undefined = AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -568,7 +568,7 @@ export type WithFnOptions<
   TError
 >
 export type WithFn<
-  TLocation extends AnyLocation = AnyLocation,
+  TLocation extends AnyLocation | undefined = AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -591,7 +591,7 @@ export type WithFn<
 ) => Error | 'loading' | TNewInnerProps | undefined
 
 export type WithQueryFn<
-  TLocation extends AnyLocation = AnyLocation,
+  TLocation extends AnyLocation | undefined = AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -836,7 +836,7 @@ export type UndefinedLayoutSuccessComponent = undefined
 export type ProviderExtraInnerProps = {
   children: Exclude<React.ReactNode, Promise<any>>
 }
-export type ProviderLocation = AnyLocation
+export type ProviderLocation = undefined
 export type ProviderSuccessComponentProps<
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
@@ -875,7 +875,7 @@ export type UndefinedProviderSuccessComponent = undefined
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type ComponentExtraInnerProps = {}
-export type ComponentLocation = AnyLocation
+export type ComponentLocation = undefined
 export type ComponentSuccessComponentProps<
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
@@ -923,10 +923,13 @@ export type MountableLocation<
       ? ComponentLocation
       : TPointType extends 'provider'
         ? ProviderLocation
-        : AnyLocation
+        : undefined
+export type LocationOrAnyLocation<TLocation extends AnyLocation | undefined> = TLocation extends AnyLocation
+  ? TLocation
+  : AnyLocation
 
 export type MountableSelfChildrenFn<
-  TLocation extends AnyLocation,
+  TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -948,7 +951,7 @@ export type MountableSelfChildrenFn<
 ) => Exclude<React.ReactNode, Promise<any>>
 
 export type MountableSelfProps<
-  TLocation extends AnyLocation,
+  TLocation extends AnyLocation | undefined,
   TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -1027,7 +1030,7 @@ export type MountableSelfProps<
         }
       : Record<never, never>)
 export type MountableSelfType<
-  TLocation extends AnyLocation,
+  TLocation extends AnyLocation | undefined,
   TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,

@@ -60,6 +60,7 @@ import type {
   LayoutSelfType,
   LayoutSuccessComponentType,
   LoadingComponentType,
+  LocationOrAnyLocation,
   MapperFn,
   MergeQueries,
   MountAction,
@@ -3151,13 +3152,19 @@ export class Point0<
             ? [
                 input?:
                   | TPoint['Infer']['InputRawOrUndefined']
-                  | RelatedQueryInputGetter<TPoint, MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
+                  | RelatedQueryInputGetter<
+                      TPoint,
+                      LocationOrAnyLocation<MountableLocation<TLetsReadyPointType, TRouteDefinition>>
+                    >,
                 queryOptions?: TPoint['Infer']['UseQueryOptions'],
               ]
             : [
                 input:
                   | TPoint['Infer']['InputRawOrUndefined']
-                  | RelatedQueryInputGetter<TPoint, MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
+                  | RelatedQueryInputGetter<
+                      TPoint,
+                      LocationOrAnyLocation<MountableLocation<TLetsReadyPointType, TRouteDefinition>>
+                    >,
                 queryOptions?: TPoint['Infer']['UseQueryOptions'],
               ],
         ]
@@ -4117,7 +4124,7 @@ export class Point0<
     head:
       | HeadFn<
           'success',
-          MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+          LocationOrAnyLocation<MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
           TParamsSchema,
           TSearchSchema,
           TClientInputSchema,
@@ -4168,11 +4175,11 @@ export class Point0<
   head<TStatus extends 'loading' | 'error' | 'success' | 'universal' | 'global'>(
     status: TStatus,
     head: TStatus extends 'global'
-      ? GlobalHeadFn<any, MountableLocation<TLetsReadyPointType, TRouteDefinition>>
+      ? GlobalHeadFn<any, LocationOrAnyLocation<MountableLocation<TLetsReadyPointType, TRouteDefinition>>>
       :
           | HeadFn<
               TStatus extends 'loading' | 'error' | 'success' ? TStatus : any,
-              MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+              LocationOrAnyLocation<MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
               TParamsSchema,
               TSearchSchema,
               TClientInputSchema,
@@ -4227,7 +4234,7 @@ export class Point0<
           head:
             | HeadFn<
                 any,
-                MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                LocationOrAnyLocation<MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
                 TParamsSchema,
                 TSearchSchema,
                 TClientInputSchema,
@@ -4243,7 +4250,7 @@ export class Point0<
           head:
             | HeadFn<
                 any,
-                MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                LocationOrAnyLocation<MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
                 TParamsSchema,
                 TSearchSchema,
                 TClientInputSchema,
@@ -4274,7 +4281,7 @@ export class Point0<
             if (options.status !== providedStatus) {
               return {}
             } else {
-              return providedHead(options)
+              return providedHead(options as never)
             }
           }) as HeadFn<any>
         }
@@ -7293,7 +7300,6 @@ export class Point0<
         ]
   ): UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput, any> {
     const [input = {}, queryOptions, { fetchOptions } = {}] = args
-    const location = useLocation()
     const serverQueryEnabled = !!this._hasServerLoader
     const clientQueryEnabled = this._hasClientLoader()
     // if (this._queryResultType === 'infiniteQuery') {
@@ -7316,7 +7322,6 @@ export class Point0<
       const query = this._useClientQuery({
         input: input as never,
         queryOptions,
-        location,
       })
       return query as never
     }
@@ -7324,7 +7329,6 @@ export class Point0<
     const query = this._useCombinedQuery({
       input: input as never,
       queryOptions,
-      location,
       fetchOptions,
     })
     return query as never
@@ -7397,7 +7401,6 @@ export class Point0<
         ]
   ): UsePointQueryResult<'infiniteQuery', TServerLoaderOutput, TClientLoaderOutput, any> {
     const [input = {}, infiniteQueryOptions, { fetchOptions } = {}] = args
-    const location = useLocation()
     const serverQueryEnabled = !!this._hasServerLoader
     const clientQueryEnabled = this._hasClientLoader()
     // if (this._queryResultType !== 'infiniteQuery') {
@@ -7420,7 +7423,6 @@ export class Point0<
       const query = this._useClientInfiniteQuery({
         input: input as never,
         infiniteQueryOptions,
-        location,
       })
       return query as never
     }
@@ -7428,7 +7430,6 @@ export class Point0<
     const query = this._useCombinedInfiniteQuery({
       input: input as never,
       infiniteQueryOptions,
-      location,
       fetchOptions,
     })
     return query as never
@@ -9898,7 +9899,13 @@ export class Point0<
           continue
         }
         case 'globalHead': {
-          const headFnResult = action.fn({ ...pageState, location: state.location })
+          const location = (state as any).location as AnyLocation | undefined
+          if (!location) {
+            throw new Error(
+              'Location not defined for global head. It is critical error, please report it to developers.',
+            )
+          }
+          const headFnResult = action.fn({ ...pageState, location })
           const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
           useHead(headFnResultResolvable)
           continue
@@ -10072,13 +10079,7 @@ export class Point0<
       }
     }>
   }): Exclude<React.ReactNode, Promise<any>> => {
-    const {
-      mountComponent,
-      extraProps,
-      location = useLocation(),
-      pageStateManager = _usePageStateManager(),
-      layers,
-    } = props
+    const { mountComponent, extraProps, location, pageStateManager = _usePageStateManager(), layers } = props
     const [currentLayer, ...siblingLayers] = layers
 
     const componentVariant = this._getDestinationComponentVariant() ?? 'page'
@@ -10362,7 +10363,7 @@ export class Point0<
         case 'mapper': {
           if (mountState.status === 'success') {
             nextMappedData = action.fn({
-              location: mountState.location,
+              location: (mountState as any).location as AnyLocation | undefined,
               props: mountState.props,
               queries: mountState.queries,
               data: nextMappedData ?? mountState.data ?? {},
@@ -10529,14 +10530,20 @@ export class Point0<
         }
         case 'relatedQuery': {
           const query = (() => {
+            const location = (mountState as any).location as AnyLocation | undefined
+            if (!location) {
+              throw new Error(
+                'Location not defined for related query. It is critical error, please report it to developers.',
+              )
+            }
             if (action.point._queryResultType === 'infiniteQuery') {
               return action.point.useInfiniteQuery(
-                action.inputGetter({ location: mountState.location, props: currentLayer.outerProps }),
+                action.inputGetter({ location, props: currentLayer.outerProps }),
                 action.queryOptions as never,
               )
             } else {
               return action.point.useQuery(
-                action.inputGetter({ location: mountState.location, props: currentLayer.outerProps }),
+                action.inputGetter({ location, props: currentLayer.outerProps }),
                 action.queryOptions as never,
               )
             }
