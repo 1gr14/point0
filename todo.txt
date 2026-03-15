@@ -39,6 +39,11 @@ launch
 
 
 === REFACTOING 3000 ===
+Переименовать логер на лог logger
+Ctx и loader может ничего не вернуть, тогда считаем, что вернул пустой объект
+Разрешить палгин от рута просточтобы ssr перенимался
+В логгер по уммолчанибю вшить цвета
+Порт клинета и сервера экспоузить в энвы при разработке
 --+
 ? При загрузке пейджа с сервера всегдаэкзекьютить пейдж, даже если он не имеет лоадеров (не по дизайну же, после авторизации станет понятно)
 ? Вариант мидлвары перенести в реквест пусть там будет вариант
@@ -102,13 +107,15 @@ shrink core/index.ts size, by remove code duplicates
 
 
 === REQUESTING ===
+? Реквест надо максимально упростить и вообще его экстенднуть от обычного реквеста
+Упрощённая запись для мидлвары для фильтрации запрсов ({method: [], route: '/zxc...', handler: () => {}}) and (methods, route, handler) => {} and (route, handler) => {}
 ServerClient with own fetching like FakeClient
 Когда в эффектах кукиса удаляют куки во втором запросе при сср проверить, что это работает
 Реквест стейт это интерфейс который можно поменять
 Формдата авто фалс тру
 В реквест0 пометить это сервер а также последовательность предыдущих запросов
 при запросах с сревреа к самому себе учитывать максимальную рекурсию
-_middleware
+? _middleware
 ---
 ? queryClientDehydratedState always should be returned additionally to data if it has more then only what we requests, we hydrate it, but then immediately remove and it not comes to query client cache
 ? between server calls we should have shared queryClientState
@@ -257,12 +264,25 @@ default endpoint path cusomization (before point, and inside point)
 
 
 
-=== AUTH ===
-better auth plugin
-Куки босс знает все куки и может сериалайзить и десериалайзиться разберёмся на беттер асунктически
-Эндпоинт инжектед как объект который мы можем добавить в рут типо как мидлвару, и она же попадёт в поинты
 
 
+
+=== NPM ===
+sematic release
+protected branches (main, next)
+При подстановке версий из каталога скриптом делать это также и в момент, когда релизсемантик происходит
+private publish
+--+
+public publish
+
+
+
+
+
+=== START0 ===
+check if types not so slow
+(if slow, I hope no) transform to lets.page(root, 'pageName', '/news').page(); lets.root(null, 'site'); useQuery(myQuery.getQueryOptions(), input, options); lets.get(root, '/zxc').action()
+unwind and tailwind
 
 
 
@@ -288,14 +308,6 @@ somehow wh we have now in client-server, have same ot main-renderer process, via
 Надо сразу чекнуть электрон, вероятно консумХэндлер достаточно добавить, чтобы поинт просто взял и стал чем угодно, но будто бы тут лучше отдельную разработку для электорна делать, это подождёт
 
 
-
-
-
-=== NPM ===
-sematic release + protected branches (main, next)
-При подстановке версий из каталога скриптом делать это также и в момент, когда релизсемантик происходит
-private publish
-protected github branches next and amin
 
 
 
@@ -328,13 +340,6 @@ root.lets('exclude', 'backend').exclude() → создаётся base, но но
 walker cache for compiled files by settings and file timestemp
 readLimit, parseLimit
 walker persist on bun plugin and vite plugin during request, so lets refresh read files by timestamp
-
-
-
-=== START0 ===
-unwind and tailwind
-
-
 
 
 

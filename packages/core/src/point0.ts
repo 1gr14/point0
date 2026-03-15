@@ -2825,62 +2825,62 @@ export class Point0<
       any
     >,
   >(
-    ...args: TLetsReadyPointType extends MountablePointType
-      ? [
-          // point: TPoint &
-          //   (TPoint['Infer']['IsInputOptional'] extends true
-          //     ? unknown
-          //     : Record<`Input as second argument is required`, `Input as second argument is required`>),
-          point: TPoint,
-          ...rest: TPoint['Infer']['IsInputOptional'] extends true
-            ? [
-                input?:
-                  | TPoint['Infer']['InputRawOrUndefined']
-                  | ((
-                      options: WithFnOptions<
-                        MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-                        TParamsSchema,
-                        TSearchSchema,
-                        TClientInputSchema,
-                        TInnerProps,
-                        WithSelfQueryIfShouldBeFinalized<
-                          TPointType,
-                          TLetsReadyPointType,
-                          TServerLoaderOutput,
-                          TClientLoaderOutput,
-                          TQueriesDefinitions
-                        >,
-                        TMapperOutput,
-                        TError
-                      >,
-                    ) => TPoint['Infer']['InputRawOrUndefined']),
-                queryOptions?: TPoint['Infer']['UseQueryOptions'],
-              ]
-            : [
-                input:
-                  | TPoint['Infer']['InputRawOrUndefined']
-                  | ((
-                      options: WithFnOptions<
-                        MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-                        TParamsSchema,
-                        TSearchSchema,
-                        TClientInputSchema,
-                        TInnerProps,
-                        WithSelfQueryIfShouldBeFinalized<
-                          TPointType,
-                          TLetsReadyPointType,
-                          TServerLoaderOutput,
-                          TClientLoaderOutput,
-                          TQueriesDefinitions
-                        >,
-                        TMapperOutput,
-                        TError
-                      >,
-                    ) => TPoint['Infer']['InputRawOrUndefined']),
-                queryOptions?: TPoint['Infer']['UseQueryOptions'],
-              ],
-        ]
-      : never
+    // ...args: TLetsReadyPointType extends MountablePointType
+    //   ?
+    ...args: [
+      // point: TPoint &
+      //   (TPoint['Infer']['IsInputOptional'] extends true
+      //     ? unknown
+      //     : Record<`Input as second argument is required`, `Input as second argument is required`>),
+      point: TPoint,
+      ...rest: TPoint['Infer']['IsInputOptional'] extends true
+        ? [
+            input?:
+              | TPoint['Infer']['InputRawOrUndefined']
+              | ((
+                  options: WithFnOptions<
+                    MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                    TParamsSchema,
+                    TSearchSchema,
+                    TClientInputSchema,
+                    TInnerProps,
+                    WithSelfQueryIfShouldBeFinalized<
+                      TPointType,
+                      TLetsReadyPointType,
+                      TServerLoaderOutput,
+                      TClientLoaderOutput,
+                      TQueriesDefinitions
+                    >,
+                    TMapperOutput,
+                    TError
+                  >,
+                ) => TPoint['Infer']['InputRawOrUndefined']),
+            queryOptions?: TPoint['Infer']['UseQueryOptions'],
+          ]
+        : [
+            input:
+              | TPoint['Infer']['InputRawOrUndefined']
+              | ((
+                  options: WithFnOptions<
+                    MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                    TParamsSchema,
+                    TSearchSchema,
+                    TClientInputSchema,
+                    TInnerProps,
+                    WithSelfQueryIfShouldBeFinalized<
+                      TPointType,
+                      TLetsReadyPointType,
+                      TServerLoaderOutput,
+                      TClientLoaderOutput,
+                      TQueriesDefinitions
+                    >,
+                    TMapperOutput,
+                    TError
+                  >,
+                ) => TPoint['Infer']['InputRawOrUndefined']),
+            queryOptions?: TPoint['Infer']['UseQueryOptions'],
+          ],
+    ] // : never
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -3022,7 +3022,7 @@ export class Point0<
     TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
-    AppendProps<TInnerProps, TNewInnerProps>,
+    AppendProps<TInnerProps, IfNeverThen<Exclude<TNewInnerProps, Error | 'loading' | undefined>, EmptyProps>>,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
       TLetsReadyPointType,
@@ -3458,9 +3458,10 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
-  > {
+  >
+  middleware(middlewareFn?: MiddlewareFn<TError> | undefined) {
     return this._continue({
-      _middlewares: [...this._middlewares, middlewareFn],
+      _middlewares: [...this._middlewares, ...(middlewareFn ? [middlewareFn] : [])],
     }) as never
   }
   // prefetch mode
@@ -6121,6 +6122,17 @@ export class Point0<
     const pluginStartMountAction = point._mountActions.length > 0 ? [pluginStart] : []
     const pluginEndMountAction = point._mountActions.length > 0 ? [pluginEnd] : []
 
+    const set = (...args: [key: string, newValue?: any]) => {
+      const [key, newValue] = args
+      const pointValue = (point as any)[key]
+      if (pointValue === undefined) {
+        return {}
+      }
+      return {
+        [key]: args.length > 1 ? newValue : pointValue,
+      }
+    }
+
     return this._continue({
       // type
       // scope
@@ -6129,9 +6141,9 @@ export class Point0<
       // _base
       // _root
       _middlewares: [...this._middlewares, ...point._middlewares],
-      _serverurl: point._serverurl,
-      _basepath: point._basepath,
-      _transformer: point._transformer,
+      // _serverurl: point._serverurl,
+      // _basepath: point._basepath,
+      // _transformer: point._transformer,
       // _ssr
       _eventerSubscriptions: [...this._eventerSubscriptions, ...point._eventerSubscriptions],
       _defaultMutationOptions: { ...this._defaultMutationOptions, ...point._defaultMutationOptions },
@@ -6171,9 +6183,18 @@ export class Point0<
       // _page: point._page,
       // _component: point._component,
       // _layout: point._layout,
-      _layouts: [...new Set([...this._layouts, ...point._layouts])],
+      // _layouts: [...new Set([...this._layouts, ...point._layouts])],
       // name
-      _fetchOptions: () => {
+      // _fetchOptions: () => {
+      //   const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
+      //   const newFetchOptions: FetchOptions = point._fetchOptions?.() || {}
+      //   return {
+      //     ...prevFetchOptions,
+      //     ...newFetchOptions,
+      //     headers: mergeHeaders(prevFetchOptions.headers, newFetchOptions.headers),
+      //   }
+      // },
+      ...set('_fetchOptions', () => {
         const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
         const newFetchOptions: FetchOptions = point._fetchOptions?.() || {}
         return {
@@ -6181,22 +6202,22 @@ export class Point0<
           ...newFetchOptions,
           headers: mergeHeaders(prevFetchOptions.headers, newFetchOptions.headers),
         }
-      },
-      _scrollPositionGetter: point._scrollPositionGetter,
-      _scrollPositionSetter: point._scrollPositionSetter,
-      _scrollPositionRestorePolicy: point._scrollPositionRestorePolicy,
-      _polhPolicy: point._polhPolicy,
-      _polhDuration: point._polhDuration,
-      _ponPolicy: point._ponPolicy,
+      }),
+      ...set('_scrollPositionGetter'),
+      ...set('_scrollPositionSetter'),
+      ...set('_scrollPositionRestorePolicy'),
+      ...set('_polhPolicy'),
+      ...set('_polhDuration'),
+      ...set('_ponPolicy'),
       _onPrefetchMountableFns: [...this._onPrefetchMountableFns, ...point._onPrefetchMountableFns],
-      _errorComponent: point._errorComponent,
-      _layoutErrorComponent: point._layoutErrorComponent,
-      _pageErrorComponent: point._pageErrorComponent,
-      _componentErrorComponent: point._componentErrorComponent,
-      _loadingComponent: point._loadingComponent,
-      _layoutLoadingComponent: point._layoutLoadingComponent,
-      _pageLoadingComponent: point._pageLoadingComponent,
-      _componentLoadingComponent: point._componentLoadingComponent,
+      ...set('_errorComponent'),
+      ...set('_layoutErrorComponent'),
+      ...set('_pageErrorComponent'),
+      ...set('_componentErrorComponent'),
+      ...set('_loadingComponent'),
+      ...set('_layoutLoadingComponent'),
+      ...set('_pageLoadingComponent'),
+      ...set('_componentLoadingComponent'),
       // X
     }) as never
   }

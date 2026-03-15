@@ -897,6 +897,9 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       if (method.name === 'serverOn') {
         this.removeLastMethodArg({ nodePath: method.nodePath })
       }
+      if (method.name === 'middleware') {
+        this.removeMethodArgs({ nodePath: method.nodePath })
+      }
       if (method.underAction && method.name === 'params') {
         this.removeMethodArgs({ nodePath: method.nodePath })
       }

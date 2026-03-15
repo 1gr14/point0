@@ -2301,7 +2301,7 @@ export type NicePluginStagePoint<
   | 'on'
   | 'serverOn'
   | 'clientOn'
-  | 'transformer'
+  // | 'transformer'
   // | 'fetchFn'
   // | 'requireCtx'
   // | 'serverurl'

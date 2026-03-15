@@ -588,7 +588,7 @@ export type WithFn<
     TMapperOutput,
     TError
   >,
-) => Error | 'loading' | TNewInnerProps | undefined
+) => TNewInnerProps | Error | 'loading' | undefined
 
 export type WithQueryFn<
   TLocation extends AnyLocation | undefined = AnyLocation | undefined,
@@ -972,7 +972,7 @@ export type MountableLocation<
       ? ComponentLocation
       : TPointType extends 'provider'
         ? ProviderLocation
-        : undefined
+        : AnyLocation | undefined
 export type LocationOrAnyLocation<TLocation extends AnyLocation | undefined> = TLocation extends AnyLocation
   ? TLocation
   : AnyLocation

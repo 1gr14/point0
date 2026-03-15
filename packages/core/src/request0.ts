@@ -17,7 +17,7 @@ export class Request0 {
   headers: RequestHeaders
   cookies: RequestCookies
   location: AnyLocation
-  method: RequestMethod
+  method: WideRequestMethod
   from: RequestFrom
   id: string
   state: RequestState
@@ -40,7 +40,7 @@ export class Request0 {
     headers: RequestHeaders
     cookies: RequestCookies
     location: AnyLocation
-    method: RequestMethod
+    method: WideRequestMethod
     from: RequestFrom
     id: string
     state: RequestState
@@ -100,7 +100,7 @@ export class Request0 {
     const location = Route0.getLocation(original.url)
 
     // Extract method
-    const method = original.method.toUpperCase() as RequestMethod
+    const method = original.method.toUpperCase() as WideRequestMethod
 
     // Extract IP addresses
     // Prioritize Bun's requestIP (more trusted, can't be spoofed)

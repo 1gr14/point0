@@ -63,3 +63,6 @@ secrets/
 
 # Force ignored files
 *.ignore*
+
+# Database files
+*.db
