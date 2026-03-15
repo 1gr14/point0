@@ -2,7 +2,7 @@ import { ErrorPoint0, Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
-import { createTestThings } from './utils/internal-testing.js'
+import { createTestThings, ymlifyline } from './utils/internal-testing.js'
 
 describe('page', () => {
   const createRoot = () =>
@@ -103,6 +103,42 @@ describe('page', () => {
         #page: x=zxc
         "
       `)
+  })
+
+  it('page optional param and asterisk', async () => {
+    const root = createRoot()
+    const page = root
+      .lets('page', 'home', '/a/:x?/b/*?')
+      .page(({ location }) => <div id="page">{ymlifyline(location.params)}</div>)
+    const { render, fetchPreview } = await createTestThings({ points: [root, page] })
+    await render(page.route({ x: 'zxc', '*': 'qwe/asd' }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+          "
+          /a/zxc/b/qwe/asd
+            #page: x: zxc, *: qwe/asd
+          "
+        `)
+    })
+    expect(await fetchPreview(page, { x: 'zxc', '*': 'qwe/asd' })).toMatchInlineSnapshot(`
+        "
+        #page: x: zxc, *: qwe/asd
+        "
+      `)
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+            "
+            /a/b
+              #page: {}
+            "
+          `)
+    })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+          "
+          #page: {}
+          "
+        `)
   })
 
   it('query loader', async () => {

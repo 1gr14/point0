@@ -7501,14 +7501,14 @@ export class Point0<
           return (input as any).body
         }
         if ((input as any).body instanceof FormData) {
-          headers.set('Content-Type', 'multipart/form-data')
+          // headers.set('Content-Type', 'multipart/form-data')
           return (input as any).body
         }
         const currentHeadersContentType = headers.get('Content-Type')
         if (
           currentHeadersContentType &&
-          currentHeadersContentType !== 'application/json' &&
-          currentHeadersContentType !== 'multipart/form-data'
+          !currentHeadersContentType.includes('application/json') &&
+          !currentHeadersContentType.includes('multipart/form-data')
         ) {
           return (input as any).body
         }
@@ -7538,7 +7538,7 @@ export class Point0<
             }
           }
         }
-        headers.set('Content-Type', 'multipart/form-data')
+        // headers.set('Content-Type', 'multipart/form-data')
         return formData
       } else {
         headers.set('Content-Type', 'application/json')

@@ -283,4 +283,65 @@ describe('mutation', () => {
         "
       `)
   })
+
+  it.concurrent('with file loader', async () => {
+    const root = createRoot()
+    const q = root
+      .lets('mutation', 'test')
+      .input(z.object({ file: z.instanceof(File) }))
+      .loader(({ input }) => {
+        expect(input.file).toBeInstanceOf(File)
+        expect(input.file.name).toBe('test.txt')
+        expect(input.file.type).toContain('text/plain')
+        expect(input.file.size).toBeGreaterThan(0)
+        return { x: input.file.name }
+      })
+      .mutation({
+        onError: (error) => {
+          console.error(error)
+        },
+      })
+    const page = root.lets('page', 'home', '/').page(() => {
+      const mutation = q.useMutation()
+      return (
+        <div id="page">
+          <div id="data">x={mutation.data?.x ?? 'nothing'}</div>
+          <button
+            id="mutate"
+            onClick={() =>
+              mutation.mutate({
+                file: new File(['hello from test payload'], 'test.txt', { type: 'text/plain' }),
+              })
+            }
+          >
+            Mutate
+          </button>
+        </div>
+      )
+    })
+
+    const { render, fetchesTale } = await createTestThings({ points: [root, q, page] })
+    await render(page.route(), async ({ waitContent, tale, click }) => {
+      await waitContent('#data')
+      await click('#mutate')
+      await waitContent('x=test.txt')
+      expect(await tale()).toMatchInlineSnapshot(`
+          "
+          /
+            #page:
+              #data: x=nothing
+              #mutate: Mutate
+
+            #page:
+              #data: x=test.txt
+              #mutate: Mutate
+          "
+        `)
+      expect(await fetchesTale()).toMatchInlineSnapshot(`
+        "
+        mutation.test (client) < {"file":{}}
+        "
+      `)
+    })
+  })
 })

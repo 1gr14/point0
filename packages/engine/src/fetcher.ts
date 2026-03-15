@@ -136,7 +136,8 @@ export class Fetcher<TError extends ErrorPoint0> {
           return unflattened
         }
         return await request.original.json()
-      } catch {
+      } catch (error) {
+        console.error(error)
         return {}
       }
     })()
