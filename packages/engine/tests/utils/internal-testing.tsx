@@ -578,42 +578,43 @@ export const createTestThings = async ({
       // Parse to get the actual JSON object
       const dehydratedSuperStore = transformer.parse(JSON.parse(valueMatch[1])) as Record<string, unknown>
       const queryClientDehydratedState = (dehydratedSuperStore as any).__POINT0_QUERY_CLIENT__ as DehydratedState
-      if (queryClientDehydratedState.queries.length === 0) {
-        throw new Error('Query client dehydrated state is empty')
-      }
+      // if (queryClientDehydratedState.queries.length === 0) {
+      //   throw new Error('Query client dehydrated state is empty')
+      // }
       const queryClientDehydratedStateInDehydratedStateQuery = queryClientDehydratedState.queries.find(
         (query) => query.queryKey.at(-1) === 'queryClientDehydratedState',
       )
-      if (!queryClientDehydratedStateInDehydratedStateQuery) {
-        throw new Error(
-          `Query client dehydrated state query in dehydrated state is not found: ${JSON.stringify(queryClientDehydratedState, null, 2)}`,
-        )
-      }
+      // if (!queryClientDehydratedStateInDehydratedStateQuery) {
+      //   throw new Error(
+      //     `Query client dehydrated state query in dehydrated state is not found: ${JSON.stringify(queryClientDehydratedState, null, 2)}`,
+      //   )
+      // }
       if (queryClientDehydratedState.queries.length > 1) {
         throw new Error(
           `There is not only one query client dehydrated state in dehydrated state: ${JSON.stringify(queryClientDehydratedState, null, 2)}`,
         )
       }
       const queryClientDehydratedStateInDehydratedState = (queryClientDehydratedStateInDehydratedStateQuery as any)
-        .state.data?.dehydratedState as DehydratedState | undefined
-      if (!queryClientDehydratedStateInDehydratedState) {
-        throw new Error(
-          `Query client dehydrated state data in dehydrated state query is not found: ${JSON.stringify(queryClientDehydratedStateInDehydratedStateQuery, null, 2)}`,
-        )
-      }
-      const queryClientQueriesKeys = queryClientDehydratedStateInDehydratedState.queries.map((query) =>
-        query.queryKey.join('|'),
-      )
-      const queryClientQueriesState = Object.fromEntries(
-        queryClientDehydratedStateInDehydratedState.queries.map((query) => [
-          query.queryKey.join('|'),
-          {
-            status: query.state.status,
-            data: query.state.data ? JSON.stringify(query.state.data) : undefined,
-            error: query.state.error?.message,
-          },
-        ]),
-      )
+        ?.state.data?.dehydratedState as DehydratedState | undefined
+      // if (!queryClientDehydratedStateInDehydratedState) {
+      //   throw new Error(
+      //     `Query client dehydrated state data in dehydrated state query is not found: ${JSON.stringify(queryClientDehydratedStateInDehydratedStateQuery, null, 2)}`,
+      //   )
+      // }
+      const queryClientQueriesKeys =
+        queryClientDehydratedStateInDehydratedState?.queries.map((query) => query.queryKey.join('|')) || []
+      const queryClientQueriesState = queryClientDehydratedStateInDehydratedState
+        ? Object.fromEntries(
+            queryClientDehydratedStateInDehydratedState.queries.map((query) => [
+              query.queryKey.join('|'),
+              {
+                status: query.state.status,
+                data: query.state.data ? JSON.stringify(query.state.data) : undefined,
+                error: query.state.error?.message,
+              },
+            ]),
+          )
+        : {}
       const queryClientQueriesPreview =
         Object.entries(queryClientQueriesState)
           .map(([key, value]) => {

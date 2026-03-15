@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { Effects } from '../src/effects.js'
+import { Effects, serializeCookiePair } from '../src/effects.js'
 
 describe('Effects', () => {
   describe('create', () => {
@@ -249,7 +249,7 @@ describe('Effects', () => {
 
   describe('serializeCookie', () => {
     it('serialize cookie pair for request cookie header', () => {
-      const serialized = Effects.serializeCookiePair({
+      const serialized = serializeCookiePair({
         name: 'user name',
         value: 'hello world',
       })

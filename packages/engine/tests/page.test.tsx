@@ -1,4 +1,4 @@
-import { ErrorPoint0, Point0 } from '@point0/core'
+import { ErrorPoint0, Point0, setStatus } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
@@ -52,12 +52,12 @@ describe('page', () => {
     await expect(createTestThings({ points: [root, page1, page2] })).rejects.toThrow()
   })
 
-  it('not found', async () => {
+  it('not found by default route Page404', async () => {
     const root = createRoot()
     const page = root.lets('page', 'home', '/').page(() => <div id="page">x=nothing</div>)
     const pageNotFound = root.lets('page', 'not-done', '/never').page(() => <div id="never">never</div>)
     // we do not pass it to client points
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
+    const { render, fetchesTale, fetchSsr } = await createTestThings({ points: [root, page] })
     await render('/not-found', async ({ waitContent, tale }) => {
       // we see this message becouse of default 404 error page component in Router which can be customized
       await waitContent('Page Not Found')
@@ -73,9 +73,54 @@ describe('page', () => {
     
             "
           `)
-    expect(await fetchPreview(pageNotFound)).toMatchInlineSnapshot(`
+    const { response, preview } = await fetchSsr(pageNotFound)
+    expect(response.status).toBe(404)
+    expect(preview).toMatchInlineSnapshot(`
             "
             Page Not Found
+            "
+          `)
+  })
+
+  it('not found by asterisk route', async () => {
+    const root = createRoot()
+    const page = root.lets('page', 'home', '/').page(() => <div id="page">x=nothing</div>)
+    const page404 = root.lets('page', '404', '*').page(() => {
+      setStatus(404)
+      return <div id="404">404</div>
+    })
+    const pageNever = root.lets('page', 'never', '/never').page(() => <div id="never">never</div>)
+    // we do not pass it to client points
+    const { render, fetchesTale, fetchSsr } = await createTestThings({ points: [root, page, page404] })
+    await render('/', async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+              "
+              /
+                #page: x=nothing
+              "
+            `)
+    })
+    await render('/not-found', async ({ waitContent, tale }) => {
+      // we see this message becouse of default 404 error page component in Router which can be customized
+      await waitContent('#404')
+      expect(await tale()).toMatchInlineSnapshot(`
+              "
+              /not-found
+                #404: 404
+              "
+            `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+            "
+    
+            "
+          `)
+    const { response, preview } = await fetchSsr(pageNever)
+    expect(response.status).toBe(404)
+    expect(preview).toMatchInlineSnapshot(`
+            "
+            #404: 404
             "
           `)
   })
@@ -315,6 +360,38 @@ describe('page', () => {
       .lets('page', 'home', '/:id')
       .loader(({ params }) => ({ x: params.id }))
       .page(({ data }) => <div id="page">x={data.x}</div>)
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
+    await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /zxc
+          #loading: ...
+
+          #page: x=zxc
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      page.home (client) < {"id":"zxc"}
+      "
+    `)
+    expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
+      "
+      #page: x=zxc
+      "
+    `)
+  })
+
+  it('inner component can be externalized', async () => {
+    const root = createRoot()
+    const page = root
+      .lets('page', 'home', '/:id')
+      .loader(({ params }) => ({ x: params.id }))
+      .page((props) => <Page {...props} />)
+    const Page: typeof page.Infer.Component = ({ data }) => <div id="page">x={data.x}</div>
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {

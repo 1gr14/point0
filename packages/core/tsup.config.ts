@@ -9,6 +9,7 @@ const general = {
     'src/error.ts',
     'src/env.types.ts',
     'src/eventer.ts',
+    'src/helpers.ts',
     'src/index.ts',
     'src/internals.ts',
     'src/logger.ts',

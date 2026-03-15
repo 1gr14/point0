@@ -1,6 +1,6 @@
 import type { ClientPoints, ClientRuntime, PointsScope, RichFetchFn } from '@point0/core'
 import { _getSsItemsWithRestErrors, _ssRunWithServerStorageState, generateId, superstore } from '@point0/core'
-import { type CookieOptionsInput, Effects } from '@point0/core/effects'
+import { serializeCookiePair, type CookieOptionsInput, Effects } from '@point0/core/effects'
 import fetchCookie from 'fetch-cookie'
 import { CookieJar } from 'tough-cookie'
 import type { EngineClient } from './client.js'
@@ -250,7 +250,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
         return
       }
       const serializedCookieHeader = [...mergedCookies.entries()]
-        .map(([name, value]) => Effects.serializeCookiePair({ name, value }))
+        .map(([name, value]) => serializeCookiePair({ name, value }))
         .join('; ')
       request.headers.set('cookie', serializedCookieHeader)
     }

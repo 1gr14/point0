@@ -912,6 +912,55 @@ export type ComponentSuccessComponentType<
 >
 export type UndefinedComponentSuccessComponent = undefined
 
+export type MuntableSuccessComponentType<
+  TPointType extends PointType,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TInnerProps extends Props,
+  TQueriesDefinitions extends QueriesDefinitions,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+> = TPointType extends 'page'
+  ? PageSuccessComponentType<
+      TRouteDefinition,
+      TParamsSchema,
+      TSearchSchema,
+      TClientInputSchema,
+      TInnerProps,
+      TQueriesDefinitions,
+      TMapperOutput
+    >
+  : TPointType extends 'layout'
+    ? LayoutSuccessComponentType<
+        TRouteDefinition,
+        TParamsSchema,
+        TSearchSchema,
+        TClientInputSchema,
+        TInnerProps,
+        TQueriesDefinitions,
+        TMapperOutput
+      >
+    : TPointType extends 'component'
+      ? ComponentSuccessComponentType<
+          TParamsSchema,
+          TSearchSchema,
+          TClientInputSchema,
+          TInnerProps,
+          TQueriesDefinitions,
+          TMapperOutput
+        >
+      : TPointType extends 'provider'
+        ? ProviderSuccessComponentType<
+            TParamsSchema,
+            TSearchSchema,
+            TClientInputSchema,
+            TInnerProps,
+            TQueriesDefinitions,
+            TMapperOutput
+          >
+        : undefined
+
 export type MountableLocation<
   TPointType extends PointType | undefined,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,

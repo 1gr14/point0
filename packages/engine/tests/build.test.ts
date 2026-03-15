@@ -162,7 +162,7 @@ describe('build', () => {
 
     it(
       'prune client and server',
-      wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
+      wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
@@ -235,6 +235,14 @@ describe('build', () => {
         // check for superstore pruning
         expect(serverFilesContent.includes('async_hooks')).toBe(true)
         expect(clientFilesContent.includes('async_hooks')).toBe(false)
+
+        // check for request0 pruning
+        expect(serverFilesContent.includes('user-agent')).toBe(true)
+        expect(clientFilesContent.includes('user-agent')).toBe(false)
+
+        // check for effects pruning
+        expect(serverFilesContent.includes('set-cookie')).toBe(true)
+        expect(clientFilesContent.includes('set-cookie')).toBe(false)
 
         tp.spawn(['bun', 'run', 'start'])
         expect(engine.server.port).toBeNumber()

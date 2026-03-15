@@ -18,7 +18,7 @@ import type {
 } from '@tanstack/react-query'
 import type { ResponseEffectsSetHelper, ResponseEffectsValues } from './effects.js'
 import type { ErrorPoint0 } from './error.js'
-import type { EmptyProps, Props, QueriesDefinitions } from './mountable.js'
+import type { EmptyProps, MuntableSuccessComponentType, Props, QueriesDefinitions } from './mountable.js'
 import type { Point0 } from './point0.js'
 import type { Request0, WideRequestMethod } from './request0.js'
 import type { GetByPath, SetByPath } from './utils.js'
@@ -181,6 +181,16 @@ export type Infer<
   ClientQueryData: QueriedData<TQueryResultType, TClientLoaderOutput>
   QueriedData: FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
   ServerExecuteResult: ServerExecuteResult<TCtx, TServerLoaderOutput, TError>
+  Component: MuntableSuccessComponentType<
+    TPointType,
+    TRouteDefinition,
+    TParamsSchema,
+    TSearchSchema,
+    TClientInputSchema,
+    TInnerProps,
+    TQueriesDefinitions,
+    TMapperOutput
+  >
 }
 
 // points types

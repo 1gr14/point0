@@ -24,7 +24,7 @@ import * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
-import { Effects } from './effects.js'
+import { serializeCookiePair } from './effects.js'
 import { _point0_env } from './env.js'
 import type { ClassLikeError0 } from './error.js'
 import { ErrorPoint0 } from './error.js'
@@ -240,6 +240,7 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
+import { setStatus } from './helpers.js'
 
 // import stringify from 'safe-stable-stringify'
 
@@ -7652,7 +7653,7 @@ export class Point0<
     if (currentEffects) {
       const cookies = Object.values(currentEffects.cookies)
       for (const cookie of cookies) {
-        const serializedCookie = Effects.serializeCookiePair(cookie)
+        const serializedCookie = serializeCookiePair(cookie)
         if (updatedHeaders.has('cookie')) {
           updatedHeaders.set('cookie', `${updatedHeaders.get('cookie')}; ${serializedCookie}`)
         } else {
@@ -9981,10 +9982,8 @@ export class Point0<
       fallbackErrorComponent
     return ({ error, _isHeadable = isHeadable }: { error: Error; _isHeadable?: boolean }) => {
       const error0 = ErrorClass.from(error)
-      if (_point0_env.side.is.server) {
-        if (error0.status) {
-          Effects.getWeak()?.set.status(error0.status)
-        }
+      if (error0.status) {
+        setStatus(error0.status)
       }
       if (_isHeadable) {
         Point0._usePrevHeadsAndSetPageState({

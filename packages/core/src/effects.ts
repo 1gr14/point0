@@ -11,6 +11,10 @@ const encodeCookieValue = (value: string): string => {
   return encodeURIComponent(value).replace(/%(2[346BF]|3[AC-F]|40|5[BDE]|60|7[BCD])/g, decodeURIComponent)
 }
 
+export const serializeCookiePair = (cookie: Pick<CookieOptions, 'name' | 'value'>): string => {
+  return `${encodeCookieName(cookie.name)}=${encodeCookieValue(cookie.value)}`
+}
+
 const decodeCookieValue = (value: string): string => {
   const unquoted = value.startsWith('"') ? value.slice(1, -1) : value
   try {
@@ -195,12 +199,8 @@ export class Effects {
     return new Effects()
   }
 
-  static serializeCookiePair(cookie: Pick<CookieOptions, 'name' | 'value'>): string {
-    return `${encodeCookieName(cookie.name)}=${encodeCookieValue(cookie.value)}`
-  }
-
   static serializeCookie(cookie: CookieOptions): string {
-    const parts: string[] = [Effects.serializeCookiePair(cookie)]
+    const parts: string[] = [serializeCookiePair(cookie)]
 
     if (cookie.path) {
       parts.push(`Path=${sanitizeCookieAttributeValue(cookie.path)}`)

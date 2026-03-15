@@ -745,9 +745,6 @@ export class Fetcher<TError extends ErrorPoint0> {
     const ErrorClass = client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
 
     try {
-      // TODO: lets provide here wrapResponse and wrapRequest and call it
-      // TODO: also there on error fo input not throw it but return as error
-
       const executor = await Executor.create<RequiredCtx, any>({
         engine: this.engine,
         request,
@@ -766,6 +763,9 @@ export class Fetcher<TError extends ErrorPoint0> {
           const response = new Response(readableStream, {
             headers: { 'Content-Type': 'text/html' },
           })
+          if (!point) {
+            effects.set.status(404)
+          }
           return {
             ...partialResult,
             response,
