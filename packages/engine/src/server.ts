@@ -62,7 +62,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
   bunPlugins: EngineServerPluginsDefinition
   prepared: TPrepared
   bunPluginsLoaded = false
-  bunServer: Bun.Server<unknown> | undefined
+  bunServer: Bun.Server<undefined> | undefined
   viteConfig: EngineOptionsViteConfig | null
   viteDevServer: ViteDevServer | null
   envConsts: EngineOptionsEnvParsed
@@ -512,58 +512,70 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
             return result.response
           },
           websocket: {
-            open(ws) {
-              if (process.env.NODE_ENV !== 'production') {
-                // Only proxy WebSocket connections that have a wsUrl (Bun dev server connections)
-                const data = ws.data as unknown as { wsUrl?: string; upstream?: WebSocket }
-                if (!data.wsUrl) {
-                  return
-                }
-
-                // Connect to upstream WebSocket when client connects
-                const upstream = new WebSocket(data.wsUrl)
-
-                upstream.onopen = () => {
-                  // Store upstream reference in ws data
-                  data.upstream = upstream
-                }
-
-                upstream.onmessage = (event) => {
-                  // Forward messages from upstream to client
-                  ws.send(event.data)
-                }
-
-                upstream.onclose = () => {
-                  ws.close()
-                }
-
-                upstream.onerror = () => {
-                  ws.close()
-                }
-
-                // Store upstream for later use
-                data.upstream = upstream
-              }
+            // later will be user for channels
+            open() {
+              return undefined
             },
-            message(ws, message) {
-              // Forward messages from client to upstream (only for proxied connections)
-              if (process.env.NODE_ENV !== 'production') {
-                const data = ws.data as unknown as { upstream?: WebSocket }
-                if (data.upstream?.readyState === WebSocket.OPEN) {
-                  data.upstream.send(message)
-                }
-              }
+            message() {
+              return undefined
             },
-            close(ws) {
-              if (process.env.NODE_ENV !== 'production') {
-                // Clean up upstream connection when client disconnects
-                const data = ws.data as unknown as { upstream?: WebSocket }
-                if (data.upstream) {
-                  data.upstream.close()
-                }
-              }
+            close() {
+              return undefined
             },
           },
+          // websocket: {
+          //   open(ws) {
+          //     if (process.env.NODE_ENV !== 'production') {
+          //       // Only proxy WebSocket connections that have a wsUrl (Bun dev server connections)
+          //       const data = ws.data as unknown as { wsUrl?: string; upstream?: WebSocket }
+          //       if (!data.wsUrl) {
+          //         return
+          //       }
+
+          //       // Connect to upstream WebSocket when client connects
+          //       const upstream = new WebSocket(data.wsUrl)
+
+          //       upstream.onopen = () => {
+          //         // Store upstream reference in ws data
+          //         data.upstream = upstream
+          //       }
+
+          //       upstream.onmessage = (event) => {
+          //         // Forward messages from upstream to client
+          //         ws.send(event.data)
+          //       }
+
+          //       upstream.onclose = () => {
+          //         ws.close()
+          //       }
+
+          //       upstream.onerror = () => {
+          //         ws.close()
+          //       }
+
+          //       // Store upstream for later use
+          //       data.upstream = upstream
+          //     }
+          //   },
+          //   message(ws, message) {
+          //     // Forward messages from client to upstream (only for proxied connections)
+          //     if (process.env.NODE_ENV !== 'production') {
+          //       const data = ws.data as unknown as { upstream?: WebSocket }
+          //       if (data.upstream?.readyState === WebSocket.OPEN) {
+          //         data.upstream.send(message)
+          //       }
+          //     }
+          //   },
+          //   close(ws) {
+          //     if (process.env.NODE_ENV !== 'production') {
+          //       // Clean up upstream connection when client disconnects
+          //       const data = ws.data as unknown as { upstream?: WebSocket }
+          //       if (data.upstream) {
+          //         data.upstream.close()
+          //       }
+          //     }
+          //   },
+          // },
         }),
     )()
     setOverridenPortPolicy({ scope: this.scope, side: 'server', portPolicy: 'kill' })

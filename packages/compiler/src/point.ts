@@ -6,6 +6,7 @@ import { Route0 } from '@devp0nt/route0'
 import { type PointName, type PointsScope, type ReadyPointType, toPascalCase } from '@point0/core'
 import type { CompilerFile } from './file.js'
 import type { Walker } from './walker.js'
+import type { PopularRequestMethod } from '@point0/core/request0'
 
 export class CompilerPoint<TValid extends boolean = boolean> {
   readonly walker: Walker
@@ -1229,4 +1230,4 @@ export type CompilerPointChainMethod = {
   point: CompilerPoint
 }
 
-const ACTION_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
+export const ACTION_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'])

@@ -1,4 +1,4 @@
-import type { AnyLocation, AnyRoute, KnownLocation, RoutesPretty } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0nt/route0'
 import { Routes } from '@devp0nt/route0'
 import type {
   ActionPoint,
@@ -33,12 +33,8 @@ export class ServerPoints<TError extends ErrorPoint0> {
   // <method, <route.definition, point>>
   private readonly endpointsByDefinitionsByMethods = new Map<WideRequestMethod, Map<string, ReadyPoint>>()
   // <scope, <type, <name, point>>>
-  private readonly pointsByNamesByTypesByScopes = new Map<
-    PointsScope,
-    Map<PointType, Map<PointName, ReadyPoint>>
-  >()
-  private endpointsGenerated = false
-  private pointsIndexGenerated = false
+  private readonly pointsByNamesByTypesByScopes = new Map<PointsScope, Map<PointType, Map<PointName, ReadyPoint>>>()
+  private indexGenerated = false
 
   private constructor({ manager }: { manager: PointsManager }) {
     this.manager = manager as never
@@ -77,76 +73,86 @@ export class ServerPoints<TError extends ErrorPoint0> {
 
   load = async (): Promise<typeof this> => {
     await this.manager.load()
-    this.generateAndValidateRoutes()
+    this.generateIndex()
     return this
   }
 
-  private generateAndValidateRoutes = (): void => {
+  private generateIndex = (): void => {
     this.endpointsRoutesByMethods.clear()
     this.endpointsByDefinitionsByMethods.clear()
     this.pointsByNamesByTypesByScopes.clear()
     const routesByMethod = new Map<WideRequestMethod, Record<string, AnyRoute>>()
     for (const { point } of this.manager.collection) {
-      const pointsByTypes = this.pointsByNamesByTypesByScopes.get(point.scope)
-      if (pointsByTypes) {
-        const pointsByNames = pointsByTypes.get(point.type)
-        if (pointsByNames) {
-          pointsByNames.set(point.name, point)
-        } else {
-          pointsByTypes.set(point.type, new Map([[point.name, point]]))
-        }
-      } else {
-        this.pointsByNamesByTypesByScopes.set(point.scope, new Map([[point.type, new Map([[point.name, point]])]]))
-      }
-      if (!point._endpoint) {
+      this.indexPoint(point)
+      const endpoint = point._endpoint
+      if (!endpoint) {
         continue
       }
-      const method = point._endpoint.method
-      const route = point._endpoint.route
-      const pointsByDefinitions = this.endpointsByDefinitionsByMethods.get(method)
-      if (pointsByDefinitions) {
-        for (const existingPoint of pointsByDefinitions.values()) {
-          const existingRoute = existingPoint._endpoint?.route
-          if (existingRoute && route.isConflict(existingRoute)) {
-            throw new Error(
-              `Conflicted endpoint routes for method "${method}": ${point.toStringWithLocation()} conflicts with ${existingPoint.toStringWithLocation()}`,
-            )
-          }
-        }
-        pointsByDefinitions.set(route.definition, point)
-      } else {
-        this.endpointsByDefinitionsByMethods.set(method, new Map([[route.definition, point]]))
-      }
-      const routes = routesByMethod.get(method)
-      if (routes) {
-        routes[route.definition] = route
-      } else {
-        routesByMethod.set(method, { [route.definition]: route })
-      }
+      this.indexEndpoint({
+        point,
+        method: endpoint.method,
+        route: endpoint.route,
+        routesByMethod,
+      })
     }
     for (const [method, routes] of routesByMethod.entries()) {
       this.endpointsRoutesByMethods.set(method, Routes.create(routes))
     }
-    this.endpointsGenerated = true
-    this.pointsIndexGenerated = true
+    this.indexGenerated = true
   }
 
-  private generatePointIndex = (): void => {
-    this.pointsByNamesByTypesByScopes.clear()
-    for (const { point } of this.manager.collection) {
-      const pointsByTypes = this.pointsByNamesByTypesByScopes.get(point.scope)
-      if (pointsByTypes) {
-        const pointsByNames = pointsByTypes.get(point.type)
-        if (pointsByNames) {
-          pointsByNames.set(point.name, point)
-        } else {
-          pointsByTypes.set(point.type, new Map([[point.name, point]]))
+  private indexPoint = (point: ReadyPoint): void => {
+    const pointsByTypes = this.pointsByNamesByTypesByScopes.get(point.scope)
+    if (pointsByTypes) {
+      const pointsByNames = pointsByTypes.get(point.type)
+      if (pointsByNames) {
+        const existingPoint = pointsByNames.get(point.name)
+        if (existingPoint) {
+          throw new Error(
+            `Conflicted point identity for scope "${point.scope}", type "${point.type}", name "${point.name}": ${point.toStringWithLocation()} conflicts with ${existingPoint.toStringWithLocation()}`,
+          )
         }
+        pointsByNames.set(point.name, point)
       } else {
-        this.pointsByNamesByTypesByScopes.set(point.scope, new Map([[point.type, new Map([[point.name, point]])]]))
+        pointsByTypes.set(point.type, new Map([[point.name, point]]))
       }
+    } else {
+      this.pointsByNamesByTypesByScopes.set(point.scope, new Map([[point.type, new Map([[point.name, point]])]]))
     }
-    this.pointsIndexGenerated = true
+  }
+
+  private indexEndpoint = ({
+    point,
+    method,
+    route,
+    routesByMethod,
+  }: {
+    point: ReadyPoint
+    method: WideRequestMethod
+    route: AnyRoute
+    routesByMethod: Map<WideRequestMethod, Record<string, AnyRoute>>
+  }): void => {
+    const pointsByDefinitions = this.endpointsByDefinitionsByMethods.get(method)
+    if (pointsByDefinitions) {
+      for (const existingPoint of pointsByDefinitions.values()) {
+        const existingRoute = existingPoint._endpoint?.route
+        if (existingRoute && route.isConflict(existingRoute)) {
+          throw new Error(
+            `Conflicted endpoint routes for method "${method}": ${point.toStringWithLocation()} conflicts with ${existingPoint.toStringWithLocation()}`,
+          )
+        }
+      }
+      pointsByDefinitions.set(route.definition, point)
+    } else {
+      this.endpointsByDefinitionsByMethods.set(method, new Map([[route.definition, point]]))
+    }
+
+    const routes = routesByMethod.get(method)
+    if (routes) {
+      routes[route.definition] = route
+    } else {
+      routesByMethod.set(method, { [route.definition]: route })
+    }
   }
 
   findExact = ({
@@ -159,8 +165,8 @@ export class ServerPoints<TError extends ErrorPoint0> {
     scope: PointsScope
   }): ReadyPoint | undefined => {
     this.throwIfNotReady()
-    if (!this.pointsIndexGenerated) {
-      this.generatePointIndex()
+    if (!this.indexGenerated) {
+      this.generateIndex()
     }
     return this.pointsByNamesByTypesByScopes.get(scope)?.get(type)?.get(name)
   }
@@ -175,12 +181,12 @@ export class ServerPoints<TError extends ErrorPoint0> {
   ):
     | {
         point: ActionPoint
-        location: KnownLocation
+        location: ExactLocation
       }
     | undefined => {
     this.throwIfNotReady()
-    if (!this.endpointsGenerated) {
-      this.generateAndValidateRoutes()
+    if (!this.indexGenerated) {
+      this.generateIndex()
     }
     const method = options.method as WideRequestMethod
     const routes = this.endpointsRoutesByMethods.get(method)

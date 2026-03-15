@@ -1,5 +1,5 @@
 import { Route0 } from '@devp0nt/route0'
-import type { AnyLocation, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
+import type { AnyLocation, AnyRouteOrDefinition, UnknownLocation, ExactLocation } from '@devp0nt/route0'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ClientPoints } from './client-points.js'
@@ -166,12 +166,12 @@ export function useLocation(addHashToLocation?: boolean): AnyLocation
 export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
   route?: TRoute,
   addHashToLocation?: boolean,
-): KnownLocation<TRoute>
+): UnknownLocation | ExactLocation<TRoute>
 export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
   route?: TRoute,
   location?: AnyLocation,
   addHashToLocation?: boolean,
-): KnownLocation<TRoute>
+): UnknownLocation | ExactLocation<TRoute>
 export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
   ...args: [(TRoute | boolean)?, (AnyLocation | boolean)?, boolean?]
 ) {
@@ -212,7 +212,10 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
     if (!route) {
       return { ...(ClientPoints.getInstance().routes._.getLocation(location) as AnyLocation), hash: hashSuffix }
     }
-    return { ...(Route0.from(route).getLocation(location) as KnownLocation<TRoute>), hash: hashSuffix }
+    return {
+      ...(Route0.from(route).getLocation(location) as UnknownLocation | ExactLocation<TRoute>),
+      hash: hashSuffix,
+    }
     // }, [route, location, PointsManager.getPointsManager().routesHash, routerCtx.isSsr])
   }, [route, location, addHashToLocation ? ClientPoints.getInstance().routesHash : '', addHashToLocation])
 }

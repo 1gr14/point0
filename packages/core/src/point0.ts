@@ -4,7 +4,6 @@ import type {
   AnyRoute,
   CallableRoute,
   HasParams,
-  KnownLocation,
   UnknownSearchInput,
   UnknownSearchParsed,
 } from '@devp0nt/route0'
@@ -1466,7 +1465,10 @@ export class Point0<
           AnyRoute | string | undefined,
         ]
       }
-      if (['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].includes(args[0])) {
+      if (
+        typeof args[0] === 'string' &&
+        ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'].includes(args[0].toUpperCase())
+      ) {
         return ['action', undefined, args[0], args[1]] as [
           ReadyPointType,
           undefined,
@@ -7223,7 +7225,7 @@ export class Point0<
         ...location.params,
         ...(location.searchString ? { '?': location.search } : {}),
       } as never),
-    ) as KnownLocation<CurrentRouteDefinition<TRouteDefinition>>
+    ) as AnyLocation
   }
 
   private _getSelfLocationByAnotherLocationOrInput(location?: AnyLocation | undefined, input?: InputRaw): AnyLocation {
@@ -10073,9 +10075,7 @@ export class Point0<
     const {
       mountComponent,
       extraProps,
-      // becouse we need in layout location be suitable for layout route and it params
-      // for page locaton already is page location, for component and provider also we need current page location
-      location = this.type === 'layout' ? useLocation(this.route) : useLocation(),
+      location = useLocation(),
       pageStateManager = _usePageStateManager(),
       layers,
     } = props
@@ -10699,6 +10699,7 @@ export class Point0<
     }, [this.name, inputRaw, prevLocation, status])
 
     return this._Mountable({
+      location,
       layers: [
         {
           inputRaw,
@@ -10777,6 +10778,7 @@ export class Point0<
     }, [props, location])
 
     return this._Mountable({
+      location,
       layers: [
         {
           inputRaw,

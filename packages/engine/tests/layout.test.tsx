@@ -244,9 +244,9 @@ describe('layout', () => {
           #loading: ...
 
           #layout:
-            #layout-route: /:id
+            #layout-route: /:id/:sn
             #layout-href: /zxc/qwe
-            #layout-params: id: zxc
+            #layout-params: id: zxc, sn: qwe
             #layout-input: x=zxc
             #page:
               #page-route: /:id/:sn
@@ -264,9 +264,9 @@ describe('layout', () => {
     expect(await fetchPreview(page, { id: 'zxc', sn: 'qwe' })).toMatchInlineSnapshot(`
       "
       #layout:
-        #layout-route: /:id
+        #layout-route: /:id/:sn
         #layout-href: /zxc/qwe
-        #layout-params: id: zxc
+        #layout-params: id: zxc, sn: qwe
         #layout-input: x=zxc
         #page:
           #page-route: /:id/:sn
@@ -314,9 +314,9 @@ describe('layout', () => {
           #loading: ...
 
           #layout:
-            #layout-route: /one/:id
+            #layout-route: /two/:id/:sn
             #layout-href: /two/zxc/qwe
-            #layout-params: {}
+            #layout-params: id: zxc, sn: qwe
             #layout-input: x=zxc
             #page:
               #page-route: /two/:id/:sn
@@ -334,9 +334,9 @@ describe('layout', () => {
     expect(await fetchPreview(page, { id: 'zxc', sn: 'qwe' })).toMatchInlineSnapshot(`
       "
       #layout:
-        #layout-route: /one/:id
+        #layout-route: /two/:id/:sn
         #layout-href: /two/zxc/qwe
-        #layout-params: {}
+        #layout-params: id: zxc, sn: qwe
         #layout-input: x=zxc
         #page:
           #page-route: /two/:id/:sn

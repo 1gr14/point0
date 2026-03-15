@@ -1,4 +1,4 @@
-import type { AnyLocation, AnyRoute, ExactLocation, KnownLocation } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, ExactLocation } from '@devp0nt/route0'
 import * as flat0 from '@devp0nt/flat0'
 import type {
   ActionPoint,
@@ -108,7 +108,7 @@ export class Fetcher<TError extends ErrorPoint0> {
     transform,
   }: {
     request: Request0
-    location: KnownLocation
+    location: ExactLocation
     point: ReadyPoint | undefined
     transform: boolean
   }): Promise<InputRawUnknown> => {
@@ -158,7 +158,7 @@ export class Fetcher<TError extends ErrorPoint0> {
     transform,
   }: {
     request: Request0
-    location: KnownLocation
+    location: ExactLocation
     point: ReadyPoint | undefined
     transform: boolean
   }): Promise<ExecuteOptionsKnownInput> => {
@@ -542,7 +542,7 @@ export class Fetcher<TError extends ErrorPoint0> {
   }: {
     point: ReadyPoint
     transform: boolean
-    location: KnownLocation
+    location: ExactLocation
     request: Request0
     requiredCtx: RequiredCtx
     effects: Effects
@@ -1229,7 +1229,7 @@ type PrepareFetchResult<TError extends ErrorPoint0> =
       middlewareOptions: MiddlewareFnOptionsBase<any>
       publicdirResult: undefined
       endpointResult: {
-        location: KnownLocation
+        location: ExactLocation
         // params: Record<string, unknown> | undefined
         // search: Record<string, unknown> | undefined
         // body: unknown | undefined

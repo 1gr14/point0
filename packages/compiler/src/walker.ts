@@ -5,7 +5,7 @@ import type { Node } from '@babel/types'
 import type { AnyRoute, RoutesPretty } from '@devp0nt/route0'
 import type { ReadyPointType } from '@point0/core'
 import { CompilerFile } from './file.js'
-import { CompilerPoint } from './point.js'
+import { ACTION_METHODS, CompilerPoint } from './point.js'
 import { FileResolver } from './resolver.js'
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
@@ -267,7 +267,7 @@ export class Walker {
       // Special:
       //   root.lets('GET', '/my/:path') → pointType = 'action', pointName = 'pending...'
       //   later in point.ts we will fix name to append basepath ane it bacomes pointName = `GET ${basepath}/my/:path` if it is exists somewhere up in the chain
-      //   first method name can be only ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
+      //   first method name can be only ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD']
       const firstLetsArg =
         firstLetsArgNodePath?.node.type === 'StringLiteral' ? firstLetsArgNodePath.node.value : undefined
       const actionMethodShorthand = firstLetsArg && ACTION_METHODS.has(firstLetsArg) ? firstLetsArg : undefined
@@ -1016,7 +1016,6 @@ export const POINT_TYPE_TO_METHOD_MAP: Record<ReadyPointType, ReadyPointType> = 
   base: 'base',
   root: 'root',
 }
-export const ACTION_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
 export const POINT_METHOD_TO_TYPE_MAP: Record<string, ReadyPointType> = Object.fromEntries(
   Object.entries(POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as ReadyPointType]),
 )
