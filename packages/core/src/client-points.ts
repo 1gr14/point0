@@ -20,6 +20,7 @@ import type {
   MiddlewareFn,
   PagePoint,
   PointName,
+  PointsScope,
   PointType,
   PrefetchPagePolicy,
   ReadyPoint,
@@ -87,8 +88,8 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
       throw new Error('Multiple root points not allowed for client points')
     }
 
-    const routes = ClientPoints.toRoutes({ points: manager.collection })
-    manager.collection = ClientPoints.sortCollection({ points: manager.collection, routes })
+    const routes = ClientPoints.toRoutes({ points: manager.collection, scope: manager.scope })
+    manager.collection = ClientPoints.sortCollection({ points: manager.collection, routes, scope: manager.scope })
     const pagesTreeSource = ClientPoints.toPagesTreeSource({ points: manager.collection })
     const pagesTree = ClientPoints.toPagesTree({ points: manager.collection, pagesTreeSource })
     const routesHash = routes._.pathsOrdering.join(',')
@@ -121,10 +122,25 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
 
   static readonly toRoutes = ({
     points,
+    scope,
   }: {
-    points: Array<{ type: PointType; name: PointName; route?: string | undefined | AnyRoute }>
+    points: Array<{
+      type: PointType
+      name: PointName
+      route?: string | undefined | AnyRoute
+      toStringWithLocation?: () => string
+    }>
+    scope: PointsScope
   }): RoutesPretty => {
     const routes: Record<string, AnyRoute> = {}
+    const pagePointsByRouteDefinition = new Map<
+      string,
+      {
+        name: PointName
+        route: AnyRoute
+        toStringWithLocation?: () => string
+      }
+    >()
     for (const item of points) {
       const type = item.type
       const routeSrc = item.route
@@ -136,6 +152,20 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
       if (!name) {
         throw new Error('Invalid point name')
       }
+      for (const existingPagePoint of pagePointsByRouteDefinition.values()) {
+        if (!route.isConflict(existingPagePoint.route)) {
+          continue
+        }
+        const currentPointString = item.toStringWithLocation?.() ?? `${scope}.page.${name}`
+        const existingPointString =
+          existingPagePoint.toStringWithLocation?.() ?? `${scope}.page.${existingPagePoint.name}`
+        throw new Error(`Conflicted page routes: ${currentPointString} conflicts with ${existingPointString}`)
+      }
+      pagePointsByRouteDefinition.set(route.definition, {
+        name,
+        route,
+        toStringWithLocation: item.toStringWithLocation,
+      })
       routes[name] = route
     }
     return Routes.create(routes)
@@ -144,11 +174,13 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
   static sortCollection<T extends Array<{ type: PointType; name: PointName; route?: AnyRoute | undefined }>>({
     routes,
     points,
+    scope,
   }: {
     routes?: RoutesPretty
     points: T
+    scope: PointsScope
   }): T {
-    routes ??= ClientPoints.toRoutes({ points })
+    routes ??= ClientPoints.toRoutes({ points, scope })
     const order = routes._.pathsOrdering
     return points.sort((a, b) => {
       if (!a.route || !b.route) {

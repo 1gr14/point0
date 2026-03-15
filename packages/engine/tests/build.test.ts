@@ -172,7 +172,7 @@ describe('build', () => {
           export const page3 = root.lets('page', 'page3', '/3').page(() => (env.side.is.server ? <div>MY_SERVER_ONLY4</div> : <div>MY_CLIENT_ONLY5</div>))
           export const page4 = root.lets('page', 'page4', '/4').page(() => { if (env.side.is.server) { return <div>MY_SERVER_ONLY6</div> } else { return <div>MY_CLIENT_ONLY7</div> } })
           export const page5 = root.lets('page', 'page5', '/5').loader(() => { console.info('MY_SERVER_ONLY8'); return {y:2} }).page(() => <div>MY_CLIENT_SERVER9</div>) // it is ok
-          export const page6 = root.lets('page', 'page6', '/5')
+          export const page6 = root.lets('page', 'page6', '/6')
             .page(() => {
               const a = process.env.MY_ENV_FILE_VARIABLE === 'VAR1' ? 'MY_MAYBE_1' : 'MY_MAYBE_2'
               const b = env.vars.MY_ENV_FILE_VARIABLE === 'VAR1' ? 'MY_MAYBE_3' : 'MY_MAYBE_4'

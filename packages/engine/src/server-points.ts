@@ -1,4 +1,5 @@
-import type { AnyLocation, AnyRoute, KnownLocation } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, KnownLocation, RoutesPretty } from '@devp0nt/route0'
+import { Routes } from '@devp0nt/route0'
 import type {
   ActionPoint,
   DataTransformerExtended,
@@ -17,6 +18,7 @@ import type {
   RootPoint,
 } from '@point0/core'
 import { PointsManager } from '@point0/core'
+import type { WideRequestMethod } from '@point0/core/request0'
 
 export class ServerPoints<TError extends ErrorPoint0> {
   manager: PointsManager<true, RequiredCtx, TError>
@@ -26,12 +28,11 @@ export class ServerPoints<TError extends ErrorPoint0> {
   scopes = new Set<PointsScope>()
   middlewares = new Map<PointsScope, MiddlewareFn<any>[]>()
 
-  // TODO:L optimize later
-  // // <method, Routes0>
-  // private readonly endpointsRoutesByMethods = new Map<WideRequestMethod, Routes0>()
-
-  // // <method, <route.definition, point>>
-  // private readonly endpointsByDefinitionsByMethods = new Map<WideRequestMethod, Map<string, ReadyPoint>>()
+  // <method, Routes0>
+  private readonly endpointsRoutesByMethods = new Map<WideRequestMethod, RoutesPretty>()
+  // <method, <route.definition, point>>
+  private readonly endpointsByDefinitionsByMethods = new Map<WideRequestMethod, Map<string, ReadyPoint>>()
+  private endpointsGenerated = false
 
   private constructor({ manager }: { manager: PointsManager }) {
     this.manager = manager as never
@@ -70,7 +71,45 @@ export class ServerPoints<TError extends ErrorPoint0> {
 
   load = async (): Promise<typeof this> => {
     await this.manager.load()
+    this.generateAndValidateRoutes()
     return this
+  }
+
+  private generateAndValidateRoutes = (): void => {
+    this.endpointsRoutesByMethods.clear()
+    this.endpointsByDefinitionsByMethods.clear()
+    const routesByMethod = new Map<WideRequestMethod, Record<string, AnyRoute>>()
+    for (const { point } of this.manager.collection) {
+      if (!point._endpoint) {
+        continue
+      }
+      const method = point._endpoint.method
+      const route = point._endpoint.route
+      const pointsByDefinitions = this.endpointsByDefinitionsByMethods.get(method)
+      if (pointsByDefinitions) {
+        for (const existingPoint of pointsByDefinitions.values()) {
+          const existingRoute = existingPoint._endpoint?.route
+          if (existingRoute && route.isConflict(existingRoute)) {
+            throw new Error(
+              `Conflicted endpoint routes for method "${method}": ${point.toStringWithLocation()} conflicts with ${existingPoint.toStringWithLocation()}`,
+            )
+          }
+        }
+        pointsByDefinitions.set(route.definition, point)
+      } else {
+        this.endpointsByDefinitionsByMethods.set(method, new Map([[route.definition, point]]))
+      }
+      const routes = routesByMethod.get(method)
+      if (routes) {
+        routes[route.definition] = route
+      } else {
+        routesByMethod.set(method, { [route.definition]: route })
+      }
+    }
+    for (const [method, routes] of routesByMethod.entries()) {
+      this.endpointsRoutesByMethods.set(method, Routes.create(routes))
+    }
+    this.endpointsGenerated = true
   }
 
   findExact = ({
@@ -128,7 +167,7 @@ export class ServerPoints<TError extends ErrorPoint0> {
       | { method: string; location: AnyLocation }
       | {
           method: string
-          hrefRel: string
+          url: string
         },
   ):
     | {
@@ -137,28 +176,26 @@ export class ServerPoints<TError extends ErrorPoint0> {
       }
     | undefined => {
     this.throwIfNotReady()
-    // const providedLocation = 'location' in options ? options.location : Route0.getLocation(options.path)
-    const pathname = 'hrefRel' in options ? options.hrefRel.split('?')[0] : options.location.pathname
-    for (const { point } of this.manager.collection) {
-      if (!point._endpoint) {
-        continue
-      }
-      if (point._endpoint.method !== options.method) {
-        continue
-      }
-      if (!point._endpoint.route.isExactPathnameMatch(pathname)) {
-        continue
-      }
-      // TODO: optimize it later
-      const location = point._endpoint.route.getLocation('location' in options ? options.location : options.hrefRel)
-      if (location.exact) {
-        return {
-          point: point as ActionPoint,
-          location,
-        }
-      }
+    if (!this.endpointsGenerated) {
+      this.generateAndValidateRoutes()
     }
-    return undefined
+    const method = options.method as WideRequestMethod
+    const routes = this.endpointsRoutesByMethods.get(method)
+    if (!routes) {
+      return undefined
+    }
+    const location = routes._.getLocation('location' in options ? options.location : options.url)
+    if (!location.exact) {
+      return undefined
+    }
+    const point = this.endpointsByDefinitionsByMethods.get(method)?.get(location.route)
+    if (!point) {
+      return undefined
+    }
+    return {
+      point: point as ActionPoint,
+      location,
+    }
   }
 
   getTransformerByScope = ({ scope }: { scope: PointsScope }): DataTransformerExtended => {

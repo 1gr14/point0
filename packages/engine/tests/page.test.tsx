@@ -27,22 +27,29 @@ describe('page', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-              "
-              /
-                #page: x=nothing
-              "
-            `)
+                  "
+                  /
+                    #page: x=nothing
+                  "
+                `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-            "
-    
-            "
-          `)
+                "
+        
+                "
+              `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-            "
-            #page: x=nothing
-            "
-          `)
+                "
+                #page: x=nothing
+                "
+              `)
+  })
+
+  it('conflicted routes', async () => {
+    const root = createRoot()
+    const page1 = root.lets('page', 'home1', '/x/:id').page(() => <div id="page">x=nothing</div>)
+    const page2 = root.lets('page', 'home2', '/x/:sn').page(() => <div id="page">x=nothing</div>)
+    await expect(createTestThings({ points: [root, page1, page2] })).rejects.toThrow()
   })
 
   it('not found', async () => {

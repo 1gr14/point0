@@ -1302,6 +1302,11 @@ export type AssertNoArrayReturn<TValue, TMessage extends string> = TValue extend
 export type AssertNotFunction<TValue, TMessage extends string> = TValue extends (...args: any[]) => any
   ? ShowError<TMessage>
   : unknown
+// export type WithError<TError, T> = unknown extends TError
+//   ? T
+//   : TError extends ShowError<infer TMessage>
+//     ? ShowError<`↑ Error in previous method: ${TMessage}`>
+//     : TError
 export type WithError<TError, T> = unknown extends TError
   ? T
   : TError extends ShowError<infer TMessage>

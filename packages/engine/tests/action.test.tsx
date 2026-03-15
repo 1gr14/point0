@@ -442,4 +442,49 @@ describe('action', () => {
       `)
     })
   })
+
+  it.concurrent('throws on conflicted routes', async () => {
+    const root = createRoot()
+    const action1 = root
+      .lets('action', 'test1', 'POST', '/api/my-test/:id')
+      .params(z.object({ id: z.string().min(1) }))
+      .headers(z.object({ x: z.string().min(1) }))
+      .search(z.object({ y: z.string().min(1) }))
+      .body(z.object({ b: z.number().min(1), d: z.bigint() }))
+      .loader(({ request, headers, search, body, params }) => {
+        return {
+          headers,
+          search,
+          params,
+          body,
+          bodyUsed: request.original.bodyUsed,
+          date: new Date('2026-03-11T12:00:00.000Z'),
+        }
+      })
+      .action()
+
+    const action2 = root
+      .lets('action', 'test2', 'POST', '/api/my-test/:sn')
+      .params(z.object({ sn: z.string().min(1) }))
+      .headers(z.object({ x: z.string().min(1) }))
+      .search(z.object({ y: z.string().min(1) }))
+      .body(z.object({ b: z.number().min(1), d: z.bigint() }))
+      .loader(({ request, headers, search, body, params }) => {
+        return {
+          headers,
+          search,
+          params,
+          body,
+          bodyUsed: request.original.bodyUsed,
+          date: new Date('2026-03-11T12:00:00.000Z'),
+        }
+      })
+      .action()
+
+    await expect(
+      createTestThings({
+        points: [root, action1, action2],
+      }),
+    ).rejects.toThrow()
+  })
 })
