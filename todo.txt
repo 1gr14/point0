@@ -110,13 +110,11 @@ shrink core/index.ts size, by remove code duplicates
 
 
 === REQUESTING ===
---+
 ServerClient with own fetching like FakeClient
 Когда в эффектах кукиса удаляют куки во втором запросе при сср проверить, что это работает
 Реквест стейт это интерфейс который можно поменять
 Формдата авто фалс тру
 В реквест0 пометить это сервер а также последовательность предыдущих запросов
-on fetch error maybe no json, then if it is thore, do res.text()
 при запросах с сревреа к самому себе учитывать максимальную рекурсию
 _middleware
 ---
@@ -127,7 +125,6 @@ _middleware
 
 
 === SSR ===
---+
 Test for mount()
 ? __POINT0_GET_SSR_PHASE__
 ---
@@ -149,11 +146,9 @@ ssr can be not on root point, but client still can be ssr if it has ssr point, s
 
 
 === MOUNTABLES ===
---+
+---
 relatedComponent
 prefetchComponent
-Вероятно для экспо стоит пейджу и компоненту возвращать не обёртку над нулом, а обёртку над X, чтобы он мог заиспользоваться
----
 SuccessComponent>children также можно передавать и тогда во врапере можно всё остановить
 Лоадинг и эррор комопнент разрешить использовать как обёртку чтобы на месте сделать свой кастомный
 дисплей нэймс
@@ -170,11 +165,10 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 
 
 === ENV ===
---+
+---
 ? В энв добавить скоупес.хэз.такой-то, Энв скоупес хэз, и скоупес массив, эна скруп нэймс
 ? В енв дефайн разрешить первым аргументом вставить строку с названием скоупа или наоборот таргета, чтобы объявить например именно для клиентского того-то такого-то скоупа
 ? В енвы реально добавить хелперы, там нужен порт клиента
----
 Ена таргет из сервер клиент дополнительно
 Ена таргет из фейк клиент дополнительно
 В энв добавить фейк клиент, вероятно добавить просто первоуровневый из и там фейк клиент, клиент, сервер, скоуп
@@ -185,13 +179,12 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 
 
 === SUPERSTORE ===
---+
+---
 ? Суперстор клнфигур позволяет передать туда трансформер, по умолчанию там глобальный трансформер
 ? we should have transformer.set() transformer.get(), os apply to everything if no transformer defined specially (use in points and cookies-store)
 ? superstore getStates just return all states, but everywhere we can just use getState(policy)
 ? В симплифай можно передать как объект с готовыми переменными, так и объект с настройками
 ? Не симплифай а мэни
----
 ? Пусть суперстор дефайн будет отложенным и сохраняется до поры в глобалзыс, при ините уже установятся значения
 ? Энв должен также говорить нам клиент фейковый или нет
 ? У инит есть вэлью и таргет, и плоское вэлью, которое при проверке таргет будет определено однозначно
@@ -204,16 +197,14 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 
 
 === ENGINE ===
---+
 (when actions, scalar)
 И из файла поинтсов как раз для этого и нужно в том числеэкспортировать и тайпед поинты объектом судя по всему
 Разрешить кастомные генераторы просто с передачей в what функции, и нужно апи для стороннего генератора
 Причём экспортировать тайпед объект с полными именами поинтсов в ключах, плюс отдельно экспортировать рут, плюс отдельно готовый массив, как комбинацию всего этого
 Поинтсы импортировать из файла опционально сразу в обёртке
-Добавить генерации роутов также и на верхний скоуп разрешив прописывать скоуп как массив
+? Добавить генерации роутов также и на верхний скоуп разрешив прописывать скоуп как массив
 --+
-cli inspect by filepath how this file and in which place come to files via cli command
-check bun compiler, and vite compiler creates correct sourcemaps
+(import protection) cli inspect by filepath how this file and in which place come to files via cli command
 --+
 (when electron)
 При подмене фетча на серверный убедиться что он относится к одному из родительских скоупов, иначе не подменять
