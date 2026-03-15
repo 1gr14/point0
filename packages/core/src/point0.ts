@@ -134,7 +134,6 @@ import type {
   ExtendRouteDefinition,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
-  FetchFn,
   FetchOptions,
   FetchOptionsFn,
   FetchOptionsOrFn,
@@ -240,7 +239,7 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
-import { setStatus } from './helpers.js'
+import { getFetch, setStatus } from './helpers.js'
 
 // import stringify from 'safe-stable-stringify'
 
@@ -7601,21 +7600,6 @@ export class Point0<
     return this._getFetchServerOptions({ input, fetchOptions, _outputType })
   }
 
-  private static readonly nativeFetch = async (request: Request): Promise<Response> => await fetch(request)
-
-  getFetchFn = (): FetchFn => {
-    if (_point0_env.side.is.server) {
-      const __POINT0_FETCH_FN__ = _ssItems.__POINT0_FETCH_FN__.getWeak()
-      if (!__POINT0_FETCH_FN__) {
-        throw new Error(
-          `Fetch function in server available only inside loaders, components, etc, do not use it in top level. Or use FakeClient on point ${this.toStringWithLocation()}`,
-        )
-      }
-      return __POINT0_FETCH_FN__
-    }
-    return superstore.getFakeClient()?.fetch ?? Point0.nativeFetch
-  }
-
   private modifyFetchRequestForServerIfRequired(fetchOptions: ReturnType<typeof this.getFetchServerOptions>): Request {
     if (!_point0_env.side.is.server) {
       return fetchOptions.request
@@ -7628,17 +7612,6 @@ export class Point0<
     }
     const originalRequest = currentRequest0.original
     const updatedHeaders = new Headers(fetchOptions.request.headers)
-    // const updatedHeaders = new Headers(originalRequest.headers)
-    // updatedHeaders.forEach((value, key) => {
-    //   if (key.startsWith('x-point0-')) {
-    //     updatedHeaders.delete(key)
-    //   }
-    // })
-    // fetchOptions.request.headers.forEach((value, key) => {
-    //   // if (key.startsWith('x-point0-')) {
-    //   updatedHeaders.set(key, value)
-    //   // }
-    // })
 
     const originalRequestCookie = originalRequest.headers.get('cookie')
     if (originalRequestCookie) {
@@ -7677,6 +7650,7 @@ export class Point0<
     const updatedRequest = new Request(fetchOptions.url, updatedInit)
     Object.assign(updatedRequest, {
       __POINT0_IS_SERVER_REQUEST__: true,
+      __POINT0_PARENT_REQUEST__: currentRequest0,
     })
     return updatedRequest
   }
@@ -7703,7 +7677,7 @@ export class Point0<
         fetchOptions: _fetchOptions,
         _outputType,
       })
-      const fetchFn = this.getFetchFn()
+      const fetchFn = getFetch()
       const fetchRequest = this.modifyFetchRequestForServerIfRequired(fetchOptions)
       this._emit('pointFetchServerStart', _eventData)
       res = await fetchFn(fetchRequest)

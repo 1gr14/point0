@@ -127,7 +127,7 @@ describe('page', () => {
 
   it('page param', async () => {
     const root = createRoot()
-    const page = root.lets('page', 'home', '/:x').page(({ location }) => <div id="page">x={location.params.x}</div>)
+    const page = root.lets('page', 'home', '/:x').page(({ params }) => <div id="page">x={params.x}</div>)
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
     await render(page.route({ x: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
@@ -154,7 +154,7 @@ describe('page', () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/a/:x?/b/*?')
-      .page(({ location }) => <div id="page">{ymlifyline(location.params)}</div>)
+      .page(({ params }) => <div id="page">{ymlifyline(params)}</div>)
     const { render, fetchPreview } = await createTestThings({ points: [root, page] })
     await render(page.route({ x: 'zxc', '*': 'qwe/asd' }), async ({ waitContent, tale }) => {
       await waitContent('#page')

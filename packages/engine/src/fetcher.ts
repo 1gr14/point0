@@ -200,10 +200,15 @@ export class Fetcher<TError extends ErrorPoint0> {
     const effects = Effects.create()
     const isFromServer =
       '__POINT0_IS_SERVER_REQUEST__' in originalRequest && originalRequest.__POINT0_IS_SERVER_REQUEST__ === true
+    const parentRequest =
+      '__POINT0_PARENT_REQUEST__' in originalRequest
+        ? (originalRequest.__POINT0_PARENT_REQUEST__ as Request0)
+        : undefined
     const request = Request0.create(originalRequest, {
       bunServer: bunServer || this.server.bunServer,
       id: generateId(),
       isFromServer,
+      parent: parentRequest,
     })
     const transform = request.headers['x-point0-transform'] === 'true'
     if (request.headers['x-point0-client-request-id']) {

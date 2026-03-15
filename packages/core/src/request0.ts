@@ -20,7 +20,9 @@ export class Request0 {
   method: RequestMethod
   from: RequestFrom
   id: string
-  state: Record<string, unknown>
+  state: RequestState
+  cache: RequestCache
+  parent: Request0 | undefined
 
   constructor({
     original,
@@ -31,6 +33,8 @@ export class Request0 {
     from,
     id,
     state,
+    cache,
+    parent,
   }: {
     original: Request
     headers: RequestHeaders
@@ -39,7 +43,9 @@ export class Request0 {
     method: RequestMethod
     from: RequestFrom
     id: string
-    state: Record<string, unknown>
+    state: RequestState
+    cache: RequestCache
+    parent: Request0 | undefined
   }) {
     this.original = original
     this.headers = headers
@@ -49,6 +55,9 @@ export class Request0 {
     this.from = from
     this.state = state
     this.id = id
+    this.state = state
+    this.cache = cache
+    this.parent = parent
   }
 
   static create(
@@ -57,10 +66,12 @@ export class Request0 {
       bunServer?: { requestIP: (request: Request) => { address: string } | null }
       id: string
       isFromServer: boolean
-      state?: Record<string, unknown>
+      state?: RequestState
+      parent?: Request0 | undefined
     },
   ): Request0 {
-    const { bunServer, id, isFromServer, state = {} } = options
+    const { bunServer, id, isFromServer, state = {}, parent } = options
+    const cache = parent?.cache ?? {}
     // Parse headers
     const headers: RequestHeaders = {}
     original.headers.forEach((value, key) => {
@@ -150,6 +161,8 @@ export class Request0 {
       from,
       id,
       state,
+      cache,
+      parent,
     })
   }
 
@@ -224,6 +237,10 @@ export interface RequestFrom {
 export type RequestHeaders = Record<string, string | undefined>
 export type RequestCookies = Record<string, string | undefined>
 
-export type RequestState = {
+export interface RequestState {
+  [key: string]: unknown
+}
+
+export interface RequestCache {
   [key: string]: unknown
 }

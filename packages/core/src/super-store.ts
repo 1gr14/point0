@@ -1,6 +1,6 @@
 import type { AsyncLocalStorage } from 'node:async_hooks'
 import type { ClientRuntime } from './env.types.js'
-import type { DataTransformer, DataTransformerExtended, FetchFn, PointsScope } from './types.js'
+import type { DataTransformer, DataTransformerExtended, PointsScope, RichFetchFn } from './types.js'
 
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
@@ -543,7 +543,7 @@ export class SuperStore {
     }
   }
 
-  getFakeClient(): { id: string; scope: PointsScope; runtime: ClientRuntime; fetch: FetchFn } | undefined {
+  getFakeClient(): { id: string; scope: PointsScope; runtime: ClientRuntime; fetch: RichFetchFn } | undefined {
     if (!this.serverStorage) {
       return undefined
     }

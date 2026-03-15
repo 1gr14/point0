@@ -1,3 +1,4 @@
+import type { RichFetchFn } from '@point0/core'
 import {
   _ssServerLogger,
   type AnyNiceReadyPoint,
@@ -344,6 +345,11 @@ export class Engine<
   ): Promise<Response> {
     const result = await this.fetchDetailed(...args)
     return result.response
+  }
+
+  richFetch: RichFetchFn = async (...args) => {
+    const request = args[0] instanceof Request ? args[0] : new Request(args[0], args[1])
+    return await (this.fetch as any)(request)
   }
 
   async clean(): Promise<void> {
