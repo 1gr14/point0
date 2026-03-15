@@ -323,7 +323,6 @@ export class FilesGenerator {
     if (this.isRoutesInitialized) {
       return
     }
-    // TODO: add helper to route0 to recognize object
     const isRoutesObject = (result: unknown): result is RoutesPretty => {
       return (
         typeof result === 'object' &&

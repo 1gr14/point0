@@ -3016,7 +3016,7 @@ export type NiceProviderStagePoint<
   | 'loading'
   | 'wrapper'
   | 'with'
-  | 'relatedQuery'
+  // | 'relatedQuery'
 >
 
 export type NiceStagePoint<

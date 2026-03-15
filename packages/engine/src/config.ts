@@ -30,10 +30,6 @@ import type {
   EngineServerPluginsDefinition,
 } from './utils.js'
 
-// TODO:ASAP transform to class
-// TODO:ASAP allow predefined config mutable, which can be pased to Engine.create or in EngineOptions
-// TODO:ASAP add tests
-
 export type EngineOptionsPublicdir =
   | string
   | Record<string, string | (() => string | Promise<string>)>

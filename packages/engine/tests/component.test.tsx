@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { Point0 } from '@point0/core'
 import { createTestThings } from './utils/internal-testing.js'
+import z from 'zod'
 
 describe('component', () => {
   const createRoot = () =>
@@ -174,6 +175,60 @@ describe('component', () => {
       "
       #page:
         #component: x=1 y=2 v=zxc-2
+      "
+    `)
+  })
+
+  it.concurrent('client input parsed on mount', async () => {
+    const root = createRoot()
+    const component = root
+      .lets<{ x: number; y: number }>('component', 'stats')
+      .sharedInput(z.object({ id: z.string(), mult: z.number().transform((v) => v * 2) }))
+      .loader(({ input }) => ({ value: `${input.id}-${input.mult}` }))
+      .component(({ data, props, input }) => (
+        <>
+          <div id="data">v={data.value}</div>
+          <div id="props">
+            x={props.x} y={props.y}
+          </div>
+          <div id="input">
+            id={input.id} mult={input.mult}
+          </div>
+        </>
+      ))
+    const page = root.lets('page', 'home', '/').page(() => (
+      <div id="page">
+        <component.X input={{ id: 'zxc', mult: 2 }} x={1} y={2} />
+      </div>
+    ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, component, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#input')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /
+          #page:
+            #loading: ...
+
+          #page:
+            #data: v=zxc-4
+            #props: x=1 y=2
+            #input: id=zxc mult=4
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      component.stats (client) < {"id":"zxc","mult":2}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page:
+        #data: v=zxc-4
+        #props: x=1 y=2
+        #input: id=zxc mult=4
       "
     `)
   })

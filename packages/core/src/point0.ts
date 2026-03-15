@@ -433,11 +433,13 @@ export class Point0<
   readonly route: TRouteDefinition extends RouteDefinition
     ? CallableRoute<TRouteDefinition, TSearchSchema extends InputSchema ? InputRaw<TSearchSchema> : UnknownSearchInput>
     : UndefinedRoute
-  private readonly _page: PageSuccessComponentType<any, any, any, any, any, any> | UndefinedSuccessPageComponent
+  private readonly _page: PageSuccessComponentType<any, any, any, any, any, any, any> | UndefinedSuccessPageComponent
   private readonly _component:
-    | ComponentSuccessComponentType<any, any, any, any, any>
+    | ComponentSuccessComponentType<any, any, any, any, any, any>
     | UndefinedComponentSuccessComponent
-  private readonly _layout: LayoutSuccessComponentType<any, any, any, any, any, any> | UndefinedLayoutSuccessComponent
+  private readonly _layout:
+    | LayoutSuccessComponentType<any, any, any, any, any, any, any>
+    | UndefinedLayoutSuccessComponent
   readonly _layouts: LayoutPoint[]
   readonly name: PointName
   private readonly _unstableId: number
@@ -602,9 +604,9 @@ export class Point0<
     _ProviderReactContext?: Context<MountableSuccessData<TQueriesDefinitions, TMapperOutput>> | undefined
     _useValue?: any
     route?: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
-    _page?: PageSuccessComponentType<any, any, any, any, any, any> | UndefinedSuccessPageComponent
-    _component?: ComponentSuccessComponentType<any, any, any, any, any> | UndefinedComponentSuccessComponent
-    _layout?: LayoutSuccessComponentType<any, any, any, any, any, any> | UndefinedLayoutSuccessComponent
+    _page?: PageSuccessComponentType<any, any, any, any, any, any, any> | UndefinedSuccessPageComponent
+    _component?: ComponentSuccessComponentType<any, any, any, any, any, any> | UndefinedComponentSuccessComponent
+    _layout?: LayoutSuccessComponentType<any, any, any, any, any, any, any> | UndefinedLayoutSuccessComponent
     _layouts?: LayoutPoint[]
     name: PointName
     _fetchOptions?: FetchOptionsFn
@@ -769,9 +771,9 @@ export class Point0<
       TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute,
       AnyRoute
     >
-    _page?: PageSuccessComponentType<any, any, any, any, any, any> | UndefinedSuccessPageComponent
-    _component?: ComponentSuccessComponentType<any, any, any, any, any> | UndefinedComponentSuccessComponent
-    _layout?: LayoutSuccessComponentType<any, any, any, any, any, any> | UndefinedLayoutSuccessComponent
+    _page?: PageSuccessComponentType<any, any, any, any, any, any, any> | UndefinedSuccessPageComponent
+    _component?: ComponentSuccessComponentType<any, any, any, any, any, any> | UndefinedComponentSuccessComponent
+    _layout?: LayoutSuccessComponentType<any, any, any, any, any, any, any> | UndefinedLayoutSuccessComponent
     _layouts?: LayoutPoint[]
     name?: PointName
     _fetchOptions?: FetchOptionsFn
@@ -2728,6 +2730,7 @@ export class Point0<
       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
       TParamsSchema,
       TSearchSchema,
+      TClientInputSchema,
       TInnerProps,
       WithSelfQueryIfShouldBeFinalized<
         TPointType,
@@ -2770,7 +2773,7 @@ export class Point0<
       TQueriesDefinitions
     >
   >
-  wrapper(wrapperComponent: WrapperComponentType<any, any, any, any, any, any, any> | undefined) {
+  wrapper(wrapperComponent: WrapperComponentType<any, any, any, any, any, any, any, any> | undefined) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
@@ -2835,6 +2838,7 @@ export class Point0<
                         MountableLocation<TLetsReadyPointType, TRouteDefinition>,
                         TParamsSchema,
                         TSearchSchema,
+                        TClientInputSchema,
                         TInnerProps,
                         WithSelfQueryIfShouldBeFinalized<
                           TPointType,
@@ -2857,6 +2861,7 @@ export class Point0<
                         MountableLocation<TLetsReadyPointType, TRouteDefinition>,
                         TParamsSchema,
                         TSearchSchema,
+                        TClientInputSchema,
                         TInnerProps,
                         WithSelfQueryIfShouldBeFinalized<
                           TPointType,
@@ -2915,6 +2920,7 @@ export class Point0<
       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
       TParamsSchema,
       TSearchSchema,
+      TClientInputSchema,
       TInnerProps,
       WithSelfQueryIfShouldBeFinalized<
         TPointType,
@@ -2975,6 +2981,7 @@ export class Point0<
       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
       TParamsSchema,
       TSearchSchema,
+      TClientInputSchema,
       TInnerProps,
       WithSelfQueryIfShouldBeFinalized<
         TPointType,
@@ -3031,6 +3038,7 @@ export class Point0<
               MountableLocation<TLetsReadyPointType, TRouteDefinition>,
               TParamsSchema,
               TSearchSchema,
+              TClientInputSchema,
               TInnerProps,
               WithSelfQueryIfShouldBeFinalized<
                 TPointType,
@@ -3978,6 +3986,7 @@ export class Point0<
       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
       TParamsSchema,
       TSearchSchema,
+      TClientInputSchema,
       TInnerProps,
       WithSelfQueryIfShouldBeFinalized<
         TPointType,
@@ -4020,9 +4029,9 @@ export class Point0<
       TQueriesDefinitions
     >
   >
-  mapper(mapperFn: MapperFn<any, any, any, any, any, any, any> | undefined) {
+  mapper(mapperFn: MapperFn<any, any, any, any, any, any, any, any> | undefined) {
     // in case if we shake mapper for server without ssr side
-    mapperFn ||= ((o) => o.data) as MapperFn<any, any, any, any, any, any, any>
+    mapperFn ||= ((o) => o.data) as MapperFn<any, any, any, any, any, any, any, any>
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
@@ -4109,6 +4118,7 @@ export class Point0<
           MountableLocation<TLetsReadyPointType, TRouteDefinition>,
           TParamsSchema,
           TSearchSchema,
+          TClientInputSchema,
           TInnerProps,
           WithSelfQueryIfShouldBeFinalized<
             TPointType,
@@ -4163,6 +4173,7 @@ export class Point0<
               MountableLocation<TLetsReadyPointType, TRouteDefinition>,
               TParamsSchema,
               TSearchSchema,
+              TClientInputSchema,
               TInnerProps,
               WithSelfQueryIfShouldBeFinalized<
                 TPointType,
@@ -4217,6 +4228,7 @@ export class Point0<
                 MountableLocation<TLetsReadyPointType, TRouteDefinition>,
                 TParamsSchema,
                 TSearchSchema,
+                TClientInputSchema,
                 TInnerProps,
                 TQueriesDefinitions,
                 TMapperOutput,
@@ -4232,6 +4244,7 @@ export class Point0<
                 MountableLocation<TLetsReadyPointType, TRouteDefinition>,
                 TParamsSchema,
                 TSearchSchema,
+                TClientInputSchema,
                 TInnerProps,
                 TQueriesDefinitions,
                 TMapperOutput,
@@ -4641,6 +4654,7 @@ export class Point0<
         ...this._clientExecuteActions,
         { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
       ],
+      _mountActions: [...this._mountActions, { type: 'input', schema, unstableId: Point0._getNextUnstableId() }],
     }) as never
   }
 
@@ -4814,6 +4828,7 @@ export class Point0<
         ...this._clientExecuteActions,
         { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
       ],
+      _mountActions: [...this._mountActions, { type: 'input', schema, unstableId: Point0._getNextUnstableId() }],
     }) as never
   }
 
@@ -5484,6 +5499,7 @@ export class Point0<
             TRouteDefinition,
             TParamsSchema,
             TSearchSchema,
+            TClientInputSchema,
             TInnerProps,
             WithSelfQueryIfShouldBeFinalized<
               TPointType,
@@ -5526,7 +5542,7 @@ export class Point0<
     >
   >
   page(...args: any[]) {
-    const [page = () => null] = args as [PageSuccessComponentType<any, any, any, any, any, any> | undefined]
+    const [page = () => null] = args as [PageSuccessComponentType<any, any, any, any, any, any, any> | undefined]
     // this._applyComponentDisplayName(page as React.ComponentType<any>, { suffix: 'PageInner' })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
@@ -5556,6 +5572,7 @@ export class Point0<
           component?: ComponentSuccessComponentType<
             TParamsSchema,
             TSearchSchema,
+            TClientInputSchema,
             TInnerProps,
             WithSelfQueryIfShouldBeFinalized<
               TPointType,
@@ -5598,7 +5615,7 @@ export class Point0<
     >
   > {
     const [component = () => null] = args as never as [
-      ComponentSuccessComponentType<any, any, any, any, any> | undefined,
+      ComponentSuccessComponentType<any, any, any, any, any, any> | undefined,
     ]
     // this._applyComponentDisplayName(component, { suffix: 'Inner' })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
@@ -5629,6 +5646,7 @@ export class Point0<
             TRouteDefinition,
             TParamsSchema,
             TSearchSchema,
+            TClientInputSchema,
             TInnerProps,
             WithSelfQueryIfShouldBeFinalized<
               TPointType,
@@ -5743,7 +5761,7 @@ export class Point0<
       : []
     if (this._letsReadyPointType === 'layout') {
       const [layout = ({ children }: { children: Exclude<React.ReactNode, Promise<any>> }) => children] = args as [
-        LayoutSuccessComponentType<any, any, any, any, any, any> | undefined,
+        LayoutSuccessComponentType<any, any, any, any, any, any, any> | undefined,
       ]
       // this._applyComponentDisplayName(layout as React.ComponentType<any>, { suffix: 'LayoutInner' })
       const point = this._continue({
@@ -5855,6 +5873,7 @@ export class Point0<
             MountableLocation<TLetsReadyPointType, TRouteDefinition>,
             TParamsSchema,
             TSearchSchema,
+            TClientInputSchema,
             TInnerProps,
             WithSelfQueryIfShouldBeFinalized<
               TPointType,
@@ -5898,7 +5917,7 @@ export class Point0<
     >
   >
   provider(_mapperFn?: any) {
-    const mapperFn = _mapperFn as MapperFn<any, any, any, any, any, any, any> | undefined
+    const mapperFn = _mapperFn as MapperFn<any, any, any, any, any, any, any, any> | undefined
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
@@ -9861,7 +9880,7 @@ export class Point0<
     }
     prevMountActions: Array<{
       action: MountAction
-      state: MountableState<any, any, any, any, any, any, any, ErrorPoint0>
+      state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
     }>
   }) => {
     React.useEffect(() => {
@@ -9900,7 +9919,7 @@ export class Point0<
     }
     prevMountActions: Array<{
       action: MountAction
-      state: MountableState<any, any, any, any, any, any, any, ErrorPoint0>
+      state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
     }>
     isHeadable: boolean
     fallbackLoadingComponent: LoadingComponentType<any>
@@ -9942,7 +9961,7 @@ export class Point0<
     }
     prevMountActions: Array<{
       action: MountAction
-      state: MountableState<any, any, any, any, any, any, any, ErrorPoint0>
+      state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
     }>
     isHeadable: boolean
     fallbackErrorComponent: ErrorComponentType<any, any>
@@ -10018,11 +10037,13 @@ export class Point0<
 
   private readonly _Mountable = (props: {
     mountComponent:
-      | LayoutSuccessComponentType<any, any, any, any, any, any>
-      | PageSuccessComponentType<any, any, any, any, any, any>
-      | ComponentSuccessComponentType<any, any, any, any, any>
+      | LayoutSuccessComponentType<any, any, any, any, any, any, any>
+      | PageSuccessComponentType<any, any, any, any, any, any, any>
+      | ComponentSuccessComponentType<any, any, any, any, any, any>
       | 'children'
-    extraProps: (mountableState: MountableState<any, any, any, any, any, any, any, ErrorPoint0>) => Record<string, any>
+    extraProps: (
+      mountableState: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>,
+    ) => Record<string, any>
     location?: AnyLocation
     pageStateManager?: {
       pageState: RouterPageState
@@ -10035,12 +10056,13 @@ export class Point0<
       prev?: {
         prevMountActions: Array<{
           action: MountAction
-          state: MountableState<any, any, any, any, any, any, any, ErrorPoint0>
+          state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
         }>
         nextMountActions: MountAction[]
         innerProps: Props
         searchParsed: Data | UndefinedData
         paramsParsed: Data | UndefinedData
+        inputParsed: Data | UndefinedData
         queries: QueriesResults
         mappedData: Data | undefined
         LoadingComponent: React.ComponentType<{ _isHeadable?: boolean }>
@@ -10082,6 +10104,7 @@ export class Point0<
       prevInnerProps,
       prevSearchParsed,
       prevParamsParsed,
+      prevInputParsed,
       prevQueries,
       prevMappedData,
     } = (() => {
@@ -10091,13 +10114,14 @@ export class Point0<
           nextMountActions: this._mountActions,
           prevMountActions: [] as Array<{
             action: MountAction
-            state: MountableState<any, any, any, any, any, any, any, ErrorPoint0>
+            state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
           }>,
           PrevLoadingComponent: undefined,
           PrevErrorComponent: undefined,
           prevInnerProps: {},
           prevSearchParsed: undefined,
           prevParamsParsed: undefined,
+          prevInputParsed: undefined,
           prevQueries: [],
           prevMappedData: undefined,
         }
@@ -10110,6 +10134,7 @@ export class Point0<
           prevInnerProps: prev.innerProps,
           prevSearchParsed: prev.searchParsed,
           prevParamsParsed: prev.paramsParsed,
+          prevInputParsed: prev.inputParsed,
           prevQueries: prev.queries,
           prevMappedData: prev.mappedData,
         }
@@ -10151,19 +10176,19 @@ export class Point0<
         data: prevMappedData ?? prevQueries.at(0)?.data ?? {},
       }
     })() as Pick<
-      MountableState<any, any, any, any, any, any, any, ErrorPoint0>,
+      MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>,
       'status' | 'error' | 'loading' | 'data'
     >
 
     const mountState = {
       ...queriesState,
       location,
-      input: currentLayer.inputRaw,
       props: prevInnerProps,
       search: prevSearchParsed,
       params: prevParamsParsed,
       queries: prevQueries,
-    } as MountableState<any, any, any, any, any, any, any, ErrorPoint0>
+      input: prevInputParsed,
+    } as MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
     let nextMappedData = prevMappedData
     let ErrorComponent =
       PrevErrorComponent ??
@@ -10227,6 +10252,7 @@ export class Point0<
         innerProps: mountState.props,
         searchParsed: (mountState as Record<string, Data | UndefinedData>).search,
         paramsParsed: (mountState as Record<string, Data | UndefinedData>).params,
+        inputParsed: (mountState as Record<string, Data | UndefinedData>).input,
         queries: mountState.queries,
         mappedData: nextMappedData,
       }
@@ -10237,12 +10263,13 @@ export class Point0<
         prev?: {
           prevMountActions: Array<{
             action: MountAction
-            state: MountableState<any, any, any, any, any, any, any, ErrorPoint0>
+            state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
           }>
           nextMountActions: MountAction[]
           innerProps: Props
           searchParsed: Data | UndefinedData
           paramsParsed: Data | UndefinedData
+          inputParsed: Data | UndefinedData
           queries: QueriesResults
           mappedData: Data | undefined
           LoadingComponent: React.ComponentType<{ _isHeadable?: boolean }>
@@ -10351,6 +10378,34 @@ export class Point0<
       const { _nextLayers, _nextMountableProps } = getNextProps()
 
       switch (action.type) {
+        case 'input': {
+          if (this.type !== 'component' && this.type !== 'provider') {
+            return React.createElement(ErrorComponent, {
+              error: new this._Error(
+                `Usual input schema are not allowed for this point: ${this.toStringWithLocation()}`,
+              ),
+            })
+          }
+          const result = this.parseInputSafeSync(action.schema, currentLayer.inputRaw)
+          if (!result.success) {
+            return React.createElement(ErrorComponent, {
+              error: result.error,
+            })
+          } else {
+            return React.createElement(this._Mountable, {
+              ..._nextMountableProps,
+              layers: _nextLayers.map((layer) => ({
+                ...layer,
+                prev: layer.prev
+                  ? {
+                      ...layer.prev,
+                      inputParsed: { ...layer.prev.inputParsed, ...result.data },
+                    }
+                  : undefined,
+              })),
+            })
+          }
+        }
         case 'params': {
           if (this.type !== 'layout' && this.type !== 'page') {
             return React.createElement(ErrorComponent, {
@@ -10728,7 +10783,7 @@ export class Point0<
           outerProps: restProps,
         },
       ],
-      extraProps: (mountableState: MountableState<any, any, any, any, any, any, any, ErrorPoint0>) => {
+      extraProps: (mountableState: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>) => {
         if (!this._ProviderReactContext) {
           throw new Error(`ProviderReactContext not found on point ${this.toStringWithLocation()}`)
         }
@@ -10832,7 +10887,7 @@ export class Point0<
           outerProps: restProps,
         },
       ],
-      extraProps: (mountableState: MountableState<any, any, any, any, any, any, any, ErrorPoint0>) => {
+      extraProps: (mountableState: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>) => {
         if (!this._ProviderReactContext) {
           throw new Error(`ProviderReactContext not found on point ${this.toStringWithLocation()}`)
         }

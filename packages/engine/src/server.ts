@@ -509,55 +509,6 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
 
             const result = await this.fetchDetailed({ request, requiredCtx, bunServer })
 
-            // Add CORS headers in dev mode for requests from localhost with client ports (for vite development)
-            // TODO: remove it, we now just forward from client to server
-            // if (process.env.NODE_ENV !== 'production') {
-            //   const origin = request.headers.get('origin')
-            //   if (origin) {
-            //     const originUrl = new URL(origin)
-            //     // Check if origin is localhost and port matches any client port
-            //     const isLocalhostClient =
-            //       originUrl.hostname === 'localhost' &&
-            //       this.clients.some((client) => originUrl.port === String(client.port))
-
-            //     if (isLocalhostClient) {
-            //       // Handle preflight OPTIONS requests
-            //       if (request.method === 'OPTIONS') {
-            //         const requestedHeaders = request.headers.get('Access-Control-Request-Headers')
-            //         return new Response(null, {
-            //           status: 204,
-            //           headers: {
-            //             'Access-Control-Allow-Origin': origin,
-            //             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-            //             'Access-Control-Allow-Headers': requestedHeaders || '*',
-            //             'Access-Control-Allow-Credentials': 'true',
-            //             'Access-Control-Max-Age': '86400',
-            //           },
-            //         })
-            //       }
-
-            //       // Add CORS headers to the response
-            //       const newHeaders = new Headers(response.headers)
-            //       newHeaders.set('Access-Control-Allow-Origin', origin)
-            //       newHeaders.set('Access-Control-Allow-Credentials', 'true')
-            //       // Expose all response headers (can't use * with credentials, so list them)
-            //       const exposedHeaders: string[] = []
-            //       response.headers.forEach((_, key) => {
-            //         exposedHeaders.push(key)
-            //       })
-            //       if (exposedHeaders.length > 0) {
-            //         newHeaders.set('Access-Control-Expose-Headers', exposedHeaders.join(', '))
-            //       }
-
-            //       return new Response(response.body, {
-            //         status: response.status,
-            //         statusText: response.statusText,
-            //         headers: newHeaders,
-            //       })
-            //     }
-            //   }
-            // }
-
             return result.response
           },
           websocket: {

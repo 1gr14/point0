@@ -634,7 +634,6 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
     })
   }) as unknown as FetchSsr
 
-  // TODO: move to fetch recorder
   const fetchesTale = fetchRecorder.tale.bind(fetchRecorder)
 
   const fetchTitle = (async (point: ReadyPoint, ...args: [any]) => {

@@ -31,7 +31,7 @@ const someStable = superstore.define('someStable', () => 123, 'clientServerTrans
 const someVar = superstore.define('someVar', () => 0, 'clientServerTransferredSsr')
 
 export const BestIdeaComponent = client
-  .lets<{ cta: string }>('component', 'bestIdea') // TODO: route and id may be right inside lets?
+  .lets<{ cta: string }>('component', 'bestIdea')
   .input(z.object({ x: z.number() }))
   .input(z.object({ y: z.number() }))
   .loader(async ({ ctx, input }) => {

@@ -10,8 +10,6 @@ import { ErrorPoint0 } from '@point0/core'
 //   return { idea }
 // }
 
-// TODO: add getIdeaChain, or getIdeaQuery and use it in layout and for example in updatePage
-
 export const ideaPage = ideaLayout
   .lets('page', 'idea', '/')
   .loader(async ({ ctx, params }) => {

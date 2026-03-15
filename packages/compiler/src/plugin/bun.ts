@@ -33,7 +33,6 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
         } catch (e) {
           console.error(e)
           return {
-            // TODO:ASAP
             contents: '',
             // contents: CompilerFile.getCachedContentOrUndefined(filepath) ?? '',
             loader: guessLoader(filepath),

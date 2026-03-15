@@ -32,7 +32,13 @@ export class ServerPoints<TError extends ErrorPoint0> {
   private readonly endpointsRoutesByMethods = new Map<WideRequestMethod, RoutesPretty>()
   // <method, <route.definition, point>>
   private readonly endpointsByDefinitionsByMethods = new Map<WideRequestMethod, Map<string, ReadyPoint>>()
+  // <scope, <type, <name, point>>>
+  private readonly pointsByNamesByTypesByScopes = new Map<
+    PointsScope,
+    Map<PointType, Map<PointName, ReadyPoint>>
+  >()
   private endpointsGenerated = false
+  private pointsIndexGenerated = false
 
   private constructor({ manager }: { manager: PointsManager }) {
     this.manager = manager as never
@@ -78,8 +84,20 @@ export class ServerPoints<TError extends ErrorPoint0> {
   private generateAndValidateRoutes = (): void => {
     this.endpointsRoutesByMethods.clear()
     this.endpointsByDefinitionsByMethods.clear()
+    this.pointsByNamesByTypesByScopes.clear()
     const routesByMethod = new Map<WideRequestMethod, Record<string, AnyRoute>>()
     for (const { point } of this.manager.collection) {
+      const pointsByTypes = this.pointsByNamesByTypesByScopes.get(point.scope)
+      if (pointsByTypes) {
+        const pointsByNames = pointsByTypes.get(point.type)
+        if (pointsByNames) {
+          pointsByNames.set(point.name, point)
+        } else {
+          pointsByTypes.set(point.type, new Map([[point.name, point]]))
+        }
+      } else {
+        this.pointsByNamesByTypesByScopes.set(point.scope, new Map([[point.type, new Map([[point.name, point]])]]))
+      }
       if (!point._endpoint) {
         continue
       }
@@ -110,6 +128,25 @@ export class ServerPoints<TError extends ErrorPoint0> {
       this.endpointsRoutesByMethods.set(method, Routes.create(routes))
     }
     this.endpointsGenerated = true
+    this.pointsIndexGenerated = true
+  }
+
+  private generatePointIndex = (): void => {
+    this.pointsByNamesByTypesByScopes.clear()
+    for (const { point } of this.manager.collection) {
+      const pointsByTypes = this.pointsByNamesByTypesByScopes.get(point.scope)
+      if (pointsByTypes) {
+        const pointsByNames = pointsByTypes.get(point.type)
+        if (pointsByNames) {
+          pointsByNames.set(point.name, point)
+        } else {
+          pointsByTypes.set(point.type, new Map([[point.name, point]]))
+        }
+      } else {
+        this.pointsByNamesByTypesByScopes.set(point.scope, new Map([[point.type, new Map([[point.name, point]])]]))
+      }
+    }
+    this.pointsIndexGenerated = true
   }
 
   findExact = ({
@@ -122,45 +159,11 @@ export class ServerPoints<TError extends ErrorPoint0> {
     scope: PointsScope
   }): ReadyPoint | undefined => {
     this.throwIfNotReady()
-    for (const { point } of this.manager.collection) {
-      if (point.type === type && point.name === name && point.scope === scope) {
-        return point
-      }
+    if (!this.pointsIndexGenerated) {
+      this.generatePointIndex()
     }
-    return undefined
+    return this.pointsByNamesByTypesByScopes.get(scope)?.get(type)?.get(name)
   }
-
-  // findAction = ({
-  //   method,
-  //   hrefRel,
-  // }: {
-  //   method: string
-  //   hrefRel: string
-  // }):
-  //   | {
-  //       point: ActionPoint
-  //       location: KnownLocation
-  //     }
-  //   | undefined => {
-  //   this.throwIfNotReady()
-  //   for (const { point } of this.manager.collection) {
-  //     // TODO: optimize it later
-  //     if (point.type !== 'action') {
-  //       continue
-  //     }
-  //     if (point.method !== method) {
-  //       continue
-  //     }
-  //     const location = (point.route as AnyRoute).getLocation(hrefRel)
-  //     if (location.exact) {
-  //       return {
-  //         point: point as ActionPoint,
-  //         location,
-  //       }
-  //     }
-  //   }
-  //   return undefined
-  // }
 
   findEndpoint = (
     options:
