@@ -1,4 +1,4 @@
-import { Point0 } from '@point0/core'
+import { ErrorPoint0, Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
@@ -1358,6 +1358,38 @@ describe('page', () => {
         div: Item 1
         div: Item 2
         #more: Load more
+      "
+    `)
+  })
+
+  it('with error status', async () => {
+    const root = createRoot()
+
+    const page = root
+      .lets('page', 'home')
+      .with(() => new ErrorPoint0('test error', { status: 401 }))
+      .page(() => <div id="page">never</div>)
+
+    const { render, fetchPreview, fetchesTale, fetchSsr } = await createTestThings({ points: [root, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#error')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /home
+          #error: test error
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+
+      "
+    `)
+    const { response } = await fetchSsr(page)
+    expect(response.status).toBe(401)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #error: test error
       "
     `)
   })

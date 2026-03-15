@@ -289,6 +289,25 @@ type FetchTitle = <T extends AnyNiceRequestableReadyPoint>(
     ? [input?: T['Infer']['InputRawOrUndefined']]
     : [input: T['Infer']['InputRawOrUndefined']]
 ) => Promise<string>
+type RenderTestThings = {
+  <TResult = undefined>(callback?: (state: TestThingsState) => TResult): Promise<TResult>
+  <TResult = undefined>(path: string, callback?: (state: TestThingsState) => TResult): Promise<TResult>
+}
+export type TestThings = {
+  engine: Engine
+  client: FakeClient<TestThingsState>
+  render: RenderTestThings
+  app: AppComponent
+  fetch: FakeClient['fetch']
+  fetchSsr: FetchSsr
+  loadPoint: FetchPoint
+  loadPointYml: FetchPointYml
+  fetchView: FetchHtmlView
+  fetchPreview: FetchHtmlPreview
+  fetchRecorder: ReturnType<typeof FetchRecorder.create>
+  fetchesTale: ReturnType<typeof FetchRecorder.create>['tale']
+  fetchTitle: FetchTitle
+}
 
 export const createTestThings = async ({
   points,
@@ -304,7 +323,7 @@ export const createTestThings = async ({
   globals?: Record<string, any>
   engineOptions?: Partial<EngineOptions>
   preventClientDevServers?: boolean
-}) => {
+}): Promise<TestThings> => {
   bindNotifyManager()
   const Wrapper = wrapper ?? undefined
   const app =
@@ -640,5 +659,4 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
   }
 }
 
-export type TestThings = Awaited<ReturnType<typeof createTestThings>>
 export type ItFn = (done: (err?: unknown) => void) => void | Promise<void>

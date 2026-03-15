@@ -9946,13 +9946,18 @@ export class Point0<
     }>
     isHeadable: boolean
     fallbackErrorComponent: ErrorComponentType<any, any>
-    ErrorClass: ClassLikeError0<Error>
+    ErrorClass: ClassLikeError0<ErrorPoint0>
   }): React.ComponentType<{ error: Error; _isHeadable?: boolean }> => {
     const errorComponent =
       prevMountActions.flatMap(({ action }) => (action.type === 'errorComponent' ? [action.Component] : [])).at(-1) ??
       fallbackErrorComponent
     return ({ error, _isHeadable = isHeadable }: { error: Error; _isHeadable?: boolean }) => {
       const error0 = ErrorClass.from(error)
+      if (_point0_env.side.is.server) {
+        if (error0.status) {
+          Effects.getWeak()?.set.status(error0.status)
+        }
+      }
       if (_isHeadable) {
         Point0._usePrevHeadsAndSetPageState({
           pageState: {

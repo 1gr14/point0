@@ -23,5 +23,6 @@
     "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false
-  }
+  },
+  "files": []
 }
