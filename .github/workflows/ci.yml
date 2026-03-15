@@ -8,6 +8,7 @@ permissions:
   contents: write # <-- allows pushing tags/commits
   issues: write # <-- needed for GitHub release notes
   pull-requests: write
+  id-token: write # <-- required for OIDC/Trusted Publisher
 
 jobs:
   build:
@@ -70,10 +71,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Setup Node.js ${{ matrix.node }}
+      - name: Setup Node.js 20
         uses: actions/setup-node@v5
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 20
 
       - name: Setup Bun ${{ matrix.bun }}
         uses: oven-sh/setup-bun@v2
@@ -109,6 +110,7 @@ jobs:
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
+          scope: '@point0'
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -127,5 +129,4 @@ jobs:
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release

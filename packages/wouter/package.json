@@ -44,13 +44,13 @@
     "postpublish": "bun ../../scripts/restore-package.ts"
   },
   "peerDependencies": {
+    "@devp0nt/route0": "catalog:",
     "@point0/core": "workspace:*",
-    "wouter": "^3.7.1",
+    "@tanstack/react-query": "catalog:",
+    "@unhead/react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "@tanstack/react-query": "catalog:",
-    "@devp0nt/route0": "catalog:",
-    "@unhead/react": "catalog:"
+    "wouter": "^3.7.1"
   },
   "devDependencies": {
     "@types/bun": "^1.2.22",
@@ -60,6 +60,6 @@
     "typescript": "catalog:"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "restricted"
   }
 }

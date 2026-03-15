@@ -66,9 +66,9 @@
     "babel-plugin-minify-guarded-expressions": "^0.4.4"
   },
   "peerDependencies": {
-    "typescript": "*",
+    "@devp0nt/route0": "catalog:",
     "@point0/core": "workspace:*",
-    "@devp0nt/route0": "catalog:"
+    "typescript": "*"
   },
   "devDependencies": {
     "@point0/engine": "workspace:*",
@@ -81,6 +81,6 @@
     "typescript": "catalog:"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "restricted"
   }
 }

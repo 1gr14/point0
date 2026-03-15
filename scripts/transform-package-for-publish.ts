@@ -29,12 +29,26 @@ const catalog = rootPackageJson.workspaces?.catalog || {}
 // Read current package.json
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
 
-// Transform peerDependencies
-// This runs during prepublishOnly, which happens AFTER @semantic-release/npm bumps versions
-// So workspace package versions will already be updated when we read them
-if (packageJson.peerDependencies) {
-  const transformed = { ...packageJson.peerDependencies }
-  console.info('Transforming peerDependencies:')
+const resolveWorkspaceVersion = (dep: string): string | null => {
+  // Try to find the package in packages directory
+  try {
+    const workspacePackagePath = join(rootDir, 'packages', dep.replace('@point0/', ''), 'package.json')
+    const workspacePackage = JSON.parse(readFileSync(workspacePackagePath, 'utf-8'))
+    return workspacePackage.version
+  } catch {
+    // Package not found, try to get version from catalog or use current package version
+    return catalog[dep] || packageJson.version || null
+  }
+}
+
+// Transform dependency sections.
+// This runs during prepublishOnly, which happens AFTER @semantic-release/npm bumps versions.
+// So workspace package versions will already be updated when we read them.
+for (const section of ['dependencies', 'peerDependencies', 'optionalDependencies', 'devDependencies'] as const) {
+  if (!packageJson[section]) continue
+
+  const transformed = { ...packageJson[section] }
+  console.info(`Transforming ${section}:`)
 
   for (const [dep, version] of Object.entries(transformed)) {
     // Transform catalog: references
@@ -43,40 +57,24 @@ if (packageJson.peerDependencies) {
         transformed[dep] = catalog[dep]
         console.info(`  ${dep}: catalog: -> ${catalog[dep]}`)
       } else {
-        console.warn(`Warning: No catalog entry found for ${dep}`)
+        console.warn(`Warning: No catalog entry found for ${dep} in ${section}`)
       }
     }
     // Transform workspace:* references
     else if (version === 'workspace:*') {
-      // Find the workspace package
-      let workspaceVersion = null
-
-      // Try to find the package in packages directory
-      try {
-        const workspacePackagePath = join(rootDir, 'packages', dep.replace('@point0/', ''), 'package.json')
-        const workspacePackage = JSON.parse(readFileSync(workspacePackagePath, 'utf-8'))
-        workspaceVersion = workspacePackage.version
-
-        // Note: When running via semantic-release, this will read the already-bumped version
-        // because @semantic-release/npm bumps the version BEFORE running prepublishOnly
-        console.info(`  ${dep}: workspace:* -> ^${workspaceVersion}`)
-      } catch {
-        // Package not found, try to get version from catalog or use current package version
-        workspaceVersion = catalog[dep] || packageJson.version
-        console.warn(`Warning: Could not find workspace package ${dep}, using fallback: ${workspaceVersion}`)
-      }
-
+      const workspaceVersion = resolveWorkspaceVersion(dep)
       if (workspaceVersion) {
         // Use caret range to allow compatible versions
-        // This ensures users can install compatible versions (e.g., ^0.1.0 allows 0.1.0, 0.1.1, 0.2.0, etc.)
+        // This ensures users can install compatible versions.
         transformed[dep] = `^${workspaceVersion}`
+        console.info(`  ${dep}: workspace:* -> ^${workspaceVersion}`)
       } else {
-        console.warn(`Warning: Could not determine version for workspace package ${dep}`)
+        console.warn(`Warning: Could not determine version for workspace package ${dep} in ${section}`)
       }
     }
   }
 
-  packageJson.peerDependencies = transformed
+  packageJson[section] = transformed
 }
 
 // Backup original and write transformed version

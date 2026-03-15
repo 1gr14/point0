@@ -54,6 +54,6 @@
     "typescript": "catalog:"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "restricted"
   }
 }
