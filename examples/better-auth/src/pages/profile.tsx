@@ -1,9 +1,8 @@
-import { useState } from 'react'
 import { authClient } from '@/lib/auth/core'
-import { Link } from '@/lib/navigate'
-import { routes } from '@/lib/routes'
-import { root } from '@/lib/root'
 import { authorizedOnlyPlugin } from '@/lib/auth/utils'
+import { Link } from '@/lib/navigate'
+import { root } from '@/lib/root'
+import { useState } from 'react'
 
 export default root
   .lets('page', 'profile', '/profile')
