@@ -26,7 +26,7 @@ const general = {
   ],
   clean: false,
   dts: true,
-  sourcemap: true,
+  sourcemap: false,
   splitting: false,
   minify: false,
   target: 'es2022',
@@ -42,8 +42,4 @@ export default defineConfig({
   ...general,
   format: 'esm',
   outDir: 'dist',
-  esbuildOptions(options) {
-    // Ensure source content is included in source maps so Bun can show original TS files
-    options.sourcesContent = true
-  },
 })

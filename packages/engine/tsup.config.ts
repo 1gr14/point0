@@ -21,7 +21,7 @@ const general = {
   ],
   clean: false,
   dts: true,
-  sourcemap: true,
+  sourcemap: false,
   splitting: false,
   minify: false,
   target: 'es2022',

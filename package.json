@@ -64,7 +64,8 @@
     "pack:dist": "bun --filter './packages/**' pack:dist",
     "pack:local-registry": "bun run scripts/pack-local-registry.ts",
     "prepare": "husky",
-    "clean": "rimraf packages/*/dist && rimraf packages-dist-npm && rimraf node_modules/.cache"
+    "clean:dist": "rimraf packages/*/dist && rimraf packages-dist-npm",
+    "clean:all": "rimraf packages/*/dist && rimraf packages-dist-npm && rimraf node_modules/.cache"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
