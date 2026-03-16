@@ -1,5 +1,5 @@
 import { Route0 } from '@devp0nt/route0'
-import type { AnyLocation, AnyRouteOrDefinition, UnknownLocation, ExactLocation } from '@devp0nt/route0'
+import type { AnyLocation, AnyRouteOrDefinition, UnknownLocation, ExactLocation, KnownLocation } from '@devp0nt/route0'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ClientPoints } from './client-points.js'
@@ -162,16 +162,16 @@ export const getRouterContext = (): RouterContextValue => {
 
 /** Hooks **/
 
-export function useLocation(addHashToLocation?: boolean): AnyLocation
+export function useLocation(addHashToLocation?: boolean): UnknownLocation | ExactLocation
 export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
   route?: TRoute,
   addHashToLocation?: boolean,
-): UnknownLocation | ExactLocation<TRoute>
+): UnknownLocation | KnownLocation<TRoute>
 export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
   route?: TRoute,
   location?: AnyLocation,
   addHashToLocation?: boolean,
-): UnknownLocation | ExactLocation<TRoute>
+): UnknownLocation | KnownLocation<TRoute>
 export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
   ...args: [(TRoute | boolean)?, (AnyLocation | boolean)?, boolean?]
 ) {

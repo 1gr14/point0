@@ -174,7 +174,6 @@ import type {
   NicePluginStagePoint,
   NiceProviderReadyPoint,
   NiceQueryReadyPoint,
-  NiceReadyPoint,
   NiceRootReadyPoint,
   NiceRootStagePoint,
   NiceStagePoint,
@@ -2801,29 +2800,15 @@ export class Point0<
   }
 
   with<
-    TPoint extends NiceReadyPoint<
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      'infiniteQuery' | 'query',
-      any,
-      any,
-      any
-    >,
+    TPoint extends {
+      Infer: {
+        IsInputOptional: boolean
+        InputRawOrUndefined: any
+        UseQueryOptions: any
+        QueryResultType: 'query' | 'infiniteQuery'
+        QueriedData: any
+      }
+    },
   >(
     // ...args: TLetsReadyPointType extends MountablePointType
     //   ?
@@ -3121,29 +3106,16 @@ export class Point0<
   }
 
   relatedQuery<
-    TPoint extends NiceReadyPoint<
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      'infiniteQuery' | 'query',
-      any,
-      any,
-      any
-    >,
+    TPoint extends {
+      point: AnyPoint
+      Infer: {
+        IsInputOptional: boolean
+        InputRawOrUndefined: any
+        UseQueryOptions: any
+        QueryResultType: 'query' | 'infiniteQuery'
+        QueriedData: any
+      }
+    },
   >(
     ...args: TLetsReadyPointType extends MountablePointType
       ? [
@@ -5699,29 +5671,11 @@ export class Point0<
     >
   >
   layout<
-    TPoint extends NiceLayoutReadyPoint<
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any
-    >,
+    TPoint extends {
+      Infer: {
+        ParamsRaw: any
+      }
+    },
   >(
     ...args: TLetsReadyPointType extends 'page'
       ? [

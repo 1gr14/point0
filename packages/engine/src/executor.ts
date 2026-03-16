@@ -4,7 +4,7 @@ import type {
   AppComponent,
   ClassLikeError0,
   ClientPoints,
-  // Ctx,
+  Ctx,
   Data,
   DataTransformerExtended,
   ErrorPoint0,
@@ -14,7 +14,6 @@ import type {
   InputSchema,
   IsSchemaOptional,
   LoaderOutput,
-  NiceReadyPoint,
   PagePoint,
   PointName,
   PointsScope,
@@ -245,32 +244,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
   //   ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput'], TPoint['Infer']['Error']>
   // >
   async execute<
-    TPoint extends
-      | NiceReadyPoint<
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any,
-          any
-        >
-      | ReadyPoint
-      | undefined,
+    TPoint extends ReadyPoint | undefined,
     TErrorClass extends ClassLikeError0<ErrorPoint0>,
   >({
     point,
@@ -279,54 +253,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     ErrorClass,
   }: ExecuteOptions<TPoint, TErrorClass>): Promise<
     ServerExecuteResult<
-      TPoint extends NiceReadyPoint<
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any
-      >
+      TPoint extends { Infer: { Ctx: Ctx } }
         ? TPoint['Infer']['Ctx']
         : UnknownCtx,
-      TPoint extends NiceReadyPoint<
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any
-      >
+      TPoint extends { Infer: { ServerLoaderOutput: LoaderOutput | UndefinedLoaderOutput } }
         ? TPoint['Infer']['ServerLoaderOutput']
         : UnknownData,
       // TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
@@ -1038,60 +968,11 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
 }
 
 export type ExecuteOptions<
-  TPoint extends
-    | ReadyPoint
-    | NiceReadyPoint<
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any
-      >
-    | undefined,
+  TPoint extends ReadyPoint | undefined,
   TErrorClass extends ClassLikeError0<ErrorPoint0>,
 > = {
   point?: TPoint | undefined
-  input: TPoint extends
-    | ReadyPoint
-    | NiceReadyPoint<
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any,
-        any
-      >
+  input: TPoint extends { Infer: { ServerInputRaw: any } }
     ? TPoint['Infer']['ServerInputRaw']
     : InputRaw
   effects?: Effects
