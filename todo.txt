@@ -5,30 +5,32 @@
 ------
 ------
 
+refactoring
+engine(map, mirror)
+expo(mirror)
 
-
-action
-better-auth
 mdx
-mcp
-
-expo
-electron
-
-docs
-devp0nt
-
-+init
 +file-routing
-+redirect
-+static
-+channel
+
+devp0nt
+create-app
+docs
 
 examples
 start0
 
-launch
+action(openapi, scalar)
+redirect
+mcp
+requesting(fixes)
++engine(import protection)
 
+🚀 launch
+
+---
++init
++static
++channel
 
 
 ------
@@ -45,6 +47,18 @@ Ctx и loader может ничего не вернуть, тогда счита
 ? Разрешить палгин от рута просточтобы ssr перенимался
 В логгер по уммолчанибю вшить цвета
 Порт клинета и сервера экспоузить в энвы при разработке
+? Врапер нужен, чтобы раньше времени чилдрен не выкидывали
+
+compiler filter should accept also fn, and also objec {path, content} so may check if it should comile or not
+
+Генерейт мап и она может быть mirror как эни поинт с указанием бейза иначе руи, а может быть с прямым импортом поинтов, а также с выбором того как генерируются ключи
+Генерейт mirror тогда там будет просто экспорт констс также с названными ключами и опередлёнными бейзами, бейзы тоже могут быть строкой  могт быть функцией, котрая вернёт поинт 
+Когда генерим миррор, важно в эндпоинт автоматически подставить нужный путь исходя из бейза, а для экшенов прямо прописать метод и путь
+
+Воутер перенести в реактдом
+
+Упрощённая запись для мидлвары для фильтрации запрсов ({method: [], route: '/zxc...', handler: () => {}}) and (methods, route, handler) => {} and (route, handler) => {}
+
 --+
 ? При загрузке пейджа с сервера всегдаэкзекьютить пейдж, даже если он не имеет лоадеров (не по дизайну же, после авторизации станет понятно)
 ? Вариант мидлвары перенести в реквест пусть там будет вариант
@@ -109,12 +123,10 @@ shrink core/index.ts size, by remove code duplicates
 
 === REQUESTING ===
 ? Реквест надо максимально упростить и вообще его экстенднуть от обычного реквеста
-Упрощённая запись для мидлвары для фильтрации запрсов ({method: [], route: '/zxc...', handler: () => {}}) and (methods, route, handler) => {} and (route, handler) => {}
 ServerClient with own fetching like FakeClient
 Когда в эффектах кукиса удаляют куки во втором запросе при сср проверить, что это работает
 Реквест стейт это интерфейс который можно поменять
 Формдата авто фалс тру
-В реквест0 пометить это сервер а также последовательность предыдущих запросов
 при запросах с сревреа к самому себе учитывать максимальную рекурсию
 ? _middleware
 ---
@@ -125,9 +137,9 @@ ServerClient with own fetching like FakeClient
 
 
 === SSR ===
+---
 Test for mount()
 ? __POINT0_GET_SSR_PHASE__
----
 Если не сср поинт, то прунить ещё для сервера и компоненты до первого сср фалс, а значит нужно при компилинге уже всех парентов находить (короче находить родителей по поинту убедиться, что при компилинге только 1 файла, он находит родительский файл)
 allow .ssr() on any point
 ssr can be not on root point, but client still can be ssr if it has ssr point, so check ssr by any point has ssr option
@@ -202,19 +214,19 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 
 
 === ENGINE ===
+--+
 (when actions, scalar)
-И из файла поинтсов как раз для этого и нужно в том числеэкспортировать и тайпед поинты объектом судя по всему
-Разрешить кастомные генераторы просто с передачей в what функции, и нужно апи для стороннего генератора
-Причём экспортировать тайпед объект с полными именами поинтсов в ключах, плюс отдельно экспортировать рут, плюс отдельно готовый массив, как комбинацию всего этого
-Поинтсы импортировать из файла опционально сразу в обёртке
+? И из файла поинтсов как раз для этого и нужно в том числеэкспортировать и тайпед поинты объектом судя по всему
+? Разрешить кастомные генераторы просто с передачей в what функции, и нужно апи для стороннего генератора
+? Причём экспортировать тайпед объект с полными именами поинтсов в ключах, плюс отдельно экспортировать рут, плюс отдельно готовый массив, как комбинацию всего этого
+? Поинтсы импортировать из файла опционально сразу в обёртке
 ? Добавить генерации роутов также и на верхний скоуп разрешив прописывать скоуп как массив
 --+
 (import protection) cli inspect by filepath how this file and in which place come to files via cli command
---+
+---
 (when electron)
 При подмене фетча на серверный убедиться что он относится к одному из родительских скоупов, иначе не подменять
 Two servers
----
 ? Сделать сервер опциональным в конфиге, но при запросе к серверу в таком случае всё ломать
 ? Если лиент не сервится то и запросы его к нему же не перенаправлять на сервер (так он уже не сервится)
 ssr as option in engine, so we can by default prune or not prune plugins
@@ -297,19 +309,6 @@ root.lets('exclude', 'backend').exclude() → создаётся base, но но
 walker cache for compiled files by settings and file timestemp
 readLimit, parseLimit
 walker persist on bun plugin and vite plugin during request, so lets refresh read files by timestamp
-
-
-
-
-
-=== EXPO ===
-Роутер перенести в реактдом (когда будем проверять экспо)
---?  
-expo example
-expo router
-respect null on baseurl for client, so page like requests to server will be not recpected
-check if there is no client port defined if there is no App and indexhtml, so it should not be served
-? remove location from mountable components, becouse in expo for example it is very strange property
 
 
 

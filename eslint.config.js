@@ -15,6 +15,7 @@ export default defineConfig([
       '**/dist-npm/**',
       '**/packages-dist-npm/**',
       '**/.cache/**',
+      '**/.expo/**',
       '**/.husky/**',
       '**/.git/**',
       '**/templates/**',
@@ -32,7 +33,9 @@ export default defineConfig([
     files: ['**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx'],
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        projectService: {
+          allowDefaultProject: ['examples/expo/babel.config.js', 'examples/expo/metro.config.js'],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -56,6 +59,7 @@ export default defineConfig([
       // overrides for enabled recommended rules
       '@typescript-eslint/no-namespace': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
       // slow rules
       '@typescript-eslint/no-unnecessary-condition': ['error'],
       '@typescript-eslint/no-floating-promises': ['error'],

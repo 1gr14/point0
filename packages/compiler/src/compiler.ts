@@ -1,23 +1,16 @@
 import type { GeneratorResult } from '@babel/generator'
 import type { RoutesPretty } from '@devp0nt/route0'
-import { type EnvOsName, type EnvRuntimeName, type NormalizedNodeEnv, normalNodeEnvs } from '@point0/core'
+import {
+  normalNodeEnvs,
+  type CompilerOptions,
+  type EnvOsName,
+  type EnvRuntimeName,
+  type NormalizedNodeEnv,
+} from '@point0/core'
 import type { CompilerFile } from './file.js'
 import { CompilerPoint } from './point.js'
 import type { CompilerEnvConsts } from './utils.js'
 import { Walker } from './walker.js'
-
-export type CompilerOptions = {
-  routes?: Record<string, RoutesPretty> | undefined
-  mode?: NormalizedNodeEnv | false
-  runtime?: EnvRuntimeName | false
-  os?: EnvOsName | false
-  side: 'client' | 'server' | false
-  scope: string | false
-  built?: boolean
-  consts?: CompilerEnvConsts
-  filter?: RegExp
-  hmrFix?: boolean
-}
 
 export class Compiler {
   filter: RegExp
@@ -32,7 +25,8 @@ export class Compiler {
   walker: Walker
   routes: Record<string, RoutesPretty> | undefined
 
-  static defaultFilter = /^(?!.*node_modules\/(?!.*point0)).*\.[cm]?[jt]sx?$/
+  // Match JS/TS files while excluding virtual/shim module IDs and node_modules (except point0 packages).
+  static defaultFilter = /^(?!.*(?:shim:|virtual:))(?!.*node_modules\/(?!.*point0)).*\.[cm]?[jt]sx?$/
 
   constructor({
     filter,

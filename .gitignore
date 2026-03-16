@@ -66,3 +66,6 @@ secrets/
 
 # Database files
 *.db
+
+# Expo
+.expo/

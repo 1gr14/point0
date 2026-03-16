@@ -75,6 +75,7 @@ export class Engine<
       engineFile: parsedOptions.general.engineFile,
       logger: parsedOptions.general.logger,
       clients: [],
+      generalBunPlugins: parsedOptions.general.bunPlugins,
     })
 
     const clients = parsedOptions.clients.map((clientOptions) => {
@@ -83,6 +84,7 @@ export class Engine<
         cwd: parsedOptions.general.cwd,
         logger: parsedOptions.general.logger,
         server,
+        generalBunPlugins: parsedOptions.general.bunPlugins,
       })
       return client
     })

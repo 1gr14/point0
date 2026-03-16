@@ -306,6 +306,17 @@ export type EngineClientPluginsDefinitionFn = (
 ) => Array<BunPlugin | string> | Promise<Array<BunPlugin | string>>
 export type EngineClientPluginsDefinition = EngineClientPluginsDefinitionFn | Array<BunPlugin | string>
 
+export type EngineSharedPluginsDefinitionFnOptions = {
+  mode: NormalizedNodeEnv
+  command: 'serve' | 'build'
+  side: 'client' | 'server'
+  scope: PointsScope
+}
+export type EngineSharedPluginsDefinitionFn = (
+  options: EngineSharedPluginsDefinitionFnOptions,
+) => Array<BunPlugin | string> | Promise<Array<BunPlugin | string>>
+export type EngineSharedPluginsDefinition = EngineSharedPluginsDefinitionFn | Array<BunPlugin | string>
+
 export type BunPluginsDefinitionFnOptions = {
   mode: NormalizedNodeEnv
   command: 'serve' | 'build'
@@ -325,7 +336,7 @@ export const extractEngineServerPlugins = async ({
 }: {
   mode: NormalizedNodeEnv
   command: 'serve' | 'build'
-  bunPlugins: EngineServerPluginsDefinition
+  bunPlugins: EngineServerPluginsDefinition | EngineSharedPluginsDefinition
   scope: PointsScope
 }): Promise<BunPlugin[]> => {
   return await extractBunPlugins({
@@ -387,16 +398,18 @@ export const extractEngineClientDevPluginsStrings = async ({
   mode,
   command,
   bunPlugins,
+  scope,
   errorOnNotString,
 }: {
   cwd: string
   mode: NormalizedNodeEnv
   command: 'serve' | 'build'
-  bunPlugins: EngineClientPluginsDefinition
+  bunPlugins: EngineClientPluginsDefinition | EngineSharedPluginsDefinition
+  scope: PointsScope
   errorOnNotString: string
 }): Promise<string[]> => {
   const bunPluginsArray =
-    typeof bunPlugins === 'function' ? await bunPlugins({ mode, command, side: 'client' }) : bunPlugins
+    typeof bunPlugins === 'function' ? await bunPlugins({ mode, command, side: 'client', scope }) : bunPlugins
   return await Promise.all(
     bunPluginsArray.map(async (p, index) => {
       if (typeof p === 'string') {

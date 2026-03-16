@@ -33,13 +33,21 @@ const general = {
   external: ['bun:test'],
   treeshake: true,
   bundle: false,
+  outExtension: ({ format }) => ({ js: format === 'cjs' ? '.cjs' : '.js' }),
   esbuildPlugins: [fixImportsPlugin()],
   platform: 'node',
   tsconfig: './tsconfig.build.json',
 } satisfies Options
 
-export default defineConfig({
-  ...general,
-  format: 'esm',
-  outDir: 'dist',
-})
+export default defineConfig([
+  {
+    ...general,
+    format: 'esm',
+    outDir: 'dist/esm',
+  },
+  {
+    ...general,
+    format: 'cjs',
+    outDir: 'dist/cjs',
+  },
+])

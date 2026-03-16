@@ -1,3 +1,4 @@
+import { fixImportsPlugin } from 'esbuild-fix-imports-plugin'
 import { defineConfig, type Options } from 'tsup'
 
 const general = {
@@ -11,12 +12,21 @@ const general = {
   external: ['bun:test', '@point0/core', '@point0/engine'],
   treeshake: false,
   bundle: false,
+  outExtension: ({ format }) => ({ js: format === 'cjs' ? '.cjs' : '.js' }),
+  esbuildPlugins: [fixImportsPlugin()],
   platform: 'node',
   tsconfig: './tsconfig.build.json',
 } satisfies Options
 
-export default defineConfig({
-  ...general,
-  format: 'esm',
-  outDir: 'dist',
-})
+export default defineConfig([
+  {
+    ...general,
+    format: 'esm',
+    outDir: 'dist/esm',
+  },
+  {
+    ...general,
+    format: 'cjs',
+    outDir: 'dist/cjs',
+  },
+])

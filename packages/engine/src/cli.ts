@@ -2,7 +2,7 @@
 
 import type { PointsScope } from '@point0/core'
 import { Command } from 'commander'
-import { Engine } from './index.js'
+import { Engine } from './engine.js'
 
 const program = new Command()
 

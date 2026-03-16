@@ -1,5 +1,5 @@
 import type { BunPlugin } from 'bun'
-import type { CompilerOptions } from '../compiler.js'
+import type { CompilerOptions } from '@point0/core'
 import { Compiler } from '../compiler.js'
 
 export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugin {

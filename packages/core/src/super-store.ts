@@ -11,12 +11,17 @@ type SuperStoreGlobals = {
   __POINT0_SUPER_STORE_INSTANCE__?: SuperStore
 }
 
+const _point0_env = {
+  vars: {
+    POINT0_SIDE: process.env.POINT0_SIDE,
+  },
+}
+
 // I do not know why, but it is only way to do it to work in bun and vite at the same time
 ;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||=
-  process.env.POINT0_SIDE === 'client'
+  _point0_env.vars.POINT0_SIDE === 'client'
     ? null
-    : // eslint-disable-next-line @typescript-eslint/no-require-imports
-      (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<Record<string, unknown>>)
+    : (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<Record<string, unknown>>)
 ;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ ||= {}
 ;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ ||= {}
 

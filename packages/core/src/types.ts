@@ -6,6 +6,7 @@ import type {
   Extended,
   ParamsInput,
   ParamsOutput,
+  RoutesPretty,
   UnknownSearchInput,
 } from '@devp0nt/route0'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
@@ -22,6 +23,8 @@ import type { EmptyProps, MuntableSuccessComponentType, Props, QueriesDefinition
 import type { Point0 } from './point0.js'
 import type { Request0, WideRequestMethod } from './request0.js'
 import type { GetByPath, SetByPath } from './utils.js'
+import type { NormalizedNodeEnv } from './env.types.js'
+import type { EnvOsName, EnvRuntimeName } from './env.js'
 
 // basic
 
@@ -4378,3 +4381,23 @@ export type AnyNiceRequestableReadyPoint<
   TInnerProps,
   TQueriesDefinitions
 >
+
+// Compiler options
+
+export type CompilerOptions = {
+  routes?: Record<string, RoutesPretty> | undefined
+  mode?: NormalizedNodeEnv | false
+  runtime?: EnvRuntimeName | false
+  os?: EnvOsName | false
+  side: 'client' | 'server' | false
+  scope: string | false
+  built?: boolean
+  consts?: CompilerEnvConsts
+  filter?: RegExp
+  hmrFix?: boolean
+}
+export type CompilerEnvConstsObject = { [key: string]: string | number | boolean | null | undefined }
+export type CompilerEnvConstsString = string
+export type CompilerEnvConstsItem = CompilerEnvConstsString | CompilerEnvConstsObject
+export type CompilerEnvConsts = CompilerEnvConstsItem[] | CompilerEnvConstsString | CompilerEnvConstsObject | undefined
+export type CompilerEnvConstsNormalized = Array<CompilerEnvConstsString | CompilerEnvConstsObject>

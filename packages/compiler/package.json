@@ -16,24 +16,43 @@
     "url": "https://github.com/devp0nt/point0/issues"
   },
   "type": "module",
-  "types": "./dist/index.d.ts",
-  "main": "./dist/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "typesVersions": {
+    "*": {
+      "": ["./dist/esm/index.d.ts"],
+      "plugin/vite": ["./dist/esm/plugin/vite.d.ts"],
+      "plugin/bun": ["./dist/esm/plugin/bun.d.ts"],
+      "plugin/bun-static": ["./dist/esm/plugin/bun-static.d.ts"],
+      "plugin/babel": ["./dist/esm/plugin/babel.d.ts"]
+    }
+  },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/esm/index.d.ts",
+      "require": "./dist/cjs/index.cjs",
+      "import": "./dist/esm/index.js"
     },
     "./plugin/vite": {
-      "types": "./dist/plugin/vite.d.ts",
-      "import": "./dist/plugin/vite.js"
+      "types": "./dist/esm/plugin/vite.d.ts",
+      "require": "./dist/cjs/plugin/vite.cjs",
+      "import": "./dist/esm/plugin/vite.js"
     },
     "./plugin/bun": {
-      "types": "./dist/plugin/bun.d.ts",
-      "import": "./dist/plugin/bun.js"
+      "types": "./dist/esm/plugin/bun.d.ts",
+      "require": "./dist/cjs/plugin/bun.cjs",
+      "import": "./dist/esm/plugin/bun.js"
     },
     "./plugin/bun-static": {
-      "types": "./dist/plugin/bun-static.d.ts",
-      "import": "./dist/plugin/bun-static.js"
+      "types": "./dist/esm/plugin/bun-static.d.ts",
+      "require": "./dist/cjs/plugin/bun-static.cjs",
+      "import": "./dist/esm/plugin/bun-static.js"
+    },
+    "./plugin/babel": {
+      "types": "./dist/esm/plugin/babel.d.ts",
+      "require": "./dist/cjs/plugin/babel.cjs",
+      "import": "./dist/esm/plugin/babel.js"
     }
   },
   "files": [

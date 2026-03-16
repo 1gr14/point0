@@ -1,33 +1,33 @@
 import type { RoutesPretty } from '@devp0nt/route0'
+import { normalizeEnvConsts } from '@point0/compiler'
+import type { CompilerEnvConsts, CompilerEnvConstsNormalized } from '@point0/compiler'
 import { _defaultLoggerFn, prependAndDeappendSlash } from '@point0/core'
 import type {
   AppComponent,
   AppComponentModule,
   EnvOsName,
   EnvRuntimeName,
+  ErrorPoint0,
+  LoggerFn,
   NormalizedNodeEnv,
   PointsDefinitionSource,
   PointsScope,
   RequiredCtx,
-  ErrorPoint0,
-  LoggerFn,
 } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { CompilerEnvConsts, CompilerEnvConstsNormalized } from '@point0/compiler'
-import { normalizeEnvConsts } from '@point0/compiler'
 import type { FilesGeneratorTaskMeta, FilesGeneratorTaskPoints, FilesGeneratorTaskRoutes } from './generator.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { toAbsPath, toJsExtension } from './utils.js'
 import type {
   BunBuildConfigDefinition,
-  BunPluginsDefinition,
   EngineClientBuildConfigDefinition,
   EngineClientPluginsDefinition,
   EngineServerBuildConfigDefinition,
   EngineServerPluginsDefinition,
+  EngineSharedPluginsDefinition,
 } from './utils.js'
 
 export type EngineOptionsPublicdir =
@@ -123,7 +123,7 @@ export type EngineGeneralOptions = {
   buildWatchGlob?: string | string[]
   banner?: string
   bunBuildConfig?: BunBuildConfigDefinition
-  bunPlugins?: BunPluginsDefinition
+  bunPlugins?: EngineSharedPluginsDefinition
   viteConfig?: EngineOptionsViteConfig
   compiler?: EngineOptionsCompilerGeneral | boolean
 }
@@ -343,7 +343,7 @@ export type EngineGeneralOptionsParsed = {
   compiler: EngineOptionsCompilerGeneral | boolean | null
   viteConfig: EngineOptionsViteConfig | null
   bunBuildConfig: BunBuildConfigDefinition | null
-  bunPlugins: BunPluginsDefinition | null
+  bunPlugins: EngineSharedPluginsDefinition
   portPolicy: PortPolicy | null
   serveRetries: number | null
 }
@@ -593,7 +593,7 @@ const parseEngineGeneralOptions = ({
   return {
     ...result,
     bunBuildConfig: generalOptions.bunBuildConfig ?? null,
-    bunPlugins: generalOptions.bunPlugins ?? null,
+    bunPlugins: generalOptions.bunPlugins ?? [],
     viteConfig:
       typeof generalOptions.viteConfig === 'string'
         ? toFinalPath({

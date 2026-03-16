@@ -1,4 +1,5 @@
 import * as flat0 from '@devp0nt/flat0'
+import { Route0 } from '@devp0nt/route0'
 import type {
   AnyLocation,
   AnyRoute,
@@ -7,7 +8,7 @@ import type {
   UnknownSearchInput,
   UnknownSearchParsed,
 } from '@devp0nt/route0'
-import { Route0 } from '@devp0nt/route0'
+import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   DehydratedState,
   InfiniteData,
@@ -18,16 +19,16 @@ import type {
   UseMutationResult,
   UseQueryResult,
 } from '@tanstack/react-query'
-import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
-import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
+import type { Context } from 'use-context-selector'
 import { serializeCookiePair } from './effects.js'
 import { _point0_env } from './env.js'
-import type { ClassLikeError0 } from './error.js'
 import { ErrorPoint0 } from './error.js'
+import type { ClassLikeError0 } from './error.js'
+import { uniqEventerErrorEventNames } from './eventer.js'
 import type {
   AnyEventerEvent,
   AnyEventerEventName,
@@ -39,8 +40,7 @@ import type {
   ServerEventerSubscriptionCallback,
   UniqEventerErrorEventName,
 } from './eventer.js'
-import { uniqEventerErrorEventNames } from './eventer.js'
-import { getCallerLocation } from './index.js'
+import { getFetch, setStatus } from './helpers.js'
 import { _getFakeClient, _ssItems } from './internals.js'
 import type { LoggerFn } from './logger.js'
 import type {
@@ -93,8 +93,8 @@ import type {
   WrapperComponentType,
 } from './mountable.js'
 import type { PopularRequestMethod, WideRequestMethod } from './request0.js'
+import { useLocation, useRouterContext } from './router.js'
 import type { RouterPageState } from './router.js'
-import { _usePageStateManager, useLocation, useRouterContext } from './router.js'
 import { superstore } from './super-store.js'
 import type {
   AnyPoint,
@@ -221,11 +221,11 @@ import type {
   UseQueryOptions,
   WithError,
 } from './types.js'
-import type { FsLocation } from './utils.js'
 import {
   blankDataTransformerExtended,
   generateId,
   getByPath,
+  getCallerLocation,
   getWindowScrollPositionGetterByElementGetter,
   getWindowScrollPositionGetterBySelector,
   getWindowScrollPositionSetterByElementGetter,
@@ -238,7 +238,7 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
-import { getFetch, setStatus } from './helpers.js'
+import type { FsLocation } from './utils.js'
 
 // import stringify from 'safe-stable-stringify'
 
@@ -9827,10 +9827,12 @@ export class Point0<
     prevMountActions,
   }: {
     pageState: RouterPageState
-    pageStateManager: {
-      pageState: RouterPageState
-      setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
-    }
+    pageStateManager:
+      | {
+          pageState: RouterPageState
+          setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
+        }
+      | undefined
     prevMountActions: Array<{
       action: MountAction
       state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
@@ -9872,10 +9874,12 @@ export class Point0<
     fallbackLoadingComponent,
   }: {
     componentVariant: DestinationComponentVariant
-    pageStateManager: {
-      pageState: RouterPageState
-      setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
-    }
+    pageStateManager:
+      | {
+          pageState: RouterPageState
+          setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
+        }
+      | undefined
     prevMountActions: Array<{
       action: MountAction
       state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
@@ -9914,10 +9918,12 @@ export class Point0<
     ErrorClass,
   }: {
     componentVariant: DestinationComponentVariant
-    pageStateManager: {
-      pageState: RouterPageState
-      setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
-    }
+    pageStateManager:
+      | {
+          pageState: RouterPageState
+          setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
+        }
+      | undefined
     prevMountActions: Array<{
       action: MountAction
       state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
@@ -10027,7 +10033,8 @@ export class Point0<
       }
     }>
   }): Exclude<React.ReactNode, Promise<any>> => {
-    const { mountComponent, extraProps, location, pageStateManager = _usePageStateManager(), layers } = props
+    // pageStateManager = _usePageStateManager() (maye be will use it later)
+    const { mountComponent, extraProps, location, pageStateManager, layers } = props
     const [currentLayer, ...siblingLayers] = layers
 
     const componentVariant = this._getDestinationComponentVariant() ?? 'page'

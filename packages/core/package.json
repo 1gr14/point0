@@ -16,20 +16,31 @@
     "url": "https://github.com/devp0nt/point0/issues"
   },
   "type": "module",
-  "types": "./dist/index.d.ts",
-  "main": "./dist/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "typesVersions": {
+    "*": {
+      "": ["./dist/esm/index.d.ts"],
+      "effects": ["./dist/esm/effects.d.ts"],
+      "request0": ["./dist/esm/request0.d.ts"]
+    }
+  },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/esm/index.d.ts",
+      "require": "./dist/cjs/index.cjs",
+      "import": "./dist/esm/index.js"
     },
     "./effects": {
-      "types": "./dist/effects.d.ts",
-      "import": "./dist/effects.js"
+      "types": "./dist/esm/effects.d.ts",
+      "require": "./dist/cjs/effects.cjs",
+      "import": "./dist/esm/effects.js"
     },
     "./request0": {
-      "types": "./dist/request0.d.ts",
-      "import": "./dist/request0.js"
+      "types": "./dist/esm/request0.d.ts",
+      "require": "./dist/cjs/request0.cjs",
+      "import": "./dist/esm/request0.js"
     }
   },
   "files": [

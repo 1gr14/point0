@@ -1,5 +1,6 @@
-import type { CompilerOptions } from '@point0/compiler'
+import { _ssServerLogger, env, prependAndDeappendSlash } from '@point0/core'
 import type {
+  CompilerOptions,
   ErrorPoint0,
   FetcherFetchDetailedResult,
   LoggerFn,
@@ -8,7 +9,6 @@ import type {
   PointsScope,
   RequiredCtx,
 } from '@point0/core'
-import { _ssServerLogger, env, prependAndDeappendSlash } from '@point0/core'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -24,10 +24,9 @@ import type {
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
 import { getOverridenPortPolicy, resolvePortByPolicy, setOverridenPortPolicy } from './port.js'
-import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
+import type { PublicdirDefinition } from './publicdir.js'
 import { ServerPoints } from './server-points.js'
-import type { EngineServerBuildConfigDefinition, EngineServerPluginsDefinition } from './utils.js'
 import {
   createViteDevServer,
   executeEngineServerBuildConfig,
@@ -38,6 +37,11 @@ import {
   normalizeAndValidateNodeEnv,
   serveWithRetries,
   validateEntrypoints,
+} from './utils.js'
+import type {
+  EngineServerBuildConfigDefinition,
+  EngineServerPluginsDefinition,
+  EngineSharedPluginsDefinition,
 } from './utils.js'
 
 export class EngineServer<TPrepared extends boolean = boolean, TError extends ErrorPoint0 = ErrorPoint0> {
@@ -60,6 +64,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
   outdir: string | null
   bunBuildConfig: EngineServerBuildConfigDefinition
   bunPlugins: EngineServerPluginsDefinition
+  generalBunPlugins: EngineSharedPluginsDefinition
   prepared: TPrepared
   bunPluginsLoaded = false
   bunServer: Bun.Server<undefined> | undefined
@@ -91,6 +96,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
+    generalBunPlugins: EngineSharedPluginsDefinition
     viteConfig: EngineOptionsViteConfig | null
     viteDevServer: ViteDevServer | null
     hmrPort: number | false
@@ -119,6 +125,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     this.outdir = input.outdir
     this.bunBuildConfig = input.bunBuildConfig
     this.bunPlugins = input.bunPlugins
+    this.generalBunPlugins = input.generalBunPlugins
     this.prepared = input.prepared
     this.viteConfig = input.viteConfig
     this.viteDevServer = input.viteDevServer
@@ -147,6 +154,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
+    generalBunPlugins: EngineSharedPluginsDefinition
     logger: LoggerFn
     clients: EngineClient[]
     viteConfig: EngineOptionsViteConfig | null
@@ -324,12 +332,19 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     built: boolean
     extraPlugins?: BunPlugin[]
   }): Promise<BunPlugin[]> {
-    const extractedPlugins = await extractEngineServerPlugins({
+    const ownExtractedPlugins = await extractEngineServerPlugins({
       mode: normalizeAndValidateNodeEnv(),
       command: 'serve',
       bunPlugins: this.bunPlugins,
       scope: this.scope,
     })
+    const generalExtractedPlugins = await extractEngineServerPlugins({
+      mode: normalizeAndValidateNodeEnv(),
+      command: 'serve',
+      bunPlugins: this.generalBunPlugins,
+      scope: this.scope,
+    })
+    const extractedPlugins = [...generalExtractedPlugins, ...ownExtractedPlugins]
     const compilerOptions = this.getCompilerOptions()
     const compilerPlugin = this.viteConfig // we inject vite compiler plugin in vite config
       ? []

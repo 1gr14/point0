@@ -109,6 +109,52 @@ export const root = Point0.lets('root', 'root').root()
     )
 
     it.concurrent(
+      'removes import declaration when all imported bindings are pruned',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import { prisma } from './lib/prisma'
+const env=require('@point0/core'); env.side.is.server && prisma.idea.findMany()`)
+        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const result = compiler.compile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.code).not.toContain(`from './lib/prisma'`)
+      }),
+    )
+
+    it.concurrent(
+      'removes prisma import after loader body is pruned',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import { root } from './lib/root'
+import { prisma } from './lib/prisma'
+export const ideasQuery = root
+  .lets('query', 'ideas')
+  .loader(async () => {
+    const ideas = await prisma.idea.findMany({ orderBy: { createdAt: 'desc' } })
+    return { ideas }
+  })
+  .query()`)
+        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const result = compiler.compile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.code).toContain(`from './lib/root'`)
+        expect(result.code).not.toContain(`from './lib/prisma'`)
+      }),
+    )
+
+    it.concurrent(
+      'keeps side-effect-only imports while pruning unused bound imports',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import './lib/setup'
+import { prisma } from './lib/prisma'
+const env=require('@point0/core'); env.side.is.server && prisma.idea.findMany()`)
+        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const result = compiler.compile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.code).toContain(`import './lib/setup'`)
+        expect(result.code).not.toContain(`from './lib/prisma'`)
+      }),
+    )
+
+    it.concurrent(
       'respects scope option',
       helper(async ({ files: [file] }) => {
         await file.write(`const env=require('@point0/core'); if (env.scope.is.test) console.info('test')`)
@@ -127,6 +173,28 @@ export const root = Point0.lets('root', 'root').root()
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain(`console.info('test')`)
+      }),
+    )
+
+    it.concurrent(
+      'replaces process.env bracket access using consts',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import { env } from '@point0/core'; if (process.env['TEST_VAR']) console.info('test')`)
+        const compiler = Compiler.create({ side: 'client', scope: 'test', consts: [{ TEST_VAR: false }] })
+        const result = compiler.compile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.code).not.toContain(`console.info('test')`)
+      }),
+    )
+
+    it.concurrent(
+      'replaces import.meta.env bracket access using consts',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import { env } from '@point0/core'; if (import.meta.env['TEST_VAR']) console.info('test')`)
+        const compiler = Compiler.create({ side: 'client', scope: 'test', consts: [{ TEST_VAR: false }] })
+        const result = compiler.compile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.code).not.toContain(`console.info('test')`)
       }),
     )
 

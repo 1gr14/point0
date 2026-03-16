@@ -1,0 +1,17 @@
+generator client {
+  provider     = "prisma-client"
+  engineType   = "binary"
+  moduleFormat = "esm"
+  output       = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Idea {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+}

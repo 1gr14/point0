@@ -1,56 +1,37 @@
-# Welcome to your Expo app 👋
+# Point0 + Expo Example
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A minimal example showing how to use Point0 queries and mutations with an Expo (React Native) client.
 
-## Get started
+## Structure
 
-1. Install dependencies
+- **Server** (`src/engine.ts`, `src/index.server.ts`) — Point0 server with Prisma/SQLite, runs on Bun
+- **Shared** (`src/ideas.ts`, `src/lib/root.ts`) — Query and mutation definitions shared between server and client
+- **Client** (`src/app/`) — Expo Router screens that use Point0 queries and mutations
+- **Compiler** (`metro-transformer.js`) — Custom Metro transformer using `@point0/compiler` to prune server code from the client bundle
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Setup
 
 ```bash
-npm run reset-project
+# From monorepo root, install deps
+bun install
+
+# Build the compiler package (needed for Metro transformer)
+cd packages/compiler && bun run build && cd -
+
+# Setup the database
+cd examples/expo
+bunx prisma generate
+bunx prisma db push
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Running
 
-### Other setup steps
+```bash
+# Terminal 1: Start the Point0 server
+bun run dev:server
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+# Terminal 2: Start the Expo dev server
+bun run dev
+```
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+> When testing on a physical device, update `EXPO_PUBLIC_SERVER_URL` in `.env` to your machine's local IP (e.g., `http://192.168.1.100:3000`).

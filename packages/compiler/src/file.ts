@@ -421,6 +421,7 @@ export class CompilerFile<THasContent extends boolean> {
       if (!result?.ast) {
         return { ok: true, errors, modified }
       }
+      this.pruneUnusedImports({ ast: result.ast })
       const afterCode = babelGenerator(
         result.ast,
         {
@@ -442,6 +443,35 @@ export class CompilerFile<THasContent extends boolean> {
       errors.push(e)
       return { ok: false, errors, modified }
     }
+  }
+
+  private pruneUnusedImports({ ast }: { ast: File }): void {
+    traverse(ast, {
+      Program: (path) => {
+        path.scope.crawl()
+        for (const statement of path.get('body')) {
+          if (!statement.isImportDeclaration()) {
+            continue
+          }
+          if (statement.node.specifiers.length === 0) {
+            continue
+          }
+          const preservedSpecifiers = statement.node.specifiers.filter((specifier) => {
+            const localName = specifier.local.name
+            const binding = statement.scope.getBinding(localName)
+            return !!binding?.referenced
+          })
+          if (preservedSpecifiers.length === statement.node.specifiers.length) {
+            continue
+          }
+          if (preservedSpecifiers.length === 0) {
+            statement.remove()
+            continue
+          }
+          statement.node.specifiers = preservedSpecifiers
+        }
+      },
+    })
   }
 
   async toPrettyCode(): Promise<string> {
@@ -509,6 +539,9 @@ export class CompilerFile<THasContent extends boolean> {
     if (mode !== false) {
       consts.unshift({ NODE_ENV: mode })
     }
+    if (side !== false) {
+      consts.unshift({ POINT0_SIDE: side })
+    }
     if (scope !== false) {
       consts.unshift({ POINT0_SCOPE: scope })
     }
@@ -517,9 +550,6 @@ export class CompilerFile<THasContent extends boolean> {
     }
     if (os !== false) {
       consts.unshift({ POINT0_OS: os })
-    }
-    if (side !== false) {
-      consts.unshift({ Side: side })
     }
     let modified = false
     if (!this.content) {
@@ -614,6 +644,29 @@ export class CompilerFile<THasContent extends boolean> {
       const maxShakeForEnvPasses = 8
       for (let pass = 0; pass < maxShakeForEnvPasses; pass++) {
         let passModified = false as boolean
+
+        const replaceWithConst = (
+          p: { replaceWith: (node: t.Node) => void },
+          desiredValue: string | number | boolean | null | undefined,
+        ) => {
+          if (typeof desiredValue === 'string') {
+            p.replaceWith(makeStringLiteral(desiredValue))
+          } else if (typeof desiredValue === 'number') {
+            p.replaceWith(makeNumericLiteral(desiredValue))
+          } else if (typeof desiredValue === 'boolean') {
+            p.replaceWith(makeBooleanLiteral(desiredValue))
+          } else if (desiredValue === null) {
+            p.replaceWith(makeNullLiteral())
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          } else if (desiredValue === undefined) {
+            p.replaceWith(makeUndefined())
+          } else {
+            return
+          }
+          modified = true
+          passModified = true
+        }
+
         traverse(this.ast, {
           MemberExpression: (p) => {
             const node = p.node
@@ -802,42 +855,42 @@ export class CompilerFile<THasContent extends boolean> {
               node.property.type === 'Identifier'
             ) {
               const varName = node.property.name
-              // if (shouldReplaceVar(varName)) {
-              //   const envValue = process.env[varName]
-              //   if (envValue === undefined) {
-              //     p.replaceWith(makeUndefined())
-              //   } else {
-              //     // Try to determine the type - for now, always use string literal
-              //     // Could be enhanced to detect number/boolean
-              //     p.replaceWith(makeStringLiteral(envValue))
-              //   }
-              //   modified = true
-              // }
               const checkResult = checkReplaceVar(varName, process.env[varName])
               if (checkResult.shouldReplace) {
-                const desiredValue = checkResult.desiredValue
-                if (typeof desiredValue === 'string') {
-                  p.replaceWith(makeStringLiteral(desiredValue))
-                  modified = true
-                  passModified = true
-                } else if (typeof desiredValue === 'number') {
-                  p.replaceWith(makeNumericLiteral(desiredValue))
-                  modified = true
-                  passModified = true
-                } else if (typeof desiredValue === 'boolean') {
-                  p.replaceWith(makeBooleanLiteral(desiredValue))
-                  modified = true
-                  passModified = true
-                } else if (desiredValue === null) {
-                  p.replaceWith(makeNullLiteral())
-                  modified = true
-                  passModified = true
-                  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                } else if (desiredValue === undefined) {
-                  p.replaceWith(makeUndefined())
-                  modified = true
-                  passModified = true
-                }
+                replaceWithConst(p, checkResult.desiredValue)
+              }
+            }
+            // Handle process.env.X - replace if X is in consts
+            else if (
+              node.object.type === 'MemberExpression' &&
+              node.object.object.type === 'Identifier' &&
+              node.object.object.name === 'process' &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'env' &&
+              ((node.computed === false && node.property.type === 'Identifier') ||
+                (node.computed === true && node.property.type === 'StringLiteral'))
+            ) {
+              const varName = node.property.type === 'Identifier' ? node.property.name : node.property.value
+              const checkResult = checkReplaceVar(varName, process.env[varName])
+              if (checkResult.shouldReplace) {
+                replaceWithConst(p, checkResult.desiredValue)
+              }
+            }
+            // Handle import.meta.env.X - replace if X is in consts
+            else if (
+              node.object.type === 'MemberExpression' &&
+              node.object.object.type === 'MetaProperty' &&
+              node.object.object.meta.name === 'import' &&
+              node.object.object.property.name === 'meta' &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'env' &&
+              ((node.computed === false && node.property.type === 'Identifier') ||
+                (node.computed === true && node.property.type === 'StringLiteral'))
+            ) {
+              const varName = node.property.type === 'Identifier' ? node.property.name : node.property.value
+              const checkResult = checkReplaceVar(varName, process.env[varName])
+              if (checkResult.shouldReplace) {
+                replaceWithConst(p, checkResult.desiredValue)
               }
             }
           },

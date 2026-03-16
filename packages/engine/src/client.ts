@@ -1,7 +1,9 @@
-import type { AnyRoute } from '@devp0nt/route0'
 import { type AnyLocation, Route0 } from '@devp0nt/route0'
+import type { AnyRoute } from '@devp0nt/route0'
+import { ClientPoints, env } from '@point0/core'
 import type {
   AppComponent,
+  CompilerOptions,
   LoggerFn,
   NormalizedNodeEnv,
   PagePoint,
@@ -9,14 +11,12 @@ import type {
   PointsScope,
   RequiredCtx,
 } from '@point0/core'
-import { ClientPoints, env } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
-import type { CompilerOptions } from '../../compiler/dist/compiler.js'
 import type {
   EngineOptionsAppComponent,
   EngineOptionsCompilerSpecificParsed,
@@ -28,11 +28,10 @@ import type {
 } from './config.js'
 import type { Executor } from './executor.js'
 import { getOverridenPortPolicy, resolvePortByPolicy, setOverridenPortPolicy } from './port.js'
-import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
+import type { PublicdirDefinition } from './publicdir.js'
 import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
 import type { EngineServer } from './server.js'
-import type { EngineClientBuildConfigDefinition, EngineClientPluginsDefinition } from './utils.js'
 import {
   createViteDevServer,
   extractEngineClientBuildConfig,
@@ -42,6 +41,11 @@ import {
   normalizeAndValidateNodeEnv,
   resolveTempDirPath,
   serveWithRetries,
+} from './utils.js'
+import type {
+  EngineClientBuildConfigDefinition,
+  EngineClientPluginsDefinition,
+  EngineSharedPluginsDefinition,
 } from './utils.js'
 
 export class EngineClient<TPrepared extends boolean = boolean> {
@@ -74,6 +78,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
   outdir: string | null
   bunBuildConfig: EngineClientBuildConfigDefinition
   bunPlugins: EngineClientPluginsDefinition
+  generalBunPlugins: EngineSharedPluginsDefinition
   distIndexHtmlContent: string | null
   server: EngineServer
   // clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
@@ -98,6 +103,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     outdir: string | null
     bunBuildConfig: EngineClientBuildConfigDefinition
     bunPlugins: EngineClientPluginsDefinition
+    generalBunPlugins: EngineSharedPluginsDefinition
     distIndexHtmlContent: string | null
     domRootElementId: string
     port: number
@@ -147,6 +153,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     this.outdir = input.outdir
     this.bunBuildConfig = input.bunBuildConfig
     this.bunPlugins = input.bunPlugins
+    this.generalBunPlugins = input.generalBunPlugins
     // this.clientBunDevBuilder = input.clientBunDevBuilder
     // this.serverBunDevBuilder = input.serverBunDevBuilder
     this.viteDevServer = input.viteDevServer
@@ -175,6 +182,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     outdir: string | null
     bunBuildConfig: EngineClientBuildConfigDefinition
     bunPlugins: EngineClientPluginsDefinition
+    generalBunPlugins: EngineSharedPluginsDefinition
     indexHtml: string | null
     // indexHtmlDistFile: string | null
     domRootElementId: string
@@ -372,13 +380,23 @@ export class EngineClient<TPrepared extends boolean = boolean> {
       portPolicy,
     })
     const tempDir = resolveTempDirPath(['client-bun-dev-server', `${this.scope}-${this.port}`])
-    const pluginsStrings = await extractEngineClientDevPluginsStrings({
+    const ownPluginsStrings = await extractEngineClientDevPluginsStrings({
       cwd: this.cwd,
       mode: normalizeAndValidateNodeEnv(),
       command: 'serve',
+      scope: this.scope,
       bunPlugins: this.bunPlugins,
-      errorOnNotString: `Bun dev server plugins for client "${this.scope}" shpuld be strings`,
+      errorOnNotString: `Bun dev plugins for client "${this.scope}" shpuld be strings`,
     })
+    const generalPluginsStrings = await extractEngineClientDevPluginsStrings({
+      cwd: this.cwd,
+      mode: normalizeAndValidateNodeEnv(),
+      command: 'serve',
+      scope: this.scope,
+      bunPlugins: this.generalBunPlugins,
+      errorOnNotString: `Bun dev plugins for client "${this.scope}" shpuld be strings`,
+    })
+    const pluginsStrings = [...generalPluginsStrings, ...ownPluginsStrings]
     const compilerOptions = this.getCompilerOptions()
     const scriptPath = nodePath.join(tempDir, `serve.js`)
     const bunfigTomlPath = nodePath.join(tempDir, 'bunfig.toml')

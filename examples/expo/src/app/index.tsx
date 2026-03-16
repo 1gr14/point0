@@ -1,98 +1,152 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from 'react'
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native'
+import { useRouter, Stack } from 'expo-router'
+import { ideasQuery, createIdeaMutation } from '../ideas'
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+export default function IdeasScreen() {
+  const router = useRouter()
+  const { data, isLoading, refetch } = ideasQuery.useQuery()
+  const mutation = createIdeaMutation.useMutation()
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [error, setError] = useState('')
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
+  const handleCreate = () => {
+    if (!title.trim() || !content.trim()) {
+      setError('Title and content are required')
+      return
+    }
+    setError('')
+    mutation
+      .mutateAsync({ title: title.trim(), content: content.trim() })
+      .then(() => {
+        setTitle('')
+        setContent('')
+        return refetch()
+      })
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : 'Failed to create idea')
+      })
   }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Stack.Screen options={{ title: 'Ideas' }} />
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+      <View style={styles.form}>
+        <TextInput
+          style={styles.input}
+          placeholder="Title"
+          placeholderTextColor="#666"
+          value={title}
+          onChangeText={setTitle}
+        />
+        <TextInput
+          style={[styles.input, styles.contentInput]}
+          placeholder="What's your idea?"
+          placeholderTextColor="#666"
+          value={content}
+          onChangeText={setContent}
+          multiline
+        />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <TouchableOpacity style={styles.button} onPress={handleCreate} disabled={mutation.isPending}>
+          <Text style={styles.buttonText}>{mutation.isPending ? 'Creating...' : 'Create Idea'}</Text>
+        </TouchableOpacity>
+      </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#e94560" style={{ marginTop: 24 }} />
+      ) : (
+        <FlatList
+          data={data?.ideas ?? []}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => (
+            <TouchableOpacity style={styles.card} onPress={() => router.push(`/${item.id}`)}>
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={styles.cardDate}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={<Text style={styles.empty}>No ideas yet. Create one above!</Text>}
+        />
+      )}
+    </KeyboardAvoidingView>
+  )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: '#16213e',
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
+  form: {
+    padding: 16,
+    gap: 10,
+  },
+  input: {
+    backgroundColor: '#1a1a2e',
+    color: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  contentInput: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  error: {
+    color: '#e94560',
+    fontSize: 14,
+  },
+  button: {
+    backgroundColor: '#e94560',
+    borderRadius: 8,
+    padding: 14,
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
-  title: {
+  list: {
+    padding: 16,
+    gap: 10,
+  },
+  card: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 8,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  cardTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  cardDate: {
+    color: '#888',
+    fontSize: 13,
+  },
+  empty: {
+    color: '#666',
+    fontSize: 16,
     textAlign: 'center',
+    marginTop: 24,
   },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
-});
+})

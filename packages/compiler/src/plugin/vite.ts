@@ -1,5 +1,5 @@
 import type { Plugin } from 'vite'
-import type { CompilerOptions } from '../compiler.js'
+import type { CompilerOptions } from '@point0/core'
 import { Compiler } from '../compiler.js'
 
 export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin {
