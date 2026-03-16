@@ -62,6 +62,7 @@
     "format:base": "prettier --cache --cache-location node_modules/.cache/prettier/.prettiercache --ignore-path .gitignore --ignore-path .prettierignore",
     "format:fix": "bun run format:base --write",
     "pack:dist": "bun --filter './packages/**' pack:dist",
+    "pack:local-registry": "bun run scripts/pack-local-registry.ts",
     "prepare": "husky",
     "clean": "rimraf packages/*/dist && rimraf packages-dist-npm && rimraf node_modules/.cache"
   },

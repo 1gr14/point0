@@ -13,15 +13,6 @@ export default root
     const [name, setName] = useState(me.user.name)
     const [status, setStatus] = useState('')
 
-    if (!me) {
-      return (
-        <div>
-          <p>You need to sign in.</p>
-          <Link route="auth">Go to Auth</Link>
-        </div>
-      )
-    }
-
     return (
       <div>
         <h1>Profile</h1>
