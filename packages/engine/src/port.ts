@@ -1,6 +1,6 @@
 // https://github.com/gastrodia/port-bun/blob/main/src/lib.ts
 
-import { logger, type LoggerFn } from '@point0/core'
+import { log, type LogFn } from '@point0/core'
 import type { PortPolicy } from './config.js'
 
 const platform = process.platform
@@ -143,11 +143,11 @@ export async function killPort(
     silent?: boolean
     excludeCurrentProcess?: boolean
     force?: boolean
-    logger?: LoggerFn
+    log?: LogFn
     category?: string[]
   },
 ): Promise<void> {
-  const _logger = options?.logger ?? logger
+  const _log = options?.log ?? log
   const category = options?.category ?? ['killPort']
   ports = Array.isArray(ports) ? ports : [ports]
   const silent = options?.silent ?? true
@@ -163,18 +163,18 @@ export async function killPort(
       try {
         const pids = await listPids(port, excludeCurrentProcess)
         if (pids.length === 0) {
-          if (!silent) _logger({ level: 'info', category, message: `No process found using port ${port}` })
+          if (!silent) _log({ level: 'info', category, message: `No process found using port ${port}` })
           return
         }
         if (!silent) {
           for (const pid of pids) {
-            _logger({ level: 'info', category, message: `Killing process ${pid} on port ${port}` })
+            _log({ level: 'info', category, message: `Killing process ${pid} on port ${port}` })
           }
         }
         await killByPids(pids)
       } catch (error) {
         if (!silent) {
-          _logger({ level: 'error', category, message: `Error killing process on port ${port}`, error })
+          _log({ level: 'error', category, message: `Error killing process on port ${port}`, error })
         }
         if (!force) {
           throw error

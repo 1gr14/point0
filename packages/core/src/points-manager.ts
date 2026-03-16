@@ -2,7 +2,7 @@ import type { AnyRoute } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import * as React from 'react'
 import type { ErrorPoint0 } from './error.js'
-import { logger, type LoggerFn } from './logger.js'
+import { log, type LogFn } from './logger.js'
 import type {
   PointName,
   PointsScope,
@@ -22,7 +22,7 @@ export class PointsManager<
   root: RootPoint
   scope: PointsScope
   ready: TReady
-  logger: LoggerFn | undefined
+  log: LogFn | undefined
 
   Infer: {
     RequiredCtx: TRequiredCtx
@@ -33,24 +33,24 @@ export class PointsManager<
     ready,
     root,
     scope,
-    logger,
+    log,
   }: {
     collection: TReady extends true ? ReadyPointsCollection : NormalizedPointsCollection
     ready: boolean
     root: RootPoint
     scope: PointsScope
-    logger: LoggerFn | undefined
+    log: LogFn | undefined
   }) {
     this.ready = ready as TReady
     this.collection = collection
     this.root = root
     this.scope = scope
-    this.logger = logger
+    this.log = log
   }
 
   static readonly createFromDefinition = <TPoints extends PointsDefinition<any, any> | PointsManager<any, any, any>>(
     points: TPoints,
-    options: { logger?: LoggerFn } = {},
+    options: { log?: LogFn } = {},
   ): PointsManager<
     false,
     TPoints extends PointsManager<any, infer TRequiredCtx, any>
@@ -101,7 +101,7 @@ export class PointsManager<
 
   static readonly createFromCollection = (
     collection: NormalizedPointsCollection,
-    options: { logger?: LoggerFn } = {},
+    options: { log?: LogFn } = {},
   ): PointsManager<false, RequiredCtx> => {
     const firstRecord = collection.at(0)
     if (!PointsManager.isRootRecord(firstRecord)) {
@@ -114,13 +114,13 @@ export class PointsManager<
       scope: root.scope,
       collection,
       ready: false,
-      logger: options.logger,
+      log: options.log,
     })
   }
 
   static async createFromSource<TSource extends PointsDefinitionSource<any, any>>(
     source: TSource,
-    options: { logger?: LoggerFn } = {},
+    options: { log?: LogFn } = {},
   ): Promise<
     PointsManager<
       false,
@@ -152,9 +152,9 @@ export class PointsManager<
     }
     const { readyPoints, errors } = await PointsManager.toReadyPointsCollection(this.collection)
     const root = this.collection.at(0)?.point as RootPoint
-    const _logger = root._getLogger() ?? this.logger ?? logger
+    const _log = root._getLogFn() ?? this.log ?? log
     for (const error of errors) {
-      _logger({ level: 'error', category: ['points'], message: 'Error loading points', error })
+      _log({ level: 'error', category: ['points'], message: 'Error loading points', error })
     }
     this.collection = readyPoints
     this.ready = true as never

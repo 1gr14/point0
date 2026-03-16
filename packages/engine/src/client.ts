@@ -4,7 +4,7 @@ import { ClientPoints, env } from '@point0/core'
 import type {
   AppComponent,
   CompilerOptions,
-  LoggerFn,
+  LogFn,
   NormalizedNodeEnv,
   PagePoint,
   PointsDefinitionSource,
@@ -71,7 +71,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
   compiler: EngineOptionsCompilerSpecificParsed | false
   viteConfig: EngineOptionsViteConfig | null
   index: number
-  logger: LoggerFn
+  log: LogFn
   envVars: EngineOptionsEnvParsed
   envConsts: EngineOptionsEnvParsed
   publicdir: TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
@@ -113,7 +113,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     compiler: EngineOptionsCompilerSpecificParsed | false
     viteConfig: EngineOptionsViteConfig | null
     index: number
-    logger: LoggerFn
+    log: LogFn
     envVars: EngineOptionsEnvParsed
     envConsts: EngineOptionsEnvParsed
     publicdir: Publicdir | null
@@ -142,7 +142,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     this.compiler = input.compiler
     this.viteConfig = input.viteConfig
     this.index = input.index
-    this.logger = input.logger
+    this.log = input.log
     this.envVars = {
       ...input.envVars,
     }
@@ -191,7 +191,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     portPolicy: PortPolicy
     serveRetries: number
     index: number
-    logger: LoggerFn
+    log: LogFn
     envVars: EngineOptionsEnvParsed
     envConsts: EngineOptionsEnvParsed
     engineFile: string | null
@@ -304,7 +304,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     if (!this.pointsProvided) {
       return null
     }
-    const points = await ClientPoints.createFromSource(this.pointsProvided, { logger: this.logger })
+    const points = await ClientPoints.createFromSource(this.pointsProvided, { log: this.log })
     this.points = points as TPrepared extends true ? ClientPoints | null : undefined
     return points
   }
@@ -453,13 +453,13 @@ try {
     },
   }))();
   setOverridenPortPolicy({ scope: '${this.scope}', side: 'client', portPolicy: 'kill' });
-  engine.logger({
+  engine.log({
     level: 'info',
     category: ['client'],
     message: 'Client "${this.scope}" dev server started http://localhost:${this.port}',
   })
 } catch (error) {
-  engine.logger({
+  engine.log({
     level: 'error',
     category: ['client'],
     message: error instanceof Error ? error.message : String(error),
@@ -621,7 +621,7 @@ try {
         }),
     )()
     setOverridenPortPolicy({ scope: this.scope, side: 'client', portPolicy: 'kill' })
-    this.logger({
+    this.log({
       level: 'info',
       category: ['client'],
       message: `Client "${this.scope}" dev server started http://localhost:${this.port}`,

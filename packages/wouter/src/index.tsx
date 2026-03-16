@@ -7,7 +7,7 @@ import {
   Route0,
   type RoutesPretty,
 } from '@devp0nt/route0'
-import { ErrorPoint0, logger } from '@point0/core'
+import { ErrorPoint0, log } from '@point0/core'
 import {
   _ssItems,
   _wrapNavigate,
@@ -483,13 +483,13 @@ export const createLink = <
         return providedHref
       }
       if (routeName === undefined) {
-        logger({ level: 'error', category: ['wouter'], message: 'routeName is required for Link without to or href' })
+        log({ level: 'error', category: ['wouter'], message: 'routeName is required for Link without to or href' })
         return '#'
       }
       const route = routes[routeName]
       if (!route) {
         // TODO: replace with onClientError handler
-        logger({ level: 'error', category: ['wouter'], message: `Route "${routeName}" not found` })
+        log({ level: 'error', category: ['wouter'], message: `Route "${routeName}" not found` })
         return '#'
       }
       return route.get(input)
@@ -542,7 +542,7 @@ export const createNavLink = <
         return providedHref
       }
       if (routeName === undefined) {
-        logger({
+        log({
           level: 'error',
           category: ['wouter'],
           message: 'routeName is required for NavLink without to or href',
@@ -552,7 +552,7 @@ export const createNavLink = <
       const route = routes[routeName]
       if (!route) {
         // TODO: replace with onClientError handler
-        logger({ level: 'error', category: ['wouter'], message: `Route "${routeName}" not found` })
+        log({ level: 'error', category: ['wouter'], message: `Route "${routeName}" not found` })
         return '#'
       }
       return route.get(input)

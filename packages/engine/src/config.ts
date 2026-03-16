@@ -1,18 +1,18 @@
 import type { RoutesPretty } from '@devp0nt/route0'
 import { normalizeEnvConsts } from '@point0/compiler'
 import type { CompilerEnvConsts, CompilerEnvConstsNormalized } from '@point0/compiler'
-import { _defaultLoggerFn, prependAndDeappendSlash } from '@point0/core'
+import { prependAndDeappendSlash } from '@point0/core'
 import type {
   AppComponent,
   AppComponentModule,
   EnvOsName,
   EnvRuntimeName,
   ErrorPoint0,
-  LoggerFn,
   NormalizedNodeEnv,
   PointsDefinitionSource,
   PointsScope,
   RequiredCtx,
+  LogFn,
 } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 import { minimatch } from 'minimatch'
@@ -29,6 +29,7 @@ import type {
   EngineServerPluginsDefinition,
   EngineSharedPluginsDefinition,
 } from './utils.js'
+import { _defaultLogFn } from '@point0/core'
 
 export type EngineOptionsPublicdir =
   | string
@@ -111,7 +112,7 @@ export type EngineOptionsServing = boolean | string | ((options: { request: Requ
 export type EngineGeneralOptions = {
   file: string
   generte?: Array<Omit<FilesGeneratorTaskMeta, 'scopes'>>
-  logger?: LoggerFn
+  log?: LogFn
   portPolicy?: PortPolicy
   serveRetries?: number
   itWasBuilt?: boolean
@@ -329,7 +330,7 @@ export type EngineOptions<
 //         : never
 
 export type EngineGeneralOptionsParsed = {
-  logger: LoggerFn
+  log: LogFn
   itWasBuilt: boolean
   cwdAfterBuild: string
   cwdBeforeBuild: string
@@ -580,7 +581,7 @@ const parseEngineGeneralOptions = ({
               ...(generalOptions.compiler.side !== undefined ? { side: generalOptions.compiler.side } : {}),
             }
   const result = {
-    logger: generalOptions.logger ?? _defaultLoggerFn,
+    log: generalOptions.log ?? _defaultLogFn,
     itWasBuilt,
     cwdAfterBuild,
     cwdBeforeBuild,

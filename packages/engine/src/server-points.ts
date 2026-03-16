@@ -5,7 +5,7 @@ import type {
   DataTransformerExtended,
   ErrorPoint0,
   LayoutPoint,
-  LoggerFn,
+  LogFn,
   MiddlewareFn,
   PagePoint,
   PointName,
@@ -42,7 +42,7 @@ export class ServerPoints<TError extends ErrorPoint0> {
 
   static createFromDefinition<TError extends ErrorPoint0>(
     points: PointsDefinition<RequiredCtx, TError> | PointsManager<boolean, RequiredCtx, TError>,
-    options: { logger?: LoggerFn } = {},
+    options: { log?: LogFn } = {},
   ): ServerPoints<TError> {
     const manager = PointsManager.createFromDefinition(points, options)
     const instance = new ServerPoints<TError>({ manager })
@@ -58,7 +58,7 @@ export class ServerPoints<TError extends ErrorPoint0> {
 
   static async createFromSource<TError extends ErrorPoint0>(
     source: PointsDefinitionSource<RequiredCtx, TError>,
-    options: { logger?: LoggerFn } = {},
+    options: { log?: LogFn } = {},
   ): Promise<ServerPoints<TError>> {
     const manager = await PointsManager.createFromSource(source, options)
     return ServerPoints.createFromDefinition(manager)

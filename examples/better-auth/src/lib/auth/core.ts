@@ -1,4 +1,4 @@
-import { env, logger } from '@point0/core'
+import { env, log } from '@point0/core'
 import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { createAuthClient } from 'better-auth/react'
@@ -16,7 +16,7 @@ export const authServer = env.side.define.unsafe.server(
     baseURL: process.env.BETTER_AUTH_URL ?? process.env.SOURCE_BASE_URL ?? 'http://localhost:3000',
     logger: {
       log: (level, message, ...args) => {
-        logger({
+        log({
           level,
           category: ['better-auth'],
           message: message.replace(/^\[better\-auth\] /, ''),

@@ -4,8 +4,8 @@ import type { QueryClient } from '@tanstack/react-query'
 import { _point0_env } from './env.js'
 import type { ErrorPoint0 } from './error.js'
 import { _getFakeClient, _ssItems } from './internals.js'
-import { _defaultLoggerFn, _ssClientLogger } from './logger.js'
-import type { LoggerFn } from './logger.js'
+import { _defaultLogFn, _ssClientLog } from './logger.js'
+import type { LogFn } from './logger.js'
 import { PointsManager } from './points-manager.js'
 import type {
   NormalizedLazyPointsCollection,
@@ -76,7 +76,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
 
   static createFromDefintion<TError extends ErrorPoint0>(
     points: PointsDefinition<any, TError> | PointsManager<any, any, TError>,
-    options: { logger?: LoggerFn } = {},
+    options: { log?: LogFn } = {},
   ): ClientPoints<TError> {
     const manager = PointsManager.createFromDefinition(points, options)
     // const manager = PointsManager.createFromCollection(_manager.collection.filter((p) => ['root', 'page', 'layout', 'provider', 'init'].))
@@ -116,7 +116,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
 
   static async createFromSource<TError extends ErrorPoint0>(
     source: PointsDefinitionSource<any, TError>,
-    options: { logger?: LoggerFn } = {},
+    options: { log?: LogFn } = {},
   ): Promise<ClientPoints<TError>> {
     const manager = await PointsManager.createFromSource(source, options)
     return ClientPoints.createFromDefintion(manager, options)
@@ -518,8 +518,8 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
       throw new Error('Client points can not be mounted on server')
     }
     _ssItems.__POINT0_CLIENT_POINTS__.set(this as unknown as ClientPoints<ErrorPoint0>)
-    const fromRoot = this.manager.root._getLogger()
-    _ssClientLogger.set(fromRoot ?? this.manager.logger ?? _defaultLoggerFn)
+    const fromRoot = this.manager.root._getLogFn()
+    _ssClientLog.set(fromRoot ?? this.manager.log ?? _defaultLogFn)
   }
 
   static getInstance = <TError extends ErrorPoint0>(): ClientPoints<TError> => {

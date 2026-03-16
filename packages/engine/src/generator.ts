@@ -1,8 +1,8 @@
 import type { RoutesPretty } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
 import { CompilerPoint, END_POINT_TYPES, Walker } from '@point0/compiler'
-import type { LoggerFn } from '@point0/core'
-import { generateId, logger } from '@point0/core'
+import type { LogFn } from '@point0/core'
+import { generateId, log } from '@point0/core'
 import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
@@ -24,7 +24,7 @@ export type FilesGeneratorOptions = {
   tasks: FilesGeneratorTask[]
   routes: Record<string, RoutesPretty | null | EngineOptionsRoutes>
   banner?: string
-  logger?: LoggerFn
+  log?: LogFn
 }
 
 export type FilesGeneratorTaskPoints = {
@@ -71,7 +71,7 @@ export class FilesGenerator {
   readonly routes: Record<string, RoutesPretty>
   readonly routesSrc: Record<string, { instance: RoutesPretty | null; getter: EngineOptionsRoutes | null }>
   private isRoutesInitialized = false
-  readonly logger: LoggerFn
+  readonly log: LogFn
 
   readonly watchDir: string
   readonly watchIgnore: string[]
@@ -91,7 +91,7 @@ export class FilesGenerator {
   constructor(opts: FilesGeneratorOptions) {
     this.banner = opts.banner
     this.cwd = opts.cwd
-    this.logger = opts.logger ?? logger
+    this.log = opts.log ?? log
     const glob = Array.isArray(opts.glob) ? opts.glob : [opts.glob]
     this.globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g))
     this.globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g.slice(1)))
@@ -138,7 +138,7 @@ export class FilesGenerator {
       return result
     }
     const [loggerMethod, emoji] = result.errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '']
-    this.logger({
+    this.log({
       level: loggerMethod,
       category: ['generator'],
       message: [emoji, `${result.points.length} points processed`].filter(Boolean).join(' '),
@@ -263,7 +263,7 @@ export class FilesGenerator {
       const errorsMessages = point.errors.map((e) => (e instanceof Error ? e.message : String(e))).join(', ')
       const message = `${point.type}.${point.name}: ${errorsMessages} in ${point.strpos}`
       if (!options?.silent) {
-        this.logger({ level: 'error', category: ['generator'], message })
+        this.log({ level: 'error', category: ['generator'], message })
       }
     }
     const prevPoints = [...this.points]
@@ -300,7 +300,7 @@ export class FilesGenerator {
         const originalErrorPosition =
           originalErrorLine && originalErrorColumn ? `(${originalErrorLine}:${originalErrorColumn})` : ''
         const fileSuffix = file ? ` in ${file}${originalErrorPosition}` : ''
-        this.logger({
+        this.log({
           level: 'error',
           category: ['generator'],
           // message: (error instanceof Error ? error.message : String(error)) + error.file ? ` in ${error.file}` : '',
@@ -1028,7 +1028,7 @@ export class FilesGenerator {
       async (err, events) => {
         if (err) {
           if (!options?.silent) {
-            this.logger({ level: 'error', category: ['generator'], message: `Watcher error`, error: err })
+            this.log({ level: 'error', category: ['generator'], message: `Watcher error`, error: err })
           }
           return
         }
@@ -1079,7 +1079,7 @@ export class FilesGenerator {
               if (evt.deleted.length > 0) {
                 const deletedTypesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(', ')
                 if (!options?.silent) {
-                  this.logger({
+                  this.log({
                     level: 'info',
                     category: ['generator'],
                     message: `remove: ${deletedTypesAndNames}`,
@@ -1089,7 +1089,7 @@ export class FilesGenerator {
               if (evt.added.length > 0) {
                 const addedTypesAndNames = evt.added.map((p) => `${p.type}.${p.name}`).join(', ')
                 if (!options?.silent) {
-                  this.logger({
+                  this.log({
                     level: 'info',
                     category: ['generator'],
                     message: `add: ${addedTypesAndNames}`,
@@ -1099,7 +1099,7 @@ export class FilesGenerator {
             }
           } catch (e) {
             if (!options?.silent) {
-              this.logger({ level: 'error', category: ['generator'], message: `Watcher error`, error: e })
+              this.log({ level: 'error', category: ['generator'], message: `Watcher error`, error: e })
             }
           }
         }
@@ -1110,7 +1110,7 @@ export class FilesGenerator {
     )
 
     if (!options?.silent) {
-      this.logger({ level: 'info', category: ['generator'], message: 'Watcher started' })
+      this.log({ level: 'info', category: ['generator'], message: 'Watcher started' })
     }
 
     // Store subscription for potential cleanup

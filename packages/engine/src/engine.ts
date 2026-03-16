@@ -1,12 +1,12 @@
 import type { RichFetchFn } from '@point0/core'
 import {
-  _ssServerLogger,
+  _ssServerLog,
   type AnyNiceReadyPoint,
   type AnyPoint,
   type ErrorPoint0,
   type EventerEmitFn,
   type FetcherFetchDetailedResult,
-  type LoggerFn,
+  type LogFn,
   type PointsScope,
   type RequiredCtx,
   type UndefinedCtx,
@@ -32,7 +32,7 @@ export class Engine<
   clients: TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
   server: TPrepared extends true ? EngineServer<true, TError> : EngineServer<false, TError>
   publicdirs: TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
-  logger: LoggerFn
+  log: LogFn
   generator: FilesGenerator
   prepared: TPrepared
 
@@ -41,14 +41,14 @@ export class Engine<
   private constructor(input: {
     clients: EngineClient[]
     server: EngineServer<any, any>
-    logger: LoggerFn
+    log: LogFn
     prepared: TPrepared
     generator: FilesGenerator
     publicdirs: Array<Publicdir<false>>
   }) {
     this.clients = input.clients as TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
     this.server = input.server as TPrepared extends true ? EngineServer<true, TError> : EngineServer<false, TError>
-    this.logger = input.logger
+    this.log = input.log
     this.prepared = input.prepared
     this.generator = input.generator
     this.publicdirs = input.publicdirs as TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
@@ -66,14 +66,14 @@ export class Engine<
   ): Engine<TRequiredCtx, TError, false> {
     const parsedOptions = parseEngineOptions(options)
 
-    _ssServerLogger.set(parsedOptions.general.logger)
+    _ssServerLog.set(parsedOptions.general.log)
 
     const server = EngineServer.create({
       ...parsedOptions.server,
       cwd: parsedOptions.general.cwd,
       cwdBeforeBuild: parsedOptions.general.cwdBeforeBuild,
       engineFile: parsedOptions.general.engineFile,
-      logger: parsedOptions.general.logger,
+      log: parsedOptions.general.log,
       clients: [],
       generalBunPlugins: parsedOptions.general.bunPlugins,
     })
@@ -82,7 +82,7 @@ export class Engine<
       const client = EngineClient.create({
         ...clientOptions,
         cwd: parsedOptions.general.cwd,
-        logger: parsedOptions.general.logger,
+        log: parsedOptions.general.log,
         server,
         generalBunPlugins: parsedOptions.general.bunPlugins,
       })
@@ -93,7 +93,7 @@ export class Engine<
     server.clients = serverClients
 
     const generator = FilesGenerator.create({
-      logger: parsedOptions.general.logger,
+      log: parsedOptions.general.log,
       cwd: parsedOptions.general.cwd,
       glob: parsedOptions.general.pointsGlob,
       routes: parsedOptions.routes,
@@ -108,7 +108,7 @@ export class Engine<
     return new Engine({
       clients,
       server,
-      logger: parsedOptions.general.logger,
+      log: parsedOptions.general.log,
       prepared: false,
       generator,
       publicdirs,
@@ -447,7 +447,7 @@ export class Engine<
   } = {}): Promise<void> {
     if (sync) {
       void this.generator.sync({ logOnNotWritten }).catch((error: unknown) => {
-        this.logger({
+        this.log({
           level: 'error',
           category: ['generator'],
           message: 'Failed to generate files',

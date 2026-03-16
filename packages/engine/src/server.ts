@@ -1,9 +1,9 @@
-import { _ssServerLogger, env, prependAndDeappendSlash } from '@point0/core'
+import { _ssServerLog, env, prependAndDeappendSlash } from '@point0/core'
 import type {
   CompilerOptions,
   ErrorPoint0,
   FetcherFetchDetailedResult,
-  LoggerFn,
+  LogFn,
   NormalizedNodeEnv,
   PointsDefinitionSource,
   PointsScope,
@@ -56,7 +56,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
   portPolicy: PortPolicy
   serveRetries: number
   clients: TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
-  logger: LoggerFn
+  log: LogFn
   entry: Record<string, string> | null
   publicdir: TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
   // it is collection of server itself public dir and all its clients public dirs
@@ -87,7 +87,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     port: number
     portPolicy: PortPolicy
     serveRetries: number
-    logger: LoggerFn
+    log: LogFn
     clients: EngineClient[]
     envConsts: EngineOptionsEnvParsed
     envVars: EngineOptionsEnvParsed
@@ -118,7 +118,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     this.port = input.port
     this.serveRetries = input.serveRetries
     this.clients = input.clients as TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
-    this.logger = input.logger
+    this.log = input.log
     this.entry = input.entry
     this.publicdir = input.publicdir as TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
     this.publicdirs = [] as unknown as TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
@@ -155,7 +155,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
     generalBunPlugins: EngineSharedPluginsDefinition
-    logger: LoggerFn
+    log: LogFn
     clients: EngineClient[]
     viteConfig: EngineOptionsViteConfig | null
     hmrPort: number | false
@@ -290,13 +290,13 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
   /** Override default engine logger with root point _logger when present (point logger > engine config). */
   private _applyRootLogger(): void {
     if (!this.points) return
-    const rootLogger = this.points.manager.root._getLogger()
+    const rootLogger = this.points.manager.root._getLogFn()
     if (!rootLogger) return
-    _ssServerLogger.set(rootLogger)
-    this.logger = rootLogger
-    this.points.manager.logger = rootLogger
+    _ssServerLog.set(rootLogger)
+    this.log = rootLogger
+    this.points.manager.log = rootLogger
     for (const client of this.clients) {
-      client.logger = rootLogger
+      client.log = rootLogger
     }
   }
 
@@ -304,7 +304,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     if (!this.pointsProvided) {
       return null
     }
-    const points = await ServerPoints.createFromSource(this.pointsProvided, { logger: this.logger })
+    const points = await ServerPoints.createFromSource(this.pointsProvided, { log: this.log })
     await points.load()
     this.points = points as TPrepared extends true ? ServerPoints<TError> | null : undefined
     return points
@@ -425,7 +425,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
       } catch (error) {
         this.fixViteSsrStacktrace(error)
         // this.logger.error(`Error loading entry point "${entryFile}"`, error)
-        this.logger({
+        this.log({
           level: 'error',
           category: ['server'],
           message: `Failed to load entry point "${entryFile}"`,
@@ -594,7 +594,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
         }),
     )()
     setOverridenPortPolicy({ scope: this.scope, side: 'server', portPolicy: 'kill' })
-    this.logger({
+    this.log({
       level: 'info',
       category: ['server'],
       message: `Server "${this.scope}" started http://localhost:${this.port}`,

@@ -1195,7 +1195,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         status,
       })
     } catch (e) {
-      this.server.logger({
+      this.server.log({
         level: 'error',
         message: 'Error serialization failed',
         error: e,

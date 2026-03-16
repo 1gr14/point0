@@ -42,7 +42,7 @@ import type {
 } from './eventer.js'
 import { getFetch, setStatus } from './helpers.js'
 import { _getFakeClient, _ssItems } from './internals.js'
-import type { LoggerFn } from './logger.js'
+import type { LogFn } from './logger.js'
 import type {
   AppendProps,
   AppendQueries,
@@ -377,8 +377,8 @@ export class Point0<
   private readonly _base: BasePoint | LayoutPoint | undefined
   readonly _root: RootPoint | undefined
   readonly _fsLocation: FsLocation | undefined
-  readonly _logger: LoggerFn | undefined
-  readonly _getLogger = (): LoggerFn | undefined => {
+  readonly _logger: LogFn | undefined
+  readonly _getLogFn = (): LogFn | undefined => {
     if (this._logger) return this._logger
     let _root = this._root
     while (_root) {
@@ -556,7 +556,7 @@ export class Point0<
     _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
     _fsLocation?: FsLocation | undefined
-    _logger?: LoggerFn | undefined
+    _logger?: LogFn | undefined
     _Error?: ClassLikeError0<TError>
     _middlewares?: MiddlewareFn<TError>[] | undefined
     _serverurl?: string | undefined
@@ -722,7 +722,7 @@ export class Point0<
     _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
     _fsLocation?: FsLocation | undefined
-    _logger?: LoggerFn | undefined
+    _logger?: LogFn | undefined
     _Error?: ClassLikeError0<TError> | undefined
     _middlewares?: MiddlewareFn<TError>[]
     _serverurl?: string | undefined
@@ -10936,7 +10936,7 @@ export class Point0<
     preventEmitError = false,
   ) {
     const event = { name, data, side: _point0_env.side.name } as AnyEventerEvent<TError>
-    // const logger = getLoggerForPoint(this)
+    // const logger = getLogFnForPoint(this)
     for (const subscription of this._eventerSubscriptions) {
       if (subscription.side && subscription.side !== event.side) {
         continue
