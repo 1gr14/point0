@@ -233,7 +233,7 @@ export type StagePointTypeOrNever<TPointType extends PointType | UndefinedReadyP
 //     : UndefinedQueryResultType
 
 export type AnyPoint<
-  TPointType extends PointType = PointType,
+  TPointType extends PointType = any,
   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType = UndefinedReadyPointType,
   TRequiredCtx extends RequiredCtx = any,
   TError extends ErrorPoint0 = any,
@@ -543,7 +543,7 @@ export type ActionPoint<
 >
 
 export type ReadyPoint<
-  TPointType extends ReadyPointType = ReadyPointType,
+  TPointType extends ReadyPointType = any,
   TRequiredCtx extends RequiredCtx = any,
   TError extends ErrorPoint0 = any,
   TCtx extends Ctx = any,
