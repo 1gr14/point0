@@ -3607,7 +3607,7 @@ export class Point0<
       TBodySchema,
       THeadersSchema,
       TCookiesSchema,
-      Ctx
+      Ctx | undefined
     >,
   >(
     ctxFn: TCtxFn &
@@ -3817,7 +3817,7 @@ export class Point0<
     }) as never
   }
 
-  loader<TNewServerLoaderOutput extends LoaderOutput = LoaderOutput>(
+  loader<TNewServerLoaderOutput extends LoaderOutput = EmptyData>(
     loaderFn: TLetsReadyPointType extends 'mutation' | 'action'
       ? LoaderResponseFn<
           TCtx,
@@ -3832,7 +3832,8 @@ export class Point0<
           TNewServerLoaderOutput
         > &
           AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>
-      : LoaderDataFn<
+      : // AssertNotUnknownLoaderOutput<TNewServerLoaderOutput>
+        LoaderDataFn<
           TCtx,
           TCtxExposedKeys,
           TServerLoaderOutput,
@@ -3844,7 +3845,7 @@ export class Point0<
           TCookiesSchema,
           TNewServerLoaderOutput
         > &
-          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>,
+          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>, // AssertNotUnknownLoaderOutput<TNewServerLoaderOutput>
   ): NiceStagePoint<
     TNewServerLoaderOutput extends Response ? 'clientStage' : 'serverStage',
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -3852,7 +3853,7 @@ export class Point0<
     TError,
     TCtx,
     TCtxExposedKeys,
-    IfNeverThen<TNewServerLoaderOutput, EmptyData>,
+    TNewServerLoaderOutput,
     TClientLoaderOutput,
     TMapperOutput,
     TRouteDefinition,
@@ -3871,8 +3872,8 @@ export class Point0<
   >
   loader(
     loaderFn:
-      | LoaderDataFn<any, any, any, any, any, any, any, any>
-      | LoaderResponseFn<any, any, any, any, any, any, any, any>
+      | LoaderDataFn<any, any, any, any, any, any, any, any, any, any>
+      | LoaderResponseFn<any, any, any, any, any, any, any, any, any, any>
       | undefined,
   ) {
     return this._continue({

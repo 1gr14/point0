@@ -243,19 +243,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
   // ): Promise<
   //   ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput'], TPoint['Infer']['Error']>
   // >
-  async execute<
-    TPoint extends ReadyPoint | undefined,
-    TErrorClass extends ClassLikeError0<ErrorPoint0>,
-  >({
+  async execute<TPoint extends ReadyPoint | undefined, TErrorClass extends ClassLikeError0<ErrorPoint0>>({
     point,
     input,
     effects,
     ErrorClass,
   }: ExecuteOptions<TPoint, TErrorClass>): Promise<
     ServerExecuteResult<
-      TPoint extends { Infer: { Ctx: Ctx } }
-        ? TPoint['Infer']['Ctx']
-        : UnknownCtx,
+      TPoint extends { Infer: { Ctx: Ctx } } ? TPoint['Infer']['Ctx'] : UnknownCtx,
       TPoint extends { Infer: { ServerLoaderOutput: LoaderOutput | UndefinedLoaderOutput } }
         ? TPoint['Infer']['ServerLoaderOutput']
         : UnknownData,
@@ -629,7 +624,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               const appendCtxExposedKeys = !serverExecuteAction.expose
                 ? []
                 : serverExecuteAction.expose === true
-                  ? Object.keys(result)
+                  ? Object.keys(result ?? {})
                   : serverExecuteAction.expose
               layers.forEach((layer) => {
                 layer.ctxExposedKeys = [...new Set([...layer.ctxExposedKeys, ...appendCtxExposedKeys])]
@@ -967,14 +962,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
   }
 }
 
-export type ExecuteOptions<
-  TPoint extends ReadyPoint | undefined,
-  TErrorClass extends ClassLikeError0<ErrorPoint0>,
-> = {
+export type ExecuteOptions<TPoint extends ReadyPoint | undefined, TErrorClass extends ClassLikeError0<ErrorPoint0>> = {
   point?: TPoint | undefined
-  input: TPoint extends { Infer: { ServerInputRaw: any } }
-    ? TPoint['Infer']['ServerInputRaw']
-    : InputRaw
+  input: TPoint extends { Infer: { ServerInputRaw: any } } ? TPoint['Infer']['ServerInputRaw'] : InputRaw
   effects?: Effects
   ErrorClass: TErrorClass
   _known?: ExecuteOptionsKnownInput

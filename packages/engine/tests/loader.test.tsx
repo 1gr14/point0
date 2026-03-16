@@ -1,5 +1,5 @@
-import type { Prettify } from '@point0/core'
 import { ErrorPoint0, Point0 } from '@point0/core'
+import type { Prettify } from '@point0/core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
 import superjson from 'superjson'
 import { createTestThings, ymlify } from './utils/internal-testing.js'
@@ -190,5 +190,6 @@ describe('loader', () => {
       .lets('page', 'home', '/')
       // @ts-expect-error -- array is forbidden to return as data
       .loader(() => [{ x: 1 }])
+      .page()
   })
 })

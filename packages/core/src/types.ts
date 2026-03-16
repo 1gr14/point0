@@ -1192,11 +1192,17 @@ export type Prettify<T extends object> = {
 export type PrettifyOrEmptyObject<T extends object> = IsEmptyObject<T> extends true ? EmptyObject : Prettify<T>
 // export type PrettifyOrUndefined<T> = T extends object ? Prettify<T> : undefined
 
-export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends UnknownCtx> = TCtx extends Ctx
+type EmptyObjectIfUndefined<T> = T extends undefined ? EmptyObject : T
+export type AppendCtx<
+  TCtx extends UnknownCtx | UndefinedCtx,
+  TAppend extends UnknownCtx | UndefinedCtx,
+> = TCtx extends Ctx
   ? IsNever<keyof TCtx> extends true
-    ? TAppend
-    : Omit<TCtx, keyof TAppend> & TAppend
-  : TAppend
+    ? EmptyObjectIfUndefined<TAppend>
+    : TAppend extends undefined
+      ? TCtx
+      : Omit<TCtx, keyof TAppend> & TAppend
+  : EmptyObjectIfUndefined<TAppend>
 export type AppendCtxExposedKeys<
   TCurrent extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TAppend extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -1603,7 +1609,7 @@ export type CtxFn<
   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TCtxAppend extends Ctx = Ctx,
+  TCtxAppend extends Ctx | undefined = Ctx | undefined,
 > = (
   props: CtxFnOptions<
     TCtxPrev,
@@ -1628,6 +1634,7 @@ export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] exten
       : ShowError<`Forbidden to expose ctx keys: ${Extract<TExposedKeys, ForbiddenCtxExposedKeys> & string}`>
 export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any>> =
   TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, infer TCtxAppend> ? TCtxAppend : never
+
 export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any>> = Extract<
   keyof InferCtxFnOutputCtxAppend<TCtxFn>,
   string
@@ -1660,7 +1667,7 @@ export type LoaderResponseFn<
   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TNewServerLoaderOutput extends LoaderOutput = LoaderOutput,
+  TNewServerLoaderOutput extends LoaderOutput | void = LoaderOutput,
 > = (
   options: LoaderResponseFnOptions<
     TCtx,
@@ -1707,7 +1714,7 @@ export type LoaderDataFn<
   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TNewServerLoaderOutput extends Data = Data,
+  TNewServerLoaderOutput extends Data | void = Data,
 > = (
   options: LoaderDataFnOptions<
     TCtx,
@@ -2085,6 +2092,9 @@ export type AssertNotResponseForMountable<
   ? TOutput extends Response
     ? ShowError<`Output can not be type of "Response" for point of type "${TPointType}"`>
     : unknown
+  : unknown
+export type AssertNotUnknownLoaderOutput<TOutput extends LoaderOutput | undefined> = undefined extends TOutput
+  ? ShowError<`Loader should return specific output`>
   : unknown
 type MashSchemaHint =
   `"input" is only for query, infinitieQuery, mutation, component, provider. "params" and "search" for action, page, layout. "body" for action only`

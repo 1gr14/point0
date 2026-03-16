@@ -222,4 +222,32 @@ describe('ctx', () => {
     // @ts-expect-error -- execute is forbidden in explicit exposed keys
     point.ctx(() => ({ execute: 'x', ok: 1 }), ['execute'])
   })
+
+  it('can return nothing, then no ctx overrides', async () => {
+    const root = createRoot()
+    const page = root
+      .lets('page', 'home', '/')
+      .ctx({ x: 1 })
+      .ctx(() => {
+        if (!(Math.random() + 1)) {
+          throw new Error('test error')
+        }
+      })
+      .ctx(() => ({ y: 2 }))
+      .loader(({ ctx }) => {
+        expectTypeOf<Prettify<typeof ctx>>().toEqualTypeOf<{ x: number; y: number }>()
+        expect(ctx).toEqual({ x: 1, y: 2 })
+        return { x: 1 }
+      })
+      .page(({ data }) => {
+        expectTypeOf(data).toEqualTypeOf<{ x: number }>()
+        return ymlify(data)
+      })
+    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      x: 1
+      "
+    `)
+  })
 })
