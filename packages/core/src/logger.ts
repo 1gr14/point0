@@ -10,12 +10,19 @@ export type LogOptions = {
 }
 export type LogFn = (options: LogOptions) => void
 export const _defaultLogFn: LogFn = (options: LogOptions) => {
+  const categoryPrefix = `[${options.category.join(':')}]`
+  const trailingArgs = [...(options.error ? [options.error] : []), ...(options.meta ? [options.meta] : [])]
+
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    // Browser console supports `%c` to apply CSS styles.
+    // eslint-disable-next-line no-console
+    console[options.level](`%c${categoryPrefix}%c ${options.message}`, 'font-weight: bold;', '', ...trailingArgs)
+    return
+  }
+
+  const boldPrefix = `\u001b[1m${categoryPrefix}\u001b[22m`
   // eslint-disable-next-line no-console
-  console[options.level](
-    `[${options.category.join(':')}] ${options.message}`,
-    ...(options.error ? [options.error] : []),
-    ...(options.meta ? [options.meta] : []),
-  )
+  console[options.level](`${boldPrefix} ${options.message}`, ...trailingArgs)
 }
 
 export const _ssClientLog = superstore.define<LogFn>('__POINT0_CLIENT_LOGGER__', () => _defaultLogFn, 'clientOnly')
