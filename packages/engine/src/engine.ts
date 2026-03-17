@@ -22,6 +22,7 @@ import { FilesGenerator } from './generator.js'
 import { killPort } from './port.js'
 import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
+import { FilesWatcher } from './watcher.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
 
 export class Engine<
@@ -35,6 +36,9 @@ export class Engine<
   log: LogFn
   generator: FilesGenerator
   prepared: TPrepared
+  pointsGlob: string[]
+  buildWatchGlob: string[]
+  cwd: string
 
   private readonly __POINT0_ENGINE__ = true as const
 
@@ -45,6 +49,9 @@ export class Engine<
     prepared: TPrepared
     generator: FilesGenerator
     publicdirs: Array<Publicdir<false>>
+    pointsGlob: string[]
+    buildWatchGlob: string[]
+    cwd: string
   }) {
     this.clients = input.clients as TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
     this.server = input.server as TPrepared extends true ? EngineServer<true, TError> : EngineServer<false, TError>
@@ -52,6 +59,9 @@ export class Engine<
     this.prepared = input.prepared
     this.generator = input.generator
     this.publicdirs = input.publicdirs as TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
+    this.pointsGlob = input.pointsGlob
+    this.buildWatchGlob = input.buildWatchGlob
+    this.cwd = input.cwd
   }
 
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
@@ -112,6 +122,9 @@ export class Engine<
       prepared: false,
       generator,
       publicdirs,
+      pointsGlob: parsedOptions.general.pointsGlob,
+      buildWatchGlob: parsedOptions.general.buildWatchGlob,
+      cwd: parsedOptions.general.cwd,
     })
   }
 
@@ -358,7 +371,14 @@ export class Engine<
     await Promise.all([...this.clients.map(async (client) => await client.clean()), this.server.clean()])
   }
 
-  async build(options?: { generate?: boolean; scope?: PointsScope; clean?: boolean; publicdir?: boolean }): Promise<{
+  async build(options?: {
+    generate?: boolean
+    side?: 'server' | 'client' | undefined
+    scope?: PointsScope
+    clean?: boolean
+    publicdir?: boolean
+    file?: string
+  }): Promise<{
     clients: Array<{
       client: string[] | null
       publicdir: string[] | null
@@ -366,30 +386,43 @@ export class Engine<
     }>
     server: { server: string[] | null; publicdir: string[] | null }
   }> {
-    const { generate = true, scope, clean = true, publicdir } = options ?? {}
+    const startedAt = performance.now()
+    this.log({
+      level: 'info',
+      category: ['build'],
+      message: 'Build...',
+    })
+    const { generate = true, side, scope, clean = true, publicdir } = options ?? {}
     normalizeAndValidateNodeEnv('production')
 
     if (generate) {
       await this.generator.sync({ logOnNotWritten: false })
     }
 
+    const isSideServer = side === 'server' || !side
+    const isSideClient = side === 'client' || !side
+    const isScopeServer = !scope || (scope && scope === this.server.scope)
+    const isScopeClient = (clientScope: PointsScope) => !scope || clientScope === scope
+
     // const preparedEngine = await this.prepare()
 
     if (clean) {
       await Promise.all([
-        ...this.clients.map(async (client) => {
-          if (scope && client.scope !== scope) {
-            return
-          }
-          await client.clean()
-        }),
-        ...((scope && scope === this.server.scope) || !scope ? [this.server.clean()] : []),
+        ...(isSideClient
+          ? this.clients.map(async (client) => {
+              if (!isScopeClient(client.scope)) {
+                return
+              }
+              await client.clean()
+            })
+          : []),
+        ...(isScopeServer && isSideServer ? [this.server.clean()] : []),
       ])
     }
 
     const buildClientsPromise = Promise.all(
       this.clients.map(async (client) => {
-        if (scope && client.scope !== scope) {
+        if (!isScopeClient(client.scope)) {
           return {
             client: null,
             publicdir: null,
@@ -408,24 +441,161 @@ export class Engine<
       }),
     )
     const buildServerPromise = (async () => {
-      if (scope) {
-        if (scope === this.server.scope) {
-          return await this.server.build({
-            clean: false,
-            publicdir,
-          })
-        } else {
-          return { server: null, publicdir: null }
-        }
-      } else {
+      if (isScopeServer && isSideServer) {
         return await this.server.build({
           clean: false,
           publicdir,
         })
+      } else {
+        return { server: null, publicdir: null }
       }
     })()
     const [clients, server] = await Promise.all([buildClientsPromise, buildServerPromise])
+    const duration = performance.now() - startedAt
+    const durationMs = Math.round(duration)
+    this.log({
+      level: 'info',
+      category: ['build'],
+      message: `Build completed in ${durationMs}ms`,
+    })
     return { clients, server }
+  }
+
+  async buildWatch(options?: {
+    generate?: boolean
+    watch?: string | string[] | undefined
+    side?: 'server' | 'client' | undefined
+    scope?: PointsScope
+    clean?: boolean
+    publicdir?: boolean
+    file?: string
+    cwd?: string
+  }): Promise<void> {
+    const { watch, cwd = this.cwd, ...buildOptions } = options ?? {}
+    const glob = !watch ? this.buildWatchGlob : Array.isArray(watch) ? watch : [watch]
+    if (glob.length === 0) {
+      throw new Error(
+        'Build watch glob is not provided, please provide --watch <glob> or set buildWatchGlob in engine options',
+      )
+    }
+    const globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(cwd, g))
+    const globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(cwd, g.slice(1)))
+    let currentBuildProcess: ReturnType<typeof Bun.spawn> | undefined
+    const toCliBuildArgs = (): string[] => {
+      const args = []
+      if (buildOptions.scope) {
+        args.push('--scope', buildOptions.scope)
+      }
+      if (buildOptions.side) {
+        args.push('--side', buildOptions.side)
+      }
+      if (buildOptions.generate === false) {
+        args.push('--no-generate')
+      }
+      if (buildOptions.clean === false) {
+        args.push('--no-clean')
+      }
+      if (buildOptions.publicdir === false) {
+        args.push('--no-publicdir')
+      }
+      const engineFile = buildOptions.file || Engine.findSelfFile({ cwd: this.cwd }) // this.cwd becouse we will found it here 100%
+      if (!engineFile) {
+        throw new Error('Engine file is not provided')
+      }
+      args.push('--engine', engineFile)
+      return args
+    }
+    const stopCurrentBuild = async (): Promise<void> => {
+      const processToStop = currentBuildProcess
+      if (!processToStop) {
+        return
+      }
+      currentBuildProcess = undefined
+      try {
+        processToStop.kill('SIGKILL')
+      } catch {
+        // Process may already be finished.
+      }
+      try {
+        await processToStop.exited
+      } catch {
+        // Ignore spawn/exit race errors while stopping.
+      }
+    }
+    const startBuild = (): void => {
+      const cmd = ['bunx', 'point0', 'build', ...toCliBuildArgs()]
+      const buildProcess = Bun.spawn({
+        cmd,
+        cwd: this.cwd, // this.cwd becouse we will found it here 100%
+        stdout: 'inherit',
+        stderr: 'inherit',
+        stdin: 'inherit',
+        env: {
+          ...process.env,
+          FORCE_COLOR: process.env.FORCE_COLOR ?? '1',
+        },
+      })
+      currentBuildProcess = buildProcess
+      void buildProcess.exited
+        .then((exitCode) => {
+          if (currentBuildProcess !== buildProcess) {
+            return
+          }
+          currentBuildProcess = undefined
+          if (exitCode !== 0) {
+            this.log({
+              level: 'warn',
+              category: ['build'],
+              message: `Build process exited with code ${exitCode}. Watching for next change...`,
+            })
+          }
+        })
+        .catch((error) => {
+          if (currentBuildProcess !== buildProcess) {
+            return
+          }
+          currentBuildProcess = undefined
+          this.log({
+            level: 'error',
+            category: ['build'],
+            message: 'Build process failed. Watching for next change...',
+            error,
+          })
+        })
+    }
+    const watcher = FilesWatcher.create({
+      ignore: globExclude,
+      patterns: globInclude,
+    })
+    try {
+      this.log({
+        level: 'info',
+        category: ['build'],
+        message: 'Build watcher started',
+      })
+      startBuild()
+      await watcher.start({
+        onEvent: async (_event) => {
+          await stopCurrentBuild()
+          startBuild()
+        },
+        onError: async (error) => {
+          this.log({
+            level: 'error',
+            category: ['build', 'watch'],
+            message: 'Watcher error. Still watching for changes...',
+            error,
+          })
+        },
+      })
+    } catch (error) {
+      this.log({
+        level: 'error',
+        category: ['build', 'watch'],
+        message: 'Failed to start build watcher',
+        error,
+      })
+    }
   }
 
   async generate({

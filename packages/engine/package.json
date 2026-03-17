@@ -24,20 +24,51 @@
   "module": "./dist/esm/index.js",
   "typesVersions": {
     "*": {
-      "": ["./dist/esm/index.d.ts"],
-      "client": ["./dist/esm/client.d.ts"],
-      "config": ["./dist/esm/config.d.ts"],
-      "executor": ["./dist/esm/executor.d.ts"],
-      "fake-client": ["./dist/esm/fake-client.d.ts"],
-      "fetcher": ["./dist/esm/fetcher.d.ts"],
-      "generator": ["./dist/esm/generator.d.ts"],
-      "port": ["./dist/esm/port.d.ts"],
-      "meta": ["./dist/esm/meta.d.ts"],
-      "publicdir": ["./dist/esm/publicdir.d.ts"],
-      "render": ["./dist/esm/render.d.ts"],
-      "server-points": ["./dist/esm/server-points.d.ts"],
-      "server": ["./dist/esm/server.d.ts"],
-      "utils": ["./dist/esm/utils.d.ts"]
+      "": [
+        "./dist/esm/index.d.ts"
+      ],
+      "client": [
+        "./dist/esm/client.d.ts"
+      ],
+      "config": [
+        "./dist/esm/config.d.ts"
+      ],
+      "executor": [
+        "./dist/esm/executor.d.ts"
+      ],
+      "fake-client": [
+        "./dist/esm/fake-client.d.ts"
+      ],
+      "fetcher": [
+        "./dist/esm/fetcher.d.ts"
+      ],
+      "generator": [
+        "./dist/esm/generator.d.ts"
+      ],
+      "port": [
+        "./dist/esm/port.d.ts"
+      ],
+      "meta": [
+        "./dist/esm/meta.d.ts"
+      ],
+      "publicdir": [
+        "./dist/esm/publicdir.d.ts"
+      ],
+      "render": [
+        "./dist/esm/render.d.ts"
+      ],
+      "server-points": [
+        "./dist/esm/server-points.d.ts"
+      ],
+      "server": [
+        "./dist/esm/server.d.ts"
+      ],
+      "utils": [
+        "./dist/esm/utils.d.ts"
+      ],
+      "watcher": [
+        "./dist/esm/watcher.d.ts"
+      ]
     }
   },
   "exports": {
@@ -110,6 +141,11 @@
       "types": "./dist/esm/utils.d.ts",
       "require": "./dist/cjs/utils.cjs",
       "import": "./dist/esm/utils.js"
+    },
+    "./watcher": {
+      "types": "./dist/esm/watcher.d.ts",
+      "require": "./dist/cjs/watcher.cjs",
+      "import": "./dist/esm/watcher.js"
     }
   },
   "files": [

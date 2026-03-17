@@ -34,8 +34,6 @@ mcp
 
 
 === REFACTOING 3000 ===
-build --watch
-
 ClientOnly react helper
 
 filerouting

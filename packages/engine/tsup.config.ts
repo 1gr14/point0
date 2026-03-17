@@ -19,6 +19,7 @@ const general = {
     'src/server-points.ts',
     'src/server.ts',
     'src/utils.ts',
+    'src/watcher.ts',
   ],
   clean: false,
   dts: true,

@@ -12,6 +12,10 @@ const dictionary = {
   noGenerate: 'Skip files generation',
   enginePath: 'Path to engine file (absolute or relative to cwd)',
 }
+const parseCommaSeparatedOption = (value: string, previous: string[] = []): string[] => {
+  previous.push(...value.split(','))
+  return previous
+}
 
 program
   .command('dev')
@@ -24,10 +28,7 @@ program
   .option(
     '--entry <name|path>',
     'Server entry points, names or paths (--entry <entry1>,<entry2>,...) or (--entry <entry1> --entry <entry2> ...)',
-    (value, previous: string[] = []) => {
-      previous.push(...value.split(','))
-      return previous
-    },
+    parseCommaSeparatedOption,
     [],
   )
   .option('--engine <path>', dictionary.enginePath)
@@ -79,7 +80,13 @@ program
   .command('build')
   .description('Build server and clients')
   .option('--engine <path>', dictionary.enginePath)
-  .option('-s, --scope <scope>', 'Scope to build')
+  .option(
+    '-w, --watch [glob]',
+    'Watch files and rebuild on changes (no value = default points glob, comma-separated or repeated values supported)',
+    parseCommaSeparatedOption,
+  )
+  .option('--side <side>', 'Build only one side: server or client')
+  .option('--scope <scope>', 'Scope to build')
   .option('-G, --no-generate', dictionary.noGenerate)
   .option('-C, --no-clean', 'Do not clean build')
   .option('-P, --no-publicdir', 'Do not build publicdir')
@@ -92,21 +99,43 @@ program
     },
     [],
   )
-  .action(async (options) => {
-    process.env.NODE_ENV ??= 'production'
-    const { engine } = await Engine.findAndImportSelf(options.engine)
-    for (const env of options.env ?? []) {
-      const [name, ...valueParts] = env.split('=')
-      const value = valueParts.join('=')
-      process.env[name] = value
-    }
-    await engine.build({
-      generate: options.generate !== false,
-      scope: options.scope as PointsScope,
-      clean: options.clean !== false,
-      publicdir: options.publicdir !== false,
-    })
-  })
+  .action(
+    async (options: {
+      engine?: string
+      watch?: boolean | string[]
+      side?: 'server' | 'client'
+      scope?: string
+      generate?: boolean
+      clean?: boolean
+      publicdir?: boolean
+      env?: string[]
+    }) => {
+      process.env.NODE_ENV ??= 'production'
+      const { engine } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd: process.cwd() })
+      for (const env of options.env ?? []) {
+        const [name, ...valueParts] = env.split('=')
+        const value = valueParts.join('=')
+        process.env[name] = value
+      }
+      const watch = Array.isArray(options.watch) ? options.watch : undefined
+      const buildOptions = {
+        generate: options.generate !== false,
+        side: options.side as 'server' | 'client' | undefined,
+        scope: options.scope as PointsScope,
+        clean: options.clean !== false,
+        publicdir: options.publicdir !== false,
+      }
+      if (options.watch) {
+        await engine.buildWatch({
+          ...buildOptions,
+          watch,
+          cwd: process.cwd(),
+        })
+      } else {
+        await engine.build(buildOptions)
+      }
+    },
+  )
 
 program
   .command('generate')

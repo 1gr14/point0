@@ -1,5 +1,4 @@
 import type { RoutesPretty } from '@devp0nt/route0'
-import type { AsyncSubscription } from '@parcel/watcher'
 import { CompilerPoint, END_POINT_TYPES, Walker } from '@point0/compiler'
 import type { LogFn } from '@point0/core'
 import { generateId, log } from '@point0/core'
@@ -9,6 +8,7 @@ import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { EngineOptionsRoutes } from './config.js'
 import { getDirByPaths, resolveTempDirPath } from './utils.js'
+import { FilesWatcher } from './watcher.js'
 
 type ChangeCollectedPointsEvent = {
   deleted: CompilerPoint[]
@@ -72,12 +72,7 @@ export class FilesGenerator {
   readonly routesSrc: Record<string, { instance: RoutesPretty | null; getter: EngineOptionsRoutes | null }>
   private isRoutesInitialized = false
   readonly log: LogFn
-
-  readonly watchDir: string
-  readonly watchIgnore: string[]
-  readonly watchPatterns: string[]
-  watchSubscription: AsyncSubscription | undefined
-  pointsFilesChangeWatchersSubscription: AsyncSubscription | undefined
+  private readonly filesWatcher: FilesWatcher
 
   readonly pointsFilesChangeWatchers: FilesGeneratorPointsFilesChangeWatcher[] = []
 
@@ -118,10 +113,14 @@ export class FilesGenerator {
       return acc
     }, {})
     this.routes = {}
-
-    this.watchDir = this.globInclude.length > 0 ? getDirByPaths({ paths: this.globInclude }) : process.cwd()
-    this.watchIgnore = [...this.globExclude, ...this.tasks.map((t) => t.outfile)].flatMap((p) => p || [])
-    this.watchPatterns = [...this.globInclude]
+    const watchDir = this.globInclude.length > 0 ? getDirByPaths({ paths: this.globInclude }) : process.cwd()
+    const watchIgnore = [...this.globExclude, ...this.tasks.map((t) => t.outfile)].flatMap((p) => p || [])
+    const watchPatterns = [...this.globInclude]
+    this.filesWatcher = FilesWatcher.create({
+      watchDir,
+      ignore: watchIgnore,
+      patterns: watchPatterns,
+    })
   }
 
   static create(opts: FilesGeneratorOptions) {
@@ -1022,106 +1021,57 @@ export class FilesGenerator {
   }
 
   async watch(options?: { silent?: boolean }) {
-    const { subscribe } = await import('@parcel/watcher')
-    const subscription = await subscribe(
-      this.watchDir,
-      async (err, events) => {
-        if (err) {
-          if (!options?.silent) {
-            this.log({ level: 'error', category: ['generator'], message: `Watcher error`, error: err })
-          }
+    await this.filesWatcher.start({
+      isSuitable: (event) => {
+        return event.type === 'delete'
+          ? this.isFileOrDirSuitableToFiles(event.path)
+          : this.isFileSuitableToGlob(event.path)
+      },
+      onEvent: async (event) => {
+        if (event.type === 'delete') {
+          this.removeDirOrFile(event.path)
+        } else {
+          this.addOrUpdateFile(event.path)
+        }
+        const pointsEvent = await this.process()
+        this.notifyCustomWatchers(event.type, event.path, pointsEvent)
+        if (!pointsEvent.changed) {
           return
         }
-        for (const event of events) {
-          try {
-            const pathAbs = nodePath.resolve(event.path)
-
-            // glob match - check if the file matches any of our patterns
-            const matched = this.watchPatterns.some((g) => {
-              const resolvedPattern = nodePath.resolve(this.watchDir, g)
-              const relativePath = nodePath.relative(this.watchDir, pathAbs)
-              const relativePattern = nodePath.relative(this.watchDir, resolvedPattern)
-              return (
-                minimatch(relativePath, relativePattern, { dot: true }) ||
-                minimatch(pathAbs, resolvedPattern, { dot: true })
-              )
+        if (pointsEvent.deleted.length > 0) {
+          const deletedTypesAndNames = pointsEvent.deleted.map((p) => `${p.type}.${p.name}`).join(', ')
+          if (!options?.silent) {
+            this.log({
+              level: 'info',
+              category: ['generator'],
+              message: `remove: ${deletedTypesAndNames}`,
             })
-            if (!matched) continue
-
-            // Check if file exists
-            let exists = false
-            try {
-              await nodeFs.access(pathAbs)
-              exists = true
-            } catch {
-              exists = false
-            }
-
-            const isDelete = event.type === 'delete' || (!exists && event.type === 'update')
-            const isCreateOrUpdate = (event.type === 'create' || event.type === 'update') && exists
-
-            const suitable = isDelete
-              ? this.isFileOrDirSuitableToFiles(pathAbs)
-              : isCreateOrUpdate
-                ? this.isFileSuitableToGlob(pathAbs)
-                : false
-            if (!suitable) {
-              return
-            }
-            if (isDelete) {
-              this.removeDirOrFile(pathAbs)
-            } else {
-              this.addOrUpdateFile(pathAbs)
-            }
-            const evt = await this.process()
-            this.notifyCustomWatchers(isDelete ? 'delete' : 'update', pathAbs, evt)
-            if (evt.changed) {
-              if (evt.deleted.length > 0) {
-                const deletedTypesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(', ')
-                if (!options?.silent) {
-                  this.log({
-                    level: 'info',
-                    category: ['generator'],
-                    message: `remove: ${deletedTypesAndNames}`,
-                  })
-                }
-              }
-              if (evt.added.length > 0) {
-                const addedTypesAndNames = evt.added.map((p) => `${p.type}.${p.name}`).join(', ')
-                if (!options?.silent) {
-                  this.log({
-                    level: 'info',
-                    category: ['generator'],
-                    message: `add: ${addedTypesAndNames}`,
-                  })
-                }
-              }
-            }
-          } catch (e) {
-            if (!options?.silent) {
-              this.log({ level: 'error', category: ['generator'], message: `Watcher error`, error: e })
-            }
+          }
+        }
+        if (pointsEvent.added.length > 0) {
+          const addedTypesAndNames = pointsEvent.added.map((p) => `${p.type}.${p.name}`).join(', ')
+          if (!options?.silent) {
+            this.log({
+              level: 'info',
+              category: ['generator'],
+              message: `add: ${addedTypesAndNames}`,
+            })
           }
         }
       },
-      {
-        ignore: this.watchIgnore,
+      onError: async (error) => {
+        if (!options?.silent) {
+          this.log({ level: 'error', category: ['generator'], message: `Watcher error`, error })
+        }
       },
-    )
-
+    })
     if (!options?.silent) {
       this.log({ level: 'info', category: ['generator'], message: 'Watcher started' })
     }
-
-    // Store subscription for potential cleanup
-    this.watchSubscription = subscription
   }
 
   async stopWatch() {
-    if (this.watchSubscription) {
-      await this.watchSubscription.unsubscribe()
-      this.watchSubscription = undefined
-    }
+    await this.filesWatcher.stop()
   }
 
   onPointFileChange(callback: FilesGeneratorPointsFilesChangeWatcher) {

@@ -71,8 +71,6 @@ export const BestIdeaComponent = client
         <h1>Best Idea {data.mult}</h1>
         <p>CTA: {props.cta}</p>
         <p>TITLE: {data.bestIdea.title}</p>
-        {/* <p>CLD: {data.clD}</p> */}
-        {/* <p>CLDD: {data.clDD}</p> */}
         <p>SLDATE: {typeof data.slDate}</p>
         {/* <p>CLLLL: {typeof data.cllll}</p> */}
         <p>
