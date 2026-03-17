@@ -2255,7 +2255,7 @@ describe('CompilerFile', () => {
 
   describe('mdx', () => {
     it('defaultFilter matches md, mdx, mdc', () => {
-      const filter = Compiler.defaultFilter
+      const filter = Compiler.defaultPathFilterRegex
       expect(filter.test('/tmp/page.md')).toBe(true)
       expect(filter.test('/tmp/page.mdx')).toBe(true)
       expect(filter.test('/tmp/page.mdc')).toBe(true)

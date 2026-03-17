@@ -2,6 +2,12 @@ import type { GeneratorResult } from '@babel/generator'
 import type { RoutesPretty } from '@devp0nt/route0'
 import {
   normalNodeEnvs,
+  type CompilerFilterContent,
+  type CompilerFilterContentFn,
+  type CompilerFilterInput,
+  type CompilerFilterNormalized,
+  type CompilerFilterPath,
+  type CompilerFilterPathFn,
   type CompilerOptions,
   type EnvOsName,
   type EnvRuntimeName,
@@ -13,7 +19,7 @@ import type { CompilerEnvConsts } from './utils.js'
 import { Walker } from './walker.js'
 
 export class Compiler {
-  filter: RegExp
+  filter: CompilerFilterNormalized
   scope: string | false
   built: boolean
   mode: NormalizedNodeEnv | false
@@ -26,7 +32,8 @@ export class Compiler {
   routes: Record<string, RoutesPretty> | undefined
 
   // Match JS/TS and markdown-ish source files while excluding virtual/shim module IDs and node_modules (except point0 packages).
-  static defaultFilter = /^(?!.*(?:shim:|virtual:))(?!.*node_modules\/(?!.*point0)).*\.(?:[cm]?[jt]sx?|md|mdx|mdc)$/
+  static defaultPathFilterRegex =
+    /^(?!.*(?:shim:|virtual:))(?!.*node_modules\/(?!.*point0)).*\.(?:[cm]?[jt]sx?|md|mdx|mdc)$/
 
   constructor({
     filter,
@@ -41,7 +48,7 @@ export class Compiler {
     runtime,
     os,
   }: {
-    filter: RegExp
+    filter: CompilerFilterNormalized
     side: 'client' | 'server' | false
     scope: string | false
     consts: CompilerEnvConsts | undefined
@@ -66,6 +73,57 @@ export class Compiler {
     this.os = os
   }
 
+  private static toFilterFn(
+    filter: CompilerFilterPath | CompilerFilterContent | undefined,
+    fallback: CompilerFilterPathFn | CompilerFilterContentFn,
+  ): CompilerFilterPathFn {
+    if (!filter) {
+      return fallback
+    }
+    if (typeof filter === 'string') {
+      const regex = new RegExp(filter)
+      return (path: string) => regex.test(path)
+    }
+    if (typeof filter === 'function') {
+      return filter
+    }
+    if (filter instanceof RegExp) {
+      return (path: string) => filter.test(path)
+    }
+    throw new Error('Invalid compiler filter')
+  }
+
+  private static normalizeFilter(filter: CompilerFilterInput | undefined): CompilerFilterNormalized {
+    if (!filter) {
+      return {
+        path: (path: string) => Compiler.defaultPathFilterRegex.test(path),
+        content: () => true,
+      }
+    }
+    if (typeof filter === 'string') {
+      const regex = new RegExp(filter)
+      return {
+        path: (path: string) => regex.test(path),
+        content: () => true,
+      }
+    }
+    if (filter instanceof RegExp) {
+      return {
+        path: (path: string) => filter.test(path),
+        content: () => true,
+      }
+    }
+    if (typeof filter === 'object') {
+      const providedPath = filter.path
+      const providedContent = filter.content
+      return {
+        path: Compiler.toFilterFn(providedPath, (path: string) => Compiler.defaultPathFilterRegex.test(path)),
+        content: Compiler.toFilterFn(providedContent, () => true),
+      }
+    }
+    throw new Error('Invalid compiler filter')
+  }
+
   static create(options: CompilerOptions) {
     const {
       filter,
@@ -83,7 +141,7 @@ export class Compiler {
       throw new Error(`Invalid mode (NODE_ENV): "${mode}". Allowed values: production, development, test`)
     }
     return new Compiler({
-      filter: filter ?? Compiler.defaultFilter,
+      filter: Compiler.normalizeFilter(filter),
       side,
       scope,
       consts,

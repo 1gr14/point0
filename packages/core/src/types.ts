@@ -4447,6 +4447,16 @@ export type AnyNiceRequestableReadyPoint<
 
 // Compiler options
 
+export type CompilerFilterPathFn = (path: string) => boolean
+export type CompilerFilterContentFn = (content: string) => boolean
+export type CompilerFilterPath = RegExp | CompilerFilterPathFn
+export type CompilerFilterContent = RegExp | CompilerFilterContentFn
+export type CompilerFilterInput = { path?: CompilerFilterPath; content?: CompilerFilterContent } | CompilerFilterPath
+export type CompilerFilterNormalized = {
+  path: CompilerFilterPathFn
+  content: CompilerFilterContentFn
+}
+
 export type CompilerOptions = {
   routes?: Record<string, RoutesPretty> | undefined
   mode?: NormalizedNodeEnv | false
@@ -4456,9 +4466,10 @@ export type CompilerOptions = {
   scope: string | false
   built?: boolean
   consts?: CompilerEnvConsts
-  filter?: RegExp
+  filter?: CompilerFilterInput
   hmrFix?: boolean
 }
+
 export type CompilerEnvConstsObject = { [key: string]: string | number | boolean | null | undefined }
 export type CompilerEnvConstsString = string
 export type CompilerEnvConstsItem = CompilerEnvConstsString | CompilerEnvConstsObject

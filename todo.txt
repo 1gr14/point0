@@ -34,9 +34,6 @@ mcp
 
 
 === REFACTOING 3000 ===
-
-Упрощённая запись для мидлвары для фильтрации запрсов ({method: [], route: '/zxc...', handler: () => {}}) and (methods, route, handler) => {} and (route, handler) => {}
-
 compiler filter should accept also fn, and also objec {path, content} so may check if it should comile or not
 
 Отменить хитрые роуты в пейджах (а в лэйоутах оставить)

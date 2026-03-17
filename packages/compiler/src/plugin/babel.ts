@@ -11,7 +11,7 @@ export function compilerBabelPlugin(_babel: never, options: CompilerOptions) {
       parse: (code: string, options: unknown) => unknown,
     ) {
       const filename = parserOptions.sourceFileName
-      if (!filename || !compiler.filter.test(filename)) {
+      if (!filename || !compiler.filter.path(filename)) {
         return parse(code, parserOptions)
       }
 
