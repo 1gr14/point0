@@ -34,35 +34,32 @@ mcp
 
 
 === REFACTOING 3000 ===
-
-Упрощённая запись для мидлвары для фильтрации запрсов ({method: [], route: '/zxc...', handler: () => {}}) and (methods, route, handler) => {} and (route, handler) => {}
-
-compiler filter should accept also fn, and also objec {path, content} so may check if it should comile or not
-
 Отменить хитрые роуты в пейджах (а в лэйоутах оставить)
 
 Разобраться и написать коммент зачем вообще в энжине клиент поинтсы
 
 build --watch
 
-capacitor live reload https://github.com/Cap-go/capacitor-live-reload
+(import protection) cli inspect by filepath how this file and in which place come to files via cli command
+
+? Реквест надо максимально упростить и вообще его экстенднуть от обычного реквеста
+Когда в эффектах кукиса удаляют куки во втором запросе при сср проверить, что это работает
+при запросах с сревреа к самому себе учитывать максимальную рекурсию
 
 Генерейт мап и она может быть mirror как эни поинт с указанием бейза иначе руи, а может быть с прямым импортом поинтов, а также с выбором того как генерируются ключи
 Генерейт mirror тогда там будет просто экспорт констс также с названными ключами и опередлёнными бейзами, бейзы тоже могут быть строкой  могт быть функцией, котрая вернёт поинт 
 Когда генерим миррор, важно в эндпоинт автоматически подставить нужный путь исходя из бейза, а для экшенов прямо прописать метод и путь
 мирор разрешить только на кверянки и экшены
 
-(import protection) cli inspect by filepath how this file and in which place come to files via cli command
-
-execute
-
 ? headers as action input
 openapi
 scalar
 
-requesting
+capacitor live reload https://github.com/Cap-go/capacitor-live-reload
+
 
 --+
+? execute
 ? Воутер перенести в реактдом
 ? Врапер нужен, чтобы раньше времени чилдрен не выкидывали
 ? Разрешить палгин от рута просточтобы ssr перенимался
@@ -129,16 +126,11 @@ shrink core/index.ts size, by remove code duplicates
 
 
 === REQUESTING ===
-? Реквест надо максимально упростить и вообще его экстенднуть от обычного реквеста
-ServerClient with own fetching like FakeClient
-Когда в эффектах кукиса удаляют куки во втором запросе при сср проверить, что это работает
-Реквест стейт это интерфейс который можно поменять
-Формдата авто фалс тру
-при запросах с сревреа к самому себе учитывать максимальную рекурсию
-? _middleware
 ---
 ? queryClientDehydratedState always should be returned additionally to data if it has more then only what we requests, we hydrate it, but then immediately remove and it not comes to query client cache
 ? between server calls we should have shared queryClientState
+? Формдата авто фалс тру
+? _middleware
 
 
 
