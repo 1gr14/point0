@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
+import { Compiler } from '../src/compiler.js'
 import { CompilerFile } from '../src/file.js'
 import { Walker } from '../src/walker.js'
 import { toText } from './utils.js'
@@ -576,7 +577,7 @@ describe('CompilerFile', () => {
         helper(async ({ files: [file] }) => {
           const cf = await file.wrpsync(async () => {
             const { env } = await import('@point0/core')
-            console.info(env.side.define({ 'server': 'server-value', 'client': 'client-value' }))
+            console.info(env.side.define({ server: 'server-value', client: 'client-value' }))
           })
           cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
@@ -2250,5 +2251,57 @@ describe('CompilerFile', () => {
         )
       }),
     )
+  })
+
+  describe('mdx', () => {
+    it('defaultFilter matches md, mdx, mdc', () => {
+      const filter = Compiler.defaultFilter
+      expect(filter.test('/tmp/page.md')).toBe(true)
+      expect(filter.test('/tmp/page.mdx')).toBe(true)
+      expect(filter.test('/tmp/page.mdc')).toBe(true)
+      expect(filter.test('/tmp/page.tsx')).toBe(true)
+      expect(filter.test('/tmp/page.txt')).toBe(false)
+    })
+
+    it('compiles mdx and still runs env shake transforms', () => {
+      const compiler = Compiler.create({
+        side: 'client',
+        scope: 'test',
+        mode: 'development',
+      })
+      const result = compiler.compile({
+        file: '/virtual/page.mdx',
+        content: `
+  import { env } from '@point0/core'
+  
+  # Test
+  
+  {env.side.is.client ? 'client' : 'server'}
+        `,
+      })
+
+      expect(result.errors).toEqual([])
+      expect(result.modified).toBe(true)
+      expect(result.code).toContain('react/jsx-dev-runtime')
+      expect(result.code).not.toContain('env.side.is.client')
+      expect(result.code).toContain("'client'")
+      expect(result.code).not.toContain("'server'")
+    })
+
+    it('compiles .mdc extension', () => {
+      const compiler = Compiler.create({
+        side: 'client',
+        scope: 'test',
+        mode: 'development',
+      })
+      const result = compiler.compile({
+        file: '/virtual/page.mdc',
+        content: '# Hello from mdc',
+      })
+
+      expect(result.errors).toEqual([])
+      expect(result.modified).toBe(true)
+      expect(result.code).toContain('react/jsx-dev-runtime')
+    })
   })
 })

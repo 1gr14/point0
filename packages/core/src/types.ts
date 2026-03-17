@@ -19,7 +19,13 @@ import type {
 } from '@tanstack/react-query'
 import type { ResponseEffectsSetHelper, ResponseEffectsValues } from './effects.js'
 import type { ErrorPoint0 } from './error.js'
-import type { EmptyProps, MuntableSuccessComponentType, Props, QueriesDefinitions } from './mountable.js'
+import type {
+  EmptyProps,
+  MountableSuccessComponentProps,
+  MuntableSuccessComponentType,
+  Props,
+  QueriesDefinitions,
+} from './mountable.js'
 import type { Point0 } from './point0.js'
 import type { Request0, WideRequestMethod } from './request0.js'
 import type { GetByPath, SetByPath } from './utils.js'
@@ -111,7 +117,7 @@ export type Infer<
   ServerInputSchema: TServerInputSchema
   ClientInputSchema: TClientInputSchema
   IsInputOptional: IsFinalInputOptional<
-    TPointType,
+    FirstReadyPointTypeOrNever<TLetsReadyPointType, TPointType>,
     TServerInputSchema,
     TClientInputSchema,
     TParamsSchema,
@@ -119,9 +125,16 @@ export type Infer<
     TBodySchema
   >
   // IsInputEmpty: IsInputsEmpty<TServerInputSchema, TClientInputSchema>
-  InputRaw: FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>
+  InputRaw: FinalInputRaw<
+    FirstReadyPointTypeOrNever<TLetsReadyPointType, TPointType>,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema
+  >
   InputRawOrUndefined: FinalInputRawOrUndefined<
-    TPointType,
+    FirstReadyPointTypeOrNever<TLetsReadyPointType, TPointType>,
     TServerInputSchema,
     TClientInputSchema,
     TParamsSchema,
@@ -131,10 +144,22 @@ export type Infer<
   ClientInputRaw: InputRaw<TClientInputSchema>
   ClientInputParsed: InputParsed<TClientInputSchema>
   IsClientInputOptional: IsSchemaOptional<TClientInputSchema>
-  ServerInputRaw: FinalServerInputRaw<TPointType, TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema>
-  ServerInputParsed: FinalServerInputParsed<TPointType, TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema>
+  ServerInputRaw: FinalServerInputRaw<
+    FirstReadyPointTypeOrNever<TLetsReadyPointType, TPointType>,
+    TServerInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema
+  >
+  ServerInputParsed: FinalServerInputParsed<
+    FirstReadyPointTypeOrNever<TLetsReadyPointType, TPointType>,
+    TServerInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema
+  >
   IsServerInputOptional: IsFinalServerInputOptional<
-    TPointType,
+    FirstReadyPointTypeOrNever<TLetsReadyPointType, TPointType>,
     TServerInputSchema,
     TParamsSchema,
     TSearchSchema,
@@ -160,7 +185,7 @@ export type Infer<
   QueryResultType: TQueryResultType
   Queries: TQueriesDefinitions
   UseQueryOptions: UsePointQueryOptions<
-    TPointType,
+    FirstReadyPointTypeOrNever<TLetsReadyPointType, TPointType>,
     TServerInputSchema,
     TClientInputSchema,
     TParamsSchema,
@@ -184,8 +209,18 @@ export type Infer<
   ClientQueryData: QueriedData<TQueryResultType, TClientLoaderOutput>
   QueriedData: FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
   ServerExecuteResult: ServerExecuteResult<TCtx, TServerLoaderOutput, TError>
-  Component: MuntableSuccessComponentType<
-    TPointType,
+  EdgeComponent: MuntableSuccessComponentType<
+    FirstReadyPointTypeOrNever<TLetsReadyPointType, TPointType>,
+    TRouteDefinition,
+    TParamsSchema,
+    TSearchSchema,
+    TClientInputSchema,
+    TInnerProps,
+    TQueriesDefinitions,
+    TMapperOutput
+  >
+  EdgeProps: MountableSuccessComponentProps<
+    FirstReadyPointTypeOrNever<TLetsReadyPointType, TPointType>,
     TRouteDefinition,
     TParamsSchema,
     TSearchSchema,
@@ -1225,6 +1260,15 @@ export type ExposedCtxOrEmpty<TCtx extends Ctx, TCtxExposedKeys extends CtxExpos
 export type CurrentRouteDefinition<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = TRouteDefinition extends RouteDefinition ? TRouteDefinition : string
+
+export type FirstReadyPointTypeOrNever<
+  TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
+  TPointType extends PointType,
+> = TLetsReadyPointType extends ReadyPointType
+  ? TLetsReadyPointType
+  : TPointType extends ReadyPointType
+    ? TPointType
+    : never
 
 export type EmptyStringIfStandaloneSlash<TRouteDefinition extends RouteDefinition> = TRouteDefinition extends `/`
   ? ''

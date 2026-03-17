@@ -50,6 +50,13 @@ export default [
     point: async () => (await import('../pages/idea-news.js')).ideasNewsPage,
   },
   {
+    type: 'page',
+    name: 'md2',
+    route: '/md2',
+    polh: true,
+    point: async () => (await import('../pages/empty.js')).md2Page,
+  },
+  {
     type: 'layout',
     name: 'generalLayout',
     route: '/',

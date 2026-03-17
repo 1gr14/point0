@@ -1,5 +1,6 @@
 import type { GeneratorResult } from '@babel/generator'
 import type { RoutesPretty } from '@devp0nt/route0'
+import { compileSync } from '@mdx-js/mdx'
 import {
   normalNodeEnvs,
   type CompilerOptions,
@@ -7,6 +8,8 @@ import {
   type EnvRuntimeName,
   type NormalizedNodeEnv,
 } from '@point0/core'
+import * as nodeFsSync from 'node:fs'
+import remarkFrontmatter from 'remark-frontmatter'
 import type { CompilerFile } from './file.js'
 import { CompilerPoint } from './point.js'
 import type { CompilerEnvConsts } from './utils.js'
@@ -25,8 +28,8 @@ export class Compiler {
   walker: Walker
   routes: Record<string, RoutesPretty> | undefined
 
-  // Match JS/TS files while excluding virtual/shim module IDs and node_modules (except point0 packages).
-  static defaultFilter = /^(?!.*(?:shim:|virtual:))(?!.*node_modules\/(?!.*point0)).*\.[cm]?[jt]sx?$/
+  // Match JS/TS and markdown-ish source files while excluding virtual/shim module IDs and node_modules (except point0 packages).
+  static defaultFilter = /^(?!.*(?:shim:|virtual:))(?!.*node_modules\/(?!.*point0)).*\.(?:[cm]?[jt]sx?|md|mdx|mdc)$/
 
   constructor({
     filter,
@@ -118,6 +121,23 @@ export class Compiler {
     modified: boolean
     tryIndex: number
   } {
+    let contentToCompile = content
+    let precompiledMap: GeneratorResult['map'] = null
+    let precompiledByExtension = false
+
+    if (Compiler.isMdxLikeFile(file)) {
+      const source = typeof content === 'string' ? content : nodeFsSync.readFileSync(file, 'utf8')
+      const compiled = compileSync(source, {
+        jsx: false,
+        outputFormat: 'program',
+        development: this.mode === 'development',
+        remarkPlugins: [remarkFrontmatter],
+      })
+      contentToCompile = String(compiled)
+      precompiledMap = (compiled.map as GeneratorResult['map']) ?? null
+      precompiledByExtension = true
+    }
+
     if (pruneWalkerPoints) {
       this.walker.prunePoints()
     }
@@ -130,16 +150,16 @@ export class Compiler {
     const runtime = this.runtime
     const os = this.os
     const errors: unknown[] = []
-    const collectResult = this.walker.collectPointsFromFile({ file, content })
+    const collectResult = this.walker.collectPointsFromFile({ file, content: contentToCompile })
     errors.push(...collectResult.errors)
     if (!collectResult.ok) {
       return {
         file: collectResult.file,
-        code: content || '',
-        map: null,
+        code: contentToCompile || '',
+        map: precompiledMap,
         points: collectResult.points,
         errors,
-        modified: false,
+        modified: precompiledByExtension,
         tryIndex,
       }
     }
@@ -163,7 +183,13 @@ export class Compiler {
       if (tryIndex >= 10) {
         throw new Error('Too many tries to compile file. Looks like it is endless loop of changes.')
       }
-      return this.compile({ content, file, tryIndex: tryIndex + 1, map: sourceMaps, pruneWalkerPoints: false })
+      return this.compile({
+        content: contentToCompile,
+        file,
+        tryIndex: tryIndex + 1,
+        map: sourceMaps,
+        pruneWalkerPoints: false,
+      })
     }
     const { code, map } = (() => {
       if (cf.modified) {
@@ -174,11 +200,15 @@ export class Compiler {
     return {
       file: cf,
       code: code,
-      map: map,
+      map: map ?? precompiledMap,
       points: collectResult.points,
       errors,
-      modified: cf.modified,
+      modified: cf.modified || precompiledByExtension,
       tryIndex,
     }
+  }
+
+  static isMdxLikeFile(file: string): boolean {
+    return /\.(md|mdx|mdc)$/.test(file)
   }
 }

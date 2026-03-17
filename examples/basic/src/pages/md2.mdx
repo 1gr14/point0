@@ -1,0 +1,19 @@
+
+
+import { Link } from '@/lib/navigate'
+import { routes } from '@/lib/routes'
+import { client } from '@/lib/client'
+
+export const self = client.lets('page', 'md2', '/md2').page((p) => <props.Self {...p} />)
+
+# My Title 2
+
+My Paragraph {2 * 2}
+
+My x: {props.x}
+
+My y: {props.y}
+
+My location: {Object.keys(props)}
+
+<Link to={routes.home()}>Home</Link>

@@ -7,4 +7,5 @@ export const routes = Routes.create({
   'newIdea': '/ideas/new',
   'idea': '/ideas/:id',
   'ideaNews': '/ideas/:id/news',
+  'md2': '/md2',
 })

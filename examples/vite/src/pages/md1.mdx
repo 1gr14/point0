@@ -1,0 +1,17 @@
+---
+base: await import('./')
+route: '/doc'
+---
+
+import { Link } from '@/lib/navigate'
+import { routes } from '@/lib/routes'
+
+# My Title 1
+
+My Paragraph {2 * 2}
+
+My x: {props.x}
+
+My y: {props.y}
+
+<Link to={routes.home()}>Home</Link>

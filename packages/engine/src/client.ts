@@ -386,7 +386,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
       command: 'serve',
       scope: this.scope,
       bunPlugins: this.bunPlugins,
-      errorOnNotString: `Bun dev plugins for client "${this.scope}" shpuld be strings`,
+      errorOnNotString: `Bun dev plugins for client "${this.scope}" should be strings`,
     })
     const generalPluginsStrings = await extractEngineClientDevPluginsStrings({
       cwd: this.cwd,
@@ -394,7 +394,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
       command: 'serve',
       scope: this.scope,
       bunPlugins: this.generalBunPlugins,
-      errorOnNotString: `Bun dev plugins for client "${this.scope}" shpuld be strings`,
+      errorOnNotString: `Bun dev plugins for client "${this.scope}" should be strings`,
     })
     const pluginsStrings = [...generalPluginsStrings, ...ownPluginsStrings]
     const compilerOptions = this.getCompilerOptions()

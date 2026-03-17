@@ -391,7 +391,7 @@ describe('page', () => {
       .lets('page', 'home', '/:id')
       .loader(({ params }) => ({ x: params.id }))
       .page((props) => <Page {...props} />)
-    const Page: typeof page.Infer.Component = ({ data }) => <div id="page">x={data.x}</div>
+    const Page: typeof page.Infer.EdgeComponent = ({ data }) => <div id="page">x={data.x}</div>
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
