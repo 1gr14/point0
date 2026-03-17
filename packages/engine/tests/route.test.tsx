@@ -6,10 +6,10 @@ import { Point0 } from '@point0/core'
 describe('route', () => {
   const root = Point0.lets('root', 'root').root()
 
-  it('page route default to page name with /', async () => {
-    const page = root.lets('page', 'test').page()
-    expect(page.route()).toBe('/test')
-    expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/test'>()
+  it('page route can be / /', async () => {
+    const page = root.lets('page', 'test', '/').page()
+    expect(page.route()).toBe('/')
+    expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/'>()
   })
 
   it('page route can be defined in third arg of lets without / (and we add it)', async () => {
@@ -66,23 +66,37 @@ describe('route', () => {
     expectTypeOf<(typeof layout)['Infer']['RouteDefinition']>().toEqualTypeOf<'/shmest'>()
   })
 
-  it('page route can be extended from / layout route', async () => {
+  it('page route can be extended with / from / layout route', async () => {
     const layout = root.lets('layout', 'test').layout()
-    const page = layout.lets('page', 'test').page()
+    const page = layout.lets('page', 'test', '/').page()
+    expect(page.route()).toBe('/')
+    expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/'>()
+  })
+
+  it('page route can be extended with /path from / layout route', async () => {
+    const layout = root.lets('layout', 'test').layout()
+    const page = layout.lets('page', 'test', '/test').page()
     expect(page.route()).toBe('/test')
     expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/test'>()
   })
 
-  it('page route can be extended from /some layout route', async () => {
+  it('page route can be extended with / from /some layout route', async () => {
     const layout = root.lets('layout', 'test', '/some').layout()
-    const page = layout.lets('page', 'test').page()
+    const page = layout.lets('page', 'test', '/').page()
+    expect(page.route()).toBe('/some')
+    expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/some'>()
+  })
+
+  it('page route can be extended with /path from /some layout route', async () => {
+    const layout = root.lets('layout', 'test', '/some').layout()
+    const page = layout.lets('page', 'test', '/test').page()
     expect(page.route()).toBe('/some/test')
     expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/some/test'>()
   })
 
   it('page route can be extended from /some/:id layout route', async () => {
     const layout = root.lets('layout', 'test', '/some/:id').layout()
-    const page = layout.lets('page', 'test').page()
+    const page = layout.lets('page', 'test', '/test').page()
     expect(page.route({ id: 123 })).toBe('/some/123/test')
     expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/some/:id/test'>()
   })

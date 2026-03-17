@@ -25,7 +25,7 @@ describe('internal-testing', () => {
       </div>
     ))
     const news = root
-      .lets('page', 'news')
+      .lets('page', 'news', '/news')
       .loader(async () => await waitReturn({ x: 1 }))
       // .loader(() => ({ x: 1 }))
       .page(({ data }) => (

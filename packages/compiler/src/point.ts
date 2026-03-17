@@ -13,9 +13,9 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   // readonly exportName: TValid extends true ? string : string | undefined
   // plugins can be not exported, and bases can be not exported
   readonly exportName: string | undefined
-  readonly baseNodePath: NodePath<Node> // Point0.lets('page', 'name') ← "Point0" | root.lets('page', 'name') ← "root"
+  readonly baseNodePath: NodePath<Node> // Point0.lets('page', 'name', '/') ← "Point0" | root.lets('page', 'name', '/') ← "root"
   readonly letsNodePath: NodePath<Node>
-  readonly isBasePoint0: boolean // Point0.lets('page', 'name') ← true | root.lets('page', 'name') ← false
+  readonly isBasePoint0: boolean // Point0.lets('page', 'name', '/') ← true | root.lets('page', 'name', '/') ← false
 
   parents: CompilerPoint[]
   selfMethods: Array<{ nodePath: NodePath<Node>; name: string; index: number }>
@@ -189,7 +189,6 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         const routeInfo = this.extractRouteFromPageOrLayoutLetsCall({
           letsNodePath: point.letsNodePath,
           pointType: point.type,
-          pointName: point.name,
           scope,
         })
         errors.push(...routeInfo.errors)
@@ -244,12 +243,10 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   private extractRouteFromPageOrLayoutLetsCall({
     letsNodePath,
     pointType,
-    pointName,
     scope,
   }: {
     letsNodePath: NodePath<Node>
     pointType: ReadyPointType
-    pointName: PointName
     scope: string
   }): { routeSegment?: string; routeFull?: AnyRoute; errors: unknown[] } {
     const errors: unknown[] = []
@@ -310,14 +307,20 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       }
     }
 
-    // Case 4: No third argument - use pointName for page, empty string for layout
-    if (!routeArg) {
-      const routeSegment = pointType === 'page' ? pointName : ''
-      return { routeSegment, routeFull: undefined, errors }
+    // deprecated
+    // // Case 4: No third argument - use pointName for page, empty string for layout
+    // if (!routeArg) {
+    //   const routeSegment = pointType === 'page' ? pointName : ''
+    //   return { routeSegment, routeFull: undefined, errors }
+    // }
+
+    // Case 4 if it is layout, then it is '/' if not provided
+    if (pointType === 'layout' && !routeArg) {
+      return { routeSegment: '/', routeFull: undefined, errors }
     }
 
     // Case 5: Invalid route argument type
-    errors.push(new Error(`invalid route argument ${routeArg.type}`))
+    errors.push(new Error(`invalid route argument ${routeArg?.type ?? 'undefined'}`))
     return { routeSegment: undefined, routeFull: undefined, errors }
   }
 

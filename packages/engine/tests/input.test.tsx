@@ -520,7 +520,7 @@ describe('input', () => {
       return <div>{children}</div>
     })
     const page = root
-      .lets('page', 'test')
+      .lets('page', 'test', '/test')
       .search(z.object({ id: z.string(), sn: z.number().default(234) }))
       .loader(({ search }) => {
         expectTypeOf<typeof search>().toEqualTypeOf<{ id: string; sn: number }>()

@@ -74,7 +74,7 @@ describe('Walker', () => {
       helper(async ({ files: [file], walker }) => {
         await file.write(`import {Point0} from '@point0/core'
                           export const myrootvariable = Point0.lets('root', 'myroot').root()
-                          export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
+                          export const mypagevariable = myrootvariable.lets('page', 'mypage', '/').z().x().c().page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -109,7 +109,7 @@ describe('Walker', () => {
                         export const myrootvariable = Point0.lets('root', 'myroot').root()
         `)
         await file1.write(`import {myrootvariable} from '${file0.importpath}'
-                        export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
+                        export const mypagevariable = myrootvariable.lets('page', 'mypage', '/mypage').z().x().c().page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: file1.path })
         expect(result.errors).toHaveLength(0)
@@ -448,7 +448,7 @@ describe('Walker', () => {
         await f0.write(`import {Point0} from '@point0/core'
                       export const rootV = Point0.lets('root', 'rootN').root()
                       export const rootV2 = rootV.lets('root', 'rootN2').root()
-                      export const pageV = rootV2.lets('page', 'pageN').page(() => <div>Hello</div>)
+                      export const pageV = rootV2.lets('page', 'pageN', '/pageN').page(() => <div>Hello</div>)
                       export const layoutV = pageV.lets('layout', 'layoutN').layout(() => <div>Hello</div>)
                       export const componentV = layoutV.lets('component', 'componentN').component(() => <div>Hello</div>)
                       export const mutationV = componentV.lets('mutation', 'mutationN').loader().mutation()
@@ -533,7 +533,7 @@ describe('Walker', () => {
                       export const rootV2 = rootV.lets('root', 'rootN2').root()
         `)
         await f2.write(`import {rootV2} from '${f1.importpath}'
-                      export const pageV = rootV2.lets('page', 'pageN').page(() => <div>Hello</div>)
+                      export const pageV = rootV2.lets('page', 'pageN', '/pageN').page(() => <div>Hello</div>)
         `)
         await f3.write(`import {pageV} from '${f2.importpath}'
                       export const layoutV = pageV.lets('layout', 'layoutN').layout(() => <div>Hello</div>)
@@ -615,7 +615,7 @@ describe('Walker', () => {
         await f1.write(`export {root} from '${f0.importpath}'
         `)
         await f2.write(`import {root} from '${f1.importpath}'
-                      export const page = root.lets('page', 'page').page(() => <div>Hello</div>)
+                      export const page = root.lets('page', 'page', '/page').page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: f2.path })
         expect(result.errors).toHaveLength(0)
@@ -644,7 +644,7 @@ describe('Walker', () => {
         await f1.write(`export {root as root2} from '${f0.importpath}'
         `)
         await f2.write(`import {root2} from '${f1.importpath}'
-                      export const page = root2.lets('page', 'page').page(() => <div>Hello</div>)
+                      export const page = root2.lets('page', 'page', '/page').page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: f2.path })
         expect(result.errors).toHaveLength(0)
@@ -676,7 +676,7 @@ describe('Walker', () => {
                         export const root2 = root
         `)
         await f2.write(`import {root2} from '${f1.importpath}'
-                      export const page = root2.lets('page', 'page').page(() => <div>Hello</div>)
+                      export const page = root2.lets('page', 'page', '/page').page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: f2.path })
         expect(result.errors).toHaveLength(0)
@@ -707,7 +707,7 @@ describe('Walker', () => {
                         export const root3 = root2
         `)
         await f2.write(`import {root3} from '${f1.importpath}'
-                      export const page = root3.lets('page', 'page').ctx({}).clientLoader(() => ({})).page(() => <div>Hello</div>)
+                      export const page = root3.lets('page', 'page', '/page').ctx({}).clientLoader(() => ({})).page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: f2.path })
         expect(result.errors).toHaveLength(0)
@@ -789,7 +789,7 @@ describe('Walker', () => {
     //                   export const rootV2 = rootV.lets('root', 'rootN2').root()
     //     `)
     //     await f2.write(`import {rootV2} from '${f1.importpath}'
-    //                   export const pageV = rootV2.lets('page', 'pageN').page(() => <div>Hello</div>)
+    //                   export const pageV = rootV2.lets('page', 'pageN', '/pageN').page(() => <div>Hello</div>)
     //     `)
     //     await f3.write(`import {pageV} from '${f2.importpath}'
     //                   export const layoutV = pageV.lets('layout', 'layoutN').layout(() => <div>Hello</div>)

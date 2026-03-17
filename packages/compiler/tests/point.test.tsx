@@ -102,7 +102,7 @@ export const myrootvariable = Point0.lets('root', 'myroot').root()
       helper(async ({ files: [file], walker }) => {
         await file.write(`import {Point0} from '@point0/core'
 export const myrootvariable = Point0.lets('root', 'myroot').root()
-export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
+export const mypagevariable = myrootvariable.lets('page', 'mypage', '/mypage').z().x().c().page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)

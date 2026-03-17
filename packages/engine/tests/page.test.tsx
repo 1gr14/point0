@@ -978,7 +978,7 @@ describe('page', () => {
       .query()
 
     const page = root
-      .lets('page', 'home')
+      .lets('page', 'home', '/home')
       .with(query)
       .page(({ data }) => <div id="page">x={data.x}</div>)
 
@@ -1055,7 +1055,7 @@ describe('page', () => {
       .loader(({ input }) => ({ x: input.y * 2 }))
       .query()
     const page = root
-      .lets('page', 'home')
+      .lets('page', 'home', '/home')
       .with(() => ({ y: 123 }))
       .with(query, ({ props }) => ({ y: props.y }))
       .page(({ data, props }) => (
@@ -1141,7 +1141,7 @@ describe('page', () => {
       .loader(() => ({ y: 2 }))
       .query()
     const page = root
-      .lets('page', 'home')
+      .lets('page', 'home', '/home')
       .with(() => {
         return [query1.useQuery(), query2.useQuery()] as const
       })
@@ -1198,7 +1198,7 @@ describe('page', () => {
         initialPageParam: 0,
       })
     const page = root
-      .lets('page', 'home')
+      .lets('page', 'home', '/home')
       .with(query)
       .page(({ data, queries: [query] }) => {
         const itms = data.pages.flatMap((page) => page.items)
@@ -1294,7 +1294,7 @@ describe('page', () => {
         initialPageParam: 0,
       })
     const page = root
-      .lets('page', 'home')
+      .lets('page', 'home', '/home')
       .with(() => {
         return query.useInfiniteQuery()
       })
@@ -1393,7 +1393,7 @@ describe('page', () => {
       .loader(() => ({ y: 2 }))
       .query()
     const page = root
-      .lets('page', 'home')
+      .lets('page', 'home', '/home')
       .with(() => {
         return [query.useInfiniteQuery(), query2.useQuery()] as const
       })
@@ -1479,7 +1479,7 @@ describe('page', () => {
     const root = createRoot()
 
     const page = root
-      .lets('page', 'home')
+      .lets('page', 'home', '/home')
       .with(() => new ErrorPoint0('test error', { status: 401 }))
       .page(() => <div id="page">never</div>)
 
@@ -1514,7 +1514,7 @@ describe('page', () => {
       .loader(() => ({ x: 1 }))
       .query()
     const page = root
-      .lets('page', 'home')
+      .lets('page', 'home', '/home')
       .relatedQuery(query)
       .page(({ data }) => <div id="page">x={data.x}</div>)
 
@@ -1639,7 +1639,7 @@ describe('page', () => {
         initialPageParam: 0,
       })
     const page = root
-      .lets('page', 'home')
+      .lets('page', 'home', '/home')
       .relatedQuery(query)
       .page(({ data, queries: [query] }) => {
         const itms = data.pages.flatMap((page) => page.items)
@@ -1731,7 +1731,7 @@ describe('page', () => {
   //       initialPageParam: 0,
   //     })
   //   const page = root
-  //     .lets('page', 'home')
+  //     .lets('page', 'home', '/home')
   //     .relatedQuery(({ location }) => {
   //       return query.useInfiniteQuery()
   //     })

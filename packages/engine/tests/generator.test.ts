@@ -103,7 +103,7 @@ describe('FilesGenerator', () => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
 export const query = root.lets('query', 'myquery').loader(() => ({hello: 'World'})).query()
-export const page = root.lets('page', 'mypage').query(query).page(({data}) => <div>Hello, {data.hello}</div>)
+export const page = root.lets('page', 'mypage', '/mypage').query(query).page(({data}) => <div>Hello, {data.hello}</div>)
 export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         `)
 
@@ -155,7 +155,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
 export const query = root.lets('query', 'myquery').loader(() => ({hello: 'World'})).query()
-export const page = root.lets('page', 'mypage').query(query).page(({data}) => <div>Hello, {data.hello}</div>)
+export const page = root.lets('page', 'mypage', '/mypage').query(query).page(({data}) => <div>Hello, {data.hello}</div>)
 export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         `)
 
@@ -202,7 +202,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
-export const page = root.lets('page', 'mypage')
+export const page = root.lets('page', 'mypage', '/mypage')
 const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         `)
 
@@ -247,7 +247,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
 export const root = Point0.lets('root', 'myroot').root()
 export const layout1 = root.lets('layout', 'layout1').layout(() => <div>Layout1</div>)
 export const layout2 = layout1.lets('layout', 'layout2').layout(() => <div>Layout2</div>)
-export const page = layout2.lets('page', 'mypage').page(() => <div>Hello</div>)
+export const page = layout2.lets('page', 'mypage', '/mypage').page(() => <div>Hello</div>)
         `)
 
         const generator = FilesGenerator.create({
@@ -304,7 +304,7 @@ export const page = layout2.lets('page', 'mypage').page(() => <div>Hello</div>)
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
-export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
+export const page = root.lets('page', 'mypage', '/mypage').page(() => <div>Hello</div>)
         `)
 
         const generator = FilesGenerator.create({
@@ -894,7 +894,7 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, getLogs, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
-export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
+export const page = root.lets('page', 'mypage', '/mypage').page(() => <div>Hello</div>)
         `)
 
         const generator = FilesGenerator.create({
@@ -937,7 +937,7 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
 
         await rootFile.write(`import {Point0} from '@point0/core'
           export const root = Point0.lets('root', 'myroot').root()
-          export const page = root.lets('page', 'mypage2').page(() => <div>Hello</div>)
+          export const page = root.lets('page', 'mypage2', '/mypage2').page(() => <div>Hello</div>)
         `)
 
         await waitUntilFileChanged(pointsFile)

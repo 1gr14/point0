@@ -23,7 +23,7 @@ describe('provider', () => {
   it('simple', async () => {
     const root = createRoot()
     const provider = root.lets('provider', 'app').provider(() => ({ x: 1, y: 2 }))
-    const page = root.lets('page', 'home').page(() => {
+    const page = root.lets('page', 'home', '/home').page(() => {
       const usedValue = provider.useValue()
       const getValue = provider.getValue()
       return (
@@ -65,7 +65,7 @@ describe('provider', () => {
       .input(z.object({ z: z.number() }))
       .loader(({ input }) => ({ z: input.z * 2 }))
       .provider(({ data }) => ({ x: data.z * 10, y: data.z * 100 }))
-    const page = root.lets('page', 'home').page(() => {
+    const page = root.lets('page', 'home', '/home').page(() => {
       const usedValue = provider.useValue()
       const getValue = provider.getValue()
       return (
@@ -107,7 +107,7 @@ describe('provider', () => {
     const provider = root
       .lets<{ z: number }>('provider', 'app')
       .provider(({ props }) => ({ x: props.z * 10, y: props.z * 100 }))
-    const page = root.lets('page', 'home').page(() => {
+    const page = root.lets('page', 'home', '/home').page(() => {
       const usedValue = provider.useValue()
       const getValue = provider.getValue()
       return (
@@ -147,7 +147,7 @@ describe('provider', () => {
     const provider = root
       .lets<{ z: number }>('provider', 'app')
       .provider(({ props }) => ({ x: props.z * 10, y: props.z * 100 }))
-    const page = root.lets('page', 'home').page(() => {
+    const page = root.lets('page', 'home', '/home').page(() => {
       const usedValue = provider.useValue()
       const getValue = provider.getValue()
       return (
@@ -196,7 +196,7 @@ describe('provider', () => {
   it('use specific key', async () => {
     const root = createRoot()
     const provider = root.lets('provider', 'app').provider(() => ({ x: 1, y: 2, z: 3 }))
-    const page = root.lets('page', 'home').page(() => {
+    const page = root.lets('page', 'home', '/home').page(() => {
       const x = provider.useValue('x')
       return <div id="page">x={x}</div>
     })
@@ -231,7 +231,7 @@ describe('provider', () => {
     const provider = root
       .lets<{ x: number; y: number; z: number }>('provider', 'app')
       .provider(({ props }) => ({ x: props.x, y: props.y, z: props.z }))
-    const page = root.lets('page', 'home').page(() => {
+    const page = root.lets('page', 'home', '/home').page(() => {
       const x = provider.useValue('x')
       return <div id="page">x={x}</div>
     })
@@ -278,7 +278,7 @@ describe('provider', () => {
   it('use specific keys', async () => {
     const root = createRoot()
     const provider = root.lets('provider', 'app').provider(() => ({ x: 1, y: 2, z: 3 }))
-    const page = root.lets('page', 'home').page(() => {
+    const page = root.lets('page', 'home', '/home').page(() => {
       const { x, y } = provider.useValue(['x', 'y'])
       return (
         <div id="page">
@@ -317,7 +317,7 @@ describe('provider', () => {
     const provider = root
       .lets<{ x: number; y: number; z: number }>('provider', 'app')
       .provider(({ props }) => ({ x: props.x, y: props.y, z: props.z }))
-    const page = root.lets('page', 'home').page(() => {
+    const page = root.lets('page', 'home', '/home').page(() => {
       const { x, y } = provider.useValue(['x', 'y'])
       return (
         <div id="page">

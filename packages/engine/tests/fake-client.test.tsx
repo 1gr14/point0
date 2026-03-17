@@ -83,7 +83,7 @@ describe('FakeClient', () => {
   it.concurrent('fetch page with loader', async () => {
     const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
     const page = root
-      .lets('page', 'page')
+      .lets('page', 'page', '/page')
       .loader(() => ({ serverLoaderSideName: env.side.name }))
       .page(({ data }) => <div>Hello from {data.serverLoaderSideName}</div>)
     expect(env.side.name).toBe('server')
@@ -108,7 +108,7 @@ describe('FakeClient', () => {
   it.concurrent('uses scoped client env vars in fake client globals', async () => {
     const root = Point0.lets('root', 'root').root()
     const page = root
-      .lets('page', 'page')
+      .lets('page', 'page', '/page')
       .loader(() => ({
         POINT0_CLIENT_ENV_ONLY: env.vars.POINT0_CLIENT_ENV_ONLY,
         POINT0_SERVER_ENV_ONLY: env.vars.POINT0_SERVER_ENV_ONLY,
@@ -162,7 +162,7 @@ describe('FakeClient', () => {
   it.concurrent('respect cookies', async () => {
     const root = Point0.lets('root', 'root').root()
     const page = root
-      .lets('page', 'page')
+      .lets('page', 'page', '/page')
       .loader(() => ({ serverLoaderSideName: env.side.name }))
       .page(({ data }) => <div>Hello from {data.serverLoaderSideName}</div>)
     const cooka = CookiesStore.define({ name: 'z' })
@@ -243,7 +243,7 @@ describe('FakeClient', () => {
   it.concurrent('execute page with loader and client loader', async () => {
     const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
     const page = root
-      .lets('page', 'page')
+      .lets('page', 'page', '/page')
       .loader(() => ({ serverLoaderSideName: env.side.name }))
       .clientLoader(({ data }) => ({ ...data, clientLoaderSideName: env.side.name }))
       .page(({ data }) => (
@@ -370,7 +370,7 @@ describe('FakeClient', () => {
   it.concurrent('send recieve client request id, and also recieve server request id', async () => {
     const root = Point0.lets('root', 'root').root()
     const page = root
-      .lets('page', 'page')
+      .lets('page', 'page', '/page')
       .loader(() => ({ serverLoaderSideName: env.side.name }))
       .page(({ data }) => <div>Hello from {data.serverLoaderSideName}</div>)
     const mutation = root

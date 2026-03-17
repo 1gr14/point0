@@ -22,7 +22,7 @@ describe('layout', () => {
   it.concurrent('simple', async () => {
     const root = createRoot()
     const layout = root.lets('layout', 'app').layout(({ children }) => <div id="layout">{children}</div>)
-    const page = layout.lets('page', 'home').page(() => <div id="page">x=nothing</div>)
+    const page = layout.lets('page', 'home', '/home').page(() => <div id="page">x=nothing</div>)
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, layout, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
@@ -52,7 +52,7 @@ describe('layout', () => {
     const root = createRoot()
     const layout1 = root.lets('layout', 'layout1').layout(({ children }) => <div id="layout1">{children}</div>)
     const layout2 = layout1.lets('layout', 'layout2').layout(({ children }) => <div id="layout2">{children}</div>)
-    const page = layout2.lets('page', 'home').page(() => <div id="page">x=nothing</div>)
+    const page = layout2.lets('page', 'home', '/home').page(() => <div id="page">x=nothing</div>)
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, layout1, layout2, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
@@ -91,7 +91,7 @@ describe('layout', () => {
           {children}
         </div>
       ))
-    const page = layout.lets('page', 'home').page(() => <div id="page">x={layout.getValue().x}</div>)
+    const page = layout.lets('page', 'home', '/home').page(() => <div id="page">x={layout.getValue().x}</div>)
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, layout, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
@@ -137,7 +137,7 @@ describe('layout', () => {
           {children}
         </div>
       ))
-    const page = layout.lets('page', 'home').page(() => <div id="page">x=nothing</div>)
+    const page = layout.lets('page', 'home', '/home').page(() => <div id="page">x=nothing</div>)
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, layout, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
@@ -416,7 +416,7 @@ describe('layout', () => {
         </div>
       ))
     const page = root
-      .lets('page', 'home')
+      .lets('page', 'home', '/home')
       .layout(layout)
       .page(() => <div id="page">x={layout.getValue().x}</div>)
 

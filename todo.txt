@@ -34,13 +34,11 @@ mcp
 
 
 === REFACTOING 3000 ===
-Отменить хитрые роуты в пейджах (а в лэйоутах оставить)
-
-Разобраться и написать коммент зачем вообще в энжине клиент поинтсы
-
 build --watch
 
-(import protection) cli inspect by filepath how this file and in which place come to files via cli command
+ClientOnly react helper
+
+filerouting
 
 ? Реквест надо максимально упростить и вообще его экстенднуть от обычного реквеста
 Когда в эффектах кукиса удаляют куки во втором запросе при сср проверить, что это работает
@@ -50,6 +48,12 @@ build --watch
 Генерейт mirror тогда там будет просто экспорт констс также с названными ключами и опередлёнными бейзами, бейзы тоже могут быть строкой  могт быть функцией, котрая вернёт поинт 
 Когда генерим миррор, важно в эндпоинт автоматически подставить нужный путь исходя из бейза, а для экшенов прямо прописать метод и путь
 мирор разрешить только на кверянки и экшены
+
+redirect
+
+mcp
+
+(import protection) cli inspect by filepath how this file and in which place come to files via cli command
 
 ? headers as action input
 openapi
@@ -122,6 +126,7 @@ shrink core/index.ts size, by remove code duplicates
 ? Экзекьют на сервере пусть не возвращает статус
 ? Фетч квери даёт возможность также передать сервер дата чтобы мы могли нормально её передать при юз квери в клиентские лоадеры
 ? А суперджейсон тоже должен быть по-молчанию включён и его просто можно переопределить через опции
+× Разобраться и написать коммент зачем вообще в энжине клиент поинтсы (они нужны для сср, чтобы имитировать их маунт)
 
 
 
@@ -349,17 +354,6 @@ cli extract point by type and name, so agent can see errors right in terminal
 В мдкс для мсп пути к файлам указывать через импорт с макросом, который заменяет их на просто строку полного пути, чтобы не сбивались пути при рефакторе
 
 
-
-
-
-
-=== MDX ===
---?
-При указании в мдкс скоуп.рут можно не указывать ещё раз нейм скоупа
-! mdx as page point output if meta contains: lets: 'doc' | 'page', route: string, base: import layout or root, loader: ()=>{}, clientLoader: ()=>{}
-Мдкс если видит в своей папке или выше файл тчк роут то он файловый роут
-Мдкс может в бэйзе просто написать скоуп тчк тайп тчк нэйм
-??? .lets('multiPage', '/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
 
 
 

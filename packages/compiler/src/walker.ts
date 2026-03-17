@@ -263,7 +263,7 @@ export class Walker {
       const firstLetsArgNodePath = letsArgs.length > 0 ? letsNodePath.get('arguments')[0] : undefined
       const secondLetsArgNodePath = letsArgs.length > 1 ? letsNodePath.get('arguments')[1] : undefined
       // Extract the point type and name from the lets() call
-      // Example: root.lets('page', 'mypage') → pointType = 'page', pointName = 'mypage'
+      // Example: root.lets('page', 'mypage', '/') → pointType = 'page', pointName = 'mypage'
       // Special:
       //   root.lets('GET', '/my/:path') → pointType = 'action', pointName = 'pending...'
       //   later in point.ts we will fix name to append basepath ane it bacomes pointName = `GET ${basepath}/my/:path` if it is exists somewhere up in the chain
@@ -295,7 +295,7 @@ export class Walker {
 
       // Check if the base object is Point0 (the root entry point)
       // Example: In Point0.lets('root', 'myroot'), this returns true
-      // Example: In root.lets('page', 'mypage'), this returns false (base is "root", not "Point0")
+      // Example: In root.lets('page', 'mypage', '/'), this returns false (base is "root", not "Point0")
       // Identifier: The base must be a simple identifier name (not a computed property or expression)
       // Also verify that Point0 was imported from '@point0/core' to ensure it's the real Point0
       const isBasePoint0 = baseNodePath.node.type === 'Identifier' && baseNodePath.node.name === 'Point0'
@@ -473,7 +473,7 @@ export class Walker {
       // First pass: Find declarations/exports in current file and collect imports
       traverse(file.ast, {
         // Case 1: Variable declaration in the same file
-        // Example: const y = z.lets('page', 'mypage').page()
+        // Example: const y = z.lets('page', 'mypage', '/').page()
         VariableDeclarator: (p) => {
           if (foundLetsNodePath) return // Already found
           if (p.node.id.type === 'Identifier' && p.node.id.name === baseIdentifierName) {
@@ -491,7 +491,7 @@ export class Walker {
         },
 
         // Case 2: Named export in the same file
-        // Example: export const y = z.lets('page', 'mypage').page()
+        // Example: export const y = z.lets('page', 'mypage', '/').page()
         // Or: export const root2 = root (where root is imported)
         ExportNamedDeclaration: (p) => {
           if (foundLetsNodePath) return
@@ -522,7 +522,7 @@ export class Walker {
         },
 
         // Case 3: Default export in the same file
-        // Example: export default z.lets('page', 'mypage').page()
+        // Example: export default z.lets('page', 'mypage', '/').page()
         ExportDefaultDeclaration: (p) => {
           if (foundLetsNodePath) return
           if (baseIdentifierName === 'default') {

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import * as z from 'zod'
 import { client } from '@/lib/client'
 
-export const filePage = client.lets('page', 'file').page(() => {
+export const filePage = client.lets('page', 'file', '/file').page(() => {
   const uploadFile = uploadFileMutation.useMutation()
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 

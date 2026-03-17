@@ -1172,11 +1172,11 @@ export class Point0<
   >
   lets<
     TPointName extends PointName,
-    TProvidedRoute extends RouteDefinition = TPointName,
+    TProvidedRoute extends RouteDefinition,
     TCheckError = AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'page'>,
   >(
     ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsReadyPointType: 'page', pointName: TPointName, route?: TProvidedRoute]
+      ? [letsReadyPointType: 'page', pointName: TPointName, route: TProvidedRoute]
       : never[]
   ): WithError<
     TCheckError,
@@ -1491,24 +1491,17 @@ export class Point0<
     const prevRoute = this.route
     const newRoute = (() => {
       if (isPage) {
-        if (typeof route === 'string' || !route) {
-          const routeOrPointName = route ?? pointName
-          if (routeOrPointName === '/') {
-            return prevRoute?.clone() ?? Route0.create('/')
-          }
-          if (routeOrPointName === undefined) {
-            return undefined // error will be thrown below (it is in case of action was defined without name)
-          }
-          return prevRoute ? prevRoute.extend(routeOrPointName) : Route0.create(routeOrPointName)
+        if (!route) {
+          return undefined // error will be thrown below (it is in case of action was defined without name)
+        }
+        if (typeof route === 'string') {
+          return prevRoute ? prevRoute.extend(route) : Route0.create(route)
         }
         return route
       }
       if (isLayout) {
         if (typeof route === 'string' || !route) {
           const routeNormalized = route ?? '/'
-          if (routeNormalized === '/') {
-            return prevRoute?.clone() ?? Route0.create('/')
-          }
           return prevRoute ? prevRoute.extend(routeNormalized) : Route0.create(routeNormalized)
         }
         return route
@@ -1518,9 +1511,6 @@ export class Point0<
           return undefined // error will be thrown below
         }
         if (typeof route === 'string') {
-          if (route === '/') {
-            return prevRoute?.clone() ?? Route0.create('/')
-          }
           return prevRoute ? prevRoute.extend(route) : Route0.create(route)
         }
         return route
@@ -3461,7 +3451,7 @@ export class Point0<
   >
   middleware<TProvidedRoute extends AnyRoute>(
     route: TProvidedRoute,
-    middlewareFn: MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>,
+    middlewareFn: MiddlewareFn<TError, TProvidedRoute['definition']>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -3515,7 +3505,7 @@ export class Point0<
   middleware<TProvidedRoute extends AnyRoute>(
     method: WideRequestMethod | WideRequestMethod[],
     route: TProvidedRoute,
-    middlewareFn: MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>,
+    middlewareFn: MiddlewareFn<TError, TProvidedRoute['definition']>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -3559,7 +3549,15 @@ export class Point0<
         return args[0]
       }
       if (args.length === 2) {
-        const route = Route0.from(args[0]) as AnyRoute
+        const route = (() => {
+          if (!args[0]) {
+            throw new Error(`Route is required for middleware in point ${this.toStringWithLocation()}`)
+          }
+          if (typeof args[0] === 'string') {
+            return this.route?.extend(args[0]) ?? Route0.create(args[0])
+          }
+          return args[0]
+        })()
         const handler = args[1]
         const hasParams = route.getParamsKeys().length > 0
         return (options: MiddlewareFnOptions<TError>) => {
@@ -3574,10 +3572,15 @@ export class Point0<
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (args.length === 3) {
         const methods = Array.isArray(args[0]) ? args[0] : [args[0]]
-        if (!args[1]) {
-          throw new Error(`Route is required for middleware in point ${this.toStringWithLocation()}`)
-        }
-        const route = Route0.from(args[1]) as AnyRoute
+        const route = (() => {
+          if (!args[1]) {
+            throw new Error(`Route is required for middleware in point ${this.toStringWithLocation()}`)
+          }
+          if (typeof args[1] === 'string') {
+            return this.route?.extend(args[1]) ?? Route0.create(args[1])
+          }
+          return args[1]
+        })()
         const handler = args[2] as MiddlewareFn<TError, any>
         const hasParams = route.getParamsKeys().length > 0
         return (options: MiddlewareFnOptions<TError>) => {
