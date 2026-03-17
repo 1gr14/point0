@@ -4453,6 +4453,7 @@ export type CompilerFilterPath = RegExp | CompilerFilterPathFn
 export type CompilerFilterContent = RegExp | CompilerFilterContentFn
 export type CompilerFilterInput = { path?: CompilerFilterPath; content?: CompilerFilterContent } | CompilerFilterPath
 export type CompilerFilterNormalized = {
+  regex: RegExp | undefined
   path: CompilerFilterPathFn
   content: CompilerFilterContentFn
 }
