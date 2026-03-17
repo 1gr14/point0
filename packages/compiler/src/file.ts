@@ -317,6 +317,32 @@ export class CompilerFile<THasContent extends boolean> {
           'throwExpressions',
         ],
       })
+
+      // const parserPluginSets = CompilerFile.getParserPluginSets(this.abs)
+      // let ast: babel.ParseResult<File> | undefined = undefined
+      // const parserErrors: unknown[] = []
+      // for (const parserPlugins of parserPluginSets) {
+      //   try {
+      //     ast = babel.parse(this.content, {
+      //       sourceType: 'module',
+      //       errorRecovery: true,
+      //       tokens: true,
+      //       createParenthesizedExpressions: true,
+      //       retainLines: true,
+      //       ...({ experimental_preserveFormat: true } as any),
+      //       plugins: parserPlugins,
+      //     })
+      //     break
+      //   } catch (e) {
+      //     parserErrors.push(e)
+      //   }
+      // }
+      // if (!ast) {
+      //   errors.push(...parserErrors)
+      //   this._parse = { ast: undefined, errors, ok: false }
+      //   return this._parse
+      // }
+
       this._parse = { ast, errors, ok: true }
       return this._parse
     } catch (e) {
@@ -329,6 +355,26 @@ export class CompilerFile<THasContent extends boolean> {
   static isMdxLikePath(path: string): boolean {
     return /\.(md|mdx|mdc)$/.test(path)
   }
+
+  // static getParserPluginSets(path: string): any[][] {
+  //   const commonParserPlugins = [
+  //     'jsx',
+  //     'decorators-legacy',
+  //     'classProperties',
+  //     'classPrivateProperties',
+  //     'classPrivateMethods',
+  //     'throwExpressions',
+  //   ]
+  //   const tsPlugins = ['typescript', ...commonParserPlugins]
+  //   const flowPlugins = [['flow', { all: true }], ...commonParserPlugins]
+  //   if (/\.(ts|tsx|mts|cts)$/.test(path)) {
+  //     return [tsPlugins]
+  //   }
+  //   if (/\.(js|jsx|mjs|cjs)$/.test(path)) {
+  //     return [tsPlugins, flowPlugins]
+  //   }
+  //   return [tsPlugins, flowPlugins]
+  // }
 
   get ast(): babel.ParseResult<File> {
     const parseResult = this.parse()

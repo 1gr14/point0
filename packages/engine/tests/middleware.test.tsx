@@ -1,5 +1,5 @@
 // import '@testing-library/jest-dom'
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { Point0 } from '@point0/core'
 // import { PlaywrightBrowser } from './utils/playwright.js'
 // import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.one-client.js'
@@ -265,5 +265,68 @@ describe('midleware', () => {
     `)
     // we call it twice, becouse of ssr, which rernder all app before all pending queries resolved
     expect(calledMiddlewres).toEqual(['root', 'page2', 'root', 'page2'])
+  })
+
+  it.concurrent('available by route', async () => {
+    const root = Point0.lets('root', 'root')
+      .middleware('/zxc/:id', async ({ params }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        return Response.json({ id: params.id }, { status: 201 })
+      })
+      .root()
+    const { engine } = await createTestThings({ points: [root] })
+    const response1 = await engine.richFetch('http://localhost:3001/zxc/123', { method: 'POST' })
+    expect(response1.status).toBe(201)
+    expect(await response1.json()).toEqual({ id: '123' })
+    const response2 = await engine.richFetch('http://localhost:3001/zxc/123', { method: 'PUT' })
+    expect(response2.status).toBe(201)
+    expect(await response2.json()).toEqual({ id: '123' })
+  })
+
+  it.concurrent('available by method and route', async () => {
+    const root = Point0.lets('root', 'root')
+      .middleware('POST', '/zxc/:id', async ({ params }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        return Response.json({ id: params.id }, { status: 201 })
+      })
+      .root()
+    const { engine } = await createTestThings({ points: [root] })
+    const response1 = await engine.richFetch('http://localhost:3001/zxc/123', { method: 'POST' })
+    expect(response1.status).toBe(201)
+    expect(await response1.json()).toEqual({ id: '123' })
+    const response2 = await engine.richFetch('http://localhost:3001/zxc/123', {
+      method: 'PUT',
+      headers: { Accept: 'application/json' },
+    })
+    expect(response2.status).toBe(404)
+    expect(await response2.json()).toMatchObject({ message: 'Not Found' })
+  })
+
+  it.concurrent('available by methods and route', async () => {
+    const root = Point0.lets('root', 'root')
+      .middleware(['POST', 'PUT'], '/zxc/:id', async ({ params }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        return Response.json({ id: params.id }, { status: 201 })
+      })
+      .root()
+
+    const { engine } = await createTestThings({ points: [root] })
+    const response1 = await engine.richFetch('http://localhost:3001/zxc/123', { method: 'POST' })
+    expect(response1.status).toBe(201)
+    expect(await response1.json()).toEqual({ id: '123' })
+
+    const response2 = await engine.richFetch('http://localhost:3001/zxc/123', { method: 'PUT' })
+    expect(response2.status).toBe(201)
+    expect(await response2.json()).toEqual({ id: '123' })
+
+    const response3 = await engine.richFetch('http://localhost:3001/zxc/123', {
+      method: 'DELETE',
+      headers: { Accept: 'application/json' },
+    })
+    expect(response3.status).toBe(404)
+    expect(await response3.json()).toMatchObject({ message: 'Not Found' })
   })
 })

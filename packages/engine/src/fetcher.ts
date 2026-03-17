@@ -234,6 +234,11 @@ export class Fetcher<TError extends ErrorPoint0> {
         if (currentClient === thatClient) {
           return undefined
         }
+        // this.server.log({
+        //   level: 'info',
+        //   category: ['fetcher'],
+        //   message: `Redirecting request to different dev client "${thatClient.scope}" because current origin not matches`,
+        // })
         return new Response('Redirecting to different dev client', {
           status: 302,
           headers: {

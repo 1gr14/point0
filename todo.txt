@@ -6,8 +6,6 @@
 ------
 
 refactoring
-engine(map, mirror)
-expo(mirror)
 
 devp0nt
 create-app
@@ -16,11 +14,8 @@ docs
 examples
 start0
 
-action(openapi, scalar, points forEach)
 redirect
 mcp
-requesting(fixes)
-+engine(import protection)
 
 🚀 launch
 
@@ -46,9 +41,26 @@ compiler filter should accept also fn, and also objec {path, content} so may che
 
 Отменить хитрые роуты в пейджах (а в лэйоутах оставить)
 
+Разобраться и написать коммент зачем вообще в энжине клиент поинтсы
+
+build --watch
+
+capacitor live reload https://github.com/Cap-go/capacitor-live-reload
+
 Генерейт мап и она может быть mirror как эни поинт с указанием бейза иначе руи, а может быть с прямым импортом поинтов, а также с выбором того как генерируются ключи
 Генерейт mirror тогда там будет просто экспорт констс также с названными ключами и опередлёнными бейзами, бейзы тоже могут быть строкой  могт быть функцией, котрая вернёт поинт 
 Когда генерим миррор, важно в эндпоинт автоматически подставить нужный путь исходя из бейза, а для экшенов прямо прописать метод и путь
+мирор разрешить только на кверянки и экшены
+
+(import protection) cli inspect by filepath how this file and in which place come to files via cli command
+
+execute
+
+? headers as action input
+openapi
+scalar
+
+requesting
 
 --+
 ? Воутер перенести в реактдом
@@ -216,8 +228,6 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 ? Причём экспортировать тайпед объект с полными именами поинтсов в ключах, плюс отдельно экспортировать рут, плюс отдельно готовый массив, как комбинацию всего этого
 ? Поинтсы импортировать из файла опционально сразу в обёртке
 ? Добавить генерации роутов также и на верхний скоуп разрешив прописывать скоуп как массив
---+
-(import protection) cli inspect by filepath how this file and in which place come to files via cli command
 ---
 При подмене фетча на серверный убедиться что он относится к одному из родительских скоупов, иначе не подменять
 Two servers
@@ -265,10 +275,6 @@ binary, just throw error if some engine distdirs not inside firstlevel server di
 
 
 === ACTION ===
-execute
-? headers as action input
-openapi
-scalar
 ---
 Экзекьют валидация ол сетлед
 default endpoint path cusomization (before point, and inside point)
@@ -279,6 +285,7 @@ default endpoint path cusomization (before point, and inside point)
 
 === COMPILER ===
 ---
+Разрешить расширять мдкс плагинами
 Компилером вырезать из чужих скоупов вообще всё и лоадеры и компоненты, но родительские не трогать, только полностью инородные
 ? export const ideaQuery automatically add 'idea' as name, and it can be enabled or disabled in compiler
 ? Компилер пусть компилит все файлы и не фильтрует

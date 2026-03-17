@@ -34,7 +34,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
 
   basepath: AnyRoute | undefined
   ssr: boolean
-  middlewares: MiddlewareFn<TError>[]
+  middlewares: MiddlewareFn<TError, any>[]
   transformer: DataTransformerExtended
 
   routes: RoutesPretty
@@ -60,7 +60,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     pagesTree: PagesTree
     basepath: AnyRoute | undefined
     ssr: boolean
-    middlewares: MiddlewareFn<TError>[]
+    middlewares: MiddlewareFn<TError, any>[]
     transformer: DataTransformerExtended
   }) {
     this.manager = manager

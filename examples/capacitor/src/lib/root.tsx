@@ -1,11 +1,9 @@
 import { Point0 } from '@point0/core'
 import superjson from 'superjson'
-import { authServer } from './auth/core'
 
 export const root = Point0.lets('root', 'site')
   .ssr(true)
   .transformer(superjson)
-  .middleware('/api/auth/*', async ({ request }) => await authServer.handler(request.original))
   .queryOptions({
     retry: false,
     refetchOnMount: false,
@@ -20,7 +18,7 @@ export const root = Point0.lets('root', 'site')
     return {
       ...(loading ? { title: 'Loading...' } : {}),
       ...(error ? { title: error.message } : {}),
-      titleTemplate: '%s | Better Auth Example',
+      titleTemplate: '%s | Capacitor Example',
       htmlAttrs: { lang: 'en' },
     }
   })

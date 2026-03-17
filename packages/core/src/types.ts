@@ -4,6 +4,7 @@ import type {
   DescendantLocation,
   ExactLocation,
   Extended,
+  HasParams,
   ParamsInput,
   ParamsOutput,
   RoutesPretty,
@@ -2073,18 +2074,26 @@ export type FetcherFetchDetailedResultSpecific<
                 : never
 
 export type MiddlewareNextFn<TError extends ErrorPoint0> = () => Promise<FetcherFetchDetailedResult<TError>>
-export type MiddlewareFnOptions<TError extends ErrorPoint0> = {
+export type MiddlewareFnOptions<
+  TError extends ErrorPoint0,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = UndefinedRouteDefinition,
+> = {
   request: Request0
   set: ResponseEffectsSetHelper
   point: AnyNiceReadyPoint | undefined
   scope: PointsScope
   variant: 'endpoint' | 'page' | 'error' | 'publicdir' | 'options' | 'redirect'
   next: MiddlewareNextFn<TError>
-}
+} & (TRouteDefinition extends RouteDefinition
+  ? HasParams<TRouteDefinition> extends true
+    ? { params: ParamsOutput<TRouteDefinition> }
+    : unknown
+  : unknown)
 export type MiddlewareFnOptionsBase<TError extends ErrorPoint0> = Omit<MiddlewareFnOptions<TError>, 'next'>
-export type MiddlewareFn<TError extends ErrorPoint0> = (
-  options: MiddlewareFnOptions<TError>,
-) => Promise<Response | FetcherFetchDetailedResult<TError>>
+export type MiddlewareFn<
+  TError extends ErrorPoint0,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = UndefinedRouteDefinition,
+> = (options: MiddlewareFnOptions<TError, TRouteDefinition>) => Promise<Response | FetcherFetchDetailedResult<TError>>
 
 // nice middle point
 

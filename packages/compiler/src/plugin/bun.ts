@@ -24,9 +24,6 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
               loader: guessLoader(filepath),
             }
           }
-          if (filepath.includes('mdx')) {
-            console.log(result.code)
-          }
 
           return {
             // contents: appendInlineSourceMap(result.code, result.map),

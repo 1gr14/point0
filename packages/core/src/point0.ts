@@ -162,6 +162,7 @@ import type {
   MapperOutput,
   MergeRecordValidationSchemas,
   MiddlewareFn,
+  MiddlewareFnOptions,
   MountablePointType,
   NiceActionReadyPoint,
   NiceBaseReadyPoint,
@@ -388,7 +389,7 @@ export class Point0<
     return undefined
   }
   readonly _Error: ClassLikeError0<TError>
-  readonly _middlewares: MiddlewareFn<TError>[]
+  readonly _middlewares: MiddlewareFn<TError, any>[]
   _serverurl: string | undefined
   readonly _hasServerLoader: boolean | undefined
   readonly _basepath: AnyRoute | undefined
@@ -558,7 +559,7 @@ export class Point0<
     _fsLocation?: FsLocation | undefined
     _logger?: LogFn | undefined
     _Error?: ClassLikeError0<TError>
-    _middlewares?: MiddlewareFn<TError>[] | undefined
+    _middlewares?: MiddlewareFn<TError, any>[] | undefined
     _serverurl?: string | undefined
     _hasServerLoader?: boolean | undefined
     _basepath?: AnyRoute | undefined
@@ -724,7 +725,7 @@ export class Point0<
     _fsLocation?: FsLocation | undefined
     _logger?: LogFn | undefined
     _Error?: ClassLikeError0<TError> | undefined
-    _middlewares?: MiddlewareFn<TError>[]
+    _middlewares?: MiddlewareFn<TError, any>[]
     _serverurl?: string | undefined
     _hasServerLoader?: boolean | undefined
     _basepath?: AnyRoute | undefined
@@ -3406,8 +3407,9 @@ export class Point0<
     []
 
   // middlewares
+
   middleware(
-    middlewareFn: MiddlewareFn<TError>,
+    middlewareFn: MiddlewareFn<TError, undefined>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -3431,9 +3433,169 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  middleware(middlewareFn?: MiddlewareFn<TError> | undefined) {
+  middleware<TProvidedRoute extends RouteDefinition>(
+    route: TProvidedRoute,
+    middlewareFn: MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  middleware<TProvidedRoute extends AnyRoute>(
+    route: TProvidedRoute,
+    middlewareFn: MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  middleware<TProvidedRoute extends RouteDefinition>(
+    method: WideRequestMethod | WideRequestMethod[],
+    route: TProvidedRoute,
+    middlewareFn: MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  middleware<TProvidedRoute extends AnyRoute>(
+    method: WideRequestMethod | WideRequestMethod[],
+    route: TProvidedRoute,
+    middlewareFn: MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  middleware(
+    ...args:
+      | [MiddlewareFn<TError, any>]
+      | [route: RouteDefinition | AnyRoute, middlewareFn: MiddlewareFn<TError, any>]
+      | [
+          method: WideRequestMethod | WideRequestMethod[],
+          route: RouteDefinition | AnyRoute,
+          middlewareFn: MiddlewareFn<TError, any>,
+        ]
+      | []
+  ) {
+    const middleware = ((): MiddlewareFn<TError, any> => {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (_point0_env.side.is.client || args.length === 0 || args[0] === undefined) {
+        return ({ next }: MiddlewareFnOptions<TError>) => next()
+      }
+      if (args.length === 1) {
+        return args[0]
+      }
+      if (args.length === 2) {
+        const route = Route0.from(args[0]) as AnyRoute
+        const handler = args[1]
+        const hasParams = route.getParamsKeys().length > 0
+        return (options: MiddlewareFnOptions<TError>) => {
+          if (route.isExactPathnameMatch(options.request.location.pathname)) {
+            const params = hasParams ? route.getLocation(options.request.location).params : undefined
+            const optionsWithParams = hasParams ? { ...options, params } : options
+            return handler(optionsWithParams)
+          }
+          return options.next()
+        }
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (args.length === 3) {
+        const methods = Array.isArray(args[0]) ? args[0] : [args[0]]
+        if (!args[1]) {
+          throw new Error(`Route is required for middleware in point ${this.toStringWithLocation()}`)
+        }
+        const route = Route0.from(args[1]) as AnyRoute
+        const handler = args[2] as MiddlewareFn<TError, any>
+        const hasParams = route.getParamsKeys().length > 0
+        return (options: MiddlewareFnOptions<TError>) => {
+          if (
+            methods.includes(options.request.method) &&
+            route.isExactPathnameMatch(options.request.location.pathname)
+          ) {
+            const params = hasParams ? route.getLocation(options.request.location).params : undefined
+            const optionsWithParams = hasParams ? { ...options, params } : options
+            return handler(optionsWithParams)
+          }
+          return options.next()
+        }
+      }
+      throw new Error(`Invalid middleware arguments in point ${this.toStringWithLocation()}`)
+    })()
     return this._continue({
-      _middlewares: [...this._middlewares, ...(middlewareFn ? [middlewareFn] : [])],
+      _middlewares: [...this._middlewares, middleware],
     }) as never
   }
   // prefetch mode
