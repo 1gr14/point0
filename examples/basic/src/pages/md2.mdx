@@ -1,18 +1,23 @@
-
-
 import { Link } from '@/lib/navigate'
 import { routes } from '@/lib/routes'
 import { client } from '@/lib/client'
 
-export const self = client.lets('page', 'md2', '/md2').page((p) => <props.Self {...p} />)
+export const page = client
+  .lets('page', 'md2', '/md2')
+  .loader(() => ({
+    a: Math.random(),
+  }))
+  .page((props) => <MDXContent {...props} />)
 
 # My Title 2
 
-My Paragraph {2 * 2}
+My Paragraph {2}
 
 My x: {props.x}
 
 My y: {props.y}
+
+My data: {JSON.stringify(props.data)}
 
 My location: {Object.keys(props)}
 

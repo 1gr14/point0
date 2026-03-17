@@ -9,8 +9,7 @@ refactoring
 engine(map, mirror)
 expo(mirror)
 
-mdx
-+file-routing
+
 
 devp0nt
 create-app
@@ -19,7 +18,7 @@ docs
 examples
 start0
 
-action(openapi, scalar)
+action(openapi, scalar, points forEach)
 redirect
 mcp
 requesting(fixes)
@@ -28,6 +27,7 @@ requesting(fixes)
 🚀 launch
 
 ---
++file-routing
 +init
 +static
 +channel
@@ -51,8 +51,6 @@ compiler filter should accept also fn, and also objec {path, content} so may che
 Генерейт мап и она может быть mirror как эни поинт с указанием бейза иначе руи, а может быть с прямым импортом поинтов, а также с выбором того как генерируются ключи
 Генерейт mirror тогда там будет просто экспорт констс также с названными ключами и опередлёнными бейзами, бейзы тоже могут быть строкой  могт быть функцией, котрая вернёт поинт 
 Когда генерим миррор, важно в эндпоинт автоматически подставить нужный путь исходя из бейза, а для экшенов прямо прописать метод и путь
-
-bun plugins should allow to have {enforece: 'pre'} or {enforece: 'post'} 
 
 --+
 ? Воутер перенести в реактдом
@@ -223,9 +221,9 @@ prefetchPage → prefetchMountable(prefetchPage,prefetchComponent,prefetchLayout
 --+
 (import protection) cli inspect by filepath how this file and in which place come to files via cli command
 ---
-(when electron)
 При подмене фетча на серверный убедиться что он относится к одному из родительских скоупов, иначе не подменять
 Two servers
+? bun plugins should allow to have {enforece: 'pre'} or {enforece: 'post'} 
 ? Сделать сервер опциональным в конфиге, но при запросе к серверу в таком случае всё ломать
 ? Если лиент не сервится то и запросы его к нему же не перенаправлять на сервер (так он уже не сервится)
 ssr as option in engine, so we can by default prune or not prune plugins
@@ -388,6 +386,7 @@ Route0.create('>+zxc') → will be rewritten () => Route0.create('>currentfilepa
 
 === DOCS ===
 docs in comments
+LLM docs
 respect /v1/ at start
 Consumer–Source Eversion / Client-Server Eversion
 Отметить в доке, что это всё спа и секретный контент нельзя оставлять на страницах

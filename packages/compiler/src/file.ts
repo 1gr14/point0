@@ -1,18 +1,20 @@
-import type { GeneratorResult } from '@babel/generator'
-import generatorModule from '@babel/generator'
 import { transformFromAstSync } from '@babel/core'
-import minifyDeadCodeEliminationModule from 'babel-plugin-minify-dead-code-elimination'
+import generatorModule from '@babel/generator'
+import type { GeneratorResult } from '@babel/generator'
 import babel from '@babel/parser'
-import minifyGuardedExpressionsModule from 'babel-plugin-minify-guarded-expressions'
+import traverseModule from '@babel/traverse'
 import type traverseType from '@babel/traverse'
 import type { NodePath } from '@babel/traverse'
-import traverseModule from '@babel/traverse'
-import type { File, Node, ObjectExpression, ObjectMethod, ObjectProperty, SpreadElement } from '@babel/types'
 import * as t from '@babel/types'
+import type { File, Node, ObjectExpression, ObjectMethod, ObjectProperty, SpreadElement } from '@babel/types'
+import { compileSync } from '@mdx-js/mdx'
 import type { EnvOsName, EnvRuntimeName, NormalizedNodeEnv } from '@point0/core'
+import minifyDeadCodeEliminationModule from 'babel-plugin-minify-dead-code-elimination'
+import minifyGuardedExpressionsModule from 'babel-plugin-minify-guarded-expressions'
 import * as nodeFsSync from 'node:fs'
 import * as nodeFs from 'node:fs/promises'
 import prettier from 'prettier'
+import remarkFrontmatter from 'remark-frontmatter'
 import type { CompilerPoint } from './point.js'
 import { type CompilerEnvConsts, normalizeEnvConsts } from './utils.js'
 import type { Walker } from './walker.js'
@@ -272,6 +274,32 @@ export class CompilerFile<THasContent extends boolean> {
     }
     const errors: unknown[] = []
     try {
+      // MD/MDX/MDC are not valid Babel syntax directly.
+      // Precompile them into JS program text before parsing.
+      if (CompilerFile.isMdxLikePath(this.abs)) {
+        try {
+          const compiled = compileSync(this.content, {
+            jsx: false,
+            outputFormat: 'program',
+            development: true,
+            remarkPlugins: [remarkFrontmatter],
+          })
+          const nextContent = String(compiled) as THasContent extends true ? string : undefined
+          if (!nextContent) {
+            errors.push(new Error(`Failed to compile MDX/MDC file ${this.abs}, empty content`))
+            this._parse = { ast: undefined, errors, ok: false }
+            return this._parse
+          }
+          if (nextContent !== this.content) {
+            this.content = nextContent
+            this.modified = true
+          }
+        } catch (e) {
+          errors.push(e)
+          this._parse = { ast: undefined, errors, ok: false }
+          return this._parse
+        }
+      }
       const ast = babel.parse(this.content, {
         sourceType: 'module',
         errorRecovery: true,
@@ -296,6 +324,10 @@ export class CompilerFile<THasContent extends boolean> {
       this._parse = { ast: undefined, errors, ok: false }
       return this._parse
     }
+  }
+
+  static isMdxLikePath(path: string): boolean {
+    return /\.(md|mdx|mdc)$/.test(path)
   }
 
   get ast(): babel.ParseResult<File> {
