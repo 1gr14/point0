@@ -25,7 +25,17 @@ export class Compiler {
   walker: Walker
   routes: Record<string, RoutesPretty> | undefined
 
-  // Match JS/TS and markdown-ish source files while excluding virtual/shim module IDs and node_modules (except point0 packages).
+  /*
+   * Match JS/TS and markdown-ish source files while excluding virtual/shim
+   * module IDs and node_modules (except point0 packages).
+   *
+   * ^                                     -> anchor at start
+   * (?!.*(?:shim:|virtual:))              -> reject IDs containing "shim:" or "virtual:"
+   * (?!.*node_modules\/(?!.*point0))      -> reject node_modules paths unless they include "point0"
+   * .*\.                                  -> consume path up to final "."
+   * (?:[cm]?[jt]sx?|md|mdx|mdc)           -> allow JS/TS variants and md/mdx/mdc
+   * $                                     -> anchor at end
+   */
   static defaultFilter = /^(?!.*(?:shim:|virtual:))(?!.*node_modules\/(?!.*point0)).*\.(?:[cm]?[jt]sx?|md|mdx|mdc)$/
 
   constructor({
