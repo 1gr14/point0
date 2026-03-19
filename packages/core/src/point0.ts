@@ -405,7 +405,8 @@ export class Point0<
   readonly _transformer: DataTransformerExtended | undefined
   _getTransformer = () => this._transformer ?? blankDataTransformerExtended
   private readonly _eventerSubscriptions: EventerSubscription<any, TError>[]
-  readonly _ssr: boolean
+  readonly _ssr: boolean | undefined
+  readonly _getSsr = () => (typeof this._ssr === 'boolean' ? this._ssr : _point0_env.vars.POINT0_SSR === 'true')
   readonly scope: PointsScope
   readonly scopes: PointsScope[]
   private readonly _defaultMutationOptions: UseMutationOptions | undefined
@@ -457,7 +458,7 @@ export class Point0<
     return !policy
       ? 'none'
       : policy === true
-        ? this._ssr
+        ? this._getSsr()
           ? 'ssrDehydratedStateAndClientQuery'
           : 'serverAndClientQuery'
         : policy
@@ -566,7 +567,7 @@ export class Point0<
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
     _transformer?: DataTransformerExtended | undefined
-    _ssr?: boolean
+    _ssr?: boolean | undefined
     _eventerSubscriptions?: EventerSubscription<any, TError>[]
     scope: PointsScope
     scopes: PointsScope[]
@@ -640,7 +641,7 @@ export class Point0<
     this._Error = options._Error ?? (ErrorPoint0 as unknown as ClassLikeError0<TError>)
     this._middlewares = options._middlewares ?? []
     this._transformer = options._transformer ?? undefined
-    this._ssr = options._ssr ?? _point0_env.vars.POINT0_SSR === 'true'
+    this._ssr = options._ssr ?? undefined
     this._eventerSubscriptions = options._eventerSubscriptions ?? []
     this._serverurl = options._serverurl ?? undefined
     this._hasServerLoader = options._hasServerLoader ?? undefined
@@ -734,7 +735,7 @@ export class Point0<
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
     _transformer?: DataTransformerExtended | null
-    _ssr?: boolean
+    _ssr?: boolean | undefined
     _eventerSubscriptions?: EventerSubscription<any, TError>[]
     _defaultMutationOptions?: UseMutationOptions | undefined
     _mutationOptions?: UseMutationOptions | undefined
@@ -1647,7 +1648,7 @@ export class Point0<
         ? mountActionsAll
         : mountActionsAll.filter((action) => action.type === 'globalHead')
     if (letsReadyPointType === 'component' || letsReadyPointType === 'provider') {
-      mountActionsSuitable.push({ type: 'selfProps', unstableId: Point0._getNextUnstableId(), ssr: this._ssr })
+      mountActionsSuitable.push({ type: 'selfProps', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() })
     }
 
     return this._continue({
@@ -2409,7 +2410,7 @@ export class Point0<
   error(errorComponent: ErrorComponentType<any, any> | undefined) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
     return this._continue({
       _mountActions: [
@@ -2422,7 +2423,7 @@ export class Point0<
                 Component: errorComponent,
                 variant: this._getDestinationComponentVariant(),
                 unstableId: Point0._getNextUnstableId(),
-                ssr: this._ssr,
+                ssr: this._getSsr(),
               },
             ]
           : []),
@@ -2688,7 +2689,7 @@ export class Point0<
     // })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
     return this._continue({
       _mountActions: [
@@ -2701,7 +2702,7 @@ export class Point0<
                 Component: loadingComponent,
                 variant: this._getDestinationComponentVariant(),
                 unstableId: Point0._getNextUnstableId(),
-                ssr: this._ssr,
+                ssr: this._getSsr(),
               },
             ]
           : []),
@@ -2771,7 +2772,7 @@ export class Point0<
   wrapper(wrapperComponent: WrapperComponentType<any, any, any, any, any, any, any, any> | undefined) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
     return this._continue({
       _mountActions: [
@@ -2783,7 +2784,7 @@ export class Point0<
                 type: 'wrapper' as const,
                 Component: wrapperComponent,
                 unstableId: Point0._getNextUnstableId(),
-                ssr: this._ssr,
+                ssr: this._getSsr(),
               },
             ]
           : []),
@@ -3037,7 +3038,7 @@ export class Point0<
   ) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
 
     // in case if we shake with for server without ssr
@@ -3074,7 +3075,7 @@ export class Point0<
             type: 'with',
             fn: withQueryFn,
             unstableId: Point0._getNextUnstableId(),
-            ssr: this._ssr,
+            ssr: this._getSsr(),
           },
         ],
         ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
@@ -3091,7 +3092,7 @@ export class Point0<
           type: 'with',
           fn: withFn,
           unstableId: Point0._getNextUnstableId(),
-          ssr: this._ssr,
+          ssr: this._getSsr(),
         },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
@@ -3180,7 +3181,7 @@ export class Point0<
   ) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
 
     // in case if we shake with for server without ssr
@@ -3208,7 +3209,7 @@ export class Point0<
           queryOptions,
           inputGetter: getInputFn,
           unstableId: Point0._getNextUnstableId(),
-          ssr: this._ssr,
+          ssr: this._getSsr(),
         },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
@@ -4184,14 +4185,14 @@ export class Point0<
     mapperFn ||= ((o) => o.data) as MapperFn<any, any, any, any, any, any, any, any>
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
     return this._continue({
       // _sameQueryPoint: null,
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
-        { type: 'mapper', fn: mapperFn, unstableId: Point0._getNextUnstableId(), ssr: this._ssr },
+        { type: 'mapper', fn: mapperFn, unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
@@ -4444,7 +4445,7 @@ export class Point0<
     })()
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
     return this._continue({
       _mountActions: [
@@ -4456,10 +4457,10 @@ export class Point0<
                 type: 'globalHead' as const,
                 fn: headFn as GlobalHeadFn<any, any>,
                 unstableId: Point0._getNextUnstableId(),
-                ssr: this._ssr,
+                ssr: this._getSsr(),
               },
             ]
-          : [{ type: 'head' as const, fn: headFn, unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]),
+          : [{ type: 'head' as const, fn: headFn, unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]),
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
@@ -5698,7 +5699,7 @@ export class Point0<
     // this._applyComponentDisplayName(page as React.ComponentType<any>, { suffix: 'PageInner' })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
     const point = this._continue({
       type: 'page',
@@ -5772,7 +5773,7 @@ export class Point0<
     // this._applyComponentDisplayName(component, { suffix: 'Inner' })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
     const point = this._continue({
       type: 'component',
@@ -5891,7 +5892,7 @@ export class Point0<
   layout(...args: any[]) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
     if (this._letsReadyPointType === 'layout') {
       const [layout = () => null] = args as [LayoutSuccessComponentType<any, any, any, any, any, any, any> | undefined]
@@ -6052,7 +6053,7 @@ export class Point0<
     const mapperFn = _mapperFn as MapperFn<any, any, any, any, any, any, any, any> | undefined
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
     const point = this._continue({
       type: 'provider',
@@ -6067,7 +6068,7 @@ export class Point0<
                 type: 'mapper' as const,
                 fn: mapperFn,
                 unstableId: Point0._getNextUnstableId(),
-                ssr: this._ssr,
+                ssr: this._getSsr(),
               },
             ]
           : []),
@@ -6213,7 +6214,7 @@ export class Point0<
         }
       }
     }
-    if (typeof pointMountActionsSsr === 'boolean' && this._ssr !== pointMountActionsSsr) {
+    if (typeof pointMountActionsSsr === 'boolean' && this._getSsr() !== pointMountActionsSsr) {
       throw new Error(
         `Points have different ssr settings, so you may loose mount actions in ssr mode ${this.toStringWithLocation()} and ${point.toStringWithLocation()} `,
       )
@@ -6221,20 +6222,20 @@ export class Point0<
 
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
 
     const pluginStart = {
       type: 'pluginStart' as const,
       name: point.name,
       unstableId: Point0._getNextUnstableId(),
-      ssr: this._ssr,
+      ssr: this._getSsr(),
     }
     const pluginEnd = {
       type: 'pluginEnd' as const,
       name: point.name,
       unstableId: Point0._getNextUnstableId(),
-      ssr: this._ssr,
+      ssr: this._getSsr(),
     }
     const pluginStartServerAction = point._serverExecuteActions.length > 0 ? [pluginStart] : []
     const pluginEndServerAction = point._serverExecuteActions.length > 0 ? [pluginEnd] : []
@@ -6481,7 +6482,7 @@ export class Point0<
         _queryOptions: queryOptions,
         _mountActions: [
           ...this._mountActions,
-          { type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._ssr },
+          { type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() },
         ],
       }) as never
     } else if (this._letsReadyPointType === 'query') {
@@ -6681,7 +6682,7 @@ export class Point0<
           {
             type: 'selfQuery',
             unstableId: Point0._getNextUnstableId(),
-            ssr: this._ssr,
+            ssr: this._getSsr(),
           },
         ],
       }) as never
@@ -9835,7 +9836,7 @@ export class Point0<
 
     const queryClientDehydratedStateWasPrefetched = await (async () => {
       if (policy === 'ssrDehydratedState' || policy === 'ssrDehydratedStateAndClientQuery') {
-        if (!this._root?._ssr) {
+        if (!this._root?._getSsr()) {
           throw new Error(
             `Query client dehydrated state can be prefetched only when ssr is enabled on point ${this.toStringWithLocation()}`,
           )
@@ -10860,7 +10861,7 @@ export class Point0<
       mountComponent: this._page as never,
     })
 
-    if (_point0_env.vars.POINT0_SSR === 'true' && !this._ssr) {
+    if (_point0_env.vars.POINT0_SSR === 'true' && !this._getSsr()) {
       return React.createElement(ClientOnly, { children: mountable })
     }
     return mountable
@@ -10902,7 +10903,7 @@ export class Point0<
       mountComponent: this._component as never,
     })
 
-    if (_point0_env.vars.POINT0_SSR === 'true' && !this._ssr) {
+    if (_point0_env.vars.POINT0_SSR === 'true' && !this._getSsr()) {
       return React.createElement(ClientOnly, { children: mountable })
     }
     return mountable
@@ -10961,7 +10962,7 @@ export class Point0<
       mountComponent: this._layout as never,
     })
 
-    if (_point0_env.vars.POINT0_SSR === 'true' && !this._ssr) {
+    if (_point0_env.vars.POINT0_SSR === 'true' && !this._getSsr()) {
       return React.createElement(ClientOnly, { children: mountable })
     }
     return mountable
@@ -11070,7 +11071,7 @@ export class Point0<
       mountComponent: 'children',
     })
 
-    if (_point0_env.vars.POINT0_SSR === 'true' && !this._ssr) {
+    if (_point0_env.vars.POINT0_SSR === 'true' && !this._getSsr()) {
       return React.createElement(ClientOnly, { children: mountable })
     }
     return mountable
