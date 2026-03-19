@@ -603,7 +603,9 @@ export class Point0<
     _mountActions?: MountAction[]
     _ProviderReactContext?: Context<MountableSuccessData<TQueriesDefinitions, TMapperOutput>> | undefined
     _useValue?: any
-    route?: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
+    route?: TRouteDefinition extends RouteDefinition
+      ? CallableRoute<IfAnyThenElse<TRouteDefinition, string, TRouteDefinition>>
+      : UndefinedRoute
     _page?: PageSuccessComponentType<any, any, any, any, any, any, any> | UndefinedSuccessPageComponent
     _component?: ComponentSuccessComponentType<any, any, any, any, any, any> | UndefinedComponentSuccessComponent
     _layout?: LayoutSuccessComponentType<any, any, any, any, any, any, any> | UndefinedLayoutSuccessComponent
