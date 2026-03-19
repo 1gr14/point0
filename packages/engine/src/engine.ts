@@ -151,13 +151,15 @@ export class Engine<
     return this as Engine<TRequiredCtx, TError, true>
   }
 
-  async serveClientDevServers(): Promise<void> {
+  async serveClientDevServers({ scopes }: { scopes?: PointsScope[] | undefined } = {}): Promise<void> {
     await Promise.all(
       this.clients.map(async (client) => {
         if (client.serving === false) {
           return
         }
-        await client.startDevServer()
+        if (!scopes || scopes.includes(client.scope)) {
+          await client.startDevServer()
+        }
       }),
     )
   }
@@ -181,7 +183,9 @@ export class Engine<
   async dev(options?: {
     // engineFile: string
     generateFiles?: boolean
-    clientDevServersOnly?: boolean
+    // clientDevServersOnly?: boolean
+    side?: 'server' | 'client' | undefined
+    scope?: PointsScope | undefined
     entries?: string[] // paths or names
     bunRunArgs?: string[]
     watch?: boolean
@@ -191,18 +195,26 @@ export class Engine<
     const {
       // engineFile,
       generateFiles = true,
-      clientDevServersOnly,
+      // clientDevServersOnly,
+      side,
+      scope,
       entries,
       bunRunArgs = [],
       watch = true,
       cwd = process.cwd(),
     } = options ?? {}
     normalizeAndValidateNodeEnv('development')
+    const isSideServer = !side || side === 'server'
+    const isSideClient = !side || side === 'client'
+    const isScopeServer = !scope || scope === this.server.scope
+    const isScopeClient = (clientScope: PointsScope) => !scope || clientScope === scope
 
     const registerKillPortsOnSelfProcessEnding = (): void => {
       const ports = [
-        ...(clientDevServersOnly ? [] : [this.server.port, this.server.hmrPort]),
-        ...this.clients.flatMap((client) => [client.port, client.hmrPort]),
+        ...(!isSideServer || !isScopeServer ? [] : [this.server.port, this.server.hmrPort]),
+        ...this.clients.flatMap((client) =>
+          !isSideClient || !isScopeClient(client.scope) ? [] : [client.port, client.hmrPort],
+        ),
       ].flatMap((port) => (typeof port === 'number' ? [port] : []))
       const uniqPorts = [...new Set(ports)]
       if (uniqPorts.length === 0) {
@@ -248,7 +260,7 @@ export class Engine<
       await this.generate({ logOnNotWritten: false })
     }
     const generatorWatchProcess = generateFiles && watch ? this.generateWatch() : null
-    const withServer = clientDevServersOnly !== true && !!this.server.entry
+    const withServer = isSideServer && isScopeServer && !!this.server.entry
     const entriesFiles =
       entries && entries.length > 0
         ? entries.map((entry) => this.toEntryPath({ entry, cwd }))
@@ -296,7 +308,10 @@ export class Engine<
         }
       })()
       // and here we run one instance of client dev servers per each client
-      const clientsDevSevers = this.serveClientDevServers()
+      const clientsDevSevers =
+        isSideClient && isScopeClient(this.server.scope)
+          ? this.serveClientDevServers({ scopes: scope ? [scope] : undefined })
+          : Promise.resolve()
       await Promise.all([generatorWatchProcess, ...serverEntryProcesses, clientsDevSevers])
     } else {
       // when we prepare, we create and also start clientDevServers

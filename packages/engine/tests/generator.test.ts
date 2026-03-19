@@ -101,7 +101,7 @@ describe('FilesGenerator', () => {
       'generates lazy points file for server',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log, getLastLogMessage, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').root()
+export const root = Point0.lets('root', 'myroot').ssr(true).root()
 export const query = root.lets('query', 'myquery').loader(() => ({hello: 'World'})).query()
 export const page = root.lets('page', 'mypage', '/mypage').query(query).page(({data}) => <div>Hello, {data.hello}</div>)
 export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
@@ -241,13 +241,17 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
     )
 
     it.concurrent(
-      'generates lazy points file',
+      'generates lazy points file (ssr)',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log }) => {
+        // with all pages come to server, becouse some of them have loaders, but even if it has no loader, it can be used to retrieve queryClientDehydratedState
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').root()
-export const layout1 = root.lets('layout', 'layout1').layout(() => <div>Layout1</div>)
-export const layout2 = layout1.lets('layout', 'layout2').layout(() => <div>Layout2</div>)
-export const page = layout2.lets('page', 'mypage', '/mypage').page(() => <div>Hello</div>)
+export const root = Point0.lets('root', 'myroot').ssr(true).root()
+export const layout1 = root.lets('layout', 'layout1').loader(() => ({x:1})).layout(() => <div>Layout1</div>)
+export const layout2 = layout1.lets('layout', 'layout2').loader(() => ({x:1})).layout(() => <div>Layout2</div>)
+export const layoutNoLoader = layout2.lets('layout', 'layoutNoLoader').layout(() => <div>Layout3</div>)
+export const pageWithLoader = layout2.lets('page', 'pageWithLoader', '/pageWithLoader').loader(() => ({x:1})).page(() => <div>Hello</div>)
+export const pageNoLoader = layout2.lets('page', 'pageNoLoader', '/pageNoLoader').page(() => <div>Hello</div>)
+export const queryWithoutLoader = layout2.lets('query', 'queryWithoutLoader').query()
         `)
 
         const generator = FilesGenerator.create({
@@ -275,11 +279,82 @@ export const page = layout2.lets('page', 'mypage', '/mypage').page(() => <div>He
             root_0,
             {
               type: 'page',
-              name: 'mypage',
-              route: '/mypage',
+              name: 'pageNoLoader',
+              route: '/pageNoLoader',
               polh: false,
               layouts: ['layout1', 'layout2'],
-              point: async () => (await import('./file0.js')).page,
+              point: async () => (await import('./file0.js')).pageNoLoader,
+            },
+            {
+              type: 'page',
+              name: 'pageWithLoader',
+              route: '/pageWithLoader',
+              polh: false,
+              layouts: ['layout1', 'layout2'],
+              point: async () => (await import('./file0.js')).pageWithLoader,
+            },
+            {
+              type: 'layout',
+              name: 'layout1',
+              route: '/',
+              point: async () => (await import('./file0.js')).layout1,
+            },
+            {
+              type: 'layout',
+              name: 'layout2',
+              route: '/',
+              point: async () => (await import('./file0.js')).layout2,
+            },
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
+          "
+        `)
+      }),
+    )
+
+    it.concurrent(
+      'generates lazy points file (no ssr)',
+      helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log }) => {
+        // without ssr only pages with loaders come to server, becouse they have endpoints
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const layout1 = root.lets('layout', 'layout1').loader(() => ({x:1})).layout(() => <div>Layout1</div>)
+export const layout2 = layout1.lets('layout', 'layout2').loader(() => ({x:1})).layout(() => <div>Layout2</div>)
+export const layoutNoLoader = layout2.lets('layout', 'layoutNoLoader').layout(() => <div>Layout3</div>)
+export const pageWithLoader = layout2.lets('page', 'pageWithLoader', '/pageWithLoader').loader(() => ({x:1})).page(() => <div>Hello</div>)
+export const pageNoLoader = layout2.lets('page', 'pageNoLoader', '/pageNoLoader').page(() => <div>Hello</div>)
+export const queryWithoutLoader = layout2.lets('query', 'queryWithoutLoader').query()
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [
+            {
+              scope: 'myroot',
+              what: 'points',
+              outfile: pointsFile.path,
+              lazy: true,
+              side: 'server',
+            },
+          ],
+          log,
+          routes: {},
+        })
+        await generator.sync()
+
+        const content = fixPaths(await pointsFile.text())
+        expect(content).toMatchInlineSnapshot(`
+          "import type { PointsDefinition } from '@point0/core'
+          import { root as root_0 } from './file0.js'
+          export default [
+            root_0,
+            {
+              type: 'page',
+              name: 'pageWithLoader',
+              route: '/pageWithLoader',
+              polh: false,
+              layouts: ['layout1', 'layout2'],
+              point: async () => (await import('./file0.js')).pageWithLoader,
             },
             {
               type: 'layout',
@@ -303,7 +378,7 @@ export const page = layout2.lets('page', 'mypage', '/mypage').page(() => <div>He
       'generates ready points file',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').root()
+export const root = Point0.lets('root', 'myroot').ssr(true).root()
 export const page = root.lets('page', 'mypage', '/mypage').page(() => <div>Hello</div>)
         `)
 
@@ -601,8 +676,8 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
       helper(async ({ dir, files: [rootFile, lazyFile, readyFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
-export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
-export const layout = root.lets('layout', 'mylayout', '/layout').layout(() => <div>Layout</div>)
+export const page = root.lets('page', 'mypage', '/news').loader(() => ({x:1})).page(() => <div>Hello</div>)
+export const layout = root.lets('layout', 'mylayout', '/layout').loader(() => ({x:1})).layout(() => <div>Layout</div>)
         `)
 
         const generator = FilesGenerator.create({
@@ -686,7 +761,7 @@ export const layout = root.lets('layout', 'mylayout', '/layout').layout(() => <d
       'generates files with banner',
       helper(async ({ dir, files: [rootFile, pointsFile0, pointsFile1], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').root()
+export const root = Point0.lets('root', 'myroot').ssr(true).root()
 export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
         `)
 
@@ -791,12 +866,12 @@ export const root = Point0.lets('root', 'myroot').root()
       'handles multiple scopes',
       helper(async ({ dir, files: [root0File, root1File, lazy0File, lazy1File, lazy2File], fixPaths, log: log }) => {
         await root0File.write(`import {Point0} from '@point0/core'
-export const root0 = Point0.lets('root', 'root0').root()
+export const root0 = Point0.lets('root', 'root0').ssr(true).root()
 export const page0 = root0.lets('page', 'page0', '/page0').page(() => <div>Page0</div>)
         `)
 
         await root1File.write(`import {Point0} from '@point0/core'
-export const root1 = Point0.lets('root', 'root1').root()
+export const root1 = Point0.lets('root', 'root1').ssr(true).root()
 export const page1 = root1.lets('page', 'page1', '/page1').page(() => <div>Page1</div>)
 export const root2 = root1.lets('root', 'root2').root()
 export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2</div>)
@@ -893,7 +968,7 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
       'watches files and updates points',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, getLogs, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').root()
+export const root = Point0.lets('root', 'myroot').ssr(true).root()
 export const page = root.lets('page', 'mypage', '/mypage').page(() => <div>Hello</div>)
         `)
 
@@ -936,7 +1011,7 @@ export const page = root.lets('page', 'mypage', '/mypage').page(() => <div>Hello
         `)
 
         await rootFile.write(`import {Point0} from '@point0/core'
-          export const root = Point0.lets('root', 'myroot').root()
+          export const root = Point0.lets('root', 'myroot').ssr(true).root()
           export const page = root.lets('page', 'mypage2', '/mypage2').page(() => <div>Hello</div>)
         `)
 

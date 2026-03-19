@@ -675,6 +675,10 @@ export class FilesGenerator {
     if (side === 'client') {
       return point.type === 'page' || point.type === 'layout' || point.type === 'root'
     }
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (side === 'server') {
+      return point.type === 'root' || point.endpoint !== undefined
+    }
     return true
   }
 

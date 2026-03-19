@@ -26,6 +26,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   type: ReadyPointType
   name: PointName
   route: AnyRoute | undefined
+  ssr: TValid extends true ? boolean : boolean | undefined
   polh: TValid extends true ? boolean | number : boolean | number | undefined
   layouts: string[]
   errors: unknown[]
@@ -454,6 +455,14 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     return basepath
   }
 
+  getSsr(): boolean {
+    const lastChainMethod = this.chainMethods.at(-1)
+    if (!lastChainMethod) {
+      return false
+    }
+    return lastChainMethod.underSsr
+  }
+
   private getAllowedLastMethodNames(): string[] {
     if (this.type !== 'action') {
       return [this.type]
@@ -596,6 +605,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
 
       this.polh = this.getPrefetchOnLinkHover()
       this.basepath = this.getBasepath()
+      this.ssr = this.getSsr()
 
       if (this.type === 'action') {
         const {
@@ -627,7 +637,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       // for action we set endpoint in previouse step, because we need to know method and route first
       if (this.type !== 'action') {
         // pages always has endpoint, becouse they can be called to get queryClientDehydratedState
-        if (this.type === 'page' || this.hasLoaders()) {
+        if ((this.type === 'page' && this.ssr) || this.hasLoaders()) {
           const endpointRouteBase = Route0.create(`/_point0/${this.scope}/${this.type}/${this.name}`)
           const endpointRoute =
             !this.route?.definition || this.route.definition === '/'

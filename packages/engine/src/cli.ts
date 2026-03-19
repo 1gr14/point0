@@ -23,7 +23,8 @@ program
   .passThroughOptions() // forward anything after --
   .allowExcessArguments() // allow args after --
   .option('-G, --no-generate', dictionary.noGenerate)
-  .option('-S, --no-server', 'Do not serve server, so serve only clients dev servers')
+  .option('--side <side>', "Serve only one side: 'server' or 'client'")
+  .option('--scope <scope>', 'Server only one scope')
   .option('-W, --no-watch', 'Prevent watch file changes, restrat server, regenrate files')
   .option(
     '--entry <name|path>',
@@ -46,7 +47,8 @@ program
       engine?: string
       entry?: string[]
       env?: string[]
-      server?: boolean
+      side?: 'server' | 'client' | undefined
+      scope?: string | undefined
       generate?: boolean
       watch?: boolean
     }) => {
@@ -55,7 +57,6 @@ program
       const { engine } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd })
       const dashDashIndex = process.argv.indexOf('--')
       const bunRunArgs = dashDashIndex === -1 ? [] : process.argv.slice(dashDashIndex + 1)
-      const clientDevServersOnly = options.server === false
       const generateFiles = options.generate !== false
       const watch = options.watch !== false
       const entries = options.entry
@@ -64,10 +65,19 @@ program
         const value = valueParts.join('=')
         process.env[name] = value
       }
+      const side = options.side as string | undefined
+      const scope = options.scope as string | boolean | undefined
+      if (side && side !== 'server' && side !== 'client') {
+        throw new Error(`Invalid side: ${side}, valid values are 'server' or 'client'`)
+      }
+      if (scope && typeof scope !== 'string') {
+        throw new Error(`Invalid scope: ${scope}, valid values are strings`)
+      }
       await engine.dev({
         // engineFile,
         generateFiles,
-        clientDevServersOnly,
+        side: side as 'server' | 'client' | undefined,
+        scope: scope as string | undefined,
         watch,
         bunRunArgs,
         cwd,
