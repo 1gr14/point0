@@ -215,6 +215,46 @@ describe('CompilerFile', () => {
       )
     })
 
+    describe('ClientOnly', () => {
+      it.concurrent(
+        'replaces ClientOnly children with null on server side',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`
+            import { ClientOnly } from '@point0/core'
+            import { MyComponent } from './my-component.tsx'
+            const x = (
+              <ClientOnly>
+                <div>server-only-content</div>
+              </ClientOnly>
+            )
+            console.info(x)
+          `)
+          cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
+          const output = await cf.toCompressedPrettyCode()
+          expect(output).not.toContain('server-only-content')
+          expect(output).toMatch(/(<ClientOnly>\{null\}<\/ClientOnly>|children:\s*null)/)
+        }),
+      )
+
+      it.concurrent(
+        'keeps ClientOnly children on client side',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`
+            const { ClientOnly } = await import('@point0/core')
+            const x = (
+              <ClientOnly>
+                <div>client-content</div>
+              </ClientOnly>
+            )
+            console.info(x)
+          `)
+          cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development' })
+          const output = await cf.toCompressedPrettyCode()
+          expect(output).toContain('client-content')
+        }),
+      )
+    })
+
     describe('env.build', () => {
       it.concurrent(
         'env.build.was = true',

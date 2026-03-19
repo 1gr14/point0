@@ -155,6 +155,25 @@ const env=require('@point0/core'); env.side.is.server && prisma.idea.findMany()`
     )
 
     it.concurrent(
+      'prunes unused imports after ClientOnly children are replaced on server side',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import { ClientOnly } from '@point0/core'
+import { MyClientComponent } from './lib/my-client-component.tsx'
+console.info(
+  <ClientOnly>
+    <MyClientComponent />
+  </ClientOnly>,
+)`)
+        const compiler = Compiler.create({ side: 'server', scope: 'test' })
+        const result = compiler.compile({ file: file.path })
+        console.info(result.code)
+        expect(result.errors).toHaveLength(0)
+        expect(result.code).toContain(`from '@point0/core'`)
+        expect(result.code).not.toContain(`my-client-component`)
+      }),
+    )
+
+    it.concurrent(
       'respects scope option',
       helper(async ({ files: [file] }) => {
         await file.write(`const env=require('@point0/core'); if (env.scope.is.test) console.info('test')`)

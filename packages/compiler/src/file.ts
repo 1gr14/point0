@@ -752,6 +752,25 @@ export class CompilerFile<THasContent extends boolean> {
         }
 
         traverse(this.ast, {
+          JSXElement: (p) => {
+            if (side !== 'server') {
+              return
+            }
+            const { node } = p
+            if (!t.isJSXIdentifier(node.openingElement.name) || node.openingElement.name.name !== 'ClientOnly') {
+              return
+            }
+            const alreadyNullOnlyChildren =
+              node.children.length === 1 &&
+              t.isJSXExpressionContainer(node.children[0]) &&
+              t.isNullLiteral(node.children[0].expression)
+            if (alreadyNullOnlyChildren) {
+              return
+            }
+            node.children = [t.jsxExpressionContainer(t.nullLiteral())]
+            modified = true
+            passModified = true
+          },
           MemberExpression: (p) => {
             const node = p.node
 
