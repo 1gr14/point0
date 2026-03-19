@@ -259,20 +259,20 @@ type FetchPointYml = <T extends AnyNiceRequestableReadyPoint>(
 type FetchHtmlView = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['IsInputOptional'] extends true
-    ? [input?: T['Infer']['InputRawOrUndefined']]
-    : [input: T['Infer']['InputRawOrUndefined']]
+    ? [input?: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]
+    : [input: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]
 ) => Promise<HtmlView>
 type FetchHtmlPreview = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['IsInputOptional'] extends true
-    ? [input?: T['Infer']['InputRawOrUndefined']]
-    : [input: T['Infer']['InputRawOrUndefined']]
+    ? [input?: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]
+    : [input: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]
 ) => Promise<string>
 type FetchSsr = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['IsInputOptional'] extends true
-    ? [input?: T['Infer']['InputRawOrUndefined']]
-    : [input: T['Infer']['InputRawOrUndefined']]
+    ? [input?: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]
+    : [input: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]
 ) => Promise<{
   html: string
   preview: string
@@ -286,8 +286,8 @@ type FetchSsr = <T extends AnyNiceRequestableReadyPoint>(
 type FetchTitle = <T extends AnyNiceRequestableReadyPoint>(
   point: T,
   ...args: T['Infer']['IsInputOptional'] extends true
-    ? [input?: T['Infer']['InputRawOrUndefined']]
-    : [input: T['Infer']['InputRawOrUndefined']]
+    ? [input?: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]
+    : [input: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]
 ) => Promise<string>
 type RenderTestThings = {
   <TResult = undefined>(callback?: (state: TestThingsState) => TResult): Promise<TResult>

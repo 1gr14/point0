@@ -43,6 +43,9 @@ index exports only realy used fns and helpers without types
 Короткая летс нотация с автозаменой имени поинта и выкидом ошибки если компилер не енаблед иди экспорт конст не именованный
 При экспорт дефаулт короткий летс берёт имя файла, а если то индекс, то имя папки
 
+react-dom testing library
+
+
 +++
 
 (import protection) cli inspect by filepath how this file and in which place come to files via cli command
@@ -288,6 +291,7 @@ default endpoint path cusomization (before point, and inside point)
 
 === COMPILER ===
 ---
+Из под Андер сср вырезать всё из квери и Инфинити квери кроме пикера для Инфинити квери
 Разрешить расширять мдкс плагинами
 Компилером вырезать из чужих скоупов вообще всё и лоадеры и компоненты, но родительские не трогать, только полностью инородные
 ? export const ideaQuery automatically add 'idea' as name, and it can be enabled or disabled in compiler

@@ -1,6 +1,6 @@
-import type { ClientPoints, ClientRuntime, PointsScope, RichFetchFn } from '@point0/core'
 import { _getSsItemsWithRestErrors, _ssRunWithServerStorageState, generateId, superstore } from '@point0/core'
-import { parseCookies, serializeCookiePair, type CookieOptionsInput } from '@point0/core/effects'
+import type { ClientPoints, ClientRuntime, PointsScope, RichFetchFn } from '@point0/core'
+import { Effects, type CookieOptionsInput } from '@point0/core/effects'
 import fetchCookie from 'fetch-cookie'
 import { CookieJar } from 'tough-cookie'
 import type { EngineClient } from './client.js'
@@ -250,7 +250,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
         return
       }
       const serializedCookieHeader = [...mergedCookies.entries()]
-        .map(([name, value]) => serializeCookiePair({ name, value }))
+        .map(([name, value]) => Effects.serializeCookiePair({ name, value }))
         .join('; ')
       request.headers.set('cookie', serializedCookieHeader)
     }
@@ -258,7 +258,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
       if (!cookieSetter) {
         return
       }
-      const cookies = parseCookies(response)
+      const cookies = Effects.parseCookies(response)
       for (const cookie of cookies) {
         // if (cookie.httpOnly) {
         //   continue
@@ -392,6 +392,34 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
         },
         {} as Record<string, string>,
       )
+    }
+  }
+
+  async pruneCookies() {
+    await this.jar.removeAllCookies()
+    if (this.cookieSetter && this.cookieGetter) {
+      await this.run(async () => {
+        const cookies = await this.getCookies()
+        for (const name of Object.keys(cookies)) {
+          await this.cookieSetter?.({ name, value: '', expires: new Date(0) })
+        }
+      })
+    }
+  }
+
+  async setCookie(cookie: CookieOptionsInput) {
+    if (this.cookieSetter) {
+      await this.run(async () => {
+        await this.cookieSetter?.(cookie)
+      })
+    }
+  }
+
+  async removeCookie(name: string) {
+    if (this.cookieSetter) {
+      await this.run(async () => {
+        await this.cookieSetter?.({ name, value: '', expires: new Date(0) })
+      })
     }
   }
 

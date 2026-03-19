@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { Effects, parseCookies, serializeCookiePair } from '../src/effects.js'
+import { Effects } from '../src/effects.js'
 
 describe('Effects', () => {
   describe('create', () => {
@@ -169,14 +169,14 @@ describe('Effects', () => {
   describe('parseCookies', () => {
     it('return empty array when no set-cookie header', () => {
       const response = new Response('body')
-      const cookies = parseCookies(response)
+      const cookies = Effects.parseCookies(response)
       expect(cookies).toEqual([])
     })
 
     it('parse simple cookie', () => {
       const response = new Response('body')
       response.headers.append('Set-Cookie', 'session=abc123')
-      const cookies = parseCookies(response)
+      const cookies = Effects.parseCookies(response)
       expect(cookies).toHaveLength(1)
       expect(cookies[0]).toEqual({
         name: 'session',
@@ -192,7 +192,7 @@ describe('Effects', () => {
         'Set-Cookie',
         'token=xyz789; Path=/api; Domain=example.com; Max-Age=3600; Expires=Wed, 21 Oct 2025 07:28:00 GMT; Secure; HttpOnly; SameSite=strict; Partitioned',
       )
-      const cookies = parseCookies(response)
+      const cookies = Effects.parseCookies(response)
       expect(cookies).toHaveLength(1)
       expect(cookies[0].name).toBe('token')
       expect(cookies[0].value).toBe('xyz789')
@@ -212,7 +212,7 @@ describe('Effects', () => {
         'Set-Cookie',
         'token=xyz789; path=/api; domain=example.com; max-age=3600; expires=Wed, 21 Oct 2025 07:28:00 GMT; secure; httponly; samesite=none; partitioned',
       )
-      const cookies = parseCookies(response)
+      const cookies = Effects.parseCookies(response)
       expect(cookies).toHaveLength(1)
       expect(cookies[0].path).toBe('/api')
       expect(cookies[0].domain).toBe('example.com')
@@ -227,7 +227,7 @@ describe('Effects', () => {
       const response = new Response('body')
       response.headers.append('Set-Cookie', 'cookie1=value1; Path=/')
       response.headers.append('Set-Cookie', 'cookie2=value2; Path=/api')
-      const cookies = parseCookies(response)
+      const cookies = Effects.parseCookies(response)
       expect(cookies).toHaveLength(2)
       expect(cookies[0].name).toBe('cookie1')
       expect(cookies[1].name).toBe('cookie2')
@@ -236,7 +236,7 @@ describe('Effects', () => {
     it('parse percent-encoded name and value', () => {
       const response = new Response('body')
       response.headers.append('Set-Cookie', 'user%20name=hello%20world')
-      const cookies = parseCookies(response)
+      const cookies = Effects.parseCookies(response)
       expect(cookies).toHaveLength(1)
       expect(cookies[0]).toEqual({
         name: 'user name',
@@ -249,7 +249,7 @@ describe('Effects', () => {
 
   describe('serializeCookie', () => {
     it('serialize cookie pair for request cookie header', () => {
-      const serialized = serializeCookiePair({
+      const serialized = Effects.serializeCookiePair({
         name: 'user name',
         value: 'hello world',
       })

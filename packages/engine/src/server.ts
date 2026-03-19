@@ -270,7 +270,11 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     if (assignToProcessEnv) {
       for (const [envVarKey, envVarValue] of Object.entries({ ...this.envVars, ...this.envConsts })) {
         process.env[envVarKey] = envVarValue
-        import.meta.env[envVarKey] = envVarValue
+        try {
+          import.meta.env[envVarKey] = envVarValue
+        } catch {
+          // ignore
+        }
       }
     }
     return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR }

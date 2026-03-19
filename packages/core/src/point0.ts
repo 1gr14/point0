@@ -24,7 +24,6 @@ import * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import { createContext, useContextSelector } from 'use-context-selector'
 import type { Context } from 'use-context-selector'
-import { parseCookies, serializeCookiePair } from './effects.js'
 import { _point0_env } from './env.js'
 import { ErrorPoint0 } from './error.js'
 import type { ClassLikeError0 } from './error.js'
@@ -40,7 +39,7 @@ import type {
   ServerEventerSubscriptionCallback,
   UniqEventerErrorEventName,
 } from './eventer.js'
-import { ClientOnly, getEffects, getFetch, setStatus } from './helpers.js'
+import { ClientOnly, getFetch, setStatus } from './helpers.js'
 import { _getFakeClient, _ssItems } from './internals.js'
 import type { LogFn } from './logger.js'
 import type {
@@ -7763,18 +7762,18 @@ export class Point0<
         }
       }
 
-      const currentEffects = _ssItems.__POINT0_EFFECTS__.getWeak()
-      if (currentEffects) {
-        const cookies = Object.values(currentEffects.cookies)
-        for (const cookie of cookies) {
-          const serializedCookie = serializeCookiePair(cookie)
-          if (updatedHeaders.has('cookie')) {
-            updatedHeaders.set('cookie', `${updatedHeaders.get('cookie')}; ${serializedCookie}`)
-          } else {
-            updatedHeaders.set('cookie', serializedCookie)
-          }
-        }
-      }
+      // const currentEffects = _ssItems.__POINT0_EFFECTS__.getWeak()
+      // if (currentEffects) {
+      //   const cookies = Object.values(currentEffects.cookies)
+      //   for (const cookie of cookies) {
+      //     const serializedCookie = serializeCookiePair(cookie)
+      //     if (updatedHeaders.has('cookie')) {
+      //       updatedHeaders.set('cookie', `${updatedHeaders.get('cookie')}; ${serializedCookie}`)
+      //     } else {
+      //       updatedHeaders.set('cookie', serializedCookie)
+      //     }
+      //   }
+      // }
 
       const updatedInit: RequestInit = {
         ...fetchOptions.init,
@@ -7799,46 +7798,46 @@ export class Point0<
     }
   }
 
-  private modifyEffectsCookiesAfterServerFetchIfRequired(response: Response): void {
-    if (_point0_env.side.is.server) {
-      const effects = getEffects()
-      const responseCookies = parseCookies(response)
-      if (responseCookies.length === 0) {
-        return
-      }
-      const nowTimestamp = Date.now()
+  // private modifyEffectsCookiesAfterServerFetchIfRequired(response: Response): void {
+  //   if (_point0_env.side.is.server) {
+  //     const effects = getEffects()
+  //     const responseCookies = parseCookies(response)
+  //     if (responseCookies.length === 0) {
+  //       return
+  //     }
+  //     const nowTimestamp = Date.now()
 
-      for (const cookie of responseCookies) {
-        const cookieOptions = {
-          path: cookie.path,
-          sameSite: cookie.sameSite,
-          domain: cookie.domain,
-          expires: cookie.expires,
-          secure: cookie.secure,
-          httpOnly: cookie.httpOnly,
-          partitioned: cookie.partitioned,
-          maxAge: cookie.maxAge,
-        }
-        const cookieExpiresAt =
-          cookie.expires === undefined
-            ? undefined
-            : (cookie.expires instanceof Date ? cookie.expires : new Date(cookie.expires)).getTime()
-        const shouldDelete =
-          (typeof cookie.maxAge === 'number' && cookie.maxAge <= 0) ||
-          (cookieExpiresAt !== undefined && !Number.isNaN(cookieExpiresAt) && cookieExpiresAt <= nowTimestamp)
+  //     for (const cookie of responseCookies) {
+  //       const cookieOptions = {
+  //         path: cookie.path,
+  //         sameSite: cookie.sameSite,
+  //         domain: cookie.domain,
+  //         expires: cookie.expires,
+  //         secure: cookie.secure,
+  //         httpOnly: cookie.httpOnly,
+  //         partitioned: cookie.partitioned,
+  //         maxAge: cookie.maxAge,
+  //       }
+  //       const cookieExpiresAt =
+  //         cookie.expires === undefined
+  //           ? undefined
+  //           : (cookie.expires instanceof Date ? cookie.expires : new Date(cookie.expires)).getTime()
+  //       const shouldDelete =
+  //         (typeof cookie.maxAge === 'number' && cookie.maxAge <= 0) ||
+  //         (cookieExpiresAt !== undefined && !Number.isNaN(cookieExpiresAt) && cookieExpiresAt <= nowTimestamp)
 
-        if (shouldDelete) {
-          effects.set.cookies(cookie.name, undefined, cookieOptions)
-        } else {
-          effects.set.cookies({
-            name: cookie.name,
-            value: cookie.value,
-            ...cookieOptions,
-          })
-        }
-      }
-    }
-  }
+  //       if (shouldDelete) {
+  //         effects.set.cookies(cookie.name, undefined, cookieOptions)
+  //       } else {
+  //         effects.set.cookies({
+  //           name: cookie.name,
+  //           value: cookie.value,
+  //           ...cookieOptions,
+  //         })
+  //       }
+  //     }
+  //   }
+  // }
 
   private async _fetchServerDetailed({
     input,
@@ -7866,7 +7865,8 @@ export class Point0<
       const fetchRequest = this.modifyFetchRequestForServerIfRequired(fetchOptions)
       this._emit('pointFetchServerStart', _eventData)
       res = await fetchFn(fetchRequest)
-      this.modifyEffectsCookiesAfterServerFetchIfRequired(res)
+      // this.modifyEffectsCookiesAfterServerFetchIfRequired(res)
+
       // Bubble up non-default status codes from nested server point fetches
       // to the current outer request (e.g. SSR page render request).
       if (_point0_env.side.is.server) {
@@ -7875,6 +7875,7 @@ export class Point0<
           currentEffects?.set.status(res.status)
         }
       }
+
       if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
         const result = {
           response: res,

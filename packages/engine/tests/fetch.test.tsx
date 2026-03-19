@@ -95,14 +95,15 @@ describe('fetch', () => {
         `)
   })
 
-  it('cookies applies to final effects when do ssr render of nested points', async () => {
+  it('cookies used cookies of first request, and do not propagate them when ssr request another points', async () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
       .loader(({ set, request }) => {
+        set.cookies('zxc', undefined)
         set.cookies('page1', 'pageValue1')
         set.cookies('page2', 'pageValue2')
-        return request.cookies
+        return { ...request.cookies }
       })
       .page(({ data }) => (
         <>
@@ -117,7 +118,7 @@ describe('fetch', () => {
       .loader(({ set, request }) => {
         set.cookies('c1', 'c1Value')
         set.cookies('page1', undefined)
-        return request.cookies
+        return { ...request.cookies }
       })
       .component(({ data }) => (
         <>
@@ -131,16 +132,31 @@ describe('fetch', () => {
       .lets('component', 'c2')
       .loader(({ set, request }) => {
         set.cookies('c2', 'c2Value')
-        return request.cookies
+        return { ...request.cookies }
       })
       .component(({ data }) => (
         <>
           <div id="c2-content">{ymlifyline(data)}</div>
         </>
       ))
-    const { render, fetchPreview } = await createTestThings({
+    const { render, fetchPreview, client } = await createTestThings({
       points: [root, page, c1, c2],
     })
+
+    await client.setCookie({ name: 'zxc', value: 'zxcValue', expires: new Date(Date.now() + 99999) })
+
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page-content: zxc: zxcValue
+      #page-inner:
+        #c1-content: zxc: zxcValue
+        #c1-inner:
+          #c2-content: zxc: zxcValue
+      "
+    `)
+
+    await client.pruneCookies()
+    await client.setCookie({ name: 'zxc', value: 'zxcValue', expires: new Date(Date.now() + 99999) })
 
     // when we render as spa it is just two different requests
     await render(page.route(), async ({ waitContent, tale }) => {
@@ -150,7 +166,7 @@ describe('fetch', () => {
         /
           #loading: ...
 
-          #page-content: {}
+          #page-content: zxc: zxcValue
           #page-inner:
             #c1-content: page1: pageValue1, page2: pageValue2
             #c1-inner:
@@ -158,14 +174,5 @@ describe('fetch', () => {
         "
       `)
     })
-    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "
-      #page-content: c1: c1Value, c2: c2Value, page2: pageValue2
-      #page-inner:
-        #c1-content: c1: c1Value, c2: c2Value, page1: pageValue1, page2: pageValue2
-        #c1-inner:
-          #c2-content: c1: c1Value, c2: c2Value, page1: &quot;&quot;, page2: pageValue2
-      "
-    `)
   })
 })
