@@ -35,14 +35,20 @@ start0
 
 === REFACTOING 3000 ===
 
-fix vite example head
-compiler ClientOnly
-
---+
+getEffects() and getRequest() move to helpers so we can still not load in to client
+types.ts file thet reexport only needed types
+index exports only realy used fns and helpers without types
 
 ? Реквест надо максимально упростить и вообще его экстенднуть от обычного реквеста
 Когда в эффектах кукиса удаляют куки во втором запросе при сср проверить, что это работает
 при запросах с сревреа к самому себе учитывать максимальную рекурсию
+
+---
+
+(import protection) cli inspect by filepath how this file and in which place come to files via cli command
+Импортм рестрик, аллоу, и можно передать прямо пакейдж Джейсон в список рестрикта
+Импорт виз мирор прямо сразу заменит поинт на отражённый и не потянет зависимости
+Импортёр просто отдельный файл и отдельная настройка в конфиге
 
 Генерейт мап и она может быть mirror как эни поинт с указанием бейза иначе руи, а может быть с прямым импортом поинтов, а также с выбором того как генерируются ключи
 Генерейт mirror тогда там будет просто экспорт констс также с названными ключами и опередлёнными бейзами, бейзы тоже могут быть строкой  могт быть функцией, котрая вернёт поинт 
@@ -54,11 +60,6 @@ compiler ClientOnly
 redirect
 
 mcp
-
-(import protection) cli inspect by filepath how this file and in which place come to files via cli command
-Импортм рестрик, аллоу, и можно передать прямо пакейдж Джейсон в список рестрикта
-Импорт виз мирор прямо сразу заменит поинт на отражённый и не потянет зависимости
-Импортёр просто отдельный файл и отдельная настройка в конфиге
 
 Короткая летс нотация с автозаменой имени поинта и выкидом ошибки если компилер не енаблед иди экспорт конст не именованный
 При экспорт дефаулт короткий летс берёт имя файла, а если то индекс, то имя папки
@@ -97,7 +98,6 @@ find TODO in code
 Remove comments, unusde code, unused types (except core/point0.ts and core/types.ts)
 Разобраться с эррор баундари для фронта
 try for input have void type or undefined, than we can avoid using ...args IsInputOptional...
-types.ts file thet reexport only needed types
 hide github repos from devp0nt that deprecated
 Routes<any> shoudl be y default so really any routes suitable to Routes
 refactor types names and order and any points, etc any things. Поправляя эни попробовать отказаться от ифэни в пользу стринг экстендс
