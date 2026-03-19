@@ -35,15 +35,19 @@ start0
 
 === REFACTOING 3000 ===
 
-getEffects() and getRequest() move to helpers so we can still not load in to client
-types.ts file thet reexport only needed types
-index exports only realy used fns and helpers without types
+Дефаулт сср тоже хранить в супер сторе?
 
 ? Реквест надо максимально упростить и вообще его экстенднуть от обычного реквеста
 Когда в эффектах кукиса удаляют куки во втором запросе при сср проверить, что это работает
 при запросах с сревреа к самому себе учитывать максимальную рекурсию
 
+getEffects() and getRequest() move to helpers so we can still not load in to client
+types.ts file thet reexport only needed types
+index exports only realy used fns and helpers without types
+
 ---
+
+redirect
 
 (import protection) cli inspect by filepath how this file and in which place come to files via cli command
 Импортм рестрик, аллоу, и можно передать прямо пакейдж Джейсон в список рестрикта
@@ -56,8 +60,6 @@ index exports only realy used fns and helpers without types
 мирор разрешить только на кверянки и экшены
 Миррор и мапа всегда генерирует констс, но может экспортнуть, а может и нет, и может объединить в объект
 ? Возможность импортануть серверный поинт игнорируя всё вокруг то есть берём как есть а функции снаружи не считая поинтов игнорируем
-
-redirect
 
 mcp
 
