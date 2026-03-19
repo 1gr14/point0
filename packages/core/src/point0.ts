@@ -24,7 +24,7 @@ import * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import { createContext, useContextSelector } from 'use-context-selector'
 import type { Context } from 'use-context-selector'
-import { serializeCookiePair } from './effects.js'
+import { parseCookies, serializeCookiePair } from './effects.js'
 import { _point0_env } from './env.js'
 import { ErrorPoint0 } from './error.js'
 import type { ClassLikeError0 } from './error.js'
@@ -40,7 +40,7 @@ import type {
   ServerEventerSubscriptionCallback,
   UniqEventerErrorEventName,
 } from './eventer.js'
-import { ClientOnly, getFetch, setStatus } from './helpers.js'
+import { ClientOnly, getEffects, getFetch, setStatus } from './helpers.js'
 import { _getFakeClient, _ssItems } from './internals.js'
 import type { LogFn } from './logger.js'
 import type {
@@ -7744,58 +7744,100 @@ export class Point0<
   }
 
   private modifyFetchRequestForServerIfRequired(fetchOptions: ReturnType<typeof this.getFetchServerOptions>): Request {
-    if (!_point0_env.side.is.server) {
+    if (_point0_env.side.is.server) {
+      const currentRequest0 = _ssItems.__POINT0_REQUEST0__.getWeak()
+      if (!currentRequest0) {
+        return Object.assign(fetchOptions.request, {
+          __POINT0_IS_SERVER_REQUEST__: true,
+        })
+      }
+      const originalRequest = currentRequest0.original
+      const updatedHeaders = new Headers(fetchOptions.request.headers)
+
+      const originalRequestCookie = originalRequest.headers.get('cookie')
+      if (originalRequestCookie) {
+        if (updatedHeaders.has('cookie')) {
+          updatedHeaders.set('cookie', `${originalRequestCookie}; ${updatedHeaders.get('cookie')}`)
+        } else {
+          updatedHeaders.set('cookie', originalRequestCookie)
+        }
+      }
+
+      const currentEffects = _ssItems.__POINT0_EFFECTS__.getWeak()
+      if (currentEffects) {
+        const cookies = Object.values(currentEffects.cookies)
+        for (const cookie of cookies) {
+          const serializedCookie = serializeCookiePair(cookie)
+          if (updatedHeaders.has('cookie')) {
+            updatedHeaders.set('cookie', `${updatedHeaders.get('cookie')}; ${serializedCookie}`)
+          } else {
+            updatedHeaders.set('cookie', serializedCookie)
+          }
+        }
+      }
+
+      const updatedInit: RequestInit = {
+        ...fetchOptions.init,
+        headers: updatedHeaders,
+        referrer: originalRequest.referrer,
+        referrerPolicy: originalRequest.referrerPolicy,
+        mode: originalRequest.mode,
+        credentials: originalRequest.credentials,
+        cache: originalRequest.cache,
+        redirect: originalRequest.redirect,
+        integrity: originalRequest.integrity,
+        keepalive: originalRequest.keepalive,
+      }
+      const updatedRequest = new Request(fetchOptions.url, updatedInit)
+      Object.assign(updatedRequest, {
+        __POINT0_IS_SERVER_REQUEST__: true,
+        __POINT0_PARENT_REQUEST__: currentRequest0,
+      })
+      return updatedRequest
+    } else {
       return fetchOptions.request
     }
-    const currentRequest0 = _ssItems.__POINT0_REQUEST0__.getWeak()
-    if (!currentRequest0) {
-      return Object.assign(fetchOptions.request, {
-        __POINT0_IS_SERVER_REQUEST__: true,
-      })
-    }
-    const originalRequest = currentRequest0.original
-    const updatedHeaders = new Headers(fetchOptions.request.headers)
+  }
 
-    const originalRequestCookie = originalRequest.headers.get('cookie')
-    if (originalRequestCookie) {
-      if (updatedHeaders.has('cookie')) {
-        updatedHeaders.set('cookie', `${originalRequestCookie}; ${updatedHeaders.get('cookie')}`)
-      } else {
-        updatedHeaders.set('cookie', originalRequestCookie)
+  private modifyEffectsCookiesAfterServerFetchIfRequired(response: Response): void {
+    if (_point0_env.side.is.server) {
+      const effects = getEffects()
+      const responseCookies = parseCookies(response)
+      if (responseCookies.length === 0) {
+        return
       }
-    }
+      const nowTimestamp = Date.now()
 
-    const currentEffects = _ssItems.__POINT0_EFFECTS__.getWeak()
-    if (currentEffects) {
-      const cookies = Object.values(currentEffects.cookies)
-      for (const cookie of cookies) {
-        const serializedCookie = serializeCookiePair(cookie)
-        if (updatedHeaders.has('cookie')) {
-          updatedHeaders.set('cookie', `${updatedHeaders.get('cookie')}; ${serializedCookie}`)
+      for (const cookie of responseCookies) {
+        const cookieOptions = {
+          path: cookie.path,
+          sameSite: cookie.sameSite,
+          domain: cookie.domain,
+          expires: cookie.expires,
+          secure: cookie.secure,
+          httpOnly: cookie.httpOnly,
+          partitioned: cookie.partitioned,
+          maxAge: cookie.maxAge,
+        }
+        const cookieExpiresAt =
+          cookie.expires === undefined
+            ? undefined
+            : (cookie.expires instanceof Date ? cookie.expires : new Date(cookie.expires)).getTime()
+        const shouldDelete =
+          (typeof cookie.maxAge === 'number' && cookie.maxAge <= 0) ||
+          (cookieExpiresAt !== undefined && !Number.isNaN(cookieExpiresAt) && cookieExpiresAt <= nowTimestamp)
+
+        if (shouldDelete) {
+          effects.set.cookies(cookie.name, undefined, cookieOptions)
         } else {
-          updatedHeaders.set('cookie', serializedCookie)
+          effects.set.cookies({
+            name: cookie.name,
+            value: cookie.value,
+            ...cookieOptions,
+          })
         }
       }
     }
-
-    const updatedInit: RequestInit = {
-      ...fetchOptions.init,
-      headers: updatedHeaders,
-      referrer: originalRequest.referrer,
-      referrerPolicy: originalRequest.referrerPolicy,
-      mode: originalRequest.mode,
-      credentials: originalRequest.credentials,
-      cache: originalRequest.cache,
-      redirect: originalRequest.redirect,
-      integrity: originalRequest.integrity,
-      keepalive: originalRequest.keepalive,
-    }
-    const updatedRequest = new Request(fetchOptions.url, updatedInit)
-    Object.assign(updatedRequest, {
-      __POINT0_IS_SERVER_REQUEST__: true,
-      __POINT0_PARENT_REQUEST__: currentRequest0,
-    })
-    return updatedRequest
   }
 
   private async _fetchServerDetailed({
@@ -7824,6 +7866,7 @@ export class Point0<
       const fetchRequest = this.modifyFetchRequestForServerIfRequired(fetchOptions)
       this._emit('pointFetchServerStart', _eventData)
       res = await fetchFn(fetchRequest)
+      this.modifyEffectsCookiesAfterServerFetchIfRequired(res)
       // Bubble up non-default status codes from nested server point fetches
       // to the current outer request (e.g. SSR page render request).
       if (_point0_env.side.is.server) {

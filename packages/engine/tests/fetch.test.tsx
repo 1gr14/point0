@@ -94,4 +94,78 @@ describe('fetch', () => {
           "
         `)
   })
+
+  it('cookies applies to final effects when do ssr render of nested points', async () => {
+    const root = createRoot()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(({ set, request }) => {
+        set.cookies('page1', 'pageValue1')
+        set.cookies('page2', 'pageValue2')
+        return request.cookies
+      })
+      .page(({ data }) => (
+        <>
+          <div id="page-content">{ymlifyline(data)}</div>
+          <div id="page-inner">
+            <c1.X />
+          </div>
+        </>
+      ))
+    const c1 = root
+      .lets('component', 'c1')
+      .loader(({ set, request }) => {
+        set.cookies('c1', 'c1Value')
+        set.cookies('page1', undefined)
+        return request.cookies
+      })
+      .component(({ data }) => (
+        <>
+          <div id="c1-content">{ymlifyline(data)}</div>
+          <div id="c1-inner">
+            <c2.X />
+          </div>
+        </>
+      ))
+    const c2 = root
+      .lets('component', 'c2')
+      .loader(({ set, request }) => {
+        set.cookies('c2', 'c2Value')
+        return request.cookies
+      })
+      .component(({ data }) => (
+        <>
+          <div id="c2-content">{ymlifyline(data)}</div>
+        </>
+      ))
+    const { render, fetchPreview } = await createTestThings({
+      points: [root, page, c1, c2],
+    })
+
+    // when we render as spa it is just two different requests
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#c2-content')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /
+          #loading: ...
+
+          #page-content: {}
+          #page-inner:
+            #c1-content: page1: pageValue1, page2: pageValue2
+            #c1-inner:
+              #c2-content: c1: c1Value, page2: pageValue2
+        "
+      `)
+    })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page-content: c1: c1Value, c2: c2Value, page2: pageValue2
+      #page-inner:
+        #c1-content: c1: c1Value, c2: c2Value, page1: pageValue1, page2: pageValue2
+        #c1-inner:
+          #c2-content: c1: c1Value, c2: c2Value, page1: &quot;&quot;, page2: pageValue2
+      "
+    `)
+  })
 })

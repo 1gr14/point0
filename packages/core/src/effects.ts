@@ -15,6 +15,74 @@ export const serializeCookiePair = (cookie: Pick<CookieOptions, 'name' | 'value'
   return `${encodeCookieName(cookie.name)}=${encodeCookieValue(cookie.value)}`
 }
 
+export const parseCookies = (response: Response): CookieOptions[] => {
+  const setCookieHeaders = response.headers.getAll('set-cookie')
+  if (setCookieHeaders.length === 0) {
+    return []
+  }
+
+  const cookies: CookieOptions[] = []
+
+  for (const cookieString of setCookieHeaders) {
+    const parts = cookieString.split(';').map((part) => part.trim())
+
+    // Parse name=value (first part)
+    const nameValueRegex = /^([^=]+)=(.*)$/
+    const nameValueMatch = nameValueRegex.exec(parts[0])
+    if (!nameValueMatch) {
+      continue // Skip invalid cookies
+    }
+
+    const name = nameValueMatch[1].trim()
+    const value = nameValueMatch[2].trim()
+
+    const cookie: CookieOptions = {
+      name: decodeCookieValue(name),
+      value: decodeCookieValue(value),
+      path: '/', // Default
+      sameSite: 'lax', // Default
+    }
+
+    // Parse attributes
+    for (let i = 1; i < parts.length; i++) {
+      const part = parts[i]
+      const lowerPart = part.toLowerCase()
+
+      if (lowerPart === 'secure') {
+        cookie.secure = true
+      } else if (lowerPart === 'httponly') {
+        cookie.httpOnly = true
+      } else if (lowerPart === 'partitioned') {
+        cookie.partitioned = true
+      } else if (lowerPart.startsWith('path=')) {
+        cookie.path = part.substring(5).trim()
+      } else if (lowerPart.startsWith('domain=')) {
+        cookie.domain = part.substring(7).trim()
+      } else if (lowerPart.startsWith('max-age=')) {
+        const maxAge = parseInt(part.substring(8).trim(), 10)
+        if (!Number.isNaN(maxAge)) {
+          cookie.maxAge = maxAge
+        }
+      } else if (lowerPart.startsWith('expires=')) {
+        const expiresStr = part.substring(8).trim()
+        const expiresDate = new Date(expiresStr)
+        if (!Number.isNaN(expiresDate.getTime())) {
+          cookie.expires = expiresDate
+        }
+      } else if (lowerPart.startsWith('samesite=')) {
+        const sameSiteValue = part.substring(9).trim().toLowerCase()
+        if (sameSiteValue === 'strict' || sameSiteValue === 'lax' || sameSiteValue === 'none') {
+          cookie.sameSite = sameSiteValue
+        }
+      }
+    }
+
+    cookies.push(cookie)
+  }
+
+  return cookies
+}
+
 const decodeCookieValue = (value: string): string => {
   const unquoted = value.startsWith('"') ? value.slice(1, -1) : value
   try {
@@ -306,74 +374,6 @@ export class Effects {
 
   apply(response: Response): Response {
     return Effects.apply(response, this.values)
-  }
-
-  static parseCookies(response: Response): CookieOptions[] {
-    const setCookieHeaders = response.headers.getAll('set-cookie')
-    if (setCookieHeaders.length === 0) {
-      return []
-    }
-
-    const cookies: CookieOptions[] = []
-
-    for (const cookieString of setCookieHeaders) {
-      const parts = cookieString.split(';').map((part) => part.trim())
-
-      // Parse name=value (first part)
-      const nameValueRegex = /^([^=]+)=(.*)$/
-      const nameValueMatch = nameValueRegex.exec(parts[0])
-      if (!nameValueMatch) {
-        continue // Skip invalid cookies
-      }
-
-      const name = nameValueMatch[1].trim()
-      const value = nameValueMatch[2].trim()
-
-      const cookie: CookieOptions = {
-        name: decodeCookieValue(name),
-        value: decodeCookieValue(value),
-        path: '/', // Default
-        sameSite: 'lax', // Default
-      }
-
-      // Parse attributes
-      for (let i = 1; i < parts.length; i++) {
-        const part = parts[i]
-        const lowerPart = part.toLowerCase()
-
-        if (lowerPart === 'secure') {
-          cookie.secure = true
-        } else if (lowerPart === 'httponly') {
-          cookie.httpOnly = true
-        } else if (lowerPart === 'partitioned') {
-          cookie.partitioned = true
-        } else if (lowerPart.startsWith('path=')) {
-          cookie.path = part.substring(5).trim()
-        } else if (lowerPart.startsWith('domain=')) {
-          cookie.domain = part.substring(7).trim()
-        } else if (lowerPart.startsWith('max-age=')) {
-          const maxAge = parseInt(part.substring(8).trim(), 10)
-          if (!Number.isNaN(maxAge)) {
-            cookie.maxAge = maxAge
-          }
-        } else if (lowerPart.startsWith('expires=')) {
-          const expiresStr = part.substring(8).trim()
-          const expiresDate = new Date(expiresStr)
-          if (!Number.isNaN(expiresDate.getTime())) {
-            cookie.expires = expiresDate
-          }
-        } else if (lowerPart.startsWith('samesite=')) {
-          const sameSiteValue = part.substring(9).trim().toLowerCase()
-          if (sameSiteValue === 'strict' || sameSiteValue === 'lax' || sameSiteValue === 'none') {
-            cookie.sameSite = sameSiteValue
-          }
-        }
-      }
-
-      cookies.push(cookie)
-    }
-
-    return cookies
   }
 
   static get(): Effects {

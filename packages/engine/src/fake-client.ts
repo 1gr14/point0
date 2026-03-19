@@ -1,6 +1,6 @@
 import type { ClientPoints, ClientRuntime, PointsScope, RichFetchFn } from '@point0/core'
 import { _getSsItemsWithRestErrors, _ssRunWithServerStorageState, generateId, superstore } from '@point0/core'
-import { serializeCookiePair, type CookieOptionsInput, Effects } from '@point0/core/effects'
+import { parseCookies, serializeCookiePair, type CookieOptionsInput } from '@point0/core/effects'
 import fetchCookie from 'fetch-cookie'
 import { CookieJar } from 'tough-cookie'
 import type { EngineClient } from './client.js'
@@ -258,7 +258,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
       if (!cookieSetter) {
         return
       }
-      const cookies = Effects.parseCookies(response)
+      const cookies = parseCookies(response)
       for (const cookie of cookies) {
         // if (cookie.httpOnly) {
         //   continue
