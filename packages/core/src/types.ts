@@ -2545,6 +2545,7 @@ export type NicePageStagePoint<
   >,
   | 'page'
   | 'on'
+  | 'ssr'
   | 'serverOn'
   | 'clientOn'
   | 'middleware'
@@ -2625,6 +2626,7 @@ export type NiceComponentStagePoint<
   >,
   | 'component'
   | 'on'
+  | 'ssr'
   | 'serverOn'
   | 'clientOn'
   | 'middleware'
@@ -2968,6 +2970,7 @@ export type NiceLayoutStagePoint<
   >,
   | 'layout'
   | 'on'
+  | 'ssr'
   | 'serverOn'
   | 'clientOn'
   | 'middleware'
@@ -3054,6 +3057,7 @@ export type NiceProviderStagePoint<
   >,
   | 'provider'
   | 'on'
+  | 'ssr'
   | 'serverOn'
   | 'clientOn'
   | 'middleware'

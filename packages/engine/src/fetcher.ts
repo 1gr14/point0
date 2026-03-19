@@ -65,10 +65,14 @@ export class Fetcher<TError extends ErrorPoint0> {
     if (process.env.NODE_ENV === 'production') {
       return undefined
     }
-    if (process.env.POINT0_UNSAFE_FIX_BUN_STATIC_SERVE !== 'true') {
+    const allowedPrefix = process.env.POINT0_UNSAFE_FIX_BUN_STATIC_SERVE
+    if (!allowedPrefix) {
       return undefined
     }
     const absPath = request.location.pathname
+    if (!absPath.startsWith(allowedPrefix)) {
+      return undefined
+    }
     const bunFile = Bun.file(absPath)
     if (await bunFile.exists()) {
       return new Response(Bun.file(absPath))

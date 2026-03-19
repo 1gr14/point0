@@ -21,9 +21,15 @@
   "module": "./dist/esm/index.js",
   "typesVersions": {
     "*": {
-      "": ["./dist/esm/index.d.ts"],
-      "effects": ["./dist/esm/effects.d.ts"],
-      "request0": ["./dist/esm/request0.d.ts"]
+      "": [
+        "./dist/esm/index.d.ts"
+      ],
+      "effects": [
+        "./dist/esm/effects.d.ts"
+      ],
+      "request0": [
+        "./dist/esm/request0.d.ts"
+      ]
     }
   },
   "exports": {
@@ -63,7 +69,6 @@
   },
   "dependencies": {
     "@standard-schema/spec": "^1.1.0",
-    "react-ssr-prepass": "^1.6.0",
     "safe-stable-stringify": "^2.5.0",
     "use-context-selector": "^2.0.0"
   },
@@ -82,7 +87,8 @@
     "esbuild-fix-imports-plugin": "^1.0.22",
     "superjson": "^2.2.6",
     "tsup": "^8.0.0",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "react": "catalog:"
   },
   "publishConfig": {
     "access": "restricted"

@@ -26,8 +26,6 @@ export const ideaPage = ideaLayout
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
       where: { id: +params.id },
     })
-    const error = new Error('test error')
-    throw error
     return [202, { idea }]
   })
   .loader(async ({ data }) => {
