@@ -88,7 +88,8 @@ export class TestProjectOneClient {
     )
     // await this.replace(this.files.engine, '// serving: client,', `serving: 'localhost:${this.clientPort}',`)
     if (!this.ssr) {
-      await this.replace(this.files.root, '.ssr(true)', '// .ssr(true)')
+      // await this.replace(this.files.root, '.ssr(true)', '// .ssr(true)')
+      await this.replace(this.files.engine, 'ssr: true,', `ssr: false,`)
     }
     if (this.prefetchPageOnNavigate !== false) {
       await this.replace(

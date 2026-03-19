@@ -125,14 +125,16 @@ const traverse = ((traverseModule as any).default ?? traverseModule) as typeof t
 
 export class Walker {
   readonly files = new Map<string, CompilerFile<boolean>>()
+  readonly ssr: boolean
 
   // <scope, Routes>
   readonly routes: Record<string, RoutesPretty>
   // <strpos, point>
   readonly points = new Map<string, CompilerPoint>()
 
-  constructor({ routes }: { routes: Record<string, RoutesPretty> | undefined }) {
+  constructor({ routes, ssr }: { routes: Record<string, RoutesPretty> | undefined; ssr?: boolean }) {
     this.routes = routes ?? {}
+    this.ssr = ssr === undefined ? false : ssr
   }
 
   getRoutesByScope(scope: string): RoutesPretty | undefined {
@@ -362,6 +364,7 @@ export class Walker {
         baseNodePath,
         letsNodePath,
         isBasePoint0,
+        ssr: this.ssr,
       })
       const exPoint = this.points.get(point.strpos)
       if (exPoint) {

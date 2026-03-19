@@ -640,7 +640,7 @@ export class Point0<
     this._Error = options._Error ?? (ErrorPoint0 as unknown as ClassLikeError0<TError>)
     this._middlewares = options._middlewares ?? []
     this._transformer = options._transformer ?? undefined
-    this._ssr = options._ssr ?? false
+    this._ssr = options._ssr ?? _point0_env.vars.POINT0_SSR === 'true'
     this._eventerSubscriptions = options._eventerSubscriptions ?? []
     this._serverurl = options._serverurl ?? undefined
     this._hasServerLoader = options._hasServerLoader ?? undefined
@@ -6213,7 +6213,6 @@ export class Point0<
         }
       }
     }
-
     if (typeof pointMountActionsSsr === 'boolean' && this._ssr !== pointMountActionsSsr) {
       throw new Error(
         `Points have different ssr settings, so you may loose mount actions in ssr mode ${this.toStringWithLocation()} and ${point.toStringWithLocation()} `,

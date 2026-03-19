@@ -135,10 +135,12 @@ export class TestProjectTwoClient {
       `hmrPort: ${typeof this.client2HmrPort === 'number' ? this.client2HmrPort : 'false'},`,
     )
     if (!this.ssr1) {
-      await this.replace(this.files.root1, '.ssr(true)', '// .ssr(true)')
+      // await this.replace(this.files.root1, '.ssr(true)', '// .ssr(true)')
+      await this.replace(this.files.engine, 'ssr: true, // ssr1', `ssr: false, // ssr1`)
     }
     if (!this.ssr2) {
-      await this.replace(this.files.root2, '.ssr(true)', '// .ssr(true)')
+      // await this.replace(this.files.root2, '.ssr(true)', '// .ssr(true)')
+      await this.replace(this.files.engine, 'ssr: true, // ssr2', `ssr: false, // ssr2`)
     }
     if (this.prefetchPageOnNavigate1 !== false) {
       await this.replace(

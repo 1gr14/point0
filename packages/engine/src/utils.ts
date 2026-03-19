@@ -9,6 +9,7 @@ import pRetry from 'p-retry'
 import type { ViteDevServer } from 'vite'
 import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, ExtractedViteConfig, PortPolicy } from './config.js'
 import { killPort } from './port.js'
+import type { CompilerOptions } from '@point0/core'
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
   if (!path) {
@@ -494,6 +495,7 @@ export const createViteDevServer = async ({
   hmrPort,
   envConsts,
   root,
+  compilerOptions,
 }: {
   viteConfig: EngineOptionsViteConfig | null
   scope: PointsScope
@@ -502,6 +504,7 @@ export const createViteDevServer = async ({
   envConsts?: EngineOptionsEnvParsed | EngineOptionsEnvParsed
   mode: NormalizedNodeEnv
   root: string | undefined
+  compilerOptions: CompilerOptions | false
 }): Promise<ViteDevServer> => {
   if (env.build.was) {
     throw new Error('You can not serve by dev client with built engine')
@@ -518,9 +521,9 @@ export const createViteDevServer = async ({
       scope,
     })
 
-    const compilerPlugin = await import('@point0/compiler/plugin/vite').then((module) =>
-      module.compilerVitePlugin({ side, scope }),
-    )
+    const compilerPlugin = compilerOptions
+      ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
+      : []
 
     const hmr =
       loadedViteConfig.server?.hmr === false
@@ -533,7 +536,7 @@ export const createViteDevServer = async ({
             }
     return await createServer({
       ...loadedViteConfig,
-      plugins: [compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
+      plugins: [...compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
       configFile: false,
       clearScreen: loadedViteConfig.clearScreen ?? false,
       appType: 'custom',

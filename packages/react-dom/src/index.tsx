@@ -36,9 +36,7 @@ export function mount(
   if (__POINT0_DEHYDRATED_SUPER_STORE__) {
     superstore.prepare(__POINT0_DEHYDRATED_SUPER_STORE__, clientPoints.transformer)
   }
-  const appElement = createElement(App, {
-    points: clientPoints,
-  })
+  const appElement = createElement(App)
 
   // First invocation: create the root once.
   //    - If SSR markup exists, hydrate.

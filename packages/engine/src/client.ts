@@ -55,7 +55,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
   // pointsDistFile: string | null
   pointsProvided: PointsDefinitionSource<any, any> | null
   points: TPrepared extends true ? ClientPoints | null : undefined
-  ssr: TPrepared extends true ? boolean : undefined
+  ssr: boolean
   appProvided: EngineOptionsAppComponent | null
   App: TPrepared extends true ? AppComponent | null : undefined
   // appDistFile: string | null
@@ -121,6 +121,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     bunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
     viteDevServer: ViteDevServer | true | null
     server: EngineServer
+    ssr: boolean
   }) {
     this.scope = input.scope
     this.cwd = input.cwd
@@ -162,7 +163,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     this.server = input.server
     this.prepared = input.prepared
     this.engineFile = input.engineFile
-    this.ssr = undefined as TPrepared extends true ? boolean : undefined
+    this.ssr = input.ssr
     this.App = undefined as TPrepared extends true ? AppComponent | null : undefined
   }
 
@@ -198,6 +199,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     viteConfig: EngineOptionsViteConfig | null
     compiler: EngineOptionsCompilerSpecificParsed | false
     server: EngineServer
+    ssr: boolean
   }): EngineClient<false> {
     const viteDevServer = null
     const bunNativeDevServer = null
@@ -240,14 +242,17 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     NODE_ENV: NormalizedNodeEnv
     POINT0_SCOPE: PointsScope
     POINT0_SIDE: 'client'
+    POINT0_SSR: 'true' | 'false'
   } {
     const NODE_ENV = normalizeAndValidateNodeEnv(nodeEnvFallback)
     const POINT0_SCOPE = this.scope
     const POINT0_SIDE = 'client'
+    const POINT0_SSR = this.ssr ? 'true' : 'false'
     this.envConsts.NODE_ENV = NODE_ENV
     this.envConsts.POINT0_SCOPE = POINT0_SCOPE
     this.envConsts.POINT0_SIDE = POINT0_SIDE
-    return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE }
+    this.envConsts.POINT0_SSR = POINT0_SSR
+    return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR }
   }
 
   async prepare({
@@ -283,8 +288,6 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     this.basepath = points?.basepath
 
     await this.readAppComponent()
-
-    this.ssr = (points?.ssr ?? false) as TPrepared extends true ? boolean : undefined
 
     if (this.publicdir) {
       await this.publicdir.prepare()
@@ -364,6 +367,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
       os: this.compiler.os,
       consts: [...(this.compiler.consts ?? []), this.envConsts],
       filter: this.compiler.filter,
+      ssr: this.compiler.ssr,
     }
   }
 
@@ -561,6 +565,7 @@ try {
             : this.indexHtml
               ? nodePath.dirname(this.indexHtml)
               : undefined,
+      compilerOptions: this.getCompilerOptions(),
     })
     this.viteDevServer = viteDevServer
     if (!this.indexHtml) {

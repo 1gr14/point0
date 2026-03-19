@@ -25,10 +25,10 @@ const prepareRandomFile = () => {
 
 const helper = (
   callback: ({ files, walker }: { files: TestFile[]; walker: Walker }) => void | Promise<void>,
-  preserve = false,
+  { preserve = false, ssr = false }: { preserve?: boolean; ssr?: boolean } = {},
 ) => {
   return async () => {
-    const walker = new Walker({ routes: undefined })
+    const walker = new Walker({ routes: undefined, ssr })
     const files = Array.from({ length: 11 }, prepareRandomFile)
     try {
       await callback({

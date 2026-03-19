@@ -4,6 +4,7 @@ export const engine = Engine.create({
   file: import.meta.url,
   // clientsServerOutdir: '../dist/server',
   // clientsSelfOutdir: '../dist',
+  ssr: true,
   pointsGlob: ['**/*.{ts,tsx}'],
   server: {
     scope: 'client',

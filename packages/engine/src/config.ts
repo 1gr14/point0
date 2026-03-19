@@ -77,16 +77,18 @@ export type EngineOptionsCompilerGeneral = {
   os?: boolean
   consts?: CompilerEnvConsts
   filter?: RegExp
+  ssr?: boolean
 }
-export type EngineOptionsCompilerGeneralParsed = {
-  side: boolean
-  scope: boolean
-  consts: CompilerEnvConstsNormalized | undefined
-  mode: boolean
-  runtime: boolean
-  os: boolean
-  filter: RegExp | undefined
-}
+// export type EngineOptionsCompilerGeneralParsed = {
+//   side: boolean
+//   scope: boolean
+//   consts: CompilerEnvConstsNormalized | undefined
+//   mode: boolean
+//   runtime: boolean
+//   os: boolean
+//   filter: RegExp | undefined
+//   ssr: boolean
+// }
 export type EngineOptionsCompilerSpecific = {
   side?: boolean
   scope?: boolean
@@ -95,6 +97,7 @@ export type EngineOptionsCompilerSpecific = {
   os?: EnvOsName | false
   consts?: CompilerEnvConsts
   filter?: RegExp
+  ssr?: boolean
 }
 export type EngineOptionsCompilerSpecificParsed = {
   side: boolean
@@ -104,6 +107,7 @@ export type EngineOptionsCompilerSpecificParsed = {
   runtime: EnvRuntimeName | false
   os: EnvOsName | false
   filter: RegExp | undefined
+  ssr: boolean
 }
 
 export type PortPolicy = 'kill' | 'auto' | 'simple'
@@ -127,6 +131,8 @@ export type EngineGeneralOptions = {
   bunPlugins?: EngineSharedPluginsDefinition
   viteConfig?: EngineOptionsViteConfig
   compiler?: EngineOptionsCompilerGeneral | boolean
+  // default ssr value
+  ssr?: boolean
 }
 
 export type EngineServerOptions<
@@ -154,6 +160,7 @@ export type EngineServerOptions<
   hmrPort?: number | string | boolean
   portPolicy?: PortPolicy
   serveRetries?: number
+  ssr?: boolean
 }
 
 export type EngineClientOptions = {
@@ -181,6 +188,7 @@ export type EngineClientOptions = {
   outdir?: string
   routes?: EngineOptionsRoutes
   banner?: string
+  ssr?: boolean
 }
 export type EngineOptions<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -347,6 +355,7 @@ export type EngineGeneralOptionsParsed = {
   bunPlugins: EngineSharedPluginsDefinition
   portPolicy: PortPolicy | null
   serveRetries: number | null
+  ssr: boolean | undefined
 }
 export type EngineClientOptionsParsed = {
   scope: PointsScope
@@ -379,6 +388,7 @@ export type EngineClientOptionsParsed = {
   } | null
   portPolicy: PortPolicy
   serveRetries: number
+  ssr: boolean
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
@@ -406,6 +416,7 @@ export type EngineServerOptionsParsed = {
   hmrPort: number | false
   portPolicy: PortPolicy
   serveRetries: number
+  ssr: boolean
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -564,6 +575,7 @@ const parseEngineGeneralOptions = ({
     const cwd = cwdBeforeBuild
     return { cwdAfterBuild, cwdBeforeBuild, cwd }
   })()
+  const ssr = generalOptions.ssr
   const compiler =
     generalOptions.compiler === undefined
       ? null
@@ -579,6 +591,11 @@ const parseEngineGeneralOptions = ({
               ...(generalOptions.compiler.os !== undefined ? { os: generalOptions.compiler.os } : {}),
               ...(generalOptions.compiler.scope !== undefined ? { scope: generalOptions.compiler.scope } : {}),
               ...(generalOptions.compiler.side !== undefined ? { side: generalOptions.compiler.side } : {}),
+              ...(generalOptions.compiler.ssr !== undefined
+                ? { ssr: generalOptions.compiler.ssr }
+                : ssr !== undefined
+                  ? { ssr }
+                  : {}),
             }
   const result = {
     log: generalOptions.log ?? _defaultLogFn,
@@ -621,6 +638,7 @@ const parseEngineGeneralOptions = ({
         : [generalOptions.buildWatchGlob],
     portPolicy: generalOptions.portPolicy ?? null,
     serveRetries: generalOptions.serveRetries ?? null,
+    ssr,
   }
 }
 
@@ -779,6 +797,12 @@ export const parseEngineServerOptions = ({
       ? generalOptionsParsed.compiler
       : {}
   const serverOptionsCompilerRecord = typeof serverOptions.compiler === 'object' ? serverOptions.compiler : {}
+  const ssr =
+    typeof serverOptions.ssr !== 'undefined'
+      ? serverOptions.ssr
+      : generalOptionsParsed.ssr !== undefined
+        ? generalOptionsParsed.ssr
+        : false
   const mergedCompilerRecord = {
     side: true,
     scope: true,
@@ -801,6 +825,12 @@ export const parseEngineServerOptions = ({
           : [serverOptionsCompilerRecord.consts]
         : []),
     ],
+    ssr:
+      serverOptionsCompilerRecord.ssr !== undefined
+        ? serverOptionsCompilerRecord.ssr
+        : generalOptionsParsedCompilerRecord.ssr !== undefined
+          ? generalOptionsParsedCompilerRecord.ssr
+          : ssr,
   } satisfies EngineOptionsCompilerSpecificParsed
   const compiler =
     serverOptions.compiler === false
@@ -814,6 +844,7 @@ export const parseEngineServerOptions = ({
             os: false as const,
             consts: mergedCompilerRecord.consts,
             filter: mergedCompilerRecord.filter,
+            ssr: mergedCompilerRecord.ssr,
           }
         : serverOptions.compiler !== undefined
           ? mergedCompilerRecord
@@ -860,6 +891,7 @@ export const parseEngineServerOptions = ({
             path: serverOptions.viteConfig,
           })
         : (serverOptions.viteConfig ?? generalOptionsParsed.viteConfig ?? null),
+    ssr,
   }
 }
 const parseEngineClientOptions = ({
@@ -912,6 +944,12 @@ const parseEngineClientOptions = ({
       ? generalOptionsParsed.compiler
       : {}
   const clientOptionsCompilerRecord = typeof clientOptions.compiler === 'object' ? clientOptions.compiler : {}
+  const ssr =
+    typeof clientOptions.ssr !== 'undefined'
+      ? clientOptions.ssr
+      : generalOptionsParsed.ssr !== undefined
+        ? generalOptionsParsed.ssr
+        : false
   const mergedCompilerRecord = {
     side: true,
     scope: true,
@@ -934,6 +972,12 @@ const parseEngineClientOptions = ({
           : [clientOptionsCompilerRecord.consts]
         : []),
     ],
+    ssr:
+      clientOptionsCompilerRecord.ssr !== undefined
+        ? clientOptionsCompilerRecord.ssr
+        : generalOptionsParsedCompilerRecord.ssr !== undefined
+          ? generalOptionsParsedCompilerRecord.ssr
+          : ssr,
   } satisfies EngineOptionsCompilerSpecificParsed
   const compiler =
     clientOptions.compiler === false
@@ -947,6 +991,7 @@ const parseEngineClientOptions = ({
             os: false as const,
             consts: mergedCompilerRecord.consts,
             filter: mergedCompilerRecord.filter,
+            ssr: mergedCompilerRecord.ssr,
           }
         : clientOptions.compiler !== undefined
           ? mergedCompilerRecord
@@ -1026,6 +1071,7 @@ const parseEngineClientOptions = ({
     engineFile: generalOptionsParsed.engineFile,
     portPolicy: clientOptions.portPolicy ?? generalOptionsParsed.portPolicy ?? 'simple',
     serveRetries: clientOptions.serveRetries ?? generalOptionsParsed.serveRetries ?? 0,
+    ssr,
   }
 }
 

@@ -4458,6 +4458,7 @@ export type CompilerOptions = {
   consts?: CompilerEnvConsts
   filter?: RegExp
   hmrFix?: boolean
+  ssr?: boolean
 }
 export type CompilerEnvConstsObject = { [key: string]: string | number | boolean | null | undefined }
 export type CompilerEnvConstsString = string

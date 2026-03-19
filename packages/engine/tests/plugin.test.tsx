@@ -437,6 +437,7 @@ describe('plugin', () => {
 
   it.concurrent('forbidden different ssr settings when mount actions provided', async () => {
     const pluginNoSsr = Point0.lets('plugin', 'test-plugin-no-ssr')
+      .ssr(false)
       .with(() => ({ plugin: 'noSsr' }))
       .plugin()
     const pluginSsr = Point0.lets('plugin', 'test-plugin-ssr')
@@ -444,7 +445,7 @@ describe('plugin', () => {
       .with(() => ({ plugin: 'ssr' }))
       .plugin()
     const rootSsr = Point0.lets('root', 'root').ssr(true).root()
-    const rootNoSsr = Point0.lets('root', 'root').root()
+    const rootNoSsr = Point0.lets('root', 'root').ssr(false).root()
     expect(() =>
       rootSsr
         .lets('page', 'home', '/')

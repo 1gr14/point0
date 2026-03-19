@@ -38,6 +38,10 @@ start0
 Проверить паршиал сср
 Сделать дефолтный сср настравиваемый через конфиг
 
+В хтмл один скрипт с энвами и констнсами на двоих
+globalHead can be non fn
+fix vite example head
+
 ClientOnly react helper
 
 --+

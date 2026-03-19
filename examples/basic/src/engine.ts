@@ -4,6 +4,7 @@ export const engine = Engine.create({
   file: import.meta.url,
   pointsGlob: ['**/*.{ts,tsx,mdx}'],
   portPolicy: 'kill',
+  ssr: true,
   server: {
     scope: 'client',
     port: 3000,
@@ -11,24 +12,24 @@ export const engine = Engine.create({
     generate: [
       {
         what: 'points',
-        outfile: './lib/points.ready.ts',
+        outfile: './lib/points.server.ts',
       },
     ],
-    points: async () => await import('./lib/points.ready'),
+    points: async () => await import('./lib/points.server'),
     outdir: '../dist/server',
   },
   clients: [
     {
       scope: 'client',
       app: async () => await import('./app'),
-      points: async () => await import('./lib/points.ready'),
+      points: async () => await import('./lib/points.client'),
       // points: async () => points,
       // generatePointsLazy: './lib/points.lazy.ts',
       // generatePointsReady: './lib/points.ready.ts',
       generate: [
         {
           what: 'points',
-          outfile: './lib/points.lazy.ts',
+          outfile: './lib/points.client.ts',
         },
         {
           what: 'routes',

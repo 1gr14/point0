@@ -25,6 +25,7 @@ export type FilesGeneratorOptions = {
   routes: Record<string, RoutesPretty | null | EngineOptionsRoutes>
   banner?: string
   log?: LogFn
+  ssr?: boolean
 }
 
 export type FilesGeneratorTaskPoints = {
@@ -73,6 +74,7 @@ export class FilesGenerator {
   private isRoutesInitialized = false
   readonly log: LogFn
   private readonly filesWatcher: FilesWatcher
+  readonly ssr: boolean
 
   readonly pointsFilesChangeWatchers: FilesGeneratorPointsFilesChangeWatcher[] = []
 
@@ -91,6 +93,7 @@ export class FilesGenerator {
     this.globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g))
     this.globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g.slice(1)))
     this.tempDir = resolveTempDirPath(['generator'])
+    this.ssr = opts.ssr === undefined ? false : opts.ssr
 
     this.tasks = opts.tasks.map((t) => {
       const task = {
@@ -237,7 +240,7 @@ export class FilesGenerator {
     await this.initRoutesInstances()
     const files = [...this.files]
     const chunks = FilesGenerator.chunk(files, chunkSize)
-    const walker = new Walker({ routes: this.routes })
+    const walker = new Walker({ routes: this.routes, ssr: this.ssr })
     const collectedChunks = await Promise.all(
       chunks.map(async (chunk) => {
         const pointsArrays = await Promise.all(chunk.map(async (file) => walker.collectPointsFromFile({ file })))

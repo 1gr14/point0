@@ -103,6 +103,7 @@ export class Engine<
     server.clients = serverClients
 
     const generator = FilesGenerator.create({
+      ssr: parsedOptions.general.ssr,
       log: parsedOptions.general.log,
       cwd: parsedOptions.general.cwd,
       glob: parsedOptions.general.pointsGlob,

@@ -3,7 +3,6 @@ import superjson from 'superjson'
 import { prisma } from './prisma.js'
 
 export const client = Point0.lets('root', 'client')
-  .ssr(true)
   .transformer(superjson)
   // .serverurl(process.env.SOURCE_BASE_URL!)
   .ctx({
@@ -20,11 +19,11 @@ export const client = Point0.lets('root', 'client')
     refetchIntervalInBackground: false,
   })
   .prefetchPageOnLinkHover(true)
-  .head({
+  .head('global', () => ({
     title: 'Loading...',
     titleTemplate: '%s | IdeaNick',
     htmlAttrs: { lang: 'en' },
-  })
+  }))
   .root()
 
 export type Ctx = (typeof client)['Infer']['Ctx']

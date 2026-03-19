@@ -1,8 +1,8 @@
 import { Compiler } from '../compiler.js'
 import type { CompilerOptions } from '@point0/core'
 
-export function compilerBabelPlugin(_babel: never, options: CompilerOptions) {
-  const compiler = Compiler.create(options)
+export function compilerBabelPlugin(_babel: never, options: CompilerOptions | Compiler) {
+  const compiler = options instanceof Compiler ? options : Compiler.create(options)
 
   return {
     parserOverride(

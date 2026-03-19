@@ -4,6 +4,7 @@ export const engine = Engine.create({
   pointsGlob: ['**/*.{ts,tsx}'],
   serveRetries: 99,
   portPolicy: 'kill',
+  ssr: true,
   server: {
     scope: 'root',
     entry: { main: './index.server.ts' },
@@ -27,6 +28,7 @@ export const engine = Engine.create({
       app: async () => await import('./app1.js'),
       points: async () => await import('./lib/points1.js'),
       routes: async () => await import('./lib/routes1.js'),
+      ssr: true, // ssr1
       generate: [
         {
           what: 'points',
@@ -54,6 +56,7 @@ export const engine = Engine.create({
       app: async () => await import('./app2.js'),
       points: async () => await import('./lib/points2.js'),
       routes: async () => await import('./lib/routes2.js'),
+      ssr: true, // ssr2
       generate: [
         {
           what: 'points',

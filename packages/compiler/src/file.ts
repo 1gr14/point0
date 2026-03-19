@@ -581,6 +581,7 @@ export class CompilerFile<THasContent extends boolean> {
         errors: unknown[]
         ok: boolean
         modified: boolean
+        ssr: boolean
       }
     | undefined = undefined
   shakeForEnv({
@@ -591,6 +592,7 @@ export class CompilerFile<THasContent extends boolean> {
     mode,
     runtime = false,
     os = false,
+    ssr = false,
   }: {
     side: 'client' | 'server' | false
     scope: string | false
@@ -599,6 +601,7 @@ export class CompilerFile<THasContent extends boolean> {
     os?: EnvOsName | false
     consts?: CompilerEnvConsts | undefined
     built?: boolean | undefined
+    ssr?: boolean | undefined
   }): {
     side: 'client' | 'server' | false
     built: boolean
@@ -610,6 +613,7 @@ export class CompilerFile<THasContent extends boolean> {
     errors: unknown[]
     ok: boolean
     modified: boolean
+    ssr: boolean
   } {
     const errors: unknown[] = []
     consts = normalizeEnvConsts(consts)
@@ -629,6 +633,7 @@ export class CompilerFile<THasContent extends boolean> {
     if (os !== false) {
       consts.unshift({ POINT0_OS: os })
     }
+    consts.unshift({ POINT0_SSR: ssr ? 'true' : 'false' })
     let modified = false
     if (!this.content) {
       throw new Error(`File ${this.abs} is not read yet`)
@@ -668,6 +673,7 @@ export class CompilerFile<THasContent extends boolean> {
           errors,
           ok: true,
           modified,
+          ssr,
         }
         return this._shakeForEnv
       }
@@ -1272,12 +1278,12 @@ export class CompilerFile<THasContent extends boolean> {
         if (!passModified) break
       }
 
-      this._shakeForEnv = { side, scope, mode, runtime, os, consts, built, errors, ok: true, modified }
+      this._shakeForEnv = { side, scope, mode, runtime, os, consts, built, errors, ok: true, modified, ssr }
       this.modified ||= modified
       return this._shakeForEnv
     } catch (e) {
       errors.push(e)
-      this._shakeForEnv = { side, scope, mode, runtime, os, consts, built, errors, ok: false, modified }
+      this._shakeForEnv = { side, scope, mode, runtime, os, consts, built, errors, ok: false, modified, ssr }
       return this._shakeForEnv
     }
   }

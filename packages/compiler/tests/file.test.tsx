@@ -39,9 +39,12 @@ const prepareRandomFile = (walker: Walker): TestFile => {
   return Object.assign(bunFile, { path, basename, importpath, cf, wrp, wrpsync })
 }
 
-const helper = (callback: ({ files }: { files: TestFile[] }) => void | Promise<void>, preserve = false) => {
+const helper = (
+  callback: ({ files }: { files: TestFile[] }) => void | Promise<void>,
+  { preserve = false, ssr = false }: { preserve?: boolean; ssr?: boolean } = {},
+) => {
   return async () => {
-    const walker = new Walker({ routes: undefined })
+    const walker = new Walker({ routes: undefined, ssr })
     const files = Array.from({ length: 11 }, () => prepareRandomFile(walker))
     try {
       await callback({

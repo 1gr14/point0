@@ -24,6 +24,7 @@ export class Compiler {
   hmrFix: boolean
   walker: Walker
   routes: Record<string, RoutesPretty> | undefined
+  ssr: boolean
 
   /*
    * Match JS/TS and markdown-ish source files while excluding virtual/shim
@@ -50,6 +51,7 @@ export class Compiler {
     mode,
     runtime,
     os,
+    ssr,
   }: {
     filter: RegExp
     side: 'client' | 'server' | false
@@ -62,6 +64,7 @@ export class Compiler {
     mode: NormalizedNodeEnv | false
     runtime: EnvRuntimeName | false
     os: EnvOsName | false
+    ssr: boolean
   }) {
     this.filter = filter
     this.side = side
@@ -74,6 +77,7 @@ export class Compiler {
     this.mode = mode
     this.runtime = runtime
     this.os = os
+    this.ssr = ssr
   }
 
   static create(options: CompilerOptions) {
@@ -88,6 +92,7 @@ export class Compiler {
       mode = process.env.NODE_ENV,
       runtime = false,
       os = false,
+      ssr = false,
     } = options
     if (mode !== false && (!mode || !normalNodeEnvs.includes(mode as NormalizedNodeEnv))) {
       throw new Error(`Invalid mode (NODE_ENV): "${mode}". Allowed values: production, development, test`)
@@ -98,12 +103,13 @@ export class Compiler {
       scope,
       consts,
       hmrFix: hmrFix ?? true,
-      walker: new Walker({ routes }),
+      walker: new Walker({ routes, ssr }),
       routes,
       built: built ?? false,
       mode: mode as NormalizedNodeEnv | false,
       runtime,
       os,
+      ssr,
     })
   }
 
@@ -139,6 +145,7 @@ export class Compiler {
     const mode = this.mode
     const runtime = this.runtime
     const os = this.os
+    const ssr = this.ssr
     const errors: unknown[] = []
     const collectResult = this.walker.collectPointsFromFile({ file, content })
     errors.push(...collectResult.errors)
@@ -162,7 +169,7 @@ export class Compiler {
         point.addHmrFix()
       }
     }
-    cf.shakeForEnv({ side, scope, consts, built, mode, runtime, os })
+    cf.shakeForEnv({ side, scope, consts, built, mode, runtime, os, ssr })
     if (built) {
       cf.shakeForBuiltEngine()
     }

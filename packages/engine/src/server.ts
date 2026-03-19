@@ -75,6 +75,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
   hmrPort: number | false
   fetcher: TPrepared extends true ? Fetcher<TError> : null
   compiler: EngineOptionsCompilerSpecificParsed | false
+  ssr: boolean
 
   private constructor(input: {
     prepared: TPrepared
@@ -101,6 +102,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     viteDevServer: ViteDevServer | null
     hmrPort: number | false
     compiler: EngineOptionsCompilerSpecificParsed | false
+    ssr: boolean
   }) {
     this.cwd = input.cwd
     this.scope = input.scope
@@ -133,6 +135,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     this.portPolicy = input.portPolicy
     this.compiler = input.compiler
     this.fetcher = null as TPrepared extends true ? Fetcher<TError> : null
+    this.ssr = input.ssr
   }
 
   static create(input: {
@@ -162,6 +165,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     portPolicy: PortPolicy
     serveRetries: number
     compiler: EngineOptionsCompilerSpecificParsed | false
+    ssr: boolean
   }): EngineServer<false> {
     const publicdir = input.publicdir
       ? Publicdir.create({
@@ -254,20 +258,22 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
   }: {
     nodeEnvFallback: NormalizedNodeEnv | undefined
     assignToProcessEnv: boolean
-  }): { NODE_ENV: NormalizedNodeEnv; POINT0_SCOPE: PointsScope; POINT0_SIDE: 'server' } {
+  }): { NODE_ENV: NormalizedNodeEnv; POINT0_SCOPE: PointsScope; POINT0_SIDE: 'server'; POINT0_SSR: 'true' | 'false' } {
     const NODE_ENV = normalizeAndValidateNodeEnv(nodeEnvFallback)
     const POINT0_SCOPE = this.scope
     const POINT0_SIDE = 'server'
+    const POINT0_SSR = this.ssr ? 'true' : 'false'
     this.envConsts.NODE_ENV = NODE_ENV
     this.envConsts.POINT0_SCOPE = POINT0_SCOPE
     this.envConsts.POINT0_SIDE = POINT0_SIDE
+    this.envConsts.POINT0_SSR = POINT0_SSR
     if (assignToProcessEnv) {
       for (const [envVarKey, envVarValue] of Object.entries({ ...this.envVars, ...this.envConsts })) {
         process.env[envVarKey] = envVarValue
         import.meta.env[envVarKey] = envVarValue
       }
     }
-    return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE }
+    return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR }
   }
 
   async prepare({ engine }: { engine: Engine<RequiredCtx, TError, true> }): Promise<EngineServer<true, TError>> {
@@ -322,6 +328,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
       os: this.compiler.os,
       consts: [...(this.compiler.consts ?? []), this.envConsts],
       filter: this.compiler.filter,
+      ssr: this.compiler.ssr,
     }
   }
 
@@ -388,6 +395,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
           : this.engineFile
             ? nodePath.dirname(this.engineFile)
             : undefined,
+      compilerOptions: this.getCompilerOptions(),
     })
     this.viteDevServer = viteDevServer
     this.installViteSsrStacktraceFixer()

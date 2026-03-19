@@ -3,6 +3,7 @@ export const engine = Engine.create({
   file: import.meta.url,
   pointsGlob: ['**/*.{ts,tsx}'],
   portPolicy: 'kill',
+  ssr: true,
   server: {
     scope: 'site',
     port: 3000,

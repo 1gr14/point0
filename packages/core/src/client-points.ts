@@ -33,7 +33,6 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
   manager: PointsManager
 
   basepath: AnyRoute | undefined
-  ssr: boolean
   middlewares: MiddlewareFn<TError, any>[]
   transformer: DataTransformerExtended
 
@@ -49,7 +48,6 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     pagesTreeSource,
     pagesTree,
     basepath,
-    ssr,
     middlewares,
     transformer,
   }: {
@@ -59,7 +57,6 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     pagesTreeSource: PagesTreeSource
     pagesTree: PagesTree
     basepath: AnyRoute | undefined
-    ssr: boolean
     middlewares: MiddlewareFn<TError, any>[]
     transformer: DataTransformerExtended
   }) {
@@ -69,7 +66,6 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     this.pagesTreeSource = pagesTreeSource
     this.pagesTree = pagesTree
     this.basepath = basepath
-    this.ssr = ssr
     this.middlewares = middlewares
     this.transformer = transformer
   }
@@ -97,7 +93,6 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     const routesHash = routes._.pathsOrdering.join(',')
 
     const basepath = root._basepath
-    const ssr = root._ssr
     const middlewares = root._middlewares
     const transformer = root._getTransformer()
 
@@ -108,7 +103,6 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
       pagesTreeSource,
       pagesTree,
       basepath,
-      ssr,
       middlewares,
       transformer,
     })

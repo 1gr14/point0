@@ -354,11 +354,14 @@ export const createTestThings = async ({
       }
     }
   }
+  const firstPoint = points?.at(0)?.point
+  const ssr = firstPoint && '_ssr' in firstPoint ? firstPoint._ssr : false
   const engine = await Engine.create({
     compiler: false,
     file: nodePath.resolve(__dirname, '../temp/never'),
     server: { scope: 'root', points },
     clients: [{ scope: 'root', points, indexHtml: '__POINT0_TEST_INDEX_HTML__', app }],
+    ssr,
     ...engineOptions,
   }).prepare({ preventClientDevServers })
   const client = FakeClient.create<TestThingsState>({

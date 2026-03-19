@@ -155,8 +155,8 @@ export function addEnvToDocumentHtml({
   envVars?: Record<string, string | number | boolean | undefined>
   envConsts?: Record<string, string | number | boolean | undefined>
 }): string {
-  const htmlWithConsts = addEnvConstsToDocumentHtml({ html, envConsts })
-  return addEnvVarsToDocumentHtml({ html: htmlWithConsts, envVars })
+  const htmlWithVars = addEnvVarsToDocumentHtml({ html, envVars })
+  return addEnvConstsToDocumentHtml({ html: htmlWithVars, envConsts })
 }
 
 function toJsonCompatibleEnv(
@@ -304,14 +304,9 @@ export async function getReadableStreamWithWrapper({
   // one scope for both render and pack ensures consistency
   return await executor.withServerGlobalState(async () => {
     // Kick off the render first; any randoms used during render happen now
-    const reactStream = await renderer(
-      createElement(App, {
-        points: clientPoints,
-      }),
-      {
-        ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
-      },
-    )
+    const reactStream = await renderer(createElement(App), {
+      ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
+    })
 
     // Snapshot AFTER render started, in the same state scope
     const compiledPrefix = (prefix ?? '').replace(

@@ -847,11 +847,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       this.serverStorageState.__POINT0_CLIENT_POINTS__ = clientPoints
     }
     await this.withServerGlobalState(async () => {
-      const stream = await renderToReadableStream(
-        React.createElement(App, {
-          points: clientPoints,
-        }),
-      )
+      const stream = await renderToReadableStream(React.createElement(App))
       await stream.allReady
       const queryClientState = _ssItems.__POINT0_QUERY_CLIENT__.get().getQueryCache().findAll()
       const suitableMarkers = queryClientState.flatMap((query) => {

@@ -26,7 +26,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   type: ReadyPointType
   name: PointName
   route: AnyRoute | undefined
-  ssr: TValid extends true ? boolean : boolean | undefined
+  ssr: boolean
   polh: TValid extends true ? boolean | number : boolean | number | undefined
   layouts: string[]
   errors: unknown[]
@@ -44,6 +44,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     baseNodePath,
     letsNodePath,
     isBasePoint0,
+    ssr,
   }: {
     walker: Walker
     file: CompilerFile<true>
@@ -53,6 +54,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     baseNodePath: NodePath<Node>
     letsNodePath: NodePath<Node>
     isBasePoint0: boolean
+    ssr: boolean
   }) {
     this.walker = walker
     this.file = file
@@ -75,6 +77,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     this.selfMethods = []
     this.chainMethods = []
     this.basepath = undefined
+    this.ssr = ssr
 
     file.addPointToMemory(this)
   }
@@ -747,7 +750,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     }
     const chainMethods: CompilerPointChainMethod[] = []
     let chainIndex = 0
-    let underSsr = false
+    let underSsr = this.walker.ssr
     let underAction = false
     for (const point of [this, ...this.parents].reverse()) {
       const methods = point.getSelfMethods()
