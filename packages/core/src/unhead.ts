@@ -16,11 +16,11 @@ export const UnheadProvider = ({
   } else {
     return (async () => {
       const { UnheadProvider: UnheadProviderServer } = await import('@unhead/react/server')
-      const serverHead = _ssItems.__POINT0_UNHEAD_HEAD__.get()
+      const serverHead = _ssItems.__POINT0_UNHEAD_SERVER_HEAD__.get()
       // if (!serverHead) {
       //   throw new Error('Unhead head is not set on server, wrap your code with Unhead inside App component')
       // }
-      return createElement(UnheadProviderServer, { value: serverHead, children })
+      return createElement(UnheadProviderServer, { value: serverHead as never, children })
     })()
   }
 }

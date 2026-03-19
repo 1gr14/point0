@@ -1,4 +1,5 @@
 import type { AnyLocation, AnyRoute } from '@devp0nt/route0'
+import { _ssItems, _ssRunWithServerStorageState } from '@point0/core'
 import type {
   AnyPoint,
   AppComponent,
@@ -31,11 +32,10 @@ import type {
   UnknownCtx,
   UnknownData,
 } from '@point0/core'
-import { _ssItems, _ssRunWithServerStorageState } from '@point0/core'
 import { Effects } from '@point0/core/effects'
 import type { Request0 } from '@point0/core/request0'
-import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
 import { dehydrate } from '@tanstack/react-query'
+import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
 import { createHead } from '@unhead/react/server'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
@@ -86,6 +86,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     serverStorageState: SuperStoreInternalValuesOrErrors
   }): Promise<Executor<TRequiredCtx, TError>> {
     const serverStorageState = Object.assign(providedServerStorageState, {
+      __POINT0_HYDRATION_FINISHED__: false,
       __POINT0_FAKE_CLIENT__: undefined,
       __POINT0_FETCH_FN__: engine.richFetch.bind(engine),
       __POINT0_REQUEST0__: request,
@@ -98,7 +99,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       __POINT0_SSR_LOCATION__: undefined,
       __POINT0_CURRENT_LOCATION__: new Error('Current location will exists only on ssr phase') as never,
       __POINT0_ROUTER_CONTEXT__: new Error('Router context will exists only on ssr phase') as never,
-      __POINT0_UNHEAD_HEAD__: createHead(),
+      __POINT0_UNHEAD_SERVER_HEAD__: createHead(),
     } satisfies SuperStoreInternalValues)
     return new Executor<TRequiredCtx, TError>({
       engine,

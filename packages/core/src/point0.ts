@@ -4316,7 +4316,9 @@ export class Point0<
   head<TStatus extends 'loading' | 'error' | 'success' | 'universal' | 'global'>(
     status: TStatus,
     head: TStatus extends 'global'
-      ? GlobalHeadFn<any, LocationOrAnyLocation<MountableLocation<TLetsReadyPointType, TRouteDefinition>>>
+      ?
+          | GlobalHeadFn<any, LocationOrAnyLocation<MountableLocation<TLetsReadyPointType, TRouteDefinition>>>
+          | ResolvableHead
       :
           | HeadFn<
               TStatus extends 'loading' | 'error' | 'success' ? TStatus : any,
@@ -9990,6 +9992,7 @@ export class Point0<
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     pageStateManager,
     prevMountActions,
+    skipGlobalHead,
   }: {
     pageState: RouterPageState
     pageStateManager:
@@ -10002,17 +10005,24 @@ export class Point0<
       action: MountAction
       state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
     }>
+    skipGlobalHead: boolean
   }) => {
     React.useEffect(() => {
       // pageStateManager.setPageState(pageState)
     }, [pageState.status, pageState.error?.message])
+    // const unheadController = _ssItems.__POINT0_UNHEAD_CONTROLLER__.get()
+    // const unheadController = useHead()
+    // const headFnResultResolvableCombined = {}
     for (const { action, state } of prevMountActions) {
       // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
       switch (action.type) {
         case 'head': {
           const headFnResult = action.fn(state)
           const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
+          // console.log('HEAD', headFnResultResolvable)
           useHead(headFnResultResolvable)
+          // unheadController.patch(headFnResultResolvable)
+          // Object.assign(headFnResultResolvableCombined, headFnResultResolvable)
           continue
         }
         case 'globalHead': {
@@ -10024,11 +10034,17 @@ export class Point0<
           }
           const headFnResult = action.fn({ ...pageState, location })
           const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
-          useHead(headFnResultResolvable)
+          // console.log('GLOBAL HEAD', headFnResultResolvable)
+          useHead(skipGlobalHead ? {} : headFnResultResolvable)
+          // unheadController.patch(headFnResultResolvable)
+          // Object.assign(headFnResultResolvableCombined, headFnResultResolvable)
           continue
         }
       }
     }
+    // console.log('USE HEAD', headFnResultResolvableCombined)
+    // useHead(headFnResultResolvableCombined as ResolvableHead)
+    // unheadController.patch(headFnResultResolvableCombined)
   }
 
   private static readonly _createBoundLoadingComponent = ({
@@ -10066,6 +10082,7 @@ export class Point0<
           },
           pageStateManager,
           prevMountActions,
+          skipGlobalHead: false,
         })
       }
       return React.createElement(loadingComponent, {
@@ -10115,6 +10132,7 @@ export class Point0<
           },
           pageStateManager,
           prevMountActions,
+          skipGlobalHead: false,
         })
       }
       return React.createElement(errorComponent, {
@@ -10203,7 +10221,9 @@ export class Point0<
     const [currentLayer, ...siblingLayers] = layers
 
     const componentVariant = this._getDestinationComponentVariant() ?? 'page'
-    const isHeadable = this.type === 'page' || this.type === 'layout'
+    const isLayout = this.type === 'layout'
+    const isPage = this.type === 'page'
+    const isHeadable = isPage || isLayout
     const fallbackLoadingComponent =
       {
         page: this._pageLoadingComponent,
@@ -10734,6 +10754,7 @@ export class Point0<
         pageState,
         pageStateManager,
         prevMountActions,
+        skipGlobalHead: mountState.status === 'success' && isLayout, // we will have page below, and it will use global heads
       })
     }
 

@@ -50,7 +50,7 @@ export default generalLayout
   .lets('page', 'home', '/')
   .head({
     title: 'IdeaNick Forever!',
-    titleTemplate: null,
+    titleTemplate: undefined,
   })
   .page(() => {
     const [state, setState] = useState(someVar.get())

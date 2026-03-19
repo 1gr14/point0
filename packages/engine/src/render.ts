@@ -1,11 +1,11 @@
 import type { AnyLocation } from '@devp0nt/route0'
-import type { AppComponent, ClientPoints, PagePoint } from '@point0/core'
 import { superstore } from '@point0/core'
+import type { AppComponent, ClientPoints, PagePoint } from '@point0/core'
 import { transformHtmlTemplate } from '@unhead/react/server'
 import { uneval } from 'devalue'
 import { createElement } from 'react'
-import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
 import { renderToReadableStream } from 'react-dom/server'
+import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
 import type { Executor } from './executor.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
@@ -69,11 +69,32 @@ function prependBodyElement({ html, content }: { html: string; content: string }
   return html.replace(pattern, replacement)
 }
 
-function prependHeadElement({ html, content }: { html: string; content: string }): string {
+function prependHeadElement({
+  html,
+  content,
+  afterScriptId,
+}: {
+  html: string
+  content: string
+  afterScriptId?: string
+}): string {
   // Match the <head> tag and capture its existing content
   const pattern = /<head\b[^>]*>([\s\S]*?)<\/head>/i
 
   const replacement = (match: string, inner: string) => {
+    if (afterScriptId) {
+      const escapedId = afterScriptId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const targetScriptPattern = new RegExp(
+        `<script\\b[^>]*\\bid=["']${escapedId}["'][^>]*>([\\s\\S]*?)<\\/script>`,
+        'i',
+      )
+      const targetMatch = inner.match(targetScriptPattern)
+      if (targetMatch) {
+        const targetTag = targetMatch[0]
+        const newInner = inner.replace(targetTag, `${targetTag}${content}`)
+        return match.replace(inner, newInner)
+      }
+    }
     const newContent = `${content}${inner}` // prepend payload to the beginning of <head>
     return match.replace(inner, newContent)
   }
@@ -155,8 +176,8 @@ export function addEnvToDocumentHtml({
   envVars?: Record<string, string | number | boolean | undefined>
   envConsts?: Record<string, string | number | boolean | undefined>
 }): string {
-  const htmlWithVars = addEnvVarsToDocumentHtml({ html, envVars })
-  return addEnvConstsToDocumentHtml({ html: htmlWithVars, envConsts })
+  const htmlWithConsts = addEnvConstsToDocumentHtml({ html, envConsts })
+  return addEnvVarsToDocumentHtml({ html: htmlWithConsts, envVars })
 }
 
 function toJsonCompatibleEnv(
@@ -165,7 +186,17 @@ function toJsonCompatibleEnv(
   return JSON.parse(JSON.stringify(env ?? {})) as Record<string, string | number | boolean>
 }
 
-function upsertHeadScript({ html, id, scriptBody }: { html: string; id: string; scriptBody: string }): string {
+function upsertHeadScript({
+  html,
+  id,
+  scriptBody,
+  afterScriptId,
+}: {
+  html: string
+  id: string
+  scriptBody: string
+  afterScriptId?: string
+}): string {
   const pattern = new RegExp(`<script\\s+id=["']${id}["'][^>]*>[\\s\\S]*?<\\/script>`, 'i')
   const scriptTag = `<script id="${id}" type="text/javascript">
 ${scriptBody}
@@ -174,6 +205,7 @@ ${scriptBody}
     return html.replace(pattern, scriptTag)
   }
   return prependHeadElement({
+    afterScriptId,
     content: scriptTag,
     html,
   })
@@ -190,13 +222,10 @@ export function addEnvVarsToDocumentHtml({
   return upsertHeadScript({
     id: '__POINT0_ENV_VARS__',
     html,
+    afterScriptId: '__POINT0_ENV_CONSTS__',
     scriptBody: `const __POINT0_ENV_VARS__ = ${uneval(jsonCompatibleEnvVars)};
-  window.__POINT0_ENV_VARS__ = __POINT0_ENV_VARS__;
-  window.process = window.process || {};
-  window.process.env = { ...(window.process.env || {}), ...__POINT0_ENV_VARS__, ...(window.__POINT0_ENV_CONSTS__ || {}) };
-  window.import = window.import || {};
-  window.import.meta = window.import.meta || {};
-  window.import.meta.env = { ...(window.import.meta.env || {}), ...__POINT0_ENV_VARS__, ...(window.__POINT0_ENV_CONSTS__ || {}) };`,
+window.__POINT0_ENV_VARS__ = __POINT0_ENV_VARS__;
+window.__POINT0_ENV_EXTEND_FN__({ ...__POINT0_ENV_VARS__, ...(window.__POINT0_ENV_CONSTS__ || {}) });`,
   })
 }
 
@@ -212,12 +241,15 @@ export function addEnvConstsToDocumentHtml({
     id: '__POINT0_ENV_CONSTS__',
     html,
     scriptBody: `const __POINT0_ENV_CONSTS__ = ${uneval(jsonCompatibleEnvConsts)};
-  window.__POINT0_ENV_CONSTS__ = __POINT0_ENV_CONSTS__;
+window.__POINT0_ENV_CONSTS__ = __POINT0_ENV_CONSTS__;
+window.__POINT0_ENV_EXTEND_FN__ = function(values) {
   window.process = window.process || {};
-  window.process.env = { ...(window.process.env || {}), ...__POINT0_ENV_CONSTS__ };
+  window.process.env = { ...(window.process.env || {}), ...values };
   window.import = window.import || {};
   window.import.meta = window.import.meta || {};
-  window.import.meta.env = { ...(window.import.meta.env || {}), ...__POINT0_ENV_CONSTS__ };`,
+  window.import.meta.env = { ...(window.import.meta.env || {}), ...values };
+}
+window.__POINT0_ENV_EXTEND_FN__(__POINT0_ENV_CONSTS__);`,
   })
 }
 
@@ -244,7 +276,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   const { headScripts, bodyScripts, htmlWithPlaceholders } = extractScripts(html)
 
   // Transform HTML with Unhead (this may reorder scripts, but we'll restore original order)
-  html = await transformHtmlTemplate(executor.serverStorageState.__POINT0_UNHEAD_HEAD__, htmlWithPlaceholders)
+  html = await transformHtmlTemplate(executor.serverStorageState.__POINT0_UNHEAD_SERVER_HEAD__, htmlWithPlaceholders)
 
   // Restore original scripts in their original positions
   html = restoreScripts(html, headScripts, bodyScripts)

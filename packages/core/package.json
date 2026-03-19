@@ -88,7 +88,8 @@
     "superjson": "^2.2.6",
     "tsup": "^8.0.0",
     "typescript": "catalog:",
-    "react": "catalog:"
+    "react": "catalog:",
+    "@unhead/react": "catalog:"
   },
   "publishConfig": {
     "access": "restricted"

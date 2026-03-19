@@ -1,15 +1,17 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
-import type { ResolvableHead, Unhead } from 'unhead/types'
+import type { SSRHeadPayload, Unhead } from '@unhead/react/server'
+import { useHead } from '@unhead/react'
+import type { ActiveHeadEntry, ResolvableHead } from 'unhead/types'
 import type { ClientPoints } from './client-points.js'
 import type { Effects } from './effects.js'
+import type { ErrorPoint0 } from './error.js'
 import { queryClient } from './query-client.js'
 import type { Request0 } from './request0.js'
 import type { RouterContextValue } from './router.js'
-import type { SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './super-store.js'
 import { superstore } from './super-store.js'
+import type { SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './super-store.js'
 import type { PointsScope, RichFetchFn } from './types.js'
-import type { ErrorPoint0 } from './error.js'
 
 const initUndefined = () => undefined as never
 
@@ -21,6 +23,7 @@ export const _getFakeClient = (): LikeFakeClient | undefined => {
 }
 
 export const _ssItems = {
+  __POINT0_HYDRATION_FINISHED__: superstore.define<boolean>('__POINT0_HYDRATION_FINISHED__', () => false, 'clientOnly'),
   __POINT0_FETCH_FN__: superstore.define<RichFetchFn>('__POINT0_FETCH_FN__', initUndefined, 'serverOnlyStorage'),
   __POINT0_FAKE_CLIENT__: superstore.define<LikeFakeClient>(
     '__POINT0_FAKE_CLIENT__',
@@ -55,8 +58,8 @@ export const _ssItems = {
     initUndefined,
     'clientServerIsolated',
   ),
-  __POINT0_UNHEAD_HEAD__: superstore.define<Unhead<ResolvableHead>>(
-    '__POINT0_UNHEAD_HEAD__',
+  __POINT0_UNHEAD_SERVER_HEAD__: superstore.define<Unhead<ResolvableHead, SSRHeadPayload>>(
+    '__POINT0_UNHEAD_SERVER_HEAD__',
     initUndefined,
     'serverOnlyStorage',
   ),
@@ -68,10 +71,12 @@ export type SuperStoreInternalValues = SuperStoreItemsValues<typeof _ssItems>
 export type SuperStoreInternalValuesOrErrors = SuperStoreItemsValuesOrErrors<typeof _ssItems>
 export const _getSsItemsWithRestErrors = (
   ssItems: Partial<SuperStoreInternalValues>,
-  errorMessage = 'This value is not yet accessible, maybe it is bug',
+  errorMessage = 'This "%s" value is not yet accessible, maybe it is bug',
 ): SuperStoreInternalValuesOrErrors => {
   const notDefinedKeys = knownKeys.filter((key) => !(key in ssItems))
-  const error = new Error(errorMessage)
-  Object.assign(ssItems, Object.fromEntries(notDefinedKeys.map((key) => [key, error])))
+  Object.assign(
+    ssItems,
+    Object.fromEntries(notDefinedKeys.map((key) => [key, new Error(errorMessage.replace('%s', key)) as never])),
+  )
   return ssItems as SuperStoreInternalValuesOrErrors
 }

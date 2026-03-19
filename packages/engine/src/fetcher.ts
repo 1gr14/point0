@@ -1109,7 +1109,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         // in case of recursive server response we want preserve query client to keep state
         __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: _ssItems.__POINT0_QUERY_CLIENT__.getWeak(),
       },
-      'Not exists in middleware call, this value accessible only in loader, ctx, components etc',
+      'Value "%s" not exists in middleware call, this value accessible only in loader, ctx, components etc',
     )
 
     const middlewares = prepareFetchResult.middlewares

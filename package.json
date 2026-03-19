@@ -26,7 +26,7 @@
       "@devp0nt/error0": "^1.0.0-next.56",
       "@devp0nt/route0": "^1.0.0-next.80",
       "@devp0nt/flat0": "^1.1.1",
-      "@unhead/react": "^2.1.2",
+      "@unhead/react": "^3.0.0-beta.12",
       "zod": "^4.0.0",
       "@typescript/native-preview": "^7.0.0-dev.20260212.1",
       "typescript": "^5.9.3"

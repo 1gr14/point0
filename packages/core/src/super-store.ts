@@ -294,6 +294,7 @@ export class SuperStore {
     throw new Error(`Invalid arguments`)
   }
 
+  define<TValue>(key: string, init: () => TValue, policy: SuperStoreItemPolicy): NiceSuperStoreItem<TValue, TValue>
   define<TValue, TDehydratedValue>(
     key: string,
     init: () => TValue,
@@ -302,7 +303,6 @@ export class SuperStore {
       hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue
     },
   ): NiceSuperStoreItem<TValue, TDehydratedValue>
-  define<TValue>(key: string, init: () => TValue, policy: SuperStoreItemPolicy): NiceSuperStoreItem<TValue, TValue>
   define(...args: Parameters<typeof this._parseDefineArgs>): SuperStoreItem {
     const { name, init, policy, dehydrate, hydrate } = this._parseDefineArgs(...args)
     // it brokes hmr

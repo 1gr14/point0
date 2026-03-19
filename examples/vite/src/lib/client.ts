@@ -19,11 +19,11 @@ export const client = Point0.lets('root', 'client')
     refetchIntervalInBackground: false,
   })
   .prefetchPageOnLinkHover(true)
-  .head('global', () => ({
+  .head('global', {
     title: 'Loading...',
     titleTemplate: '%s | IdeaNick',
     htmlAttrs: { lang: 'en' },
-  }))
+  })
   .root()
 
 export type Ctx = (typeof client)['Infer']['Ctx']

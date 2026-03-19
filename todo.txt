@@ -35,9 +35,6 @@ start0
 
 === REFACTOING 3000 ===
 
-hydrationFinished to superstore
-В хтмл один скрипт с энвами и констнсами на двоих
-globalHead can be non fn
 fix vite example head
 compiler ClientOnly
 

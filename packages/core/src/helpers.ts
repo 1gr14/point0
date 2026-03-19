@@ -27,8 +27,6 @@ export const getFetch = (): RichFetchFn => {
   return superstore.getFakeClient()?.fetch ?? nativeFetch
 }
 
-let hydrationFinished = false
-
 export const useEffectHydrated = <TFn extends () => void>(fn: TFn, deps: React.DependencyList): void => {
   if (!_point0_env.side.is.client) {
     return
@@ -39,10 +37,10 @@ export const useEffectHydrated = <TFn extends () => void>(fn: TFn, deps: React.D
     }, [fn, ...deps])
     return
   }
-  const [localHydrationFinished, setLocalHydrationFinished] = useState(hydrationFinished)
+  const [localHydrationFinished, setLocalHydrationFinished] = useState(_ssItems.__POINT0_HYDRATION_FINISHED__.get())
   useEffect(() => {
     if (!localHydrationFinished) {
-      hydrationFinished = true
+      _ssItems.__POINT0_HYDRATION_FINISHED__.set(true)
       setLocalHydrationFinished(true)
     }
   }, [])
@@ -65,10 +63,10 @@ export const ClientOnly = <TChildren extends React.ReactNode>({
   if (_point0_env.vars.POINT0_SSR !== 'true') {
     return children
   }
-  const [localHydrationFinished, setLocalHydrationFinished] = useState(hydrationFinished)
+  const [localHydrationFinished, setLocalHydrationFinished] = useState(_ssItems.__POINT0_HYDRATION_FINISHED__.get())
   useEffect(() => {
     if (!localHydrationFinished) {
-      hydrationFinished = true
+      _ssItems.__POINT0_HYDRATION_FINISHED__.set(true)
       setLocalHydrationFinished(true)
     }
   }, [])
