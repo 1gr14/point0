@@ -1,16 +1,13 @@
-import { QueryClientProvider, UnheadProvider } from '@point0/core'
-import { Router, RouterRoutes } from '@point0/wouter'
+import { QueryClientProvider } from '@point0/core'
+import { UnheadProvider } from '@point0/core/unhead'
+import { Router, RouterRoutes } from '@/lib/navigate'
 
 export default function App() {
   return (
     <QueryClientProvider>
       <UnheadProvider>
         <Router>
-          <RouterRoutes
-            Page404={() => {
-              return <div>Page Not Found</div>
-            }}
-          />
+          <RouterRoutes />
         </Router>
       </UnheadProvider>
     </QueryClientProvider>

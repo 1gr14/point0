@@ -4,8 +4,9 @@ import { Point0 } from '@point0/core'
 // import { PlaywrightBrowser } from './utils/playwright.js'
 // import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.one-client.js'
 // import { TestProjectFactory } from './utils/project.one-client.js'
-import { SimpleLink } from '@point0/wouter'
 import { createTestThings, waitReturn } from '../internal-testing.js'
+import { createNavigation } from '@point0/wouter'
+import { ClientPoints } from '@point0/core'
 
 describe('internal-testing', () => {
   it('works', async () => {
@@ -15,12 +16,14 @@ describe('internal-testing', () => {
       .prefetchPageOnLinkHover(false)
       .loading(() => <div id="loading">...</div>)
       .root()
+    const routes = ClientPoints.createFromDefintion([root]).routes
+    const { Link } = createNavigation({ routes })
     const page = root.lets('page', 'home', '/').page(() => (
       <div id="home">
         <h1>Home Page</h1>
-        <SimpleLink id="link" to={'/news'}>
+        <Link id="link" to={'/news'}>
           Go to News
-        </SimpleLink>
+        </Link>
       </div>
     ))
     const news = root
@@ -30,9 +33,9 @@ describe('internal-testing', () => {
       .page(({ data }) => (
         <div id="news">
           <h1>News Page ({data.x})</h1>
-          <SimpleLink id="link" to={'/'}>
+          <Link id="link" to={'/'}>
             Go to Home
-          </SimpleLink>
+          </Link>
         </div>
       ))
     const { fetchPreview, fetchRecorder, fetchesTale, render } = await createTestThings({

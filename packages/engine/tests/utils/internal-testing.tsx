@@ -1,4 +1,6 @@
 import { CookiesStore } from '@point0/cookies-store'
+import { createQueryClient, queryClient as point0QueryClient } from '@point0/core'
+import { UnheadProvider } from '@point0/core/unhead'
 import type {
   AnyNiceRequestableReadyPoint,
   AppComponent,
@@ -6,11 +8,10 @@ import type {
   PointsDefinition,
   ReadyPoint,
 } from '@point0/core'
-import { queryClient as point0QueryClient, QueryClientProvider, UnheadProvider } from '@point0/core'
-import { Router, RouterRoutes } from '@point0/wouter'
 import assert from 'node:assert'
 import nodePath from 'node:path'
 // import { AsyncLocalStorage } from 'node:async_hooks'
+import { createNavigation } from '@point0/wouter'
 import { notifyManager } from '@tanstack/query-core'
 import type { DehydratedState, QueryClient } from '@tanstack/react-query'
 import * as rtl from '@testing-library/react/pure.js'
@@ -22,6 +23,8 @@ import { FakeClient } from '../../src/fake-client.js'
 import { ElementViewer } from './element-viewer.js'
 import { FetchRecorder } from './fetch-recorder.js'
 import { HtmlView } from './html-view.js'
+import { ClientPoints } from '@point0/core'
+import { Point0 } from '@point0/core'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -310,7 +313,7 @@ export type TestThings = {
 }
 
 export const createTestThings = async ({
-  points,
+  points = [Point0.lets('root', 'root').root()],
   wrapper,
   ssr = false,
   app: appProvided,
@@ -328,6 +331,9 @@ export const createTestThings = async ({
 }): Promise<TestThings> => {
   bindNotifyManager()
   const Wrapper = wrapper ?? undefined
+  const routes = ClientPoints.createFromDefintion(points).routes
+  const { Router, RouterRoutes } = createNavigation({ routes })
+  const { QueryClientProvider } = createQueryClient()
   const app =
     appProvided ??
     (() => (
@@ -349,11 +355,9 @@ export const createTestThings = async ({
     limit: 100,
     enabled: true,
   })
-  if (points) {
-    for (const point of points) {
-      if ('_middlewares' in point.point) {
-        point.point._middlewares.unshift(fetchRecorder.middleware)
-      }
+  for (const point of points) {
+    if ('_middlewares' in point.point) {
+      point.point._middlewares.unshift(fetchRecorder.middleware)
     }
   }
   const engine = await Engine.create({

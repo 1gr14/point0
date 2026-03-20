@@ -507,6 +507,15 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     })
   }
 
+  static mount<TError extends ErrorPoint0>(
+    points: PointsDefinition<any, TError> | PointsManager<any, any, TError>,
+    options: { log?: LogFn } = {},
+  ): ClientPoints<TError> {
+    const clientPoints = ClientPoints.createFromDefintion(points, options)
+    clientPoints.mount()
+    return clientPoints
+  }
+
   mount = () => {
     if (_point0_env.side.is.server) {
       throw new Error('Client points can not be mounted on server')

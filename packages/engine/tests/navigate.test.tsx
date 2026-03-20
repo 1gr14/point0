@@ -2,7 +2,7 @@ import { describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { AnyLocation } from '@devp0nt/route0'
 import { Routes } from '@devp0nt/route0'
 import { Point0, useLocation, useOnNavigate } from '@point0/core'
-import { createLink, createNavigate, createNavLink, createUseNavigate, SimpleLink } from '@point0/wouter'
+import { createNavigation } from '@point0/wouter'
 import React, { useState } from 'react'
 import { navigate as nativeNavigate } from 'wouter/use-browser-location'
 import { createTestThings } from './utils/internal-testing.js'
@@ -32,10 +32,7 @@ const createTestPointsAndHelpers = () => {
     post: '/posts/:id',
   })
 
-  const Link = createLink(routes)
-  const NavLink = createNavLink(routes)
-  const useNavigate = createUseNavigate(routes)
-  const navigate = createNavigate(routes, nativeNavigate)
+  const { Link, NavLink, navigate } = createNavigation({ routes, navigate: nativeNavigate })
 
   const getClassNames = (defaultClassName: string) => ({
     default: defaultClassName,
@@ -111,7 +108,6 @@ const createTestPointsAndHelpers = () => {
       return { posts: [1, 2] }
     })
     .page(({ data }) => {
-      const navigateByUseNavigate = useNavigate()
       return (
         <div id="posts">
           {data.posts.map((post) => (
@@ -121,17 +117,9 @@ const createTestPointsAndHelpers = () => {
               </NavLink>
               {post === 1 && (
                 <>
-                  <SimpleLink className={`simple-link-post-preview-${post}`} to={`/posts/${post}`}>
-                    simple link post {post}
-                  </SimpleLink>
-                  <button
-                    className={`use-navigate-post-preview-${post}`}
-                    onClick={() => {
-                      void navigateByUseNavigate('post', { id: post })
-                    }}
-                  >
-                    useNavigate post {post}
-                  </button>
+                  <Link className={`link-post-by-link-${post}`} route="post" input={{ id: post }}>
+                    link helper post {post}
+                  </Link>
                   <button
                     className={`navigate-post-preview-${post}`}
                     onClick={() => {
@@ -154,7 +142,7 @@ const createTestPointsAndHelpers = () => {
       return { post: params.id }
     })
     .page(({ data }) => <div id="post">post {data.post}</div>)
-  return { root, routes, Link, NavLink, useNavigate, navigate, homePage, aboutPage, postsPage, postPage, layout }
+  return { root, routes, Link, NavLink, navigate, homePage, aboutPage, postsPage, postPage, layout }
 }
 
 // const cut = async (tale: any) => {
@@ -318,8 +306,7 @@ describe('navigate', () => {
             #to: /posts
           #posts:
             .link-post-preview-1.descendant: link post 1
-            .simple-link-post-preview-1: simple link post 1
-            .use-navigate-post-preview-1: useNavigate post 1
+            .link-post-by-link-1: link helper post 1
             .navigate-post-preview-1: navigate post 1
             .link-post-preview-2.descendant: link post 2
 
@@ -337,8 +324,7 @@ describe('navigate', () => {
             #to: undefined
           #posts:
             .link-post-preview-1.descendant: link post 1
-            .simple-link-post-preview-1: simple link post 1
-            .use-navigate-post-preview-1: useNavigate post 1
+            .link-post-by-link-1: link helper post 1
             .navigate-post-preview-1: navigate post 1
             .link-post-preview-2.descendant: link post 2
         "
@@ -389,8 +375,7 @@ describe('navigate', () => {
             #to: undefined
           #posts:
             .link-post-preview-1.descendant: link post 1
-            .simple-link-post-preview-1: simple link post 1
-            .use-navigate-post-preview-1: useNavigate post 1
+            .link-post-by-link-1: link helper post 1
             .navigate-post-preview-1: navigate post 1
             .link-post-preview-2.descendant: link post 2
 
@@ -408,8 +393,7 @@ describe('navigate', () => {
             #to: /posts/1
           #posts:
             .link-post-preview-1.descendant: link post 1
-            .simple-link-post-preview-1: simple link post 1
-            .use-navigate-post-preview-1: useNavigate post 1
+            .link-post-by-link-1: link helper post 1
             .navigate-post-preview-1: navigate post 1
             .link-post-preview-2.descendant: link post 2
 
@@ -541,12 +525,12 @@ describe('navigate', () => {
   )
 
   it(
-    'navigate from post to post via useNavigate',
+    'navigate from posts to post via link',
     async () => {
       const t = await createT()
       await t.render(t.postsPage.route(), async ({ waitContent, tale, click }) => {
         await waitContent('#posts')
-        await click('.use-navigate-post-preview-1')
+        await click('.link-post-by-link-1')
         await waitContent('#post')
         expect(await tale()).toMatchInlineSnapshot(`
         "
@@ -579,8 +563,7 @@ describe('navigate', () => {
             #to: undefined
           #posts:
             .link-post-preview-1.descendant: link post 1
-            .simple-link-post-preview-1: simple link post 1
-            .use-navigate-post-preview-1: useNavigate post 1
+            .link-post-by-link-1: link helper post 1
             .navigate-post-preview-1: navigate post 1
             .link-post-preview-2.descendant: link post 2
 
@@ -598,8 +581,7 @@ describe('navigate', () => {
             #to: /posts/1
           #posts:
             .link-post-preview-1.descendant: link post 1
-            .simple-link-post-preview-1: simple link post 1
-            .use-navigate-post-preview-1: useNavigate post 1
+            .link-post-by-link-1: link helper post 1
             .navigate-post-preview-1: navigate post 1
             .link-post-preview-2.descendant: link post 2
 
@@ -679,8 +661,7 @@ describe('navigate', () => {
             #to: undefined
           #posts:
             .link-post-preview-1.descendant: link post 1
-            .simple-link-post-preview-1: simple link post 1
-            .use-navigate-post-preview-1: useNavigate post 1
+            .link-post-by-link-1: link helper post 1
             .navigate-post-preview-1: navigate post 1
             .link-post-preview-2.descendant: link post 2
 
@@ -698,8 +679,7 @@ describe('navigate', () => {
             #to: /posts/1
           #posts:
             .link-post-preview-1.descendant: link post 1
-            .simple-link-post-preview-1: simple link post 1
-            .use-navigate-post-preview-1: useNavigate post 1
+            .link-post-by-link-1: link helper post 1
             .navigate-post-preview-1: navigate post 1
             .link-post-preview-2.descendant: link post 2
 

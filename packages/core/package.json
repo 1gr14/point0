@@ -29,6 +29,9 @@
       ],
       "request0": [
         "./dist/esm/request0.d.ts"
+      ],
+      "unhead": [
+        "./dist/esm/unhead.d.ts"
       ]
     }
   },
@@ -47,6 +50,11 @@
       "types": "./dist/esm/request0.d.ts",
       "require": "./dist/cjs/request0.cjs",
       "import": "./dist/esm/request0.js"
+    },
+    "./unhead": {
+      "types": "./dist/esm/unhead.d.ts",
+      "require": "./dist/cjs/unhead.cjs",
+      "import": "./dist/esm/unhead.js"
     }
   },
   "files": [

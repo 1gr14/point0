@@ -1,4 +1,5 @@
 import { createHead as createHeadClient, UnheadProvider as UnheadProviderClient } from '@unhead/react/client'
+import { UnheadProvider as UnheadProviderServer } from '@unhead/react/server'
 import { createElement } from 'react'
 // import type { ResolvableHead, Unhead } from 'unhead/types'
 import { _point0_env } from './env.js'
@@ -14,13 +15,7 @@ export const UnheadProvider = ({
   if (_point0_env.side.is.client) {
     return createElement(UnheadProviderClient, { head: clientHead, children })
   } else {
-    return (async () => {
-      const { UnheadProvider: UnheadProviderServer } = await import('@unhead/react/server')
-      const serverHead = _ssItems.__POINT0_UNHEAD_SERVER_HEAD__.get()
-      // if (!serverHead) {
-      //   throw new Error('Unhead head is not set on server, wrap your code with Unhead inside App component')
-      // }
-      return createElement(UnheadProviderServer, { value: serverHead as never, children })
-    })()
+    const serverHead = _ssItems.__POINT0_UNHEAD_SERVER_HEAD__.get()
+    return createElement(UnheadProviderServer, { value: serverHead as never, children })
   }
 }

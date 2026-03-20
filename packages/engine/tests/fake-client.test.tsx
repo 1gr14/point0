@@ -1,6 +1,5 @@
 import { CookiesStore } from '@point0/cookies-store'
-import { env, Point0, QueryClientProvider } from '@point0/core'
-import { Router } from '@point0/wouter'
+import { env, Point0, createQueryClient } from '@point0/core'
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import assert from 'node:assert'
 // import '@testing-library/jest-dom'
@@ -13,6 +12,8 @@ import { FetchRecorder } from './utils/fetch-recorder.js'
 // import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.one-client.js'
 // import { TestProjectFactory } from './utils/project.one-client.js'
 import { getFakeBrowserGlobals, ymlify } from './utils/internal-testing.js'
+import { ClientPoints } from '@point0/core'
+import { createNavigation } from '@point0/wouter'
 
 // const tpf = TestProjectFactory.create({
 //   namespace: 'test-client',
@@ -326,6 +327,9 @@ describe('FakeClient', () => {
       globals: getFakeBrowserGlobals(),
       onDestroyInside: () => cleanup(),
     })
+    const routes = ClientPoints.createFromDefintion(points).routes
+    const { Router } = createNavigation({ routes })
+    const { QueryClientProvider } = createQueryClient()
     await client.run(async (state) => {
       const { container } = render(
         <QueryClientProvider>

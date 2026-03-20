@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { authClient } from '@/lib/auth/core'
 import { mePlugin } from '@/lib/auth/utils'
-import { Link, useNavigate } from '@/lib/navigate'
+import { Link, navigate } from '@/lib/navigate'
 import { routes } from '@/lib/routes'
 import { root } from '@/lib/root'
 
@@ -10,7 +10,6 @@ export default root
   .use(mePlugin)
   .head('Auth')
   .page(({ props: { me } }) => {
-    const navigate = useNavigate()
     const [name, setName] = useState('Author')
     const [email, setEmail] = useState('author@example.com')
     const [password, setPassword] = useState('password123')

@@ -1,7 +1,6 @@
-import { useState } from 'react'
 import { Link } from '@/lib/navigate'
+import { useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
-import { ErrorPoint0 } from '@point0/core'
 
 // const getIdea = async (ctx: Ctx, id: number) => {
 //   const idea = await ctx.prisma.idea.findUniqueOrThrow({

@@ -26,7 +26,6 @@ const toMark = (polh: string | boolean, pon: string | boolean) => `polh-${string
 const layoutNavTsx = (polh: string | boolean, pon: string | boolean) => {
   const mark = toMark(polh, pon)
   return `import { root } from '../lib/root.js'
-import { SimpleLink } from '@point0/wouter'
 import { Link, NavLink } from '../lib/navigate.js'
 export const layout = root.lets('layout', 'layout_${toMark(polh, pon)}', '/${toMark(polh, pon)}')
   .prefetchPageOnLinkHover(${stringify2(polh)})
@@ -34,12 +33,12 @@ export const layout = root.lets('layout', 'layout_${toMark(polh, pon)}', '/${toM
   .layout(({ children }) => (
     <>
       <nav>
-        <SimpleLink to="/${mark}">/</SimpleLink>
-        <SimpleLink to="/${mark}/with-server">/with-server</SimpleLink>
+        <Link to="/${mark}">/</Link>
+        <Link to="/${mark}/with-server">/with-server</Link>
         <Link to="/${mark}/with-client">/with-client</Link>
-        <SimpleLink to="/${mark}/with-both">/with-both</SimpleLink>
-        <SimpleLink to="/${mark}/with-related-query">/with-related-query</SimpleLink>
-        <SimpleLink to="/${mark}/with-mounted-query">/with-mounted-query</SimpleLink>
+        <Link to="/${mark}/with-both">/with-both</Link>
+        <Link to="/${mark}/with-related-query">/with-related-query</Link>
+        <Link to="/${mark}/with-mounted-query">/with-mounted-query</Link>
         <NavLink to="/${mark}/with-none">/with-none</NavLink>
       </nav>
       <hr />
