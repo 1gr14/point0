@@ -755,8 +755,8 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     for (const point of [this, ...this.parents].reverse()) {
       const methods = point.getSelfMethods()
       for (const method of methods) {
-        if (method.name === 'ssr') {
-          underSsr = this.getFirstArgBooleanLiteral({ nodePath: method.nodePath, name: 'ssr', fallback: underSsr })
+        if (method.name === 'clientOnly') {
+          underSsr = false
         }
         underAction = underAction || point.type === 'action'
         chainMethods.push({

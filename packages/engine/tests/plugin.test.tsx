@@ -432,7 +432,7 @@ describe('plugin', () => {
 
   // it.concurrent('forbidden different ssr settings when mount actions provided', async () => {
   //   const pluginNoSsr = Point0.lets('plugin', 'test-plugin-no-ssr')
-  //   .ssr(false)
+  //   .clientOnly()
   //     .with(() => ({ plugin: 'noSsr' }))
   //     .plugin()
   //   const pluginSsr = Point0.lets('plugin', 'test-plugin-ssr')

@@ -2251,7 +2251,7 @@ export type NiceRootStagePoint<
   | 'errorClass'
   | 'use'
   | 'middleware'
-  | 'ssr'
+  | 'clientOnly'
   | 'on'
   | 'serverOn'
   | 'clientOn'
@@ -2349,7 +2349,7 @@ export type NicePluginStagePoint<
   | 'plugin'
   | 'use'
   | 'middleware'
-  | 'ssr'
+  | 'clientOnly'
   | 'on'
   | 'serverOn'
   | 'clientOn'
@@ -2545,7 +2545,7 @@ export type NicePageStagePoint<
   >,
   | 'page'
   | 'on'
-  | 'ssr'
+  | 'clientOnly'
   | 'serverOn'
   | 'clientOn'
   | 'middleware'
@@ -2626,7 +2626,7 @@ export type NiceComponentStagePoint<
   >,
   | 'component'
   | 'on'
-  | 'ssr'
+  | 'clientOnly'
   | 'serverOn'
   | 'clientOn'
   | 'middleware'
@@ -2970,7 +2970,7 @@ export type NiceLayoutStagePoint<
   >,
   | 'layout'
   | 'on'
-  | 'ssr'
+  | 'clientOnly'
   | 'serverOn'
   | 'clientOn'
   | 'middleware'
@@ -3057,7 +3057,7 @@ export type NiceProviderStagePoint<
   >,
   | 'provider'
   | 'on'
-  | 'ssr'
+  | 'clientOnly'
   | 'serverOn'
   | 'clientOn'
   | 'middleware'

@@ -45,6 +45,7 @@ import type { LogFn } from './logger.js'
 import type {
   AppendProps,
   AppendQueries,
+  ClientOnlyFallbackComponentType,
   ComponentSelfProps,
   ComponentSelfType,
   ComponentSuccessComponentType,
@@ -2085,8 +2086,66 @@ export class Point0<
     }) as never
   }
 
-  ssr(
-    ssr: false,
+  // ssr(
+  //   ssr: false,
+  // ): NiceStagePoint<
+  //   StagePointTypeOrNever<TPointType>,
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
+  //   TRequiredCtx,
+  //   TError,
+  //   TCtx,
+  //   TCtxExposedKeys,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   TMapperOutput,
+  //   TRouteDefinition,
+  //   TServerInputSchema,
+  //   TClientInputSchema,
+  //   TParamsSchema,
+  //   TSearchSchema,
+  //   TBodySchema,
+  //   THeadersSchema,
+  //   TCookiesSchema,
+  //   TQueryResultType,
+  //   TOuterProps,
+  //   TInnerProps,
+  //   TQueriesDefinitions
+  // > {
+  //   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  //   if (ssr) {
+  //     throw new Error(
+  //       `To enable ssr add ssr: true to engine config. In point you can only disable ssr bye .ssr(false) on point ${this.toStringWithLocation()}`,
+  //     )
+  //   }
+  //   const mountActions = (() => {
+  //     if (!this._getSsr()) {
+  //       return this._mountActions
+  //     }
+  //     return [...this._mountActions, { type: 'clientOnly' as const, unstableId: Point0._getNextUnstableId() }]
+  //   })()
+  //   return this._continue({
+  //     _ssr: ssr,
+  //     _mountActions: mountActions,
+  //   }) as never
+  // }
+
+  clientOnly(
+    Fallback?: ClientOnlyFallbackComponentType<
+      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+      TParamsSchema,
+      TSearchSchema,
+      TClientInputSchema,
+      TInnerProps,
+      WithSelfQueryIfShouldBeFinalized<
+        TPointType,
+        TLetsReadyPointType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TQueriesDefinitions
+      >,
+      TMapperOutput,
+      TError
+    >,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -2110,20 +2169,14 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   > {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (ssr) {
-      throw new Error(
-        `To enable ssr add ssr: true to engine config. In point you can only disable ssr bye .ssr(false) on point ${this.toStringWithLocation()}`,
-      )
-    }
     const mountActions = (() => {
       if (!this._getSsr()) {
         return this._mountActions
       }
-      return [...this._mountActions, { type: 'clientOnly' as const, unstableId: Point0._getNextUnstableId() }]
+      return [...this._mountActions, { type: 'clientOnly' as const, Fallback, unstableId: Point0._getNextUnstableId() }]
     })()
     return this._continue({
-      _ssr: ssr,
+      _ssr: false,
       _mountActions: mountActions,
     }) as never
   }
@@ -10580,6 +10633,13 @@ export class Point0<
         case 'clientOnly': {
           return React.createElement(ClientOnly, {
             children: React.createElement(this._Mountable, _nextMountableProps),
+            fallback: action.Fallback
+              ? React.createElement(action.Fallback, {
+                  ...mountState,
+                  LoadingComponent,
+                  ErrorComponent,
+                })
+              : undefined,
           })
         }
         case 'input': {

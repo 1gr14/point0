@@ -3,14 +3,6 @@ import { Link } from '@/lib/navigate'
 import { env } from '@point0/core'
 import { useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
-import type { Ctx } from '../lib/client.js'
-
-export const getIdea = async (ctx: Ctx, id: number) => {
-  const idea = await ctx.prisma.idea.findUniqueOrThrow({
-    where: { id },
-  })
-  return { idea }
-}
 
 // TODO: add getIdeaChain, or getIdeaQuery and use it in layout and for example in updatePage
 
@@ -20,18 +12,20 @@ if (env.side.is.client) {
 
 export const ideaPage = ideaLayout
   .lets('page', 'idea', '/')
+  // .clientOnly(({ location }) => <div>ClientOnly {location.pathname}</div>)
   .loader(async ({ ctx, params }) => {
     // it excutes on server, but defined in client file,
     // prisma will never come her on client, becouse of dead code optimization on build
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
       where: { id: +params.id },
     })
+
     return [202, { idea }]
   })
   .loader(async ({ data }) => {
     return {
       ...data,
-      zxc: 333,
+      zxc: 33355,
       zxccc: 333,
     }
   })
@@ -72,7 +66,7 @@ export const ideaPage = ideaLayout
         </p>
         <p>
           <b>
-            location: {JSON.stringify(location)} {zxccc}
+            locationxx: {JSON.stringify(location)} {zxccc}
           </b>
         </p>
         <p>{idea.content}</p>

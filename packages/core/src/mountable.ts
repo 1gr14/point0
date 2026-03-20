@@ -590,6 +590,49 @@ export type WithFn<
   >,
 ) => TNewInnerProps | Error | 'loading' | undefined
 
+export type ClientOnlyFallbackComponentProps<
+  TLocation extends AnyLocation | undefined,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TInnerProps extends Props,
+  TQueriesDefinitions extends QueriesDefinitions,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TError extends ErrorPoint0,
+> = MountableState<
+  any,
+  TLocation,
+  TParamsSchema,
+  TSearchSchema,
+  TClientInputSchema,
+  TInnerProps,
+  TQueriesDefinitions,
+  TMapperOutput,
+  TError
+> &
+  WithErrorAndLoadingComponents
+export type ClientOnlyFallbackComponentType<
+  TLocation extends AnyLocation | undefined,
+  TParamsSchema extends InputSchema | UndefinedInputSchema,
+  TSearchSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TInnerProps extends Props,
+  TQueriesDefinitions extends QueriesDefinitions,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TError extends ErrorPoint0,
+> = (
+  options: ClientOnlyFallbackComponentProps<
+    TLocation,
+    TParamsSchema,
+    TSearchSchema,
+    TClientInputSchema,
+    TInnerProps,
+    TQueriesDefinitions,
+    TMapperOutput,
+    TError
+  >,
+) => Exclude<React.ReactNode, Promise<any>>
+
 export type WithQueryFn<
   TLocation extends AnyLocation | undefined = AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -1428,7 +1471,11 @@ export type MountAction<
   : TType extends 'selfQuery'
     ? { type: 'selfQuery'; unstableId: number; ssr: boolean }
     : TType extends 'clientOnly'
-      ? { type: 'clientOnly'; unstableId: number }
+      ? {
+          type: 'clientOnly'
+          Fallback: ClientOnlyFallbackComponentType<any, any, any, any, any, any, any, any> | undefined
+          unstableId: number
+        }
       : TType extends 'input'
         ? { type: 'input'; schema: InputSchema; unstableId: number }
         : TType extends 'params'
