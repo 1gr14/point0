@@ -82,7 +82,9 @@ describe('dev', () => {
           'src/page.tsx',
           `import { root } from './lib/root.js'
           import { env } from '@point0/core'
-          export const page = root.lets('page', 'home', '/').page(() => <div>Hello, {process.env.MY_ENV_FILE_VARIABLE}, {process.env.MY_ENV_FILE_CONSTANT}, {env.vars.MY_ENV_FILE_VARIABLE}, {env.vars.MY_ENV_FILE_CONSTANT}</div>)`,
+          export const page = root
+            .lets('page', 'home', '/')
+            .page(() => <div>Hello, {process.env.MY_ENV_FILE_VARIABLE}, {process.env.MY_ENV_FILE_CONSTANT}, {env.vars.MY_ENV_FILE_VARIABLE}, {env.vars.MY_ENV_FILE_CONSTANT}</div>)`,
         )
         tp.spawn(['bun', 'run', 'dev'])
         await tp.waitStarted()

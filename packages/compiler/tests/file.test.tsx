@@ -223,16 +223,21 @@ describe('CompilerFile', () => {
             import { ClientOnly } from '@point0/core'
             import { MyComponent } from './my-component.tsx'
             const x = (
-              <ClientOnly>
-                <div>server-only-content</div>
+              <ClientOnly fallback={<div>my-fallback</div>}>
+                <div>client-only-content</div>
               </ClientOnly>
             )
             console.info(x)
           `)
           cf.shakeForEnv({ side: 'server', scope: 'test', mode: 'development' })
           const output = await cf.toCompressedPrettyCode()
-          expect(output).not.toContain('server-only-content')
-          expect(output).toMatch(/(<ClientOnly>\{null\}<\/ClientOnly>|children:\s*null)/)
+          expect(output).toMatchInlineSnapshot(`
+            "import { ClientOnly } from '@point0/core'
+            import { MyComponent } from './my-component.tsx'
+            const x = <ClientOnly fallback={<div>my-fallback</div>}>{null}</ClientOnly>
+            console.info(x)
+            "
+          `)
         }),
       )
 
@@ -242,15 +247,24 @@ describe('CompilerFile', () => {
           const cf = await file.wrp(`
             const { ClientOnly } = await import('@point0/core')
             const x = (
-              <ClientOnly>
-                <div>client-content</div>
+              <ClientOnly fallback={<div>my-fallback</div>}>
+                <div>client-only-content</div>
               </ClientOnly>
             )
             console.info(x)
           `)
           cf.shakeForEnv({ side: 'client', scope: 'test', mode: 'development' })
           const output = await cf.toCompressedPrettyCode()
-          expect(output).toContain('client-content')
+          expect(output).toMatchInlineSnapshot(`
+            "const { ClientOnly } = await import('@point0/core')
+            const x = (
+              <ClientOnly fallback={<div>my-fallback</div>}>
+                <div>client-only-content</div>
+              </ClientOnly>
+            )
+            console.info(x)
+            "
+          `)
         }),
       )
     })

@@ -1,9 +1,9 @@
+import { clientOnlyFn } from '@/lib/client-only.js'
 import { Link } from '@/lib/navigate'
+import { env } from '@point0/core'
 import { useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
 import type { Ctx } from '../lib/client.js'
-import { env } from '@point0/core'
-import { clientOnlyFn } from '@/lib/client-only.js'
 
 export const getIdea = async (ctx: Ctx, id: number) => {
   const idea = await ctx.prisma.idea.findUniqueOrThrow({

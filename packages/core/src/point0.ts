@@ -2110,8 +2110,15 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   > {
+    const mountActions = (() => {
+      if (ssr || !this._getSsr()) {
+        return this._mountActions
+      }
+      return [...this._mountActions, { type: 'clientOnly' as const, unstableId: Point0._getNextUnstableId() }]
+    })()
     return this._continue({
       _ssr: ssr,
+      _mountActions: mountActions,
     }) as never
   }
 
@@ -10564,6 +10571,11 @@ export class Point0<
       const { _nextLayers, _nextMountableProps } = getNextProps()
 
       switch (action.type) {
+        case 'clientOnly': {
+          return React.createElement(ClientOnly, {
+            children: React.createElement(this._Mountable, _nextMountableProps),
+          })
+        }
         case 'input': {
           if (this.type !== 'component' && this.type !== 'provider') {
             return React.createElement(ErrorComponent, {
@@ -10891,7 +10903,7 @@ export class Point0<
       }
     }, [this.name, inputRaw, prevLocation, status])
 
-    const mountable = this._Mountable({
+    return this._Mountable({
       location,
       layers: [
         {
@@ -10904,11 +10916,6 @@ export class Point0<
       },
       mountComponent: this._page as never,
     })
-
-    if (_point0_env.vars.POINT0_SSR === 'true' && !this._getSsr()) {
-      return React.createElement(ClientOnly, { children: mountable })
-    }
-    return mountable
   }
 
   Component = (
@@ -10934,7 +10941,7 @@ export class Point0<
       return { inputRaw, restProps }
     }, [props])
 
-    const mountable = this._Mountable({
+    return this._Mountable({
       layers: [
         {
           inputRaw,
@@ -10946,11 +10953,6 @@ export class Point0<
       },
       mountComponent: this._component as never,
     })
-
-    if (_point0_env.vars.POINT0_SSR === 'true' && !this._getSsr()) {
-      return React.createElement(ClientOnly, { children: mountable })
-    }
-    return mountable
   }
 
   Layout = (
@@ -10980,7 +10982,7 @@ export class Point0<
       return { inputRaw, children, restProps }
     }, [props, location])
 
-    const mountable = this._Mountable({
+    return this._Mountable({
       location,
       layers: [
         {
@@ -11005,11 +11007,6 @@ export class Point0<
       },
       mountComponent: this._layout as never,
     })
-
-    if (_point0_env.vars.POINT0_SSR === 'true' && !this._getSsr()) {
-      return React.createElement(ClientOnly, { children: mountable })
-    }
-    return mountable
   }
 
   // provider
@@ -11090,7 +11087,7 @@ export class Point0<
       return { inputRaw, children, restProps }
     }, [props])
 
-    const mountable = this._Mountable({
+    return this._Mountable({
       layers: [
         {
           inputRaw,
@@ -11114,11 +11111,6 @@ export class Point0<
       },
       mountComponent: 'children',
     })
-
-    if (_point0_env.vars.POINT0_SSR === 'true' && !this._getSsr()) {
-      return React.createElement(ClientOnly, { children: mountable })
-    }
-    return mountable
   }
 
   useValue<K extends keyof MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
