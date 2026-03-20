@@ -13,7 +13,6 @@ describe('error', () => {
   type AppError = InstanceType<typeof AppError>
   const createRoot = () =>
     Point0.lets('root', 'root')
-      .ssr(true)
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({
@@ -27,7 +26,6 @@ describe('error', () => {
       .root()
   const createRoot0 = () =>
     Point0.lets('root', 'root')
-      .ssr(true)
       .errorClass(AppError)
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
@@ -54,7 +52,7 @@ describe('error', () => {
         throw new Error('test error')
       })
       .page(() => <div id="page">x=nothing</div>)
-    const { render } = await createTestThings({ points: [root, page] })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#error')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -82,7 +80,7 @@ describe('error', () => {
         throw new ErrorPoint0('test error', { code: 'test-code' })
       })
       .page(() => <div id="page">x=nothing</div>)
-    const { render } = await createTestThings({ points: [root, page] })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#error')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -110,7 +108,7 @@ describe('error', () => {
         throw new AppError('test error', { code: 'test-code', status: 404, meta: { x: 1, a: { b: 2 } } })
       })
       .page(() => <div id="page">x=nothing</div>)
-    const { render } = await createTestThings({ points: [root, page] })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#error')
       expect(await tale()).toMatchInlineSnapshot(`

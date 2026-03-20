@@ -75,7 +75,6 @@ describe('two-clients', () => {
           host1: true,
           host2: true,
           ...vites,
-          // preserve: true,
         },
         async ({ tp }) => {
           await tp.write(

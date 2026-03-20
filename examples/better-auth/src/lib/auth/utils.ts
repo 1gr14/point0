@@ -3,7 +3,6 @@ import { root } from '../root'
 import { authServer } from './core'
 
 export const mePlugin = Point0.lets('plugin', 'me')
-  .ssr(true)
   .ctx(async ({ request }) => {
     return { me: await authServer.api.getSession({ headers: request.original.headers }) }
   })
@@ -18,7 +17,6 @@ export const mePlugin = Point0.lets('plugin', 'me')
   .plugin()
 
 export const authorizedOnlyPlugin = Point0.lets('plugin', 'authorizedOnly')
-  .ssr(true)
   .use(mePlugin)
   .ctx(({ ctx: { me } }) => {
     if (!me) {

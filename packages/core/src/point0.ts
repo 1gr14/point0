@@ -1645,7 +1645,7 @@ export class Point0<
     const mountActionsSuitable =
       this.type === 'base' || this.type === 'root'
         ? mountActionsAll
-        : mountActionsAll.filter((action) => action.type === 'globalHead')
+        : mountActionsAll.filter((action) => action.type === 'globalHead' || action.type === 'clientOnly')
     if (letsReadyPointType === 'component' || letsReadyPointType === 'provider') {
       mountActionsSuitable.push({ type: 'selfProps', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() })
     }
@@ -2086,7 +2086,7 @@ export class Point0<
   }
 
   ssr(
-    ssr: boolean,
+    ssr: false,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -2110,8 +2110,14 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   > {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (ssr) {
+      throw new Error(
+        `To enable ssr add ssr: true to engine config. In point you can only disable ssr bye .ssr(false) on point ${this.toStringWithLocation()}`,
+      )
+    }
     const mountActions = (() => {
-      if (ssr || !this._getSsr()) {
+      if (!this._getSsr()) {
         return this._mountActions
       }
       return [...this._mountActions, { type: 'clientOnly' as const, unstableId: Point0._getNextUnstableId() }]
@@ -6192,39 +6198,39 @@ export class Point0<
   ) {
     const point = plugin.point
 
-    // throw new Error(`Point ${this.toString()} and ${point.toString()} have different ssr settings`)
-    let pointMountActionsSsr = 'none' as 'none' | 'mash' | true | false
-    for (const mountAction of point._mountActions) {
-      if (!('ssr' in mountAction)) {
-        continue
-      }
-      if (mountAction.ssr) {
-        if (pointMountActionsSsr === true) {
-          // continue
-        } else if (pointMountActionsSsr === false) {
-          pointMountActionsSsr = 'mash'
-        } else if (pointMountActionsSsr === 'none') {
-          pointMountActionsSsr = true
-        } else {
-          // already mash
-        }
-      } else {
-        if (pointMountActionsSsr === false) {
-          // continue
-        } else if (pointMountActionsSsr === true) {
-          pointMountActionsSsr = 'mash'
-        } else if (pointMountActionsSsr === 'none') {
-          pointMountActionsSsr = false
-        } else {
-          // already mash
-        }
-      }
-    }
-    if (typeof pointMountActionsSsr === 'boolean' && this._getSsr() !== pointMountActionsSsr) {
-      throw new Error(
-        `Points have different ssr settings, so you may loose mount actions in ssr mode ${this.toStringWithLocation()} and ${point.toStringWithLocation()} `,
-      )
-    }
+    // // throw new Error(`Point ${this.toString()} and ${point.toString()} have different ssr settings`)
+    // let pointMountActionsSsr = 'none' as 'none' | 'mash' | true | false
+    // for (const mountAction of point._mountActions) {
+    //   if (!('ssr' in mountAction)) {
+    //     continue
+    //   }
+    //   if (mountAction.ssr) {
+    //     if (pointMountActionsSsr === true) {
+    //       // continue
+    //     } else if (pointMountActionsSsr === false) {
+    //       pointMountActionsSsr = 'mash'
+    //     } else if (pointMountActionsSsr === 'none') {
+    //       pointMountActionsSsr = true
+    //     } else {
+    //       // already mash
+    //     }
+    //   } else {
+    //     if (pointMountActionsSsr === false) {
+    //       // continue
+    //     } else if (pointMountActionsSsr === true) {
+    //       pointMountActionsSsr = 'mash'
+    //     } else if (pointMountActionsSsr === 'none') {
+    //       pointMountActionsSsr = false
+    //     } else {
+    //       // already mash
+    //     }
+    //   }
+    // }
+    // if (typeof pointMountActionsSsr === 'boolean' && this._getSsr() !== pointMountActionsSsr) {
+    //   throw new Error(
+    //     `Points have different ssr settings, so you may loose mount actions in ssr mode ${this.toStringWithLocation()} and ${point.toStringWithLocation()} `,
+    //   )
+    // }
 
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
@@ -6272,7 +6278,7 @@ export class Point0<
       // _serverurl: point._serverurl,
       // _basepath: point._basepath,
       // _transformer: point._transformer,
-      // _ssr
+      ...set('_ssr'),
       _eventerSubscriptions: [...this._eventerSubscriptions, ...point._eventerSubscriptions],
       _defaultMutationOptions: { ...this._defaultMutationOptions, ...point._defaultMutationOptions },
       _mutationOptions: { ...this._mutationOptions, ...point._mutationOptions },

@@ -6,7 +6,6 @@ import { createTestThings, waitReturn } from './utils/internal-testing.js'
 describe('query', () => {
   const createRoot = () =>
     Point0.lets('root', 'root')
-      .ssr(true)
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({
@@ -34,7 +33,10 @@ describe('query', () => {
       )
     })
 
-    const { render, fetchPreview, fetchesTale, fetchRecorder } = await createTestThings({ points: [root, q, page] })
+    const { render, fetchPreview, fetchesTale, fetchRecorder } = await createTestThings({
+      ssr: true,
+      points: [root, q, page],
+    })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#data')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -86,7 +88,7 @@ describe('query', () => {
         )
       })
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, q, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -124,7 +126,7 @@ describe('query', () => {
       return <div id="page">y={query.data?.y ?? 'nothing'}</div>
     })
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, q, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -164,7 +166,7 @@ describe('query', () => {
       )
     })
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, q, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -200,7 +202,7 @@ describe('query', () => {
       return <div id="page">x={query.data?.x ?? 'nothing'}</div>
     })
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, q, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -236,7 +238,7 @@ describe('query', () => {
       return <div id="page">x={query.data?.x ?? 'nothing'}</div>
     })
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, q, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -273,7 +275,7 @@ describe('query', () => {
       return <div id="page">x={query.data?.x ?? 'nothing'}</div>
     })
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, q, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`

@@ -4,7 +4,6 @@ import { createTestThings, waitReturn } from './utils/internal-testing.js'
 
 describe('head', () => {
   const root = Point0.lets('root', 'root')
-    .ssr(true)
     .loading(() => <div id="loading">...</div>)
     .error(({ error }) => <div id="error">{error.message}</div>)
     .queryOptions({
@@ -20,7 +19,7 @@ describe('head', () => {
   it('empty', async () => {
     const page = root.lets('page', 'home', '/').page(() => <div id="page" />)
 
-    const { render, fetchTitle } = await createTestThings({ points: [root, page] })
+    const { render, fetchTitle } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent, titlesTale }) => {
       await waitContent('#page')
       expect(await titlesTale()).toMatchInlineSnapshot(`
@@ -38,7 +37,7 @@ describe('head', () => {
       .head({ title: 'Home' })
       .page(() => <div id="page" />)
 
-    const { render, fetchTitle } = await createTestThings({ points: [root, page] })
+    const { render, fetchTitle } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent, titlesTale }) => {
       await waitContent('#page')
       expect(await titlesTale()).toMatchInlineSnapshot(`
@@ -56,7 +55,7 @@ describe('head', () => {
       .head('Home')
       .page(() => <div id="page" />)
 
-    const { render, fetchTitle } = await createTestThings({ points: [root, page] })
+    const { render, fetchTitle } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent, titlesTale }) => {
       await waitContent('#page')
       expect(await titlesTale()).toMatchInlineSnapshot(`
@@ -77,7 +76,7 @@ describe('head', () => {
       })
       .page(() => <div id="page" />)
 
-    const { render, fetchTitle } = await createTestThings({ points: [root, page] })
+    const { render, fetchTitle } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent, titlesTale }) => {
       await waitContent('#page')
       await waitReturn(100)
@@ -100,7 +99,7 @@ describe('head', () => {
       .loader(async () => await waitReturn({ x: 1 }))
       .page(() => <div id="page" />)
 
-    const { render, fetchTitle } = await createTestThings({ points: [root, page] })
+    const { render, fetchTitle } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent, titlesTale }) => {
       await waitContent('#page')
       await waitReturn(100)
@@ -122,7 +121,7 @@ describe('head', () => {
       .loader(async () => await waitReturn({ x: 1 }))
       .page(() => <div id="page" />)
 
-    const { render, fetchTitle } = await createTestThings({ points: [root, page] })
+    const { render, fetchTitle } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent, titlesTale }) => {
       await waitContent('#page')
       await waitReturn(100)
@@ -146,7 +145,7 @@ describe('head', () => {
       .head(({ data }) => `x=${data.x}`)
       .page(() => <div id="page" />)
 
-    const { render, fetchTitle } = await createTestThings({ points: [root, page] })
+    const { render, fetchTitle } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent, titlesTale }) => {
       await waitContent('#page')
       await waitReturn(100)
@@ -172,7 +171,7 @@ describe('head', () => {
       .head(({ data }) => `x=${data.x}`)
       .page(() => <div id="page" />)
 
-    const { render, fetchTitle } = await createTestThings({ points: [root, page] })
+    const { render, fetchTitle } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent, titlesTale }) => {
       await waitContent('#page')
       await waitReturn(100)
@@ -204,7 +203,7 @@ describe('head', () => {
       })
       .page(() => <div id="page" />)
 
-    const { render, fetchTitle } = await createTestThings({ points: [root, page] })
+    const { render, fetchTitle } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent, titlesTale, tale }) => {
       await waitContent('#error')
       await waitReturn(100)
@@ -240,7 +239,7 @@ describe('head', () => {
       })
       .page(() => <div id="page" />)
 
-    const { render, fetchTitle } = await createTestThings({ points: [root, page] })
+    const { render, fetchTitle } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent, titlesTale }) => {
       await waitContent('#error')
       await waitReturn(100)

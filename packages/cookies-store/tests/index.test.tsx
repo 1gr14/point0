@@ -298,7 +298,7 @@ describe('cookies-store', () => {
 
   describe('integration', () => {
     it('without', async () => {
-      const root = Point0.lets('root', 'root').ssr(true).root()
+      const root = Point0.lets('root', 'root').root()
       const login = root
         .lets('mutation', 'authorize')
         .input(z.object({ nick: z.string() }))
@@ -355,7 +355,7 @@ describe('cookies-store', () => {
             )}
           </div>
         ))
-      const { render } = await createTestThings({ points: [root, page, login, logout] })
+      const { render } = await createTestThings({ points: [root, page, login, logout], ssr: true })
       await render(page.route(), async ({ waitContent, click, tale }) => {
         await waitContent('#login')
         await click('#login')
@@ -384,7 +384,7 @@ describe('cookies-store', () => {
     })
 
     it('with', async () => {
-      const root = Point0.lets('root', 'root').ssr(true).use(CookiesStore.plugin()).root()
+      const root = Point0.lets('root', 'root').use(CookiesStore.plugin()).root()
       const nickCookie = CookiesStore.define('nick')
       const login = root
         .lets('mutation', 'authorize')
@@ -444,7 +444,7 @@ describe('cookies-store', () => {
             </div>
           )
         })
-      const { render } = await createTestThings({ points: [root, page, login, logout] })
+      const { render } = await createTestThings({ points: [root, page, login, logout], ssr: true })
       await render(page.route(), async ({ waitContent, click, tale }) => {
         await waitContent('#login')
         await click('#login')
@@ -473,7 +473,7 @@ describe('cookies-store', () => {
     })
 
     it('use', async () => {
-      const root = Point0.lets('root', 'root').ssr(true).use(CookiesStore.plugin()).root()
+      const root = Point0.lets('root', 'root').use(CookiesStore.plugin()).root()
       const nickCookie = CookiesStore.define('nick')
       const login = root
         .lets('mutation', 'authorize')
@@ -534,7 +534,7 @@ describe('cookies-store', () => {
             </div>
           )
         })
-      const { render } = await createTestThings({ points: [root, page, login, logout] })
+      const { render } = await createTestThings({ points: [root, page, login, logout], ssr: true })
       await render(page.route(), async ({ waitContent, click, tale }) => {
         await waitContent('#login')
         await click('#login')

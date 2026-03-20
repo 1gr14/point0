@@ -26,25 +26,25 @@ const prepareRandomFile = (tempDir: string) => {
   })
 }
 
-const helper = (
-  callback: ({
-    dir,
-    files,
-    fixPaths,
-    log,
-    getLogs,
-  }: {
-    dir: string
-    files: TestFile[]
-    fixPaths: (content: string) => string
-    log: LogFn
-    getLogs: () => Array<[{ level: string; category: string[]; message: string }]>
-    getLastLog: () => [{ level: string; category: string[]; message: string }]
-    getLastLogMessage: () => string
-  }) => void | Promise<void>,
-  preserve = false,
-) => {
+type HelperOptions = {
+  preserve?: boolean
+}
+type HelperCallback = (options: {
+  dir: string
+  files: TestFile[]
+  fixPaths: (content: string) => string
+  log: LogFn
+  getLogs: () => Array<[{ level: string; category: string[]; message: string }]>
+  getLastLog: () => [{ level: string; category: string[]; message: string }]
+  getLastLogMessage: () => string
+}) => void | Promise<void>
+type ItFn = (done: (err?: unknown) => void) => void | Promise<void>
+function helper(callback: HelperCallback): ItFn
+function helper(options: HelperOptions, callback: HelperCallback): ItFn
+function helper(...args: [HelperCallback] | [HelperOptions, HelperCallback]): ItFn {
   return async () => {
+    const [options, callback] = args.length === 1 ? [{}, args[0]] : args
+    const { preserve = false } = options
     const dir = prepareRandomTempDir()
     const files = Array.from({ length: 11 }, () => prepareRandomFile(dir))
     const fixPaths = (content: string) => {
@@ -101,7 +101,7 @@ describe('FilesGenerator', () => {
       'generates lazy points file for server',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log, getLastLogMessage, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').ssr(true).root()
+export const root = Point0.lets('root', 'myroot').root()
 export const query = root.lets('query', 'myquery').loader(() => ({hello: 'World'})).query()
 export const page = root.lets('page', 'mypage', '/mypage').query(query).page(({data}) => <div>Hello, {data.hello}</div>)
 export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
@@ -110,6 +110,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
+          ssr: true,
           tasks: [
             {
               scope: 'myroot',
@@ -245,7 +246,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log }) => {
         // with all pages come to server, becouse some of them have loaders, but even if it has no loader, it can be used to retrieve queryClientDehydratedState
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').ssr(true).root()
+export const root = Point0.lets('root', 'myroot').root()
 export const layout1 = root.lets('layout', 'layout1').loader(() => ({x:1})).layout(() => <div>Layout1</div>)
 export const layout2 = layout1.lets('layout', 'layout2').loader(() => ({x:1})).layout(() => <div>Layout2</div>)
 export const layoutNoLoader = layout2.lets('layout', 'layoutNoLoader').layout(() => <div>Layout3</div>)
@@ -257,6 +258,7 @@ export const queryWithoutLoader = layout2.lets('query', 'queryWithoutLoader').qu
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
+          ssr: true,
           tasks: [
             {
               scope: 'myroot',
@@ -328,6 +330,7 @@ export const queryWithoutLoader = layout2.lets('query', 'queryWithoutLoader').qu
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
+          ssr: false,
           tasks: [
             {
               scope: 'myroot',
@@ -378,13 +381,14 @@ export const queryWithoutLoader = layout2.lets('query', 'queryWithoutLoader').qu
       'generates ready points file',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').ssr(true).root()
+export const root = Point0.lets('root', 'myroot').root()
 export const page = root.lets('page', 'mypage', '/mypage').page(() => <div>Hello</div>)
         `)
 
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
+          ssr: true,
           tasks: [
             {
               scope: 'myroot',
@@ -761,7 +765,7 @@ export const layout = root.lets('layout', 'mylayout', '/layout').loader(() => ({
       'generates files with banner',
       helper(async ({ dir, files: [rootFile, pointsFile0, pointsFile1], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').ssr(true).root()
+export const root = Point0.lets('root', 'myroot').root()
 export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
         `)
 
@@ -770,6 +774,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           cwd: dir,
           glob: '**/*.tsx',
           banner,
+          ssr: true,
           tasks: [
             {
               scope: 'myroot',
@@ -866,12 +871,12 @@ export const root = Point0.lets('root', 'myroot').root()
       'handles multiple scopes',
       helper(async ({ dir, files: [root0File, root1File, lazy0File, lazy1File, lazy2File], fixPaths, log: log }) => {
         await root0File.write(`import {Point0} from '@point0/core'
-export const root0 = Point0.lets('root', 'root0').ssr(true).root()
+export const root0 = Point0.lets('root', 'root0').root()
 export const page0 = root0.lets('page', 'page0', '/page0').page(() => <div>Page0</div>)
         `)
 
         await root1File.write(`import {Point0} from '@point0/core'
-export const root1 = Point0.lets('root', 'root1').ssr(true).root()
+export const root1 = Point0.lets('root', 'root1').root()
 export const page1 = root1.lets('page', 'page1', '/page1').page(() => <div>Page1</div>)
 export const root2 = root1.lets('root', 'root2').root()
 export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2</div>)
@@ -880,6 +885,7 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
+          ssr: true,
           tasks: [
             {
               scope: 'root0',
@@ -968,13 +974,14 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
       'watches files and updates points',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, getLogs, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').ssr(true).root()
+export const root = Point0.lets('root', 'myroot').root()
 export const page = root.lets('page', 'mypage', '/mypage').page(() => <div>Hello</div>)
         `)
 
         const generator = FilesGenerator.create({
           cwd: dir,
           glob: '**/*.tsx',
+          ssr: true,
           tasks: [
             {
               scope: 'myroot',
@@ -1011,7 +1018,7 @@ export const page = root.lets('page', 'mypage', '/mypage').page(() => <div>Hello
         `)
 
         await rootFile.write(`import {Point0} from '@point0/core'
-          export const root = Point0.lets('root', 'myroot').ssr(true).root()
+          export const root = Point0.lets('root', 'myroot').root()
           export const page = root.lets('page', 'mypage2', '/mypage2').page(() => <div>Hello</div>)
         `)
 

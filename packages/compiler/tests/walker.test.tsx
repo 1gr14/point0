@@ -23,11 +23,15 @@ const prepareRandomFile = () => {
   })
 }
 
-const helper = (
-  callback: ({ files, walker }: { files: TestFile[]; walker: Walker }) => void | Promise<void>,
-  { preserve = false, ssr = false }: { preserve?: boolean; ssr?: boolean } = {},
-) => {
+type ItFn = (done: (err?: unknown) => void) => void | Promise<void>
+type HelperCallback = ({ files, walker }: { files: TestFile[]; walker: Walker }) => void | Promise<void>
+type HelperOptions = { preserve?: boolean; ssr?: boolean }
+function helper(callback: HelperCallback): ItFn
+function helper(options: HelperOptions, callback: HelperCallback): ItFn
+function helper(...args: [HelperCallback] | [HelperOptions, HelperCallback]): ItFn {
   return async () => {
+    const [options, callback] = args.length === 1 ? [{}, args[0]] : args
+    const { preserve = false, ssr = false } = options
     const walker = new Walker({ routes: undefined, ssr })
     const files = Array.from({ length: 11 }, prepareRandomFile)
     try {
@@ -334,9 +338,9 @@ describe('Walker', () => {
 
     it.concurrent(
       'recognize non action endpoints',
-      helper(async ({ files: [f0], walker }) => {
+      helper({ ssr: true }, async ({ files: [f0], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
-          export const root = Point0.lets('root', 'root').ssr(true).basepath('/api').basepath('/:x').root()
+          export const root = Point0.lets('root', 'root').basepath('/api').basepath('/:x').root()
           export const q1 = root.lets('query', 'query1').loader(() => ({ ok: true })).query()
           export const q2 = root.lets('query', 'query2').query()
           export const m1 = root.lets('mutation', 'mutation1').loader(() => ({ ok: true })).mutation()

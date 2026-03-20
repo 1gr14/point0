@@ -6,7 +6,6 @@ import { createTestThings } from './utils/internal-testing.js'
 describe('mutation', () => {
   const createRoot = () =>
     Point0.lets('root', 'root')
-      .ssr(true)
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({
@@ -37,7 +36,7 @@ describe('mutation', () => {
       )
     })
 
-    const { render, fetchesTale } = await createTestThings({ points: [root, q, page] })
+    const { render, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
     await render(page.route(), async ({ waitContent, tale, click }) => {
       await waitContent('#data')
       await click('#mutate')
@@ -80,7 +79,7 @@ describe('mutation', () => {
       )
     })
 
-    const { render, fetchesTale } = await createTestThings({ points: [root, q, page] })
+    const { render, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
     await render(page.route(), async ({ waitContent, tale, click }) => {
       await waitContent('#data')
       await click('#mutate')
@@ -126,7 +125,7 @@ describe('mutation', () => {
       )
     })
 
-    const { render, fetchesTale } = await createTestThings({ points: [root, q, page] })
+    const { render, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
     await render(page.route(), async ({ waitContent, tale, click }) => {
       await waitContent('#data')
       await click('#mutate')
@@ -170,7 +169,7 @@ describe('mutation', () => {
       )
     })
 
-    const { render, fetchesTale } = await createTestThings({ points: [root, q, page] })
+    const { render, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
     await render(page.route(), async ({ waitContent, tale, click }) => {
       await waitContent('#data')
       await click('#mutate')
@@ -214,7 +213,7 @@ describe('mutation', () => {
       )
     })
 
-    const { render, fetchesTale } = await createTestThings({ points: [root, q, page] })
+    const { render, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
     await render(page.route(), async ({ waitContent, tale, click }) => {
       await waitContent('#data')
       await click('#mutate')
@@ -259,7 +258,7 @@ describe('mutation', () => {
       )
     })
 
-    const { render, fetchesTale } = await createTestThings({ points: [root, q, page] })
+    const { render, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
     await render(page.route(), async ({ waitContent, tale, click }) => {
       await waitContent('#data')
       await click('#mutate')
@@ -320,7 +319,7 @@ describe('mutation', () => {
       )
     })
 
-    const { render, fetchesTale } = await createTestThings({ points: [root, q, page] })
+    const { render, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
     await render(page.route(), async ({ waitContent, tale, click }) => {
       await waitContent('#data')
       await click('#mutate')

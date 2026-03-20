@@ -7,7 +7,6 @@ import superjson from 'superjson'
 describe('action', () => {
   const createRoot = () =>
     Point0.lets('root', 'root')
-      .ssr(true)
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
       .transformer(superjson)
@@ -41,9 +40,7 @@ describe('action', () => {
       })
       .action()
 
-    const { loadPoint } = await createTestThings({
-      points: [root, action],
-    })
+    const { loadPoint } = await createTestThings({ ssr: true, points: [root, action] })
     const result = await loadPoint(
       action,
       { body: { b: 3, d: 100n }, search: { y: '2' }, params: { id: '1' } },
@@ -78,9 +75,7 @@ describe('action', () => {
         }
       })
 
-    const { loadPoint } = await createTestThings({
-      points: [root, action],
-    })
+    const { loadPoint } = await createTestThings({ ssr: true, points: [root, action] })
     const result = await loadPoint(
       action,
       { body: { b: 3, d: 100n }, search: { y: '2' }, params: { id: '1' } },
@@ -120,9 +115,7 @@ describe('action', () => {
         }
       })
 
-    const { loadPoint } = await createTestThings({
-      points: [root, action],
-    })
+    const { loadPoint } = await createTestThings({ ssr: true, points: [root, action] })
     const result = await loadPoint(
       action,
       { body: { b: 3, d: 100n }, search: { y: '2' }, params: { id: '1' } },
@@ -163,9 +156,7 @@ describe('action', () => {
         }
       })
 
-    const { loadPoint } = await createTestThings({
-      points: [root, action],
-    })
+    const { loadPoint } = await createTestThings({ ssr: true, points: [root, action] })
     const result = await loadPoint(
       action,
       { body: { b: 3, d: 100n }, search: { y: '2' }, params: { id: '1' } },
@@ -196,9 +187,7 @@ describe('action', () => {
         return { headers, search, params, bodyUsed: request.original.bodyUsed }
       })
 
-    const { loadPoint } = await createTestThings({
-      points: [root, action],
-    })
+    const { loadPoint } = await createTestThings({ ssr: true, points: [root, action] })
     const result = await loadPoint(action, { search: { y: '2' }, params: { id: '1' } }, { headers: { x: '1' } })
     expect(result).toEqual({ headers: { x: '1' }, search: { y: '2' }, params: { id: '1' }, bodyUsed: false })
   })
@@ -212,9 +201,7 @@ describe('action', () => {
       })
       .action()
 
-    const { engine } = await createTestThings({
-      points: [root, action],
-    })
+    const { engine } = await createTestThings({ ssr: true, points: [root, action] })
     const request = new Request('http://localhost:3000/api/my-test/1', {
       headers: { 'Content-Type': 'application/json' },
     })
@@ -240,7 +227,7 @@ describe('action', () => {
         </div>
       ))
 
-    const { render, fetchPreview } = await createTestThings({ points: [root, page, action] })
+    const { render, fetchPreview } = await createTestThings({ ssr: true, points: [root, page, action] })
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -278,7 +265,7 @@ describe('action', () => {
       ))
 
     // we do not add action to points, to imitate point deletion o server and stale client
-    const { render, engine } = await createTestThings({ points: [root, page] })
+    const { render, engine } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#error')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -355,7 +342,7 @@ describe('action', () => {
         )
       })
 
-    const { render, fetchPreview } = await createTestThings({ points: [root, page, action] })
+    const { render, fetchPreview } = await createTestThings({ ssr: true, points: [root, page, action] })
     await render(page.route(), async ({ waitContent, tale, click }) => {
       await waitContent('#more')
       await click('#more')
@@ -418,7 +405,7 @@ describe('action', () => {
       )
     })
 
-    const { render, fetchesTale } = await createTestThings({ points: [root, action, page] })
+    const { render, fetchesTale } = await createTestThings({ ssr: true, points: [root, action, page] })
     await render(page.route(), async ({ waitContent, tale, click }) => {
       await waitContent('#data')
       await click('#mutate')
@@ -481,10 +468,6 @@ describe('action', () => {
       })
       .action()
 
-    await expect(
-      createTestThings({
-        points: [root, action1, action2],
-      }),
-    ).rejects.toThrow()
+    await expect(createTestThings({ ssr: true, points: [root, action1, action2] })).rejects.toThrow()
   })
 })

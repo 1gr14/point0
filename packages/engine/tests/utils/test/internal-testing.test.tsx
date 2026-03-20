@@ -10,7 +10,6 @@ import { createTestThings, waitReturn } from '../internal-testing.js'
 describe('internal-testing', () => {
   it('works', async () => {
     const root = Point0.lets('root', 'root')
-      .ssr(true)
       .queryOptions({ refetchOnMount: false, staleTime: Infinity })
       .prefetchPageOnNavigate(false)
       .prefetchPageOnLinkHover(false)
@@ -37,6 +36,7 @@ describe('internal-testing', () => {
         </div>
       ))
     const { fetchPreview, fetchRecorder, fetchesTale, render } = await createTestThings({
+      ssr: true,
       points: [root, page, news],
     })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`

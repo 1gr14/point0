@@ -7,7 +7,6 @@ import { createTestThings, ymlify } from './utils/internal-testing.js'
 describe('loader', () => {
   const createRoot = () =>
     Point0.lets('root', 'root')
-      .ssr(true)
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({
@@ -21,7 +20,6 @@ describe('loader', () => {
       .root()
   const createRootWithTransformer = () =>
     Point0.lets('root', 'root')
-      .ssr(true)
       .transformer(superjson)
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
@@ -46,7 +44,7 @@ describe('loader', () => {
         expect(data.date).toBe('2026-01-01T00:00:00.000Z' as never)
         return ymlify(data)
       })
-    const { fetchPreview, fetchSsr } = await createTestThings({ points: [root, page] })
+    const { fetchPreview, fetchSsr } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
           "
           date: 2026-01-01T00:00:00.000Z
@@ -67,7 +65,7 @@ describe('loader', () => {
         expect(data.date).toBeInstanceOf(Date)
         return ymlify({ ...data, date: data.date.toISOString() })
       })
-    const { fetchPreview, fetchSsr } = await createTestThings({ points: [root, page] })
+    const { fetchPreview, fetchSsr } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
           "
           date: 2026-01-01T00:00:00.000Z
@@ -87,7 +85,7 @@ describe('loader', () => {
         expectTypeOf(data).toEqualTypeOf<{ x: number }>()
         return ymlify(data)
       })
-    const { fetchPreview, fetchSsr } = await createTestThings({ points: [root, page] })
+    const { fetchPreview, fetchSsr } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       x: 1
@@ -111,7 +109,7 @@ describe('loader', () => {
         expectTypeOf(data).toEqualTypeOf<{ x: number }>()
         return ymlify(data)
       })
-    const { render, fetchSsr } = await createTestThings({ points: [root, page] })
+    const { render, fetchSsr } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#error')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -136,7 +134,7 @@ describe('loader', () => {
       .lets('mutation', 'test')
       .loader(() => [201, { x: 1 }])
       .mutation()
-    const { render } = await createTestThings({ points: [root, mutation] })
+    const { render } = await createTestThings({ ssr: true, points: [root, mutation] })
     await render(page.route(), async () => {
       const result = await mutation.fetchServerDetailed()
       expect(result.response?.status).toBe(201)
@@ -155,7 +153,7 @@ describe('loader', () => {
         throw new ErrorPoint0('test error', { status: 410 })
       })
       .mutation()
-    const { render } = await createTestThings({ points: [root, mutation, page] })
+    const { render } = await createTestThings({ ssr: true, points: [root, mutation, page] })
     await render(page.route(), async () => {
       const result = await mutation.fetchServerDetailed()
       expect(result.response?.status).toBe(410)
@@ -172,7 +170,7 @@ describe('loader', () => {
         expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ x: number; y: number; z: number }>()
         return ymlify(data)
       })
-    const { fetchPreview, fetchSsr } = await createTestThings({ points: [root, page] })
+    const { fetchPreview, fetchSsr } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       x: 1

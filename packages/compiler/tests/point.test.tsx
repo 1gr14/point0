@@ -22,12 +22,16 @@ const prepareRandomFile = () => {
   })
 }
 
-const helper = (
-  callback: ({ files, walker }: { files: TestFile[]; walker: Walker }) => void | Promise<void>,
-  preserve = false,
-) => {
+type ItFn = (done: (err?: unknown) => void) => void | Promise<void>
+type HelperCallback = ({ files, walker }: { files: TestFile[]; walker: Walker }) => void | Promise<void>
+type HelperOptions = { preserve?: boolean; ssr?: boolean }
+function helper(callback: HelperCallback): ItFn
+function helper(options: HelperOptions, callback: HelperCallback): ItFn
+function helper(...args: [HelperCallback] | [HelperOptions, HelperCallback]): ItFn {
   return async () => {
-    const walker = new Walker({ routes: undefined })
+    const [options, callback] = args.length === 1 ? [{}, args[0]] : args
+    const { preserve = false, ssr = false } = options
+    const walker = new Walker({ routes: undefined, ssr })
     const files = Array.from({ length: 11 }, prepareRandomFile)
     try {
       await callback({
@@ -1016,20 +1020,15 @@ export const root = Point0.lets('root', 'root')
       )
 
       it.concurrent(
-        'correctly understand when it is underSsr',
+        'correctly understand when it is underSsr (when ssr=false is default)',
         helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'page', '/')
 .iamNotUnderSsrByDefault()
-.ssr(true)
-.iamUnderSsr()
+.clientLoader()
 .ssr(false)
 .iamNotUnderSsr()
-.clientLoader(true)
-.iamNotUnderSsr()
-.ssr(true)
-.iamUnderSsr()
 .page(() => <div>Hello</div>)
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
@@ -1040,15 +1039,39 @@ export const page = root.lets('page', 'page', '/')
             [
               "root: underSsr=false",
               "iamNotUnderSsrByDefault: underSsr=false",
-              "ssr: underSsr=true",
-              "iamUnderSsr: underSsr=true",
+              "clientLoader: underSsr=false",
               "ssr: underSsr=false",
               "iamNotUnderSsr: underSsr=false",
-              "clientLoader: underSsr=false",
+              "page: underSsr=false",
+            ]
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'correctly understand when it is underSsr (when ssr=true)',
+        helper({ ssr: true }, async ({ files: [file], walker }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const page = root.lets('page', 'page', '/')
+.iamNotUnderSsrByDefault()
+.clientLoader()
+.ssr(false)
+.iamNotUnderSsr()
+.page(() => <div>Hello</div>)
+        `)
+          const result = walker.collectPointsFromFile({ file: file.path })
+          const point = result.points[1]
+          point.shakeMethods({ side: 'client' })
+          expect(point.chainMethods.map((m) => `${m.name}: underSsr=${m.underSsr ? 'true' : 'false'}`))
+            .toMatchInlineSnapshot(`
+            [
+              "root: underSsr=true",
+              "iamNotUnderSsrByDefault: underSsr=true",
+              "clientLoader: underSsr=true",
+              "ssr: underSsr=false",
               "iamNotUnderSsr: underSsr=false",
-              "ssr: underSsr=true",
-              "iamUnderSsr: underSsr=true",
-              "page: underSsr=true",
+              "page: underSsr=false",
             ]
           `)
         }),
@@ -1056,9 +1079,9 @@ export const page = root.lets('page', 'page', '/')
 
       it.concurrent(
         'correcttly prune rest for client',
-        helper(async ({ files: [file], walker }) => {
+        helper({ ssr: true }, async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
-              export const root = Point0.lets('root', 'root').ssr(true).clientLoader(true).root()
+              export const root = Point0.lets('root', 'root').clientLoader(true).root()
               export const page = root.lets('page', 'page', '/')
               .serverurl(() => console.info('fake'))
               .basepath(() => console.info('fake'))
@@ -1118,10 +1141,7 @@ export const page = root.lets('page', 'page', '/')
           point.shakeMethods({ side: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
-            export const root = Point0.lets('root', 'root')
-              .ssr(true)
-              .clientLoader(true)
-              .root()
+            export const root = Point0.lets('root', 'root').clientLoader(true).root()
             export const page = root
               .lets('page', 'page', '/')
               .serverurl(() => console.info('fake'))
@@ -1182,9 +1202,9 @@ export const page = root.lets('page', 'page', '/')
 
       it.concurrent(
         'prune action params and search for client',
-        helper(async ({ files: [file], walker }) => {
+        helper({ ssr: true }, async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
-              export const root = Point0.lets('root', 'root').ssr(true).clientLoader(true).root()
+              export const root = Point0.lets('root', 'root').clientLoader(true).root()
               export const action1 = root.lets('POST', '/api/my-test/:id')
                 .params(() => console.info('fake'))
                 .search(() => console.info('fake'))
@@ -1209,10 +1229,7 @@ export const page = root.lets('page', 'page', '/')
           point2.shakeMethods({ side: 'client' })
           expect(await point1.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
-            export const root = Point0.lets('root', 'root')
-              .ssr(true)
-              .clientLoader(true)
-              .root()
+            export const root = Point0.lets('root', 'root').clientLoader(true).root()
             export const action1 = root
               .lets('POST', '/api/my-test/:id')
               .params()
@@ -1367,9 +1384,9 @@ export const page = root.lets('page', 'page', '/')
 
       it.concurrent(
         'correcttly prune rest for server with ssr',
-        helper(async ({ files: [file], walker }) => {
+        helper({ ssr: true }, async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
-              export const root = Point0.lets('root', 'root').ssr(true).clientLoader(true).root()
+              export const root = Point0.lets('root', 'root').clientLoader(true).root()
               export const page = root.lets('page', 'page', '/')
               .serverurl(() => console.info('fake'))
               .basepath(() => console.info('fake'))
@@ -1424,10 +1441,7 @@ export const page = root.lets('page', 'page', '/')
           point.shakeMethods({ side: 'server' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
-            export const root = Point0.lets('root', 'root')
-              .ssr(true)
-              .clientLoader(true)
-              .root()
+            export const root = Point0.lets('root', 'root').clientLoader(true).root()
             export const page = root
               .lets('page', 'page', '/')
               .serverurl(() => console.info('fake'))

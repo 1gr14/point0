@@ -108,13 +108,11 @@ describe('plugin', () => {
 
   it.concurrent('merges props', async () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
-      .ssr(true)
       .with(() => {
         return { plugin: 'ok1' }
       })
       .plugin()
     const root = Point0.lets('root', 'root')
-      .ssr(true)
       .with(() => ({ rootBefore: 'ok2' }))
       .use(plugin)
       .with(() => ({ rootAfter: 'ok3' }))
@@ -124,7 +122,7 @@ describe('plugin', () => {
       .with(() => ({ page: 'ok4' }))
       .page(({ props }) => <div id="page">{ymlifyline(props)}</div>)
 
-    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #page: rootBefore: ok2, plugin: ok1, rootAfter: ok3, page: ok4
@@ -136,7 +134,7 @@ describe('plugin', () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
       .input(z.object({ plugin: z.number().transform((v) => v * 2) }))
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const query = root
       .lets('query', 'test')
       .use(plugin)
@@ -153,7 +151,7 @@ describe('plugin', () => {
       .with(query, { plugin: 100, query: 200 })
       .page(({ data }) => <div id="page">{ymlifyline(data)}</div>)
 
-    const { fetchPreview } = await createTestThings({ points: [root, page, query] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page, query] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #page: plugin: 200, query: 600
@@ -165,7 +163,7 @@ describe('plugin', () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
       .headers(z.object({ 'x-plugin': z.string().transform((v) => +v * 2) }))
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const query = root
       .lets('query', 'test')
       .use(plugin)
@@ -181,7 +179,7 @@ describe('plugin', () => {
       .with(query)
       .page(({ data }) => <div id="page">{ymlifyline(data)}</div>)
 
-    const { fetchPreview } = await createTestThings({ points: [root, page, query] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page, query] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #page: x-plugin: 200
@@ -193,7 +191,7 @@ describe('plugin', () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
       .search(z.object({ plugin: z.string().transform((v) => +v * 2) }))
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const action = root
       .lets('action', 'test', 'GET', '/test')
       .use(plugin)
@@ -208,7 +206,7 @@ describe('plugin', () => {
       .with(action, { search: { plugin: '100' } })
       .page(({ data }) => <div id="page">{ymlifyline(data)}</div>)
 
-    const { fetchPreview } = await createTestThings({ points: [root, page, action] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page, action] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #page: plugin: 200
@@ -220,7 +218,7 @@ describe('plugin', () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
       .body(z.object({ plugin: z.number().transform((v) => v * 2) }))
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const action = root
       .lets('action', 'test', 'GET', '/test')
       .use(plugin)
@@ -235,7 +233,7 @@ describe('plugin', () => {
       .with(action, { body: { plugin: 100 } })
       .page(({ data }) => <div id="page">{ymlifyline(data)}</div>)
 
-    const { fetchPreview } = await createTestThings({ points: [root, page, action] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page, action] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #page: plugin: 200
@@ -257,7 +255,7 @@ describe('plugin', () => {
         }
       })
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'home', '/')
       .ctx(() => ({ page1: 'page1' }))
@@ -278,7 +276,7 @@ describe('plugin', () => {
       })
       .page(({ data }) => <div id="page">{ymlify(data)}</div>)
 
-    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #page: page1: page1
@@ -302,7 +300,7 @@ describe('plugin', () => {
       .use(plugin1)
       .ctx(({ ctx }) => ({ plugin2: 'plugin2', plugin21: ctx.plugin1 }))
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'home', '/')
       .use(plugin2)
@@ -316,7 +314,7 @@ describe('plugin', () => {
       })
       .page(({ data }) => <div id="page">{ymlify(data)}</div>)
 
-    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #page: page3: page3
@@ -329,7 +327,6 @@ describe('plugin', () => {
 
   it.concurrent('not get outside props, but keep props inside', async () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
-      .ssr(true)
       .with(() => ({ plugin1: 'plugin1' }))
       .with(({ props }) => {
         expectTypeOf(props).toHaveProperty('plugin1')
@@ -342,7 +339,7 @@ describe('plugin', () => {
         }
       })
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'home', '/')
       .with(() => ({ page1: 'page1' }))
@@ -360,7 +357,7 @@ describe('plugin', () => {
       })
       .page(({ props }) => <div id="page">{ymlify(props)}</div>)
 
-    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #page: page1: page1
@@ -378,15 +375,13 @@ describe('plugin', () => {
 
   it.concurrent('nested plugin props', async () => {
     const plugin1 = Point0.lets('plugin', 'test-plugin1')
-      .ssr(true)
       .with(() => ({ plugin1: 'plugin1' }))
       .plugin()
     const plugin2 = Point0.lets('plugin', 'test-plugin2')
-      .ssr(true)
       .use(plugin1)
       .with(({ props }) => ({ plugin2: 'plugin2', plugin21: props.plugin1 }))
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'home', '/')
       .use(plugin2)
@@ -397,7 +392,7 @@ describe('plugin', () => {
       })
       .page(({ props }) => <div id="page">{ymlify(props)}</div>)
 
-    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #page: plugin1: plugin1
@@ -412,7 +407,7 @@ describe('plugin', () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
       .input(z.object({ plugin: z.number() }))
       .plugin()
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const query = root
       .lets('query', 'test')
       .use(plugin)
@@ -427,7 +422,7 @@ describe('plugin', () => {
       .with(query, { plugin: 123, query: 456 })
       .page(({ data }) => <div id="page">{ymlifyline(data)}</div>)
 
-    const { fetchPreview } = await createTestThings({ points: [root, page, query] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page, query] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #page: plugin: 123, query: 456
@@ -435,42 +430,40 @@ describe('plugin', () => {
     `)
   })
 
-  it.concurrent('forbidden different ssr settings when mount actions provided', async () => {
-    const pluginNoSsr = Point0.lets('plugin', 'test-plugin-no-ssr')
-      .ssr(false)
-      .with(() => ({ plugin: 'noSsr' }))
-      .plugin()
-    const pluginSsr = Point0.lets('plugin', 'test-plugin-ssr')
-      .ssr(true)
-      .with(() => ({ plugin: 'ssr' }))
-      .plugin()
-    const rootSsr = Point0.lets('root', 'root').ssr(true).root()
-    const rootNoSsr = Point0.lets('root', 'root').ssr(false).root()
-    expect(() =>
-      rootSsr
-        .lets('page', 'home', '/')
-        .use(pluginNoSsr)
-        .page(({ props }) => <div id="page">{ymlifyline(props)}</div>),
-    ).toThrow()
-    expect(() =>
-      rootNoSsr
-        .lets('page', 'home', '/')
-        .use(pluginSsr)
-        .page(({ props }) => <div id="page">{ymlifyline(props)}</div>),
-    ).toThrow()
-    rootSsr
-      .lets('page', 'home', '/')
-      .use(pluginSsr)
-      .page(({ props }) => <div id="page">{ymlifyline(props)}</div>)
-    rootNoSsr
-      .lets('page', 'home', '/')
-      .use(pluginNoSsr)
-      .page(({ props }) => <div id="page">{ymlifyline(props)}</div>)
-  })
+  // it.concurrent('forbidden different ssr settings when mount actions provided', async () => {
+  //   const pluginNoSsr = Point0.lets('plugin', 'test-plugin-no-ssr')
+  //   .ssr(false)
+  //     .with(() => ({ plugin: 'noSsr' }))
+  //     .plugin()
+  //   const pluginSsr = Point0.lets('plugin', 'test-plugin-ssr')
+  //     .with(() => ({ plugin: 'ssr' }))
+  //     .plugin()
+  //   const rootSsr = Point0.lets('root', 'root').root()
+  //   const rootNoSsr = Point0.lets('root', 'root').root()
+  //   expect(() =>
+  //     rootSsr
+  //       .lets('page', 'home', '/')
+  //       .use(pluginNoSsr)
+  //       .page(({ props }) => <div id="page">{ymlifyline(props)}</div>),
+  //   ).toThrow()
+  //   expect(() =>
+  //     rootNoSsr
+  //       .lets('page', 'home', '/')
+  //       .use(pluginSsr)
+  //       .page(({ props }) => <div id="page">{ymlifyline(props)}</div>),
+  //   ).toThrow()
+  //   rootSsr
+  //     .lets('page', 'home', '/')
+  //     .use(pluginSsr)
+  //     .page(({ props }) => <div id="page">{ymlifyline(props)}</div>)
+  //   rootNoSsr
+  //     .lets('page', 'home', '/')
+  //     .use(pluginNoSsr)
+  //     .page(({ props }) => <div id="page">{ymlifyline(props)}</div>)
+  // })
 
   // it.concurrent('merge error head', async () => {
   //   const root = Point0.lets('root', 'root')
-  //     .ssr(true)
   //     .error(({ error }) => <div id="error">{error.message}</div>)
   //     .root()
   //   const plugin = Point0.lets('plugin', 'test-plugin')
@@ -493,7 +486,7 @@ describe('plugin', () => {
   //     .use(plugin)
   //     .page(() => <div id="page" />)
 
-  //   const { render } = await createTestThings({ points: [root, page] })
+  //   const { render } = await createTestThings({ ssr: true, points: [root, page] })
   //   await render(page.route(), async ({ waitContent, titlesTale, tale }) => {
   //     await waitContent('#error')
   //     expect(await titlesTale()).toMatchInlineSnapshot(`

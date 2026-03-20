@@ -312,6 +312,7 @@ export type TestThings = {
 export const createTestThings = async ({
   points,
   wrapper,
+  ssr = false,
   app: appProvided,
   globals = getFakeBrowserGlobals(),
   engineOptions,
@@ -319,6 +320,7 @@ export const createTestThings = async ({
 }: {
   wrapper?: React.ComponentType<{ children: React.ReactNode }>
   points?: PointsDefinition<any, any>
+  ssr?: boolean
   app?: AppComponent
   globals?: Record<string, any>
   engineOptions?: Partial<EngineOptions>
@@ -354,8 +356,6 @@ export const createTestThings = async ({
       }
     }
   }
-  const firstPoint = points?.at(0)?.point
-  const ssr = firstPoint && '_ssr' in firstPoint ? firstPoint._ssr : false
   const engine = await Engine.create({
     compiler: false,
     file: nodePath.resolve(__dirname, '../temp/never'),

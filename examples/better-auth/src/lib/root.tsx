@@ -3,7 +3,6 @@ import superjson from 'superjson'
 import { authServer } from './auth/core'
 
 export const root = Point0.lets('root', 'site')
-  .ssr(true)
   .transformer(superjson)
   .middleware('/api/auth/*', async ({ request }) => await authServer.handler(request.original))
   .queryOptions({

@@ -6,7 +6,6 @@ import { createTestThings, ymlify } from './utils/internal-testing.js'
 describe('ctx', () => {
   const createRoot = () =>
     Point0.lets('root', 'root')
-      .ssr(true)
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({
@@ -29,7 +28,7 @@ describe('ctx', () => {
         expectTypeOf(data).toEqualTypeOf<{ x: number }>()
         return ymlify(data)
       })
-    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       x: 1
@@ -47,7 +46,7 @@ describe('ctx', () => {
         expectTypeOf(data).toEqualTypeOf<{ x: number }>()
         return ymlify(data)
       })
-    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       x: 1
@@ -66,7 +65,7 @@ describe('ctx', () => {
         expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ x: number; y: number }>()
         return ymlify(data)
       })
-    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       x: 1
@@ -86,7 +85,7 @@ describe('ctx', () => {
         expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ x: number; y: number }>()
         return ymlify(data)
       })
-    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       x: 999
@@ -105,7 +104,7 @@ describe('ctx', () => {
         expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ ctx: { x: number }; x: number }>()
         return ymlify(data)
       })
-    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       ctx: 
@@ -131,7 +130,7 @@ describe('ctx', () => {
         expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ ctx: { x: number; y: number }; x: number; y: any }>()
         return ymlify(data)
       })
-    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       ctx: 
@@ -153,7 +152,7 @@ describe('ctx', () => {
         expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ ctx: { x: number }; x: number }>()
         return ymlify(data)
       })
-    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       ctx: 
@@ -179,7 +178,7 @@ describe('ctx', () => {
         expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ ctx: { x: number; y: number }; x: number; y: any }>()
         return ymlify(data)
       })
-    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       ctx: 
@@ -243,7 +242,7 @@ describe('ctx', () => {
         expectTypeOf(data).toEqualTypeOf<{ x: number }>()
         return ymlify(data)
       })
-    const { fetchPreview } = await createTestThings({ points: [root, page] })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       x: 1

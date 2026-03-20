@@ -11,7 +11,6 @@ setDefaultTimeout(20000)
 
 const createTestPointsAndHelpers = () => {
   const root = Point0.lets('root', 'root')
-    .ssr(true)
     .loading(() => <div id="loading">...</div>)
     .error(({ error }) => <div id="error">{error.message}</div>)
     .prefetchPageOnNavigate(true)
@@ -173,6 +172,7 @@ const createT = async () => {
   const testPointsAndHelpers = createTestPointsAndHelpers()
   const { root, layout, homePage, aboutPage, postsPage, postPage } = testPointsAndHelpers
   const testThings = await createTestThings({
+    ssr: true,
     points: [root, layout, homePage, aboutPage, postsPage, postPage],
   })
   return { ...testPointsAndHelpers, ...testThings }

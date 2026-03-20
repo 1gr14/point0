@@ -10,13 +10,12 @@ describe('on', () => {
       .on('*', (e) => {
         events.push(e)
       })
-      .ssr(true)
       .root()
     const page = root
       .lets('page', 'home', '/')
       .loader(() => ({ x: 1 }))
       .page(({ data }) => <div id="page">x={data.x}</div>)
-    const { render } = await createTestThings({ points: [root, page] })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent }) => {
       await waitContent('#page')
       expect(events.map((e) => ({ name: e.name, side: e.side }))).toMatchInlineSnapshot(`
@@ -74,13 +73,12 @@ describe('on', () => {
       .on('pointMutationStart', (e) => {
         events.push(e)
       })
-      .ssr(true)
       .root()
     const page = root
       .lets('page', 'home', '/')
       .loader(() => ({ x: 1 }))
       .page(({ data }) => <div id="page">x={data.x}</div>)
-    const { render } = await createTestThings({ points: [root, page] })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent }) => {
       await waitContent('#page')
       expect(events.map((e) => ({ name: e.name, side: e.side }))).toMatchInlineSnapshot(`
@@ -107,13 +105,12 @@ describe('on', () => {
       .on(['pointQuerySuccess', 'pointInfiniteQuerySuccess', 'pointMutationSuccess'], (e) => {
         events.push(e)
       })
-      .ssr(true)
       .root()
     const page = root
       .lets('page', 'home', '/')
       .loader(() => ({ x: 1 }))
       .page(({ data }) => <div id="page">x={data.x}</div>)
-    const { render } = await createTestThings({ points: [root, page] })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent }) => {
       await waitContent('#page')
       expect(events.map((e) => ({ name: e.name, side: e.side }))).toMatchInlineSnapshot(`
@@ -137,7 +134,6 @@ describe('on', () => {
       .on('error', (e) => {
         events.push(e)
       })
-      .ssr(true)
       .root()
     const page = root
       .lets('page', 'home', '/')
@@ -148,7 +144,7 @@ describe('on', () => {
         return { x: 1 }
       })
       .page(({ data }) => <div id="page">x={data.x}</div>)
-    const { render } = await createTestThings({ points: [root, page] })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent }) => {
       await waitContent('error')
       expect(events.map((e) => ({ name: e.name, side: e.side }))).toMatchInlineSnapshot(`

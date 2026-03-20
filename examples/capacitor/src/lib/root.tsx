@@ -2,7 +2,6 @@ import { Point0 } from '@point0/core'
 import superjson from 'superjson'
 
 export const root = Point0.lets('root', 'site')
-  .ssr(true)
   .transformer(superjson)
   .queryOptions({
     retry: false,

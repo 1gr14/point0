@@ -7,7 +7,6 @@ import { createTestThings } from './utils/internal-testing.js'
 describe('provider', () => {
   const createRoot = () =>
     Point0.lets('root', 'root')
-      .ssr(true)
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({
@@ -34,6 +33,7 @@ describe('provider', () => {
     })
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
       points: [root, provider, page],
       wrapper: ({ children }) => <provider.X>{children}</provider.X>,
     })
@@ -76,6 +76,7 @@ describe('provider', () => {
     })
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
       points: [root, provider, page],
       wrapper: ({ children }) => <provider.X input={{ z: 4 }}>{children}</provider.X>,
     })
@@ -118,6 +119,7 @@ describe('provider', () => {
     })
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
       points: [root, provider, page],
       wrapper: ({ children }) => <provider.X z={4}>{children}</provider.X>,
     })
@@ -158,6 +160,7 @@ describe('provider', () => {
     })
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
       points: [root, provider, page],
       wrapper: ({ children }) => {
         const [z, setZ] = React.useState(4)
@@ -202,6 +205,7 @@ describe('provider', () => {
     })
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
       points: [root, provider, page],
       wrapper: ({ children }) => <provider.X>{children}</provider.X>,
     })
@@ -237,6 +241,7 @@ describe('provider', () => {
     })
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
       points: [root, provider, page],
       wrapper: ({ children }) => {
         const [x, setX] = React.useState(1)
@@ -288,6 +293,7 @@ describe('provider', () => {
     })
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
       points: [root, provider, page],
       wrapper: ({ children }) => <provider.X>{children}</provider.X>,
     })
@@ -327,6 +333,7 @@ describe('provider', () => {
     })
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
       points: [root, provider, page],
       wrapper: ({ children }) => {
         const [x, setX] = React.useState(1)

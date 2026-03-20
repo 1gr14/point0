@@ -6,7 +6,7 @@ import { createTestThings } from './utils/internal-testing.js'
 
 describe('input', () => {
   it.concurrent('params by route definition', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'test', '/test/:id')
       .loader(({ params }) => {
@@ -28,7 +28,7 @@ describe('input', () => {
           </div>
         )
       })
-    const { render } = await createTestThings({ points: [root, page] })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route({ id: '123' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -43,7 +43,7 @@ describe('input', () => {
   })
 
   it.concurrent('params by schema', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'test', '/test/:id')
       .params(z.object({ id: z.string().transform((val) => +val) }))
@@ -66,7 +66,7 @@ describe('input', () => {
           </div>
         )
       })
-    const { render } = await createTestThings({ points: [root, page] })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route({ id: '123' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -81,7 +81,7 @@ describe('input', () => {
   })
 
   it.concurrent('params by custom validate fn', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'test', '/test/:id')
       .params((params) => {
@@ -108,7 +108,7 @@ describe('input', () => {
           </div>
         )
       })
-    const { render } = await createTestThings({ points: [root, page] })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route({ id: '123' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -123,7 +123,7 @@ describe('input', () => {
   })
 
   it.concurrent('search by schema', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'test', '/test/:id')
       .search(z.object({ cursor: z.string().transform((val) => +val) }))
@@ -152,7 +152,7 @@ describe('input', () => {
           </div>
         )
       })
-    const { render } = await createTestThings({ points: [root, page] })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route({ id: '123', '?': { cursor: '777' } }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -167,7 +167,7 @@ describe('input', () => {
   })
 
   it.concurrent('search by custom validate fn', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'test', '/test/:id')
       .search((search) => {
@@ -200,7 +200,7 @@ describe('input', () => {
           </div>
         )
       })
-    const { render } = await createTestThings({ points: [root, page] })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route({ id: '123', '?': { cursor: '777' } }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -215,7 +215,7 @@ describe('input', () => {
   })
 
   it.concurrent('search by type (unsafe)', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'test', '/test/:id')
       .search<{ cursor?: string }>()
@@ -244,7 +244,7 @@ describe('input', () => {
           </div>
         )
       })
-    const { render } = await createTestThings({ points: [root, page] })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route({ id: '123', '?': { cursor: '777' } }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -261,7 +261,7 @@ describe('input', () => {
   it.concurrent(
     'available in mutation loader by input schema definition, and empty object in clientLoader',
     async () => {
-      const root = Point0.lets('root', 'root').ssr(true).root()
+      const root = Point0.lets('root', 'root').root()
       const mutation = root
         .lets('mutation', 'test')
         .input(z.object({ id: z.number() }))
@@ -276,7 +276,7 @@ describe('input', () => {
       expectTypeOf<Prettify<typeof mutation.Infer.InputRaw>>().toEqualTypeOf<{ id: number }>()
       expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<false>()
       expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<{ id: number }>()
-      const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+      const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
       const result = await loadPointYml(mutation, { id: 123 })
       expect(result).toMatchInlineSnapshot(`
       "
@@ -291,7 +291,7 @@ describe('input', () => {
   )
 
   it.concurrent('works with unions', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.union([z.object({ id: z.string() }), z.object({ sn: z.number() })]))
@@ -302,7 +302,7 @@ describe('input', () => {
     expectTypeOf<Prettify<typeof mutation.Infer.InputRaw>>().toEqualTypeOf<{ id: string } | { sn: number }>()
     expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<false>()
     expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<{ id: string } | { sn: number }>()
-    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
     const result = await loadPointYml(mutation, { id: '123' })
     expect(result).toMatchInlineSnapshot(`
       "
@@ -314,7 +314,7 @@ describe('input', () => {
   })
 
   it.concurrent('works with unions when one is optional', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.union([z.object({ id: z.string() }), z.object({ sn: z.number().optional() })]))
@@ -325,7 +325,7 @@ describe('input', () => {
     expectTypeOf<Prettify<typeof mutation.Infer.InputRaw>>().toEqualTypeOf<{ id: string } | { sn?: number }>()
     expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<true>()
     expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<{ id: string } | { sn?: number }>()
-    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
     const result = await loadPointYml(mutation)
     expect(result).toMatchInlineSnapshot(`
       "
@@ -337,7 +337,7 @@ describe('input', () => {
   })
 
   it.concurrent('can be extended by union', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.object({ x: z.string() }))
@@ -351,7 +351,7 @@ describe('input', () => {
     expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<
       { x: string } & ({ id: string } | { sn?: number })
     >()
-    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
     const result = await loadPointYml(mutation, { x: '123', id: '456' })
     expect(result).toMatchInlineSnapshot(`
       "
@@ -364,7 +364,7 @@ describe('input', () => {
   })
 
   it.concurrent('union can be extended by non union', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.union([z.object({ id: z.string() }), z.object({ sn: z.number().optional() })]))
@@ -378,7 +378,7 @@ describe('input', () => {
     expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<
       { x: string } & ({ id: string } | { sn?: number })
     >()
-    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
     const result = await loadPointYml(mutation, { x: '123', id: '456' })
     expect(result).toMatchInlineSnapshot(`
       "
@@ -391,7 +391,7 @@ describe('input', () => {
   })
 
   it.concurrent('available in mutation loader and clientLoader by schema definition', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.object({ id: z.string() }))
@@ -403,7 +403,7 @@ describe('input', () => {
         return { clientLoader: { input }, ...data }
       })
       .mutation()
-    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
     const result = await loadPointYml(mutation, { id: '123', sn: 234 })
     expect(result).toMatchInlineSnapshot(`
       "
@@ -418,7 +418,7 @@ describe('input', () => {
   })
 
   it.concurrent('available in mutation loader by schema definition and function and generic', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.object({ id: z.string() }))
@@ -440,7 +440,7 @@ describe('input', () => {
       xxx: number
       o: 1
     }>()
-    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
     const result = await loadPointYml(mutation, { id: '123', sn: 234, o: 1 })
     expect(result).toMatchInlineSnapshot(`
       "
@@ -455,7 +455,7 @@ describe('input', () => {
   })
 
   it.concurrent('available in mutation clientLoader by schema definition and function and generic', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const mutation = root
       .lets('mutation', 'test')
       .clientInput(z.object({ id: z.string() }))
@@ -477,7 +477,7 @@ describe('input', () => {
       xxx: number
       o: 1
     }>()
-    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
     const result = await loadPointYml(mutation, { id: '123', sn: 234, o: 1 })
     expect(result).toMatchInlineSnapshot(`
       "
@@ -492,7 +492,7 @@ describe('input', () => {
   })
 
   it.concurrent('correctly typed when default in schema exists in mutation', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.object({ id: z.string(), sn: z.coerce.number().default(234) }))
@@ -502,7 +502,7 @@ describe('input', () => {
       .mutation()
     expectTypeOf<(typeof mutation)['Infer']['InputRaw']>().toEqualTypeOf<{ id: string; sn?: unknown }>()
     expectTypeOf<(typeof mutation)['Infer']['ServerInputParsed']>().toEqualTypeOf<{ id: string; sn: number }>()
-    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
     const result = await loadPointYml(mutation, { id: '123' })
     expect(result).toMatchInlineSnapshot(`
       "
@@ -515,7 +515,7 @@ describe('input', () => {
   })
 
   it.concurrent('correctly typed when default in schema exists in page', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const layout = root.lets('layout', 'layout').layout(({ children }) => {
       return <div>{children}</div>
     })
@@ -527,7 +527,7 @@ describe('input', () => {
         return { loader: { search } }
       })
       .page()
-    const { loadPointYml } = await createTestThings({ points: [root, layout, page] })
+    const { loadPointYml } = await createTestThings({ ssr: true, points: [root, layout, page] })
     const result = await loadPointYml(page, { '?': { id: '123' } })
     expect(result).toMatchInlineSnapshot(`
       "
@@ -540,7 +540,7 @@ describe('input', () => {
   })
 
   it.concurrent('can be combined in different ways', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.object({ a: z.string() }))
@@ -557,7 +557,7 @@ describe('input', () => {
         return { clientLoader: { input }, ...data }
       })
       .mutation()
-    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
     const result = await loadPointYml(mutation, { a: '123', b: 234, c: 345, d: true, e: 456 })
     expect(result).toMatchInlineSnapshot(`
       "

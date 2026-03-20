@@ -15,7 +15,6 @@ declare module '@point0/core/request0' {
 describe('fetch', () => {
   const createRoot = () =>
     Point0.lets('root', 'root')
-      .ssr(true)
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({
@@ -53,6 +52,7 @@ describe('fetch', () => {
       })
       .component(({ data }) => <div id="component">{ymlifyline(data)}</div>)
     const { render, fetchPreview, fetchesTale, fetchRecorder } = await createTestThings({
+      ssr: true,
       points: [root, page, component],
     })
 
@@ -139,9 +139,7 @@ describe('fetch', () => {
           <div id="c2-content">{ymlifyline(data)}</div>
         </>
       ))
-    const { render, fetchPreview, client } = await createTestThings({
-      points: [root, page, c1, c2],
-    })
+    const { render, fetchPreview, client } = await createTestThings({ ssr: true, points: [root, page, c1, c2] })
 
     await client.setCookie({ name: 'zxc', value: 'zxcValue', expires: new Date(Date.now() + 99999) })
 

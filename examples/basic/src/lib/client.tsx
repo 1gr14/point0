@@ -4,7 +4,6 @@ import { prisma } from './prisma.js'
 import { AppError } from './error.js'
 
 export const client = Point0.lets<{ zxc: number }>('root', 'client')
-  // .ssr(true)
   .transformer(superjson)
   // .Infer.Ctx// .Infer['RequiredCtx']
   .ctx({

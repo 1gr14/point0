@@ -6,7 +6,6 @@ import z from 'zod'
 describe('component', () => {
   const createRoot = () =>
     Point0.lets('root', 'root')
-      .ssr(true)
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({
@@ -28,7 +27,7 @@ describe('component', () => {
       </div>
     ))
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, component, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, component, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#component')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -64,7 +63,7 @@ describe('component', () => {
       </div>
     ))
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, component, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, component, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#component')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -108,7 +107,7 @@ describe('component', () => {
       </div>
     ))
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, component, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, component, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#error')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -152,7 +151,7 @@ describe('component', () => {
       </div>
     ))
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, component, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, component, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#component')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -202,7 +201,7 @@ describe('component', () => {
       </div>
     ))
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, component, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, component, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#input')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -250,7 +249,10 @@ describe('component', () => {
       </div>
     ))
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, base, component, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
+      points: [root, base, component, page],
+    })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#component')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -293,7 +295,7 @@ describe('component', () => {
       </div>
     ))
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, component, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, component, page] })
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#component')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -351,7 +353,10 @@ describe('component', () => {
       </div>
     ))
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, component, wrapper, page] })
+    const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
+      points: [root, component, wrapper, page],
+    })
     await render(page.route(), async ({ waitContent, tale }) => {
       await new Promise((resolve) => setTimeout(resolve, 1000))
       await waitContent('#component')

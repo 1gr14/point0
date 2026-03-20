@@ -73,7 +73,7 @@ describe('midleware', () => {
   // afterEach(cleanup)
 
   it.concurrent('without', async () => {
-    const root = Point0.lets('root', 'root').ssr(true).root()
+    const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'home', '/')
       .loader(({ request }) => ({ x: 1, y: request.headers.x }))
@@ -82,7 +82,7 @@ describe('midleware', () => {
           x={data.x},y={data.y}
         </div>
       ))
-    const { loadPoint, fetchPreview } = await createTestThings({ points: [root, page] })
+    const { loadPoint, fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     const data = await loadPoint(page)
     expect(data.x).toBe(1)
     const preview = await fetchPreview(page)
@@ -105,7 +105,6 @@ describe('midleware', () => {
         set.headers('y', 'NEVER')
         return result // ok fine, I just want to check meta, now I want it going forward
       })
-      .ssr(true)
       .root()
     const page = root
       .lets('page', 'home', '/')
@@ -115,7 +114,7 @@ describe('midleware', () => {
           x={data.x},y={data.y},z={data.z}
         </div>
       ))
-    const { loadPoint, fetchPreview } = await createTestThings({ points: [root, page] })
+    const { loadPoint, fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     const data = await loadPoint(page)
     expect(data.x).toBe(1)
     const preview = await fetchPreview(page)
@@ -135,7 +134,7 @@ describe('midleware', () => {
       .middleware(async () => {
         return new Response('custom response')
       })
-      .ssr(true)
+
       .root()
     const page = root
       .lets('page', 'home', '/')
@@ -145,7 +144,7 @@ describe('midleware', () => {
           x={data.x},y={data.y},z={data.z}
         </div>
       ))
-    const { fetch } = await createTestThings({ points: [root, page] })
+    const { fetch } = await createTestThings({ ssr: true, points: [root, page] })
     const response = await fetch(page.route.get({}, 'http://localhost'))
     expect(await response.text()).toBe('custom response')
   })
@@ -159,7 +158,7 @@ describe('midleware', () => {
       .middleware(async () => {
         throw new Error('custom error')
       })
-      .ssr(true)
+
       .root()
     const page = root
       .lets('page', 'home', '/')
@@ -169,7 +168,7 @@ describe('midleware', () => {
           x={data.x},y={data.y},z={data.z}
         </div>
       ))
-    const { fetch } = await createTestThings({ points: [root, page] })
+    const { fetch } = await createTestThings({ ssr: true, points: [root, page] })
     const response = await fetch(page.route.get({}, 'http://localhost'))
     expect(response.status).toBe(500)
     expect(response.headers.get('y')).toBe('3')
@@ -189,7 +188,6 @@ describe('midleware', () => {
         }
         return result
       })
-      .ssr(true)
       .root()
     const page = root
       .lets('page', 'home', '/')
@@ -199,7 +197,7 @@ describe('midleware', () => {
           x={data.x},y={data.y},z={data.z}
         </div>
       ))
-    const { fetch } = await createTestThings({ points: [root, page] })
+    const { fetch } = await createTestThings({ ssr: true, points: [root, page] })
     const response = await fetch(page.route.get({}, 'http://localhost'))
     expect(response.status).toBe(200)
     expect(response.headers.get('y')).toBe('3')
@@ -213,7 +211,7 @@ describe('midleware', () => {
         calledMiddlewres.push('root')
         return await next()
       })
-      .ssr(true)
+
       .root()
     const page1 = root
       .lets('page', 'home1', '/home1')
@@ -232,7 +230,10 @@ describe('midleware', () => {
       .loader(() => ({ y: 2 }))
       .page(({ data }) => <div id="page2">y={data.y}</div>)
 
-    const { fetchPreview, fetchesTale, fetchRecorder } = await createTestThings({ points: [root, page1, page2] })
+    const { fetchPreview, fetchesTale, fetchRecorder } = await createTestThings({
+      ssr: true,
+      points: [root, page1, page2],
+    })
 
     const prview1 = await fetchPreview(page1)
     expect(await fetchesTale()).toMatchInlineSnapshot(`
@@ -275,7 +276,7 @@ describe('midleware', () => {
         return Response.json({ id: params.id }, { status: 201 })
       })
       .root()
-    const { engine } = await createTestThings({ points: [root] })
+    const { engine } = await createTestThings({ ssr: true, points: [root] })
     const response1 = await engine.richFetch('http://localhost:3001/zxc/123', { method: 'POST' })
     expect(response1.status).toBe(201)
     expect(await response1.json()).toEqual({ id: '123' })
@@ -292,7 +293,7 @@ describe('midleware', () => {
         return Response.json({ id: params.id }, { status: 201 })
       })
       .root()
-    const { engine } = await createTestThings({ points: [root] })
+    const { engine } = await createTestThings({ ssr: true, points: [root] })
     const response1 = await engine.richFetch('http://localhost:3001/zxc/123', { method: 'POST' })
     expect(response1.status).toBe(201)
     expect(await response1.json()).toEqual({ id: '123' })
@@ -313,7 +314,7 @@ describe('midleware', () => {
       })
       .root()
 
-    const { engine } = await createTestThings({ points: [root] })
+    const { engine } = await createTestThings({ ssr: true, points: [root] })
     const response1 = await engine.richFetch('http://localhost:3001/zxc/123', { method: 'POST' })
     expect(response1.status).toBe(201)
     expect(await response1.json()).toEqual({ id: '123' })

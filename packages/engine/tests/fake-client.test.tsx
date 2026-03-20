@@ -410,7 +410,7 @@ describe('FakeClient', () => {
   })
 
   // it('should render page with loader and client loader from ssr', async () => {
-  //   const root = Point0.lets('root', 'root').ssr(true).serverurl('http://localhost:3000').root()
+  //   const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
   //   let counter = 0
   //   const mutation = root
   //     .lets('mutation', 'mutation')
@@ -451,6 +451,7 @@ describe('FakeClient', () => {
   //     file: import.meta.url,
   //     server: { scope: 'root', points },
   //     clients: [{ scope: 'root', points, indexHtml: '__POINT0_TEST_INDEX_HTML__', app: App }],
+  //     ssr: true,
   //   }).init({ preventClientDevServers: true })
   //   const client = FakeClient.create({
   //     engine,
@@ -598,7 +599,7 @@ describe('FakeClient', () => {
   // })
 
   // it('should render ssr page with loader and client loader', async () => {
-  //   const root = Point0.lets('root', 'root').ssr(true).serverurl('http://localhost:3000').root()
+  //   const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
   //   let counter = 0
   //   const mutation = root
   //     .lets('mutation', 'mutation')
@@ -636,6 +637,7 @@ describe('FakeClient', () => {
   //     file: import.meta.url,
   //     server: { scope: 'root', points },
   //     clients: [{ scope: 'root', points }],
+  //     ssr: true,
   //   })
   //   const client = FakeClient.create({
   //     engine,
