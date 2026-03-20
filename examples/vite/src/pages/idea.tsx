@@ -18,11 +18,11 @@ export const ideaPage = ideaLayout
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
       where: { id: +params.id },
     })
-    return { idea }
+    return { idea, j: 1235 }
   })
   .with(() => ({ idea: ideaLayout.useValue('idea') }))
   .head(({ props }) => props.idea.title)
-  .page(({ props: { idea }, location }) => {
+  .page(({ props: { idea }, location, data: { j } }) => {
     // any hook or whatever here, it is just client code
     const [state, setState] = useState(() => 0)
     return (
@@ -39,6 +39,7 @@ export const ideaPage = ideaLayout
         <p>
           <b>location: {JSON.stringify(location)}</b>
         </p>
+        <p>{j}</p>
         <p>{idea.content}</p>
         <nav>
           <Link to="/ideas">← Back to Ideas</Link>
