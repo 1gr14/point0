@@ -464,7 +464,7 @@ export class TestProjectTwoClient {
     const { files, processes, ports } = options
     if (processes) {
       for (const process of this.processes) {
-        process.kill()
+        await process.killTree()
       }
     }
     if (ports) {

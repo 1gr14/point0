@@ -25,7 +25,7 @@ export const ideaPage = ideaLayout
   .loader(async ({ data }) => {
     return {
       ...data,
-      zxc: 33355,
+      zxc: 333,
       zxccc: 333,
     }
   })
@@ -66,7 +66,7 @@ export const ideaPage = ideaLayout
         </p>
         <p>
           <b>
-            locationxx: {JSON.stringify(location)} {zxccc}
+            locationx: {JSON.stringify(location)} {zxccc}
           </b>
         </p>
         <p>{idea.content}</p>

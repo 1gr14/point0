@@ -81,6 +81,68 @@ export class TestProcess {
     }
   }
 
+  /**
+   * Kill the process and its descendants in a cross-platform way.
+   */
+  async killTree(force = true): Promise<void> {
+    const pid = this.pid
+    if (!pid) return
+
+    if (process.platform === 'win32') {
+      const result = await Bun.$`taskkill /pid ${pid} /T /F`.nothrow().quiet()
+      if (!force && result.exitCode !== 0) {
+        throw new Error(`Failed to taskkill process tree pid=${pid}`)
+      }
+      await this.waitExited(2000)
+      return
+    }
+
+    const descendants = await TestProcess.getDescendantPids(pid)
+    const pidsToKill = [...descendants, pid].reverse()
+    for (const childPid of pidsToKill) {
+      const result = await Bun.$`kill -9 ${childPid}`.nothrow().quiet()
+      if (!force && result.exitCode !== 0) {
+        throw new Error(`Failed to kill pid=${childPid}`)
+      }
+    }
+    await this.waitExited(2000)
+  }
+
+  private async waitExited(timeoutMs: number): Promise<void> {
+    await Promise.race([
+      this.exited.then(() => undefined).catch(() => undefined),
+      new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
+    ])
+  }
+
+  private static async getDescendantPids(rootPid: number): Promise<number[]> {
+    if (process.platform === 'win32') {
+      return []
+    }
+    const collected = new Set<number>()
+    const queue: number[] = [rootPid]
+    while (queue.length > 0) {
+      const current = queue.shift()
+      if (!current) continue
+      const result = await Bun.$`pgrep -P ${current}`.nothrow().quiet()
+      if (result.exitCode !== 0) {
+        continue
+      }
+      const children = result
+        .text()
+        .trim()
+        .split(/[\n\r]/)
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value > 0)
+      for (const child of children) {
+        if (collected.has(child)) continue
+        collected.add(child)
+        queue.push(child)
+      }
+    }
+    return [...collected]
+  }
+
   get stdout(): string {
     return new TextDecoder().decode(Buffer.concat(this.stdoutChunks))
   }
