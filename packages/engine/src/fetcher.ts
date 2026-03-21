@@ -178,25 +178,6 @@ export class Fetcher<TError extends ErrorPoint0> {
     return result
   }
 
-  // private readonly _getPointInputFormSuitablePageLocation = ({
-  //   pageLocation,
-  // }: {
-  //   pageLocation: ExactLocation | AnyLocation
-  // }): InputRawUnknown => {
-  //   return { ...pageLocation.searchParams, ...pageLocation.params }
-  // }
-  // getPointInputFormSuitablePageLocation = ({
-  //   pageLocation,
-  //   request,
-  // }: {
-  //   pageLocation: ExactLocation | AnyLocation
-  //   request: Request0
-  // }): InputRawUnknown => {
-  //   const result = this._getPointInputFormSuitablePageLocation({ pageLocation })
-  //   request.state.__POINT0_RAW_KNOWN_INPUT__ = result
-  //   return result
-  // }
-
   prepareFetch = async ({
     originalRequest,
     bunServer,

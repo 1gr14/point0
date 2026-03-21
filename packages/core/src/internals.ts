@@ -7,7 +7,7 @@ import type { Effects } from './effects.js'
 import type { ErrorPoint0 } from './error.js'
 import { queryClient } from './query-client.js'
 import type { Request0 } from './request0.js'
-import type { RouterContextValue } from './router.js'
+import { ssrRedirectTask, type RouterContextValue } from './router.js'
 import { superstore } from './super-store.js'
 import type { SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './super-store.js'
 import type { PointsScope, RichFetchFn } from './types.js'
@@ -23,6 +23,7 @@ export const _getFakeClient = (): LikeFakeClient | undefined => {
 
 export const _ssItems = {
   __POINT0_HYDRATION_FINISHED__: superstore.define<boolean>('__POINT0_HYDRATION_FINISHED__', () => false, 'clientOnly'),
+  __POINT0_SSR_REDIRECT_TASK__: ssrRedirectTask,
   __POINT0_FETCH_FN__: superstore.define<RichFetchFn>('__POINT0_FETCH_FN__', initUndefined, 'serverOnlyStorage'),
   __POINT0_FAKE_CLIENT__: superstore.define<LikeFakeClient>(
     '__POINT0_FAKE_CLIENT__',

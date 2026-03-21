@@ -21,7 +21,9 @@
   "module": "./dist/esm/index.js",
   "typesVersions": {
     "*": {
-      "": ["./dist/esm/index.d.ts"]
+      "": [
+        "./dist/esm/index.d.ts"
+      ]
     }
   },
   "exports": {
@@ -61,6 +63,7 @@
   "devDependencies": {
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
+    "@point0/core": "workspace:*",
     "esbuild-fix-imports-plugin": "^1.0.22",
     "tsup": "^8.0.0",
     "typescript": "catalog:"

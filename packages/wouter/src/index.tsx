@@ -8,40 +8,44 @@ import {
 } from '@devp0nt/route0'
 import type { GetPathInputByRoute, IsParamsOptional } from '@devp0nt/route0'
 import {
+  _point0_env,
   _ssItems,
-  // _wrapUseNavigate,
-  navigateWithTransitions,
   ClientPoints,
   env,
   ErrorPoint0,
   log,
+  // _wrapUseNavigate,
+  navigateWithTransitions,
+  RedirectTask,
   RouterContext,
   RouterContextProvider,
+  ssrRedirectTask,
   useLocation,
 } from '@point0/core'
 import type {
   ClassLikeError0,
+  AdapterNavigateOptions,
+  NavigateWithTransitionsReturnType,
   NormalizedLazyPointsCollectionRecord,
   PagesTree,
   ReadyPointsCollectionRecord,
   RouterStatus,
   UseAdapterLocationFn,
-  NavigateWithTransitionsReturnType,
 } from '@point0/core'
 import React, { Fragment, useCallback, useMemo, useRef } from 'react'
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
 import {
+  Link as NativeWouterLink,
+  Redirect as NativeWouterRedirect,
+  Router as NativeWouterRouter,
   Route,
   Switch,
   useLocation as useWouterLocation,
   useSearchParams as useWouterSearchParams,
-  Link as NativeWouterLink,
-  Redirect as NativeWouterRedirect,
-  Router as NativeWouterRouter,
 } from 'wouter'
-import type { BaseLocationHook, HookNavigationOptions, NavigationalProps, AroundNavHandler } from 'wouter'
-import type { BrowserLocationHook } from 'wouter/use-browser-location'
+import type { AroundNavHandler, BaseLocationHook, HookNavigationOptions, NavigationalProps, SsrContext } from 'wouter'
 import { navigate as browserNavigate, useBrowserLocation } from 'wouter/use-browser-location'
+import type { BrowserLocationHook } from 'wouter/use-browser-location'
 
 type AsChildProps<ComponentProps, DefaultElementProps> =
   | ({ asChild?: false } & DefaultElementProps)
@@ -53,9 +57,13 @@ type LinkAsChildProps = AsChildProps<
   HTMLLinkAttributes & RefAttributes<HTMLAnchorElement>
 >
 type LinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> & LinkAsChildProps
-type Tail<T extends readonly unknown[]> = T extends readonly [unknown, ...infer R] ? R : never
+type AnyNavigate = (to: string, options?: AdapterNavigateOptions) => any
 type NavigateFnByHook<TBaseLocationHook extends BaseLocationHook = BrowserLocationHook> =
   ReturnType<TBaseLocationHook>[1]
+type NavigateOptionsByNavigate<TNavigate extends AnyNavigate> = NonNullable<Parameters<TNavigate>[1]>
+type RedirectOptionsByNavigate<TNavigate extends AnyNavigate> = NavigateOptionsByNavigate<TNavigate> & {
+  status?: number
+}
 
 export type NavLinkStateType = 'exact' | 'same' | 'ancestor' | 'descendant' | 'unmatched'
 export type NavLinkStateOptions =
@@ -270,11 +278,11 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
 
 export const createNavigate = <
   TRoutes extends RoutesPretty,
-  TNavigate extends (to: string, ...rest: any[]) => any = typeof browserNavigate,
+  TNavigate extends AnyNavigate = typeof browserNavigate,
   TErrorClass extends ClassLikeError0<ErrorPoint0> = ClassLikeError0<ErrorPoint0>,
 >({
   routes,
-  navigate = browserNavigate as TNavigate,
+  navigate: providedNavigate = browserNavigate as TNavigate,
   ErrorClass = ErrorPoint0 as unknown as TErrorClass,
 }: {
   routes: TRoutes
@@ -282,27 +290,29 @@ export const createNavigate = <
   ErrorClass?: TErrorClass
 }) => {
   const wrappedNavigate = (...args: Parameters<TNavigate>): NavigateWithTransitionsReturnType<TErrorClass> => {
-    const to = args[0]
+    const [to, options] = args
     return navigateWithTransitions({
       to,
-      navigate: () => navigate(...(args as unknown as [string, ...Tail<Parameters<TNavigate>>])),
+      navigate: () => providedNavigate(to, options),
       ErrorClass,
     })
   }
-  async function navigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
+  async function navigate<TRouteName extends ExtractRoutesKeys<TRoutes>>(
     ...args: IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
       ? [
           route: TRouteName,
           input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
-          ...rest: Tail<Parameters<TNavigate>>,
+          options?: NavigateOptionsByNavigate<TNavigate>,
         ]
       : [
           route: TRouteName,
           input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
-          ...rest: Tail<Parameters<TNavigate>>,
+          options?: NavigateOptionsByNavigate<TNavigate>,
         ]
   ): NavigateWithTransitionsReturnType<TErrorClass> {
-    const [routeName, input, ...rest] = args as [ExtractRoutesKeys<TRoutes>, unknown, ...Tail<Parameters<TNavigate>>]
+    const routeName = args[0] as ExtractRoutesKeys<TRoutes>
+    const input = args[1] as unknown
+    const options = args[2] as NavigateOptionsByNavigate<TNavigate> | undefined
     const route = routes[routeName]
     if (!route) {
       throw new ErrorClass(`Route "${routeName}" not found`)
@@ -311,22 +321,22 @@ export const createNavigate = <
     const to = route.get(input || {}) as string
     return await navigateWithTransitions({
       to,
-      navigate: () => navigate(to, ...(rest as Tail<Parameters<TNavigate>>)),
+      navigate: () => providedNavigate(to, options),
       ErrorClass,
     })
   }
-  return Object.assign(navigate0, { to: wrappedNavigate }) as never as {
+  return Object.assign(navigate, { to: wrappedNavigate }) as never as {
     <TRouteName extends ExtractRoutesKeys<TRoutes>>(
       ...args: IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
         ? [
             route: TRouteName,
             input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
-            ...rest: Tail<Parameters<TNavigate>>,
+            options?: NavigateOptionsByNavigate<TNavigate>,
           ]
         : [
             route: TRouteName,
             input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
-            ...rest: Tail<Parameters<TNavigate>>,
+            options?: NavigateOptionsByNavigate<TNavigate>,
           ]
     ): Promise<{ location: AnyLocation; error: InstanceType<TErrorClass> | undefined }>
     to: typeof wrappedNavigate
@@ -353,13 +363,13 @@ export const createLink = <
       LinkAsChildProps &
       HookNavigationOptions<TBaseLocationHook>
   }[ExtractRoutesKeys<TRoutes>]
-  function Link0(
+  function Link(
     props:
       | LinkRouteProps
       | ({ to: string } & LinkAsChildProps & HookNavigationOptions<TBaseLocationHook>)
       | ({ href: string } & LinkAsChildProps & HookNavigationOptions<TBaseLocationHook>),
   ): React.ReactElement
-  function Link0(props: {
+  function Link(props: {
     to?: string
     href?: string
     route?: string
@@ -384,7 +394,7 @@ export const createLink = <
     const { wouterLinkProps } = _getWouterLinkProps({ ...rest, to: finalTo })
     return <NativeWouterLink {...wouterLinkProps} />
   }
-  return Link0
+  return Link
 }
 
 export const createNavLink = <
@@ -407,13 +417,13 @@ export const createNavLink = <
       HookNavigationOptions<TBaseLocationHook> &
       NavLinkClassNameProps
   }[ExtractRoutesKeys<TRoutes>]
-  function NavLink0(
+  function NavLink(
     props:
       | NavLinkRouteProps
       | ({ to: string } & NavLinkProps<TBaseLocationHook>)
       | ({ href: string } & NavLinkProps<TBaseLocationHook>),
   ): React.ReactElement
-  function NavLink0(props: {
+  function NavLink(props: {
     to?: string
     href?: string
     route?: string
@@ -507,7 +517,7 @@ export const createNavLink = <
     }, [wouterLinkProps, resolvedClassName])
     return <NativeWouterLink {...finalWouterLinkProps} />
   }
-  return NavLink0
+  return NavLink
 }
 
 export const createRedirectComponent = <
@@ -529,13 +539,13 @@ export const createRedirectComponent = <
       HookNavigationOptions<TBaseLocationHook>
   }[ExtractRoutesKeys<TRoutes>]
 
-  function Redirect0(
+  function Redirect(
     props:
       | RedirectRouteProps
       | ({ to: string } & HookNavigationOptions<TBaseLocationHook>)
       | ({ href: string } & HookNavigationOptions<TBaseLocationHook>),
   ): React.ReactElement
-  function Redirect0(props: {
+  function Redirect(props: {
     to?: string
     href?: string
     route?: string
@@ -561,7 +571,72 @@ export const createRedirectComponent = <
     return <NativeWouterRedirect {...rest} to={finalTo} />
   }
 
-  return Redirect0
+  return Redirect
+}
+
+export const createRedirectHelper = <
+  TRoutes extends RoutesPretty,
+  TNavigate extends AnyNavigate = typeof browserNavigate,
+>({
+  routes,
+  navigate = browserNavigate as TNavigate,
+}: {
+  routes: TRoutes
+  navigate?: TNavigate
+}) => {
+  const redirectTo = (to: string, options?: RedirectOptionsByNavigate<TNavigate>) => {
+    const { status, ...navigateOptions } = options ?? {}
+    const task = new RedirectTask<NavigateOptionsByNavigate<TNavigate>>({
+      to,
+      status,
+      options: navigateOptions as NavigateOptionsByNavigate<TNavigate>,
+    })
+    if (_point0_env.side.is.client) {
+      navigate(task.to, task.options)
+    } else {
+      ssrRedirectTask.set(task)
+    }
+    return task
+  }
+  function redirect<TRouteName extends ExtractRoutesKeys<TRoutes>>(
+    ...args: IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
+      ? [
+          route: TRouteName,
+          input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
+          options?: RedirectOptionsByNavigate<TNavigate>,
+        ]
+      : [
+          route: TRouteName,
+          input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
+          options?: RedirectOptionsByNavigate<TNavigate>,
+        ]
+  ): RedirectTask<NavigateOptionsByNavigate<TNavigate>> {
+    const routeName = args[0] as ExtractRoutesKeys<TRoutes>
+    const input = (args[1] ?? {}) as unknown
+    const options = args[2] as RedirectOptionsByNavigate<TNavigate> | undefined
+    const route = routes[routeName]
+    if (!route) {
+      throw new Error(`Route "${routeName}" not found`)
+    }
+    const to = route.get(input) as string
+    return redirectTo(to, options)
+  }
+  return Object.assign(redirect, { to: redirectTo }) as never as {
+    <TRouteName extends ExtractRoutesKeys<TRoutes>>(
+      ...args: IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
+        ? [
+            route: TRouteName,
+            input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
+            options?: RedirectOptionsByNavigate<TNavigate>,
+          ]
+        : [
+            route: TRouteName,
+            input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
+            options?: RedirectOptionsByNavigate<TNavigate>,
+          ]
+    ): RedirectTask<NavigateOptionsByNavigate<TNavigate>>
+    to: typeof redirectTo
+  }
 }
 
 export const createRouter = ({
@@ -627,8 +702,31 @@ export const createRouter = ({
       })
     }, [])
 
+    const ssrContext = _point0_env.side.is.client
+      ? {}
+      : useMemo(() => {
+          const value = {} as SsrContext
+          const syncRedirectTask = (): void => {
+            const to = value.redirectTo
+            const status = value.statusCode
+            if (!to) {
+              return
+            }
+            ssrRedirectTask.set(new RedirectTask({ to, status }))
+          }
+          return new Proxy(value, {
+            set(target, property, nextValue, receiver) {
+              const result = Reflect.set(target, property, nextValue, receiver)
+              if (property === 'redirectTo' || property === 'statusCode') {
+                syncRedirectTask()
+              }
+              return result
+            },
+          }) as SsrContext
+        }, [])
+
     return (
-      <NativeWouterRouter {...wouterRouterProps} hook={finalHook} aroundNav={aroundNav}>
+      <NativeWouterRouter {...wouterRouterProps} hook={finalHook} aroundNav={aroundNav} ssrContext={ssrContext}>
         <RouterContextProvider
           useAdapterLocation={useAdapterLocation}
           ssrLocation={finalSsrLocation}
@@ -675,7 +773,7 @@ export const createNavigation = <
   pagesTree,
   hook = useBrowserLocation as TBaseLocationHook,
   ErrorClass = ErrorPoint0 as unknown as TErrorClass,
-  navigate,
+  navigate = browserNavigate as TNavigate,
 }: {
   addHashToLocation?: boolean
   routes?: TRoutes
@@ -686,12 +784,13 @@ export const createNavigation = <
   navigate?: TNavigate
 } = {}) => {
   return {
-    navigate: createNavigate({ routes, navigate: navigate, ErrorClass }),
+    navigate: createNavigate({ routes, navigate, ErrorClass }),
     Link: createLink({ routes, hook }),
     NavLink: createNavLink({ routes, hook }),
     Redirect: createRedirectComponent({ routes, hook }),
     Router: createRouter({ addHashToLocation, routes, Page404, pagesTree, hook, ErrorClass }),
     RouterRoutes: createRouterRoutes({ pagesTree, Page404 }),
+    redirect: createRedirectHelper({ routes, navigate }),
   }
 }
 

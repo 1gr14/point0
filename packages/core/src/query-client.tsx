@@ -6,9 +6,8 @@ import {
 } from '@tanstack/react-query'
 import type { DehydratedState } from '@tanstack/react-query'
 import { superstore } from './super-store.js'
-import type { NiceUnsettableRedefinableSuperStoreItem } from './super-store.js'
 
-export const queryClient = superstore.define<QueryClient, DehydratedState>(
+export const queryClient = superstore.define<QueryClient, DehydratedState, 'readonlyRedefine'>(
   '__POINT0_QUERY_CLIENT__',
   () => new QueryClient(),
   {
@@ -47,7 +46,8 @@ export const queryClient = superstore.define<QueryClient, DehydratedState>(
       return queryClient
     },
   },
-) as unknown as NiceUnsettableRedefinableSuperStoreItem<QueryClient, DehydratedState>
+  'readonlyRedefine',
+)
 
 export const createQueryClient = (init?: () => QueryClient) => {
   if (init) {

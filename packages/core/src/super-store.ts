@@ -264,14 +264,16 @@ export class SuperStore {
             dehydrate: (value: unknown) => unknown
             hydrate: (dehydratedValue: unknown, init: () => unknown) => unknown
           },
+          permission?: SuperStoreItemPolicyPermission,
         ]
-      | [name: string, init: () => unknown, policy: SuperStoreItemPolicy]
+      | [name: string, init: () => unknown, policy: SuperStoreItemPolicy, permission?: SuperStoreItemPolicyPermission]
   ): {
     name: string
     init: () => unknown
     policy: SuperStoreItemPolicy
     dehydrate: (value: unknown) => unknown
     hydrate: (dehydratedValue: unknown, init: () => unknown) => unknown
+    permission: SuperStoreItemPolicyPermission
   } {
     if (typeof args[2] === 'string') {
       return {
@@ -280,6 +282,7 @@ export class SuperStore {
         dehydrate: (value: unknown) => value,
         hydrate: (value: unknown) => value,
         policy: args[2],
+        permission: args[3] ?? 'usual',
       }
     }
     if (typeof args[2] === 'object' && 'dehydrate' in args[2] && 'hydrate' in args[2]) {
@@ -289,28 +292,42 @@ export class SuperStore {
         dehydrate: args[2].dehydrate,
         hydrate: args[2].hydrate,
         policy: 'clientServerTransferredSsr',
+        permission: args[3] ?? 'usual',
       }
     }
     throw new Error(`Invalid arguments`)
   }
 
-  define<TValue>(key: string, init: () => TValue, policy: SuperStoreItemPolicy): NiceSuperStoreItem<TValue, TValue>
-  define<TValue, TDehydratedValue>(
+  define<TValue, TPermission extends SuperStoreItemPolicyPermission = 'usual'>(
+    key: string,
+    init: () => TValue,
+    policy: SuperStoreItemPolicy,
+  ): NiceSuperStoreItemByPermission<TValue, TValue, TPermission>
+  define<TValue, TDehydratedValue, TPermission extends SuperStoreItemPolicyPermission = 'usual'>(
     key: string,
     init: () => TValue,
     ssr: {
       dehydrate: (value: TValue) => TDehydratedValue
       hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue
     },
-  ): NiceSuperStoreItem<TValue, TDehydratedValue>
+    permission?: TPermission,
+  ): NiceSuperStoreItemByPermission<TValue, TDehydratedValue, TPermission>
   define(...args: Parameters<typeof this._parseDefineArgs>): SuperStoreItem {
-    const { name, init, policy, dehydrate, hydrate } = this._parseDefineArgs(...args)
+    const { name, init, policy, dehydrate, hydrate, permission } = this._parseDefineArgs(...args)
     // it brokes hmr
     // const exItem = this.items.get(name)
     // if (exItem) {
     //   throw new Error(`Item with name "${name}" already defined`)
     // }
-    const item: SuperStoreItem = new SuperStoreItem({ name, init, dehydrate, hydrate, policy, superstore: this })
+    const item: SuperStoreItem = new SuperStoreItem({
+      name,
+      init,
+      dehydrate,
+      hydrate,
+      policy,
+      permission,
+      superstore: this,
+    })
     this.items.set(name, item)
     return item
   }
@@ -588,6 +605,7 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
   name: string
   init: () => TValue
   policy: SuperStoreItemPolicy
+  permission: SuperStoreItemPolicyPermission
   dehydrate: () => TDehydratedValue
   hydrate: (dehydratedValue: TDehydratedValue) => TValue
   readonly = false
@@ -596,6 +614,7 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
     name,
     init,
     policy,
+    permission,
     dehydrate,
     hydrate,
     superstore,
@@ -604,6 +623,7 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
     name: string
     init: () => TValue
     policy: SuperStoreItemPolicy
+    permission: SuperStoreItemPolicyPermission
     dehydrate: (value: TValue) => TDehydratedValue
     hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue
   }) {
@@ -613,6 +633,7 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
     this.policy = policy
     this.dehydrate = () => dehydrate(this.get())
     this.hydrate = (dehydratedValue: TDehydratedValue) => hydrate(dehydratedValue, init)
+    this.permission = permission
   }
 
   get = (): TValue => {
@@ -624,11 +645,19 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
   }
 
   set = (value: TValue): void => {
-    this.superstore.setValue(this.name, value, this.policy)
+    if (this.permission === 'usual' || this.permission === 'redefine') {
+      this.superstore.setValue(this.name, value, this.policy)
+      return
+    }
+    throw new Error(`Cannot set value to item "${this.name}" with permission "${this.permission}"`)
   }
 
   redefine = (init: () => TValue): void => {
-    this.init = init
+    if (this.permission === 'redefine' || this.permission === 'readonlyRedefine') {
+      this.init = init
+      return
+    }
+    throw new Error(`Cannot redefine item "${this.name}" with permission "${this.permission}"`)
   }
 
   get config() {
@@ -638,6 +667,7 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
       policy: this.policy,
       dehydrate: this.dehydrate,
       hydrate: this.hydrate,
+      permission: this.permission,
     }
   }
 }
@@ -667,12 +697,19 @@ export type SuperStoreItemsValuesOrErrors<TItems extends Record<string, AnyNiceS
   [K in keyof TItems]: TItems[K] extends AnyNiceSuperStoreItem<infer TValue, any> ? TValue | Error : never
 }
 
+export type SuperStoreItemPolicyPermission = 'redefine' | 'readonlyRedefine' | 'readonly' | 'usual'
+
 export type NiceSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
   'get' | 'getWeak' | 'set' | 'config'
 >
 
-export type NiceUnsettableRedefinableSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
+export type NiceRedefinableSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
+  SuperStoreItem<TValue, TDehydratedValue>,
+  'get' | 'getWeak' | 'set' | 'config' | 'redefine'
+>
+
+export type NiceReadonlyRedefinableSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
   'get' | 'getWeak' | 'redefine' | 'config'
 >
@@ -682,20 +719,34 @@ export type NiceReadonlySuperStoreItem<TValue = any, TDehydratedValue = any> = P
   'get' | 'getWeak' | 'config'
 >
 
+export type NiceSuperStoreItemByPermission<
+  TValue,
+  TDehydratedValue,
+  TPermission extends SuperStoreItemPolicyPermission,
+> = TPermission extends 'redefine'
+  ? NiceRedefinableSuperStoreItem<TValue, TDehydratedValue>
+  : TPermission extends 'readonlyRedefine'
+    ? NiceReadonlyRedefinableSuperStoreItem<TValue, TDehydratedValue>
+    : TPermission extends 'readonly'
+      ? NiceReadonlySuperStoreItem<TValue, TDehydratedValue>
+      : TPermission extends 'usual'
+        ? NiceSuperStoreItem<TValue, TDehydratedValue>
+        : NiceSuperStoreItem<TValue, TDehydratedValue>
+
 export type AnyNiceSuperStoreItem<TValue = any, TDehydratedValue = any> =
   | NiceSuperStoreItem<TValue, TDehydratedValue>
-  | NiceUnsettableRedefinableSuperStoreItem<TValue, TDehydratedValue>
+  | NiceReadonlyRedefinableSuperStoreItem<TValue, TDehydratedValue>
   | NiceReadonlySuperStoreItem<TValue, TDehydratedValue>
 
-export type ToNiceSuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<
-  TSuperStorItem,
-  'get' | 'getWeak' | 'set' | 'config'
->
-export type ToNiceUnsettableRedefinableSuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<
-  TSuperStorItem,
-  'get' | 'getWeak' | 'redefine' | 'config'
->
-export type ToNiceReadonlySuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<
-  TSuperStorItem,
-  'get' | 'getWeak' | 'config'
->
+// export type ToNiceSuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<
+//   TSuperStorItem,
+//   'get' | 'getWeak' | 'set' | 'config'
+// >
+// export type ToNiceUnsettableRedefinableSuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<
+//   TSuperStorItem,
+//   'get' | 'getWeak' | 'redefine' | 'config'
+// >
+// export type ToNiceReadonlySuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<
+//   TSuperStorItem,
+//   'get' | 'getWeak' | 'config'
+// >

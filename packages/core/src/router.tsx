@@ -7,6 +7,9 @@ import { ErrorPoint0 } from './error.js'
 import type { ClassLikeError0 } from './error.js'
 import { _ssItems } from './internals.js'
 import type { IfAnyThenElse } from './types.js'
+import { superstore } from './super-store.js'
+
+export type AdapterNavigateOptions = Record<string, unknown>
 
 export type UseAdapterLocationFn = () => AnyLocation
 
@@ -326,3 +329,56 @@ export async function navigateWithTransitions<
     return { location, error: error0 }
   }
 }
+
+export class RedirectTask<TNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> {
+  readonly to: string
+  readonly status?: number
+  readonly options?: TNavigateOptions
+
+  constructor({ to, status, options }: { to: string; status?: number; options?: TNavigateOptions }) {
+    this.to = to
+    this.status = status
+    this.options = options
+  }
+
+  serialize() {
+    return {
+      to: this.to,
+      status: this.status,
+      options: this.options,
+    }
+  }
+
+  static from<TNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions>(
+    input: string | Record<string, unknown> | { to: string; status?: number; options?: TNavigateOptions },
+  ): RedirectTask<TNavigateOptions> {
+    if (input instanceof RedirectTask) {
+      return input
+    }
+    const parsed = typeof input === 'string' ? JSON.parse(input) : input
+    const errorPrefix = 'Invalid redirect task input: '
+    if (typeof parsed !== 'object' || parsed === null) {
+      throw new Error(errorPrefix + 'input must be an object')
+    }
+    if (typeof parsed.to !== 'string') {
+      throw new Error(errorPrefix + 'to must be a string')
+    }
+    if (parsed.status !== undefined && typeof parsed.status !== 'number') {
+      throw new Error(errorPrefix + 'status must be a number')
+    }
+    if ((parsed.options !== undefined && typeof parsed.options !== 'object') || parsed.options === null) {
+      throw new Error(errorPrefix + 'options must be an object')
+    }
+    return new RedirectTask({
+      to: parsed.to,
+      status: parsed.status,
+      options: parsed.options as TNavigateOptions,
+    })
+  }
+}
+
+export const ssrRedirectTask = superstore.define<RedirectTask | undefined>(
+  '__POINT0_SSR_REDIRECT_TASK__',
+  () => undefined,
+  'serverOnlyStorage',
+)
