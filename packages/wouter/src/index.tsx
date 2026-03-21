@@ -7,31 +7,23 @@ import {
   type RoutesPretty,
 } from '@devp0nt/route0'
 import type { GetPathInputByRoute, IsParamsOptional } from '@devp0nt/route0'
-import {
-  _point0_env,
-  _ssItems,
-  ClientPoints,
-  env,
-  ErrorPoint0,
-  log,
-  // _wrapUseNavigate,
-  navigateWithTransitions,
-  RedirectTask,
-  RouterContext,
-  RouterContextProvider,
-  ssrRedirectTask,
-  useLocation,
-  type AdapterNavigateFn,
-} from '@point0/core'
+import { _point0_env, _ssItems, ClientPoints, env, ErrorPoint0, log } from '@point0/core'
 import type {
   ClassLikeError0,
-  NavigateWithTransitionsReturnType,
   NormalizedLazyPointsCollectionRecord,
   PagesTree,
   ReadyPointsCollectionRecord,
-  RouterStatus,
-  UseAdapterLocationFn,
 } from '@point0/core'
+import {
+  navigateWithTransitions,
+  NavigationContextProvider,
+  RedirectTask,
+  ssrRedirectTask,
+  useLocation,
+  useNavigationLocationContext,
+  type AdapterNavigateFn,
+} from '@point0/core/navigation'
+import type { NavigateWithTransitionsReturnType, NavigationStatus, UseAdapterLocationFn } from '@point0/core/navigation'
 import React, { Fragment, useCallback, useMemo, useRef } from 'react'
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
 import {
@@ -401,7 +393,8 @@ export const createNavLink = <
   TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
 >({
   routes,
-  hook: _hook,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  hook,
 }: {
   routes: TRoutes
   hook?: TBaseLocationHook
@@ -524,7 +517,8 @@ export const createRedirectComponent = <
   TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
 >({
   routes,
-  hook: _hook,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  hook,
 }: {
   routes: TRoutes
   hook?: TBaseLocationHook
@@ -656,12 +650,12 @@ export const createRouter = ({
   ErrorClass?: ClassLikeError0<ErrorPoint0>
 }): ((props: {
   children?: React.ReactNode
-  status?: RouterStatus
+  status?: NavigationStatus
   ssrLocation?: AnyLocation | undefined
 }) => React.ReactElement) => {
-  function RouterRoutesForRouter(): React.ReactElement {
-    React.useContext(RouterContext) // do not remove this line
-    return <RenderPagesTree pagesTree={pagesTree} Page404={Page404 ?? DefaultPage404} />
+  function RouterRoutes(): React.ReactElement {
+    useNavigationLocationContext() // do not remove, it triggers rerender
+    return <RenderPagesTree pagesTree={pagesTree ?? ClientPoints.getInstance().pagesTree} Page404={Page404} />
   }
 
   return function Router({
@@ -670,7 +664,7 @@ export const createRouter = ({
     ssrLocation = _ssItems.__POINT0_SSR_LOCATION__.get(),
   }: {
     children?: React.ReactNode
-    status?: RouterStatus
+    status?: NavigationStatus
     ssrLocation?: AnyLocation | undefined
   }) {
     const wouterSsrProps = useMemo(() => {
@@ -723,15 +717,15 @@ export const createRouter = ({
 
     return (
       <NativeWouterRouter {...wouterSsrProps} hook={hook} aroundNav={aroundNav} ssrContext={ssrContext}>
-        <RouterContextProvider
+        <NavigationContextProvider
           useAdapterLocation={useAdapterLocation}
           ssrLocation={ssrLocation}
           status={status}
           addHashToLocation={addHashToLocation}
           adapterNavigate={navigate}
         >
-          {children ?? <RouterRoutesForRouter />}
-        </RouterContextProvider>
+          {children ?? <RouterRoutes />}
+        </NavigationContextProvider>
       </NativeWouterRouter>
     )
   }
@@ -747,8 +741,8 @@ export const createRouterRoutes = ({
   Page404?: React.ComponentType
 }): (() => React.ReactElement) => {
   return function RouterRoutes() {
-    React.useContext(RouterContext) // do not remove this line
-    return <RenderPagesTree pagesTree={pagesTree} Page404={Page404} />
+    useNavigationLocationContext() // do not remove, it triggers rerender
+    return <RenderPagesTree pagesTree={pagesTree ?? ClientPoints.getInstance().pagesTree} Page404={Page404} />
   }
 }
 
@@ -799,11 +793,11 @@ const combinePagesRoutesToRegexForLayout = (routes: AnyRoute[]) => {
 }
 
 export const RenderPagesTree = ({
-  pagesTree = ClientPoints.getInstance().pagesTree,
+  pagesTree,
   Page404 = DefaultPage404,
   level = 0,
 }: {
-  pagesTree?: PagesTree
+  pagesTree: PagesTree
   Page404?: React.ComponentType
   level?: number
 }) => {

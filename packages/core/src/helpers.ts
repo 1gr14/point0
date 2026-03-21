@@ -1,10 +1,13 @@
-import { _point0_env } from './env.js'
-import type { Effects } from './effects.js'
-import type { RichFetchFn } from './types.js'
-import { _ssItems } from './internals.js'
-import { superstore } from './super-store.js'
 import { useEffect, useState } from 'react'
+import { ClientPoints } from './client-points.js'
+import type { Effects } from './effects.js'
+import { _point0_env } from './env.js'
+import type { ErrorPoint0 } from './error.js'
+import { _ssItems } from './internals.js'
+import type { PointsDefinition, PointsManager } from './points-manager.js'
 import type { Request0 } from './request0.js'
+import { superstore } from './super-store.js'
+import type { RichFetchFn } from './types.js'
 
 export const setStatus = (status: number): void => {
   if (!_point0_env.side.is.server) {
@@ -27,6 +30,14 @@ export const getFetch = (): RichFetchFn => {
   }
   return superstore.getFakeClient()?.fetch ?? nativeFetch
 }
+
+// export const useSsrEffect: typeof useEffect = (effect, deps) => {
+//   if (_point0_env.side.is.server) {
+//     effect()
+//   } else {
+//     useEffect(effect, deps)
+//   }
+// }
 
 export const useIsHydrated = (): boolean => {
   if (!_point0_env.side.is.client) {
@@ -73,4 +84,14 @@ export const getRequest = (): Request0 => {
 
 export const getRequestWeak = (): Request0 | undefined => {
   return _ssItems.__POINT0_REQUEST0__.getWeak()
+}
+
+export const mountClientPoints = <TError extends ErrorPoint0>(
+  points: PointsDefinition<any, TError> | PointsManager<any, any, TError>,
+): ClientPoints<TError> => {
+  return ClientPoints.mount(points)
+}
+
+export const getClientPoints = (): ClientPoints => {
+  return ClientPoints.getInstance()
 }

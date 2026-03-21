@@ -6,17 +6,17 @@ import { ClientPoints } from './client-points.js'
 import { ErrorPoint0 } from './error.js'
 import type { ClassLikeError0 } from './error.js'
 import { _ssItems } from './internals.js'
-import type { IfAnyThenElse } from './types.js'
 import { superstore } from './super-store.js'
+import type { IfAnyThenElse } from './types.js'
 
 export type AdapterNavigateOptions = Record<string, unknown>
 export type AdapterNavigateFn = (to: string, options?: AdapterNavigateOptions) => any
 
 export type UseAdapterLocationFn = () => AnyLocation
 
-export type RouterStatus = 'idle' | 'prefetching' | 'transitioning'
+export type NavigationStatus = 'idle' | 'prefetching' | 'transitioning'
 
-export type UseRouterContextFn = () => RouterContextValue
+export type UseNavigationContextFn = () => NavigationContextValue
 export type UseOnNavigateFn = (options: {
   prevLocation: AnyLocation
   nextLocation: AnyLocation
@@ -24,93 +24,98 @@ export type UseOnNavigateFn = (options: {
 export type UseOnNavigateDetailedFn = (options: {
   prevLocation: AnyLocation
   nextLocation: AnyLocation
-  status: RouterStatus
+  status: NavigationStatus
   error: Error | undefined
 }) => void
 
-export type RouterPageStateSuccess = {
+export type NavigationPageStateSuccess = {
   status: 'success'
   error: undefined
   loading: false
   initial: false
 }
-export type RouterPageStateLoading = {
+export type NavigationPageStateLoading = {
   status: 'loading'
   error: undefined
   loading: true
   initial: false
 }
-export type RouterPageStateError<TError extends ErrorPoint0 = ErrorPoint0> = {
+export type NavigationPageStateError<TError extends ErrorPoint0 = ErrorPoint0> = {
   status: 'error'
   error: TError
   loading: false
   initial: false
 }
-export type RouterPageStateInitial = {
+export type NavigationPageStateInitial = {
   status: 'initial'
   error: undefined
   loading: undefined
   initial: true
 }
-export type RouterPageState<TStatus extends 'success' | 'loading' | 'error' | 'initial' = any> = IfAnyThenElse<
+export type NavigationPageState<TStatus extends 'success' | 'loading' | 'error' | 'initial' = any> = IfAnyThenElse<
   TStatus,
-  RouterPageStateSuccess | RouterPageStateLoading | RouterPageStateError,
+  NavigationPageStateSuccess | NavigationPageStateLoading | NavigationPageStateError,
   TStatus extends 'success'
-    ? RouterPageStateSuccess
+    ? NavigationPageStateSuccess
     : TStatus extends 'loading'
-      ? RouterPageStateLoading
+      ? NavigationPageStateLoading
       : TStatus extends 'error'
-        ? RouterPageStateError
+        ? NavigationPageStateError
         : TStatus extends 'initial'
-          ? RouterPageStateInitial
+          ? NavigationPageStateInitial
           : never
 >
 
-export type RouterContextValue = {
+export type NavigationContextValue = {
   ssrLocation: AnyLocation | null
-  // isSsr: boolean
   prevLocation: AnyLocation | null
   currentLocation: AnyLocation
   nextLocation: AnyLocation | null
   adapterNavigate: AdapterNavigateFn
-  status: RouterStatus
+  status: NavigationStatus
   error: Error | undefined
   useAdapterLocation: UseAdapterLocationFn
   addHashToLocation: boolean
-  pageState: RouterPageState
+  pageState: NavigationPageState
 
   // setters
   setPrevLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
   setNextLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
-  setStatus: React.Dispatch<React.SetStateAction<RouterStatus>>
+  setStatus: React.Dispatch<React.SetStateAction<NavigationStatus>>
   setError: React.Dispatch<React.SetStateAction<Error | undefined>>
-  setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
+  setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
 }
 
-export const RouterContext = React.createContext<RouterContextValue | null>(null)
+export const NavigationContext = React.createContext<NavigationContextValue | null>(null)
+export type NavigationLocationContextValue = {
+  useAdapterLocation: UseAdapterLocationFn
+  currentLocation: AnyLocation
+  addHashToLocation: boolean
+}
+export const NavigationLocationContext = React.createContext<NavigationLocationContextValue | null>(null)
 
-export type RouterContextProviderProps = {
+export type NavigationContextProviderProps = {
   children: React.ReactNode
-  status?: RouterStatus
+  status?: NavigationStatus
   useAdapterLocation: UseAdapterLocationFn
   ssrLocation?: AnyLocation | null
   addHashToLocation?: boolean
   adapterNavigate: AdapterNavigateFn
 }
 
-export function RouterContextProvider({
+export function NavigationContextProvider({
   children,
   status = 'idle',
   useAdapterLocation,
   ssrLocation,
   adapterNavigate,
   addHashToLocation = false,
-}: RouterContextProviderProps) {
+}: NavigationContextProviderProps) {
   const [nextLocation, setNextLocation] = useState<AnyLocation | null>(null)
   const [prevLocation, setPrevLocation] = useState<AnyLocation | null>(null)
-  const [routerStatus, setStatus] = useState<RouterStatus>(status)
+  const [navigationStatus, setStatus] = useState<NavigationStatus>(status)
   const [error, setError] = useState<Error | undefined>(undefined)
-  const [pageState, setPageState] = useState<RouterPageState>({
+  const [pageState, setPageState] = useState<NavigationPageState>({
     status: 'initial',
     error: undefined,
     loading: undefined,
@@ -127,7 +132,7 @@ export function RouterContextProvider({
       currentLocation,
       prevLocation,
       nextLocation,
-      status: routerStatus,
+      status: navigationStatus,
       error,
       adapterNavigate,
       setNextLocation,
@@ -144,25 +149,37 @@ export function RouterContextProvider({
       currentLocation,
       prevLocation,
       nextLocation,
-      routerStatus,
+      navigationStatus,
       error,
       useAdapterLocation,
       adapterNavigate,
     ],
   )
   useEffect(() => {
-    _ssItems.__POINT0_ROUTER_CONTEXT__.set(value)
+    _ssItems.__POINT0_NAVIGATION_CONTEXT__.set(value)
   }, [value])
+  const locationValue = useMemo<NavigationLocationContextValue>(
+    () => ({
+      useAdapterLocation,
+      currentLocation,
+      addHashToLocation,
+    }),
+    [currentLocation, addHashToLocation, useAdapterLocation],
+  )
 
-  return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>
+  return (
+    <NavigationContext.Provider value={value}>
+      <NavigationLocationContext.Provider value={locationValue}>{children}</NavigationLocationContext.Provider>
+    </NavigationContext.Provider>
+  )
 }
 
-export const getRouterContext = (): RouterContextValue => {
-  const routerContext = _ssItems.__POINT0_ROUTER_CONTEXT__.getWeak()
-  if (routerContext) {
-    return routerContext
+export const getNavigationContext = (): NavigationContextValue => {
+  const navigationContext = _ssItems.__POINT0_NAVIGATION_CONTEXT__.getWeak()
+  if (navigationContext) {
+    return navigationContext
   }
-  throw new Error('RouterContextProvider is not yet initialized')
+  throw new Error('NavigationContextProvider is not yet initialized')
 }
 
 /** Hooks **/
@@ -180,24 +197,24 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
 export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
   ...args: [(TRoute | boolean)?, (AnyLocation | boolean)?, boolean?]
 ) {
-  const routerCtx = React.useContext(RouterContext)
-  if (!routerCtx) throw new Error('useLocation must be used within RouterContextProvider')
-  const locationByAdapter = routerCtx.useAdapterLocation()
+  const locationCtx = React.useContext(NavigationLocationContext)
+  if (!locationCtx) throw new Error('useLocation must be used within NavigationLocationContextProvider')
+  const locationByAdapter = locationCtx.useAdapterLocation()
   const { route, location, addHashToLocation } = ((): {
     route: TRoute | undefined
     location: AnyLocation
     addHashToLocation: boolean
   } => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    const fallbackLocation = locationByAdapter ?? routerCtx.currentLocation
+    const fallbackLocation = locationByAdapter ?? locationCtx.currentLocation
     if (args.length === 0) {
-      return { route: undefined, location: fallbackLocation, addHashToLocation: routerCtx.addHashToLocation }
+      return { route: undefined, location: fallbackLocation, addHashToLocation: locationCtx.addHashToLocation }
     }
     if (args.length === 1) {
       if (typeof args[0] === 'boolean') {
         return { route: undefined, location: fallbackLocation, addHashToLocation: args[0] }
       }
-      return { route: args[0], location: fallbackLocation, addHashToLocation: routerCtx.addHashToLocation }
+      return { route: args[0], location: fallbackLocation, addHashToLocation: locationCtx.addHashToLocation }
     }
     if (args.length === 2) {
       if (typeof args[1] === 'boolean') {
@@ -206,43 +223,47 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
       return {
         route: args[0] as TRoute,
         location: args[1] as AnyLocation,
-        addHashToLocation: routerCtx.addHashToLocation,
+        addHashToLocation: locationCtx.addHashToLocation,
       }
     }
     return { route: args[0] as TRoute, location: args[1] as AnyLocation, addHashToLocation: !!args[2] }
   })()
   return useMemo(() => {
-    // const hashSuffix = routerCtx.isSsr ? '' : typeof window !== 'undefined' ? window.location.hash : ''
-    const hashSuffix = !addHashToLocation ? '' : typeof window !== 'undefined' ? window.location.hash : ''
+    const withHashSuffix = <T extends AnyLocation | UnknownLocation | ExactLocation<TRoute>>(location: T): T =>
+      addHashToLocation
+        ? Object.assign(location, { hash: typeof window !== 'undefined' ? window.location.hash : '' })
+        : location
     if (!route) {
-      return { ...(ClientPoints.getInstance().routes._.getLocation(location) as AnyLocation), hash: hashSuffix }
+      return withHashSuffix(ClientPoints.getInstance().routes._.getLocation(location))
     }
-    return {
-      ...(Route0.from(route).getLocation(location) as UnknownLocation | ExactLocation<TRoute>),
-      hash: hashSuffix,
-    }
-    // }, [route, location, PointsManager.getPointsManager().routesHash, routerCtx.isSsr])
-  }, [route, location, addHashToLocation ? ClientPoints.getInstance().routesHash : '', addHashToLocation])
+    return withHashSuffix(Route0.from(route).getLocation(location))
+  }, [route, location, ClientPoints.getInstance().routesHash, addHashToLocation])
 }
 
-export const useRouterContext: UseRouterContextFn = () => {
-  const ctx = React.useContext(RouterContext)
-  if (!ctx) throw new Error('useRouter must be used within RouterContextProvider')
+export const useNavigationContext: UseNavigationContextFn = () => {
+  const ctx = React.useContext(NavigationContext)
+  if (!ctx) throw new Error('useNavigation must be used within NavigationContextProvider')
   return ctx
 }
 
-export const _usePageStateManager = (): {
-  pageState: RouterPageState
-  setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
-} => {
-  const ctx = React.useContext(RouterContext)
-  if (!ctx) throw new Error('useSetPageState must be used within RouterContextProvider')
-  return { pageState: ctx.pageState, setPageState: ctx.setPageState }
+export const useNavigationLocationContext = (): NavigationLocationContextValue => {
+  const ctx = React.useContext(NavigationLocationContext)
+  if (!ctx) throw new Error('useNavigationLocationContext must be used within NavigationContextProvider')
+  return ctx
 }
 
+// export const _usePageStateManager = (): {
+//   pageState: NavigationPageState
+//   setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
+// } => {
+//   const ctx = React.useContext(NavigationContext)
+//   if (!ctx) throw new Error('useSetPageState must be used within NavigationContextProvider')
+//   return { pageState: ctx.pageState, setPageState: ctx.setPageState }
+// }
+
 export const useOnNavigate = (fn: UseOnNavigateFn) => {
-  const ctx = React.useContext(RouterContext)
-  if (!ctx) throw new Error('useOnNavigate must be used within RouterContextProvider')
+  const ctx = React.useContext(NavigationContext)
+  if (!ctx) throw new Error('useOnNavigate must be used within NavigationContextProvider')
 
   const prevLocationRef = useRef(ctx.currentLocation)
   const nextLocationRef = useRef(ctx.nextLocation)
@@ -308,38 +329,36 @@ export async function navigateWithTransitions<
   navigate: () => any
   ErrorClass?: TErrorClass
 }): NavigateWithTransitionsReturnType<TErrorClass> {
-  const routerContext = getRouterContext()
+  const navigationContext = getNavigationContext()
   const to = (() => {
     if (providedTo.startsWith('#')) {
-      return routerContext.currentLocation.pathname + providedTo
+      return navigationContext.currentLocation.pathname + providedTo
     }
     return providedTo
   })()
-  const prevLocation = routerContext.currentLocation
+  const prevLocation = navigationContext.currentLocation
   const location = ClientPoints.getInstance().routes._.getLocation(to)
-  routerContext.setPrevLocation(prevLocation)
-  routerContext.setError(undefined)
-  routerContext.setNextLocation(location)
-  routerContext.setStatus('prefetching')
+  navigationContext.setPrevLocation(prevLocation)
+  navigationContext.setError(undefined)
+  navigationContext.setNextLocation(location)
+  navigationContext.setStatus('prefetching')
   try {
     await ClientPoints.getInstance().prefetchPage({
       location,
       trigger: 'navigate',
     })
-    routerContext.setStatus('transitioning')
-
+    navigationContext.setStatus('transitioning')
     await navigate()
-    routerContext.setStatus('idle')
-    routerContext.setNextLocation(null)
+    navigationContext.setStatus('idle')
+    navigationContext.setNextLocation(null)
     return { location, error: undefined }
   } catch (error) {
     const error0 = ErrorClass.from(error) as InstanceType<TErrorClass>
-    routerContext.setError(error0)
-    routerContext.setStatus('transitioning')
-
+    navigationContext.setError(error0)
+    navigationContext.setStatus('transitioning')
     await navigate()
-    routerContext.setStatus('idle')
-    routerContext.setNextLocation(null)
+    navigationContext.setStatus('idle')
+    navigationContext.setNextLocation(null)
     return { location, error: error0 }
   }
 }
@@ -366,28 +385,31 @@ export class RedirectTask<TNavigateOptions extends AdapterNavigateOptions = Adap
   static from<TNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions>(
     input: string | Record<string, unknown> | { to: string; status?: number; options?: TNavigateOptions },
   ): RedirectTask<TNavigateOptions> {
-    if (input instanceof RedirectTask) {
-      return input
+    try {
+      if (input instanceof RedirectTask) {
+        return input
+      }
+      const parsed = typeof input === 'string' ? JSON.parse(input) : input
+      if (typeof parsed !== 'object' || parsed === null) {
+        throw new Error('input must be an object')
+      }
+      if (typeof parsed.to !== 'string') {
+        throw new Error('to must be a string')
+      }
+      if (parsed.status !== undefined && typeof parsed.status !== 'number') {
+        throw new Error('status must be a number')
+      }
+      if ((parsed.options !== undefined && typeof parsed.options !== 'object') || parsed.options === null) {
+        throw new Error('options must be an object')
+      }
+      return new RedirectTask({
+        to: parsed.to,
+        status: parsed.status,
+        options: parsed.options as TNavigateOptions,
+      })
+    } catch (error) {
+      throw new Error('Failed to parse redirect task: ' + (error instanceof Error ? error.message : String(error)))
     }
-    const parsed = typeof input === 'string' ? JSON.parse(input) : input
-    const errorPrefix = 'Invalid redirect task input: '
-    if (typeof parsed !== 'object' || parsed === null) {
-      throw new Error(errorPrefix + 'input must be an object')
-    }
-    if (typeof parsed.to !== 'string') {
-      throw new Error(errorPrefix + 'to must be a string')
-    }
-    if (parsed.status !== undefined && typeof parsed.status !== 'number') {
-      throw new Error(errorPrefix + 'status must be a number')
-    }
-    if ((parsed.options !== undefined && typeof parsed.options !== 'object') || parsed.options === null) {
-      throw new Error(errorPrefix + 'options must be an object')
-    }
-    return new RedirectTask({
-      to: parsed.to,
-      status: parsed.status,
-      options: parsed.options as TNavigateOptions,
-    })
   }
 }
 

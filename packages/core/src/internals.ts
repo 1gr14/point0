@@ -7,7 +7,7 @@ import type { Effects } from './effects.js'
 import type { ErrorPoint0 } from './error.js'
 import { queryClient } from './query-client.js'
 import type { Request0 } from './request0.js'
-import { ssrRedirectTask, type RouterContextValue } from './router.js'
+import { ssrRedirectTask, type NavigationContextValue } from './navigation.js'
 import { superstore } from './super-store.js'
 import type { SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './super-store.js'
 import type { PointsScope, RichFetchFn } from './types.js'
@@ -55,8 +55,8 @@ export const _ssItems = {
     initUndefined,
     'clientServerIsolated',
   ),
-  __POINT0_ROUTER_CONTEXT__: superstore.define<RouterContextValue>(
-    '__POINT0_ROUTER_CONTEXT__',
+  __POINT0_NAVIGATION_CONTEXT__: superstore.define<NavigationContextValue>(
+    '__POINT0_NAVIGATION_CONTEXT__',
     initUndefined,
     'clientServerIsolated',
   ),

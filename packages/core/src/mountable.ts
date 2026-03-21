@@ -7,7 +7,7 @@ import type {
 } from '@tanstack/react-query'
 import type * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
-import type { RouterPageState } from './router.js'
+import type { NavigationPageState } from './navigation.js'
 import type {
   AnyPoint,
   CurrentRouteDefinition,
@@ -725,7 +725,7 @@ export type HeadFn<
 export type GlobalHeadFnOptions<
   TStatus extends 'loading' | 'error' | 'success' | 'initial',
   TLocation extends AnyLocation,
-> = RouterPageState<TStatus> & { location: TLocation }
+> = NavigationPageState<TStatus> & { location: TLocation }
 export type GlobalHeadFn<
   TStatus extends 'loading' | 'error' | 'success' | 'initial' = any,
   TLocation extends AnyLocation = any,

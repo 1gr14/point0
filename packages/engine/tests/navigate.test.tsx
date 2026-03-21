@@ -1,10 +1,10 @@
-import { describe, expect, it, setDefaultTimeout } from 'bun:test'
-import type { AnyLocation } from '@devp0nt/route0'
 import { Routes } from '@devp0nt/route0'
-import { Point0, useLocation, useOnNavigate } from '@point0/core'
+import type { AnyLocation } from '@devp0nt/route0'
+import { Point0 } from '@point0/core'
+import { useLocation, useOnNavigate } from '@point0/core/navigation'
 import { createNavigation } from '@point0/wouter'
+import { describe, expect, it, setDefaultTimeout } from 'bun:test'
 import React, { useState } from 'react'
-import { navigate as nativeNavigate } from 'wouter/use-browser-location'
 import { createTestThings } from './utils/internal-testing.js'
 
 setDefaultTimeout(20000)
@@ -32,7 +32,7 @@ const createTestPointsAndHelpers = () => {
     post: '/posts/:id',
   })
 
-  const { Link, NavLink, navigate } = createNavigation({ routes, navigate: nativeNavigate })
+  const { Link, NavLink, navigate } = createNavigation({ routes })
 
   const getClassNames = (defaultClassName: string) => ({
     default: defaultClassName,
@@ -45,7 +45,6 @@ const createTestPointsAndHelpers = () => {
 
   const layout = root.lets('layout', 'layout').layout(({ children }) => {
     const location = useLocation()
-    // const routerContext = useRouterContext()
     const [state, setState] = useState<{
       prevLocation: AnyLocation | null
       nextLocation: AnyLocation | null

@@ -93,8 +93,8 @@ import type {
   WrapperComponentType,
 } from './mountable.js'
 import type { PopularRequestMethod, WideRequestMethod } from './request0.js'
-import { useLocation, useRouterContext } from './router.js'
-import type { RouterPageState } from './router.js'
+import { useLocation, useNavigationContext } from './navigation.js'
+import type { NavigationPageState } from './navigation.js'
 import { superstore } from './super-store.js'
 import type {
   AnyPoint,
@@ -10105,11 +10105,11 @@ export class Point0<
     prevMountActions,
     skipGlobalHead,
   }: {
-    pageState: RouterPageState
+    pageState: NavigationPageState
     pageStateManager:
       | {
-          pageState: RouterPageState
-          setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
+          pageState: NavigationPageState
+          setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
         }
       | undefined
     prevMountActions: Array<{
@@ -10168,8 +10168,8 @@ export class Point0<
     componentVariant: DestinationComponentVariant
     pageStateManager:
       | {
-          pageState: RouterPageState
-          setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
+          pageState: NavigationPageState
+          setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
         }
       | undefined
     prevMountActions: Array<{
@@ -10213,8 +10213,8 @@ export class Point0<
     componentVariant: DestinationComponentVariant
     pageStateManager:
       | {
-          pageState: RouterPageState
-          setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
+          pageState: NavigationPageState
+          setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
         }
       | undefined
     prevMountActions: Array<{
@@ -10303,8 +10303,8 @@ export class Point0<
     ) => Record<string, any>
     location?: AnyLocation
     pageStateManager?: {
-      pageState: RouterPageState
-      setPageState: React.Dispatch<React.SetStateAction<RouterPageState>>
+      pageState: NavigationPageState
+      setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
     }
     layers: Array<{
       inputRaw: InputRaw
@@ -10872,7 +10872,7 @@ export class Point0<
         status: mountState.status,
         error: mountState.error,
         loading: mountState.loading,
-      } as RouterPageState
+      } as NavigationPageState
       Point0._usePrevHeadsAndSetPageState({
         pageState,
         pageStateManager,
@@ -10930,7 +10930,7 @@ export class Point0<
       return { inputRaw, restProps }
     }, [props, location])
 
-    const { prevLocation, status } = useRouterContext()
+    const { prevLocation, status } = useNavigationContext()
     React.useEffect(() => {
       if (status !== 'idle') {
         return

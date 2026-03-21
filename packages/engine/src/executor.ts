@@ -100,7 +100,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       __POINT0_SSR_REDIRECT_TASK__: undefined,
       __POINT0_IS_SSR_IN_PROGRESS__: false,
       __POINT0_CURRENT_LOCATION__: new Error('Current location will exists only on ssr phase') as never,
-      __POINT0_ROUTER_CONTEXT__: new Error('Router context will exists only on ssr phase') as never,
+      __POINT0_NAVIGATION_CONTEXT__: new Error('Navigation context will exists only on ssr phase') as never,
       __POINT0_UNHEAD_SERVER_HEAD__: createHead(),
     } satisfies SuperStoreInternalValues)
     return new Executor<TRequiredCtx, TError>({

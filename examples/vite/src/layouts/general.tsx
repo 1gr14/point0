@@ -1,4 +1,4 @@
-import { useIsNavigating } from '@point0/core'
+import { useIsNavigating } from '@point0/core/navigation'
 import { Link } from '@/lib/navigate'
 import { client } from '../lib/client'
 import { routes } from '../lib/routes'

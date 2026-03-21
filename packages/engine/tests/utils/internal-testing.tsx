@@ -25,6 +25,7 @@ import { FetchRecorder } from './fetch-recorder.js'
 import { HtmlView } from './html-view.js'
 import { ClientPoints } from '@point0/core'
 import { Point0 } from '@point0/core'
+import React from 'react'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -441,7 +442,7 @@ export const createTestThings = async ({
           return '\n' + state.titles.join('\n') + '\n'
         }
 
-        const rendered = rtl.render(app(), { container: root })
+        const rendered = rtl.render(React.createElement(app), { container: root })
         state._unmount = rendered.unmount
         state.body = document.body
         state.document = document
@@ -649,6 +650,7 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
     const title = /<title>(.*?)<\/title>/.exec(view.html)?.[1]
     return title
   }) as unknown as FetchTitle
+
   return {
     engine,
     client,

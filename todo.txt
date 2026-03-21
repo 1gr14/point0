@@ -36,9 +36,12 @@ start0
 === REFACTOING 3000 ===
 
 redirect
-? rename router to navigation (file and exports)
-move router to separate file, do not export it form index
+?× remove ClientPoints mount at all (NO! We need, it becouse createNavigation return Link etc which used in points itself, and we have recursive call)
+! ClientPoints.getInstace() find all and replace with getClientPoints()
+Проверить что в тестах я делаю поинт маунт на клиенте
+Нам в контексте нужен не адаптер навигецт а настоящий навигецт с транзишинами
 move to tree layout regexes
+on qeruyClient hydrate remove all that possible to remove from it (and timestamps should become now on client)
 ? redirect moves to final stage
 ? redirect as method is just shortcut for with((...args) => redirect(...args))
 ? method redirect not needed with is enough (why )
@@ -57,6 +60,8 @@ on qeruyFetch if result redirect, we do client redirect
 fetchServer shoul accept onRedirect instructions else it throws
 Разбить роутер на Стейт локейшен и хелперс провайдер
 
+client frontend logger also prefix with [client]
+check if ClientOnly was imported from @point0/core
 При навигейте нужно записывать текущий навигец и досовершать его только, если другой не был вызван
 Локейшен серчи должны быть геттерами
 Реквест кукисы и хедеры должны быть гетерами
@@ -76,19 +81,15 @@ page and layout search params should be parsed before sending to input to cut tr
 types.ts file thet reexport only needed types
 index exports only realy used fns and helpers without types
 
-route0 should exports from another file normalizeDefinition, so we can keep tiny size
-return feature([], () => {}) and prune by compiler
-
 Короткая летс нотация с автозаменой имени поинта и выкидом ошибки если компилер не енаблед иди экспорт конст не именованный
 При экспорт дефаулт короткий летс берёт имя файла, а если то индекс, то имя папки
 
-
+Причёска экзамплов
+Пью вайт экзампл
 
 mcp
 
 Проверка под линукс и виндоус
-
-+++
 
 (import protection) cli inspect by filepath how this file and in which place come to files via cli command
 Импортм рестрик, аллоу, и можно передать прямо пакейдж Джейсон в список рестрикта
@@ -102,16 +103,15 @@ mcp
 Миррор и мапа всегда генерирует констс, но может экспортнуть, а может и нет, и может объединить в объект
 ? Возможность импортануть серверный поинт игнорируя всё вокруг то есть берём как есть а функции снаружи не считая поинтов игнорируем
 
-+++
-
 ? headers as action input
 openapi
 scalar
 
 +++
-
-? filerouting
-? react-dom testing library
++filerouting
++react-dom testing library
++route0 should exports from another file normalizeDefinition, so we can keep tiny size
++return feature([], () => {}) and prune by compiler
 
 
 
@@ -623,7 +623,8 @@ or .static(false, [input1, input2, ...]) then loader work like usual loader and 
 also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
 
 
-
+=== CACHE ===
+.cache(({input, request}) => mark) // mark is any object that will be stringified. by default .mark() is used
 
 
 

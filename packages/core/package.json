@@ -30,6 +30,9 @@
       "request0": [
         "./dist/esm/request0.d.ts"
       ],
+      "navigation": [
+        "./dist/esm/navigation.d.ts"
+      ],
       "unhead": [
         "./dist/esm/unhead.d.ts"
       ]
@@ -50,6 +53,11 @@
       "types": "./dist/esm/request0.d.ts",
       "require": "./dist/cjs/request0.cjs",
       "import": "./dist/esm/request0.js"
+    },
+    "./navigation": {
+      "types": "./dist/esm/navigation.d.ts",
+      "require": "./dist/cjs/navigation.cjs",
+      "import": "./dist/esm/navigation.js"
     },
     "./unhead": {
       "types": "./dist/esm/unhead.d.ts",
