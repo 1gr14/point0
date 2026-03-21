@@ -73,11 +73,16 @@ page and layout search params should be parsed before sending to input to cut tr
 Убедиться, что он фетч старт говори о типе реквеста а лучше сам реквест а в нём тип реквеста
 В энжин препаре также передавать сайд и скоуп а не превент клиент дна сервера
 
+types.ts file thet reexport only needed types
+index exports only realy used fns and helpers without types
+
+route0 should exports from another file normalizeDefinition, so we can keep tiny size
+return feature([], () => {}) and prune by compiler
+
 Короткая летс нотация с автозаменой имени поинта и выкидом ошибки если компилер не енаблед иди экспорт конст не именованный
 При экспорт дефаулт короткий летс берёт имя файла, а если то индекс, то имя папки
 
-types.ts file thet reexport only needed types
-index exports only realy used fns and helpers without types
+
 
 mcp
 
@@ -118,7 +123,6 @@ scalar
 ? Разрешить палгин от рута просточтобы ssr перенимался
 ? При загрузке пейджа с сервера всегдаэкзекьютить пейдж, даже если он не имеет лоадеров (не по дизайну же, после авторизации станет понятно)
 ? Вариант мидлвары перенести в реквест пусть там будет вариант
-? route0 should exports from another file normalizeDefinition, so we can keep tiny size
 Пейдж и лэйоут должен мочь принимать локейшен захардкоженый
 при запросах с сервера к самому себе учитывать максимальную рекурсию
 Порт клинета и сервера экспоузить в энвы при разработке
@@ -194,7 +198,6 @@ shrink core/index.ts size, by remove code duplicates
 === SSR ===
 ---
 Test for mount()
-? __POINT0_GET_SSR_PHASE__
 Если не сср поинт, то прунить ещё для сервера и компоненты до первого сср фалс, а значит нужно при компилинге уже всех парентов находить (короче находить родителей по поинту убедиться, что при компилинге только 1 файла, он находит родительский файл)
 allow .ssr() on any point
 ssr can be not on root point, but client still can be ssr if it has ssr point, so check ssr by any point has ssr option

@@ -1,5 +1,23 @@
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
-import type { Env, EnvOsName, EnvRuntimeName } from '../src/index.js'
+import {
+  _getSsItemsWithRestErrors,
+  _ssRunWithServerStorageState,
+  type Env,
+  type EnvOsName,
+  type EnvRuntimeName,
+} from '../src/index.js'
+
+const serverStorageState = _getSsItemsWithRestErrors(
+  {
+    __POINT0_IS_SSR_IN_PROGRESS__: false,
+    __POINT0_FAKE_CLIENT__: undefined,
+  },
+  'Value "%s" not exists in middleware call, this value accessible only in loader, ctx, components etc',
+)
+
+const withServerStorage = async <T>(callback: () => Promise<T>): Promise<T> => {
+  return await _ssRunWithServerStorageState(serverStorageState, callback)
+}
 
 const init = async <
   TVars = any,
@@ -8,7 +26,7 @@ const init = async <
   TOs extends EnvOsName | undefined = EnvOsName | undefined,
 >(options: {
   vars?: Record<string, string | boolean | number>
-  ssr?: 'prepass' | 'final' | boolean
+  ssr?: boolean
   side: 'client' | 'server'
   scope?: string
 }): Promise<Env<TVars, TScope, TRuntime, TOs>> => {
@@ -18,8 +36,8 @@ const init = async <
     ;(globalThis as any).document = {}
     ;(globalThis as any).navigator = {}
   }
-  if (side === 'server') {
-    ;(globalThis as any).__POINT0_GET_SSR_PHASE__ = () => ssr
+  if (ssr !== undefined) {
+    serverStorageState.__POINT0_IS_SSR_IN_PROGRESS__ = ssr
   }
   Object.assign(process.env, vars)
   if (scope) {
@@ -38,7 +56,7 @@ describe('env', () => {
   const originalNavigator = globalThis.navigator
   const originalProcess = globalThis.process
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset environment
     process.env = { ...originalEnv }
     // Clear global objects that might affect side detection
@@ -47,17 +65,20 @@ describe('env', () => {
       delete (globalThis as any).window
       delete (globalThis as any).document
       delete (globalThis as any).navigator
+
+      serverStorageState.__POINT0_IS_SSR_IN_PROGRESS__ = false
     } catch {
       // console.error(error)
     }
   })
 
-  afterEach(() => {
+  afterEach(async () => {
     // Restore original environment
     process.env = originalEnv
     ;(globalThis as any).window = originalWindow
     ;(globalThis as any).document = originalDocument
     ;(globalThis as any).navigator = originalNavigator
+    serverStorageState.__POINT0_IS_SSR_IN_PROGRESS__ = false
     ;(globalThis as any).process = originalProcess
   })
 
@@ -291,28 +312,31 @@ describe('env', () => {
       })
 
       it('should return false on server when SSR is not defined', async () => {
-        const env = await init({ side: 'server' })
-        expect(env.side.is.ssr).toBe(false)
+        await withServerStorage(async () => {
+          const env = await init({ side: 'server' })
+          expect(env.side.is.ssr).toBe(false)
+        })
       })
 
       it('should return false on server when SSR is not enabled', async () => {
-        const env = await init({ side: 'server', ssr: false })
-        expect(env.side.is.ssr).toBe(false)
+        await withServerStorage(async () => {
+          const env = await init({ side: 'server', ssr: false })
+          expect(env.side.is.ssr).toBe(false)
+        })
       })
 
       it('should return true on server when SSR is enabled', async () => {
-        const env = await init({ side: 'server', ssr: true })
-        expect(env.side.is.ssr).toBe(true)
+        await withServerStorage(async () => {
+          const env = await init({ side: 'server', ssr: true })
+          expect(env.side.is.ssr).toBe(true)
+        })
       })
 
-      it('should return prepass on server when SSR phase is prepass', async () => {
-        const env = await init({ side: 'server', ssr: 'prepass' })
-        expect(env.side.is.ssr).toBe('prepass')
-      })
-
-      it('should return final on server when SSR phase is final', async () => {
-        const env = await init({ side: 'server', ssr: 'final' })
-        expect(env.side.is.ssr).toBe('final')
+      it('should return false on server when SSR is undefined', async () => {
+        await withServerStorage(async () => {
+          const env = await init({ side: 'server', ssr: undefined })
+          expect(env.side.is.ssr).toBe(false)
+        })
       })
     })
   })

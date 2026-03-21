@@ -1085,6 +1085,8 @@ export class Fetcher<TError extends ErrorPoint0> {
     const serverStorageState = _getSsItemsWithRestErrors(
       {
         __POINT0_FAKE_CLIENT__: undefined,
+        __POINT0_IS_SSR_IN_PROGRESS__: false,
+        __POINT0_SSR_REDIRECT_TASK__: undefined,
         __POINT0_REQUEST0__: prepareFetchResult.request,
         __POINT0_EFFECTS__: prepareFetchResult.effects,
         // in case of recursive server response we want preserve query client to keep state

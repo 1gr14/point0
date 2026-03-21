@@ -593,7 +593,7 @@ export const createRedirectHelper = <
     })
     if (_point0_env.side.is.client) {
       navigate(task.to, task.options)
-    } else {
+    } else if (_point0_env.side.is.ssr) {
       ssrRedirectTask.set(task)
     }
     return task

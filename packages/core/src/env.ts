@@ -7,7 +7,6 @@ export type * from './env.types.js'
 export const normalNodeEnvs: NormalizedNodeEnv[] = ['production', 'development', 'test']
 
 // vars
-
 export const getEnvVars = (): EnvVars => {
   const env = Object.create(null)
   const processEnvHolder = (() => {
@@ -72,27 +71,11 @@ const getSideName = (): 'client' | 'server' => {
   return isSideClient() ? 'client' : 'server'
 }
 
-const isSideSsr = (): false | true | 'prepass' | 'final' => {
-  // const ssr = SuperStore.getWeak<'prepass' | 'final' | undefined>('__POINT0_SSR_PHASE__')
+const isSideSsr = (): boolean => {
   if (isSideClient()) {
     return false
   }
-  const getSsrPhase: unknown = (globalThis as unknown as Record<string, unknown>).__POINT0_GET_SSR_PHASE__
-  // TODO: maybe check import.meta.env.SSR ot something like vite provides? We do not need it for point0, so I think it does not needed
-  if (typeof getSsrPhase !== 'function') {
-    return false
-  }
-  const ssrPhase = getSsrPhase()
-  if (!ssrPhase) {
-    return false
-  }
-  if (typeof ssrPhase === 'string') {
-    if (ssrPhase === 'prepass' || ssrPhase === 'final') {
-      return ssrPhase
-    }
-    throw new Error(`Invalid SSR phase: ${ssrPhase}`)
-  }
-  return true
+  return isSsrInProgress.get()
 }
 
 function sideDefineUniversal<TServerResult>(options: { server: TServerResult }): TServerResult | undefined
@@ -150,7 +133,7 @@ type SideIsClient = {
 type SideIsServer = {
   readonly client: false
   readonly server: true
-  readonly ssr: boolean | 'prepass' | 'final'
+  readonly ssr: boolean
 }
 const sideIs = Object.defineProperties(
   {},
@@ -731,3 +714,9 @@ export const env: Env = Object.defineProperties(
 ) as never as Env
 
 export const _point0_env = env
+
+export const isSsrInProgress = superstore.define<boolean>(
+  '__POINT0_IS_SSR_IN_PROGRESS__',
+  () => false,
+  'clientServerIsolated',
+)

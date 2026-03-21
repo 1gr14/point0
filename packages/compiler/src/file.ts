@@ -797,14 +797,14 @@ export class CompilerFile<THasContent extends boolean> {
                   modified = true
                   passModified = true
                 } else if (name === 'ssr') {
-                  // If side is client, ssr is always false
-                  // If side is server, leave it as-is (it's a getter that returns SSR phase)
+                  // If side is client, ssr is always false.
+                  // If side is server, leave it as-is (it is resolved by runtime getter).
                   if (side === 'client') {
                     p.replaceWith(makeBooleanLiteral(false))
                     modified = true
                     passModified = true
                   }
-                  // Note: For server side, env.side.is.ssr is a getter, so we leave it as-is
+                  // Note: For server side, env.side.is.ssr is a getter, so we leave it as-is.
                 }
               }
             }

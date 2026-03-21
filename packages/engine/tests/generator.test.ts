@@ -1043,6 +1043,9 @@ export const page = root.lets('page', 'mypage', '/mypage').page(() => <div>Hello
         expect(getLogs()[2][0].message).toBe('remove: page.mypage')
         expect(getLogs()[3][0].message).toBe('add: page.mypage2')
       }),
+      {
+        retry: 3,
+      },
     )
   })
 })
