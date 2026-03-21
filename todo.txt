@@ -36,8 +36,8 @@ start0
 === REFACTOING 3000 ===
 
 redirect
-rename router to navigation (file and exports)
-move navigation to separate file, do not export it form index
+? rename router to navigation (file and exports)
+move router to separate file, do not export it form index
 move to tree layout regexes
 ? redirect moves to final stage
 ? redirect as method is just shortcut for with((...args) => redirect(...args))

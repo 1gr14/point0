@@ -10,6 +10,7 @@ import type { IfAnyThenElse } from './types.js'
 import { superstore } from './super-store.js'
 
 export type AdapterNavigateOptions = Record<string, unknown>
+export type AdapterNavigateFn = (to: string, options?: AdapterNavigateOptions) => any
 
 export type UseAdapterLocationFn = () => AnyLocation
 
@@ -71,6 +72,7 @@ export type RouterContextValue = {
   prevLocation: AnyLocation | null
   currentLocation: AnyLocation
   nextLocation: AnyLocation | null
+  adapterNavigate: AdapterNavigateFn
   status: RouterStatus
   error: Error | undefined
   useAdapterLocation: UseAdapterLocationFn
@@ -93,6 +95,7 @@ export type RouterContextProviderProps = {
   useAdapterLocation: UseAdapterLocationFn
   ssrLocation?: AnyLocation | null
   addHashToLocation?: boolean
+  adapterNavigate: AdapterNavigateFn
 }
 
 export function RouterContextProvider({
@@ -100,6 +103,7 @@ export function RouterContextProvider({
   status = 'idle',
   useAdapterLocation,
   ssrLocation,
+  adapterNavigate,
   addHashToLocation = false,
 }: RouterContextProviderProps) {
   const [nextLocation, setNextLocation] = useState<AnyLocation | null>(null)
@@ -125,6 +129,7 @@ export function RouterContextProvider({
       nextLocation,
       status: routerStatus,
       error,
+      adapterNavigate,
       setNextLocation,
       setPrevLocation,
       setStatus,
@@ -134,7 +139,16 @@ export function RouterContextProvider({
       pageState,
       setPageState,
     }),
-    [ssrLocation, currentLocation, prevLocation, nextLocation, routerStatus, error, useAdapterLocation],
+    [
+      ssrLocation,
+      currentLocation,
+      prevLocation,
+      nextLocation,
+      routerStatus,
+      error,
+      useAdapterLocation,
+      adapterNavigate,
+    ],
   )
   useEffect(() => {
     _ssItems.__POINT0_ROUTER_CONTEXT__.set(value)

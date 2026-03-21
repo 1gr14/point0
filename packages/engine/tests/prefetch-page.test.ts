@@ -26,7 +26,7 @@ const toMark = (polh: string | boolean, pon: string | boolean) => `polh-${string
 const layoutNavTsx = (polh: string | boolean, pon: string | boolean) => {
   const mark = toMark(polh, pon)
   return `import { root } from '../lib/root.js'
-import { Link, NavLink } from '../lib/navigate.js'
+import { Link, NavLink, navigate } from '../lib/navigate.js'
 export const layout = root.lets('layout', 'layout_${toMark(polh, pon)}', '/${toMark(polh, pon)}')
   .prefetchPageOnLinkHover(${stringify2(polh)})
   .prefetchPageOnNavigate(${stringify2(pon)})
@@ -36,7 +36,7 @@ export const layout = root.lets('layout', 'layout_${toMark(polh, pon)}', '/${toM
         <Link to="/${mark}">/</Link>
         <Link to="/${mark}/with-server">/with-server</Link>
         <Link to="/${mark}/with-client">/with-client</Link>
-        <Link to="/${mark}/with-both">/with-both</Link>
+        <Link to="/${mark}/with-both" onClick={(e) => { e.preventDefault(); navigate.to('/${mark}/with-both') }}>/with-both</Link>
         <Link to="/${mark}/with-related-query">/with-related-query</Link>
         <Link to="/${mark}/with-mounted-query">/with-mounted-query</Link>
         <NavLink to="/${mark}/with-none">/with-none</NavLink>
