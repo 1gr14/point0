@@ -32,7 +32,7 @@ export const engine = Engine.create({
         },
         {
           what: 'routes',
-          outfile: './lib/routes.generated.ts',
+          outfile: './lib/routes.ts',
         },
       ],
       routes: async () => await import('./lib/routes').then((m) => m.routes),

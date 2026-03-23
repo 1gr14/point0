@@ -36,16 +36,16 @@ export const client = Point0.lets<{ zxc: number }>('root', 'client')
       htmlAttrs: { lang: 'en' },
     }
   })
-  .error(({ error }) => {
-    return (
-      <div>
-        <div>Error: {error.message}</div>
-        <code>
-          <pre>{error.stack}</pre>
-        </code>
-      </div>
-    )
-  })
+  // .error(({ error }) => {
+  //   return (
+  //     <div>
+  //       <div>Error: {error.message}</div>
+  //       <code>
+  //         <pre suppressHydrationWarning>{error.stack}</pre>
+  //       </code>
+  //     </div>
+  //   )
+  // })
   .root()
 
 export type Ctx = (typeof client)['Infer']['Ctx']

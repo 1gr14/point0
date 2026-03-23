@@ -1,9 +1,0 @@
-{
-  "extends": "./tsconfig.build.json",
-  "compilerOptions": {
-    "paths": {
-      "@point0/core": ["../core/src/index.ts"],
-      "@point0/core/navigation": ["../core/src/navigation.tsx"]
-    }
-  }
-}

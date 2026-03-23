@@ -16,19 +16,34 @@
     "url": "https://github.com/devp0nt/point0/issues"
   },
   "type": "module",
-  "types": "./dist/esm/index.d.ts",
-  "main": "./dist/cjs/index.cjs",
-  "module": "./dist/esm/index.js",
   "typesVersions": {
     "*": {
-      "": ["./dist/esm/index.d.ts"]
+      "mount": [
+        "./dist/esm/mount.d.ts"
+      ],
+      "router": [
+        "./dist/esm/router.d.ts"
+      ],
+      "testing": [
+        "./dist/esm/testing.d.ts"
+      ]
     }
   },
   "exports": {
-    ".": {
-      "types": "./dist/esm/index.d.ts",
-      "require": "./dist/cjs/index.cjs",
-      "import": "./dist/esm/index.js"
+    "./mount": {
+      "types": "./dist/esm/mount.d.ts",
+      "require": "./dist/cjs/mount.cjs",
+      "import": "./dist/esm/mount.js"
+    },
+    "./router": {
+      "types": "./dist/esm/router.d.ts",
+      "require": "./dist/cjs/router.cjs",
+      "import": "./dist/esm/router.js"
+    },
+    "./testing": {
+      "types": "./dist/esm/testing.d.ts",
+      "require": "./dist/cjs/testing.cjs",
+      "import": "./dist/esm/testing.js"
     }
   },
   "files": [
@@ -45,14 +60,16 @@
     "typesgo": "tsgo --noEmit -p tsconfig.build.json",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "pack:dist": "rimraf ../../packages-dist-npm && bun ../../scripts/transform-package-for-publish.ts && mkdir -p ../../packages-dist-npm/wouter && npm pack --pack-destination ../../packages-dist-npm/wouter --silent && (cd ../../packages-dist-npm/wouter && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz) && bun ../../scripts/restore-package.ts",
+    "pack:dist": "rimraf ../../packages-dist-npm && bun ../../scripts/transform-package-for-publish.ts && mkdir -p ../../packages-dist-npm/react-dom && npm pack --pack-destination ../../packages-dist-npm/react-dom --silent && (cd ../../packages-dist-npm/react-dom && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz) && bun ../../scripts/restore-package.ts",
     "prepublishOnly": "bun ../../scripts/transform-package-for-publish.ts",
     "postpublish": "bun ../../scripts/restore-package.ts"
   },
   "peerDependencies": {
+    "@devp0nt/route0": "catalog:",
     "@point0/core": "workspace:*",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "wouter": "^3.7.1"
   },
   "devDependencies": {
     "@types/bun": "^1.2.22",

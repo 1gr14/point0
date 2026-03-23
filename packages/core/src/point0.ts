@@ -41,7 +41,7 @@ import type {
   ServerEventerSubscriptionCallback,
   UniqEventerErrorEventName,
 } from './eventer.js'
-import { ClientOnly, getFetch, setStatus } from './helpers.js'
+import { ClientOnly, getFetch, setStatus, useIsHydrated } from './helpers.js'
 import { _getFakeClient, _ssItems } from './internals.js'
 import type { LogFn } from './logger.js'
 import type {
@@ -485,11 +485,12 @@ export class Point0<
   private readonly _errorComponent: ErrorComponentType<DestinationComponentVariant, TError> | undefined
   private readonly DefaultErrorComponent: ErrorComponentType<any, TError> = ({ error }) => {
     const { stack, ...json } = this._Error.serialize(error)
+    const isHydrated = useIsHydrated()
     return React.createElement(
       React.Fragment,
       null,
-      React.createElement('pre', null, JSON.stringify(json, null, 2)),
-      React.createElement('pre', null, stack as string),
+      React.createElement('pre', null, !isHydrated ? null : JSON.stringify(json, null, 2)),
+      React.createElement('pre', null, !isHydrated ? null : (stack as string | undefined) || error.stack || ''),
     )
   }
   private readonly _layoutErrorComponent: ErrorComponentType<any, TError> | undefined
@@ -10415,17 +10416,21 @@ export class Point0<
     const isPage = this.type === 'page'
     const isHeadable = isPage || isLayout
     const fallbackLoadingComponent =
+      this._loadingComponent ??
       {
         page: this._pageLoadingComponent,
         component: this._componentLoadingComponent,
         layout: this._layoutLoadingComponent,
-      }[componentVariant] ?? this.DefaultLoadingComponent
+      }[componentVariant] ??
+      this.DefaultLoadingComponent
     const fallbackErrorComponent =
+      this._errorComponent ??
       {
         page: this._pageErrorComponent,
         component: this._componentErrorComponent,
         layout: this._layoutErrorComponent,
-      }[componentVariant] ?? this.DefaultErrorComponent
+      }[componentVariant] ??
+      this.DefaultErrorComponent
 
     const {
       nextMountActions,
@@ -10757,8 +10762,12 @@ export class Point0<
               ),
             })
           }
+
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { '?': search, ...params } = currentLayer.inputRaw as any
+          const { '?': search, ...params } = currentLayer.inputRaw as {
+            '?': InputRaw | undefined
+            [key: string]: unknown
+          }
           const result = this.parseInputSafeSync(action.schema, params)
           if (!result.success) {
             return React.createElement(ErrorComponent, {

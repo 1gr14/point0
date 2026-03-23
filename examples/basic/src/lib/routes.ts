@@ -1,19 +1,15 @@
-import { Route0, Routes } from '@devp0nt/route0'
-
-const home = Route0.create('/')
-const empty = home.extend('/empty')
-const sharedEmpty = empty.extend('/shared')
-const ideas = home.extend('/ideas')
-const newIdea = ideas.extend('/new')
-const idea = ideas.extend('/:id')
-const ideaNews = idea.extend('/news')
+import { Routes } from '@devp0nt/route0'
 
 export const routes = Routes.create({
-  home,
-  empty,
-  sharedEmpty,
-  ideas,
-  newIdea,
-  idea,
-  ideaNews,
+  'home': '/',
+  'empty': '/empty/:x',
+  'file': '/file',
+  'gi1': '/gi1',
+  'gi2': '/gi2',
+  'ideas': '/ideas',
+  'newIdea': '/ideas/new',
+  'idea': '/ideas/:id',
+  'ideaNews': '/ideas/:id/news',
+  'md2': '/md2',
+  'sharedEmpty': '/sharedEmpty2',
 })

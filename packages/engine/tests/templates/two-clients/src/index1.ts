@@ -1,4 +1,4 @@
-import { mount } from '@point0/react-dom'
+import { mount } from '@point0/react-dom/mount'
 import App from './app1.js'
 import points from './lib/points1.js'
 

@@ -2,7 +2,7 @@ import { fixImportsPlugin } from 'esbuild-fix-imports-plugin'
 import { defineConfig, type Options } from 'tsup'
 
 const general = {
-  entry: ['src/index.ts'],
+  entry: ['src/mount.ts', 'src/router.tsx', 'src/testing.ts'],
   clean: false,
   dts: true,
   sourcemap: false,

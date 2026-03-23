@@ -2,7 +2,7 @@ import { Routes } from '@devp0nt/route0'
 import { getQueryClient, Point0 } from '@point0/core'
 import { useLocation } from '@point0/core/navigation'
 import { zodSchemaHelper } from '@point0/core/schema/zod'
-import { createNavigation } from '@point0/wouter'
+import { createNavigation } from '@point0/react-dom/router'
 import { describe, expect, it } from 'bun:test'
 import { z } from 'zod'
 import { createTestThings, ymlifyline } from './utils/internal-testing.js'
@@ -476,7 +476,6 @@ describe('search', () => {
         points: [root, layout, page],
       })
       await render(page.route({ '?': { utm_source: 'x' } }), async ({ waitContent, tale, click }) => {
-        console.log(await tale())
         await waitContent('#layout-utm:x,x')
         await click('#link-with-another-search')
         await waitContent('#layout-utm:y,x')

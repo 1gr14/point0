@@ -5,7 +5,7 @@ import { Point0 } from '@point0/core'
 // import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.one-client.js'
 // import { TestProjectFactory } from './utils/project.one-client.js'
 import { createTestThings, waitReturn } from '../internal-testing.js'
-import { createNavigation } from '@point0/wouter'
+import { createNavigation } from '@point0/react-dom/router'
 import { ClientPoints } from '@point0/core'
 
 describe('internal-testing', () => {

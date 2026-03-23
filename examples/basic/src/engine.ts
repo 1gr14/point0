@@ -33,7 +33,7 @@ export const engine = Engine.create({
         },
         {
           what: 'routes',
-          outfile: './lib/routes.generated.ts',
+          outfile: './lib/routes.ts',
         },
       ],
       // pointsModuleType: 'ready',

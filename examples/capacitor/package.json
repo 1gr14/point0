@@ -29,7 +29,6 @@
     "@point0/core": "workspace:*",
     "@point0/engine": "workspace:*",
     "@point0/react-dom": "workspace:*",
-    "@point0/wouter": "workspace:*",
     "@capacitor/core": "^7.4.3",
     "@prisma/adapter-libsql": "^7.5.0",
     "@prisma/client": "^7.5.0",

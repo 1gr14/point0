@@ -13,7 +13,7 @@ import { FetchRecorder } from './utils/fetch-recorder.js'
 // import { TestProjectFactory } from './utils/project.one-client.js'
 import { getFakeBrowserGlobals, ymlify } from './utils/internal-testing.js'
 import { ClientPoints } from '@point0/core'
-import { createNavigation } from '@point0/wouter'
+import { createNavigation } from '@point0/react-dom/router'
 
 // const tpf = TestProjectFactory.create({
 //   namespace: 'test-client',

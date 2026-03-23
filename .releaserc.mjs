@@ -32,12 +32,6 @@ export default {
     [
       '@semantic-release/npm',
       {
-        pkgRoot: 'packages/wouter',
-      },
-    ],
-    [
-      '@semantic-release/npm',
-      {
         pkgRoot: 'packages/cookies-store',
       },
     ],
