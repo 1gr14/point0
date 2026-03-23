@@ -23,7 +23,7 @@ import {
   useNavigationLocationContext,
   type AdapterNavigateFn,
 } from '@point0/core/navigation'
-import type { NavigateWithTransitionsReturnType, NavigationStatus, UseAdapterLocationFn } from '@point0/core/navigation'
+import type { NavigateWithTransitionsReturnType, NavigationStatus, UseLocationFn } from '@point0/core/navigation'
 import React, { Fragment, useCallback, useMemo, useRef } from 'react'
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
 import {
@@ -133,7 +133,7 @@ const _resolveFinalTo = <TRoutes extends RoutesPretty>({
   providedTo?: string
   providedHref?: string
   componentName: 'Link' | 'NavLink' | 'Redirect'
-}) => {
+}): string => {
   if (providedTo !== undefined) {
     return providedTo
   }
@@ -171,7 +171,7 @@ const _useFinalTo = <TRoutes extends RoutesPretty>({
   providedTo?: string
   providedHref?: string
   componentName: 'Link' | 'NavLink' | 'Redirect'
-}) => {
+}): string => {
   return useMemo(
     () => _resolveFinalTo({ routes, routeName, input, providedTo, providedHref, componentName }),
     [routes, routeName, JSON.stringify(input), providedTo, providedHref, componentName],
@@ -447,31 +447,50 @@ export const createNavLink = <
       providedHref,
       componentName: 'NavLink',
     })
-    const { pointWithLocation, wouterLinkProps, to } = _getWouterLinkProps<TBaseLocationHook>({
+    const { pointWithLocation, wouterLinkProps } = _getWouterLinkProps<TBaseLocationHook>({
       ...rest,
       to: finalTo,
     })
-    const location = useLocation(pointWithLocation?.point.route)
+    const currentLocation = useLocation()
+    const route = pointWithLocation?.point.route
+    const relation = useMemo(() => {
+      if (!route) {
+        return undefined
+      }
+      return route.getRelation(currentLocation.pathname)
+    }, [pointWithLocation?.point.route?.definition, currentLocation.pathname])
     const statusOptions = useMemo<NavLinkStateOptions>(() => {
-      if (location.exact) {
+      const unmatched = {
+        type: 'unmatched',
+        exact: false,
+        same: false,
+        ancestor: false,
+        descendant: false,
+        unmatched: true,
+      } as const
+      if (!relation || relation.unmatched) {
+        return unmatched
+      }
+      if (relation.exact) {
         if (
-          location.origin
-            ? Route0.toAbsLocation(Route0.getLocation(to), location.origin).href === location.href
-            : to === location.hrefRel
+          currentLocation.origin
+            ? Route0.toAbsLocation(Route0.getLocation(finalTo), currentLocation.origin).href === currentLocation.href
+            : finalTo === currentLocation.hrefRel
         ) {
           return { type: 'exact', exact: true, same: false, ancestor: false, descendant: false, unmatched: false }
         } else {
           return { type: 'same', exact: false, same: true, ancestor: false, descendant: false, unmatched: false }
         }
       }
-      if (location.ancestor) {
+      if (relation.ancestor) {
         return { type: 'ancestor', exact: false, same: false, ancestor: true, descendant: false, unmatched: false }
       }
-      if (location.descendant) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (relation.descendant) {
         return { type: 'descendant', exact: false, same: false, ancestor: false, descendant: true, unmatched: false }
       }
-      return { type: 'unmatched', exact: false, same: false, ancestor: false, descendant: false, unmatched: true }
-    }, [location, to])
+      return unmatched
+    }, [currentLocation.pathname, finalTo])
     const resolvedClassName = useMemo(() => {
       const classNameFromFnOrString =
         typeof className === 'function'
@@ -677,11 +696,12 @@ export const createRouter = ({
       return { ssrPath: ssrLocation.pathname, ssrSearch: ssrLocation.searchString }
     }, [ssrLocation])
 
-    const useAdapterLocation: UseAdapterLocationFn = useCallback(() => {
+    const useAdapterLocation = useCallback<UseLocationFn>((options) => {
       const [wouterLocation] = useWouterLocation()
       const [wouterSearchParams] = useWouterSearchParams()
       const pathnameWithSearchParams = [wouterLocation, wouterSearchParams.toString()].filter(Boolean).join('?')
-      return routes._.getLocation(pathnameWithSearchParams)
+      const hash = options?.addHash ? (typeof window !== 'undefined' ? window.location.hash : '') : ''
+      return routes._.getLocation(pathnameWithSearchParams + hash)
     }, [])
 
     const aroundNav = useCallback<AroundNavHandler>((navigate, to, options) => {

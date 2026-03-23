@@ -3,6 +3,13 @@ import { defineConfig, type Options } from 'tsup'
 
 const general = {
   entry: [
+    'src/schema/arktype.ts',
+    'src/schema/typebox.ts',
+    'src/schema/valibot.ts',
+    'src/schema/yup.ts',
+    'src/schema/zod.ts',
+    'src/schema/superstruct.ts',
+    'src/schema/utils.ts',
     'src/client-points.ts',
     'src/effects.ts',
     'src/env.ts',

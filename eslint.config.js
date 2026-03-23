@@ -24,6 +24,8 @@ export default defineConfig([
       '**/points.ready.ts',
       '**/points.ts',
       '**/wouter-routes.tsx',
+      '**/capacitor/ios/**',
+      '**/capacitor/android/**',
       'eslint.config.js',
       '.commitlintrc.js',
     ],

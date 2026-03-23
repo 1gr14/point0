@@ -1,3 +1,4 @@
+import type { QueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { ClientPoints } from './client-points.js'
 import type { Effects } from './effects.js'
@@ -94,4 +95,8 @@ export const mountClientPoints = <TError extends ErrorPoint0>(
 
 export const getClientPoints = (): ClientPoints => {
   return ClientPoints.getInstance()
+}
+
+export const getQueryClient = (): QueryClient => {
+  return _ssItems.__POINT0_QUERY_CLIENT__.get()
 }

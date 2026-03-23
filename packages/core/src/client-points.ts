@@ -343,13 +343,20 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     | undefined => {
     for (const { type, name, route, point, FC, layouts } of this.manager.collection) {
       if (type === 'page' && route && FC && layouts) {
-        const match = route.getLocation(location)
-        if (match.exact) {
+        if (route.isExact(location.pathname)) {
+          const relation = route.getRelation(location)
+          const pageLocation = Object.assign(
+            { ...location },
+            {
+              route: route.definition,
+              params: relation.params,
+            },
+          )
           return {
             point: (typeof point === 'function' ? async () => (await point()).point : point.point) as ReadyPoint,
             name,
             type,
-            pageLocation: match,
+            pageLocation,
             FC,
             layouts,
           }
@@ -455,7 +462,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     const promise = (async () => {
       await page.prefetchPage(page._getUnsafeInputRawByLocation(location), {
         queryClient,
-        location,
+        // location,
         policy,
         trigger,
       })
@@ -478,7 +485,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     | { point: ReadyPointsCollectionRecord | NormalizedLazyPointsCollectionRecord; location: ExactLocation }
     | undefined => {
     const location = this.routes._.getLocation(href)
-    if (!location.exact || !location.route) {
+    if (!location.route) {
       return undefined
     }
     const point = this.manager.collection.find((p) => p.type === 'page' && p.route?.definition === location.route)
@@ -496,7 +503,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     pageLocation: AnyLocation
   }): boolean => {
     if (basepath) {
-      return basepath.isExactOrAncestorPathnameMatch(pageLocation.pathname)
+      return basepath.isExactOrAncestor(pageLocation.pathname)
     }
     return true
   }

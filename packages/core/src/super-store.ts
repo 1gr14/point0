@@ -1,6 +1,6 @@
-import type { AsyncLocalStorage } from 'node:async_hooks'
 import type { ClientRuntime } from './env.types.js'
 import type { DataTransformer, DataTransformerExtended, PointsScope, RichFetchFn } from './types.js'
+import { AsyncLocalStorage } from 'node:async_hooks'
 
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
@@ -19,9 +19,7 @@ const _point0_env = {
 
 // I do not know why, but it is only way to do it to work in bun and vite at the same time
 ;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||=
-  _point0_env.vars.POINT0_SIDE === 'client'
-    ? null
-    : (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<Record<string, unknown>>)
+  _point0_env.vars.POINT0_SIDE === 'client' ? null : new AsyncLocalStorage()
 ;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ ||= {}
 ;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ ||= {}
 

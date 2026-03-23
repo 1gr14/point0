@@ -1,4 +1,4 @@
-import type { AnyLocation, AnyRoute, ExactLocation } from '@devp0nt/route0'
+import { Route0, type AnyLocation, type AnyRoute, type ExactLocation, type KnownLocation } from '@devp0nt/route0'
 import * as flat0 from '@devp0nt/flat0'
 import type {
   ActionPoint,
@@ -128,6 +128,8 @@ export class Fetcher<TError extends ErrorPoint0> {
     const shouldReadBody = isAction
       ? point._serverExecuteActions.some((action) => action.type === 'body')
       : !isPage && !isLayout
+    // const shouldReadSearch =
+    //   isPage || (isLayout && point._serverExecuteActions.some((action) => action.type === 'search'))
     const body = await (async () => {
       if (!shouldReadBody) {
         return {}
@@ -159,6 +161,7 @@ export class Fetcher<TError extends ErrorPoint0> {
     }
     return { body: {}, search: {}, params: {}, input: bodyParsed }
   }
+
   getPointInputFromEndpointRequest = async ({
     request,
     location,
@@ -574,7 +577,11 @@ export class Fetcher<TError extends ErrorPoint0> {
         if (!route) {
           throw new ErrorClass(`Point "${point.toString()}" has no route while requested page html via task`)
         }
-        const pageLocation = route.getLocation(route.get({ ...input.params, '?': input.search } as never))
+        const pageUrl = route.get({ ...input.params, '?': input.search } as never, request.from.location?.origin)
+        const pageLocation = Object.assign(Route0.getLocation(pageUrl), {
+          params: input.params,
+          route: route.definition,
+        } satisfies Partial<KnownLocation>)
         const result = await this.fetchPage({
           client,
           point: point as PagePoint | undefined,
@@ -611,7 +618,11 @@ export class Fetcher<TError extends ErrorPoint0> {
         if (!route) {
           throw new ErrorClass(`Point "${point.toString()}" has no route while requested page html via endpoint`)
         }
-        const pageLocation = route.getLocation(route.get({ ...input.params, '?': input.search } as never))
+        const pageUrl = route.get({ ...input.params, '?': input.search } as never, request.from.location?.origin)
+        const pageLocation = Object.assign(Route0.getLocation(pageUrl), {
+          params: input.params,
+          route: route.definition,
+        } satisfies Partial<KnownLocation>)
         await client.prefetchAppPagePointDeep({
           executor,
           pagePoint: point as PagePoint,

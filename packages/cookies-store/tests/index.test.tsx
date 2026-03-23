@@ -1,5 +1,5 @@
+import { getQueryClient, Point0 } from '@point0/core'
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
-import { Point0, queryClient } from '@point0/core'
 import superjson from 'superjson'
 import * as z from 'zod'
 import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
@@ -308,7 +308,7 @@ describe('cookies-store', () => {
         })
         .mutation({
           onSuccess: () => {
-            void queryClient.get().refetchQueries()
+            void getQueryClient().refetchQueries()
           },
           onError: (error) => {
             console.error(error)
@@ -322,7 +322,7 @@ describe('cookies-store', () => {
         })
         .mutation({
           onSuccess: () => {
-            void queryClient.get().refetchQueries()
+            void getQueryClient().refetchQueries()
           },
           onError: (error) => {
             console.error(error)
@@ -395,7 +395,7 @@ describe('cookies-store', () => {
         })
         .mutation({
           onSuccess: () => {
-            void queryClient.get().refetchQueries()
+            void getQueryClient().refetchQueries()
           },
           onError: (error) => {
             console.error(error)
@@ -409,7 +409,7 @@ describe('cookies-store', () => {
         })
         .mutation({
           onSuccess: () => {
-            void queryClient.get().refetchQueries()
+            void getQueryClient().refetchQueries()
           },
           onError: (error) => {
             console.error(error)
@@ -484,7 +484,7 @@ describe('cookies-store', () => {
         })
         .mutation({
           onSuccess: () => {
-            void queryClient.get().refetchQueries()
+            void getQueryClient().refetchQueries()
           },
           onError: (error) => {
             console.error(error)
@@ -498,7 +498,7 @@ describe('cookies-store', () => {
         })
         .mutation({
           onSuccess: () => {
-            void queryClient.get().refetchQueries()
+            void getQueryClient().refetchQueries()
           },
           onError: (error) => {
             console.error(error)

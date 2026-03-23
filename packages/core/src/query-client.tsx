@@ -7,7 +7,7 @@ import {
 import type { DehydratedState } from '@tanstack/react-query'
 import { superstore } from './super-store.js'
 
-export const queryClient = superstore.define<QueryClient, DehydratedState, 'readonlyRedefine'>(
+export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, DehydratedState, 'readonlyRedefine'>(
   '__POINT0_QUERY_CLIENT__',
   () => new QueryClient(),
   {
@@ -51,13 +51,13 @@ export const queryClient = superstore.define<QueryClient, DehydratedState, 'read
 
 export const createQueryClient = (init?: () => QueryClient) => {
   if (init) {
-    queryClient.redefine(init)
+    __POINT0_QUERY_CLIENT__.redefine(init)
   }
   function QueryClientProvider({ children }: { children: React.ReactNode }) {
-    return <QueryClientProviderOriginal client={queryClient.get()}>{children}</QueryClientProviderOriginal>
+    return <QueryClientProviderOriginal client={__POINT0_QUERY_CLIENT__.get()}>{children}</QueryClientProviderOriginal>
   }
   return {
-    queryClient: queryClient,
+    queryClient: __POINT0_QUERY_CLIENT__,
     QueryClientProvider,
   }
 }

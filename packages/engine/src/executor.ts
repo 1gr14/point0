@@ -1,5 +1,6 @@
 import type { AnyLocation, AnyRoute } from '@devp0nt/route0'
 import { _ssItems, _ssRunWithServerStorageState } from '@point0/core'
+import * as flat0 from '@devp0nt/flat0'
 import type {
   AnyPoint,
   AppComponent,
@@ -335,10 +336,15 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
             input: {},
           }
         }
-        const location = route.getLocation(route.get(inputProvided as any))
+        const {
+          '?': search,
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          '#': _hash,
+          ...params
+        } = flat0.parse(flat0.stringify(inputProvided)) as Record<string, unknown>
         return {
-          search: location.search,
-          params: location.params,
+          search: search || {},
+          params: params,
           body: {},
           input: {},
         }
@@ -889,11 +895,27 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           type: suitableMarker.pointType,
           name: suitableMarker.pointName,
         })
+        const isThisPageSelfPoint = pagePoint?.point && exactPoint?.point === pagePoint.point
+        const isThisPageLayoutPoint =
+          !isThisPageSelfPoint &&
+          pagePoint?.point &&
+          pagePoint._layouts.some((layout) => layout.point === exactPoint?.point)
+        const fixedInput = (() => {
+          if (isThisPageSelfPoint || isThisPageLayoutPoint) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { '?': _search, ...params } = suitableMarker.input as Record<string, unknown>
+            return {
+              ...params,
+              '?': pageLocation.search,
+            } as never as InputRaw
+          }
+          return suitableMarker.input
+        })()
         if (exactPoint) {
           if (suitableMarker.isInfiniteQuery) {
-            await exactPoint.prefetchInfiniteQuery(suitableMarker.input, undefined, { force: true, mode: 'server' })
+            await exactPoint.prefetchInfiniteQuery(fixedInput, undefined, { force: true, mode: 'server' })
           } else {
-            await exactPoint.prefetchQuery(suitableMarker.input, undefined, { force: true, mode: 'server' })
+            await exactPoint.prefetchQuery(fixedInput, undefined, { force: true, mode: 'server' })
           }
         }
       }

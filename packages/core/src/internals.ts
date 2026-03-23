@@ -5,7 +5,7 @@ import type { ResolvableHead } from 'unhead/types'
 import type { ClientPoints } from './client-points.js'
 import type { Effects } from './effects.js'
 import type { ErrorPoint0 } from './error.js'
-import { queryClient } from './query-client.js'
+import { __POINT0_QUERY_CLIENT__ } from './query-client.js'
 import type { Request0 } from './request0.js'
 import { ssrRedirectTask, type NavigationContextValue } from './navigation.js'
 import { superstore } from './super-store.js'
@@ -44,7 +44,7 @@ export const _ssItems = {
     initUndefined,
     'serverOnlyStorage',
   ),
-  __POINT0_QUERY_CLIENT__: queryClient,
+  __POINT0_QUERY_CLIENT__: __POINT0_QUERY_CLIENT__,
   __POINT0_SSR_LOCATION__: superstore.define<AnyLocation | undefined>(
     '__POINT0_SSR_LOCATION__',
     initUndefined,

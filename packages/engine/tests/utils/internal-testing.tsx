@@ -1,6 +1,5 @@
 import { CookiesStore } from '@point0/cookies-store'
-import { createQueryClient, queryClient as point0QueryClient } from '@point0/core'
-import { UnheadProvider } from '@point0/core/unhead'
+import { createQueryClient } from '@point0/core'
 import type {
   AnyNiceRequestableReadyPoint,
   AppComponent,
@@ -8,24 +7,24 @@ import type {
   PointsDefinition,
   ReadyPoint,
 } from '@point0/core'
+import { UnheadProvider } from '@point0/core/unhead'
 import assert from 'node:assert'
 import nodePath from 'node:path'
 // import { AsyncLocalStorage } from 'node:async_hooks'
+import { ClientPoints, Point0 } from '@point0/core'
 import { createNavigation } from '@point0/wouter'
 import { notifyManager } from '@tanstack/query-core'
 import type { DehydratedState, QueryClient } from '@tanstack/react-query'
 import * as rtl from '@testing-library/react/pure.js'
 import { YAML } from 'bun'
 import { Window } from 'happy-dom'
+import React from 'react'
 import type { EngineOptions } from '../../src/config.js'
 import { Engine } from '../../src/engine.js'
 import { FakeClient } from '../../src/fake-client.js'
 import { ElementViewer } from './element-viewer.js'
 import { FetchRecorder } from './fetch-recorder.js'
 import { HtmlView } from './html-view.js'
-import { ClientPoints } from '@point0/core'
-import { Point0 } from '@point0/core'
-import React from 'react'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -334,7 +333,7 @@ export const createTestThings = async ({
   const Wrapper = wrapper ?? undefined
   const routes = ClientPoints.createFromDefintion(points).routes
   const { Router, RouterRoutes } = createNavigation({ routes })
-  const { QueryClientProvider } = createQueryClient()
+  const { QueryClientProvider, queryClient } = createQueryClient()
   const app =
     appProvided ??
     (() => (
@@ -509,7 +508,7 @@ export const createTestThings = async ({
           clearInterval(locationCheckInterval)
         }
 
-        state.queryClient = point0QueryClient.get()
+        state.queryClient = queryClient.get()
         state.getQueryClientPreview = () => {
           const queryClientState = state.queryClient.getQueryCache().findAll()
           // const queryClientQueriesKeys = queryClientState.map((query) =>

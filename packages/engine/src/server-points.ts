@@ -194,7 +194,7 @@ export class ServerPoints<TError extends ErrorPoint0> {
       return undefined
     }
     const location = routes._.getLocation('location' in options ? options.location : options.url)
-    if (!location.exact) {
+    if (!location.route) {
       return undefined
     }
     const point = this.endpointsByDefinitionsByMethods.get(method)?.get(location.route)

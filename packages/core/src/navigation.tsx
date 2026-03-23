@@ -1,5 +1,4 @@
-import { Route0 } from '@devp0nt/route0'
-import type { AnyLocation, AnyRouteOrDefinition, ExactLocation, KnownLocation, UnknownLocation } from '@devp0nt/route0'
+import type { AnyLocation, AnyRouteOrDefinition, ExactLocation, UnknownLocation } from '@devp0nt/route0'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ClientPoints } from './client-points.js'
@@ -12,7 +11,8 @@ import type { IfAnyThenElse } from './types.js'
 export type AdapterNavigateOptions = Record<string, unknown>
 export type AdapterNavigateFn = (to: string, options?: AdapterNavigateOptions) => any
 
-export type UseAdapterLocationFn = () => AnyLocation
+export type UseLocationOptions = { addHash?: boolean }
+export type UseLocationFn = (options?: UseLocationOptions) => ExactLocation | UnknownLocation
 
 export type NavigationStatus = 'idle' | 'prefetching' | 'transitioning'
 
@@ -74,7 +74,7 @@ export type NavigationContextValue = {
   adapterNavigate: AdapterNavigateFn
   status: NavigationStatus
   error: Error | undefined
-  useAdapterLocation: UseAdapterLocationFn
+  useAdapterLocation: UseLocationFn
   addHashToLocation: boolean
   pageState: NavigationPageState
 
@@ -88,7 +88,7 @@ export type NavigationContextValue = {
 
 export const NavigationContext = React.createContext<NavigationContextValue | null>(null)
 export type NavigationLocationContextValue = {
-  useAdapterLocation: UseAdapterLocationFn
+  useAdapterLocation: UseLocationFn
   currentLocation: AnyLocation
   addHashToLocation: boolean
 }
@@ -97,7 +97,7 @@ export const NavigationLocationContext = React.createContext<NavigationLocationC
 export type NavigationContextProviderProps = {
   children: React.ReactNode
   status?: NavigationStatus
-  useAdapterLocation: UseAdapterLocationFn
+  useAdapterLocation: UseLocationFn
   ssrLocation?: AnyLocation | null
   addHashToLocation?: boolean
   adapterNavigate: AdapterNavigateFn
@@ -184,60 +184,16 @@ export const getNavigationContext = (): NavigationContextValue => {
 
 /** Hooks **/
 
-export function useLocation(addHashToLocation?: boolean): UnknownLocation | ExactLocation
-export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
-  route?: TRoute,
-  addHashToLocation?: boolean,
-): UnknownLocation | KnownLocation<TRoute>
-export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
-  route?: TRoute,
-  location?: AnyLocation,
-  addHashToLocation?: boolean,
-): UnknownLocation | KnownLocation<TRoute>
-export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
-  ...args: [(TRoute | boolean)?, (AnyLocation | boolean)?, boolean?]
-) {
+export function useLocation<TRouteDefinition extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
+  options?: UseLocationOptions,
+): UnknownLocation | ExactLocation<TRouteDefinition> {
   const locationCtx = React.useContext(NavigationLocationContext)
   if (!locationCtx) throw new Error('useLocation must be used within NavigationLocationContextProvider')
-  const locationByAdapter = locationCtx.useAdapterLocation()
-  const { route, location, addHashToLocation } = ((): {
-    route: TRoute | undefined
-    location: AnyLocation
-    addHashToLocation: boolean
-  } => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    const fallbackLocation = locationByAdapter ?? locationCtx.currentLocation
-    if (args.length === 0) {
-      return { route: undefined, location: fallbackLocation, addHashToLocation: locationCtx.addHashToLocation }
-    }
-    if (args.length === 1) {
-      if (typeof args[0] === 'boolean') {
-        return { route: undefined, location: fallbackLocation, addHashToLocation: args[0] }
-      }
-      return { route: args[0], location: fallbackLocation, addHashToLocation: locationCtx.addHashToLocation }
-    }
-    if (args.length === 2) {
-      if (typeof args[1] === 'boolean') {
-        return { route: args[0] as TRoute, location: fallbackLocation, addHashToLocation: args[1] }
-      }
-      return {
-        route: args[0] as TRoute,
-        location: args[1] as AnyLocation,
-        addHashToLocation: locationCtx.addHashToLocation,
-      }
-    }
-    return { route: args[0] as TRoute, location: args[1] as AnyLocation, addHashToLocation: !!args[2] }
-  })()
-  return useMemo(() => {
-    const withHashSuffix = <T extends AnyLocation | UnknownLocation | ExactLocation<TRoute>>(location: T): T =>
-      addHashToLocation
-        ? Object.assign(location, { hash: typeof window !== 'undefined' ? window.location.hash : '' })
-        : location
-    if (!route) {
-      return withHashSuffix(ClientPoints.getInstance().routes._.getLocation(location))
-    }
-    return withHashSuffix(Route0.from(route).getLocation(location))
-  }, [route, location, ClientPoints.getInstance().routesHash, addHashToLocation])
+  const addHash =
+    options && 'addHash' in options && typeof options.addHash === 'boolean'
+      ? options.addHash
+      : locationCtx.addHashToLocation
+  return locationCtx.useAdapterLocation({ ...options, addHash }) as UnknownLocation | ExactLocation<TRouteDefinition>
 }
 
 export const useNavigationContext: UseNavigationContextFn = () => {

@@ -737,6 +737,13 @@ export type IsActionInputOptional<
   TBodySchema extends InputSchema | UndefinedInputSchema,
 > = EmptyObject extends ActionInputRaw<TParamsSchema, TSearchSchema, TBodySchema> ? true : false
 
+// schema helper
+
+export type SchemaHelper = {
+  isSuitable: ((schema: unknown) => boolean) | string // if string, then just pick by standard schema vendor
+  extractKeys?: (schema: unknown) => string[] | undefined
+}
+
 // input
 
 export type RecordValidationSchema<
@@ -789,34 +796,12 @@ export type MergeRecordValidationSchemas<
       : undefined
 >
 
-// type RequiredKeys<T> = {
-//   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-//   [K in keyof T]-?: {} extends Pick<T, K> ? never : K
-// }[keyof T]
-// export type HasRequiredKeysInValidationSchema<S extends RecordValidationSchema | undefined> =
-//   S extends RecordValidationSchema ? (RequiredKeys<RecordValidationSchemaInput<S>> extends never ? false : true) : false
-
 export type IsObjectOptional<T> = EmptyObject extends T ? true : false
 export type HasRequiredKeysInValidationSchema<S extends RecordValidationSchema | undefined> =
   S extends RecordValidationSchema ? (EmptyObject extends RecordValidationSchemaInput<S> ? false : true) : false
 export type IsSchemaOptional<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = HasRequiredKeysInValidationSchema<TInputSchema> extends true ? false : true
-// export type IsInputsOptional<
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > =
-//   HasRequiredKeysInValidationSchema<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>> extends true
-//     ? false
-//     : true
-
-// type OverlapKeys<A, B> = keyof A & keyof B
-// type IsNarrowerOrEqual<New, Prev> = [New] extends [Prev] ? true : false
-// type HasWideningKey<Prev, New> = {
-//   [K in OverlapKeys<Prev, New>]: IsNarrowerOrEqual<New[K], Prev[K]> extends true ? never : K
-// }[OverlapKeys<Prev, New>] extends never
-//   ? false
-//   : true
 
 type KeysOfUnion<T> = T extends unknown ? keyof T : never
 type ValueAtKey<T, K extends PropertyKey> = T extends unknown ? (K extends keyof T ? T[K] : never) : never
@@ -932,55 +917,6 @@ export type AssertRouteSchemaExtends<
   IsRouteSchemaExtends<TCurrentRouteDefinition, TNewRouteDefinition> extends true
     ? unknown
     : ShowError<`Provided route definition is not assignable to current point route definition`>
-
-// FlattenInput
-
-// // 1. Bail-out list: Stops TS from recursively mapping over built-in prototypes.
-// // (This is the secret to preventing the "excessively deep" error).
-// type TerminalType =
-//   | string
-//   | number
-//   | boolean
-//   | bigint
-//   | symbol
-//   | undefined
-//   | null
-//   | Date
-//   | RegExp
-//   | Error
-//   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-//   | Function
-//   | Blob
-//   | File
-
-// // 2. Safely joins the dot-notation path
-// type JoinPath<P extends string, K extends string | number> = P extends '' ? `${K}` : `${P}.${K}`
-
-// // 3. Core recursive extraction that returns a union of single-key objects
-// type FlattenEntries<T, P extends string = ''> = T extends TerminalType
-//   ? P extends ''
-//     ? never
-//     : { [K in P]: T }
-//   : T extends readonly (infer U)[]
-//     ? // Safely grab the array items WITHOUT mapping over Array.prototype methods
-//       FlattenEntries<U, JoinPath<P, number>>
-//     : T extends Record<string, unknown>
-//       ? keyof T extends never
-//         ? // Handles explicitly empty objects {} safely
-//           P extends ''
-//           ? never
-//           : { [K in P]: T }
-//         : // Maps over keys, recursively flattening them
-//           { [K in keyof T & string]: FlattenEntries<T[K], JoinPath<P, K>> }[keyof T & string]
-//       : P extends ''
-//         ? never
-//         : { [K in P]: T }
-
-// // 4. Utility to squash the union back into a single object
-// type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
-
-// // 5. Final Export (The `extends infer O` trick forces TS to compute a clean tooltip)
-// export type FlattenInput<T> = UnionToIntersection<FlattenEntries<T>> extends infer O ? { [K in keyof O]: O[K] } : never
 
 export type RoutedInputRaw<
   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -2249,6 +2185,7 @@ export type NiceRootStagePoint<
   >,
   | 'root'
   | 'errorClass'
+  | 'schemaHelper'
   | 'use'
   | 'middleware'
   | 'clientOnly'

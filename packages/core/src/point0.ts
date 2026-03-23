@@ -3,8 +3,10 @@ import { Route0 } from '@devp0nt/route0'
 import type {
   AnyLocation,
   AnyRoute,
+  AnyRouteOrDefinition,
   CallableRoute,
   HasParams,
+  ParamsOutput,
   UnknownSearchInput,
   UnknownSearchParsed,
 } from '@devp0nt/route0'
@@ -92,9 +94,10 @@ import type {
   WithSelfQueryIfShouldBeFinalized,
   WrapperComponentType,
 } from './mountable.js'
-import type { PopularRequestMethod, WideRequestMethod } from './request0.js'
 import { useLocation, useNavigationContext } from './navigation.js'
 import type { NavigationPageState } from './navigation.js'
+import type { PopularRequestMethod, WideRequestMethod } from './request0.js'
+import { extractKeysBySchemasHelpers } from './schema/utils.js'
 import { superstore } from './super-store.js'
 import type {
   AnyPoint,
@@ -200,6 +203,7 @@ import type {
   RootPoint,
   RouteDefinition,
   RouteSchema,
+  SchemaHelper,
   ScrollPositionGetter,
   ScrollPositionRestorePolicy,
   ScrollPositionSetter,
@@ -392,6 +396,8 @@ export class Point0<
   readonly _middlewares: MiddlewareFn<TError, any>[]
   _serverurl: string | undefined
   readonly _hasServerLoader: boolean | undefined
+  readonly _schemasHelpers: SchemaHelper[] | undefined
+  readonly _searchSchemaKeys: string[] | true | undefined
   readonly _basepath: AnyRoute | undefined
   readonly _endpoint: EndpointDefinition | undefined
   get method(): TPointType extends RequestableReadyPointType ? WideRequestMethod : undefined {
@@ -563,6 +569,8 @@ export class Point0<
     _middlewares?: MiddlewareFn<TError, any>[] | undefined
     _serverurl?: string | undefined
     _hasServerLoader?: boolean | undefined
+    _schemasHelpers?: SchemaHelper[] | undefined
+    _searchSchemaKeys?: string[] | true | undefined
     _basepath?: AnyRoute | undefined
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
@@ -645,6 +653,8 @@ export class Point0<
     this._eventerSubscriptions = options._eventerSubscriptions ?? []
     this._serverurl = options._serverurl ?? undefined
     this._hasServerLoader = options._hasServerLoader ?? undefined
+    this._schemasHelpers = options._schemasHelpers ?? undefined
+    this._searchSchemaKeys = options._searchSchemaKeys
     this._basepath = options._basepath ?? undefined
     this._endpoint = options._endpoint ?? undefined
     this._endpointPrefix = options._endpointPrefix ?? undefined
@@ -731,6 +741,8 @@ export class Point0<
     _middlewares?: MiddlewareFn<TError, any>[]
     _serverurl?: string | undefined
     _hasServerLoader?: boolean | undefined
+    _schemasHelpers?: SchemaHelper[] | undefined
+    _searchSchemaKeys?: string[] | true | undefined
     _basepath?: AnyRoute | undefined
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
@@ -864,6 +876,8 @@ export class Point0<
       _middlewares: set('_middlewares', [...this._middlewares]),
       _serverurl: set('_serverurl'),
       _hasServerLoader: set('_hasServerLoader'),
+      _schemasHelpers: set('_schemasHelpers'),
+      _searchSchemaKeys: set('_searchSchemaKeys'),
       _basepath: set('_basepath'),
       _endpoint: set('_endpoint'),
       _endpointPrefix: set('_endpointPrefix'),
@@ -1646,7 +1660,14 @@ export class Point0<
     const mountActionsSuitable =
       this.type === 'base' || this.type === 'root'
         ? mountActionsAll
-        : mountActionsAll.filter((action) => action.type === 'globalHead' || action.type === 'clientOnly')
+        : mountActionsAll.filter(
+            (action) =>
+              action.type === 'globalHead' ||
+              action.type === 'clientOnly' ||
+              action.type === 'search' ||
+              action.type === 'params' ||
+              action.type === 'input',
+          )
     if (letsReadyPointType === 'component' || letsReadyPointType === 'provider') {
       mountActionsSuitable.push({ type: 'selfProps', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() })
     }
@@ -1765,6 +1786,37 @@ export class Point0<
   }
 
   // general settings
+
+  schemaHelper(
+    schemaHelper: SchemaHelper | undefined | false | null,
+  ): NiceRootStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    'root',
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  > {
+    const newSchemasHelpers = schemaHelper ? [...(this._schemasHelpers ?? []), schemaHelper] : this._schemasHelpers
+    return this._continue({
+      _schemasHelpers: newSchemasHelpers,
+    }) as never
+  }
 
   basepath<TBasepath extends string>(
     basepath: TBasepath,
@@ -2211,7 +2263,6 @@ export class Point0<
     }) as never
   }
 
-  // setting default query options in not mountable point
   queryOptions(
     queryOptions: ExtraUseQueryOptions,
   ): NiceStagePoint<
@@ -3629,8 +3680,8 @@ export class Point0<
         const handler = args[1]
         const hasParams = route.getParamsKeys().length > 0
         return (options: MiddlewareFnOptions<TError>) => {
-          if (route.isExactPathnameMatch(options.request.location.pathname)) {
-            const params = hasParams ? route.getLocation(options.request.location).params : undefined
+          if (route.isExact(options.request.location.pathname)) {
+            const params = hasParams ? route.getRelation(options.request.location).params : undefined
             const optionsWithParams = hasParams ? { ...options, params } : options
             return handler(optionsWithParams)
           }
@@ -3652,11 +3703,8 @@ export class Point0<
         const handler = args[2] as MiddlewareFn<TError, any>
         const hasParams = route.getParamsKeys().length > 0
         return (options: MiddlewareFnOptions<TError>) => {
-          if (
-            methods.includes(options.request.method) &&
-            route.isExactPathnameMatch(options.request.location.pathname)
-          ) {
-            const params = hasParams ? route.getLocation(options.request.location).params : undefined
+          if (methods.includes(options.request.method) && route.isExact(options.request.location.pathname)) {
+            const params = hasParams ? route.getRelation(options.request.location).params : undefined
             const optionsWithParams = hasParams ? { ...options, params } : options
             return handler(optionsWithParams)
           }
@@ -5268,7 +5316,18 @@ export class Point0<
   >
   search(...args: any[]) {
     const schema = Point0._normalizeInputSchema(args[0])
+    const newSearchSchemaKeys = (() => {
+      if (this._searchSchemaKeys === true) {
+        return true
+      }
+      const addSearchSchemaKeys = extractKeysBySchemasHelpers(schema, this._schemasHelpers)
+      if (!addSearchSchemaKeys) {
+        return true
+      }
+      return [...new Set([...(this._searchSchemaKeys ?? []), ...addSearchSchemaKeys])]
+    })()
     return this._continue({
+      _searchSchemaKeys: newSearchSchemaKeys,
       _serverExecuteActions: [
         ...this._serverExecuteActions,
         { type: 'search', schema, unstableId: Point0._getNextUnstableId() },
@@ -7309,12 +7368,12 @@ export class Point0<
   private async _executeClientAsync({
     serverData,
     serverResponse,
-    location: providedLocation,
+    // location: providedLocation,
     input,
   }: {
     serverData: Data | undefined
     serverResponse: Response | undefined
-    location?: AnyLocation
+    // location?: AnyLocation
     input: InputRaw<TClientInputSchema>
   }): Promise<{
     clientData: Data | undefined
@@ -7330,22 +7389,22 @@ export class Point0<
     let currentInputParsed = undefined as InputParsed | undefined
     let currentParamsParsed = undefined as InputParsed | undefined
     let currentSearchParsed = undefined as InputParsed | undefined
-    const location =
-      this.type === 'page' || this.type === 'layout'
-        ? this._getSelfLocationByAnotherLocationOrInput(providedLocation, input)
-        : undefined
-    const params = location?.params ?? {}
-    const search = location?.search ?? {}
+    const { params, search } = ((): { params: InputRaw; search: InputRaw } => {
+      if (this.type !== 'page' && this.type !== 'layout') {
+        return { params: {}, search: {} }
+      }
+      const fixedInput = flat0.parse(flat0.stringify(input)) as InputRaw
+      const { '?': search = {}, ...params } = fixedInput as {
+        '?': InputRaw | undefined
+        [key: string]: unknown
+      }
+      return { params, search }
+    })()
     // TODO: add cache for schema parsing results
     const validationResult = this.validateClientInputSafe({ input, params, search })
     if (!validationResult.success) {
       throw validationResult.error
     }
-    // const parsed: {
-    //   input?: InputParsed
-    //   params?: InputParsed
-    //   search?: InputParsed
-    // } = {}
     const getParsed = () => {
       return {
         ...(currentInputParsed ? { input: currentInputParsed } : {}),
@@ -7430,44 +7489,28 @@ export class Point0<
     }
   }
 
-  private _getSelfLocationByAnotherLocation(location: AnyLocation): AnyLocation {
+  private _getUnsafeSelfParamsByAnotherLocation(location: AnyLocation): ParamsOutput<AnyRouteOrDefinition> {
     const route = this.route
     if (!route) {
-      return _ssItems.__POINT0_CURRENT_LOCATION__.get()
+      return {}
     }
-    return route.getLocation(
-      route.get({
-        ...location.params,
-        ...(location.searchString ? { '?': location.search } : {}),
-      } as never),
-    ) as AnyLocation
-  }
-
-  private _getSelfLocationByAnotherLocationOrInput(location?: AnyLocation | undefined, input?: InputRaw): AnyLocation {
-    const route = this.route
-    if (!route) {
-      return location ?? _ssItems.__POINT0_CURRENT_LOCATION__.get()
-    }
-    if (!input && !location) {
-      return _ssItems.__POINT0_CURRENT_LOCATION__.get()
-    }
-    if (location) {
-      return route.getLocation(
-        route.get({
-          ...location.params,
-          ...input,
-          ...(location.searchString ? { '?': location.search } : {}),
-        } as never),
-      )
-    }
-    return route.getLocation(route.get({ ...(input || {}) }))
+    const selfParamsKeys = route.getParamsKeys()
+    return selfParamsKeys.reduce<Record<string, string | undefined>>(
+      (acc, key) => {
+        if (location.params && key in location.params) {
+          acc[key] = location.params[key as keyof typeof location.params]
+        }
+        return acc
+      },
+      {} as Record<string, string | undefined>,
+    )
   }
 
   _getUnsafeInputRawByLocation(location: AnyLocation): InputRaw {
-    const selfLocation = this._getSelfLocationByAnotherLocation(location)
+    const selfParams = this._getUnsafeSelfParamsByAnotherLocation(location)
     return {
-      ...selfLocation.params,
-      ...(selfLocation.searchString ? { '?': selfLocation.search } : {}),
+      ...selfParams,
+      ...(location.searchString ? { '?': location.search } : {}),
     } as InputRaw
   }
 
@@ -8113,7 +8156,9 @@ export class Point0<
       this.name,
       'server',
       isInfiniteQuery ? 'infinite' : 'finite',
-      this._getTransformer().stringify(this._toSafeRoutedRawInput({ inputRaw: input as never })) as string,
+      this._getTransformer().stringify(
+        this._rawInputToRoutedRawInputForQueryKey({ inputRaw: input as never }),
+      ) as string,
       outputType,
     ]
   }
@@ -8132,7 +8177,9 @@ export class Point0<
       this.name,
       'client',
       isInfiniteQuery ? 'infinite' : 'finite',
-      this._getTransformer().stringify(this._toSafeRoutedRawInput({ inputRaw: input as never })) as string,
+      this._getTransformer().stringify(
+        this._rawInputToRoutedRawInputForQueryKey({ inputRaw: input as never }),
+      ) as string,
       'data',
     ]
   }
@@ -8153,7 +8200,9 @@ export class Point0<
       this.name,
       'combined',
       isInfiniteQuery ? 'infinite' : 'finite',
-      this._getTransformer().stringify(this._toSafeRoutedRawInput({ inputRaw: input as never })) as string,
+      this._getTransformer().stringify(
+        this._rawInputToRoutedRawInputForQueryKey({ inputRaw: input as never }),
+      ) as string,
       outputType,
     ]
   }
@@ -8337,11 +8386,11 @@ export class Point0<
   private _getClientQueryOptions({
     input = {} as never,
     queryOptions,
-    location,
+    // location,
     serverData,
   }: {
     input: InputRaw
-    location?: AnyLocation
+    // location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
     serverData?: Data
   }): UseQueryOptions<
@@ -8364,7 +8413,7 @@ export class Point0<
       try {
         const { clientData } = await this._executeClientAsync({
           serverData,
-          location,
+          // location,
           input: input as InputRaw<TClientInputSchema>,
           serverResponse: undefined,
         })
@@ -8405,13 +8454,13 @@ export class Point0<
 
   private _getCombinedQueryOptions({
     input = {} as never,
-    location,
+    // location,
     queryClient = _ssItems.__POINT0_QUERY_CLIENT__.get(),
     queryOptions,
     fetchOptions,
   }: {
     input: InputRaw
-    location?: AnyLocation
+    // location?: AnyLocation
     queryClient?: QueryClient
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
@@ -8446,7 +8495,7 @@ export class Point0<
         const clientOpts = this._getClientQueryOptions({
           input: input as never,
           queryOptions,
-          location,
+          // location,
           serverData: serverData as never,
         })
         const data = await queryClient.fetchQuery(clientOpts as any)
@@ -8506,7 +8555,7 @@ export class Point0<
           >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
-            location?: AnyLocation
+            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
             outputType?: FetchServerOutputType
@@ -8524,7 +8573,7 @@ export class Point0<
           >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
-            location?: AnyLocation
+            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
             outputType?: FetchServerOutputType
@@ -8540,21 +8589,21 @@ export class Point0<
     const hasClientLoader = this._hasClientLoader()
     const hasServerLoader = !!this._hasServerLoader
     const [input, queryOptions, options = {}] = args
-    const { location, queryClient, fetchOptions, outputType, mode = 'serverAndClient' } = options
+    const { queryClient, fetchOptions, outputType, mode = 'serverAndClient' } = options
     if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'serverAndClient')) {
       return this._getCombinedQueryOptions({
         input: input as never,
         queryClient,
         queryOptions,
         fetchOptions,
-        location,
+        // location,
       }) as never
     }
     if (hasClientLoader && (mode === 'client' || mode === 'serverAndClient')) {
       return this._getClientQueryOptions({
         input: input as never,
         queryOptions,
-        location,
+        // location,
       }) as never
     }
     if (hasServerLoader && (mode === 'server' || mode === 'serverAndClient')) {
@@ -8674,11 +8723,11 @@ export class Point0<
     input = {} as never,
     infiniteQueryOptions,
     serverData,
-    location,
+    // location,
   }: {
     input: InputRaw
     serverData?: Data
-    location?: AnyLocation
+    // location?: AnyLocation
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
@@ -8711,7 +8760,7 @@ export class Point0<
         const inputWithPageParam = this._toInputWithPageParam({ input, pageParam })
         const { clientData } = await this._executeClientAsync({
           serverData,
-          location,
+          // location,
           serverResponse: undefined,
           input: inputWithPageParam as InputRaw<TClientInputSchema>,
         })
@@ -8747,11 +8796,11 @@ export class Point0<
     input = {} as never,
     infiniteQueryOptions,
     fetchOptions,
-    location,
+    // location,
     queryClient,
   }: {
     input: InputRaw
-    location?: AnyLocation
+    // location?: AnyLocation
     fetchOptions?: FetchOptions | undefined
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
@@ -8826,7 +8875,7 @@ export class Point0<
           input: input as never,
           serverData: serverData as never,
           infiniteQueryOptions,
-          location,
+          // location,
         })
         const clientData = await (clientOpts as any).queryFn({ ...input, pageParam })
         const eventData = {
@@ -8894,7 +8943,7 @@ export class Point0<
               >
             | undefined,
           options?: {
-            location?: AnyLocation
+            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
             outputType?: FetchServerOutputType
@@ -8928,7 +8977,7 @@ export class Point0<
               >
             | undefined,
           options?: {
-            location?: AnyLocation
+            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
             outputType?: FetchServerOutputType
@@ -8943,7 +8992,7 @@ export class Point0<
     QueryKey
   > {
     const [input, infiniteQueryOptions, options = {}] = args
-    const { location, queryClient, fetchOptions, outputType, mode = 'serverAndClient' } = options
+    const { queryClient, fetchOptions, outputType, mode = 'serverAndClient' } = options
     const hasClientLoader = this._hasClientLoader()
     const hasServerLoader = !!this._hasServerLoader
     if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'serverAndClient')) {
@@ -8952,14 +9001,14 @@ export class Point0<
         infiniteQueryOptions,
         fetchOptions,
         queryClient,
-        location,
+        // location,
       }) as never
     }
     if (hasClientLoader && (mode === 'client' || mode === 'serverAndClient')) {
       return this._getClientInfiniteQueryOptions({
         input: input as never,
         infiniteQueryOptions,
-        location,
+        // location,
       }) as never
     }
     if (hasServerLoader && (mode === 'server' || mode === 'serverAndClient')) {
@@ -8990,17 +9039,17 @@ export class Point0<
   private _useClientQuery({
     input = {} as never,
     queryOptions,
-    location,
+    // location,
   }: {
     input: InputRaw
-    location?: AnyLocation
+    // location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
   }): UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, TError> {
     return useQuery(
       this._getClientQueryOptions({
         input,
         queryOptions,
-        location,
+        // location,
       }),
     )
   }
@@ -9008,11 +9057,11 @@ export class Point0<
   private _useCombinedQuery({
     input = {} as never,
     queryOptions,
-    location,
+    // location,
     fetchOptions,
   }: {
     input: InputRaw
-    location?: AnyLocation
+    // location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
   }): UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, TError> {
@@ -9021,7 +9070,7 @@ export class Point0<
       this._getCombinedQueryOptions({
         input,
         queryOptions,
-        location,
+        // location,
         queryClient,
         fetchOptions,
       }),
@@ -9060,10 +9109,10 @@ export class Point0<
   private _useClientInfiniteQuery({
     input = {} as never,
     infiniteQueryOptions: providedInfiniteQueryOptions,
-    location,
+    // location,
   }: {
     input: InputRaw
-    location?: AnyLocation
+    // location?: AnyLocation
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
@@ -9078,7 +9127,7 @@ export class Point0<
     const infiniteQueryOptions = this._getClientInfiniteQueryOptions({
       input,
       infiniteQueryOptions: providedInfiniteQueryOptions,
-      location,
+      // location,
     })
     return useInfiniteQuery(infiniteQueryOptions) as never
   }
@@ -9087,10 +9136,10 @@ export class Point0<
     input = {} as never,
     infiniteQueryOptions: providedInfiniteQueryOptions,
     fetchOptions,
-    location,
+    // location,
   }: {
     input: InputRaw
-    location?: AnyLocation
+    // location?: AnyLocation
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
@@ -9108,7 +9157,7 @@ export class Point0<
       input,
       infiniteQueryOptions: providedInfiniteQueryOptions,
       queryClient,
-      location,
+      // location,
       fetchOptions,
     })
     return useInfiniteQuery(infiniteQueryOptions) as never
@@ -9323,7 +9372,7 @@ export class Point0<
     queryOptions: providedQueryOptions,
     fetchOptions,
     outputType,
-    location,
+    // location,
   }: {
     input: InputRaw
     mode: QueryMode
@@ -9331,7 +9380,7 @@ export class Point0<
     queryOptions?: ExtraUseQueryOptions
     fetchOptions?: FetchOptions
     outputType?: FetchServerOutputType
-    location?: AnyLocation
+    // location?: AnyLocation
   }):
     | false
     | {
@@ -9355,7 +9404,7 @@ export class Point0<
     }
     const queryClient = providedQueryClient ?? _ssItems.__POINT0_QUERY_CLIENT__.get()
     const queryOptions = this.getQueryOptions(input as never, providedQueryOptions, {
-      location,
+      // location,
       queryClient,
       fetchOptions,
       outputType,
@@ -9386,7 +9435,7 @@ export class Point0<
           >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
-            location?: AnyLocation
+            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -9406,7 +9455,7 @@ export class Point0<
           >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
-            location?: AnyLocation
+            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -9436,7 +9485,7 @@ export class Point0<
   > {
     const [input = {}, providedQueryOptions, options = {}] = args
     const {
-      location,
+      // location,
       queryClient: providedQueryClient,
       fetchOptions,
       outputType,
@@ -9451,7 +9500,7 @@ export class Point0<
       queryOptions: providedQueryOptions,
       fetchOptions,
       outputType,
-      location,
+      // location,
     })
     if (!preparedFetch) {
       return undefined as never
@@ -9486,7 +9535,7 @@ export class Point0<
           >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
-            location?: AnyLocation
+            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -9505,7 +9554,7 @@ export class Point0<
           >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
-            location?: AnyLocation
+            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -9516,7 +9565,7 @@ export class Point0<
   ): Promise<void> {
     const [input = {}, providedQueryOptions, options = {}] = args
     const {
-      location,
+      // location,
       queryClient: providedQueryClient,
       fetchOptions,
       outputType,
@@ -9530,7 +9579,7 @@ export class Point0<
       queryOptions: providedQueryOptions,
       fetchOptions,
       outputType,
-      location,
+      // location,
     })
     if (!preparedFetch) {
       return
@@ -9550,7 +9599,7 @@ export class Point0<
     infiniteQueryOptions: providedInfiniteQueryOptions,
     fetchOptions,
     outputType,
-    location,
+    // location,
   }: {
     input: InputRaw
     mode: QueryMode
@@ -9558,7 +9607,7 @@ export class Point0<
     infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<any, any, any, any, any, any>
     fetchOptions?: FetchOptions
     outputType?: FetchServerOutputType
-    location?: AnyLocation
+    // location?: AnyLocation
   }):
     | false
     | {
@@ -9582,7 +9631,7 @@ export class Point0<
     }
     const queryClient = providedQueryClient ?? _ssItems.__POINT0_QUERY_CLIENT__.get()
     const infiniteQueryOptions = this.getInfiniteQueryOptions(input as never, providedInfiniteQueryOptions, {
-      location,
+      // location,
       queryClient,
       fetchOptions,
       outputType,
@@ -9629,7 +9678,7 @@ export class Point0<
               >
             | undefined,
           options?: {
-            location?: AnyLocation
+            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -9665,7 +9714,7 @@ export class Point0<
               >
             | undefined,
           options?: {
-            location?: AnyLocation
+            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -9695,7 +9744,7 @@ export class Point0<
   > {
     const [input = {}, providedInfiniteQueryOptions, options = {}] = args
     const {
-      location,
+      // location,
       queryClient: providedQueryClient,
       fetchOptions,
       outputType,
@@ -9710,7 +9759,7 @@ export class Point0<
       infiniteQueryOptions: providedInfiniteQueryOptions,
       fetchOptions,
       outputType,
-      location,
+      // location,
     })
     if (!preparedFetch) {
       return undefined as never
@@ -9761,7 +9810,7 @@ export class Point0<
               >
             | undefined,
           options?: {
-            location?: AnyLocation
+            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -9796,7 +9845,7 @@ export class Point0<
               >
             | undefined,
           options?: {
-            location?: AnyLocation
+            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -9807,7 +9856,7 @@ export class Point0<
   ): Promise<void> {
     const [input = {}, providedInfiniteQueryOptions, options = {}] = args
     const {
-      location,
+      // location,
       queryClient: providedQueryClient,
       fetchOptions,
       outputType,
@@ -9821,7 +9870,7 @@ export class Point0<
       infiniteQueryOptions: providedInfiniteQueryOptions,
       fetchOptions,
       outputType,
-      location,
+      // location,
     })
     if (!preparedFetch) {
       return
@@ -9893,7 +9942,7 @@ export class Point0<
             TBodySchema
           >,
           options?: {
-            location?: AnyLocation
+            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -9911,7 +9960,7 @@ export class Point0<
             TBodySchema
           >,
           options?: {
-            location?: AnyLocation
+            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -9929,7 +9978,8 @@ export class Point0<
       options,
       error: undefined,
     }
-    const { location: providedLocation, queryClient, fetchOptions, force, trigger } = options
+    // const { location: providedLocation, queryClient, fetchOptions, force, trigger } = options
+    const { queryClient, fetchOptions, force, trigger } = options
     const policy = this._getPrefetchPagePolicy(trigger, options.policy)
     if (policy === 'none') {
       return
@@ -9942,7 +9992,23 @@ export class Point0<
       this._emit('pointPrefetchPageError', { ...eventData, error })
       throw error
     }
-    const location = providedLocation ?? this.route.getLocation(this.route.get(input))
+    // const location = providedLocation ?? this.route.getLocation(this.route.get(input))
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { '?': _search, ...paramsRaw } = input as Record<string, unknown>
+    const paramsWithStrings = flat0.parse(flat0.stringify(paramsRaw))
+    // const location =
+    //   providedLocation ??
+    //   Object.assign(Route0.getLocation(this.route.get(input)), {
+    //     route: this.route.definition,
+    //     params,
+    //   })
+    const location = Object.assign(
+      Route0.getLocation(this.route.get(input, typeof window !== 'undefined' ? window.location.origin : undefined)),
+      {
+        route: this.route.definition,
+        params: paramsWithStrings,
+      },
+    )
 
     const queryClientDehydratedStateWasPrefetched = await (async () => {
       if (policy === 'ssrDehydratedState' || policy === 'ssrDehydratedStateAndClientQuery') {
@@ -10014,7 +10080,7 @@ export class Point0<
             relatedQuery.queryOptions as never,
             {
               queryClient,
-              location,
+              // location,
               fetchOptions,
               force,
               mode,
@@ -10026,7 +10092,7 @@ export class Point0<
             relatedQuery.queryOptions as never,
             {
               queryClient,
-              location,
+              // location,
               fetchOptions,
               force,
               mode,
@@ -10067,7 +10133,7 @@ export class Point0<
         if (p._queryResultType === 'infiniteQuery') {
           return await p.prefetchInfiniteQuery(inputHere as never, undefined, {
             queryClient,
-            location,
+            // location,
             fetchOptions,
             force,
             mode,
@@ -10075,7 +10141,7 @@ export class Point0<
         } else {
           return await p.prefetchQuery(inputHere as never, undefined, {
             queryClient,
-            location,
+            // location,
             fetchOptions,
             force,
             mode,
@@ -10253,43 +10319,56 @@ export class Point0<
     }
   }
 
-  private readonly _toSafeRoutedRawInput = <TInputRaw extends InputRaw>({
+  readonly _rawInputToRoutedRawInputForQueryKey = <TInputRaw extends InputRaw>({
     inputRaw,
-    searchParsed,
   }: {
     inputRaw: TInputRaw
-    searchParsed?: InputParsed | undefined
   }): TInputRaw => {
-    if (this.type !== 'page' && this.type !== 'layout') {
-      return inputRaw as TInputRaw
+    if (this.type === 'page' || this.type === 'layout') {
+      const { '?': searchRaw = {}, ...paramsRaw } = flat0.parse(flat0.stringify(inputRaw)) as {
+        '?': Record<string, unknown> | undefined
+        [key: string]: unknown
+      }
+      const searchRawFiltered: Record<string, unknown> = {}
+      if (this._searchSchemaKeys === true) {
+        Object.assign(searchRawFiltered, searchRaw)
+      } else if (this._searchSchemaKeys) {
+        this._searchSchemaKeys.forEach((key) => {
+          if (key in searchRaw) {
+            searchRawFiltered[key] = searchRaw[key]
+          }
+        })
+      }
+      const searchRawKeysCount = Object.keys(searchRawFiltered).length
+      if (searchRawKeysCount === 0) {
+        return paramsRaw as TInputRaw
+      }
+      return {
+        ...paramsRaw,
+        '?': searchRawFiltered,
+      } as never as TInputRaw
     }
-    // in case if we fix input when developer provides input by itself with nmber and other things in search params
-    if (!searchParsed) {
-      return flat0.parse(flat0.stringify(inputRaw)) as TInputRaw
+    if (this.type === 'action') {
+      const {
+        params: paramsRaw = {},
+        search: searchRaw = {},
+        body,
+      } = inputRaw as {
+        params: InputRaw
+        search: InputRaw
+        body: InputRaw | undefined
+      }
+      const paramsWithStrings = flat0.parse(flat0.stringify(paramsRaw))
+      const searchWithStrings = flat0.parse(flat0.stringify(searchRaw))
+      const paramsKeysCount = Object.keys(paramsWithStrings).length
+      const searchKeysCount = Object.keys(searchWithStrings).length
+      return {
+        ...(paramsKeysCount > 0 ? { params: paramsWithStrings } : {}),
+        ...(searchKeysCount > 0 ? { search: searchWithStrings } : {}),
+        ...(body ? { body } : {}),
+      } as never as TInputRaw
     }
-
-    // in case if we fix mountable page or layout input, it is already stringified
-    // but can contain trash in search params, like utm, etc
-    const { '?': searchRaw = {}, ...paramsRaw } = inputRaw as Record<string, unknown> & {
-      '?'?: Record<string, unknown>
-    }
-    const searchParsedKeys = Object.keys(searchParsed)
-    const safeSearchRawInput =
-      searchParsedKeys.length > 0
-        ? searchParsedKeys.reduce(
-            (acc, key) => {
-              if (key in searchRaw) {
-                acc[key] = searchRaw[key]
-              }
-              return acc
-            },
-            {} as Record<string, unknown>,
-          )
-        : {}
-    return {
-      ...paramsRaw,
-      ...(Object.keys(safeSearchRawInput).length > 0 ? { '?': safeSearchRawInput } : {}),
-    } as TInputRaw
+    return inputRaw
   }
 
   private readonly _Mountable = (props: {
@@ -10826,24 +10905,10 @@ export class Point0<
           })
         }
         case 'selfQuery': {
-          // const safeInput =
-          //   this.type === 'page' || this.type === 'layout'
-          //     ? {
-          //         ...currentLayer.prev?.paramsParsed,
-          //         ...(Object.keys(currentLayer.prev?.searchParsed ?? {}).length > 0
-          //           ? { '?': currentLayer.prev?.searchParsed }
-          //           : {}),
-          //       }
-          //     : (currentLayer.inputRaw as never)
-          const safeInput = this._toSafeRoutedRawInput({
-            inputRaw: currentLayer.inputRaw as never,
-            searchParsed: currentLayer.prev?.searchParsed,
-          })
-          // const safeInput = currentLayer.inputRaw as never
           const queryResult =
             this._queryResultType === 'infiniteQuery'
-              ? this.useInfiniteQuery(safeInput as never)
-              : this.useQuery(safeInput as never)
+              ? this.useInfiniteQuery(currentLayer.inputRaw as never)
+              : this.useQuery(currentLayer.inputRaw as never)
           const queries = [queryResult]
           return React.createElement(this._Mountable, {
             ..._nextMountableProps,
@@ -10926,7 +10991,7 @@ export class Point0<
       restProps: TOuterProps
     }>(() => {
       const { input: providedInput, ...restProps } = props as any
-      const inputRaw = { ...this._getUnsafeInputRawByLocation(location), ...providedInput }
+      const inputRaw = providedInput ?? { ...this._getUnsafeInputRawByLocation(location) }
       return { inputRaw, restProps }
     }, [props, location])
 
@@ -11043,8 +11108,8 @@ export class Point0<
       children: React.ReactNode
       restProps: TOuterProps
     }>(() => {
-      const { input: providedInput = {}, children, ...restProps } = props as any
-      const inputRaw = { ...this._getUnsafeInputRawByLocation(location), ...providedInput }
+      const { input: providedInput, children, ...restProps } = props as any
+      const inputRaw = providedInput ?? { ...this._getUnsafeInputRawByLocation(location) }
       return { inputRaw, children, restProps }
     }, [props, location])
 

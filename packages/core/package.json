@@ -35,6 +35,24 @@
       ],
       "unhead": [
         "./dist/esm/unhead.d.ts"
+      ],
+      "schema/arktype": [
+        "./dist/esm/schema/arktype.d.ts"
+      ],
+      "schema/typebox": [
+        "./dist/esm/schema/typebox.d.ts"
+      ],
+      "schema/valibot": [
+        "./dist/esm/schema/valibot.d.ts"
+      ],
+      "schema/yup": [
+        "./dist/esm/schema/yup.d.ts"
+      ],
+      "schema/zod": [
+        "./dist/esm/schema/zod.d.ts"
+      ],
+      "schema/superstruct": [
+        "./dist/esm/schema/superstruct.d.ts"
       ]
     }
   },
@@ -63,6 +81,36 @@
       "types": "./dist/esm/unhead.d.ts",
       "require": "./dist/cjs/unhead.cjs",
       "import": "./dist/esm/unhead.js"
+    },
+    "./schema/arktype": {
+      "types": "./dist/esm/schema/arktype.d.ts",
+      "require": "./dist/cjs/schema/arktype.cjs",
+      "import": "./dist/esm/schema/arktype.js"
+    },
+    "./schema/typebox": {
+      "types": "./dist/esm/schema/typebox.d.ts",
+      "require": "./dist/cjs/schema/typebox.cjs",
+      "import": "./dist/esm/schema/typebox.js"
+    },
+    "./schema/valibot": {
+      "types": "./dist/esm/schema/valibot.d.ts",
+      "require": "./dist/cjs/schema/valibot.cjs",
+      "import": "./dist/esm/schema/valibot.js"
+    },
+    "./schema/yup": {
+      "types": "./dist/esm/schema/yup.d.ts",
+      "require": "./dist/cjs/schema/yup.cjs",
+      "import": "./dist/esm/schema/yup.js"
+    },
+    "./schema/zod": {
+      "types": "./dist/esm/schema/zod.d.ts",
+      "require": "./dist/cjs/schema/zod.cjs",
+      "import": "./dist/esm/schema/zod.js"
+    },
+    "./schema/superstruct": {
+      "types": "./dist/esm/schema/superstruct.d.ts",
+      "require": "./dist/cjs/schema/superstruct.cjs",
+      "import": "./dist/esm/schema/superstruct.js"
     }
   },
   "files": [
@@ -98,14 +146,20 @@
   "devDependencies": {
     "@devp0nt/flat0": "catalog:",
     "@devp0nt/route0": "catalog:",
+    "@sinclair/typebox": "catalog:",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
+    "arktype": "catalog:",
     "esbuild-fix-imports-plugin": "^1.0.22",
+    "superstruct": "catalog:",
     "superjson": "^2.2.6",
     "tsup": "^8.0.0",
     "typescript": "catalog:",
+    "valibot": "catalog:",
+    "yup": "catalog:",
     "react": "catalog:",
-    "@unhead/react": "catalog:"
+    "@unhead/react": "catalog:",
+    "zod": "catalog:"
   },
   "publishConfig": {
     "access": "restricted"
