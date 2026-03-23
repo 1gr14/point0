@@ -41,6 +41,7 @@ import {
   normalizeAndValidateNodeEnv,
   resolveTempDirPath,
   serveWithRetries,
+  getViteRoot,
 } from './utils.js'
 import type {
   EngineClientBuildConfigDefinition,
@@ -557,14 +558,7 @@ try {
       hmrPort: this.hmrPort,
       mode: normalizeAndValidateNodeEnv(),
       envConsts: this.envConsts,
-      root:
-        typeof this.viteConfig === 'string'
-          ? nodePath.dirname(this.viteConfig)
-          : this.engineFile
-            ? nodePath.dirname(this.engineFile)
-            : this.indexHtml
-              ? nodePath.dirname(this.indexHtml)
-              : undefined,
+      engineFile: this.engineFile,
       compilerOptions: this.getCompilerOptions(),
     })
     this.viteDevServer = viteDevServer
@@ -974,8 +968,6 @@ try {
         ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
         : rollupOptionsOutput
 
-      const viteRoot = loadedViteConfig.root || nodePath.dirname(buildPaths.indexHtml) || this.cwd
-
       const compilerOptions = this.getCompilerOptions()
       const compilerPlugin = compilerOptions
         ? [
@@ -996,7 +988,7 @@ try {
       const config: ExtractedViteConfig = {
         ...loadedViteConfig,
         plugins: [...compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
-        root: viteRoot,
+        root: getViteRoot({ viteConfig: this.viteConfig, loadedViteConfig, engineFile: this.engineFile }),
         build: {
           ...loadedViteConfig.build,
           outDir: buildPaths.outdir,

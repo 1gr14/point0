@@ -30,6 +30,7 @@ import { ServerPoints } from './server-points.js'
 import {
   createViteDevServer,
   executeEngineServerBuildConfig,
+  getViteRoot,
   extractEngineServerPlugins,
   extractViteConfig,
   getDirByPaths,
@@ -393,12 +394,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
       hmrPort: this.hmrPort,
       mode: normalizeAndValidateNodeEnv(),
       envConsts: this.envConsts,
-      root:
-        typeof this.viteConfig === 'string'
-          ? nodePath.dirname(this.viteConfig)
-          : this.engineFile
-            ? nodePath.dirname(this.engineFile)
-            : undefined,
+      engineFile: this.engineFile,
       compilerOptions: this.getCompilerOptions(),
     })
     this.viteDevServer = viteDevServer
@@ -856,10 +852,6 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
       const fixedExistingRollupOptionsOutput = Array.isArray(existingRollupOptionsOutput)
         ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
         : rollupOptionsOutput
-      const viteRoot =
-        loadedViteConfig.root ||
-        (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) ||
-        (this.engineFile ? nodePath.dirname(this.engineFile) : undefined)
 
       const compilerOptions = this.getCompilerOptions()
       const compilerPlugin = compilerOptions
@@ -873,7 +865,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
       const config: ExtractedViteConfig = {
         ...loadedViteConfig,
         plugins: [...compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
-        root: viteRoot,
+        root: getViteRoot({ viteConfig: this.viteConfig, loadedViteConfig, engineFile: this.engineFile }),
         build: {
           ...loadedViteConfig.build,
           outDir: buildPaths.outdir,

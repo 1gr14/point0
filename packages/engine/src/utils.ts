@@ -487,6 +487,27 @@ export const extractViteConfig = async ({
       : viteConfig
 }
 
+export const getViteRoot = ({
+  viteConfig,
+  loadedViteConfig,
+  engineFile,
+}: {
+  viteConfig: EngineOptionsViteConfig | string | null
+  loadedViteConfig: ExtractedViteConfig
+  engineFile: string | null
+}): string | undefined => {
+  if (loadedViteConfig.root) {
+    return loadedViteConfig.root
+  }
+  if (engineFile) {
+    return nodePath.dirname(engineFile)
+  }
+  if (typeof viteConfig === 'string') {
+    return nodePath.dirname(viteConfig)
+  }
+  return undefined
+}
+
 export const createViteDevServer = async ({
   viteConfig,
   scope,
@@ -494,7 +515,7 @@ export const createViteDevServer = async ({
   mode,
   hmrPort,
   envConsts,
-  root,
+  engineFile,
   compilerOptions,
 }: {
   viteConfig: EngineOptionsViteConfig | null
@@ -503,7 +524,7 @@ export const createViteDevServer = async ({
   hmrPort: number | false
   envConsts?: EngineOptionsEnvParsed | EngineOptionsEnvParsed
   mode: NormalizedNodeEnv
-  root: string | undefined
+  engineFile: string | null
   compilerOptions: CompilerOptions | false
 }): Promise<ViteDevServer> => {
   if (env.build.was) {
@@ -546,7 +567,7 @@ export const createViteDevServer = async ({
         ws: !hmr ? false : loadedViteConfig.server?.ws,
         hmr,
       },
-      root: loadedViteConfig.root ?? root,
+      root: getViteRoot({ viteConfig, loadedViteConfig, engineFile }),
       define: {
         ...loadedViteConfig.define,
         ...Object.fromEntries(
