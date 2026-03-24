@@ -843,7 +843,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     level = 0,
   }: {
     App: AppComponent
-    clientPoints: ClientPoints
+    clientPoints: ClientPoints<any>
     renderToReadableStream: typeof RenderToReadableStream
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation

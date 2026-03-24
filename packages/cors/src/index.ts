@@ -130,8 +130,7 @@ export const cors = (options: CorsOptions = {}): NicePristinePluginReadyPoint =>
     .middleware(async (middlewareOptions) => {
       const { request, set, next } = middlewareOptions
       const requestOrigin = request.original.headers.get('origin')
-      const isOptionsRequest =
-        middlewareOptions.variant === 'options' || request.original.method.toUpperCase() === 'OPTIONS'
+      const isOptionsRequest = request.original.method.toUpperCase() === 'OPTIONS'
       const isPreflightRequest = shouldHandlePreflight && isOptionsRequest
       if (isOptionsRequest && !shouldHandlePreflight) {
         return await next()

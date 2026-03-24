@@ -51,7 +51,7 @@ describe('internal-testing', () => {
     `)
     const fetchResults1 = await fetchRecorder.waitFinishedResults()
     expect(fetchResults1).toHaveLength(1)
-    expect(fetchResults1[0].variant).toBe('page')
+    expect(fetchResults1[0].variant.type).toBe('page')
     fetchRecorder.prune()
 
     await render(async ({ tale, click, waitContent }) => {

@@ -56,7 +56,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
   port: number
   portPolicy: PortPolicy
   serveRetries: number
-  clients: TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
+  clients: TPrepared extends true ? Array<EngineClient<true, TError>> : EngineClient<false, TError>[]
   log: LogFn
   entry: Record<string, string> | null
   publicdir: TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
@@ -90,7 +90,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     portPolicy: PortPolicy
     serveRetries: number
     log: LogFn
-    clients: EngineClient[]
+    clients: EngineClient<any, TError>[]
     envConsts: EngineOptionsEnvParsed
     envVars: EngineOptionsEnvParsed
     entry: Record<string, string> | null
@@ -120,7 +120,9 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     this.cwdBeforeBuild = process.env.POINT0_ENGINE_CWD_BEFORE_BUILD ?? input.cwdBeforeBuild
     this.port = input.port
     this.serveRetries = input.serveRetries
-    this.clients = input.clients as TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
+    this.clients = input.clients as TPrepared extends true
+      ? Array<EngineClient<true, TError>>
+      : EngineClient<false, TError>[]
     this.log = input.log
     this.entry = input.entry
     this.publicdir = input.publicdir as TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null

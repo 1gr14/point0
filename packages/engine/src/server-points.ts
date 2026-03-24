@@ -1,7 +1,7 @@
-import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0nt/route0'
 import { Routes } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0nt/route0'
+import { PointsManager } from '@point0/core'
 import type {
-  ActionPoint,
   DataTransformerExtended,
   ErrorPoint0,
   LayoutPoint,
@@ -14,10 +14,10 @@ import type {
   PointsScope,
   PointType,
   ReadyPoint,
+  RequestableReadyPoint,
   RequiredCtx,
   RootPoint,
 } from '@point0/core'
-import { PointsManager } from '@point0/core'
 import type { WideRequestMethod } from '@point0/core/request0'
 
 export class ServerPoints<TError extends ErrorPoint0> {
@@ -180,7 +180,7 @@ export class ServerPoints<TError extends ErrorPoint0> {
         },
   ):
     | {
-        point: ActionPoint
+        point: RequestableReadyPoint
         location: ExactLocation
       }
     | undefined => {
@@ -202,7 +202,7 @@ export class ServerPoints<TError extends ErrorPoint0> {
       return undefined
     }
     return {
-      point: point as ActionPoint,
+      point: point as RequestableReadyPoint,
       location,
     }
   }

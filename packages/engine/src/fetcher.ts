@@ -1,12 +1,23 @@
-import { Route0, type AnyLocation, type AnyRoute, type ExactLocation, type KnownLocation } from '@devp0nt/route0'
 import * as flat0 from '@devp0nt/flat0'
+import { Route0, type AnyLocation, type AnyRoute, type ExactLocation, type KnownLocation } from '@devp0nt/route0'
+import {
+  _getSsItemsWithRestErrors,
+  _point0_env,
+  _ssItems,
+  _ssRunWithServerStorageState,
+  blankDataTransformerExtended,
+  ErrorPoint0,
+  generateId,
+} from '@point0/core'
 import type {
-  ActionPoint,
+  AnyPoint,
   ClassLikeError0,
   Data,
   DataTransformerExtended,
   FetcherFetchDetailedResult,
+  FetcherFetchDetailedResultError,
   FetcherFetchDetailedResultGeneral,
+  FetcherFetchDetailedResultMiddleware,
   FetcherFetchDetailedResultNoMiddleware,
   InputRawUnknown,
   MiddlewareFn,
@@ -17,34 +28,32 @@ import type {
   RequiredCtx,
   SuperStoreInternalValuesOrErrors,
 } from '@point0/core'
-import {
-  _getSsItemsWithRestErrors,
-  _point0_env,
-  _ssItems,
-  _ssRunWithServerStorageState,
-  blankDataTransformerExtended,
-  ErrorPoint0,
-  generateId,
-} from '@point0/core'
 import { Effects } from '@point0/core/effects'
 import { Request0 } from '@point0/core/request0'
+import type {
+  RequestVariantEndpoint,
+  RequestVariantError,
+  RequestVariantPage,
+  RequestVariantPublicdir,
+  RequestVariantUnknown,
+} from '@point0/core/request0'
 import type { EngineClient } from './client.js'
 import type { Engine } from './engine.js'
-import type { ExecuteOptionsKnownInput } from './executor.js'
 import { Executor } from './executor.js'
+import type { ExecuteOptionsKnownInput } from './executor.js'
 import type { Publicdir } from './publicdir.js'
 import type { EngineServer } from './server.js'
 
 export class Fetcher<TError extends ErrorPoint0> {
   engine: Engine<RequiredCtx, TError, true>
-  server: EngineServer<true>
+  server: EngineServer<true, TError>
 
   private constructor({
     engine,
     server,
   }: {
     engine: Engine<RequiredCtx, TError, true>
-    server: EngineServer<true, any>
+    server: EngineServer<true, TError>
   }) {
     this.engine = engine
     this.server = server
@@ -195,7 +204,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       '__POINT0_PARENT_REQUEST__' in originalRequest
         ? (originalRequest.__POINT0_PARENT_REQUEST__ as Request0)
         : undefined
-    const request = Request0.create(originalRequest, {
+    const request = Request0.create<TError>(originalRequest, {
       bunServer: bunServer || this.server.bunServer,
       id: generateId(),
       isFromServer,
@@ -243,8 +252,14 @@ export class Fetcher<TError extends ErrorPoint0> {
           const staticResponse = await publicdir.fetch({ request })
           if (staticResponse) {
             const scope = publicdir.scope
+            const variant: RequestVariantPublicdir<Publicdir<true> | undefined> = {
+              type: 'publicdir',
+              publicdir,
+              response: staticResponse,
+            }
+            request.variant = variant
             return {
-              variant: 'publicdir',
+              variant,
               transform,
               scope,
               request,
@@ -256,16 +271,8 @@ export class Fetcher<TError extends ErrorPoint0> {
               middlewareOptions: {
                 request,
                 set: effects.set,
-                point: undefined,
                 scope,
-                variant: 'publicdir',
               },
-              publicdirResult: { publicdir, response: staticResponse },
-              endpointResult: undefined,
-              pageResult: undefined,
-              errorResult: undefined,
-              optionsResult: undefined,
-              redirectResult: undefined,
             }
           }
         }
@@ -288,8 +295,15 @@ export class Fetcher<TError extends ErrorPoint0> {
             : outputTypeRaw === 'html'
               ? 'html'
               : 'data'
+        const variant: RequestVariantEndpoint = {
+          type: 'endpoint',
+          location: endpoint.location,
+          point: endpoint.point,
+          outputType,
+        }
+        request.variant = variant
         return {
-          variant: 'endpoint',
+          variant,
           transform,
           scope: endpoint.point.scope,
           request,
@@ -298,24 +312,22 @@ export class Fetcher<TError extends ErrorPoint0> {
           middlewareOptions: {
             request,
             set: effects.set,
-            point: endpoint.point,
             scope: endpoint.point.scope,
-            variant: 'endpoint',
           },
-          publicdirResult: undefined,
-          endpointResult: { location: endpoint.location, point: endpoint.point, outputType },
-          pageResult: undefined,
-          errorResult: undefined,
-          optionsResult: undefined,
-          redirectResult: undefined,
         }
       }
 
       if (process.env.NODE_ENV !== 'production') {
         const responseFromAbsFilePath = await Fetcher.fetchAbsFilePathOnDevServer({ request })
         if (responseFromAbsFilePath) {
+          const variant: RequestVariantPublicdir<undefined> = {
+            type: 'publicdir',
+            publicdir: undefined,
+            response: responseFromAbsFilePath,
+          }
+          request.variant = variant
           return {
-            variant: 'publicdir',
+            variant,
             transform,
             scope: this.engine.server.scope,
             request,
@@ -324,16 +336,8 @@ export class Fetcher<TError extends ErrorPoint0> {
             middlewareOptions: {
               request,
               set: effects.set,
-              point: undefined,
               scope: this.engine.server.scope,
-              variant: '' as never, // it is dev only thing, lets forget about it
             },
-            publicdirResult: { publicdir: undefined, response: responseFromAbsFilePath },
-            endpointResult: undefined,
-            pageResult: undefined,
-            errorResult: undefined,
-            optionsResult: undefined,
-            redirectResult: undefined,
           }
         }
       }
@@ -362,8 +366,16 @@ export class Fetcher<TError extends ErrorPoint0> {
       if (foundExactPage) {
         const redirectResponse = redirectToDifferentDevClientIfNotThatPort(foundExactPage.page.scope)
         if (redirectResponse) {
+          const variant: RequestVariantPage<EngineClient<true, TError>> = {
+            type: 'page',
+            pageLocation: foundExactPage.pageLocation,
+            point: foundExactPage.page,
+            client: foundExactPage.client,
+            redirect: redirectResponse,
+          }
+          request.variant = variant
           return {
-            variant: 'redirect',
+            variant,
             transform,
             scope: foundExactPage.page.scope,
             request,
@@ -372,20 +384,20 @@ export class Fetcher<TError extends ErrorPoint0> {
             middlewareOptions: {
               request,
               set: effects.set,
-              point: undefined,
               scope: foundExactPage.page.scope,
-              variant: 'redirect',
             },
-            publicdirResult: undefined,
-            endpointResult: undefined,
-            pageResult: undefined,
-            errorResult: undefined,
-            optionsResult: undefined,
-            redirectResult: { response: redirectResponse },
           }
         }
+        const variant: RequestVariantPage<EngineClient<true, TError>> = {
+          type: 'page',
+          pageLocation: foundExactPage.pageLocation,
+          point: foundExactPage.page,
+          client: foundExactPage.client,
+          redirect: undefined,
+        }
+        request.variant = variant
         return {
-          variant: 'page',
+          variant,
           transform,
           scope: foundExactPage.client.scope,
           request,
@@ -394,20 +406,8 @@ export class Fetcher<TError extends ErrorPoint0> {
           middlewareOptions: {
             request,
             set: effects.set,
-            point: foundExactPage.page,
             scope: foundExactPage.client.scope,
-            variant: 'page',
           },
-          publicdirResult: undefined,
-          endpointResult: undefined,
-          pageResult: {
-            client: foundExactPage.client,
-            pageLocation: foundExactPage.pageLocation,
-            point: foundExactPage.page,
-          },
-          errorResult: undefined,
-          optionsResult: undefined,
-          redirectResult: undefined,
         }
       }
 
@@ -430,8 +430,16 @@ export class Fetcher<TError extends ErrorPoint0> {
       if (foundSuitableClient && isMayBePage) {
         const redirectResponse = redirectToDifferentDevClientIfNotThatPort(foundSuitableClient.scope)
         if (redirectResponse) {
+          const variant: RequestVariantPage<EngineClient<true, TError>> = {
+            type: 'page',
+            pageLocation: pageLocation,
+            point: undefined,
+            client: foundSuitableClient,
+            redirect: redirectResponse,
+          }
+          request.variant = variant
           return {
-            variant: 'redirect',
+            variant,
             transform,
             scope: foundSuitableClient.scope,
             request,
@@ -440,20 +448,20 @@ export class Fetcher<TError extends ErrorPoint0> {
             middlewareOptions: {
               request,
               set: effects.set,
-              point: undefined,
               scope: foundSuitableClient.scope,
-              variant: 'redirect',
             },
-            publicdirResult: undefined,
-            endpointResult: undefined,
-            pageResult: undefined,
-            errorResult: undefined,
-            optionsResult: undefined,
-            redirectResult: { response: redirectResponse },
           }
         }
+        const variant: RequestVariantPage<EngineClient<true, TError>> = {
+          type: 'page',
+          pageLocation: pageLocation,
+          point: undefined,
+          client: foundSuitableClient,
+          redirect: undefined,
+        }
+        request.variant = variant
         return {
-          variant: 'page',
+          variant,
           transform,
           scope: foundSuitableClient.scope,
           request,
@@ -462,30 +470,20 @@ export class Fetcher<TError extends ErrorPoint0> {
           middlewareOptions: {
             request,
             set: effects.set,
-            point: undefined,
             scope: foundSuitableClient.scope,
-            variant: 'page',
           },
-          publicdirResult: undefined,
-          endpointResult: undefined,
-          pageResult: {
-            client: foundSuitableClient,
-            pageLocation,
-            point: undefined,
-          },
-          errorResult: undefined,
-          optionsResult: undefined,
-          redirectResult: undefined,
         }
       }
 
-      const toScope = request.headers['x-point0-to-scope']
-      const clientByToScope = toScope ? this.server.clients.find((client) => client.scope === toScope) : undefined
-      const ErrorClass =
-        clientByToScope?.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
+      // const toScope = request.headers['x-point0-to-scope']
+      // const clientByToScope = toScope ? this.server.clients.find((client) => client.scope === toScope) : undefined
+      // const ErrorClass =
+      //   clientByToScope?.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
 
+      const variant: RequestVariantUnknown = { type: 'unknown' }
+      request.variant = variant
       return {
-        variant: 'error',
+        variant,
         transform,
         scope: this.server.scope,
         request,
@@ -494,22 +492,16 @@ export class Fetcher<TError extends ErrorPoint0> {
         middlewareOptions: {
           request,
           set: effects.set,
-          point: undefined,
           scope: this.server.scope,
-          variant: 'error',
         },
-        publicdirResult: undefined,
-        endpointResult: undefined,
-        pageResult: undefined,
-        errorResult: new ErrorClass(`Not Found`, { status: 404 }),
-        optionsResult: undefined,
-        redirectResult: undefined,
       }
     } catch (error) {
       const ErrorClass = this.server.points?.manager.root._Error ?? ErrorPoint0
       const error0 = ErrorClass.from(error)
+      const variant: RequestVariantError<TError> = { type: 'error', error: error0 }
+      request.variant = variant
       return {
-        variant: 'error',
+        variant,
         transform,
         scope: this.server.scope,
         request,
@@ -518,16 +510,8 @@ export class Fetcher<TError extends ErrorPoint0> {
         middlewareOptions: {
           request,
           set: effects.set,
-          point: undefined,
           scope: this.server.scope,
-          variant: 'error',
         },
-        publicdirResult: undefined,
-        endpointResult: undefined,
-        pageResult: undefined,
-        errorResult: error0,
-        optionsResult: undefined,
-        redirectResult: undefined,
       }
     }
   }
@@ -550,19 +534,19 @@ export class Fetcher<TError extends ErrorPoint0> {
     effects: Effects
     serverStorageState: SuperStoreInternalValuesOrErrors
     outputType: 'html' | 'data' | 'queryClientDehydratedState'
-  }): Promise<FetcherFetchEndpointResult> => {
+  }): Promise<FetcherFetchEndpointResult<TError>> => {
     const client = this.server.clients.find((client) => client.scope === point.scope)
     const partialResult = {
       request,
       scope: point.scope,
       point,
       client,
-      variant: 'endpoint' as const,
       data: undefined,
       error: undefined,
     }
     const transformer = this.getTransformer({ scope: point.scope, point, transform })
-    const ErrorClass = client?.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
+    const ErrorClass: ClassLikeError0<TError> =
+      client?.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
 
     try {
       const input = await this.getPointInputFromEndpointRequest({ request, location, point, transform })
@@ -599,7 +583,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
       }
 
-      const executor = await Executor.create({
+      const executor = await Executor.create<RequiredCtx, TError>({
         engine: this.engine,
         request,
         requiredCtx,
@@ -667,7 +651,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         return {
           ...partialResult,
           response,
-          error: executeResult.error,
+          error: executeResult.error as TError,
         }
       }
 
@@ -733,21 +717,20 @@ export class Fetcher<TError extends ErrorPoint0> {
     serverStorageState,
   }: {
     transform: boolean
-    client: EngineClient<true>
+    client: EngineClient<true, TError>
     point: PagePoint | undefined
     pageLocation: AnyLocation | ExactLocation
     request: Request0
     requiredCtx: RequiredCtx
     effects: Effects
     serverStorageState: SuperStoreInternalValuesOrErrors
-  }): Promise<FetcherFetchPageResult> => {
+  }): Promise<FetcherFetchPageResult<TError>> => {
     const partialResult = {
       client,
       pageLocation,
       request,
       scope: client.scope,
       point,
-      variant: 'page' as const,
       data: undefined,
       error: undefined,
     }
@@ -871,8 +854,8 @@ export class Fetcher<TError extends ErrorPoint0> {
               request: baseOptions.request,
               scope: baseOptions.scope,
               response: result,
-              variant: 'middleware',
               error: undefined,
+              variant: { type: 'middleware' },
             }
           }
           return result
@@ -887,7 +870,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           request: baseOptions.request,
           scope: baseOptions.scope,
           response: result,
-          variant: 'middleware',
+          variant: { type: 'middleware' },
           error: undefined,
         }
       }
@@ -909,9 +892,9 @@ export class Fetcher<TError extends ErrorPoint0> {
           status: 500,
           transformer,
         }),
-        variant: isMiddleware ? 'middleware' : 'error',
+        variant: isMiddleware ? { type: 'middleware' } : { type: 'error', error: error0 },
         error: error0,
-      }
+      } as FetcherFetchDetailedResultMiddleware<TError> | FetcherFetchDetailedResultError<TError>
     }
   }
 
@@ -925,30 +908,30 @@ export class Fetcher<TError extends ErrorPoint0> {
     serverStorageState: SuperStoreInternalValuesOrErrors
   }): Promise<FetcherFetchDetailedResultNoMiddleware<TError>> {
     try {
-      if (prepareFetchResult.publicdirResult) {
+      if (prepareFetchResult.variant.type === 'publicdir') {
         return {
           request: prepareFetchResult.request,
           scope: prepareFetchResult.scope,
-          response: prepareFetchResult.publicdirResult.response,
-          variant: 'publicdir',
+          response: prepareFetchResult.variant.response,
+          variant: prepareFetchResult.variant,
           error: undefined,
         }
       }
 
-      if (prepareFetchResult.endpointResult) {
+      if (prepareFetchResult.variant.type === 'endpoint') {
         const fetchEndpointResult = await this.fetchEndpoint({
-          point: prepareFetchResult.endpointResult.point,
-          location: prepareFetchResult.endpointResult.location,
+          point: prepareFetchResult.variant.point,
+          location: prepareFetchResult.variant.location,
           request: prepareFetchResult.request,
           requiredCtx,
           effects: prepareFetchResult.effects,
           serverStorageState,
           transform: prepareFetchResult.transform,
-          outputType: prepareFetchResult.endpointResult.outputType,
+          outputType: prepareFetchResult.variant.outputType,
         })
         return {
           ...fetchEndpointResult,
-          variant: 'endpoint',
+          variant: { ...prepareFetchResult.variant, data: fetchEndpointResult.data },
         }
       }
 
@@ -957,27 +940,27 @@ export class Fetcher<TError extends ErrorPoint0> {
           request: prepareFetchResult.request,
           scope: prepareFetchResult.scope,
           response: new Response(null, { status: 204 }),
-          variant: 'options',
+          variant: { type: 'options' },
           error: undefined,
         }
       }
 
-      if (prepareFetchResult.errorResult) {
+      if (prepareFetchResult.variant.type === 'error') {
         const ErrorClass = this.server.points?.manager.root._Error ?? ErrorPoint0
         return {
           request: prepareFetchResult.request,
           scope: prepareFetchResult.scope,
           response: this.toJsonErrorResponse({
             ErrorClass,
-            error: prepareFetchResult.errorResult,
+            error: prepareFetchResult.variant.error,
             transformer: this.getTransformer({
               scope: prepareFetchResult.scope,
               point: undefined,
               transform: prepareFetchResult.transform,
             }),
           }),
-          variant: 'error',
-          error: prepareFetchResult.errorResult,
+          variant: { type: 'error', error: prepareFetchResult.variant.error },
+          error: prepareFetchResult.variant.error,
         }
       }
 
@@ -992,11 +975,21 @@ export class Fetcher<TError extends ErrorPoint0> {
       //   }
       // }
 
-      if (prepareFetchResult.pageResult) {
+      if (prepareFetchResult.variant.type === 'page') {
+        if (prepareFetchResult.variant.redirect) {
+          return {
+            ...prepareFetchResult.variant,
+            request: prepareFetchResult.request,
+            scope: prepareFetchResult.scope,
+            variant: prepareFetchResult.variant,
+            error: undefined,
+            response: prepareFetchResult.variant.redirect,
+          }
+        }
         const fetchPagePointResult = await this.fetchPage({
-          client: prepareFetchResult.pageResult.client,
-          point: prepareFetchResult.pageResult.point,
-          pageLocation: prepareFetchResult.pageResult.pageLocation,
+          client: prepareFetchResult.variant.client,
+          point: prepareFetchResult.variant.point,
+          pageLocation: prepareFetchResult.variant.pageLocation,
           request: prepareFetchResult.request,
           requiredCtx,
           effects: prepareFetchResult.effects,
@@ -1005,22 +998,12 @@ export class Fetcher<TError extends ErrorPoint0> {
         })
         return {
           ...fetchPagePointResult,
-          variant: 'page',
-        }
-      }
-
-      if (prepareFetchResult.redirectResult) {
-        return {
-          request: prepareFetchResult.request,
-          scope: prepareFetchResult.scope,
-          response: prepareFetchResult.redirectResult.response,
-          variant: 'redirect',
-          error: undefined,
+          variant: prepareFetchResult.variant,
         }
       }
 
       const ErrorClass = (this.server.points?.manager.root._Error ?? ErrorPoint0) as ClassLikeError0<TError>
-      const error = new ErrorClass(`Critical Error: Not Found`, { status: 404 })
+      const error = new ErrorClass(`Not Found`, { status: 404 })
       return {
         request: prepareFetchResult.request,
         scope: prepareFetchResult.scope,
@@ -1034,7 +1017,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             transform: prepareFetchResult.transform,
           }),
         }),
-        variant: 'error',
+        variant: { type: 'error', error },
         error,
       }
     } catch (error) {
@@ -1052,7 +1035,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             transform: prepareFetchResult.transform,
           }),
         }),
-        variant: 'error',
+        variant: { type: 'error', error: error0 },
         error: error0,
       }
     }
@@ -1078,8 +1061,6 @@ export class Fetcher<TError extends ErrorPoint0> {
     const _eventData = {
       request: prepareFetchResult.request,
       scope: prepareFetchResult.scope,
-      variant: prepareFetchResult.middlewareOptions.variant,
-      point: prepareFetchResult.middlewareOptions.point,
       error: undefined,
     }
     // const emit =
@@ -1089,7 +1070,7 @@ export class Fetcher<TError extends ErrorPoint0> {
     //     ?._emit.bind(this.server.points.roots.get(prepareFetchResult.scope)) ??
     //   this.server.points?._emit.bind(this.server.points)
     const emit = this.engine.getEmit({
-      point: prepareFetchResult.middlewareOptions.point,
+      point: (prepareFetchResult.request.variant as { point?: AnyPoint }).point,
       scope: prepareFetchResult.scope,
     })
 
@@ -1128,7 +1109,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           ...result,
           response,
         } as FetcherFetchDetailedResult<TError>
-        const error = result.error
+        const error = (result as { error?: TError }).error
         emit?.('engineFetchSettled', { ..._eventData, error, result: finalResult })
         if (error) {
           emit?.('engineFetchError', { ..._eventData, error, result: finalResult })
@@ -1138,7 +1119,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         return finalResult
       } catch (error) {
         const ErrorClass = (this.server.points?.manager.root._Error ?? ErrorPoint0) as ClassLikeError0<TError>
-        const error0 = ErrorClass.from(error)
+        const error0 = ErrorClass.from(error) as TError
         const finalResult = {
           request: prepareFetchResult.request,
           scope: prepareFetchResult.scope,
@@ -1151,7 +1132,7 @@ export class Fetcher<TError extends ErrorPoint0> {
               transform: prepareFetchResult.transform,
             }),
           }),
-          variant: 'error' as const,
+          variant: { type: 'error' as const, error: error0 },
           error: error0,
         }
         emit?.('engineFetchSettled', { ..._eventData, error: error0, result: finalResult })
@@ -1215,105 +1196,38 @@ export class Fetcher<TError extends ErrorPoint0> {
   }
 }
 
+type PrepareFetchResultGeneral<TError extends ErrorPoint0> = {
+  transform: boolean
+  scope: PointsScope
+  request: Request0<any, TError>
+  effects: Effects
+  middlewares: MiddlewareFn<TError>[]
+  middlewareOptions: MiddlewareFnOptionsBase<TError>
+}
 type PrepareFetchResult<TError extends ErrorPoint0> =
-  | {
-      variant: 'publicdir'
-      transform: boolean
-      scope: PointsScope
-      request: Request0
-      effects: Effects
-      middlewares: MiddlewareFn<any>[]
-      middlewareOptions: MiddlewareFnOptionsBase<any>
-      publicdirResult: { publicdir: Publicdir<true> | undefined; response: Response } // in case if it is bun dev server try to fetch abs path
-      endpointResult: undefined
-      pageResult: undefined
-      errorResult: undefined
-      optionsResult: undefined
-      redirectResult: undefined
-    }
-  | {
-      variant: 'endpoint'
-      transform: boolean
-      scope: PointsScope
-      request: Request0
-      effects: Effects
-      middlewares: MiddlewareFn<any>[]
-      middlewareOptions: MiddlewareFnOptionsBase<any>
-      publicdirResult: undefined
-      endpointResult: {
-        location: ExactLocation
-        // params: Record<string, unknown> | undefined
-        // search: Record<string, unknown> | undefined
-        // body: unknown | undefined
-        // input: InputRawUnknown | undefined
-        point: ActionPoint
-        outputType: 'html' | 'data' | 'queryClientDehydratedState'
-        // outputType: undefined | 'queryClientDehydratedState'
-      }
-      pageResult: undefined
-      errorResult: undefined
-      optionsResult: undefined
-      redirectResult: undefined
-    }
-  | {
-      variant: 'page'
-      transform: boolean
-      scope: PointsScope
-      request: Request0
-      effects: Effects
-      middlewares: MiddlewareFn<any>[]
-      middlewareOptions: MiddlewareFnOptionsBase<any>
-      publicdirResult: undefined
-      endpointResult: undefined
-      pageResult: {
-        pageLocation: ExactLocation | AnyLocation
-        point: PagePoint | undefined
-        client: EngineClient<true>
-      }
-      errorResult: undefined
-      optionsResult: undefined
-      redirectResult: undefined
-    }
-  | {
-      variant: 'redirect'
-      transform: boolean
-      scope: PointsScope
-      request: Request0
-      effects: Effects
-      middlewares: MiddlewareFn<any>[]
-      middlewareOptions: MiddlewareFnOptionsBase<any>
-      publicdirResult: undefined
-      endpointResult: undefined
-      pageResult: undefined
-      errorResult: undefined
-      optionsResult: undefined
-      redirectResult: { response: Response }
-    }
-  | {
-      variant: 'error'
-      transform: boolean
-      scope: PointsScope
-      request: Request0
-      effects: Effects
-      middlewares: MiddlewareFn<any>[]
-      middlewareOptions: MiddlewareFnOptionsBase<any>
-      publicdirResult: undefined
-      endpointResult: undefined
-      pageResult: undefined
-      errorResult: TError
-      optionsResult: undefined
-      redirectResult: undefined
-    }
+  | (PrepareFetchResultGeneral<TError> & {
+      variant: RequestVariantPublicdir<Publicdir<true> | undefined>
+    })
+  | (PrepareFetchResultGeneral<TError> & {
+      variant: RequestVariantEndpoint
+    })
+  | (PrepareFetchResultGeneral<TError> & {
+      variant: RequestVariantPage<EngineClient<true, TError>>
+    })
+  | (PrepareFetchResultGeneral<TError> & {
+      variant: RequestVariantUnknown
+    })
+  | (PrepareFetchResultGeneral<TError> & {
+      variant: RequestVariantError<TError>
+    })
 
-type FetcherFetchPageResult = FetcherFetchDetailedResultGeneral<any> & {
-  response: Response
+type FetcherFetchPageResult<TError extends ErrorPoint0> = FetcherFetchDetailedResultGeneral<TError> & {
   point: ReadyPoint | undefined
   pageLocation: AnyLocation
-  client: EngineClient<true>
+  client: EngineClient<true, TError>
 }
-type FetcherFetchEndpointResult = FetcherFetchDetailedResultGeneral<any> & {
-  response: Response
+type FetcherFetchEndpointResult<TError extends ErrorPoint0> = FetcherFetchDetailedResultGeneral<TError> & {
   point: ReadyPoint
-  client: EngineClient<true> | undefined
+  client: EngineClient<true, TError> | undefined
   data: Data | undefined
 }

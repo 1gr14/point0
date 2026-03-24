@@ -407,7 +407,7 @@ export async function renderAppAsReadableStream({
   executor: Executor
   pagePoint: PagePoint | undefined
   pageLocation: AnyLocation
-  clientPoints: ClientPoints
+  clientPoints: ClientPoints<any>
   envVars?: Record<string, string | number | boolean | undefined>
   envConsts?: Record<string, string | number | boolean | undefined>
   renderer?: ReadableStreamRenderer

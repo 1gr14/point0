@@ -1,7 +1,9 @@
-import type { AnyLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
+import type { AnyLocation, ExactLocation } from '@devp0nt/route0'
 import { _point0_env } from './env.js'
+import type { ErrorPoint0 } from './error.js'
 import { _ssItems } from './internals.js'
+import type { IsAny, PagePoint, RequestableReadyPoint } from './types.js'
 
 const decodeCookieValue = (value: string): string => {
   const unquoted = value.startsWith('"') ? value.slice(1, -1) : value
@@ -12,7 +14,12 @@ const decodeCookieValue = (value: string): string => {
   }
 }
 
-export class Request0 {
+export class Request0<
+  TVariant extends RequestVariantType = any,
+  TError = unknown,
+  TClient = unknown,
+  TPublicdir = unknown,
+> {
   original: Request
   headers: RequestHeaders
   cookies: RequestCookies
@@ -23,6 +30,7 @@ export class Request0 {
   state: RequestState
   cache: RequestCache
   parent: Request0 | undefined
+  variant: RequestVariant<TVariant, TError, TClient, TPublicdir>
 
   constructor({
     original,
@@ -35,6 +43,7 @@ export class Request0 {
     state,
     cache,
     parent,
+    variant,
   }: {
     original: Request
     headers: RequestHeaders
@@ -46,6 +55,7 @@ export class Request0 {
     state: RequestState
     cache: RequestCache
     parent: Request0 | undefined
+    variant: RequestVariant<TVariant, TError, TClient, TPublicdir>
   }) {
     this.original = original
     this.headers = headers
@@ -58,9 +68,10 @@ export class Request0 {
     this.state = state
     this.cache = cache
     this.parent = parent
+    this.variant = variant
   }
 
-  static create(
+  static create<TError extends ErrorPoint0>(
     original: Request,
     options: {
       bunServer?: { requestIP: (request: Request) => { address: string } | null }
@@ -69,7 +80,7 @@ export class Request0 {
       state?: RequestState
       parent?: Request0 | undefined
     },
-  ): Request0 {
+  ): Request0<any, TError> {
     const { bunServer, id, isFromServer, state = {}, parent } = options
     const cache = parent?.cache ?? {}
     // Parse headers
@@ -163,6 +174,7 @@ export class Request0 {
       state,
       cache,
       parent,
+      variant: { type: 'unknown' },
     })
   }
 
@@ -244,3 +256,59 @@ export interface RequestState {
 export interface RequestCache {
   [key: string]: unknown
 }
+
+export type RequestVariantType = 'publicdir' | 'endpoint' | 'page' | 'error' | 'unknown'
+
+export type RequestVariantPublicdir<TPublicdir = unknown> = {
+  type: 'publicdir'
+  // publicdir: Publicdir<true> | undefined
+  publicdir: TPublicdir
+  response: Response
+}
+
+export type RequestVariantEndpoint = {
+  type: 'endpoint'
+  location: ExactLocation
+  point: RequestableReadyPoint
+  outputType: 'html' | 'data' | 'queryClientDehydratedState'
+}
+
+export type RequestVariantPage<TClient = unknown> = {
+  type: 'page'
+  pageLocation: ExactLocation | AnyLocation
+  point: PagePoint | undefined
+  // client: EngineClient<true>
+  client: TClient
+  redirect: Response | undefined
+}
+
+export type RequestVariantUnknown = {
+  type: 'unknown'
+}
+
+export type RequestVariantError<TError> = {
+  type: 'error'
+  error: TError
+}
+
+export type AnyRequestVariant<TError, TClient = unknown, TPublicdir = unknown> =
+  | RequestVariantPublicdir<TPublicdir>
+  | RequestVariantEndpoint
+  | RequestVariantPage<TClient>
+  | RequestVariantError<TError>
+  | RequestVariantUnknown
+
+export type RequestVariant<TType extends RequestVariantType, TError, TClient = unknown, TPublicdir = unknown> =
+  IsAny<TType> extends true
+    ? AnyRequestVariant<TError, TClient, TPublicdir>
+    : TType extends 'publicdir'
+      ? RequestVariantPublicdir<TPublicdir>
+      : TType extends 'endpoint'
+        ? RequestVariantEndpoint
+        : TType extends 'page'
+          ? RequestVariantPage<TClient>
+          : TType extends 'unknown'
+            ? RequestVariantUnknown
+            : TType extends 'error'
+              ? RequestVariantError<TError>
+              : never

@@ -1,6 +1,7 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
-import type { Request0 } from './request0.js'
+import type { ErrorPoint0 } from './error.js'
+import type { Request0, RequestVariant } from './request0.js'
 import type {
   AnyNiceReadyPoint,
   Data,
@@ -9,12 +10,10 @@ import type {
   FetchServerDetailedOutput,
   InputRaw,
   LoaderOutput,
-  MiddlewareFnOptions,
   PointsScope,
   PrefetchPagePolicy,
   QueryKey,
 } from './types.js'
-import type { ErrorPoint0 } from './error.js'
 
 export type EventerSide = 'client' | 'server'
 
@@ -320,24 +319,20 @@ export type EventerEventPointPrefetchPageError<TError extends ErrorPoint0> = Eve
 >
 
 // fetcher
-export type EventerEventEngineFetchStart = EventerEvent<
+export type EventerEventEngineFetchStart<TError extends ErrorPoint0> = EventerEvent<
   'server',
   'engineFetchStart',
   {
-    request: Request0
+    request: Request0<any, TError>
     scope: PointsScope
-    variant: MiddlewareFnOptions<any>['variant']
-    point: AnyNiceReadyPoint | undefined
   }
 >
 export type EventerEventEngineFetchSettled<TError extends ErrorPoint0> = EventerEvent<
   'server',
   'engineFetchSettled',
   {
-    request: Request0
+    request: Request0<any, TError>
     scope: PointsScope
-    variant: MiddlewareFnOptions<any>['variant']
-    point: AnyNiceReadyPoint | undefined
     result: FetcherFetchDetailedResult<TError>
     error: TError | undefined
   }
@@ -346,10 +341,8 @@ export type EventerEventEngineFetchSuccess<TError extends ErrorPoint0> = Eventer
   'server',
   'engineFetchSuccess',
   {
-    request: Request0
+    request: Request0<any, TError>
     scope: PointsScope
-    variant: MiddlewareFnOptions<any>['variant']
-    point: AnyNiceReadyPoint | undefined
     result: FetcherFetchDetailedResult<TError>
     error: undefined
   }
@@ -358,10 +351,8 @@ export type EventerEventEngineFetchError<TError extends ErrorPoint0> = EventerEv
   'server',
   'engineFetchError',
   {
-    request: Request0
+    request: Request0<any, TError>
     scope: PointsScope
-    variant: MiddlewareFnOptions<any>['variant']
-    point: AnyNiceReadyPoint | undefined
     result: FetcherFetchDetailedResult<TError>
     error: TError
   }
@@ -396,7 +387,7 @@ export type AnyEventerEvent<TError extends ErrorPoint0> =
   | EventerEventPointPrefetchPageSettled<TError>
   | EventerEventPointPrefetchPageSuccess
   | EventerEventPointPrefetchPageError<TError>
-  | EventerEventEngineFetchStart
+  | EventerEventEngineFetchStart<TError>
   | EventerEventEngineFetchSettled<TError>
   | EventerEventEngineFetchSuccess<TError>
   | EventerEventEngineFetchError<TError>

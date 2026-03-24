@@ -19,6 +19,8 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import type { ResponseEffectsSetHelper, ResponseEffectsValues } from './effects.js'
+import type { EnvOsName, EnvRuntimeName } from './env.js'
+import type { NormalizedNodeEnv } from './env.types.js'
 import type { ErrorPoint0 } from './error.js'
 import type {
   EmptyProps,
@@ -28,10 +30,14 @@ import type {
   QueriesDefinitions,
 } from './mountable.js'
 import type { Point0 } from './point0.js'
-import type { Request0, WideRequestMethod } from './request0.js'
+import type {
+  Request0,
+  RequestVariantEndpoint,
+  RequestVariantPage,
+  RequestVariantPublicdir,
+  WideRequestMethod,
+} from './request0.js'
 import type { GetByPath, SetByPath } from './utils.js'
-import type { NormalizedNodeEnv } from './env.types.js'
-import type { EnvOsName, EnvRuntimeName } from './env.js'
 
 // basic
 
@@ -1923,14 +1929,6 @@ export type DataTransformerExtended = {
 
 // middleware
 
-export type FetchTask = {
-  pointType: ReadyPointType
-  outputType: 'data' | 'queryClientDehydratedState' | 'html'
-  scope: PointsScope
-  pointName: PointName
-  // pointInput: InputRawUnknown | undefined // in case if it is page or layout, we will parse input on task level, becouse we need it to extract totally match pageLocation
-}
-
 export type FetcherFetchDetailedResultGeneral<TError extends ErrorPoint0> = {
   response: Response
   request: Request0
@@ -1939,17 +1937,17 @@ export type FetcherFetchDetailedResultGeneral<TError extends ErrorPoint0> = {
 }
 export type FetcherFetchDetailedResultMiddleware<TError extends ErrorPoint0> =
   FetcherFetchDetailedResultGeneral<TError> & {
-    variant: 'middleware'
+    variant: { type: 'middleware' }
   }
-export type FetcherFetchDetailedResultPage<TError extends ErrorPoint0> = FetcherFetchDetailedResultGeneral<TError> & {
-  variant: 'page'
-  point: ReadyPoint | undefined
+export type FetcherFetchDetailedResultPage<
+  TError extends ErrorPoint0,
+  TClient = unknown,
+> = FetcherFetchDetailedResultGeneral<TError> & {
+  variant: RequestVariantPage<TClient>
 }
 export type FetcherFetchDetailedResultEndpoint<TError extends ErrorPoint0> =
   FetcherFetchDetailedResultGeneral<TError> & {
-    variant: 'endpoint'
-    point: ReadyPoint
-    data: Data | undefined
+    variant: RequestVariantEndpoint & { data: Data | undefined }
   }
 // export type FetcherFetchDetailedResultUnknown<TError extends ErrorPoint0> =
 //   FetcherFetchDetailedResultGeneral<TError> & {
@@ -1959,35 +1957,30 @@ export type FetcherFetchDetailedResultError<TError extends ErrorPoint0> = Omit<
   FetcherFetchDetailedResultGeneral<TError>,
   'error'
 > & {
-  variant: 'error'
-  error: TError
+  variant: { type: 'error'; error: TError }
 }
-export type FetcherFetchDetailedResultPublicdir<TError extends ErrorPoint0> =
-  FetcherFetchDetailedResultGeneral<TError> & {
-    variant: 'publicdir'
-  }
+export type FetcherFetchDetailedResultPublicdir<
+  TError extends ErrorPoint0,
+  TPublicdir = unknown,
+> = FetcherFetchDetailedResultGeneral<TError> & {
+  variant: RequestVariantPublicdir<TPublicdir>
+}
 export type FetcherFetchDetailedResultOptions<TError extends ErrorPoint0> =
   FetcherFetchDetailedResultGeneral<TError> & {
-    variant: 'options'
-  }
-export type FetcherFetchDetailedResultRedirect<TError extends ErrorPoint0> =
-  FetcherFetchDetailedResultGeneral<TError> & {
-    variant: 'redirect'
+    variant: { type: 'options' }
   }
 
 export type FetcherFetchDetailedResultNoMiddleware<TError extends ErrorPoint0> =
   | FetcherFetchDetailedResultEndpoint<TError>
   | FetcherFetchDetailedResultPage<TError>
-  // | FetcherFetchDetailedResultUnknown<TError>
   | FetcherFetchDetailedResultError<TError>
   | FetcherFetchDetailedResultPublicdir<TError>
   | FetcherFetchDetailedResultOptions<TError>
-  | FetcherFetchDetailedResultRedirect<TError>
 export type FetcherFetchDetailedResult<TError extends ErrorPoint0> =
   | FetcherFetchDetailedResultNoMiddleware<TError>
   | FetcherFetchDetailedResultMiddleware<TError>
 export type FetcherFetchDetailedResultSpecific<
-  TVariant extends FetcherFetchDetailedResult<any>['variant'] | undefined = undefined,
+  TVariant extends FetcherFetchDetailedResult<any>['variant']['type'] | undefined = undefined,
   TError extends ErrorPoint0 = ErrorPoint0,
 > = TVariant extends undefined
   ? FetcherFetchDetailedResult<TError>
@@ -1999,15 +1992,11 @@ export type FetcherFetchDetailedResultSpecific<
         ? FetcherFetchDetailedResultEndpoint<TError>
         : TVariant extends 'error'
           ? FetcherFetchDetailedResultError<TError>
-          : // : TVariant extends 'unknown'
-            //   ? FetcherFetchDetailedResultUnknown<TError>
-            TVariant extends 'publicdir'
+          : TVariant extends 'publicdir'
             ? FetcherFetchDetailedResultPublicdir<TError>
             : TVariant extends 'options'
               ? FetcherFetchDetailedResultOptions<TError>
-              : TVariant extends 'redirect'
-                ? FetcherFetchDetailedResultRedirect<TError>
-                : never
+              : never
 
 export type MiddlewareNextFn<TError extends ErrorPoint0> = () => Promise<FetcherFetchDetailedResult<TError>>
 export type MiddlewareFnOptions<
@@ -2016,9 +2005,7 @@ export type MiddlewareFnOptions<
 > = {
   request: Request0
   set: ResponseEffectsSetHelper
-  point: AnyNiceReadyPoint | undefined
   scope: PointsScope
-  variant: 'endpoint' | 'page' | 'error' | 'publicdir' | 'options' | 'redirect'
   next: MiddlewareNextFn<TError>
 } & (TRouteDefinition extends RouteDefinition
   ? HasParams<TRouteDefinition> extends true

@@ -134,7 +134,6 @@ describe('midleware', () => {
       .middleware(async () => {
         return new Response('custom response')
       })
-
       .root()
     const page = root
       .lets('page', 'home', '/')
@@ -183,7 +182,7 @@ describe('midleware', () => {
       })
       .middleware(async ({ next }) => {
         const result = await next()
-        if (result.variant === 'page') {
+        if (result.variant.type === 'page') {
           return new Response('overriden page response', { status: 200 })
         }
         return result

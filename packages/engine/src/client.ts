@@ -4,6 +4,7 @@ import { ClientPoints, env } from '@point0/core'
 import type {
   AppComponent,
   CompilerOptions,
+  ErrorPoint0,
   LogFn,
   NormalizedNodeEnv,
   PagePoint,
@@ -17,6 +18,7 @@ import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
+import { fixDistIndexHtmlBootstrapEntryByBunMetafile } from './client.bun-build-fix.js'
 import type {
   EngineOptionsAppComponent,
   EngineOptionsCompilerSpecificParsed,
@@ -32,17 +34,16 @@ import { Publicdir } from './publicdir.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
 import type { EngineServer } from './server.js'
-import { fixDistIndexHtmlBootstrapEntryByBunMetafile } from './client.bun-build-fix.js'
 import {
   createViteDevServer,
   extractEngineClientBuildConfig,
   extractEngineClientDevPluginsStrings,
   extractViteConfig,
+  getViteRoot,
   isAsyncFn,
   normalizeAndValidateNodeEnv,
   resolveTempDirPath,
   serveWithRetries,
-  getViteRoot,
 } from './utils.js'
 import type {
   EngineClientBuildConfigDefinition,
@@ -50,13 +51,13 @@ import type {
   EngineSharedPluginsDefinition,
 } from './utils.js'
 
-export class EngineClient<TPrepared extends boolean = boolean> {
+export class EngineClient<TPrepared extends boolean = boolean, TError extends ErrorPoint0 = ErrorPoint0> {
   cwd: string
   scope: PointsScope
   engineFile: string | null
   // pointsDistFile: string | null
   pointsProvided: PointsDefinitionSource<any, any> | null
-  points: TPrepared extends true ? ClientPoints | null : undefined
+  points: TPrepared extends true ? ClientPoints<TError> | null : undefined
   ssr: boolean
   appProvided: EngineOptionsAppComponent | null
   App: TPrepared extends true ? AppComponent | null : undefined
@@ -128,7 +129,7 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     this.scope = input.scope
     this.cwd = input.cwd
     // this.pointsDistFile = input.pointsDistFile
-    this.points = null as TPrepared extends true ? ClientPoints | null : undefined
+    this.points = null as TPrepared extends true ? ClientPoints<TError> | null : undefined
     this.pointsProvided = input.pointsProvided
     this.appProvided = input.appProvided
     // this.appDistFile = input.appDistFile
@@ -305,12 +306,12 @@ export class EngineClient<TPrepared extends boolean = boolean> {
     return !!this.prepared
   }
 
-  async readClientPoints(): Promise<ClientPoints | null> {
+  async readClientPoints(): Promise<ClientPoints<TError> | null> {
     if (!this.pointsProvided) {
       return null
     }
     const points = await ClientPoints.createFromSource(this.pointsProvided, { log: this.log })
-    this.points = points as TPrepared extends true ? ClientPoints | null : undefined
+    this.points = points as TPrepared extends true ? ClientPoints<TError> | null : undefined
     return points
   }
 

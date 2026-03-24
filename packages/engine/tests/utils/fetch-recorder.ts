@@ -59,13 +59,17 @@ export class FetchRecorder<TError extends ErrorPoint0 = ErrorPoint0> {
       return results as never
     }
     return results.filter((record) => {
-      if (filter.variant && record.result.variant !== filter.variant) {
+      if (filter.variant && record.result.variant.type !== filter.variant) {
         return false
       }
       if (filter.scope && record.result.scope !== filter.scope) {
         return false
       }
-      if (filter.pointType && record.result.variant === 'endpoint' && record.result.point.type !== filter.pointType) {
+      if (
+        filter.pointType &&
+        record.result.variant.type === 'endpoint' &&
+        record.result.variant.point.type !== filter.pointType
+      ) {
         return false
       }
       return true
@@ -140,13 +144,13 @@ export class FetchRecorder<TError extends ErrorPoint0 = ErrorPoint0> {
   tale = async () => {
     const results = await this.waitFinishedResults()
     const lines = results.flatMap((result) => {
-      if (result.variant !== 'page' && result.variant !== 'endpoint' && result.variant !== 'error') {
+      if (result.variant.type !== 'page' && result.variant.type !== 'endpoint' && result.variant.type !== 'error') {
         return []
       }
       const pointString =
-        'point' in result && result.point
-          ? `${result.point.type}.${result.point.name}`
-          : result.variant === 'error'
+        'point' in result.variant && result.variant.point
+          ? `${result.variant.point.type}.${result.variant.point.name}`
+          : result.variant.type === 'error'
             ? 'error'
             : 'unknown'
       // const inputString = 'input' in result && result.input ? JSON.stringify(result.input) : 'undefined'
@@ -158,21 +162,21 @@ export class FetchRecorder<TError extends ErrorPoint0 = ErrorPoint0> {
         if (!inputKnown) {
           return JSON.stringify({})
         }
-        if (result.variant === 'error') {
+        if (result.variant.type === 'error') {
           return JSON.stringify(inputKnown.input)
         }
-        if (result.point?.type === 'action') {
+        if (result.variant.point?.type === 'action') {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { input, ...inputAction } = inputKnown
           return JSON.stringify(inputAction)
         }
-        if (result.point?.type === 'page' || result.point?.type === 'layout') {
+        if (result.variant.point?.type === 'page' || result.variant.point?.type === 'layout') {
           return JSON.stringify({ ...inputKnown.search, ...inputKnown.params })
         }
         return JSON.stringify(inputKnown.input)
       })()
       const serverOrClient = result.request.from.server ? 'server' : 'client'
-      if (result.variant === 'page') {
+      if (result.variant.type === 'page') {
         return `${pointString} (${serverOrClient}) (page) < ${inputString}`
       }
       return `${pointString} (${serverOrClient}) < ${inputString}`
@@ -181,7 +185,7 @@ export class FetchRecorder<TError extends ErrorPoint0 = ErrorPoint0> {
   }
 }
 
-export type FetchRecorderVariant = FetcherFetchDetailedResult<any>['variant']
+export type FetchRecorderVariant = FetcherFetchDetailedResult<any>['variant']['type']
 export type FetchRecorderFilter<TVariant extends FetchRecorderVariant | undefined = undefined> = {
   variant?: TVariant
   scope?: PointsScope

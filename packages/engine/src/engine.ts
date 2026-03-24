@@ -729,19 +729,19 @@ export class Engine<
   }: {
     point?: AnyPoint | AnyNiceReadyPoint | undefined
     scope?: PointsScope | undefined
-  } = {}): EventerEmitFn<ErrorPoint0> | undefined {
+  } = {}): EventerEmitFn<TError> | undefined {
     if (point) {
-      return point.point._emit.bind(point.point) as EventerEmitFn<ErrorPoint0>
+      return point.point._emit.bind(point.point) as EventerEmitFn<TError>
     }
     if (scope) {
       const root = this.server.points?.roots.get(scope)
       if (root) {
-        return root._emit.bind(root) as EventerEmitFn<ErrorPoint0>
+        return root._emit.bind(root) as EventerEmitFn<TError>
       }
     }
     const root = this.server.points?.roots.get(this.server.scope)
     if (root) {
-      return root._emit.bind(root) as EventerEmitFn<ErrorPoint0>
+      return root._emit.bind(root) as EventerEmitFn<TError>
     }
     return undefined
   }
