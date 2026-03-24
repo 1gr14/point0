@@ -37,9 +37,10 @@ start0
 
 redirect
 
-Проверить что в тестах я делаю поинт маунт на клиенте
+Еррор0 должна мочь захендлить редирект, и тогда еррор компонент пусть просто сам разбирается
+Редирект компонент может принимать чилдрен, который отрисуется на время редиреета
+Тут как раз и юзссрэффект поможет
 Нам в контексте нужен не адаптер навигецт а настоящий навигецт с транзишинами
-move to tree layout regexes
 on qeruyClient hydrate remove all that possible to remove from it (and timestamps should become now on client)
 ? redirect moves to final stage
 ? redirect as method is just shortcut for with((...args) => redirect(...args))

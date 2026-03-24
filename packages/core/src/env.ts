@@ -75,7 +75,7 @@ const isSideSsr = (): boolean => {
   if (isSideClient()) {
     return false
   }
-  return isSsrInProgress.get()
+  return __POINT0_IS_SSR_IN_PROGRESS__.get()
 }
 
 function sideDefineUniversal<TServerResult>(options: { server: TServerResult }): TServerResult | undefined
@@ -715,7 +715,7 @@ export const env: Env = Object.defineProperties(
 
 export const _point0_env = env
 
-export const isSsrInProgress = superstore.define<boolean>(
+export const __POINT0_IS_SSR_IN_PROGRESS__ = superstore.define<boolean>(
   '__POINT0_IS_SSR_IN_PROGRESS__',
   () => false,
   'clientServerIsolated',

@@ -11,7 +11,7 @@ import { ssrRedirectTask, type NavigationContextValue } from './navigation.js'
 import { superstore } from './super-store.js'
 import type { SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './super-store.js'
 import type { PointsScope, RichFetchFn } from './types.js'
-import { isSsrInProgress } from './env.js'
+import { __POINT0_IS_SSR_IN_PROGRESS__ } from './env.js'
 
 const initUndefined = () => undefined as never
 
@@ -25,7 +25,7 @@ export const _getFakeClient = (): LikeFakeClient | undefined => {
 export const _ssItems = {
   __POINT0_HYDRATION_FINISHED__: superstore.define<boolean>('__POINT0_HYDRATION_FINISHED__', () => false, 'clientOnly'),
   __POINT0_SSR_REDIRECT_TASK__: ssrRedirectTask,
-  __POINT0_IS_SSR_IN_PROGRESS__: isSsrInProgress,
+  __POINT0_IS_SSR_IN_PROGRESS__: __POINT0_IS_SSR_IN_PROGRESS__,
   __POINT0_FETCH_FN__: superstore.define<RichFetchFn>('__POINT0_FETCH_FN__', initUndefined, 'serverOnlyStorage'),
   __POINT0_FAKE_CLIENT__: superstore.define<LikeFakeClient>(
     '__POINT0_FAKE_CLIENT__',

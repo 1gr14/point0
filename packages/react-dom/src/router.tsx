@@ -1,11 +1,4 @@
-import {
-  Route0,
-  type AnyLocation,
-  type AnyRoute,
-  type ExtractRoute,
-  type ExtractRoutesKeys,
-  type RoutesPretty,
-} from '@devp0nt/route0'
+import { Route0, type AnyLocation, type ExtractRoute, type ExtractRoutesKeys, type RoutesPretty } from '@devp0nt/route0'
 import type { GetPathInputByRoute, IsParamsOptional } from '@devp0nt/route0'
 import { _point0_env, _ssItems, env, ErrorPoint0, getClientPoints, log } from '@point0/core'
 import type {
@@ -806,13 +799,6 @@ export const createNavigation = <
   }
 }
 
-// TODO: move to pages tree
-const combinePagesRoutesToRegexForLayout = (routes: AnyRoute[]) => {
-  const compiled = routes.map((r) => r.regexBaseString)
-  const pattern = `^(${compiled.join('|')})(?:/|$)`
-  return new RegExp(pattern)
-}
-
 export const RenderPagesTree = ({
   pagesTree,
   Page404 = DefaultPage404,
@@ -827,10 +813,8 @@ export const RenderPagesTree = ({
       {pagesTree.map((node) => {
         if (node.Layout) {
           const Layout = node.Layout
-          const layoutPagesRoutes = node.pages.map((p) => p.pageRoute)
-          const layoutPagesRoutesRegex = combinePagesRoutesToRegexForLayout(layoutPagesRoutes)
           return (
-            <Route key={`layout-${node.layoutName}`} path={layoutPagesRoutesRegex}>
+            <Route key={`layout-${node.layoutName}`} path={node.pagesRoutesRegex}>
               <Layout>
                 <Switch>
                   {node.pages.map(({ pageRoute, Page }) => {

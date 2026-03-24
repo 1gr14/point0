@@ -277,10 +277,13 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
       const pagesRecords = pointsCollection.filter(
         (p) => p.type === 'page' && pagesTreeSourceRecord.pages.includes(p.name),
       )
+      const pagesRoutesRegexStrings = pagesRecords.map((p) => (p.route as AnyRoute).regexBaseString)
+      const pagesRoutesRegex = new RegExp(`^(${pagesRoutesRegexStrings.join('|')})(?:/|$)`)
       const pagesTreeRecord: PagesTreeRecord = {
         Layout: layoutRecord?.FC as React.ComponentType<{ children: React.ReactNode }> | undefined,
         layoutName: layoutRecord?.name,
         layoutPoint: layoutRecord?.point as LayoutPoint | (() => Promise<LayoutPoint>) | undefined,
+        pagesRoutesRegex,
         pages: pagesRecords.map((p) => ({
           Page: p.FC as React.ComponentType | React.LazyExoticComponent<React.ComponentType>,
           pageName: p.name,
@@ -567,11 +570,11 @@ export type PagesTreeRecord = {
     | React.ComponentType<{ children: React.ReactNode }>
     | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
     | undefined
+  pagesRoutesRegex: RegExp
   pages: Array<{
     pageName: PointName
     pageRoute: AnyRoute
     pagePoint: PagePoint | (() => Promise<PagePoint>)
-
     Page: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
   }>
   nested: undefined | PagesTreeRecord[]
