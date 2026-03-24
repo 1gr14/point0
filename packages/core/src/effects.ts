@@ -1,6 +1,3 @@
-import { _point0_env } from './env.js'
-import { _ssItems } from './internals.js'
-
 export type CookieSameSite = 'strict' | 'lax' | 'none'
 
 export type CookieOptions = {
@@ -273,23 +270,23 @@ export class Effects {
     return Effects.apply(response, this.values)
   }
 
-  static get(): Effects {
-    if (!_point0_env.side.is.server) {
-      throw new Error(
-        'You can not get effects not in server. Please call Effects.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
-      )
-    }
-    const effects = _ssItems.__POINT0_EFFECTS__.get()
-    return effects
-  }
+  // static get(): Effects {
+  //   if (!_point0_env.side.is.server) {
+  //     throw new Error(
+  //       'You can not get effects not in server. Please call Effects.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
+  //     )
+  //   }
+  //   const effects = _ssItems.__POINT0_EFFECTS__.get()
+  //   return effects
+  // }
 
-  static getWeak(): Effects | undefined {
-    try {
-      return _ssItems.__POINT0_EFFECTS__.get()
-    } catch {
-      return undefined
-    }
-  }
+  // static getWeak(): Effects | undefined {
+  //   try {
+  //     return _ssItems.__POINT0_EFFECTS__.get()
+  //   } catch {
+  //     return undefined
+  //   }
+  // }
 
   static encodeCookieName = (name: string): string => {
     return encodeURIComponent(name)

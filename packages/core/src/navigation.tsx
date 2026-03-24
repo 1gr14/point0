@@ -1,9 +1,9 @@
 import type { AnyLocation, AnyRouteOrDefinition, ExactLocation, UnknownLocation } from '@devp0nt/route0'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ClientPoints } from './client-points.js'
 import { ErrorPoint0 } from './error.js'
 import type { ClassLikeError0 } from './error.js'
+import { getClientPoints } from './helpers.js'
 import { _ssItems } from './internals.js'
 import { superstore } from './super-store.js'
 import type { IfAnyThenElse } from './types.js'
@@ -293,13 +293,14 @@ export async function navigateWithTransitions<
     return providedTo
   })()
   const prevLocation = navigationContext.currentLocation
-  const location = ClientPoints.getInstance().routes._.getLocation(to)
+  const clientPoints = getClientPoints()
+  const location = clientPoints.routes._.getLocation(to)
   navigationContext.setPrevLocation(prevLocation)
   navigationContext.setError(undefined)
   navigationContext.setNextLocation(location)
   navigationContext.setStatus('prefetching')
   try {
-    await ClientPoints.getInstance().prefetchPage({
+    await clientPoints.prefetchPage({
       location,
       trigger: 'navigate',
     })

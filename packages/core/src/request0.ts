@@ -1,8 +1,6 @@
 import { Route0 } from '@devp0nt/route0'
 import type { AnyLocation, ExactLocation } from '@devp0nt/route0'
-import { _point0_env } from './env.js'
 import type { ErrorPoint0 } from './error.js'
-import { _ssItems } from './internals.js'
 import type { IsAny, PagePoint, RequestableReadyPoint } from './types.js'
 
 const decodeCookieValue = (value: string): string => {
@@ -21,8 +19,6 @@ export class Request0<
   TPublicdir = unknown,
 > {
   original: Request
-  headers: RequestHeaders
-  cookies: RequestCookies
   location: AnyLocation
   method: WideRequestMethod
   from: RequestFrom
@@ -34,8 +30,6 @@ export class Request0<
 
   constructor({
     original,
-    headers,
-    cookies,
     location,
     method,
     from,
@@ -46,8 +40,6 @@ export class Request0<
     variant,
   }: {
     original: Request
-    headers: RequestHeaders
-    cookies: RequestCookies
     location: AnyLocation
     method: WideRequestMethod
     from: RequestFrom
@@ -58,8 +50,6 @@ export class Request0<
     variant: RequestVariant<TVariant, TError, TClient, TPublicdir>
   }) {
     this.original = original
-    this.headers = headers
-    this.cookies = cookies
     this.location = location
     this.method = method
     this.from = from
@@ -83,15 +73,110 @@ export class Request0<
   ): Request0<any, TError> {
     const { bunServer, id, isFromServer, state = {}, parent } = options
     const cache = parent?.cache ?? {}
-    // Parse headers
-    const headers: RequestHeaders = {}
-    original.headers.forEach((value, key) => {
-      headers[key] = value
-    })
 
-    // Parse cookies
+    const location = Route0.getLocation(original.url)
+    const method = original.method.toUpperCase() as WideRequestMethod
+
+    let cachedIps: string[] | undefined
+    let cachedIp: string | null | undefined
+    let cachedUserAgent: string | null | undefined
+    let cachedLocation: AnyLocation | null | undefined
+    let cachedScope: string | null | undefined
+
+    const getIps = (): string[] => {
+      if (cachedIps) {
+        return cachedIps
+      }
+      // Prioritize Bun's requestIP (more trusted, can't be spoofed)
+      const ipsSet = new Set<string>()
+      if (bunServer) {
+        try {
+          const requestIP = bunServer.requestIP(original)
+          if (requestIP?.address) {
+            ipsSet.add(requestIP.address)
+          }
+        } catch {
+          // Ignore errors if requestIP is not available
+        }
+      }
+      // Also collect IPs from headers (Bun's requestIP is prioritized as ips[0])
+      const forwardedFor = original.headers.get('x-forwarded-for')
+      if (forwardedFor) {
+        forwardedFor.split(',').forEach((ip) => {
+          ipsSet.add(ip.trim())
+        })
+      }
+      const realIp = original.headers.get('x-real-ip')
+      if (realIp) {
+        ipsSet.add(realIp)
+      }
+      const cfConnectingIp = original.headers.get('cf-connecting-ip')
+      if (cfConnectingIp) {
+        ipsSet.add(cfConnectingIp)
+      }
+      cachedIps = Array.from(ipsSet)
+      return cachedIps
+    }
+
+    const from = {
+      get ips(): string[] {
+        return getIps()
+      },
+      get ip(): string | null {
+        if (cachedIp !== undefined) {
+          return cachedIp
+        }
+        const ips = getIps()
+        cachedIp = ips[0] || null
+        return cachedIp
+      },
+      get userAgent(): string | null {
+        if (cachedUserAgent !== undefined) {
+          return cachedUserAgent
+        }
+        cachedUserAgent = original.headers.get('user-agent') || null
+        return cachedUserAgent
+      },
+      get location(): AnyLocation | null {
+        if (cachedLocation !== undefined) {
+          return cachedLocation
+        }
+        const referrerUrl = original.referrer || original.headers.get('referer')
+        cachedLocation = referrerUrl ? Route0.getLocation(referrerUrl) : null
+        return cachedLocation
+      },
+      get scope(): string | null {
+        if (cachedScope !== undefined) {
+          return cachedScope
+        }
+        cachedScope = original.headers.get('X-Point0-From-Scope') || null
+        return cachedScope
+      },
+      get server(): boolean {
+        return isFromServer
+      },
+    } satisfies RequestFrom
+
+    return new Request0({
+      original,
+      location,
+      method,
+      from,
+      id,
+      state,
+      cache,
+      parent,
+      variant: { type: 'unknown' },
+    })
+  }
+
+  private _cookies: RequestCookies | undefined
+  get cookies(): RequestCookies {
+    if (this._cookies) {
+      return this._cookies
+    }
+    const cookieHeader = this.original.headers.get('cookie')
     const cookies: RequestCookies = {}
-    const cookieHeader = original.headers.get('cookie')
     if (cookieHeader) {
       cookieHeader.split(';').forEach((cookie) => {
         const [rawName, ...valueParts] = cookie.trim().split('=')
@@ -106,95 +191,40 @@ export class Request0<
         }
       })
     }
+    this._cookies = cookies
+    return this._cookies
+  }
 
-    // Get location from URL
-    const location = Route0.getLocation(original.url)
-
-    // Extract method
-    const method = original.method.toUpperCase() as WideRequestMethod
-
-    // Extract IP addresses
-    // Prioritize Bun's requestIP (more trusted, can't be spoofed)
-    const ipsSet = new Set<string>()
-    if (bunServer) {
-      try {
-        const requestIP = bunServer.requestIP(original)
-        if (requestIP?.address) {
-          ipsSet.add(requestIP.address)
-        }
-      } catch {
-        // Ignore errors if requestIP is not available
-      }
+  private _headers: RequestHeaders | undefined
+  get headers(): RequestHeaders {
+    if (this._headers) {
+      return this._headers
     }
-
-    // Also collect IPs from headers (Bun's requestIP is prioritized as ips[0])
-    const forwardedFor = original.headers.get('x-forwarded-for')
-    if (forwardedFor) {
-      forwardedFor.split(',').forEach((ip) => {
-        ipsSet.add(ip.trim())
-      })
-    }
-    const realIp = original.headers.get('x-real-ip')
-    if (realIp) {
-      ipsSet.add(realIp)
-    }
-    const cfConnectingIp = original.headers.get('cf-connecting-ip')
-    if (cfConnectingIp) {
-      ipsSet.add(cfConnectingIp)
-    }
-
-    // Extract user agent
-    const userAgent = original.headers.get('user-agent') || null
-
-    // Extract from scope from headers (if available)
-    const fromScope = original.headers.get('X-Point0-From-Scope') || null
-
-    // Extract referrer location
-    const referrerUrl = original.referrer || original.headers.get('referer')
-    const referrerLocation = referrerUrl ? Route0.getLocation(referrerUrl) : null
-
-    const ips = Array.from(ipsSet)
-    const from: RequestFrom = {
-      ips,
-      ip: ips[0] || null,
-      userAgent,
-      location: referrerLocation,
-      scope: fromScope,
-      server: isFromServer,
-    }
-
-    return new Request0({
-      original,
-      headers,
-      cookies,
-      location,
-      method,
-      from,
-      id,
-      state,
-      cache,
-      parent,
-      variant: { type: 'unknown' },
+    const headers: RequestHeaders = {}
+    this.original.headers.forEach((value, key) => {
+      headers[key.toLowerCase()] = value
     })
+    this._headers = headers
+    return this._headers
   }
 
-  static get(): Request0 {
-    if (!_point0_env.side.is.server) {
-      throw new Error(
-        'You can not get request0 not in server. Please call Request0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
-      )
-    }
-    const request0 = _ssItems.__POINT0_REQUEST0__.get()
-    return request0
-  }
+  // static get(): Request0 {
+  //   if (!_point0_env.side.is.server) {
+  //     throw new Error(
+  //       'You can not get request0 not in server. Please call Request0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
+  //     )
+  //   }
+  //   const request0 = _ssItems.__POINT0_REQUEST0__.get()
+  //   return request0
+  // }
 
-  static getWeak(): Request0 | undefined {
-    try {
-      return _ssItems.__POINT0_REQUEST0__.getWeak()
-    } catch {
-      return undefined
-    }
-  }
+  // static getWeak(): Request0 | undefined {
+  //   try {
+  //     return _ssItems.__POINT0_REQUEST0__.getWeak()
+  //   } catch {
+  //     return undefined
+  //   }
+  // }
 }
 
 export type RequestMethod =

@@ -7,7 +7,7 @@ import {
   type RoutesPretty,
 } from '@devp0nt/route0'
 import type { GetPathInputByRoute, IsParamsOptional } from '@devp0nt/route0'
-import { _point0_env, _ssItems, ClientPoints, env, ErrorPoint0, log } from '@point0/core'
+import { _point0_env, _ssItems, env, ErrorPoint0, getClientPoints, log } from '@point0/core'
 import type {
   ClassLikeError0,
   NormalizedLazyPointsCollectionRecord,
@@ -200,6 +200,7 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
     onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => void
     onMouseLeave?: (e: React.MouseEvent<HTMLAnchorElement>) => void
   }
+  const clientPoints = getClientPoints()
   const finalTo = to || href || '#'
   const prefetchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const pointWithLocation = useMemo(() => {
@@ -209,7 +210,7 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
     if (finalTo.startsWith('#')) {
       return undefined
     }
-    return ClientPoints.getInstance()._getPageByHref(finalTo)
+    return clientPoints._getPageByHref(finalTo)
   }, [finalTo])
   const onMouseEnter = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -222,7 +223,7 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
         prefetchTimeoutRef.current = setTimeout(
           () => {
             prefetchTimeoutRef.current = null
-            void ClientPoints.getInstance().prefetchPage({
+            void clientPoints.prefetchPage({
               location: pointWithLocation.location,
               trigger: 'linkHover',
             })
@@ -653,7 +654,7 @@ export const createRedirectHelper = <
 
 export const createRouter = ({
   addHashToLocation,
-  routes = ClientPoints.getInstance().routes,
+  routes = getClientPoints().routes,
   Page404,
   pagesTree,
   hook = useBrowserLocation,
@@ -674,7 +675,7 @@ export const createRouter = ({
 }) => React.ReactElement) => {
   function RouterRoutes(): React.ReactElement {
     useNavigationLocationContext() // do not remove, it triggers rerender
-    return <RenderPagesTree pagesTree={pagesTree ?? ClientPoints.getInstance().pagesTree} Page404={Page404} />
+    return <RenderPagesTree pagesTree={pagesTree ?? getClientPoints().pagesTree} Page404={Page404} />
   }
 
   return function Router({
@@ -762,7 +763,7 @@ export const createRouterRoutes = ({
 }): (() => React.ReactElement) => {
   return function RouterRoutes() {
     useNavigationLocationContext() // do not remove, it triggers rerender
-    return <RenderPagesTree pagesTree={pagesTree ?? ClientPoints.getInstance().pagesTree} Page404={Page404} />
+    return <RenderPagesTree pagesTree={pagesTree ?? getClientPoints().pagesTree} Page404={Page404} />
   }
 }
 
@@ -775,7 +776,7 @@ export const createNavigation = <
   addHashToLocation,
   routes = (() => {
     try {
-      return ClientPoints.getInstance().routes
+      return getClientPoints().routes
     } catch {
       throw new Error('You should provide routes, or call ClientPoints.mount(points) before createNavigation')
     }

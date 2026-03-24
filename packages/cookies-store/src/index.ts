@@ -3,12 +3,12 @@ import {
   type DataTransformer,
   type DataTransformerExtended,
   env,
+  getEffects,
+  getRequest,
   Point0,
   toExtendedTransformer,
 } from '@point0/core'
 import type { CookieOptionsInput } from '@point0/core/effects'
-import { Effects } from '@point0/core/effects'
-import { Request0 } from '@point0/core/request0'
 import { useEffect, useRef, useState } from 'react'
 
 const encodeCookieName = (name: string): string => {
@@ -240,18 +240,23 @@ export class CookiesStore {
   }
 
   static readonly serverCookieGetter: CookiesStoreGetter = ((...args: [name: string] | []) => {
-    if (!env.side.is.server) {
-      throw new Error('serverCookieGetter is only available on the server')
+    if (env.side.is.server) {
+      const request0 = getRequest()
+      if (args.length === 0) {
+        return request0.cookies
+      }
+      return request0.cookies[args[0]]
     }
-    const request0 = Request0.get()
-    if (args.length === 0) {
-      return request0.cookies
-    }
-    return request0.cookies[args[0]]
+    throw new Error('serverCookieGetter is only available on the server')
   }) as CookiesStoreGetter
+
   static readonly serverCookieSetter: CookiesStoreSetter = (cookieOptionsInput) => {
-    const effects = Effects.get()
-    effects.set.cookies(cookieOptionsInput)
+    if (env.side.is.server) {
+      const effects = getEffects()
+      effects.set.cookies(cookieOptionsInput)
+      return
+    }
+    throw new Error('serverCookieSetter is only available on the server')
   }
 
   static set: CookiesStoreSetter = (cookieOptionsInput) => {

@@ -36,8 +36,7 @@ start0
 === REFACTOING 3000 ===
 
 redirect
-?× remove ClientPoints mount at all (NO! We need, it becouse createNavigation return Link etc which used in points itself, and we have recursive call)
-! ClientPoints.getInstace() find all and replace with getClientPoints()
+
 Проверить что в тестах я делаю поинт маунт на клиенте
 Нам в контексте нужен не адаптер навигецт а настоящий навигецт с транзишинами
 move to tree layout regexes
@@ -60,23 +59,16 @@ on qeruyFetch if result redirect, we do client redirect
 fetchServer shoul accept onRedirect instructions else it throws
 Разбить роутер на Стейт локейшен и хелперс провайдер
 
+richFetch detailed
+Sort points before generate
+? Бан билд клиент фикс сделать отключаемым
+Супер стор штучки должны сами себя подставлять на места
+Индекс хтмл при вайт билде дист путь должен определяться с учётом относительности вайт Рута и энжин диры
+Добавить вреквест лоадера и кткса и мидлвары TError верный и TVariant верный
+В энжин препаре также передавать сайд и скоуп а не превент клиент дев сервера
+Разобраться как сделать удобно виз, чтобы и лоадинг был, и в проп попало
 client frontend logger also prefix with [client]
 check if ClientOnly was imported from @point0/core
-При навигейте нужно записывать текущий навигец и досовершать его только, если другой не был вызван
-Локейшен серчи должны быть геттерами
-Реквест кукисы и хедеры должны быть гетерами
-В фетчерескоратить количество undefined в типах и оставить только варианты
-В фетчере подтюнить возможные варианты (опшинс, редирект)
-react-dom перенести в core
-
-Реквест должен содержать тайп потому что мы можем иметь кткс и хотеть что-то сделать только для пейджей к примеру, и по этому нам в том числе и нужно экзекьютить пейджи при фетче пкйджа
-Именно кверикей для лэйоута и пейджа мы должны генерить по распаршенному сёрчу
-page and layout search params should be parsed before sending to input to cut trash (better to use pick by schema)
-?! При фетче пейджа делать экзекьют, потому что там может быть выкинута какая-то ошибка
-?× Дата пусть будет дата не первый квери, а именно собственного лоадера
-
-Убедиться, что он фетч старт говори о типе реквеста а лучше сам реквест а в нём тип реквеста
-В энжин препаре также передавать сайд и скоуп а не превент клиент дна сервера
 
 types.ts file thet reexport only needed types
 index exports only realy used fns and helpers without types
@@ -155,6 +147,9 @@ shrink core/index.ts size, by remove code duplicates
 Все нулы поменять на фолсы
 Перепроверить все публичные названия методов и если надо то поменять
 ---
+? Компилер разрешить видеть просто летс как оторванный от поинт0 летс (lets(), а не Point0.lets?)
+? Сделать настройку сср once
+?× remove ClientPoints mount at all (NO! We need, it becouse createNavigation return Link etc which used in points itself, and we have recursive call)
 Континьев фикс сделать, с разрывом цепочки, ради сохранения положения в коде
 Если роуты переданы в клиент, то не будет 404 в случае ненахода поинта при запросе страницы (чтобы можно было использовать кастомный роутинг)
 Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп
@@ -327,6 +322,7 @@ binary, just throw error if some engine distdirs not inside firstlevel server di
 
 === ACTION ===
 ---
+manual action, where we retireve all ctx and aprse params manually
 Экзекьют валидация ол сетлед
 default endpoint path cusomization (before point, and inside point)
 
@@ -437,6 +433,7 @@ docs in comments
 LLM docs
 respect /v1/ at start
 Consumer–Source Eversion / Client-Server Eversion
+В доке прямо ставить красивый туду компонент в местах, где нужно подробнее
 Отметить в доке, что это всё спа и секретный контент нельзя оставлять на страницах
 Отметить также, что кткс вызывается тоьлко при условии наличия лоадеров, иначе он не вызовится, по-этому например для только авторизованных надо также использовать with обёртку
 
@@ -472,6 +469,7 @@ example zustand (usual/persistent)
 unwind and tailwind
 Хелпер для установки текущего вайфай айпи в энвы серверурл на деве
 capacitor live reload https://github.com/Cap-go/capacitor-live-reload
+Добавить агент склиы
 
 
 
@@ -774,6 +772,7 @@ and in loader settings is immutable
 
 === EXTENSIONS ===
 ? Экстеншены сразу замутить главное чтобы они возвращали поинт компатибл штуку
+Экстенжен просто летс самого поинт0 принимает первым аргументом эксту и остальные аргументы определяются самим инпутом эксты
 И добавить экстеншены, они дадутся последним генериком и могут добавлять методы реди поинтам, методы мидл поинтам, добавлять экстракт фн ситуации
 Разрешить летс первым аргументом передать что угодно типо свой билдер. Так мы можем и ресурсы тераформа создать, и мессенджер кастомный
 А потом и девопс штуки Аля летс ресурс, с такими же зависимостями как у инит CDKTF. Но пусть это делается через экстеншен, который позволяет доопределить всё включая опции энжины, кли команды, летс поинт тайпы, и прочее
