@@ -9,6 +9,7 @@ import pRetry from 'p-retry'
 import type { ViteDevServer } from 'vite'
 import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, ExtractedViteConfig, PortPolicy } from './config.js'
 import { killPort } from './port.js'
+import type { ExtractViteConfigFn } from './config.js'
 import type { CompilerOptions } from '@point0/core'
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
@@ -506,6 +507,10 @@ export const getViteRoot = ({
     return nodePath.dirname(viteConfig)
   }
   return undefined
+}
+
+export const defineViteConfig = (definition: ExtractViteConfigFn): ExtractViteConfigFn => {
+  return definition
 }
 
 export const createViteDevServer = async ({

@@ -219,10 +219,6 @@ function wrp(
 ): ItFn {
   const mark = toMark(options.prefetchPageOnLinkHover, options.prefetchPageOnNavigate)
   return async () => {
-    if (options.mode === 'build' && options.bundler === 'bun') {
-      // it is randmoly false negative tests becouse of unknown bun bug, after buld it set main index js file to layout not to index.client.ts
-      return
-    }
     await callback({ mark })
   }
 }

@@ -32,6 +32,7 @@ import { Publicdir } from './publicdir.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
 import type { EngineServer } from './server.js'
+import { fixDistIndexHtmlBootstrapEntryByBunMetafile } from './client.bun-build-fix.js'
 import {
   createViteDevServer,
   extractEngineClientBuildConfig,
@@ -883,6 +884,7 @@ try {
         target: 'browser',
         format: 'esm',
         splitting: true,
+        metafile: true,
         sourcemap: NODE_ENV === 'production' ? 'external' : 'inline',
         publicPath: '/',
         minify: NODE_ENV === 'production',
@@ -913,6 +915,11 @@ try {
         indexHtml: buildPaths.indexHtml,
         outdir: buildPaths.outdir,
         envConsts: envConstsWithBuilt,
+      })
+      await fixDistIndexHtmlBootstrapEntryByBunMetafile({
+        sourceIndexHtmlPath: buildPaths.indexHtml,
+        distOutdir: buildPaths.outdir,
+        buildOutput,
       })
       return buildOutput.outputs.map((output) => output.path)
     }

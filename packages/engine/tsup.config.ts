@@ -5,6 +5,7 @@ const general = {
   entry: [
     'src/cli.ts',
     'src/client.ts',
+    'src/client.bun-build-fix.ts',
     'src/config.ts',
     'src/engine.ts',
     'src/executor.ts',
