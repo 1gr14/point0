@@ -529,7 +529,7 @@ export class Fetcher<TError extends ErrorPoint0> {
     point: ReadyPoint
     transform: boolean
     location: ExactLocation
-    request: Request0
+    request: Request0<any, TError>
     requiredCtx: RequiredCtx
     effects: Effects
     serverStorageState: SuperStoreInternalValuesOrErrors
@@ -720,7 +720,7 @@ export class Fetcher<TError extends ErrorPoint0> {
     client: EngineClient<true, TError>
     point: PagePoint | undefined
     pageLocation: AnyLocation | ExactLocation
-    request: Request0
+    request: Request0<any, TError>
     requiredCtx: RequiredCtx
     effects: Effects
     serverStorageState: SuperStoreInternalValuesOrErrors

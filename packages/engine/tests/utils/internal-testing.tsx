@@ -332,7 +332,7 @@ export const createTestThings = async ({
   bindNotifyManager()
   const Wrapper = wrapper ?? undefined
   const routes = ClientPoints.createFromDefintion(points).routes
-  const { Router, RouterRoutes } = createNavigation({ routes })
+  const { Router, RouterRoutes } = createNavigation({ routes, forceRerender: true })
   const { QueryClientProvider, queryClient } = createQueryClient()
   const app =
     appProvided ??

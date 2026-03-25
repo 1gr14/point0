@@ -35,6 +35,7 @@ import type {
   RequestVariantEndpoint,
   RequestVariantPage,
   RequestVariantPublicdir,
+  RequestVariantType,
   WideRequestMethod,
 } from './request0.js'
 import type { GetByPath, SetByPath } from './utils.js'
@@ -1582,8 +1583,10 @@ export type CtxFnOptions<
   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRequestVariant extends RequestVariantType = any,
+  TError extends ErrorPoint0 = ErrorPoint0,
 > = ExposedCtxOrEmpty<TCtxPrev, TCtxExposedKeys> & {
-  request: Request0
+  request: Request0<TRequestVariant, TError>
   point: ReadyPoint | undefined
   set: ResponseEffectsSetHelper
   // execute: ServerExecuteFn
@@ -1598,6 +1601,8 @@ export type CtxFn<
   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRequestVariant extends RequestVariantType = any,
+  TError extends ErrorPoint0 = ErrorPoint0,
   TCtxAppend extends Ctx | undefined = Ctx | undefined,
 > = (
   props: CtxFnOptions<
@@ -1608,11 +1613,12 @@ export type CtxFn<
     TSearchSchema,
     TBodySchema,
     THeadersSchema,
-    TCookiesSchema
+    TCookiesSchema,
+    TRequestVariant,
+    TError
   >,
 ) => Promise<TCtxAppend> | TCtxAppend | Promise<void> | void
 
-// export type CtxFnOutput<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any>> = Awaited<ReturnType<TCtxFn>>
 export type ForbiddenCtxExposedKeys = 'request' | 'input' | 'inputRaw' | 'data' | 'set' | 'execute' | 'ctx'
 export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] extends [never]
   ? unknown
@@ -1621,17 +1627,16 @@ export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] exten
     : [Extract<TExposedKeys, ForbiddenCtxExposedKeys>] extends [never]
       ? unknown
       : ShowError<`Forbidden to expose ctx keys: ${Extract<TExposedKeys, ForbiddenCtxExposedKeys> & string}`>
-export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any>> =
+export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, any>> =
   Awaited<ReturnType<TCtxFn>> extends undefined | void
     ? undefined
-    : TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, infer TCtxAppend>
+    : TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, infer TCtxAppend>
       ? TCtxAppend
       : undefined
 
-export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any>> = Extract<
-  keyof InferCtxFnOutputCtxAppend<TCtxFn>,
-  string
->
+export type InferCtxFnOutputCtxExposedKeys<
+  TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, any>,
+> = Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>
 export type LoaderResponseFnOptions<
   TCtx extends Ctx = Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -1642,8 +1647,10 @@ export type LoaderResponseFnOptions<
   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRequestVariant extends RequestVariantType = any,
+  TError extends ErrorPoint0 = ErrorPoint0,
 > = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
-  request: Request0
+  request: Request0<TRequestVariant, TError>
   point: ReadyPoint | undefined
   data: DataOrUndefinedData<TServerLoaderOutput>
   set: ResponseEffectsSetHelper
@@ -1660,6 +1667,8 @@ export type LoaderResponseFn<
   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRequestVariant extends RequestVariantType = any,
+  TError extends ErrorPoint0 = ErrorPoint0,
   TNewServerLoaderOutput extends LoaderOutput | void = LoaderOutput,
 > = (
   options: LoaderResponseFnOptions<
@@ -1671,7 +1680,9 @@ export type LoaderResponseFn<
     TSearchSchema,
     TBodySchema,
     THeadersSchema,
-    TCookiesSchema
+    TCookiesSchema,
+    TRequestVariant,
+    TError
   >,
 ) =>
   | Promise<[number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]>
@@ -1689,8 +1700,10 @@ export type LoaderDataFnOptions<
   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRequestVariant extends RequestVariantType = any,
+  TError extends ErrorPoint0 = ErrorPoint0,
 > = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
-  request: Request0
+  request: Request0<TRequestVariant, TError>
   point: ReadyPoint | undefined
   data: DataOrUndefinedData<TServerLoaderOutput>
   set: ResponseEffectsSetHelper
@@ -1707,6 +1720,8 @@ export type LoaderDataFn<
   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRequestVariant extends RequestVariantType = any,
+  TError extends ErrorPoint0 = ErrorPoint0,
   TNewServerLoaderOutput extends Data | void = Data,
 > = (
   options: LoaderDataFnOptions<
@@ -1718,7 +1733,9 @@ export type LoaderDataFn<
     TSearchSchema,
     TBodySchema,
     THeadersSchema,
-    TCookiesSchema
+    TCookiesSchema,
+    TRequestVariant,
+    TError
   >,
 ) =>
   | Promise<[number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]>
@@ -1937,7 +1954,7 @@ export type DataTransformerExtended = {
 
 export type FetcherFetchDetailedResultGeneral<TError extends ErrorPoint0> = {
   response: Response
-  request: Request0
+  request: Request0<any, TError>
   scope: PointsScope
   error: TError | undefined
 }
@@ -2009,7 +2026,7 @@ export type MiddlewareFnOptions<
   TError extends ErrorPoint0,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = UndefinedRouteDefinition,
 > = {
-  request: Request0
+  request: Request0<any, TError>
   set: ResponseEffectsSetHelper
   scope: PointsScope
   next: MiddlewareNextFn<TError>

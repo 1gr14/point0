@@ -745,6 +745,7 @@ export const createRouter = ({
   hook = useBrowserLocation,
   navigate: adapterNavigate = browserNavigate,
   ErrorClass,
+  forceRerender,
 }: {
   addHashToLocation?: boolean
   routes?: RoutesPretty
@@ -753,6 +754,7 @@ export const createRouter = ({
   hook?: BaseLocationHook
   navigate?: AdapterNavigateFn
   ErrorClass?: ClassLikeError0<ErrorPoint0>
+  forceRerender?: boolean
   _navigate?: never
   _Redirect?: never
   _redirect?: never
@@ -762,7 +764,9 @@ export const createRouter = ({
   ssrLocation?: AnyLocation | undefined
 }) => React.ReactElement) => {
   function RouterRoutes(): React.ReactElement {
-    useNavigationLocationContext() // do not remove, it triggers rerender
+    if (forceRerender) {
+      useNavigationLocationContext()
+    }
     return <RenderPagesTree pagesTree={pagesTree ?? getClientPoints().pagesTree} Page404={Page404} />
   }
 
@@ -847,12 +851,16 @@ const DefaultPage404 = () => <>Page Not Found</>
 export const createRouterRoutes = ({
   pagesTree,
   Page404,
+  forceRerender,
 }: {
   pagesTree?: PagesTree
   Page404?: React.ComponentType
+  forceRerender?: boolean
 }): (() => React.ReactElement) => {
   return function RouterRoutes() {
-    useNavigationLocationContext() // do not remove, it triggers rerender
+    if (forceRerender) {
+      useNavigationLocationContext()
+    }
     return <RenderPagesTree pagesTree={pagesTree ?? getClientPoints().pagesTree} Page404={Page404} />
   }
 }
@@ -876,6 +884,7 @@ export const createNavigation = <
   hook = useBrowserLocation as TBaseLocationHook,
   ErrorClass = ErrorPoint0 as unknown as TErrorClass,
   navigate = browserNavigate as TAdapterNavigateFn,
+  forceRerender = false,
 }: {
   addHashToLocation?: boolean
   routes?: TRoutes
@@ -884,14 +893,15 @@ export const createNavigation = <
   hook?: TBaseLocationHook
   ErrorClass?: TErrorClass
   navigate?: TAdapterNavigateFn
+  forceRerender?: boolean
 } = {}) => {
   return {
     navigate: createNavigate({ routes, navigate, ErrorClass }),
     Link: createLink({ routes, hook }),
     NavLink: createNavLink({ routes, hook }),
     Redirect: createRedirectComponent({ routes, hook }),
-    Router: createRouter({ addHashToLocation, routes, Page404, pagesTree, hook, ErrorClass }),
-    RouterRoutes: createRouterRoutes({ pagesTree, Page404 }),
+    Router: createRouter({ addHashToLocation, routes, Page404, pagesTree, hook, ErrorClass, forceRerender }),
+    RouterRoutes: createRouterRoutes({ pagesTree, Page404, forceRerender }),
     redirect: createRedirectHelper({ routes, navigate, ErrorClass }),
   }
 }

@@ -1,4 +1,3 @@
-import type { RichFetchFn } from '@point0/core'
 import {
   _ssServerLog,
   type AnyNiceReadyPoint,
@@ -15,15 +14,15 @@ import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { EngineClient } from './client.js'
-import type { EngineOptions } from './config.js'
 import { parseEngineOptions } from './config.js'
-import type { FileGeneratorProcessResult, FilesGeneratorPointsFilesChangeWatcher } from './generator.js'
+import type { EngineOptions } from './config.js'
 import { FilesGenerator } from './generator.js'
+import type { FileGeneratorProcessResult, FilesGeneratorPointsFilesChangeWatcher } from './generator.js'
 import { killPort } from './port.js'
 import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
-import { FilesWatcher } from './watcher.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
+import { FilesWatcher } from './watcher.js'
 
 export class Engine<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -356,13 +355,13 @@ export class Engine<
 
   async fetchDetailed(
     ...args: TRequiredCtx extends UndefinedCtx
-      ? [request: Request, options?: { requiredCtx?: TRequiredCtx }]
-      : [request: Request, options: { requiredCtx: TRequiredCtx }]
+      ? [request: string | URL | Request, options?: { requiredCtx?: TRequiredCtx } & RequestInit]
+      : [request: string | URL | Request, options: { requiredCtx: TRequiredCtx } & RequestInit]
   ): Promise<FetcherFetchDetailedResult<ErrorPoint0>> {
     if (!this.isPrepared()) {
       throw new Error('Engine is not prepared. Please call await engine.prepare() first.')
     }
-    const request = args[0]
+    const request = args[0] instanceof Request ? args[0] : new Request(args[0], args[1])
     const { requiredCtx } = args[1] ?? {}
     const result = await this.server.fetchDetailed({
       request,
@@ -370,20 +369,24 @@ export class Engine<
     })
     return result
   }
-
   async fetch(
     ...args: TRequiredCtx extends UndefinedCtx
-      ? [request: Request, options?: { requiredCtx?: TRequiredCtx }]
-      : [request: Request, options: { requiredCtx: TRequiredCtx }]
+      ? [request: string | URL | Request, options?: { requiredCtx?: TRequiredCtx } & RequestInit]
+      : [request: string | URL | Request, options: { requiredCtx: TRequiredCtx } & RequestInit]
   ): Promise<Response> {
     const result = await this.fetchDetailed(...args)
     return result.response
   }
 
-  richFetch: RichFetchFn = async (...args) => {
-    const request = args[0] instanceof Request ? args[0] : new Request(args[0], args[1])
-    return await (this.fetch as any)(request)
-  }
+  // richFetch: RichFetchFn = async (...args) => {
+  //   const request = args[0] instanceof Request ? args[0] : new Request(args[0], args[1])
+  //   return await (this.fetch as any)(request)
+  // }
+
+  // richFetchDetailed: RichFetchFn = async (...args) => {
+  //   const request = args[0] instanceof Request ? args[0] : new Request(args[0], args[1])
+  //   return await (this.fetchDetailed as any)(request)
+  // }
 
   async clean(): Promise<void> {
     await Promise.all([...this.clients.map(async (client) => await client.clean()), this.server.clean()])

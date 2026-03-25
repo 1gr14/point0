@@ -3936,6 +3936,8 @@ export class Point0<
       TBodySchema,
       THeadersSchema,
       TCookiesSchema,
+      'endpoint',
+      TError,
       Ctx | undefined
     >,
   >(
@@ -3977,7 +3979,9 @@ export class Point0<
       TBodySchema,
       THeadersSchema,
       TCookiesSchema,
-      Ctx
+      'endpoint',
+      TError,
+      Ctx | undefined
     >,
   >(
     ctxFn: TCtxFn &
@@ -4022,7 +4026,9 @@ export class Point0<
       TBodySchema,
       THeadersSchema,
       TCookiesSchema,
-      Ctx
+      'endpoint',
+      TError,
+      Ctx | undefined
     >,
     TCtxFnExposedKeys extends Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>,
   >(
@@ -4168,6 +4174,8 @@ export class Point0<
           TBodySchema,
           THeadersSchema,
           TCookiesSchema,
+          'endpoint',
+          TError,
           TNewServerLoaderOutput
         > &
           AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>
@@ -4182,6 +4190,8 @@ export class Point0<
           TBodySchema,
           THeadersSchema,
           TCookiesSchema,
+          'endpoint',
+          TError,
           TNewServerLoaderOutput
         > &
           AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>, // AssertNotUnknownLoaderOutput<TNewServerLoaderOutput>
@@ -4211,8 +4221,8 @@ export class Point0<
   >
   loader(
     loaderFn:
-      | LoaderDataFn<any, any, any, any, any, any, any, any, any, any>
-      | LoaderResponseFn<any, any, any, any, any, any, any, any, any, any>
+      | LoaderDataFn<any, any, any, any, any, any, any, any, any, any, any, any>
+      | LoaderResponseFn<any, any, any, any, any, any, any, any, any, any, any, any>
       | undefined,
   ) {
     return this._continue({
@@ -7029,6 +7039,8 @@ export class Point0<
       TBodySchema,
       THeadersSchema,
       TCookiesSchema,
+      'endpoint',
+      TError,
       TNewServerLoaderOutput
     > &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>,
@@ -7083,7 +7095,7 @@ export class Point0<
     TQueriesDefinitions
   >
   action(...args: any[]) {
-    const [loaderFn] = args as [LoaderResponseFn<any, any, any, any, any, any, any, any, any> | undefined]
+    const [loaderFn] = args as [LoaderResponseFn<any, any, any, any, any, any, any, any, any, any, any> | undefined]
     const point = this._continue({
       type: 'action',
       _letsReadyPointType: undefined,

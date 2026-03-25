@@ -276,10 +276,10 @@ describe('midleware', () => {
       })
       .root()
     const { engine } = await createTestThings({ ssr: true, points: [root] })
-    const response1 = await engine.richFetch('http://localhost:3001/zxc/123', { method: 'POST' })
+    const response1 = await engine.fetch('http://localhost:3001/zxc/123', { method: 'POST' })
     expect(response1.status).toBe(201)
     expect(await response1.json()).toEqual({ id: '123' })
-    const response2 = await engine.richFetch('http://localhost:3001/zxc/123', { method: 'PUT' })
+    const response2 = await engine.fetch('http://localhost:3001/zxc/123', { method: 'PUT' })
     expect(response2.status).toBe(201)
     expect(await response2.json()).toEqual({ id: '123' })
   })
@@ -293,10 +293,10 @@ describe('midleware', () => {
       })
       .root()
     const { engine } = await createTestThings({ ssr: true, points: [root] })
-    const response1 = await engine.richFetch('http://localhost:3001/zxc/123', { method: 'POST' })
+    const response1 = await engine.fetch('http://localhost:3001/zxc/123', { method: 'POST' })
     expect(response1.status).toBe(201)
     expect(await response1.json()).toEqual({ id: '123' })
-    const response2 = await engine.richFetch('http://localhost:3001/zxc/123', {
+    const response2 = await engine.fetch('http://localhost:3001/zxc/123', {
       method: 'PUT',
       headers: { Accept: 'application/json' },
     })
@@ -314,15 +314,15 @@ describe('midleware', () => {
       .root()
 
     const { engine } = await createTestThings({ ssr: true, points: [root] })
-    const response1 = await engine.richFetch('http://localhost:3001/zxc/123', { method: 'POST' })
+    const response1 = await engine.fetch('http://localhost:3001/zxc/123', { method: 'POST' })
     expect(response1.status).toBe(201)
     expect(await response1.json()).toEqual({ id: '123' })
 
-    const response2 = await engine.richFetch('http://localhost:3001/zxc/123', { method: 'PUT' })
+    const response2 = await engine.fetch('http://localhost:3001/zxc/123', { method: 'PUT' })
     expect(response2.status).toBe(201)
     expect(await response2.json()).toEqual({ id: '123' })
 
-    const response3 = await engine.richFetch('http://localhost:3001/zxc/123', {
+    const response3 = await engine.fetch('http://localhost:3001/zxc/123', {
       method: 'DELETE',
       headers: { Accept: 'application/json' },
     })

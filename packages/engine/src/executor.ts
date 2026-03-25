@@ -45,7 +45,7 @@ import type { Engine } from './engine.js'
 
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError extends ErrorPoint0 = ErrorPoint0> {
   engine: Engine<RequiredCtx, TError, true>
-  request: Request0
+  request: Request0<any, TError>
   effects: Effects
   requiredCtx: TRequiredCtx
   serverStorageState: SuperStoreInternalValues
@@ -59,7 +59,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     effects,
   }: {
     engine: Engine<RequiredCtx, TError, true>
-    request: Request0
+    request: Request0<any, TError>
     requiredCtx: TRequiredCtx
     // serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
     serverStorageState: SuperStoreInternalValues
@@ -81,7 +81,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     serverStorageState: providedServerStorageState,
   }: {
     engine: Engine<RequiredCtx, TError, true>
-    request: Request0
+    request: Request0<any, TError>
     requiredCtx: TRequiredCtx
     effects: Effects
     serverStorageState: SuperStoreInternalValuesOrErrors
@@ -89,7 +89,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     const serverStorageState = Object.assign(providedServerStorageState, {
       __POINT0_HYDRATION_FINISHED__: false,
       __POINT0_FAKE_CLIENT__: undefined,
-      __POINT0_FETCH_FN__: engine.richFetch.bind(engine),
+      __POINT0_FETCH_FN__: engine.fetch.bind(engine),
       __POINT0_REQUEST0__: request,
       __POINT0_EFFECTS__: effects,
       __POINT0_CLIENT_POINTS__: undefined,
