@@ -102,6 +102,16 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       __POINT0_IS_SSR_IN_PROGRESS__: false,
       __POINT0_CURRENT_LOCATION__: new Error('Current location will exists only on ssr phase') as never,
       __POINT0_NAVIGATION_CONTEXT__: new Error('Navigation context will exists only on ssr phase') as never,
+      __POINT0_NAVIGATION_HELPERS__: new Error('Navigation helpers will exists only on ssr phase') as never,
+      __POINT0_NAVIGATION_PAGE_STATE__: new Error('Navigation page state will exists only on ssr phase') as never,
+      __POINT0_CURRENT_NAVIGATE_ID__: new Error('Current navigate id will exists only on ssr phase') as never,
+      __POINT0_NAVIGATION_TRANSITION_STATE__: new Error(
+        'Navigation transition state will exists only on ssr phase',
+      ) as never,
+      __POINT0_LOAD_PAGE_COMPONENT_PROMISES__: new Error(
+        'Load page component promises will exists only on ssr phase',
+      ) as never,
+      __POINT0_PREFETCH_PAGE_PROMISES__: new Error('Prefetch page promises will exists only on ssr phase') as never,
       __POINT0_UNHEAD_SERVER_HEAD__: createHead(),
     } satisfies SuperStoreInternalValues)
     return new Executor<TRequiredCtx, TError>({

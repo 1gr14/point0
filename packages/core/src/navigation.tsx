@@ -17,6 +17,7 @@ import { getClientPoints } from './helpers.js'
 import { _ssItems } from './internals.js'
 import { superstore } from './super-store.js'
 import type { IfAnyThenElse, PrefetchPagePolicy } from './types.js'
+import { generateId } from './utils.js'
 
 export type SpecialNavigateOptions = {
   prefetch?: PrefetchPagePolicy
@@ -366,6 +367,8 @@ export async function navigateWithTransitions<
   options?: SpecialNavigateOptions
   ErrorClass?: TErrorClass
 }): NavigateWithTransitionsReturnType<TErrorClass> {
+  const navigateId = generateId()
+  _ssItems.__POINT0_CURRENT_NAVIGATE_ID__.set(navigateId)
   const navigationContext = getNavigationContext()
   const to = (() => {
     if (providedTo.startsWith('#')) {
@@ -386,18 +389,26 @@ export async function navigateWithTransitions<
       policy: options?.prefetch,
       trigger: 'navigate',
     })
+    if (navigateId !== _ssItems.__POINT0_CURRENT_NAVIGATE_ID__.get()) {
+      return { location, error: new Error('Another navigate has been started') as InstanceType<TErrorClass> }
+    }
     navigationContext.setStatus('transitioning')
     await navigate()
     navigationContext.setStatus('idle')
     navigationContext.setNextLocation(null)
+    _ssItems.__POINT0_CURRENT_NAVIGATE_ID__.set(undefined)
     return { location, error: undefined }
   } catch (error) {
+    if (navigateId !== _ssItems.__POINT0_CURRENT_NAVIGATE_ID__.get()) {
+      return { location, error: new Error('Another navigate has been started') as InstanceType<TErrorClass> }
+    }
     const error0 = ErrorClass.from(error) as InstanceType<TErrorClass>
     navigationContext.setError(error0)
     navigationContext.setStatus('transitioning')
     await navigate()
     navigationContext.setStatus('idle')
     navigationContext.setNextLocation(null)
+    _ssItems.__POINT0_CURRENT_NAVIGATE_ID__.set(undefined)
     return { location, error: error0 }
   }
 }

@@ -1,17 +1,17 @@
-import type { AnyLocation } from '@devp0nt/route0'
+import type { AnyLocation, ExactLocation } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import type { SSRHeadPayload, Unhead } from '@unhead/react/server'
 import type { ResolvableHead } from 'unhead/types'
 import type { ClientPoints } from './client-points.js'
 import type { Effects } from './effects.js'
+import { __POINT0_IS_SSR_IN_PROGRESS__ } from './env.js'
 import type { ErrorPoint0 } from './error.js'
+import { ssrRedirectTask, type NavigationContextValue } from './navigation.js'
 import { __POINT0_QUERY_CLIENT__ } from './query-client.js'
 import type { Request0 } from './request0.js'
-import { ssrRedirectTask, type NavigationContextValue } from './navigation.js'
 import { superstore } from './super-store.js'
 import type { SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './super-store.js'
-import type { PointsScope, RichFetchFn } from './types.js'
-import { __POINT0_IS_SSR_IN_PROGRESS__ } from './env.js'
+import type { LayoutPoint, PagePoint, PointsScope, RichFetchFn } from './types.js'
 
 const initUndefined = () => undefined as never
 
@@ -55,9 +55,46 @@ export const _ssItems = {
     initUndefined,
     'clientServerIsolated',
   ),
+  __POINT0_CURRENT_NAVIGATE_ID__: superstore.define<string | undefined>(
+    '__POINT0_CURRENT_NAVIGATE_ID__',
+    initUndefined,
+    'clientServerIsolated',
+  ),
   __POINT0_NAVIGATION_CONTEXT__: superstore.define<NavigationContextValue>(
     '__POINT0_NAVIGATION_CONTEXT__',
     initUndefined,
+    'clientServerIsolated',
+  ),
+  __POINT0_NAVIGATION_HELPERS__: superstore.define<NavigationContextValue>(
+    '__POINT0_NAVIGATION_HELPERS__',
+    initUndefined,
+    'clientServerIsolated',
+  ),
+  __POINT0_NAVIGATION_PAGE_STATE__: superstore.define<NavigationContextValue>(
+    '__POINT0_NAVIGATION_PAGE_STATE__',
+    initUndefined,
+    'clientServerIsolated',
+  ),
+  __POINT0_NAVIGATION_TRANSITION_STATE__: superstore.define<NavigationContextValue>(
+    '__POINT0_NAVIGATION_TRANSITION_STATE__',
+    initUndefined,
+    'clientServerIsolated',
+  ),
+  __POINT0_LOAD_PAGE_COMPONENT_PROMISES__: superstore.define<
+    Map<
+      string,
+      Promise<
+        | {
+            page: PagePoint
+            layouts: LayoutPoint[]
+          }
+        | undefined
+      >
+    >
+  >('__POINT0_LOAD_PAGE_COMPONENT_PROMISES__', () => new Map(), 'clientServerIsolated'),
+  __POINT0_PREFETCH_PAGE_PROMISES__: superstore.define<Map<string, Promise<void>>>(
+    '__POINT0_PREFETCH_PAGE_PROMISES__',
+    () => new Map(),
     'clientServerIsolated',
   ),
   __POINT0_UNHEAD_SERVER_HEAD__: superstore.define<Unhead<ResolvableHead, SSRHeadPayload>>(

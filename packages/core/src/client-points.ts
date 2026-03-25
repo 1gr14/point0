@@ -18,6 +18,7 @@ import type {
 } from './points-manager.js'
 import type {
   DataTransformerExtended,
+  FetchOptions,
   LayoutPoint,
   MiddlewareFn,
   PagePoint,
@@ -338,7 +339,6 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
         point: ReadyPoint | (() => Promise<ReadyPoint>)
         name: PointName
         type: PointType
-
         FC: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
         pageLocation: ExactLocation
         layouts: string[]
@@ -369,23 +369,52 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     return undefined
   }
 
-  static _loadPagePromises = new Map<
-    string,
-    Promise<
+  private readonly _loadPage = async (
+    options:
       | {
-          page: PagePoint
-          layouts: LayoutPoint[]
-          pageLocation: ExactLocation
+          location: AnyLocation
         }
-      | undefined
-    >
-  >()
+      | { suitable: NonNullable<ReturnType<ClientPoints['getPage']>> },
+  ): Promise<
+    | {
+        page: PagePoint
+        layouts: LayoutPoint[]
+      }
+    | undefined
+  > => {
+    const suitable = 'suitable' in options ? options.suitable : this.getPage({ location: options.location })
+    if (!suitable) {
+      return undefined
+    }
+    const page: ReadyPoint = typeof suitable.point === 'function' ? await suitable.point() : suitable.point
 
-  readonly loadPage = async ({
-    location,
-  }: {
-    location: AnyLocation
-  }): Promise<
+    // Prefetch the (possibly lazy) page component
+    await ClientPoints.prefetchLazyComponent(suitable.FC)
+
+    const layouts: ReadyPoint[] = await Promise.all(
+      this.manager.collection
+        .filter((p) => p.type === 'layout' && suitable.layouts.includes(p.name))
+        .map(async (layout) => {
+          await ClientPoints.prefetchLazyComponent(layout.FC)
+          return typeof layout.point === 'function' ? (await layout.point()).point : layout.point.point
+        }),
+    )
+
+    // TODO: ? maybe we should replace in pagesTree and points this page and layouts points, becouse it is loaded now
+
+    return {
+      page: page as PagePoint,
+      layouts: layouts as LayoutPoint[],
+    }
+  }
+
+  readonly loadPage = async (
+    options:
+      | {
+          location: AnyLocation
+        }
+      | { suitable: NonNullable<ReturnType<ClientPoints['getPage']>> },
+  ): Promise<
     | {
         page: PagePoint
         layouts: LayoutPoint[]
@@ -393,93 +422,62 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
       }
     | undefined
   > => {
-    const locationString = JSON.stringify(location)
-    const exPromise = ClientPoints._loadPagePromises.get(locationString)
-    if (exPromise) {
-      return await exPromise
+    const suitable = 'suitable' in options ? options.suitable : this.getPage({ location: options.location })
+    if (!suitable) {
+      return undefined
     }
-    const promise = (async () => {
-      const suitable = this.getPage({ location })
-      if (!suitable) {
+    const loadPagePromises = _ssItems.__POINT0_LOAD_PAGE_COMPONENT_PROMISES__.getWeak()
+    const hash = suitable.name
+    const exPromise = loadPagePromises?.get(hash)
+    if (exPromise) {
+      const result = await exPromise
+      if (!result) {
         return undefined
       }
-      const page: ReadyPoint = typeof suitable.point === 'function' ? await suitable.point() : suitable.point
-
-      // Prefetch the (possibly lazy) page component
-      await ClientPoints.prefetchLazyComponent(suitable.FC)
-
-      const layouts: ReadyPoint[] = await Promise.all(
-        this.manager.collection
-          .filter((p) => p.type === 'layout' && suitable.layouts.includes(p.name))
-          .map(async (layout) => {
-            await ClientPoints.prefetchLazyComponent(layout.FC)
-            return typeof layout.point === 'function' ? (await layout.point()).point : layout.point.point
-          }),
-      )
-
-      // TODO: ? maybe we should replace in pagesTree and points this page and layouts points, becouse it is loaded now
-
-      return {
-        page: page as PagePoint,
-        layouts: layouts as LayoutPoint[],
-        pageLocation: suitable.pageLocation,
-      }
-    })()
-    ClientPoints._loadPagePromises.set(locationString, promise)
-    try {
-      const result = await promise
-      ClientPoints._loadPagePromises.delete(locationString)
-      return result
-    } catch (error) {
-      ClientPoints._loadPagePromises.delete(locationString)
-      throw error
+      return { ...result, pageLocation: suitable.pageLocation }
     }
+    const newPromise = this._loadPage({ suitable })
+    loadPagePromises?.set(hash, newPromise)
+    const result = await newPromise
+    if (!result) {
+      return undefined
+    }
+    return { ...result, pageLocation: suitable.pageLocation }
   }
-
-  static _pagesPrefetchingPromises = new Map<string, Promise<PagePoint | undefined>>()
 
   prefetchPage = async ({
     location,
     queryClient,
-    policy: providedPolicy,
+    policy,
     trigger,
+    fetchOptions,
+    force,
   }: {
     location: AnyLocation
     queryClient?: QueryClient
     policy?: PrefetchPagePolicy
     trigger?: 'navigate' | 'linkHover'
+    fetchOptions?: FetchOptions
+    force?: boolean
   }): Promise<PagePoint | undefined> => {
+    // TODO: somehow do this requests in parallel
+    // problem here, that we should know search params keys to generate correct queryKey
+    // it can be solved by adding to client points definition array of search params
+    // but we now can not detect search params keys by static analysis, only runtime
     const loadPageResult = await this.loadPage({ location })
     if (!loadPageResult) {
       return undefined
     }
-
     const { page } = loadPageResult
-    const policy = page._getPrefetchPagePolicy(trigger, providedPolicy)
-
-    const locationAndPolicyString = JSON.stringify({ location, policy })
-    const exPromise = ClientPoints._pagesPrefetchingPromises.get(locationAndPolicyString)
-    if (exPromise) {
-      return await exPromise
-    }
-    const promise = (async () => {
-      await page.prefetchPage(page._getUnsafeInputRawByLocation(location), {
-        queryClient,
-        // location,
-        policy,
-        trigger,
-      })
-      return page
-    })()
-    ClientPoints._pagesPrefetchingPromises.set(locationAndPolicyString, promise)
-    try {
-      const result = await promise
-      ClientPoints._pagesPrefetchingPromises.delete(locationAndPolicyString)
-      return result
-    } catch (error) {
-      ClientPoints._pagesPrefetchingPromises.delete(locationAndPolicyString)
-      throw error
-    }
+    await page.prefetchPage(page._getUnsafeInputRawByLocation(loadPageResult.pageLocation), {
+      queryClient,
+      // location,
+      policy,
+      trigger,
+      fetchOptions,
+      force,
+    })
+    return page
   }
 
   _getPageByHref = (

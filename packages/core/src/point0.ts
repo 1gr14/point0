@@ -5,10 +5,12 @@ import type {
   AnyRoute,
   AnyRouteOrDefinition,
   CallableRoute,
+  ExactLocation,
   HasParams,
   ParamsOutput,
   UnknownSearchInput,
   UnknownSearchParsed,
+  WeakAncestorLocation,
 } from '@devp0nt/route0'
 import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
@@ -23,6 +25,7 @@ import type {
 } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import * as React from 'react'
+import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
 import { createContext, useContextSelector } from 'use-context-selector'
 import type { Context } from 'use-context-selector'
@@ -7495,7 +7498,9 @@ export class Point0<
     }
   }
 
-  private _getUnsafeSelfParamsByAnotherLocation(location: AnyLocation): ParamsOutput<AnyRouteOrDefinition> {
+  private _getUnsafeSelfParamsByAnotherLocation(
+    location: ExactLocation | WeakAncestorLocation,
+  ): ParamsOutput<AnyRouteOrDefinition> {
     const route = this.route
     if (!route) {
       return {}
@@ -7503,6 +7508,7 @@ export class Point0<
     const selfParamsKeys = route.getParamsKeys()
     return selfParamsKeys.reduce<Record<string, string | undefined>>(
       (acc, key) => {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (location.params && key in location.params) {
           acc[key] = location.params[key as keyof typeof location.params]
         }
@@ -7512,7 +7518,7 @@ export class Point0<
     )
   }
 
-  _getUnsafeInputRawByLocation(location: AnyLocation): InputRaw {
+  _getUnsafeInputRawByLocation(location: ExactLocation | WeakAncestorLocation): InputRaw {
     const selfParams = this._getUnsafeSelfParamsByAnotherLocation(location)
     return {
       ...selfParams,
@@ -9929,54 +9935,21 @@ export class Point0<
     hydrate(queryClient, data.dehydratedState)
   }
 
-  async prefetchPage(
-    ...args: IsFinalInputOptional<
-      TPointType,
-      TServerInputSchema,
-      TClientInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema
-    > extends true
-      ? [
-          input?: FinalInputRawOrUndefined<
-            TPointType,
-            TServerInputSchema,
-            TClientInputSchema,
-            TParamsSchema,
-            TSearchSchema,
-            TBodySchema
-          >,
-          options?: {
-            // location?: AnyLocation
-            queryClient?: QueryClient
-            fetchOptions?: FetchOptions
-            force?: boolean
-            policy?: PrefetchPagePolicy
-            trigger?: 'navigate' | 'linkHover'
-          },
-        ]
-      : [
-          input: FinalInputRawOrUndefined<
-            TPointType,
-            TServerInputSchema,
-            TClientInputSchema,
-            TParamsSchema,
-            TSearchSchema,
-            TBodySchema
-          >,
-          options?: {
-            // location?: AnyLocation
-            queryClient?: QueryClient
-            fetchOptions?: FetchOptions
-            force?: boolean
-            policy?: PrefetchPagePolicy
-            trigger?: 'navigate' | 'linkHover'
-          },
-        ]
-  ): Promise<void> {
-    const [input = {}, options = {}] = args
-    // later we will have prefetchComponent and prefetchWrapper, so there will be props
+  private async _prefetchPage({
+    input,
+    options,
+  }: {
+    input: InputRaw
+    options: {
+      // location?: AnyLocation
+      queryClient?: QueryClient
+      fetchOptions?: FetchOptions
+      force?: boolean
+      policy?: PrefetchPagePolicy
+      trigger?: 'navigate' | 'linkHover'
+    }
+  }): Promise<void> {
+    // later may be we will have prefetchComponent and prefetchWrapper, so there will be props
     const outerProps = {} as Props
     const eventData = {
       point: this as never as AnyPoint,
@@ -10165,6 +10138,77 @@ export class Point0<
       this._emit('pointPrefetchPageSettled', { ...eventData, error: error0 })
       this._emit('pointPrefetchPageError', { ...eventData, error: error0 })
       throw error0
+    }
+  }
+
+  async prefetchPage(
+    ...args: IsFinalInputOptional<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    > extends true
+      ? [
+          input?: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+          options?: {
+            // location?: AnyLocation
+            queryClient?: QueryClient
+            fetchOptions?: FetchOptions
+            force?: boolean
+            policy?: PrefetchPagePolicy
+            trigger?: 'navigate' | 'linkHover'
+          },
+        ]
+      : [
+          input: FinalInputRawOrUndefined<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+          options?: {
+            // location?: AnyLocation
+            queryClient?: QueryClient
+            fetchOptions?: FetchOptions
+            force?: boolean
+            policy?: PrefetchPagePolicy
+            trigger?: 'navigate' | 'linkHover'
+          },
+        ]
+  ): Promise<void> {
+    const prefetchPagePromises = _ssItems.__POINT0_PREFETCH_PAGE_PROMISES__.get()
+    const [input = {}, options = {}] = args
+    const policy = this._getPrefetchPagePolicy(options.trigger, options.policy)
+    const hash =
+      stringify({ input, id: this.toString(), policy }) ||
+      JSON.stringify({ input: 'invalid', id: this.toString(), policy })
+    const exPromise = prefetchPagePromises.get(hash)
+    if (exPromise) {
+      await exPromise
+      return
+    }
+    const newPromise = this._prefetchPage({
+      input,
+      options,
+    })
+    prefetchPagePromises.set(hash, newPromise)
+    try {
+      await newPromise
+      prefetchPagePromises.delete(hash)
+    } catch (error) {
+      prefetchPagePromises.delete(hash)
+      throw error
     }
   }
 
@@ -10998,7 +11042,9 @@ export class Point0<
       TMapperOutput
     >,
   ): React.ReactNode => {
-    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
+    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>() as ExactLocation<
+      CurrentRouteDefinition<TRouteDefinition>
+    >
 
     const { inputRaw, restProps } = React.useMemo<{
       inputRaw: InputRaw
@@ -11115,7 +11161,7 @@ export class Point0<
       TMapperOutput
     >,
   ): React.ReactNode => {
-    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
+    const location = useLocation() as WeakAncestorLocation<CurrentRouteDefinition<TRouteDefinition>>
 
     const { inputRaw, children, restProps } = React.useMemo<{
       inputRaw: InputRaw
