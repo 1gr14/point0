@@ -1295,6 +1295,8 @@ export type IfAnyThenElse<T, Then, Else = T> = 0 extends 1 & T ? Then : Else
 export type IsAny<T> = 0 extends 1 & T ? true : false
 
 export type IfNeverThen<TElse, TThen> = [TElse] extends [never] ? TThen : TElse
+export type IsUndefined<T> = T extends undefined ? true : false
+// export type IfVoidThen<TThen, TElse> = IsUndefined<TThen> extends false ? TThen : TElse
 
 export type FetchFn = (request: Request) => Promise<Response>
 export type RichFetchFn = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
@@ -1608,9 +1610,9 @@ export type CtxFn<
     THeadersSchema,
     TCookiesSchema
   >,
-) => Promise<TCtxAppend> | TCtxAppend
+) => Promise<TCtxAppend> | TCtxAppend | Promise<void> | void
 
-export type CtxFnOutput<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any>> = Awaited<ReturnType<TCtxFn>>
+// export type CtxFnOutput<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any>> = Awaited<ReturnType<TCtxFn>>
 export type ForbiddenCtxExposedKeys = 'request' | 'input' | 'inputRaw' | 'data' | 'set' | 'execute' | 'ctx'
 export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] extends [never]
   ? unknown
@@ -1620,7 +1622,11 @@ export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] exten
       ? unknown
       : ShowError<`Forbidden to expose ctx keys: ${Extract<TExposedKeys, ForbiddenCtxExposedKeys> & string}`>
 export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any>> =
-  TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, infer TCtxAppend> ? TCtxAppend : never
+  Awaited<ReturnType<TCtxFn>> extends undefined | void
+    ? undefined
+    : TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, infer TCtxAppend>
+      ? TCtxAppend
+      : undefined
 
 export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any>> = Extract<
   keyof InferCtxFnOutputCtxAppend<TCtxFn>,
@@ -2219,6 +2225,7 @@ export type NiceRootStagePoint<
   // | 'onPrefetchPage'
   | 'prefetchPageOnNavigate'
   | 'prefetchPageOnLinkHover'
+  | 'prefetchPagePolicy'
   | 'point'
   | 'type'
   | 'Infer'
@@ -2416,6 +2423,7 @@ export type NiceBaseStagePoint<
   | 'onPrefetchPage'
   | 'prefetchPageOnNavigate'
   | 'prefetchPageOnLinkHover'
+  | 'prefetchPagePolicy'
   | 'point'
   | 'type'
   | 'Infer'
@@ -2495,6 +2503,7 @@ export type NicePageStagePoint<
   | 'onPrefetchPage'
   | 'prefetchPageOnNavigate'
   | 'prefetchPageOnLinkHover'
+  | 'prefetchPagePolicy'
   | 'point'
   | 'type'
   | 'Infer'
@@ -2924,6 +2933,7 @@ export type NiceLayoutStagePoint<
   | 'onPrefetchPage'
   | 'prefetchPageOnNavigate'
   | 'prefetchPageOnLinkHover'
+  | 'prefetchPagePolicy'
   | 'point'
   | 'type'
   | 'Infer'

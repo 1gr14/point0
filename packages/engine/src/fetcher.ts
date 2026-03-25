@@ -3,7 +3,7 @@ import { Route0, type AnyLocation, type AnyRoute, type ExactLocation, type Known
 import {
   _getSsItemsWithRestErrors,
   _point0_env,
-  _ssItems,
+  _ss,
   _ssRunWithServerStorageState,
   blankDataTransformerExtended,
   ErrorPoint0,
@@ -252,7 +252,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           const staticResponse = await publicdir.fetch({ request })
           if (staticResponse) {
             const scope = publicdir.scope
-            const variant: RequestVariantPublicdir<Publicdir<true> | undefined> = {
+            const variant: RequestVariantPublicdir<Publicdir<true, TError> | undefined> = {
               type: 'publicdir',
               publicdir,
               response: staticResponse,
@@ -1082,7 +1082,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         __POINT0_REQUEST0__: prepareFetchResult.request,
         __POINT0_EFFECTS__: prepareFetchResult.effects,
         // in case of recursive server response we want preserve query client to keep state
-        __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: _ssItems.__POINT0_QUERY_CLIENT__.getWeak(),
+        __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: _ss.__POINT0_QUERY_CLIENT__.getWeak(),
       },
       'Value "%s" not exists in middleware call, this value accessible only in loader, ctx, components etc',
     )
@@ -1206,7 +1206,7 @@ type PrepareFetchResultGeneral<TError extends ErrorPoint0> = {
 }
 type PrepareFetchResult<TError extends ErrorPoint0> =
   | (PrepareFetchResultGeneral<TError> & {
-      variant: RequestVariantPublicdir<Publicdir<true> | undefined>
+      variant: RequestVariantPublicdir<Publicdir<true, TError> | undefined>
     })
   | (PrepareFetchResultGeneral<TError> & {
       variant: RequestVariantEndpoint

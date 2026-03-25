@@ -4,7 +4,7 @@ import { ClientPoints } from './client-points.js'
 import type { Effects } from './effects.js'
 import { _point0_env } from './env.js'
 import type { ErrorPoint0 } from './error.js'
-import { _ssItems } from './internals.js'
+import { _ss } from './internals.js'
 import type { PointsDefinition, PointsManager } from './points-manager.js'
 import type { Request0 } from './request0.js'
 import { superstore } from './super-store.js'
@@ -21,7 +21,7 @@ const nativeFetch: RichFetchFn = async (...args) => await fetch(...args)
 
 export const getFetch = (): RichFetchFn => {
   if (_point0_env.side.is.server) {
-    const __POINT0_FETCH_FN__ = _ssItems.__POINT0_FETCH_FN__.getWeak()
+    const __POINT0_FETCH_FN__ = _ss.__POINT0_FETCH_FN__.getWeak()
     if (!__POINT0_FETCH_FN__) {
       throw new Error(
         `Fetch function in server available only inside loaders, components, etc, do not use it in top level. Or use FakeClient`,
@@ -44,10 +44,10 @@ export const useIsHydrated = (): boolean => {
   if (!_point0_env.side.is.client) {
     return false
   }
-  const [localHydrationFinished, setLocalHydrationFinished] = useState(_ssItems.__POINT0_HYDRATION_FINISHED__.get())
+  const [localHydrationFinished, setLocalHydrationFinished] = useState(_ss.__POINT0_HYDRATION_FINISHED__.get())
   useEffect(() => {
     if (!localHydrationFinished) {
-      _ssItems.__POINT0_HYDRATION_FINISHED__.set(true)
+      _ss.__POINT0_HYDRATION_FINISHED__.set(true)
       setLocalHydrationFinished(true)
     }
   }, [])
@@ -72,19 +72,19 @@ export const ClientOnly = <TChildren extends React.ReactNode = null, TFallback e
 }
 
 export const getEffects = (): Effects => {
-  return _ssItems.__POINT0_EFFECTS__.get()
+  return _ss.__POINT0_EFFECTS__.get()
 }
 
 export const getEffectsWeak = (): Effects | undefined => {
-  return _ssItems.__POINT0_EFFECTS__.getWeak()
+  return _ss.__POINT0_EFFECTS__.getWeak()
 }
 
 export const getRequest = (): Request0 => {
-  return _ssItems.__POINT0_REQUEST0__.get()
+  return _ss.__POINT0_REQUEST0__.get()
 }
 
 export const getRequestWeak = (): Request0 | undefined => {
-  return _ssItems.__POINT0_REQUEST0__.getWeak()
+  return _ss.__POINT0_REQUEST0__.getWeak()
 }
 
 export const mountClientPoints = <TError extends ErrorPoint0>(
@@ -98,5 +98,5 @@ export const getClientPoints = (): ClientPoints => {
 }
 
 export const getQueryClient = (): QueryClient => {
-  return _ssItems.__POINT0_QUERY_CLIENT__.get()
+  return _ss.__POINT0_QUERY_CLIENT__.get()
 }

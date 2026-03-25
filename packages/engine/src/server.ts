@@ -59,9 +59,9 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
   clients: TPrepared extends true ? Array<EngineClient<true, TError>> : EngineClient<false, TError>[]
   log: LogFn
   entry: Record<string, string> | null
-  publicdir: TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
+  publicdir: TPrepared extends true ? Publicdir<true, TError> | null : Publicdir<false, TError> | null
   // it is collection of server itself public dir and all its clients public dirs
-  publicdirs: TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
+  publicdirs: TPrepared extends true ? Array<Publicdir<true, TError>> : Array<Publicdir<false, TError>>
   outdir: string | null
   bunBuildConfig: EngineServerBuildConfigDefinition
   bunPlugins: EngineServerPluginsDefinition
@@ -94,7 +94,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     envConsts: EngineOptionsEnvParsed
     envVars: EngineOptionsEnvParsed
     entry: Record<string, string> | null
-    publicdir: Publicdir<false> | null
+    publicdir: Publicdir<false, TError> | null
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
     bunPlugins: EngineServerPluginsDefinition
@@ -125,8 +125,12 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
       : EngineClient<false, TError>[]
     this.log = input.log
     this.entry = input.entry
-    this.publicdir = input.publicdir as TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
-    this.publicdirs = [] as unknown as TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
+    this.publicdir = input.publicdir as TPrepared extends true
+      ? Publicdir<true, TError> | null
+      : Publicdir<false, TError> | null
+    this.publicdirs = [] as unknown as TPrepared extends true
+      ? Array<Publicdir<true, TError>>
+      : Array<Publicdir<false, TError>>
     this.outdir = input.outdir
     this.bunBuildConfig = input.bunBuildConfig
     this.bunPlugins = input.bunPlugins

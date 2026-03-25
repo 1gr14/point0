@@ -23,7 +23,7 @@ const general = {
     'src/mountable.ts',
     'src/point0.ts',
     'src/points-manager.ts',
-    'src/query-client.tsx',
+    'src/query-client.ts',
     'src/request0.ts',
     'src/navigation.tsx',
     'src/super-store.ts',

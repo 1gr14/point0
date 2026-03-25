@@ -276,13 +276,13 @@ export class Effects {
   //       'You can not get effects not in server. Please call Effects.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
   //     )
   //   }
-  //   const effects = _ssItems.__POINT0_EFFECTS__.get()
+  //   const effects = _ss.__POINT0_EFFECTS__.get()
   //   return effects
   // }
 
   // static getWeak(): Effects | undefined {
   //   try {
-  //     return _ssItems.__POINT0_EFFECTS__.get()
+  //     return _ss.__POINT0_EFFECTS__.get()
   //   } catch {
   //     return undefined
   //   }

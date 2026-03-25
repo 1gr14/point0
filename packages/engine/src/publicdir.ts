@@ -7,6 +7,7 @@ import * as nodePath from 'node:path'
 import type { EngineClient } from './client.js'
 import type { EngineServer } from './server.js'
 import { withError } from './utils.js'
+import type { ErrorPoint0 } from '@point0/core'
 
 async function* getAllFiles(dirPath: string): AsyncGenerator<string> {
   try {
@@ -101,14 +102,14 @@ export class PublicdirCache {
   }
 }
 
-export class Publicdir<TPrepared extends boolean = boolean> {
+export class Publicdir<TPrepared extends boolean, TError extends ErrorPoint0> {
   serving: PublicdirServing
   source: PublicdirDefinition
   // <fileRoutePath, fileAbsPath | fileContentFn>
   files: PublicdirFilesDefinition
   outdir: string | null
-  server: TPrepared extends true ? EngineServer<true> | null : EngineServer<false> | null
-  client: TPrepared extends true ? EngineClient<true> | null : EngineClient<false> | null
+  server: TPrepared extends true ? EngineServer<true, TError> | null : EngineServer<false, TError> | null
+  client: TPrepared extends true ? EngineClient<true, TError> | null : EngineClient<false, TError> | null
   prepared: TPrepared
 
   scope: PointsScope
@@ -121,8 +122,8 @@ export class Publicdir<TPrepared extends boolean = boolean> {
     scope: PointsScope
     outdir: string | null
     cache: PublicdirCache | null
-    server: TPrepared extends true ? EngineServer<true> | null : EngineServer<false> | null
-    client: TPrepared extends true ? EngineClient<true> | null : EngineClient<false> | null
+    server: TPrepared extends true ? EngineServer<true, TError> | null : EngineServer<false, TError> | null
+    client: TPrepared extends true ? EngineClient<true, TError> | null : EngineClient<false, TError> | null
   }) {
     this.serving = input.serving
     this.source = input.source
@@ -135,18 +136,18 @@ export class Publicdir<TPrepared extends boolean = boolean> {
     this.cache = input.cache
   }
 
-  static create(input: {
+  static create<TError extends ErrorPoint0>(input: {
     serving: PublicdirServing
     source: PublicdirDefinition
     scope: PointsScope
     outdir: string | null
     cacheLimit?: number | boolean
-    server: EngineServer<false> | null
-    client: EngineClient<false> | null
-  }): Publicdir<false> {
+    server: EngineServer<false, TError> | null
+    client: EngineClient<false, TError> | null
+  }): Publicdir<false, TError> {
     const cacheCandidate = PublicdirCache.create({ limit: input.cacheLimit ?? true })
     const cache = cacheCandidate.limit > 0 ? cacheCandidate : null
-    return new Publicdir<false>({
+    return new Publicdir<false, TError>({
       serving: input.serving,
       source: input.source,
       scope: input.scope,
@@ -158,16 +159,16 @@ export class Publicdir<TPrepared extends boolean = boolean> {
     })
   }
 
-  async prepare(): Promise<Publicdir<true>> {
+  async prepare(): Promise<Publicdir<true, TError>> {
     if (this.isPrepared()) {
-      return this as Publicdir<true>
+      return this as Publicdir<true, TError>
     }
     await this.loadFiles()
     this.prepared = true as never
-    return this as Publicdir<true>
+    return this as Publicdir<true, TError>
   }
 
-  isPrepared(): this is Publicdir<true> {
+  isPrepared(): this is Publicdir<true, TError> {
     return !!this.prepared
   }
 

@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query'
 import type { DehydratedState } from '@tanstack/react-query'
 import { superstore } from './super-store.js'
+import React from 'react'
 
 export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, DehydratedState, 'readonlyRedefine'>(
   '__POINT0_QUERY_CLIENT__',
@@ -27,8 +28,9 @@ export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, Dehydrated
       return dehydratedState
     },
     hydrate: (dehydratedState, createQueryClient) => {
+      const freshDehydratedState = forceFreshDehydratedState(dehydratedState)
       const queryClient = createQueryClient()
-      hydrate(queryClient, dehydratedState)
+      hydrate(queryClient, freshDehydratedState)
       const allQueries = queryClient.getQueryCache().getAll()
 
       const prefetchPageQuery = allQueries.find(
@@ -41,7 +43,8 @@ export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, Dehydrated
 
       const relatedQueriesDehydratedState = (prefetchPageQuery.state.data as { dehydratedState: DehydratedState })
         .dehydratedState
-      hydrate(queryClient, relatedQueriesDehydratedState)
+      const freshRelatedQueriesDehydratedState = forceFreshDehydratedState(relatedQueriesDehydratedState)
+      hydrate(queryClient, freshRelatedQueriesDehydratedState)
 
       return queryClient
     },
@@ -54,10 +57,35 @@ export const createQueryClient = (init?: () => QueryClient) => {
     __POINT0_QUERY_CLIENT__.redefine(init)
   }
   function QueryClientProvider({ children }: { children: React.ReactNode }) {
-    return <QueryClientProviderOriginal client={__POINT0_QUERY_CLIENT__.get()}>{children}</QueryClientProviderOriginal>
+    return React.createElement(QueryClientProviderOriginal, { client: __POINT0_QUERY_CLIENT__.get() }, children)
   }
   return {
     queryClient: __POINT0_QUERY_CLIENT__,
     QueryClientProvider,
   }
+}
+
+export const forceFreshDehydratedState = (
+  dehydratedState: DehydratedState,
+  now: number = Date.now(),
+): DehydratedState => {
+  const result = {
+    ...dehydratedState,
+    queries: dehydratedState.queries.map((q) => ({
+      ...q,
+      state: {
+        ...q.state,
+        dataUpdatedAt: !q.state.dataUpdatedAt ? q.state.dataUpdatedAt : now,
+        errorUpdatedAt: !q.state.errorUpdatedAt ? q.state.errorUpdatedAt : now,
+      },
+    })),
+    mutations: dehydratedState.mutations.map((m) => ({
+      ...m,
+      state: {
+        ...m.state,
+        submittedAt: !m.state.submittedAt ? m.state.submittedAt : now,
+      },
+    })),
+  }
+  return result
 }

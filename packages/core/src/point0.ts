@@ -1,5 +1,4 @@
 import * as flat0 from '@devp0nt/flat0'
-import { Route0 } from '@devp0nt/route0'
 import type {
   AnyLocation,
   AnyRoute,
@@ -12,7 +11,7 @@ import type {
   UnknownSearchParsed,
   WeakAncestorLocation,
 } from '@devp0nt/route0'
-import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Route0 } from '@devp0nt/route0'
 import type {
   DehydratedState,
   InfiniteData,
@@ -23,16 +22,16 @@ import type {
   UseMutationResult,
   UseQueryResult,
 } from '@tanstack/react-query'
+import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
-import { createContext, useContextSelector } from 'use-context-selector'
 import type { Context } from 'use-context-selector'
+import { createContext, useContextSelector } from 'use-context-selector'
 import { _point0_env } from './env.js'
-import { ErrorPoint0 } from './error.js'
 import type { ClassLikeError0 } from './error.js'
-import { uniqEventerErrorEventNames } from './eventer.js'
+import { ErrorPoint0 } from './error.js'
 import type {
   AnyEventerEvent,
   AnyEventerEventName,
@@ -44,8 +43,9 @@ import type {
   ServerEventerSubscriptionCallback,
   UniqEventerErrorEventName,
 } from './eventer.js'
+import { uniqEventerErrorEventNames } from './eventer.js'
 import { ClientOnly, getFetch, setStatus, useIsHydrated } from './helpers.js'
-import { _getFakeClient, _ssItems } from './internals.js'
+import { _getFakeClient, _ss } from './internals.js'
 import type { LogFn } from './logger.js'
 import type {
   AppendProps,
@@ -97,8 +97,8 @@ import type {
   WithSelfQueryIfShouldBeFinalized,
   WrapperComponentType,
 } from './mountable.js'
-import { useLocation, useNavigationContext } from './navigation.js'
 import type { NavigationPageState } from './navigation.js'
+import { useLocation, useNavigationContext } from './navigation.js'
 import type { PopularRequestMethod, WideRequestMethod } from './request0.js'
 import { extractKeysBySchemasHelpers } from './schema/utils.js'
 import { superstore } from './super-store.js'
@@ -161,6 +161,7 @@ import type {
   InputRawUnknown,
   InputSchema,
   IsFinalInputOptional,
+  IsUndefined,
   LayoutPoint,
   LoaderDataFn,
   LoaderOutput,
@@ -229,6 +230,7 @@ import type {
   UseQueryOptions,
   WithError,
 } from './types.js'
+import type { FsLocation } from './utils.js'
 import {
   blankDataTransformerExtended,
   generateId,
@@ -246,7 +248,7 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
-import type { FsLocation } from './utils.js'
+import { forceFreshDehydratedState } from './query-client.js'
 
 // import stringify from 'safe-stable-stringify'
 
@@ -3816,7 +3818,7 @@ export class Point0<
   ) {
     return this._continue({
       _polhPolicy: policy,
-      _polhDuration: duration,
+      ...(duration !== undefined ? { _polhDuration: duration } : {}),
     }) as never
   }
 
@@ -3850,6 +3852,43 @@ export class Point0<
   ) {
     return this._continue({
       _ponPolicy: policy,
+    }) as never
+  }
+
+  prefetchPagePolicy(
+    policy: PrefetchPagePolicy,
+    duration?: number,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  prefetchPagePolicy(
+    policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
+    duration?: number,
+  ) {
+    return this._continue({
+      _polhPolicy: policy,
+      _ponPolicy: policy,
+      ...(duration !== undefined ? { _polhDuration: duration } : {}),
     }) as never
   }
 
@@ -3908,7 +3947,9 @@ export class Point0<
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TError,
-    AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
+    IsUndefined<InferCtxFnOutputCtxAppend<TCtxFn>> extends true
+      ? TCtx
+      : AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
     TCtxExposedKeys,
     TServerLoaderOutput,
     TClientLoaderOutput,
@@ -3949,8 +3990,12 @@ export class Point0<
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TError,
-    AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
-    AppendCtxExposedKeys<TCtxExposedKeys, Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>>,
+    IsUndefined<InferCtxFnOutputCtxAppend<TCtxFn>> extends true
+      ? TCtx
+      : AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
+    IsUndefined<InferCtxFnOutputCtxAppend<TCtxFn>> extends true
+      ? TCtxExposedKeys
+      : AppendCtxExposedKeys<TCtxExposedKeys, Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>>,
     TServerLoaderOutput,
     TClientLoaderOutput,
     TMapperOutput,
@@ -3990,8 +4035,12 @@ export class Point0<
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TError,
-    AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
-    AppendCtxExposedKeys<TCtxExposedKeys, TCtxFnExposedKeys>,
+    IsUndefined<InferCtxFnOutputCtxAppend<TCtxFn>> extends true
+      ? TCtx
+      : AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
+    IsUndefined<InferCtxFnOutputCtxAppend<TCtxFn>> extends true
+      ? TCtxExposedKeys
+      : AppendCtxExposedKeys<TCtxExposedKeys, TCtxFnExposedKeys>,
     TServerLoaderOutput,
     TClientLoaderOutput,
     TMapperOutput,
@@ -4143,7 +4192,7 @@ export class Point0<
     TError,
     TCtx,
     TCtxExposedKeys,
-    TNewServerLoaderOutput,
+    IfNeverThen<TNewServerLoaderOutput, EmptyData>,
     TClientLoaderOutput,
     TMapperOutput,
     TRouteDefinition,
@@ -7702,7 +7751,7 @@ export class Point0<
     if (this._serverurl) {
       return this._serverurl
     }
-    const request0 = _ssItems.__POINT0_REQUEST0__.getWeak()
+    const request0 = _ss.__POINT0_REQUEST0__.getWeak()
     if (request0?.location.origin) {
       return request0.location.origin
     }
@@ -7744,7 +7793,7 @@ export class Point0<
     )
     const method = this._endpoint.method
 
-    const fromScope = _ssItems.__POINT0_CLIENT_POINTS__.getWeak()?.manager.scope ?? _getFakeClient()?.scope
+    const fromScope = _ss.__POINT0_CLIENT_POINTS__.getWeak()?.manager.scope ?? _getFakeClient()?.scope
     const baseHeaders = mergeHeaders(baseFetchOptions.headers, _fetchOptions?.headers)
     const headers = mergeHeaders(baseHeaders, {
       ...(baseHeaders.has('Accept') ? {} : { Accept: 'application/json' }),
@@ -7865,7 +7914,7 @@ export class Point0<
 
   private modifyFetchRequestForServerIfRequired(fetchOptions: ReturnType<typeof this.getFetchServerOptions>): Request {
     if (_point0_env.side.is.server) {
-      const currentRequest0 = _ssItems.__POINT0_REQUEST0__.getWeak()
+      const currentRequest0 = _ss.__POINT0_REQUEST0__.getWeak()
       if (!currentRequest0) {
         return Object.assign(fetchOptions.request, {
           __POINT0_IS_SERVER_REQUEST__: true,
@@ -7883,7 +7932,7 @@ export class Point0<
         }
       }
 
-      // const currentEffects = _ssItems.__POINT0_EFFECTS__.getWeak()
+      // const currentEffects = _ss.__POINT0_EFFECTS__.getWeak()
       // if (currentEffects) {
       //   const cookies = Object.values(currentEffects.cookies)
       //   for (const cookie of cookies) {
@@ -7991,7 +8040,7 @@ export class Point0<
       // Bubble up non-default status codes from nested server point fetches
       // to the current outer request (e.g. SSR page render request).
       if (_point0_env.side.is.server) {
-        const currentEffects = _ssItems.__POINT0_EFFECTS__.getWeak()
+        const currentEffects = _ss.__POINT0_EFFECTS__.getWeak()
         if (typeof currentEffects?.status === 'undefined') {
           currentEffects?.set.status(res.status)
         }
@@ -8467,7 +8516,7 @@ export class Point0<
   private _getCombinedQueryOptions({
     input = {} as never,
     // location,
-    queryClient = _ssItems.__POINT0_QUERY_CLIENT__.get(),
+    queryClient = _ss.__POINT0_QUERY_CLIENT__.get(),
     queryOptions,
     fetchOptions,
   }: {
@@ -8846,7 +8895,7 @@ export class Point0<
         this._emit('pointInfiniteQueryStart', _eventData)
         const pageParam = ctx.pageParam ?? this._infiniteQueryOptions.initialPageParam
         const serverData = await (async () => {
-          queryClient ??= _ssItems.__POINT0_QUERY_CLIENT__.get()
+          queryClient ??= _ss.__POINT0_QUERY_CLIENT__.get()
           const infiniteServerKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
           const infiniteCachedServerData = queryClient.getQueryData(infiniteServerKey)
           if (infiniteCachedServerData) {
@@ -9312,7 +9361,7 @@ export class Point0<
   ): Promise<FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>> => {
     const [input, mutationOptionsProvided, options] = args
     const mutationOptions = this.getMutationOptions(mutationOptionsProvided, options)
-    const queryClient = _ssItems.__POINT0_QUERY_CLIENT__.get()
+    const queryClient = _ss.__POINT0_QUERY_CLIENT__.get()
     const mutation = queryClient.getMutationCache().build(queryClient, mutationOptions as any)
     return (await mutation.execute(input as any)) as FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
   }
@@ -9414,7 +9463,7 @@ export class Point0<
     if (!suitablePointTypes.includes(this.type)) {
       return false
     }
-    const queryClient = providedQueryClient ?? _ssItems.__POINT0_QUERY_CLIENT__.get()
+    const queryClient = providedQueryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
     const queryOptions = this.getQueryOptions(input as never, providedQueryOptions, {
       // location,
       queryClient,
@@ -9641,7 +9690,7 @@ export class Point0<
     if (!suitablePointTypes.includes(this.type)) {
       return false
     }
-    const queryClient = providedQueryClient ?? _ssItems.__POINT0_QUERY_CLIENT__.get()
+    const queryClient = providedQueryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
     const infiniteQueryOptions = this.getInfiniteQueryOptions(input as never, providedInfiniteQueryOptions, {
       // location,
       queryClient,
@@ -9914,7 +9963,7 @@ export class Point0<
     if (this.type !== 'page') {
       throw new Error(`Point type is not page on point ${this.toStringWithLocation()}`)
     }
-    queryClient ??= _ssItems.__POINT0_QUERY_CLIENT__.get()
+    queryClient ??= _ss.__POINT0_QUERY_CLIENT__.get()
     const _queryOptions = this._getServerQueryOptions({
       input,
       queryOptions,
@@ -9932,7 +9981,8 @@ export class Point0<
     if (!data?.dehydratedState) {
       throw new Error(`Dehydrated state not found on point ${this.toStringWithLocation()}`)
     }
-    hydrate(queryClient, data.dehydratedState)
+    const freshDehydratedState = forceFreshDehydratedState(data.dehydratedState)
+    hydrate(queryClient, freshDehydratedState)
   }
 
   private async _prefetchPage({
@@ -10187,7 +10237,7 @@ export class Point0<
           },
         ]
   ): Promise<void> {
-    const prefetchPagePromises = _ssItems.__POINT0_PREFETCH_PAGE_PROMISES__.get()
+    const prefetchPagePromises = _ss.__POINT0_PREFETCH_PAGE_PROMISES__.get()
     const [input = {}, options = {}] = args
     const policy = this._getPrefetchPagePolicy(options.trigger, options.policy)
     const hash =
@@ -10237,7 +10287,7 @@ export class Point0<
     React.useEffect(() => {
       // pageStateManager.setPageState(pageState)
     }, [pageState.status, pageState.error?.message])
-    // const unheadController = _ssItems.__POINT0_UNHEAD_CONTROLLER__.get()
+    // const unheadController = _ss.__POINT0_UNHEAD_CONTROLLER__.get()
     // const unheadController = useHead()
     // const headFnResultResolvableCombined = {}
     for (const { action, state } of prevMountActions) {

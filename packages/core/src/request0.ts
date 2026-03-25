@@ -214,13 +214,13 @@ export class Request0<
   //       'You can not get request0 not in server. Please call Request0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
   //     )
   //   }
-  //   const request0 = _ssItems.__POINT0_REQUEST0__.get()
+  //   const request0 = _ss.__POINT0_REQUEST0__.get()
   //   return request0
   // }
 
   // static getWeak(): Request0 | undefined {
   //   try {
-  //     return _ssItems.__POINT0_REQUEST0__.getWeak()
+  //     return _ss.__POINT0_REQUEST0__.getWeak()
   //   } catch {
   //     return undefined
   //   }

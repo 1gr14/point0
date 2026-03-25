@@ -1,4 +1,4 @@
-import type { AnyLocation, ExactLocation } from '@devp0nt/route0'
+import type { AnyLocation } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import type { SSRHeadPayload, Unhead } from '@unhead/react/server'
 import type { ResolvableHead } from 'unhead/types'
@@ -22,7 +22,7 @@ export const _getFakeClient = (): LikeFakeClient | undefined => {
   return superstore.getFakeClient() as LikeFakeClient | undefined
 }
 
-export const _ssItems = {
+export const _ss = {
   __POINT0_HYDRATION_FINISHED__: superstore.define<boolean>('__POINT0_HYDRATION_FINISHED__', () => false, 'clientOnly'),
   __POINT0_SSR_REDIRECT_TASK__: ssrRedirectTask,
   __POINT0_IS_SSR_IN_PROGRESS__: __POINT0_IS_SSR_IN_PROGRESS__,
@@ -104,10 +104,10 @@ export const _ssItems = {
   ),
 }
 
-const knownKeys = Object.keys(_ssItems)
-export const _ssRunWithServerStorageState = superstore.createTypedRunWithServerStorageState<typeof _ssItems>()
-export type SuperStoreInternalValues = SuperStoreItemsValues<typeof _ssItems>
-export type SuperStoreInternalValuesOrErrors = SuperStoreItemsValuesOrErrors<typeof _ssItems>
+const knownKeys = Object.keys(_ss)
+export const _ssRunWithServerStorageState = superstore.createTypedRunWithServerStorageState<typeof _ss>()
+export type SuperStoreInternalValues = SuperStoreItemsValues<typeof _ss>
+export type SuperStoreInternalValuesOrErrors = SuperStoreItemsValuesOrErrors<typeof _ss>
 export const _getSsItemsWithRestErrors = (
   ssItems: Partial<SuperStoreInternalValues>,
   errorMessage = 'This "%s" value is not yet accessible, maybe it is bug',

@@ -77,7 +77,7 @@ export class EngineClient<TPrepared extends boolean = boolean, TError extends Er
   log: LogFn
   envVars: EngineOptionsEnvParsed
   envConsts: EngineOptionsEnvParsed
-  publicdir: TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
+  publicdir: TPrepared extends true ? Publicdir<true, TError> | null : Publicdir<false, TError> | null
   outdir: string | null
   bunBuildConfig: EngineClientBuildConfigDefinition
   bunPlugins: EngineClientPluginsDefinition
@@ -119,7 +119,7 @@ export class EngineClient<TPrepared extends boolean = boolean, TError extends Er
     log: LogFn
     envVars: EngineOptionsEnvParsed
     envConsts: EngineOptionsEnvParsed
-    publicdir: Publicdir | null
+    publicdir: Publicdir<boolean, TError> | null
     bunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
     bunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
     viteDevServer: ViteDevServer | true | null
@@ -153,7 +153,9 @@ export class EngineClient<TPrepared extends boolean = boolean, TError extends Er
     this.envConsts = {
       ...input.envConsts,
     }
-    this.publicdir = input.publicdir as TPrepared extends true ? Publicdir<true> | null : Publicdir<false> | null
+    this.publicdir = input.publicdir as TPrepared extends true
+      ? Publicdir<true, TError> | null
+      : Publicdir<false, TError> | null
     this.outdir = input.outdir
     this.bunBuildConfig = input.bunBuildConfig
     this.bunPlugins = input.bunPlugins
@@ -170,10 +172,10 @@ export class EngineClient<TPrepared extends boolean = boolean, TError extends Er
     this.App = undefined as TPrepared extends true ? AppComponent | null : undefined
   }
 
-  static create(input: {
+  static create<TError extends ErrorPoint0>(input: {
     scope: PointsScope
     cwd: string
-    pointsProvided: PointsDefinitionSource<any, any> | null
+    pointsProvided: PointsDefinitionSource<any, TError> | null
     // pointsDistFile: string | null
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
@@ -203,13 +205,13 @@ export class EngineClient<TPrepared extends boolean = boolean, TError extends Er
     compiler: EngineOptionsCompilerSpecificParsed | false
     server: EngineServer
     ssr: boolean
-  }): EngineClient<false> {
+  }): EngineClient<false, TError> {
     const viteDevServer = null
     const bunNativeDevServer = null
     const bunViteDevServer = null
 
     const publicdir = input.publicdir
-      ? Publicdir.create({
+      ? Publicdir.create<TError>({
           serving: input.serving,
           source: input.publicdir.source,
           outdir: input.publicdir.outdir,
@@ -222,7 +224,7 @@ export class EngineClient<TPrepared extends boolean = boolean, TError extends Er
 
     const distIndexHtmlContent = null
 
-    const client = new EngineClient<false>({
+    const client = new EngineClient<false, TError>({
       ...input,
       publicdir,
       distIndexHtmlContent,
@@ -263,9 +265,9 @@ export class EngineClient<TPrepared extends boolean = boolean, TError extends Er
   }: {
     // if we run server entries separately, then we we will run in another processes client dev server once
     preventDevServer?: boolean
-  }): Promise<EngineClient<true>> {
+  }): Promise<EngineClient<true, TError>> {
     if (this.isPrepared()) {
-      return this as EngineClient<true>
+      return this as EngineClient<true, TError>
     }
     this.setEnvVars({ nodeEnvFallback: undefined })
 
@@ -299,10 +301,10 @@ export class EngineClient<TPrepared extends boolean = boolean, TError extends Er
     this.distIndexHtmlContent =
       process.env.NODE_ENV === 'production' && this.indexHtml ? await Bun.file(this.indexHtml).text() : null
     this.prepared = true as never
-    return this as EngineClient<true>
+    return this as EngineClient<true, TError>
   }
 
-  isPrepared(): this is EngineClient<true> {
+  isPrepared(): this is EngineClient<true, TError> {
     return !!this.prepared
   }
 

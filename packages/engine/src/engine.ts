@@ -32,7 +32,7 @@ export class Engine<
 > {
   clients: TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
   server: TPrepared extends true ? EngineServer<true, TError> : EngineServer<false, TError>
-  publicdirs: TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
+  publicdirs: TPrepared extends true ? Array<Publicdir<true, TError>> : Array<Publicdir<false, TError>>
   log: LogFn
   generator: FilesGenerator
   prepared: TPrepared
@@ -48,7 +48,7 @@ export class Engine<
     log: LogFn
     prepared: TPrepared
     generator: FilesGenerator
-    publicdirs: Array<Publicdir<false>>
+    publicdirs: Array<Publicdir<false, TError>>
     pointsGlob: string[]
     buildWatchGlob: string[]
     cwd: string
@@ -58,7 +58,9 @@ export class Engine<
     this.log = input.log
     this.prepared = input.prepared
     this.generator = input.generator
-    this.publicdirs = input.publicdirs as TPrepared extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
+    this.publicdirs = input.publicdirs as TPrepared extends true
+      ? Array<Publicdir<true, TError>>
+      : Array<Publicdir<false, TError>>
     this.pointsGlob = input.pointsGlob
     this.buildWatchGlob = input.buildWatchGlob
     this.cwd = input.cwd

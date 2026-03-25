@@ -1,5 +1,5 @@
 import type { AnyLocation, AnyRoute } from '@devp0nt/route0'
-import { _ssItems, _ssRunWithServerStorageState } from '@point0/core'
+import { _ss, _ssRunWithServerStorageState } from '@point0/core'
 import * as flat0 from '@devp0nt/flat0'
 import type {
   AnyPoint,
@@ -96,7 +96,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       // in case of recursive server response we want preserve query client to keep state
       __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: undefined,
       __POINT0_QUERY_CLIENT__:
-        _ssItems.__POINT0_QUERY_CLIENT_FROM_PARENT_RUN__.getWeak() || _ssItems.__POINT0_QUERY_CLIENT__.config.init(),
+        _ss.__POINT0_QUERY_CLIENT_FROM_PARENT_RUN__.getWeak() || _ss.__POINT0_QUERY_CLIENT__.config.init(),
       __POINT0_SSR_LOCATION__: undefined,
       __POINT0_SSR_REDIRECT_TASK__: undefined,
       __POINT0_IS_SSR_IN_PROGRESS__: false,
@@ -870,7 +870,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     await this.withServerGlobalState(async () => {
       const stream = await renderToReadableStream(React.createElement(App))
       await stream.allReady
-      const queryClientState = _ssItems.__POINT0_QUERY_CLIENT__.get().getQueryCache().findAll()
+      const queryClientState = _ss.__POINT0_QUERY_CLIENT__.get().getQueryCache().findAll()
       const suitableMarkers = queryClientState.flatMap((query) => {
         const parsedQueryKey = Executor.parseQueryKey({
           queryKey: query.queryKey,
@@ -948,7 +948,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
 
   async getQueryClientReadyDehydratedState(): Promise<DehydratedState> {
     const result = await this.withServerGlobalState(async () => {
-      const dehydratedState = dehydrate(_ssItems.__POINT0_QUERY_CLIENT__.get(), {
+      const dehydratedState = dehydrate(_ss.__POINT0_QUERY_CLIENT__.get(), {
         shouldDehydrateQuery: (_query) => {
           // This will include all queries, including failed ones
           return true
@@ -983,7 +983,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         outputType: 'queryClientDehydratedState',
       })
       const relatedQueriesDehydratedState = await this.getQueryClientReadyDehydratedState()
-      const queryClient = _ssItems.__POINT0_QUERY_CLIENT__.get()
+      const queryClient = _ss.__POINT0_QUERY_CLIENT__.get()
       const { queryKey, ...restOptions } = prefetchPageQueryOptions
       queryClient.setQueryDefaults(queryKey, {
         ...(restOptions as any),

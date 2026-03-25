@@ -1,6 +1,6 @@
 import { Route0, type AnyLocation, type ExtractRoute, type ExtractRoutesKeys, type RoutesPretty } from '@devp0nt/route0'
 import type { ExactLocation, GetPathInputByRoute, IsParamsOptional } from '@devp0nt/route0'
-import { _point0_env, _ssItems, env, ErrorPoint0, getClientPoints, log } from '@point0/core'
+import { _point0_env, _ss, env, ErrorPoint0, getClientPoints, log } from '@point0/core'
 import type {
   ClassLikeError0,
   NormalizedLazyPointsCollectionRecord,
@@ -743,7 +743,7 @@ export const createRouter = ({
   Page404,
   pagesTree,
   hook = useBrowserLocation,
-  navigate = browserNavigate,
+  navigate: adapterNavigate = browserNavigate,
   ErrorClass,
 }: {
   addHashToLocation?: boolean
@@ -769,7 +769,7 @@ export const createRouter = ({
   return function Router({
     children,
     status,
-    ssrLocation = _ssItems.__POINT0_SSR_LOCATION__.get(),
+    ssrLocation = _ss.__POINT0_SSR_LOCATION__.get(),
   }: {
     children?: React.ReactNode
     status?: NavigationStatus
@@ -833,7 +833,7 @@ export const createRouter = ({
           ssrLocation={ssrLocation}
           status={status}
           addHashToLocation={addHashToLocation}
-          adapterNavigate={navigate}
+          adapterNavigate={adapterNavigate}
         >
           {children ?? <RouterRoutes />}
         </NavigationContextProvider>

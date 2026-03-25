@@ -3,7 +3,7 @@ import { UnheadProvider as UnheadProviderServer } from '@unhead/react/server'
 import { createElement } from 'react'
 // import type { ResolvableHead, Unhead } from 'unhead/types'
 import { _point0_env } from './env.js'
-import { _ssItems } from './internals.js'
+import { _ss } from './internals.js'
 
 const clientHead = _point0_env.side.is.client ? createHeadClient() : (undefined as never)
 
@@ -15,7 +15,7 @@ export const UnheadProvider = ({
   if (_point0_env.side.is.client) {
     return createElement(UnheadProviderClient, { head: clientHead, children })
   } else {
-    const serverHead = _ssItems.__POINT0_UNHEAD_SERVER_HEAD__.get()
+    const serverHead = _ss.__POINT0_UNHEAD_SERVER_HEAD__.get()
     return createElement(UnheadProviderServer, { value: serverHead as never, children })
   }
 }

@@ -3,7 +3,7 @@ import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0n
 import type { QueryClient } from '@tanstack/react-query'
 import { _point0_env } from './env.js'
 import type { ErrorPoint0 } from './error.js'
-import { _getFakeClient, _ssItems } from './internals.js'
+import { _getFakeClient, _ss } from './internals.js'
 import { _defaultLogFn, _ssClientLog } from './logger.js'
 import type { LogFn } from './logger.js'
 import { PointsManager } from './points-manager.js'
@@ -426,7 +426,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     if (!suitable) {
       return undefined
     }
-    const loadPagePromises = _ssItems.__POINT0_LOAD_PAGE_COMPONENT_PROMISES__.getWeak()
+    const loadPagePromises = _ss.__POINT0_LOAD_PAGE_COMPONENT_PROMISES__.getWeak()
     const hash = suitable.name
     const exPromise = loadPagePromises?.get(hash)
     if (exPromise) {
@@ -528,7 +528,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     if (_point0_env.side.is.server) {
       throw new Error('Client points can not be mounted on server')
     }
-    _ssItems.__POINT0_CLIENT_POINTS__.set(this as unknown as ClientPoints<ErrorPoint0>)
+    _ss.__POINT0_CLIENT_POINTS__.set(this as unknown as ClientPoints<ErrorPoint0>)
     const fromRoot = this.manager.root._getLogFn()
     _ssClientLog.set(fromRoot ?? this.manager.log ?? _defaultLogFn)
   }
@@ -538,7 +538,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     // we can not here use env.scope, because for server it can be 'root' while for client it can be 'site' for example
     // and this code will be executed on server
     const fakeClient = _getFakeClient()
-    const clientPoints = fakeClient ? fakeClient.points : _ssItems.__POINT0_CLIENT_POINTS__.getWeak()
+    const clientPoints = fakeClient ? fakeClient.points : _ss.__POINT0_CLIENT_POINTS__.getWeak()
     if (!clientPoints) {
       if (_point0_env.side.is.server) {
         throw new Error(
