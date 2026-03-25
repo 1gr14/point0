@@ -32,7 +32,7 @@ const createTestPointsAndHelpers = () => {
     post: '/posts/:id',
   })
 
-  const { Link, NavLink, navigate } = createNavigation({ routes })
+  const { Link, NavLink, navigate } = createNavigation({ routes, forceRerender: true })
 
   const getClassNames = (defaultClassName: string) => ({
     default: defaultClassName,

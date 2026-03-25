@@ -18,7 +18,7 @@ describe('layout', () => {
       })
       .root()
 
-  it.concurrent('simple', async () => {
+  it('simple', async () => {
     const root = createRoot()
     const layout = root.lets('layout', 'app').layout(({ children }) => <div id="layout">{children}</div>)
     const page = layout.lets('page', 'home', '/home').page(() => <div id="page">x=nothing</div>)
@@ -47,7 +47,7 @@ describe('layout', () => {
       `)
   })
 
-  it.concurrent('layout in layout', async () => {
+  it('layout in layout', async () => {
     const root = createRoot()
     const layout1 = root.lets('layout', 'layout1').layout(({ children }) => <div id="layout1">{children}</div>)
     const layout2 = layout1.lets('layout', 'layout2').layout(({ children }) => <div id="layout2">{children}</div>)
@@ -82,7 +82,7 @@ describe('layout', () => {
       `)
   })
 
-  it.concurrent('loader', async () => {
+  it('loader', async () => {
     const root = createRoot()
     const layout = root
       .lets('layout', 'app')
@@ -123,7 +123,7 @@ describe('layout', () => {
     `)
   })
 
-  it.concurrent('loader error', async () => {
+  it('loader error', async () => {
     const root = createRoot()
     const layout = root
       .lets('layout', 'app')
@@ -165,7 +165,7 @@ describe('layout', () => {
     `)
   })
 
-  it.concurrent('loader with input', async () => {
+  it('loader with input', async () => {
     const root = createRoot()
     const layout = root
       .lets('layout', 'app', '/:id')
@@ -209,7 +209,7 @@ describe('layout', () => {
     `)
   })
 
-  it.concurrent('layout input includes page params', async () => {
+  it('layout input includes page params', async () => {
     const root = createRoot()
     const layout = root
       .lets('layout', 'app', '/:id')
@@ -279,7 +279,7 @@ describe('layout', () => {
     `)
   })
 
-  it.concurrent('weak layout input by route includes page params', async () => {
+  it('weak layout input by route includes page params', async () => {
     const root = createRoot()
     const layout = root
       .lets('layout', 'app', 'one/:id')
@@ -349,7 +349,7 @@ describe('layout', () => {
     `)
   })
 
-  it.concurrent('wrapper', async () => {
+  it('wrapper', async () => {
     const root = createRoot()
     const layout = root
       .lets('layout', 'app', '/:id')
@@ -406,7 +406,7 @@ describe('layout', () => {
     `)
   })
 
-  it.concurrent('defines layout in page', async () => {
+  it('defines layout in page', async () => {
     const root = createRoot()
     const layout = root
       .lets('layout', 'app')

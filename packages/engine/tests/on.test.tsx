@@ -4,7 +4,7 @@ import { describe, expect, it } from 'bun:test'
 import { createTestThings } from './utils/internal-testing.js'
 
 describe('on', () => {
-  it.concurrent('*', async () => {
+  it('*', async () => {
     const events: AnyEventerEvent<ErrorPoint0>[] = []
     const root = Point0.lets('root', 'root')
       .on('*', (e) => {
@@ -61,7 +61,7 @@ describe('on', () => {
     })
   })
 
-  it.concurrent('name', async () => {
+  it('name', async () => {
     const events: AnyEventerEvent<ErrorPoint0>[] = []
     const root = Point0.lets('root', 'root')
       .on('engineFetchStart', (e) => {
@@ -96,7 +96,7 @@ describe('on', () => {
     })
   })
 
-  it.concurrent('[name, name]', async () => {
+  it('[name, name]', async () => {
     const events: AnyEventerEvent<ErrorPoint0>[] = []
     const root = Point0.lets('root', 'root')
       .on('engineFetchStart', (e) => {
@@ -128,7 +128,7 @@ describe('on', () => {
     })
   })
 
-  it.concurrent('error', async () => {
+  it('error', async () => {
     const events: AnyEventerEvent<ErrorPoint0>[] = []
     const root = Point0.lets('root', 'root')
       .on('error', (e) => {

@@ -20,7 +20,7 @@ describe('action', () => {
       })
       .root()
 
-  it.concurrent('general', async () => {
+  it('general', async () => {
     const root = createRoot()
     const action = root
       .lets('action', 'test', 'POST', '/api/my-test/:id')
@@ -56,7 +56,7 @@ describe('action', () => {
     })
   })
 
-  it.concurrent('short notation', async () => {
+  it('short notation', async () => {
     const root = createRoot()
     const action = root
       .lets('POST', '/api/my-test/:id')
@@ -95,7 +95,7 @@ describe('action', () => {
     })
   })
 
-  it.concurrent('extends basepath', async () => {
+  it('extends basepath', async () => {
     const root = createRoot()
     const base = root.lets('base', 'base').basepath('/my/prefix').base()
     const action = base
@@ -135,7 +135,7 @@ describe('action', () => {
     })
   })
 
-  it.concurrent('twice extends basepath', async () => {
+  it('twice extends basepath', async () => {
     const root = createRoot()
     const base1 = root.lets('base', 'base').basepath('/my/prefix').base()
     const base2 = base1.lets('base', 'base').basepath('/another/prefix').base()
@@ -176,7 +176,7 @@ describe('action', () => {
     })
   })
 
-  it.concurrent('body not used if body schema not provided', async () => {
+  it('body not used if body schema not provided', async () => {
     const root = createRoot()
     const action = root
       .lets('action', 'test', 'POST', '/api/my-test/:id')
@@ -192,7 +192,7 @@ describe('action', () => {
     expect(result).toEqual({ headers: { x: '1' }, search: { y: '2' }, params: { id: '1' }, bodyUsed: false })
   })
 
-  it.concurrent('do not transform when fetch not from point0', async () => {
+  it('do not transform when fetch not from point0', async () => {
     const root = createRoot()
     const action = root
       .lets('action', 'test', 'GET', '/api/my-test/:id')
@@ -210,7 +210,7 @@ describe('action', () => {
     expect(json).toEqual({ c: '2026-03-11T12:00:00.000Z', id: '1' })
   })
 
-  it.concurrent('can be query', async () => {
+  it('can be query', async () => {
     const root = createRoot()
     const action = root
       .lets('action', 'test', 'GET', '/api/my-test/:id')
@@ -247,7 +247,7 @@ describe('action', () => {
     `)
   })
 
-  it.concurrent('returns error when not found', async () => {
+  it('returns error when not found', async () => {
     const root = createRoot()
     const action = root
       .lets('action', 'test', 'GET', '/api/my-test/:id')
@@ -287,7 +287,7 @@ describe('action', () => {
     expect(json).toEqual({ message: 'Not Found' })
   })
 
-  it.concurrent('can be infinite query', async () => {
+  it('can be infinite query', async () => {
     const items: Array<{ id: number; name: string }> = [
       { id: 1, name: 'Item 1' },
       { id: 2, name: 'Item 2' },
@@ -386,7 +386,7 @@ describe('action', () => {
     `)
   })
 
-  it.concurrent('can be mutation', async () => {
+  it('can be mutation', async () => {
     const root = createRoot()
     const action = root
       .lets('action', 'test', 'POST', '/api/my-test')
@@ -430,7 +430,7 @@ describe('action', () => {
     })
   })
 
-  it.concurrent('throws on conflicted routes', async () => {
+  it('throws on conflicted routes', async () => {
     const root = createRoot()
     const action1 = root
       .lets('action', 'test1', 'POST', '/api/my-test/:id')

@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ClientPoints } from './client-points.js'
 import type { Effects } from './effects.js'
 import { _point0_env } from './env.js'
@@ -32,13 +32,46 @@ export const getFetch = (): RichFetchFn => {
   return superstore.getFakeClient()?.fetch ?? nativeFetch
 }
 
-// export const useSsrEffect: typeof useEffect = (effect, deps) => {
-//   if (_point0_env.side.is.server) {
-//     effect()
-//   } else {
-//     useEffect(effect, deps)
-//   }
-// }
+export const useLayoutEffectSsr: typeof useLayoutEffect = (effect, deps) => {
+  if (_point0_env.side.is.server) {
+    effect()
+  } else {
+    useLayoutEffect(effect, deps)
+  }
+}
+
+export const useEffectSsr: typeof useEffect = (effect, deps) => {
+  if (_point0_env.side.is.server) {
+    effect()
+  } else {
+    useEffect(effect, deps)
+  }
+}
+
+export const useEffectAsap: typeof useEffect = (effect, deps) => {
+  const isFirstRender = useRef(true)
+  const isFirstMount = useRef(true)
+  const firstRenderCleanup = useRef<ReturnType<typeof effect> | undefined>(undefined)
+  // Run immediately on first render
+
+  if (isFirstRender.current) {
+    isFirstRender.current = false
+    firstRenderCleanup.current = effect()
+  }
+
+  useEffect(() => {
+    // Skip running effect again on mount (already ran sync)
+    if (isFirstMount.current) {
+      isFirstMount.current = false
+      const firstRenderCleanupValue = firstRenderCleanup.current
+      firstRenderCleanup.current = undefined
+      return firstRenderCleanupValue
+    }
+    // Normal behavior on updates
+
+    return effect()
+  }, deps)
+}
 
 export const useIsHydrated = (): boolean => {
   if (!_point0_env.side.is.client) {

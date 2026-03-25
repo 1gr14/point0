@@ -1,4 +1,5 @@
 import * as flat0 from '@devp0nt/flat0'
+import { Route0 } from '@devp0nt/route0'
 import type {
   AnyLocation,
   AnyRoute,
@@ -11,7 +12,7 @@ import type {
   UnknownSearchParsed,
   WeakAncestorLocation,
 } from '@devp0nt/route0'
-import { Route0 } from '@devp0nt/route0'
+import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   DehydratedState,
   InfiniteData,
@@ -22,16 +23,16 @@ import type {
   UseMutationResult,
   UseQueryResult,
 } from '@tanstack/react-query'
-import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
-import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
+import type { Context } from 'use-context-selector'
 import { _point0_env } from './env.js'
-import type { ClassLikeError0 } from './error.js'
 import { ErrorPoint0 } from './error.js'
+import type { ClassLikeError0 } from './error.js'
+import { uniqEventerErrorEventNames } from './eventer.js'
 import type {
   AnyEventerEvent,
   AnyEventerEventName,
@@ -43,8 +44,7 @@ import type {
   ServerEventerSubscriptionCallback,
   UniqEventerErrorEventName,
 } from './eventer.js'
-import { uniqEventerErrorEventNames } from './eventer.js'
-import { ClientOnly, getFetch, setStatus, useIsHydrated } from './helpers.js'
+import { ClientOnly, getFetch, setStatus, useEffectSsr, useIsHydrated } from './helpers.js'
 import { _getFakeClient, _ss } from './internals.js'
 import type { LogFn } from './logger.js'
 import type {
@@ -97,8 +97,13 @@ import type {
   WithSelfQueryIfShouldBeFinalized,
   WrapperComponentType,
 } from './mountable.js'
-import { useNavigationTransitionState, type NavigationPageState } from './navigation.js'
-import { useLocation } from './navigation.js'
+import {
+  useLocation,
+  useNavigationHelpers,
+  useNavigationTransitionState,
+  type NavigationPageState,
+} from './navigation.js'
+import { forceFreshDehydratedState } from './query-client.js'
 import type { PopularRequestMethod, WideRequestMethod } from './request0.js'
 import { extractKeysBySchemasHelpers } from './schema/utils.js'
 import { superstore } from './super-store.js'
@@ -230,7 +235,6 @@ import type {
   UseQueryOptions,
   WithError,
 } from './types.js'
-import type { FsLocation } from './utils.js'
 import {
   blankDataTransformerExtended,
   generateId,
@@ -248,7 +252,7 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
-import { forceFreshDehydratedState } from './query-client.js'
+import type { FsLocation } from './utils.js'
 
 // import stringify from 'safe-stable-stringify'
 
@@ -2543,7 +2547,7 @@ export class Point0<
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
-        ...(errorComponent
+        ...(errorComponent && this._isMountablePoint()
           ? [
               {
                 type: 'errorComponent' as const,
@@ -2822,7 +2826,7 @@ export class Point0<
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
-        ...(loadingComponent
+        ...(loadingComponent && this._isMountablePoint()
           ? [
               {
                 type: 'loadingComponent' as const,
@@ -10278,40 +10282,39 @@ export class Point0<
 
   private static readonly _usePrevHeadsAndSetPageState = ({
     pageState,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    pageStateManager,
     prevMountActions,
-    skipGlobalHead,
+    skipPageStateRelated,
   }: {
     pageState: NavigationPageState
-    pageStateManager:
-      | {
-          pageState: NavigationPageState
-          setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
-        }
-      | undefined
     prevMountActions: Array<{
       action: MountAction
       state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
     }>
-    skipGlobalHead: boolean
+    skipPageStateRelated: boolean
   }) => {
-    React.useEffect(() => {
-      // pageStateManager.setPageState(pageState)
+    const navigationHelpers = useNavigationHelpers()
+    useEffectSsr(() => {
+      if (skipPageStateRelated) {
+        return
+      }
+      navigationHelpers.setPageState((currentPageState) => {
+        if (
+          pageState.status !== currentPageState.status ||
+          pageState.error?.message !== currentPageState.error?.message
+        ) {
+          return pageState
+        }
+        return currentPageState
+      })
     }, [pageState.status, pageState.error?.message])
-    // const unheadController = _ss.__POINT0_UNHEAD_CONTROLLER__.get()
-    // const unheadController = useHead()
-    // const headFnResultResolvableCombined = {}
+
     for (const { action, state } of prevMountActions) {
       // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
       switch (action.type) {
         case 'head': {
           const headFnResult = action.fn(state)
           const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
-          // console.log('HEAD', headFnResultResolvable)
           useHead(headFnResultResolvable)
-          // unheadController.patch(headFnResultResolvable)
-          // Object.assign(headFnResultResolvableCombined, headFnResultResolvable)
           continue
         }
         case 'globalHead': {
@@ -10323,33 +10326,20 @@ export class Point0<
           }
           const headFnResult = action.fn({ ...pageState, location })
           const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
-          // console.log('GLOBAL HEAD', headFnResultResolvable)
-          useHead(skipGlobalHead ? {} : headFnResultResolvable)
-          // unheadController.patch(headFnResultResolvable)
-          // Object.assign(headFnResultResolvableCombined, headFnResultResolvable)
+          useHead(skipPageStateRelated ? {} : headFnResultResolvable)
           continue
         }
       }
     }
-    // console.log('USE HEAD', headFnResultResolvableCombined)
-    // useHead(headFnResultResolvableCombined as ResolvableHead)
-    // unheadController.patch(headFnResultResolvableCombined)
   }
 
   private static readonly _createBoundLoadingComponent = ({
     componentVariant,
-    pageStateManager,
     prevMountActions,
     isHeadable,
     fallbackLoadingComponent,
   }: {
     componentVariant: DestinationComponentVariant
-    pageStateManager:
-      | {
-          pageState: NavigationPageState
-          setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
-        }
-      | undefined
     prevMountActions: Array<{
       action: MountAction
       state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
@@ -10369,9 +10359,8 @@ export class Point0<
             loading: true,
             initial: false,
           },
-          pageStateManager,
           prevMountActions,
-          skipGlobalHead: false,
+          skipPageStateRelated: false,
         })
       }
       return React.createElement(loadingComponent, {
@@ -10382,19 +10371,12 @@ export class Point0<
 
   private static readonly _createBoundErrorComponent = ({
     componentVariant,
-    pageStateManager,
     prevMountActions,
     isHeadable,
     fallbackErrorComponent,
     ErrorClass,
   }: {
     componentVariant: DestinationComponentVariant
-    pageStateManager:
-      | {
-          pageState: NavigationPageState
-          setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
-        }
-      | undefined
     prevMountActions: Array<{
       action: MountAction
       state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
@@ -10419,9 +10401,8 @@ export class Point0<
             loading: false,
             initial: false,
           },
-          pageStateManager,
           prevMountActions,
-          skipGlobalHead: false,
+          skipPageStateRelated: false,
         })
       }
       return React.createElement(errorComponent, {
@@ -10493,10 +10474,6 @@ export class Point0<
       mountableState: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>,
     ) => Record<string, any>
     location?: AnyLocation
-    pageStateManager?: {
-      pageState: NavigationPageState
-      setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
-    }
     layers: Array<{
       inputRaw: InputRaw
       outerProps: TOuterProps
@@ -10518,8 +10495,7 @@ export class Point0<
       }
     }>
   }): Exclude<React.ReactNode, Promise<any>> => {
-    // pageStateManager = _usePageStateManager() (maye be will use it later)
-    const { mountComponent, extraProps, location, pageStateManager, layers } = props
+    const { mountComponent, extraProps, location, layers } = props
     const [currentLayer, ...siblingLayers] = layers
 
     const componentVariant = this._getDestinationComponentVariant() ?? 'page'
@@ -10642,7 +10618,6 @@ export class Point0<
       React.useCallback(
         Point0._createBoundErrorComponent({
           componentVariant,
-          pageStateManager,
           prevMountActions,
           isHeadable,
           fallbackErrorComponent,
@@ -10655,7 +10630,6 @@ export class Point0<
       React.useCallback(
         Point0._createBoundLoadingComponent({
           componentVariant,
-          pageStateManager,
           prevMountActions,
           isHeadable,
           fallbackLoadingComponent,
@@ -10667,7 +10641,6 @@ export class Point0<
       React.useCallback(
         Point0._createBoundErrorComponent({
           componentVariant,
-          pageStateManager,
           prevMountActions,
           isHeadable,
           fallbackErrorComponent,
@@ -10680,7 +10653,6 @@ export class Point0<
       React.useCallback(
         Point0._createBoundLoadingComponent({
           componentVariant,
-          pageStateManager,
           prevMountActions,
           isHeadable,
           fallbackLoadingComponent,
@@ -10733,7 +10705,6 @@ export class Point0<
         mountComponent,
         extraProps,
         location,
-        pageStateManager,
         layers: _nextLayers,
       } satisfies Parameters<typeof this._Mountable>[0]
       return {
@@ -11060,9 +11031,8 @@ export class Point0<
       } as NavigationPageState
       Point0._usePrevHeadsAndSetPageState({
         pageState,
-        pageStateManager,
         prevMountActions,
-        skipGlobalHead: mountState.status === 'success' && isLayout, // we will have page below, and it will use global heads
+        skipPageStateRelated: mountState.status === 'success' && isLayout, // we will have page below, and it should control pageState
       })
     }
 
@@ -11075,7 +11045,7 @@ export class Point0<
 
     if (mountState.status === 'loading') {
       return React.createElement(LoadingComponent, {
-        _isHeadable: false,
+        _isHeadable: false, // becouse we use heads in prev block
       })
     }
 

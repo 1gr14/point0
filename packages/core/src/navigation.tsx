@@ -10,7 +10,8 @@ import type {
   UnknownLocation,
 } from '@devp0nt/route0'
 import * as React from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { _point0_env } from './env.js'
 import { ErrorPoint0 } from './error.js'
 import type { ClassLikeError0 } from './error.js'
 import { getClientPoints } from './helpers.js'
@@ -146,6 +147,13 @@ export type NavigationPageState<TStatus extends 'success' | 'loading' | 'error' 
 >
 export type NavigationPageStateContextValue = NavigationPageState<any>
 export const NavigationPageStateContext = React.createContext<NavigationPageStateContextValue | null>(null)
+export const getNavigationPageState = (): NavigationPageStateContextValue => {
+  const navigationPageState = _ss.__POINT0_NAVIGATION_PAGE_STATE__.getWeak()
+  if (navigationPageState) {
+    return navigationPageState
+  }
+  throw new Error('NavigationPageStateContextProvider is not yet initialized')
+}
 export const useNavigationPageState = (): NavigationPageStateContextValue => {
   const ctx = React.useContext(NavigationPageStateContext)
   if (!ctx) throw new Error('useNavigationPageState must be used within NavigationPageStateContextProvider')
@@ -226,12 +234,28 @@ export function NavigationContextProvider({
   const [prevLocation, setPrevLocation] = useState<AnyLocation | null>(null)
   const [transitionStatus, setTransitionStatus] = useState<NavigationStatus>(status)
   const [transitionError, setTransitionError] = useState<Error | undefined>(undefined)
-  const [pageState, setPageState] = useState<NavigationPageState>({
-    status: 'initial',
-    error: undefined,
-    loading: undefined,
-    initial: true,
-  })
+  const [pageState, _setPageState] = useState<NavigationPageState>(
+    _ss.__POINT0_NAVIGATION_PAGE_STATE__.getWeak() ?? {
+      status: 'initial',
+      error: undefined,
+      loading: undefined,
+      initial: true,
+    },
+  )
+  const setPageState = useCallback<React.Dispatch<React.SetStateAction<NavigationPageState>>>((pageState) => {
+    if (_point0_env.side.is.server) {
+      const previousPageState = _ss.__POINT0_NAVIGATION_PAGE_STATE__.getWeak() ?? {
+        status: 'initial',
+        error: undefined,
+        loading: undefined,
+        initial: true,
+      }
+      const nextPageState = typeof pageState === 'function' ? pageState(previousPageState) : pageState
+      _ss.__POINT0_NAVIGATION_PAGE_STATE__.set(nextPageState)
+    } else {
+      _setPageState(pageState)
+    }
+  }, [])
 
   const currentLocation = useAdapterLocation()
   useEffect(() => {

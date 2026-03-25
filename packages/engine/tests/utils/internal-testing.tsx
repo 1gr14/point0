@@ -154,6 +154,11 @@ export const waitReturn = async <T = undefined,>(value?: T, timeout = 100): Prom
   return value as T
 }
 
+export const waitThrow = async <T = undefined,>(error: Error, timeout = 100): Promise<T> => {
+  await new Promise((resolve) => setTimeout(resolve, timeout))
+  throw error
+}
+
 export const ymlify = (result: any) => {
   const yml = YAML.stringify(result, undefined, 2)
   return '\n' + normalizeYmlKeys(yml) + '\n'
