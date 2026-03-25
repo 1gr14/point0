@@ -460,7 +460,9 @@ export class Point0<
   private readonly _polhPolicy: PrefetchPagePolicy | undefined
   private readonly _polhDuration: number | undefined
   private readonly _ponPolicy: PrefetchPagePolicy | undefined
-  private readonly _normalizePrefetchPagePolicy = (policy: PrefetchPagePolicy): NormalizedPrefetchPagePolicy => {
+  private readonly _normalizePrefetchPagePolicy = (
+    policy: PrefetchPagePolicy | undefined,
+  ): NormalizedPrefetchPagePolicy => {
     return !policy
       ? 'none'
       : policy === true
@@ -471,11 +473,14 @@ export class Point0<
   }
   readonly _getPrefetchPagePolicy = (
     trigger: 'navigate' | 'linkHover' | undefined,
-    fallback: PrefetchPagePolicy | undefined,
+    providedPolicy: PrefetchPagePolicy | undefined,
   ): NormalizedPrefetchPagePolicy => {
-    const policy =
-      (trigger === 'linkHover' ? this._polhPolicy : trigger === 'navigate' ? this._ponPolicy : fallback) ?? 'none'
-    return this._normalizePrefetchPagePolicy(policy)
+    if (typeof providedPolicy !== 'undefined') {
+      return this._normalizePrefetchPagePolicy(providedPolicy)
+    }
+    return this._normalizePrefetchPagePolicy(
+      trigger === 'linkHover' ? this._polhPolicy : trigger === 'navigate' ? this._ponPolicy : undefined,
+    )
   }
   private readonly _onPrefetchMountableFns: OnPrefetchMountableFn[]
   get polh(): boolean | number {

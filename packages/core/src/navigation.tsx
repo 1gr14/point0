@@ -1,4 +1,14 @@
-import type { AnyLocation, AnyRouteOrDefinition, ExactLocation, UnknownLocation } from '@devp0nt/route0'
+import type {
+  AnyLocation,
+  AnyRouteOrDefinition,
+  ExactLocation,
+  ExtractRoute,
+  ExtractRoutesKeys,
+  GetPathInputByRoute,
+  IsParamsOptional,
+  RoutesPretty,
+  UnknownLocation,
+} from '@devp0nt/route0'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ErrorPoint0 } from './error.js'
@@ -6,10 +16,79 @@ import type { ClassLikeError0 } from './error.js'
 import { getClientPoints } from './helpers.js'
 import { _ssItems } from './internals.js'
 import { superstore } from './super-store.js'
-import type { IfAnyThenElse } from './types.js'
+import type { IfAnyThenElse, PrefetchPagePolicy } from './types.js'
+
+export type SpecialNavigateOptions = {
+  prefetch?: PrefetchPagePolicy
+}
+export type SpecialLinkOptions = {
+  prefetch?: PrefetchPagePolicy
+  prefetchOnHover?: PrefetchPagePolicy
+  prefetchOnNavigate?: PrefetchPagePolicy
+}
+export type SpecialLinkOptionsInDataAttributes = {
+  ['data-prefetch-on-hover']?: PrefetchPagePolicy
+  ['data-prefetch']?: PrefetchPagePolicy
+  ['data-prefetch-on-navigate']?: PrefetchPagePolicy
+}
 
 export type AdapterNavigateOptions = Record<string, unknown>
-export type AdapterNavigateFn = (to: string, options?: AdapterNavigateOptions) => any
+export type AdapterNavigateFn<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> = (
+  to: string,
+  options?: TAdapterNavigateOptions,
+) => any
+
+export type NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn extends AdapterNavigateFn> = NonNullable<
+  Parameters<TAdapterNavigateFn>[1]
+>
+export type RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn extends AdapterNavigateFn> =
+  NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> & {
+    status?: number
+  }
+
+export type NavigateHelper<
+  TRoutes extends RoutesPretty,
+  TAdapterNavigateFn extends AdapterNavigateFn,
+  TErrorClass extends ClassLikeError0<ErrorPoint0>,
+> = {
+  <TRouteName extends ExtractRoutesKeys<TRoutes>>(
+    ...args: IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
+      ? [
+          route: TRouteName,
+          input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
+          options?: NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> & SpecialNavigateOptions,
+        ]
+      : [
+          route: TRouteName,
+          input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
+          options?: NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> & SpecialNavigateOptions,
+        ]
+  ): Promise<{ location: AnyLocation; error: InstanceType<TErrorClass> | undefined }>
+  to: (
+    to: string,
+    options?: NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> & SpecialNavigateOptions,
+  ) => Promise<{ location: AnyLocation; error: InstanceType<TErrorClass> | undefined }>
+}
+
+export type RedirectHelper<TRoutes extends RoutesPretty, TAdapterNavigateFn extends AdapterNavigateFn> = {
+  <TRouteName extends ExtractRoutesKeys<TRoutes>>(
+    ...args: IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
+      ? [
+          route: TRouteName,
+          input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
+          options?: RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn>,
+        ]
+      : [
+          route: TRouteName,
+          input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
+          options?: RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn>,
+        ]
+  ): RedirectTask<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>
+  to: (
+    to: string,
+    options?: RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn> & SpecialNavigateOptions,
+  ) => RedirectTask<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>
+}
 
 export type UseLocationOptions = { addHash?: boolean }
 export type UseLocationFn = (options?: UseLocationOptions) => ExactLocation | UnknownLocation
@@ -279,10 +358,12 @@ export async function navigateWithTransitions<
 >({
   to: providedTo,
   navigate,
+  options,
   ErrorClass = ErrorPoint0 as unknown as TErrorClass,
 }: {
   to: string
   navigate: () => any
+  options?: SpecialNavigateOptions
   ErrorClass?: TErrorClass
 }): NavigateWithTransitionsReturnType<TErrorClass> {
   const navigationContext = getNavigationContext()
@@ -302,6 +383,7 @@ export async function navigateWithTransitions<
   try {
     await clientPoints.prefetchPage({
       location,
+      policy: options?.prefetch,
       trigger: 'navigate',
     })
     navigationContext.setStatus('transitioning')
@@ -320,12 +402,20 @@ export async function navigateWithTransitions<
   }
 }
 
-export class RedirectTask<TNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> {
+export class RedirectTask<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> {
   readonly to: string
   readonly status?: number
-  readonly options?: TNavigateOptions
+  readonly options?: TAdapterNavigateOptions & SpecialNavigateOptions
 
-  constructor({ to, status, options }: { to: string; status?: number; options?: TNavigateOptions }) {
+  constructor({
+    to,
+    status,
+    options,
+  }: {
+    to: string
+    status?: number
+    options?: TAdapterNavigateOptions & SpecialNavigateOptions
+  }) {
     this.to = to
     this.status = status
     this.options = options
@@ -339,9 +429,12 @@ export class RedirectTask<TNavigateOptions extends AdapterNavigateOptions = Adap
     }
   }
 
-  static from<TNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions>(
-    input: string | Record<string, unknown> | { to: string; status?: number; options?: TNavigateOptions },
-  ): RedirectTask<TNavigateOptions> {
+  static from<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions>(
+    input:
+      | string
+      | Record<string, unknown>
+      | { to: string; status?: number; options?: TAdapterNavigateOptions & SpecialNavigateOptions },
+  ): RedirectTask<TAdapterNavigateOptions> {
     try {
       if (input instanceof RedirectTask) {
         return input
@@ -362,7 +455,7 @@ export class RedirectTask<TNavigateOptions extends AdapterNavigateOptions = Adap
       return new RedirectTask({
         to: parsed.to,
         status: parsed.status,
-        options: parsed.options as TNavigateOptions,
+        options: parsed.options as TAdapterNavigateOptions & SpecialNavigateOptions,
       })
     } catch (error) {
       throw new Error('Failed to parse redirect task: ' + (error instanceof Error ? error.message : String(error)))

@@ -18,7 +18,9 @@ export const generalLayout = client.lets('layout', 'generalLayout').layout(({ ch
           <Link to={routes.ideas()}>Browse Ideas</Link>
         </li>
         <li>
-          <Link to={routes.newIdea()}>Create Idea</Link>
+          <Link to={routes.newIdea()} prefetchOnHover="onPrefetchOnly" prefetchOnNavigate="none">
+            Create Idea
+          </Link>
         </li>
       </ul>
       <hr />
