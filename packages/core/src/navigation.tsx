@@ -96,7 +96,6 @@ export type UseLocationFn = (options?: UseLocationOptions) => ExactLocation | Un
 
 export type NavigationStatus = 'idle' | 'prefetching' | 'transitioning'
 
-export type UseNavigationContextFn = () => NavigationContextValue
 export type UseOnNavigateFn = (options: {
   prevLocation: AnyLocation
   nextLocation: AnyLocation
@@ -134,7 +133,7 @@ export type NavigationPageStateInitial = {
 }
 export type NavigationPageState<TStatus extends 'success' | 'loading' | 'error' | 'initial' = any> = IfAnyThenElse<
   TStatus,
-  NavigationPageStateSuccess | NavigationPageStateLoading | NavigationPageStateError,
+  NavigationPageStateSuccess | NavigationPageStateLoading | NavigationPageStateError | NavigationPageStateInitial,
   TStatus extends 'success'
     ? NavigationPageStateSuccess
     : TStatus extends 'loading'
@@ -145,28 +144,60 @@ export type NavigationPageState<TStatus extends 'success' | 'loading' | 'error' 
           ? NavigationPageStateInitial
           : never
 >
+export type NavigationPageStateContextValue = NavigationPageState<any>
+export const NavigationPageStateContext = React.createContext<NavigationPageStateContextValue | null>(null)
+export const useNavigationPageState = (): NavigationPageStateContextValue => {
+  const ctx = React.useContext(NavigationPageStateContext)
+  if (!ctx) throw new Error('useNavigationPageState must be used within NavigationPageStateContextProvider')
+  return ctx
+}
 
-export type NavigationContextValue = {
+export type NavigationHelpersContextValue = {
   ssrLocation: AnyLocation | null
+  adapterNavigate: AdapterNavigateFn
+  useAdapterLocation: UseLocationFn
+  addHashToLocation: boolean
+  setPrevLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
+  setNextLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
+  setTransitionStatus: React.Dispatch<React.SetStateAction<NavigationStatus>>
+  setTransitionError: React.Dispatch<React.SetStateAction<Error | undefined>>
+  setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
+}
+export const NavigationHelpersContext = React.createContext<NavigationHelpersContextValue | null>(null)
+export const useNavigationHelpers = (): NavigationHelpersContextValue => {
+  const ctx = React.useContext(NavigationHelpersContext)
+  if (!ctx) throw new Error('useNavigationHelpers must be used within NavigationHelpersContextProvider')
+  return ctx
+}
+export const getNavigationHelpers = (): NavigationHelpersContextValue => {
+  const navigationHelpers = _ss.__POINT0_NAVIGATION_HELPERS__.getWeak()
+  if (navigationHelpers) {
+    return navigationHelpers
+  }
+  throw new Error('NavigationHelpersContextProvider is not yet initialized')
+}
+
+export type NavigationTransitionStateContextValue = {
   prevLocation: AnyLocation | null
   currentLocation: AnyLocation
   nextLocation: AnyLocation | null
-  adapterNavigate: AdapterNavigateFn
   status: NavigationStatus
   error: Error | undefined
-  useAdapterLocation: UseLocationFn
-  addHashToLocation: boolean
-  pageState: NavigationPageState
-
-  // setters
-  setPrevLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
-  setNextLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
-  setStatus: React.Dispatch<React.SetStateAction<NavigationStatus>>
-  setError: React.Dispatch<React.SetStateAction<Error | undefined>>
-  setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
+}
+export const NavigationTransitionStateContext = React.createContext<NavigationTransitionStateContextValue | null>(null)
+export const useNavigationTransitionState = (): NavigationTransitionStateContextValue => {
+  const ctx = React.useContext(NavigationTransitionStateContext)
+  if (!ctx) throw new Error('useNavigationTransitionState must be used within NavigationTransitionStateContextProvider')
+  return ctx
+}
+export const getNavigationTransitionState = (): NavigationTransitionStateContextValue => {
+  const navigationTransitionState = _ss.__POINT0_NAVIGATION_TRANSITION_STATE__.getWeak()
+  if (navigationTransitionState) {
+    return navigationTransitionState
+  }
+  throw new Error('NavigationTransitionStateContextProvider is not yet initialized')
 }
 
-export const NavigationContext = React.createContext<NavigationContextValue | null>(null)
 export type NavigationLocationContextValue = {
   useAdapterLocation: UseLocationFn
   currentLocation: AnyLocation
@@ -193,51 +224,20 @@ export function NavigationContextProvider({
 }: NavigationContextProviderProps) {
   const [nextLocation, setNextLocation] = useState<AnyLocation | null>(null)
   const [prevLocation, setPrevLocation] = useState<AnyLocation | null>(null)
-  const [navigationStatus, setStatus] = useState<NavigationStatus>(status)
-  const [error, setError] = useState<Error | undefined>(undefined)
+  const [transitionStatus, setTransitionStatus] = useState<NavigationStatus>(status)
+  const [transitionError, setTransitionError] = useState<Error | undefined>(undefined)
   const [pageState, setPageState] = useState<NavigationPageState>({
     status: 'initial',
     error: undefined,
     loading: undefined,
     initial: true,
   })
+
   const currentLocation = useAdapterLocation()
   useEffect(() => {
     _ss.__POINT0_CURRENT_LOCATION__.set(currentLocation)
   }, [currentLocation])
 
-  const value = useMemo(
-    () => ({
-      ssrLocation: ssrLocation ?? null,
-      currentLocation,
-      prevLocation,
-      nextLocation,
-      status: navigationStatus,
-      error,
-      adapterNavigate,
-      setNextLocation,
-      setPrevLocation,
-      setStatus,
-      setError,
-      useAdapterLocation,
-      addHashToLocation,
-      pageState,
-      setPageState,
-    }),
-    [
-      ssrLocation,
-      currentLocation,
-      prevLocation,
-      nextLocation,
-      navigationStatus,
-      error,
-      useAdapterLocation,
-      adapterNavigate,
-    ],
-  )
-  useEffect(() => {
-    _ss.__POINT0_NAVIGATION_CONTEXT__.set(value)
-  }, [value])
   const locationValue = useMemo<NavigationLocationContextValue>(
     () => ({
       useAdapterLocation,
@@ -247,39 +247,51 @@ export function NavigationContextProvider({
     [currentLocation, addHashToLocation, useAdapterLocation],
   )
 
-  return (
-    <NavigationContext.Provider value={value}>
-      <NavigationLocationContext.Provider value={locationValue}>{children}</NavigationLocationContext.Provider>
-    </NavigationContext.Provider>
+  const helpersValue = useMemo<NavigationHelpersContextValue>(
+    () => ({
+      ssrLocation: ssrLocation ?? null,
+      adapterNavigate,
+      setNextLocation,
+      setPrevLocation,
+      setTransitionStatus,
+      setTransitionError,
+      useAdapterLocation,
+      addHashToLocation,
+      setPageState,
+    }),
+    [ssrLocation, useAdapterLocation, adapterNavigate, addHashToLocation],
   )
-}
+  useEffect(() => {
+    _ss.__POINT0_NAVIGATION_HELPERS__.set(helpersValue)
+  }, [helpersValue])
 
-export const getNavigationContext = (): NavigationContextValue => {
-  const navigationContext = _ss.__POINT0_NAVIGATION_CONTEXT__.getWeak()
-  if (navigationContext) {
-    return navigationContext
-  }
-  throw new Error('NavigationContextProvider is not yet initialized')
-}
+  const transitionStateValue = useMemo<NavigationTransitionStateContextValue>(
+    () => ({
+      prevLocation,
+      currentLocation,
+      nextLocation,
+      status: transitionStatus,
+      error: transitionError,
+    }),
+    [prevLocation, currentLocation, nextLocation, transitionStatus, transitionError],
+  )
+  useEffect(() => {
+    _ss.__POINT0_NAVIGATION_TRANSITION_STATE__.set(transitionStateValue)
+  }, [transitionStateValue])
 
-/** Hooks **/
+  useEffect(() => {
+    _ss.__POINT0_NAVIGATION_PAGE_STATE__.set(pageState)
+  }, [pageState])
 
-export function useLocation<TRouteDefinition extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
-  options?: UseLocationOptions,
-): UnknownLocation | ExactLocation<TRouteDefinition> {
-  const locationCtx = React.useContext(NavigationLocationContext)
-  if (!locationCtx) throw new Error('useLocation must be used within NavigationLocationContextProvider')
-  const addHash =
-    options && 'addHash' in options && typeof options.addHash === 'boolean'
-      ? options.addHash
-      : locationCtx.addHashToLocation
-  return locationCtx.useAdapterLocation({ ...options, addHash }) as UnknownLocation | ExactLocation<TRouteDefinition>
-}
-
-export const useNavigationContext: UseNavigationContextFn = () => {
-  const ctx = React.useContext(NavigationContext)
-  if (!ctx) throw new Error('useNavigation must be used within NavigationContextProvider')
-  return ctx
+  return (
+    <NavigationHelpersContext.Provider value={helpersValue}>
+      <NavigationTransitionStateContext.Provider value={transitionStateValue}>
+        <NavigationPageStateContext.Provider value={pageState}>
+          <NavigationLocationContext.Provider value={locationValue}>{children}</NavigationLocationContext.Provider>
+        </NavigationPageStateContext.Provider>
+      </NavigationTransitionStateContext.Provider>
+    </NavigationHelpersContext.Provider>
+  )
 }
 
 export const useNavigationLocationContext = (): NavigationLocationContextValue => {
@@ -287,19 +299,28 @@ export const useNavigationLocationContext = (): NavigationLocationContextValue =
   if (!ctx) throw new Error('useNavigationLocationContext must be used within NavigationContextProvider')
   return ctx
 }
-
-// export const _usePageStateManager = (): {
-//   pageState: NavigationPageState
-//   setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
-// } => {
-//   const ctx = React.useContext(NavigationContext)
-//   if (!ctx) throw new Error('useSetPageState must be used within NavigationContextProvider')
-//   return { pageState: ctx.pageState, setPageState: ctx.setPageState }
-// }
+export function useLocation<TRouteDefinition extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
+  options?: UseLocationOptions,
+): UnknownLocation | ExactLocation<TRouteDefinition> {
+  const locationCtx = useNavigationLocationContext()
+  const addHash =
+    options && 'addHash' in options && typeof options.addHash === 'boolean'
+      ? options.addHash
+      : locationCtx.addHashToLocation
+  return locationCtx.useAdapterLocation({ ...options, addHash }) as UnknownLocation | ExactLocation<TRouteDefinition>
+}
+export const getLocation = <TRouteDefinition extends AnyRouteOrDefinition = AnyRouteOrDefinition>():
+  | ExactLocation<TRouteDefinition>
+  | UnknownLocation => {
+  const location = _ss.__POINT0_CURRENT_LOCATION__.getWeak()
+  if (!location) {
+    throw new Error('Current location is not yet initialized')
+  }
+  return location as ExactLocation<TRouteDefinition> | UnknownLocation
+}
 
 export const useOnNavigate = (fn: UseOnNavigateFn) => {
-  const ctx = React.useContext(NavigationContext)
-  if (!ctx) throw new Error('useOnNavigate must be used within NavigationContextProvider')
+  const ctx = useNavigationTransitionState()
 
   const prevLocationRef = useRef(ctx.currentLocation)
   const nextLocationRef = useRef(ctx.nextLocation)
@@ -369,20 +390,20 @@ export async function navigateWithTransitions<
 }): NavigateWithTransitionsReturnType<TErrorClass> {
   const navigateId = generateId()
   _ss.__POINT0_CURRENT_NAVIGATE_ID__.set(navigateId)
-  const navigationContext = getNavigationContext()
+  const helpers = getNavigationHelpers()
+  const prevLocation = getLocation()
   const to = (() => {
     if (providedTo.startsWith('#')) {
-      return navigationContext.currentLocation.pathname + providedTo
+      return prevLocation.pathname + providedTo
     }
     return providedTo
   })()
-  const prevLocation = navigationContext.currentLocation
   const clientPoints = getClientPoints()
   const location = clientPoints.routes._.getLocation(to)
-  navigationContext.setPrevLocation(prevLocation)
-  navigationContext.setError(undefined)
-  navigationContext.setNextLocation(location)
-  navigationContext.setStatus('prefetching')
+  helpers.setPrevLocation(prevLocation)
+  helpers.setTransitionError(undefined)
+  helpers.setNextLocation(location)
+  helpers.setTransitionStatus('prefetching')
   try {
     await clientPoints.prefetchPage({
       location,
@@ -392,10 +413,10 @@ export async function navigateWithTransitions<
     if (navigateId !== _ss.__POINT0_CURRENT_NAVIGATE_ID__.get()) {
       return { location, error: new Error('Another navigate has been started') as InstanceType<TErrorClass> }
     }
-    navigationContext.setStatus('transitioning')
+    helpers.setTransitionStatus('transitioning')
     await navigate()
-    navigationContext.setStatus('idle')
-    navigationContext.setNextLocation(null)
+    helpers.setTransitionStatus('idle')
+    helpers.setNextLocation(null)
     _ss.__POINT0_CURRENT_NAVIGATE_ID__.set(undefined)
     return { location, error: undefined }
   } catch (error) {
@@ -403,11 +424,11 @@ export async function navigateWithTransitions<
       return { location, error: new Error('Another navigate has been started') as InstanceType<TErrorClass> }
     }
     const error0 = ErrorClass.from(error) as InstanceType<TErrorClass>
-    navigationContext.setError(error0)
-    navigationContext.setStatus('transitioning')
+    helpers.setTransitionError(error0)
+    helpers.setTransitionStatus('transitioning')
     await navigate()
-    navigationContext.setStatus('idle')
-    navigationContext.setNextLocation(null)
+    helpers.setTransitionStatus('idle')
+    helpers.setNextLocation(null)
     _ss.__POINT0_CURRENT_NAVIGATE_ID__.set(undefined)
     return { location, error: error0 }
   }

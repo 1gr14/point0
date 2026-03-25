@@ -6,7 +6,12 @@ import type { ClientPoints } from './client-points.js'
 import type { Effects } from './effects.js'
 import { __POINT0_IS_SSR_IN_PROGRESS__ } from './env.js'
 import type { ErrorPoint0 } from './error.js'
-import { ssrRedirectTask, type NavigationContextValue } from './navigation.js'
+import type {
+  NavigationHelpersContextValue,
+  NavigationPageStateContextValue,
+  NavigationTransitionStateContextValue,
+} from './navigation.js'
+import { ssrRedirectTask } from './navigation.js'
 import { __POINT0_QUERY_CLIENT__ } from './query-client.js'
 import type { Request0 } from './request0.js'
 import { superstore } from './super-store.js'
@@ -60,23 +65,18 @@ export const _ss = {
     initUndefined,
     'clientServerIsolated',
   ),
-  __POINT0_NAVIGATION_CONTEXT__: superstore.define<NavigationContextValue>(
-    '__POINT0_NAVIGATION_CONTEXT__',
-    initUndefined,
-    'clientServerIsolated',
-  ),
-  __POINT0_NAVIGATION_HELPERS__: superstore.define<NavigationContextValue>(
+  __POINT0_NAVIGATION_HELPERS__: superstore.define<NavigationHelpersContextValue>(
     '__POINT0_NAVIGATION_HELPERS__',
     initUndefined,
     'clientServerIsolated',
   ),
-  __POINT0_NAVIGATION_PAGE_STATE__: superstore.define<NavigationContextValue>(
-    '__POINT0_NAVIGATION_PAGE_STATE__',
+  __POINT0_NAVIGATION_TRANSITION_STATE__: superstore.define<NavigationTransitionStateContextValue>(
+    '__POINT0_NAVIGATION_TRANSITION_STATE__',
     initUndefined,
     'clientServerIsolated',
   ),
-  __POINT0_NAVIGATION_TRANSITION_STATE__: superstore.define<NavigationContextValue>(
-    '__POINT0_NAVIGATION_TRANSITION_STATE__',
+  __POINT0_NAVIGATION_PAGE_STATE__: superstore.define<NavigationPageStateContextValue>(
+    '__POINT0_NAVIGATION_PAGE_STATE__',
     initUndefined,
     'clientServerIsolated',
   ),

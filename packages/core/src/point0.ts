@@ -97,8 +97,8 @@ import type {
   WithSelfQueryIfShouldBeFinalized,
   WrapperComponentType,
 } from './mountable.js'
-import type { NavigationPageState } from './navigation.js'
-import { useLocation, useNavigationContext } from './navigation.js'
+import { useNavigationTransitionState, type NavigationPageState } from './navigation.js'
+import { useLocation } from './navigation.js'
 import type { PopularRequestMethod, WideRequestMethod } from './request0.js'
 import { extractKeysBySchemasHelpers } from './schema/utils.js'
 import { superstore } from './super-store.js'
@@ -11117,7 +11117,7 @@ export class Point0<
       return { inputRaw, restProps }
     }, [props, location])
 
-    const { prevLocation, status } = useNavigationContext()
+    const { prevLocation, status } = useNavigationTransitionState()
     React.useEffect(() => {
       if (status !== 'idle') {
         return
