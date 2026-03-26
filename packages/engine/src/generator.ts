@@ -81,6 +81,7 @@ export class FilesGenerator {
   private readonly files = new Set<string>()
   private readonly points: CompilerPoint[] = []
   private readonly pointsByPaths = new Map<string, CompilerPoint[]>()
+  private readonly stablePoints: CompilerPoint[] = []
 
   // Map<outputAbs, content>
   private readonly lastEmittedContentMap = new Map<string, string>()
@@ -193,9 +194,9 @@ export class FilesGenerator {
     return [...this.files].some((f) => f.startsWith(fileOrDirAbs))
   }
 
-  actualizePointsByPaths(): void {
+  actualizePointsByPaths(points: CompilerPoint[]): void {
     this.pointsByPaths.clear()
-    for (const point of this.points) {
+    for (const point of points) {
       const current = this.pointsByPaths.get(point.file.abs)
       if (current) {
         current.push(point)
@@ -207,11 +208,13 @@ export class FilesGenerator {
 
   // mutations
 
-  private sortPoints(): void {
+  private updatePoints(newPoints: CompilerPoint[]): void {
     const order = END_POINT_TYPES
     const orderIndex = new Map(order.map((t, i) => [t, i]))
 
-    this.points.sort((a, b) => {
+    const stablePoints = [...newPoints]
+
+    stablePoints.sort((a, b) => {
       if (a.type === 'root') {
         return -1
       }
@@ -231,6 +234,10 @@ export class FilesGenerator {
 
       return a.file.abs.localeCompare(b.file.abs)
     })
+
+    this.points.splice(0, this.points.length, ...stablePoints)
+    this.stablePoints.splice(0, this.stablePoints.length, ...stablePoints)
+    this.actualizePointsByPaths(stablePoints)
   }
 
   // processing
@@ -277,8 +284,7 @@ export class FilesGenerator {
       ? FilesGenerator.mergeCollectedPointsWithoutDeletion(prevPoints, validPoints)
       : validPoints
     const diff = FilesGenerator.getCollectedPointsDiff(prevPoints, newPoints)
-    this.points.splice(0, this.points.length, ...newPoints)
-    this.sortPoints()
+    this.updatePoints(newPoints)
     const { written } = diff.changed ? await this.writeOutputs() : { written: false }
     if (!options?.silent) {
       for (const { error, file } of errors) {
@@ -310,7 +316,6 @@ export class FilesGenerator {
         })
       }
     }
-    this.actualizePointsByPaths()
     return {
       points: newPoints,
       deleted: diff.deleted,
@@ -720,7 +725,7 @@ export class FilesGenerator {
   }
 
   private emitLazyPointsFile(task: FilesGeneratorTaskPoints): string {
-    const points = this.points.filter(
+    const points = this.stablePoints.filter(
       (p) => p.scope === task.scope && FilesGenerator.shouldExistsInPointsFile({ point: p, side: task.side }),
     ) as Array<CompilerPoint<true>>
     const lines: string[] = []
@@ -767,7 +772,7 @@ export class FilesGenerator {
   }
 
   private emitReadyPointsFile(task: FilesGeneratorTaskPoints): string {
-    const points = this.points.filter(
+    const points = this.stablePoints.filter(
       (p) => p.scope === task.scope && FilesGenerator.shouldExistsInPointsFile({ point: p, side: task.side }),
     ) as Array<CompilerPoint<true>>
 
@@ -918,7 +923,7 @@ export class FilesGenerator {
   // }
 
   private emitRoutesPointsFile(task: FilesGeneratorTaskRoutes): string {
-    const points = this.points.filter((p) => p.scope === task.scope)
+    const points = this.stablePoints.filter((p) => p.scope === task.scope)
     const lines: string[] = []
     if (task.banner) {
       lines.push(task.banner)
