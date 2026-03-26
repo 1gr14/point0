@@ -325,6 +325,7 @@ export const createTestThings = async ({
   globals = getFakeBrowserGlobals(),
   engineOptions,
   preventClientDevServers = true,
+  Page404,
 }: {
   wrapper?: React.ComponentType<{ children: React.ReactNode }>
   points?: PointsDefinition<any, any>
@@ -333,11 +334,12 @@ export const createTestThings = async ({
   globals?: Record<string, any>
   engineOptions?: Partial<EngineOptions>
   preventClientDevServers?: boolean
+  Page404?: React.ComponentType
 }): Promise<TestThings> => {
   bindNotifyManager()
   const Wrapper = wrapper ?? undefined
   const routes = ClientPoints.createFromDefintion(points).routes
-  const { Router, RouterRoutes } = createNavigation({ routes, forceRerender: true })
+  const { Router, RouterRoutes } = createNavigation({ routes, forceRerender: true, Page404 })
   const { QueryClientProvider, queryClient } = createQueryClient()
   const app =
     appProvided ??

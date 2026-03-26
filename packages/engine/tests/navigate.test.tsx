@@ -141,7 +141,12 @@ const createTestPointsAndHelpers = () => {
       return { post: params.id }
     })
     .page(({ data }) => <div id="post">post {data.post}</div>)
-  return { root, routes, Link, NavLink, navigate, homePage, aboutPage, postsPage, postPage, layout }
+  const Page404 = () => (
+    <layout.X>
+      <div id="page-404">Page Not Found</div>
+    </layout.X>
+  )
+  return { root, routes, Link, NavLink, navigate, homePage, aboutPage, postsPage, postPage, layout, Page404 }
 }
 
 // const cut = async (tale: any) => {
@@ -157,10 +162,11 @@ const createTestPointsAndHelpers = () => {
 // }
 const createT = async () => {
   const testPointsAndHelpers = createTestPointsAndHelpers()
-  const { root, layout, homePage, aboutPage, postsPage, postPage } = testPointsAndHelpers
+  const { root, layout, homePage, aboutPage, postsPage, postPage, Page404 } = testPointsAndHelpers
   const testThings = await createTestThings({
     ssr: true,
     points: [root, layout, homePage, aboutPage, postsPage, postPage],
+    Page404,
   })
   return { ...testPointsAndHelpers, ...testThings }
 }
@@ -738,7 +744,7 @@ describe('navigate', () => {
             #is-navigating: false
             #from: undefined
             #to: undefined
-          text: Page Not Found
+          #page-404: Page Not Found
         "
       `)
     })
@@ -782,7 +788,7 @@ describe('navigate', () => {
             #is-navigating: false
             #from: undefined
             #to: undefined
-          text: Page Not Found
+          #page-404: Page Not Found
         "
       `)
       })

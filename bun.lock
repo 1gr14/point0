@@ -404,7 +404,7 @@
   "catalog": {
     "@devp0nt/error0": "^1.0.0-next.56",
     "@devp0nt/flat0": "^1.1.1",
-    "@devp0nt/route0": "^1.0.0-next.83",
+    "@devp0nt/route0": "^1.0.0-next.84",
     "@sinclair/typebox": "^0.34.48",
     "@tanstack/react-query": "^5.0.0",
     "@typescript/native-preview": "^7.0.0-dev.20260212.1",
@@ -689,7 +689,7 @@
 
     "@devp0nt/flat0": ["@devp0nt/flat0@1.1.1", "", {}, "sha512-PZgoTXt4jgtzyYz9r6vWD/3hK8ai1n/1+uEOgwfaoJx6xRR3PSPc5PXmaRVDA3hNvipQEWi+9uS1pDVsine9oA=="],
 
-    "@devp0nt/route0": ["@devp0nt/route0@1.0.0-next.83", "", { "peerDependencies": { "@devp0nt/flat0": "^1.1.1", "@standard-schema/spec": "^1.0.0" }, "optionalPeers": ["@standard-schema/spec"] }, "sha512-oAQaoSB6XZCh+9/4hWel1H5rRZnFLen7NgzGd5OFBVrXQyNRgDgK42UHBzcESAyYwcsnteEE3keLVzGTMWfjHw=="],
+    "@devp0nt/route0": ["@devp0nt/route0@1.0.0-next.84", "", { "peerDependencies": { "@devp0nt/flat0": "^1.1.1", "@standard-schema/spec": "^1.0.0" }, "optionalPeers": ["@standard-schema/spec"] }, "sha512-TG+jvbS1orA6XrYQvpdeEEcbl/MB0lfYhzc+XHqvyEoGw821ZQfspn6lcnMWrFjrttZdOJqgEycT818NkanqPw=="],
 
     "@electric-sql/pglite": ["@electric-sql/pglite@0.3.15", "", {}, "sha512-Cj++n1Mekf9ETfdc16TlDi+cDDQF0W7EcbyRHYOAeZdsAe8M/FJg18itDTSwyHfar2WIezawM9o0EKaRGVKygQ=="],
 

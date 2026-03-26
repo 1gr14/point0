@@ -44,7 +44,7 @@ import type {
   ServerEventerSubscriptionCallback,
   UniqEventerErrorEventName,
 } from './eventer.js'
-import { ClientOnly, getFetch, setStatus, useEffectSsr, useIsHydrated } from './helpers.js'
+import { ClientOnly, getFetch, setStatus, useIsHydrated } from './helpers.js'
 import { _getFakeClient, _ss } from './internals.js'
 import type { LogFn } from './logger.js'
 import type {
@@ -99,8 +99,8 @@ import type {
 } from './mountable.js'
 import {
   useLocation,
-  useNavigationHelpers,
   useNavigationTransitionState,
+  useSetNavigationPageState,
   type NavigationPageState,
 } from './navigation.js'
 import { forceFreshDehydratedState } from './query-client.js'
@@ -10292,21 +10292,11 @@ export class Point0<
     }>
     skipPageStateRelated: boolean
   }) => {
-    const navigationHelpers = useNavigationHelpers()
-    useEffectSsr(() => {
-      if (skipPageStateRelated) {
-        return
-      }
-      navigationHelpers.setPageState((currentPageState) => {
-        if (
-          pageState.status !== currentPageState.status ||
-          pageState.error?.message !== currentPageState.error?.message
-        ) {
-          return pageState
-        }
-        return currentPageState
-      })
-    }, [pageState.status, pageState.error?.message])
+    useSetNavigationPageState({
+      status: pageState.status,
+      error: pageState.error,
+      skip: skipPageStateRelated,
+    })
 
     for (const { action, state } of prevMountActions) {
       // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
@@ -10356,6 +10346,7 @@ export class Point0<
           pageState: {
             status: 'loading',
             error: undefined,
+            success: false,
             loading: true,
             initial: false,
           },
@@ -10398,6 +10389,7 @@ export class Point0<
           pageState: {
             status: 'error',
             error: error0,
+            success: false,
             loading: false,
             initial: false,
           },

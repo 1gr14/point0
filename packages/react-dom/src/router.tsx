@@ -11,13 +11,14 @@ import type {
 import {
   navigateWithTransitions,
   NavigationContextProvider,
+  NavigationPageStateSetter,
   RedirectTask,
   ssrRedirectTask,
   useLocation,
   useNavigationLocationContext,
-  type AdapterNavigateFn,
 } from '@point0/core/navigation'
 import type {
+  AdapterNavigateFn,
   NavigateHelper,
   NavigateOptionsByAdapterNavigateFn,
   NavigateWithTransitionsReturnType,
@@ -740,7 +741,7 @@ export const createRedirectHelper = <
 export const createRouter = ({
   addHashToLocation,
   routes = getClientPoints().routes,
-  Page404,
+  Page404: ProvidedPage404,
   pagesTree,
   hook = useBrowserLocation,
   navigate: adapterNavigate = browserNavigate,
@@ -763,7 +764,7 @@ export const createRouter = ({
   status?: NavigationStatus
   ssrLocation?: AnyLocation | undefined
 }) => React.ReactElement) => {
-  function RouterRoutes(): React.ReactElement {
+  function RouterRoutes({ Page404 }: { Page404?: React.ComponentType }): React.ReactElement {
     if (forceRerender) {
       useNavigationLocationContext()
     }
@@ -772,12 +773,12 @@ export const createRouter = ({
 
   return function Router({
     children,
-    status,
     ssrLocation = _ss.__POINT0_SSR_LOCATION__.get(),
+    Page404 = ProvidedPage404,
   }: {
     children?: React.ReactNode
-    status?: NavigationStatus
     ssrLocation?: AnyLocation | undefined
+    Page404?: React.ComponentType
   }) {
     const wouterSsrProps = useMemo(() => {
       if (env.side.is.client) {
@@ -835,11 +836,11 @@ export const createRouter = ({
         <NavigationContextProvider
           useAdapterLocation={useAdapterLocation}
           ssrLocation={ssrLocation}
-          status={status}
           addHashToLocation={addHashToLocation}
           adapterNavigate={adapterNavigate}
+          ErrorClass={ErrorClass}
         >
-          {children ?? <RouterRoutes />}
+          {children ?? <RouterRoutes Page404={Page404} />}
         </NavigationContextProvider>
       </NativeWouterRouter>
     )
@@ -850,14 +851,14 @@ const DefaultPage404 = () => <>Page Not Found</>
 
 export const createRouterRoutes = ({
   pagesTree,
-  Page404,
+  Page404: ProvidedPage404,
   forceRerender,
 }: {
   pagesTree?: PagesTree
   Page404?: React.ComponentType
   forceRerender?: boolean
-}): (() => React.ReactElement) => {
-  return function RouterRoutes() {
+}) => {
+  return function RouterRoutes({ Page404 = ProvidedPage404 }: { Page404?: React.ComponentType }) {
     if (forceRerender) {
       useNavigationLocationContext()
     }
@@ -932,15 +933,14 @@ export const RenderPagesTree = ({
                     )
                   })}
                   {node.nested && <RenderPagesTree pagesTree={node.nested} Page404={Page404} level={level + 1} />}
-                  <Route path="*">
+                  <NavigationPageStateSetter status="error" error="Page Not Found">
                     <Page404 />
-                  </Route>
+                  </NavigationPageStateSetter>
                 </Switch>
               </Layout>
             </Route>
           )
         }
-
         return (
           <Fragment key={`nolayout-${node.layoutName}`}>
             {node.pages.map(({ pageRoute, Page }) => {
@@ -957,7 +957,9 @@ export const RenderPagesTree = ({
       })}
 
       <Route path="*">
-        <Page404 />
+        <NavigationPageStateSetter status="error" error="Page Not Found">
+          <Page404 />
+        </NavigationPageStateSetter>
       </Route>
     </Switch>
   )

@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { _point0_env } from './env.js'
 import { ErrorPoint0 } from './error.js'
 import type { ClassLikeError0 } from './error.js'
-import { getClientPoints } from './helpers.js'
+import { getClientPoints, useEffectSsr } from './helpers.js'
 import { _ss } from './internals.js'
 import { superstore } from './super-store.js'
 import type { IfAnyThenElse, PrefetchPagePolicy } from './types.js'
@@ -112,24 +112,28 @@ export type NavigationPageStateSuccess = {
   status: 'success'
   error: undefined
   loading: false
+  success: true
   initial: false
 }
 export type NavigationPageStateLoading = {
   status: 'loading'
   error: undefined
   loading: true
+  success: false
   initial: false
 }
 export type NavigationPageStateError<TError extends ErrorPoint0 = ErrorPoint0> = {
   status: 'error'
   error: TError
   loading: false
+  success: false
   initial: false
 }
 export type NavigationPageStateInitial = {
   status: 'initial'
   error: undefined
   loading: undefined
+  success: undefined
   initial: true
 }
 export type NavigationPageState<TStatus extends 'success' | 'loading' | 'error' | 'initial' = any> = IfAnyThenElse<
@@ -159,6 +163,59 @@ export const useNavigationPageState = (): NavigationPageStateContextValue => {
   if (!ctx) throw new Error('useNavigationPageState must be used within NavigationPageStateContextProvider')
   return ctx
 }
+type SetNavigationPageStateOptions = {
+  status: 'loading' | 'success' | 'initial' | 'error'
+  error?: unknown
+  skip?: boolean
+}
+export const useSetNavigationPageState = (options: SetNavigationPageStateOptions): void => {
+  const helpers = useNavigationHelpers()
+  const { status, error, skip } = options
+  useEffectSsr(() => {
+    if (skip) {
+      return
+    }
+    helpers.setPageState((currentPageState) => {
+      if (status === 'error') {
+        const error0 = helpers.ErrorClass.from(error)
+        if (status === currentPageState.status && error0.message === currentPageState.error.message) {
+          return currentPageState
+        } else {
+          return {
+            status: 'error',
+            error: error0,
+            success: false,
+            initial: false,
+            loading: false,
+          }
+        }
+      } else {
+        if (status === currentPageState.status) {
+          return currentPageState
+        } else {
+          return {
+            status: status,
+            error: undefined,
+            ...(status === 'initial'
+              ? { initial: true, success: undefined, loading: undefined }
+              : {
+                  initial: false,
+                  success: status === 'success',
+                  loading: status === 'loading',
+                }),
+          } as NavigationPageState
+        }
+      }
+    })
+  }, [status, skip])
+}
+export const NavigationPageStateSetter = (
+  props: { children?: React.ReactNode } & SetNavigationPageStateOptions,
+): React.ReactNode => {
+  const { children, ...options } = props
+  useSetNavigationPageState(options)
+  return typeof children === 'undefined' ? null : children
+}
 
 export type NavigationHelpersContextValue = {
   ssrLocation: AnyLocation | null
@@ -170,6 +227,7 @@ export type NavigationHelpersContextValue = {
   setTransitionStatus: React.Dispatch<React.SetStateAction<NavigationStatus>>
   setTransitionError: React.Dispatch<React.SetStateAction<Error | undefined>>
   setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
+  ErrorClass: ClassLikeError0<ErrorPoint0>
 }
 export const NavigationHelpersContext = React.createContext<NavigationHelpersContextValue | null>(null)
 export const useNavigationHelpers = (): NavigationHelpersContextValue => {
@@ -215,30 +273,31 @@ export const NavigationLocationContext = React.createContext<NavigationLocationC
 
 export type NavigationContextProviderProps = {
   children: React.ReactNode
-  status?: NavigationStatus
   useAdapterLocation: UseLocationFn
   ssrLocation?: AnyLocation | null
   addHashToLocation?: boolean
   adapterNavigate: AdapterNavigateFn
+  ErrorClass?: ClassLikeError0<ErrorPoint0>
 }
 
 export function NavigationContextProvider({
   children,
-  status = 'idle',
   useAdapterLocation,
   ssrLocation,
   adapterNavigate,
   addHashToLocation = false,
+  ErrorClass = ErrorPoint0 as unknown as ClassLikeError0<ErrorPoint0>,
 }: NavigationContextProviderProps) {
   const [nextLocation, setNextLocation] = useState<AnyLocation | null>(null)
   const [prevLocation, setPrevLocation] = useState<AnyLocation | null>(null)
-  const [transitionStatus, setTransitionStatus] = useState<NavigationStatus>(status)
+  const [transitionStatus, setTransitionStatus] = useState<NavigationStatus>('idle')
   const [transitionError, setTransitionError] = useState<Error | undefined>(undefined)
   const [pageState, _setPageState] = useState<NavigationPageState>(
     _ss.__POINT0_NAVIGATION_PAGE_STATE__.getWeak() ?? {
       status: 'initial',
       error: undefined,
       loading: undefined,
+      success: undefined,
       initial: true,
     },
   )
@@ -248,6 +307,7 @@ export function NavigationContextProvider({
         status: 'initial',
         error: undefined,
         loading: undefined,
+        success: undefined,
         initial: true,
       }
       const nextPageState = typeof pageState === 'function' ? pageState(previousPageState) : pageState
@@ -282,8 +342,9 @@ export function NavigationContextProvider({
       useAdapterLocation,
       addHashToLocation,
       setPageState,
+      ErrorClass,
     }),
-    [ssrLocation, useAdapterLocation, adapterNavigate, addHashToLocation],
+    [ssrLocation, useAdapterLocation, adapterNavigate, addHashToLocation, ErrorClass],
   )
   useEffect(() => {
     _ss.__POINT0_NAVIGATION_HELPERS__.set(helpersValue)
