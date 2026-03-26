@@ -25,7 +25,7 @@ import { FakeClient } from '../../src/fake-client.js'
 import { ElementViewer } from './element-viewer.js'
 import { FetchRecorder } from './fetch-recorder.js'
 import { HtmlView } from './html-view.js'
-import { AnyNiceReadyPoint } from '@point0/core'
+import type { AnyNiceReadyPoint } from '@point0/core'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -379,7 +379,7 @@ export const createTestThings = async ({
     clients: [{ scope: 'root', points, indexHtml: '__POINT0_TEST_INDEX_HTML__', app }],
     ssr,
     ...engineOptions,
-  }).prepare({ preventClientDevServers })
+  }).prepare({ side: preventClientDevServers ? 'server' : undefined })
   const client = FakeClient.create<TestThingsState>({
     engine,
     scope: 'root',

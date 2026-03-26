@@ -131,20 +131,26 @@ export class Engine<
   }
 
   // async prepare(): Promise<Engine<true>> {
-  async prepare(options?: { preventClientDevServers?: boolean }): Promise<Engine<TRequiredCtx, TError, true>> {
-    const { preventClientDevServers } = options ?? {}
-    if (this.isPrepared()) {
-      return this as Engine<TRequiredCtx, TError, true>
-    }
+  async prepare(options?: {
+    side?: 'server' | 'client' | undefined
+    scope?: PointsScope | undefined
+  }): Promise<Engine<TRequiredCtx, TError, true>> {
+    const { side, scope } = options ?? {}
+    const isServerSide = !side || side === 'server'
+    const isScopeServer = !scope || scope === this.server.scope
+    const isClientSide = !side ? process.env.POINT0_PREVENT_CLIENT_DEV_SERVER !== 'true' : side === 'client'
+    const isScopeClient = (clientScope: PointsScope) => !scope || clientScope === scope
 
-    await this.server.prepare({ engine: this as Engine<TRequiredCtx, TError, true> })
+    if (isServerSide && isScopeServer) {
+      await this.server.prepare({ engine: this as Engine<TRequiredCtx, TError, true> })
+    }
     await Promise.all(
       this.clients.map(async (client) => {
         if (client.serving === false) {
           return
         }
         return await client.prepare({
-          preventDevServer: preventClientDevServers,
+          preventDevServer: !isClientSide || !isScopeClient(client.scope),
         })
       }),
     )
@@ -164,10 +170,6 @@ export class Engine<
         }
       }),
     )
-  }
-
-  isPrepared(): this is Engine<TRequiredCtx, TError, true> {
-    return !!this.prepared
   }
 
   toEntryPath({ entry, cwd = process.cwd() }: { entry: string; cwd?: string }): string {
@@ -310,10 +312,9 @@ export class Engine<
         }
       })()
       // and here we run one instance of client dev servers per each client
-      const clientsDevSevers =
-        isSideClient && isScopeClient(this.server.scope)
-          ? this.serveClientDevServers({ scopes: scope ? [scope] : undefined })
-          : Promise.resolve()
+      const clientsDevSevers = isSideClient
+        ? this.serveClientDevServers({ scopes: scope ? [scope] : undefined })
+        : Promise.resolve()
       await Promise.all([generatorWatchProcess, ...serverEntryProcesses, clientsDevSevers])
     } else {
       // when we prepare, we create and also start clientDevServers
@@ -335,11 +336,6 @@ export class Engine<
         ]
   ): Promise<void> {
     const { requiredCtx } = args[0] ?? {}
-    // if (!this.isPrepared()) {
-    //   throw new Error(
-    //     'Engine is not prepared. Please call await engine.prepare() first. And do it in each server entrypoint file, strongly before any other import',
-    //   )
-    // }
     await this.prepare()
     await this.server.serve({ requiredCtx })
   }
@@ -358,8 +354,8 @@ export class Engine<
       ? [request: string | URL | Request, options?: { requiredCtx?: TRequiredCtx } & RequestInit]
       : [request: string | URL | Request, options: { requiredCtx: TRequiredCtx } & RequestInit]
   ): Promise<FetcherFetchDetailedResult<ErrorPoint0>> {
-    if (!this.isPrepared()) {
-      throw new Error('Engine is not prepared. Please call await engine.prepare() first.')
+    if (!this.server.prepared) {
+      throw new Error('Engine server is not prepared. Please call await engine.prepare() first.')
     }
     const request = args[0] instanceof Request ? args[0] : new Request(args[0], args[1])
     const { requiredCtx } = args[1] ?? {}

@@ -63,7 +63,7 @@ describe('template', () => {
     wrp(async ({ tp }) => {
       const engine = await tp.importEngine()
       expect(engine).toBeDefined()
-      expect(engine.isPrepared()).toBe(false)
+      expect(engine.server.prepared).toBe(false)
     }),
     {
       retry: 3,
