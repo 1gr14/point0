@@ -30,7 +30,7 @@ import type {
   ReadyPointType,
 } from './types.js'
 
-export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
+export class ClientPoints<TError extends ErrorPoint0> {
   manager: PointsManager
 
   basepath: AnyRoute | undefined
@@ -41,6 +41,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
   routesHash: string
   pagesTreeSource: PagesTreeSource
   pagesTree: PagesTree
+  layouts: ClientPointsLayouts
 
   private constructor({
     manager,
@@ -48,6 +49,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     routesHash,
     pagesTreeSource,
     pagesTree,
+    layouts,
     basepath,
     middlewares,
     transformer,
@@ -57,6 +59,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     routesHash: string
     pagesTreeSource: PagesTreeSource
     pagesTree: PagesTree
+    layouts: ClientPointsLayouts
     basepath: AnyRoute | undefined
     middlewares: MiddlewareFn<TError, any>[]
     transformer: DataTransformerExtended
@@ -66,6 +69,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     this.routesHash = routesHash
     this.pagesTreeSource = pagesTreeSource
     this.pagesTree = pagesTree
+    this.layouts = layouts
     this.basepath = basepath
     this.middlewares = middlewares
     this.transformer = transformer
@@ -92,7 +96,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
     const pagesTreeSource = ClientPoints.toPagesTreeSource({ points: manager.collection })
     const pagesTree = ClientPoints.toPagesTree({ points: manager.collection, pagesTreeSource })
     const routesHash = routes._.pathsOrdering.join(',')
-
+    const layouts = ClientPoints.toLayouts({ points: manager.collection })
     const basepath = root._basepath
     const middlewares = root._middlewares
     const transformer = root._getTransformer()
@@ -103,6 +107,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
       routesHash,
       pagesTreeSource,
       pagesTree,
+      layouts,
       basepath,
       middlewares,
       transformer,
@@ -187,6 +192,20 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
       const bIndex = order.indexOf(b.route.definition)
       return aIndex - bIndex
     })
+  }
+
+  static readonly toLayouts = ({
+    points,
+  }: {
+    points: ReadyPointsCollection | NormalizedPointsCollection
+  }): ClientPointsLayouts => {
+    const layouts: ClientPointsLayouts = {}
+    for (const point of points.filter((p) => p.type === 'layout')) {
+      layouts[point.name] = point.FC as
+        | React.ComponentType<{ children: React.ReactNode }>
+        | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
+    }
+    return layouts
   }
 
   static readonly toPagesTreeSource = ({
@@ -377,7 +396,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
       | {
           location: AnyLocation
         }
-      | { suitable: NonNullable<ReturnType<ClientPoints['getPage']>> },
+      | { suitable: NonNullable<ReturnType<ClientPoints<TError>['getPage']>> },
   ): Promise<
     | {
         page: PagePoint
@@ -416,7 +435,7 @@ export class ClientPoints<TError extends ErrorPoint0 = ErrorPoint0> {
       | {
           location: AnyLocation
         }
-      | { suitable: NonNullable<ReturnType<ClientPoints['getPage']>> },
+      | { suitable: NonNullable<ReturnType<ClientPoints<TError>['getPage']>> },
   ): Promise<
     | {
         page: PagePoint
@@ -581,3 +600,8 @@ export type PagesTreeRecord = {
   nested: undefined | PagesTreeRecord[]
 }
 export type PagesTree = PagesTreeRecord[]
+export type ClientPointsLayouts = Record<
+  string,
+  | React.ComponentType<{ children: React.ReactNode }>
+  | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
+>

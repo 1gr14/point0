@@ -25,6 +25,7 @@ import { FakeClient } from '../../src/fake-client.js'
 import { ElementViewer } from './element-viewer.js'
 import { FetchRecorder } from './fetch-recorder.js'
 import { HtmlView } from './html-view.js'
+import { AnyNiceReadyPoint } from '@point0/core'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -317,6 +318,8 @@ export type TestThings = {
   fetchTitle: FetchTitle
 }
 
+type Layout404TypeOne = string | AnyNiceReadyPoint<'layout'>
+type Layout404Type = Array<Layout404TypeOne> | Layout404TypeOne
 export const createTestThings = async ({
   points = [Point0.lets('root', 'root').root()],
   wrapper,
@@ -326,6 +329,7 @@ export const createTestThings = async ({
   engineOptions,
   preventClientDevServers = true,
   Page404,
+  layout404,
 }: {
   wrapper?: React.ComponentType<{ children: React.ReactNode }>
   points?: PointsDefinition<any, any>
@@ -335,11 +339,12 @@ export const createTestThings = async ({
   engineOptions?: Partial<EngineOptions>
   preventClientDevServers?: boolean
   Page404?: React.ComponentType
+  layout404?: Layout404Type
 }): Promise<TestThings> => {
   bindNotifyManager()
   const Wrapper = wrapper ?? undefined
   const routes = ClientPoints.createFromDefintion(points).routes
-  const { Router, RouterRoutes } = createNavigation({ routes, forceRerender: true, Page404 })
+  const { Router, RouterRoutes } = createNavigation({ routes, forceRerender: true, Page404, layout404 })
   const { QueryClientProvider, queryClient } = createQueryClient()
   const app =
     appProvided ??

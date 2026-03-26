@@ -2,7 +2,9 @@ import { Route0, type AnyLocation, type ExtractRoute, type ExtractRoutesKeys, ty
 import type { ExactLocation, GetPathInputByRoute, IsParamsOptional } from '@devp0nt/route0'
 import { _point0_env, _ss, env, ErrorPoint0, getClientPoints, log } from '@point0/core'
 import type {
+  AnyNiceReadyPoint,
   ClassLikeError0,
+  ClientPointsLayouts,
   NormalizedLazyPointsCollectionRecord,
   PagesTree,
   PrefetchPagePolicy,
@@ -11,7 +13,6 @@ import type {
 import {
   navigateWithTransitions,
   NavigationContextProvider,
-  NavigationPageStateSetter,
   RedirectTask,
   ssrRedirectTask,
   useLocation,
@@ -61,14 +62,14 @@ type LinkAsChildProps = AsChildProps<
   { children: ReactElement; onClick?: MouseEventHandler },
   HTMLLinkAttributes & RefAttributes<HTMLAnchorElement>
 >
-type LinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> &
+export type LinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> &
   LinkAsChildProps &
   SpecialLinkOptions
-type AdapterNavigateFnByHook<TBaseLocationHook extends BaseLocationHook = BrowserLocationHook> =
+export type AdapterNavigateFnByHook<TBaseLocationHook extends BaseLocationHook = BrowserLocationHook> =
   ReturnType<TBaseLocationHook>[1]
 
 type StringOrFalsy = string | undefined | null | false
-type NavLinkClassNameProps = {
+export type NavLinkClassNameProps = {
   exactClassName?: StringOrFalsy
   sameClassName?: StringOrFalsy
   ancestorClassName?: StringOrFalsy
@@ -79,14 +80,16 @@ type NavLinkClassNameProps = {
     | ((state: NavLinkStateOptions) => StringOrFalsy)
     | Partial<Record<'default' | NavLinkStateType, StringOrFalsy>>
 }
-type NavLinkAsChildProps = AsChildProps<
+export type NavLinkAsChildProps = AsChildProps<
   { children: ReactElement; onClick?: MouseEventHandler },
   Omit<HTMLLinkAttributes, 'className'> & RefAttributes<HTMLAnchorElement>
 >
-type NavLinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> &
+export type NavLinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> &
   NavLinkAsChildProps &
   NavLinkClassNameProps &
   SpecialLinkOptions
+export type Layout404TypeOne = string | AnyNiceReadyPoint<'layout'>
+export type Layout404Type = Array<Layout404TypeOne> | Layout404TypeOne
 
 export type NavLinkStateType = 'exact' | 'same' | 'ancestor' | 'descendant' | 'unmatched'
 export type NavLinkStateOptions =
@@ -740,9 +743,11 @@ export const createRedirectHelper = <
 
 export const createRouter = ({
   addHashToLocation,
-  routes = getClientPoints().routes,
+  routes,
   Page404: ProvidedPage404,
+  layout404: providedLayout404,
   pagesTree,
+  layouts,
   hook = useBrowserLocation,
   navigate: adapterNavigate = browserNavigate,
   ErrorClass,
@@ -751,7 +756,9 @@ export const createRouter = ({
   addHashToLocation?: boolean
   routes?: RoutesPretty
   Page404?: React.ComponentType
+  layout404?: Layout404Type
   pagesTree?: PagesTree
+  layouts?: ClientPointsLayouts
   hook?: BaseLocationHook
   navigate?: AdapterNavigateFn
   ErrorClass?: ClassLikeError0<ErrorPoint0>
@@ -764,21 +771,36 @@ export const createRouter = ({
   status?: NavigationStatus
   ssrLocation?: AnyLocation | undefined
 }) => React.ReactElement) => {
-  function RouterRoutes({ Page404 }: { Page404?: React.ComponentType }): React.ReactElement {
+  function RouterRoutes({
+    Page404,
+    layout404,
+  }: {
+    Page404?: React.ComponentType
+    layout404?: Layout404Type
+  }): React.ReactElement {
     if (forceRerender) {
       useNavigationLocationContext()
     }
-    return <RenderPagesTree pagesTree={pagesTree ?? getClientPoints().pagesTree} Page404={Page404} />
+    return (
+      <RenderPagesTree
+        pagesTree={pagesTree ?? getClientPoints().pagesTree}
+        layouts={layouts ?? getClientPoints().layouts}
+        Page404={Page404}
+        layout404={layout404}
+      />
+    )
   }
 
   return function Router({
     children,
     ssrLocation = _ss.__POINT0_SSR_LOCATION__.get(),
     Page404 = ProvidedPage404,
+    layout404 = providedLayout404,
   }: {
     children?: React.ReactNode
     ssrLocation?: AnyLocation | undefined
     Page404?: React.ComponentType
+    layout404?: Layout404Type
   }) {
     const wouterSsrProps = useMemo(() => {
       if (env.side.is.client) {
@@ -795,7 +817,7 @@ export const createRouter = ({
       const [wouterSearchParams] = useWouterSearchParams()
       const pathnameWithSearchParams = [wouterLocation, wouterSearchParams.toString()].filter(Boolean).join('?')
       const hash = options?.addHash ? (typeof window !== 'undefined' ? window.location.hash : '') : ''
-      return routes._.getLocation(pathnameWithSearchParams + hash)
+      return (routes ?? getClientPoints().routes)._.getLocation(pathnameWithSearchParams + hash)
     }, [])
 
     const aroundNav = useCallback<AroundNavHandler>((navigate, to, options) => {
@@ -840,7 +862,7 @@ export const createRouter = ({
           adapterNavigate={adapterNavigate}
           ErrorClass={ErrorClass}
         >
-          {children ?? <RouterRoutes Page404={Page404} />}
+          {children ?? <RouterRoutes Page404={Page404} layout404={layout404} />}
         </NavigationContextProvider>
       </NativeWouterRouter>
     )
@@ -851,18 +873,35 @@ const DefaultPage404 = () => <>Page Not Found</>
 
 export const createRouterRoutes = ({
   pagesTree,
+  layouts,
   Page404: ProvidedPage404,
+  layout404: providedLayout404,
   forceRerender,
 }: {
   pagesTree?: PagesTree
+  layouts?: ClientPointsLayouts
   Page404?: React.ComponentType
+  layout404?: Layout404Type
   forceRerender?: boolean
 }) => {
-  return function RouterRoutes({ Page404 = ProvidedPage404 }: { Page404?: React.ComponentType }) {
+  return function RouterRoutes({
+    Page404 = ProvidedPage404,
+    layout404 = providedLayout404,
+  }: {
+    Page404?: React.ComponentType
+    layout404?: Layout404Type
+  }) {
     if (forceRerender) {
       useNavigationLocationContext()
     }
-    return <RenderPagesTree pagesTree={pagesTree ?? getClientPoints().pagesTree} Page404={Page404} />
+    return (
+      <RenderPagesTree
+        pagesTree={pagesTree ?? getClientPoints().pagesTree}
+        layouts={layouts ?? getClientPoints().layouts}
+        Page404={Page404}
+        layout404={layout404}
+      />
+    )
   }
 }
 
@@ -881,7 +920,9 @@ export const createNavigation = <
     }
   })(),
   Page404,
+  layout404,
   pagesTree,
+  layouts,
   hook = useBrowserLocation as TBaseLocationHook,
   ErrorClass = ErrorPoint0 as unknown as TErrorClass,
   navigate = browserNavigate as TAdapterNavigateFn,
@@ -890,7 +931,9 @@ export const createNavigation = <
   addHashToLocation?: boolean
   routes?: TRoutes
   Page404?: React.ComponentType
+  layout404?: Layout404Type
   pagesTree?: PagesTree
+  layouts?: ClientPointsLayouts
   hook?: TBaseLocationHook
   ErrorClass?: TErrorClass
   navigate?: TAdapterNavigateFn
@@ -901,19 +944,67 @@ export const createNavigation = <
     Link: createLink({ routes, hook }),
     NavLink: createNavLink({ routes, hook }),
     Redirect: createRedirectComponent({ routes, hook }),
-    Router: createRouter({ addHashToLocation, routes, Page404, pagesTree, hook, ErrorClass, forceRerender }),
-    RouterRoutes: createRouterRoutes({ pagesTree, Page404, forceRerender }),
+    Router: createRouter({
+      addHashToLocation,
+      routes,
+      Page404,
+      layout404,
+      pagesTree,
+      layouts,
+      hook,
+      ErrorClass,
+      forceRerender,
+    }),
+    RouterRoutes: createRouterRoutes({ pagesTree, layouts, Page404, layout404, forceRerender }),
     redirect: createRedirectHelper({ routes, navigate, ErrorClass }),
   }
 }
 
+const WrappedPage404 = ({
+  Page404,
+  layout404,
+  layouts,
+}: {
+  layouts: ClientPointsLayouts
+  Page404: React.ComponentType
+  layout404?: Layout404Type
+}) => {
+  const items: Layout404TypeOne[] = (Array.isArray(layout404) ? layout404 : [layout404]).filter(
+    (item): item is Layout404TypeOne => Boolean(item),
+  )
+
+  if (items.length === 0) {
+    return <Page404 />
+  }
+
+  return items.reduceRight<React.ReactNode>(
+    (children, layoutItem) => {
+      if (typeof layoutItem === 'string') {
+        if (!(layoutItem in layouts)) {
+          return children
+        }
+        const LayoutByName = layouts[layoutItem as keyof ClientPointsLayouts]
+        return <LayoutByName>{children}</LayoutByName>
+      }
+
+      const LayoutByPoint = layoutItem.X
+      return <LayoutByPoint>{children}</LayoutByPoint>
+    },
+    <Page404 />,
+  )
+}
+
 export const RenderPagesTree = ({
   pagesTree,
+  layouts,
   Page404 = DefaultPage404,
+  layout404,
   level = 0,
 }: {
   pagesTree: PagesTree
+  layouts: ClientPointsLayouts
   Page404?: React.ComponentType
+  layout404?: Layout404Type
   level?: number
 }) => {
   return (
@@ -932,10 +1023,16 @@ export const RenderPagesTree = ({
                       </Route>
                     )
                   })}
-                  {node.nested && <RenderPagesTree pagesTree={node.nested} Page404={Page404} level={level + 1} />}
-                  <NavigationPageStateSetter status="error" error="Page Not Found">
-                    <Page404 />
-                  </NavigationPageStateSetter>
+                  {node.nested && (
+                    <RenderPagesTree
+                      pagesTree={node.nested}
+                      layouts={layouts}
+                      Page404={Page404}
+                      layout404={layout404}
+                      level={level + 1}
+                    />
+                  )}
+                  <WrappedPage404 layouts={layouts} Page404={Page404} layout404={layout404} />
                 </Switch>
               </Layout>
             </Route>
@@ -951,15 +1048,21 @@ export const RenderPagesTree = ({
               )
             })}
 
-            {node.nested && <RenderPagesTree pagesTree={node.nested} Page404={Page404} level={level + 1} />}
+            {node.nested && (
+              <RenderPagesTree
+                pagesTree={node.nested}
+                layouts={layouts}
+                Page404={Page404}
+                layout404={layout404}
+                level={level + 1}
+              />
+            )}
           </Fragment>
         )
       })}
 
       <Route path="*">
-        <NavigationPageStateSetter status="error" error="Page Not Found">
-          <Page404 />
-        </NavigationPageStateSetter>
+        <WrappedPage404 layouts={layouts} Page404={Page404} layout404={layout404} />
       </Route>
     </Switch>
   )

@@ -59,6 +59,7 @@ import type {
   ErrorComponentType,
   GlobalHeadFn,
   HeadFn,
+  InferWithFnOutputNewInnerProps,
   IsQueryShouldBeFinalized,
   LayoutLocation,
   LayoutSelfProps,
@@ -3089,8 +3090,8 @@ export class Point0<
           : never),
     ]
   >
-  with<TNewInnerProps extends Props>(
-    withFn: WithFn<
+  with<
+    TWithFn extends WithFn<
       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
       TParamsSchema,
       TSearchSchema,
@@ -3105,12 +3106,30 @@ export class Point0<
       >,
       TMapperOutput,
       TError,
-      TNewInnerProps
-    > &
-      (TNewInnerProps extends UseQueryOrInfiniteQueryResult[]
-        ? ShowError<`To return array of queries add as const after array like return [q1, q2] as const`>
-        : unknown),
-  ): NiceStagePoint<
+      Props
+    >,
+  >(
+    withFn: TWithFn, // withFn: WithFn<
+    //   TParamsSchema,
+  ) //   MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+  //   TSearchSchema,
+  //   TClientInputSchema,
+  //   TInnerProps,
+  //   WithSelfQueryIfShouldBeFinalized<
+  //     TPointType,
+  //     TLetsReadyPointType,
+  //     TServerLoaderOutput,
+  //     TClientLoaderOutput,
+  //     TQueriesDefinitions
+  //   >,
+  //   TMapperOutput,
+  //   TError,
+  //   TNewInnerProps
+  // > &
+  //   (TNewInnerProps extends UseQueryOrInfiniteQueryResult[]
+  //     ? ShowError<`To return array of queries add as const after array like return [q1, q2] as const`>
+  //     : unknown),
+  : NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
@@ -3132,7 +3151,7 @@ export class Point0<
     TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
-    AppendProps<TInnerProps, IfNeverThen<Exclude<TNewInnerProps, Error | 'loading' | undefined>, EmptyProps>>,
+    AppendProps<TInnerProps, InferWithFnOutputNewInnerProps<TWithFn>>,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
       TLetsReadyPointType,
@@ -7626,7 +7645,7 @@ export class Point0<
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: { fetchOptions?: FetchOptions | undefined },
         ]
-  ): UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput, any> {
+  ): UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput, TError, any> {
     const [input = {}, queryOptions, { fetchOptions } = {}] = args
     const serverQueryEnabled = !!this._hasServerLoader
     const clientQueryEnabled = this._hasClientLoader()
@@ -7727,7 +7746,7 @@ export class Point0<
             | undefined,
           options?: { fetchOptions?: FetchOptions | undefined },
         ]
-  ): UsePointQueryResult<'infiniteQuery', TServerLoaderOutput, TClientLoaderOutput, any> {
+  ): UsePointQueryResult<'infiniteQuery', TServerLoaderOutput, TClientLoaderOutput, TError, any> {
     const [input = {}, infiniteQueryOptions, { fetchOptions } = {}] = args
     const serverQueryEnabled = !!this._hasServerLoader
     const clientQueryEnabled = this._hasClientLoader()

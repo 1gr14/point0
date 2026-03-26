@@ -5,6 +5,7 @@ import fetchCookie from 'fetch-cookie'
 import { CookieJar } from 'tough-cookie'
 import type { EngineClient } from './client.js'
 import type { Engine } from './engine.js'
+import type { ErrorPoint0 } from '@point0/core'
 
 type CookiesStoreSetter = (options: CookieOptionsInput) => void
 type CookiesStoreGetter = {
@@ -100,12 +101,12 @@ export type FakeClientState = {
   [key: string]: unknown
 }
 
-export class FakeClient<TState extends FakeClientState = FakeClientState> {
+export class FakeClient<TState extends FakeClientState = FakeClientState, TError extends ErrorPoint0 = ErrorPoint0> {
   id: string
   scope: PointsScope
   runtime: ClientRuntime
   client: EngineClient<true>
-  points: ClientPoints
+  points: ClientPoints<TError>
 
   engine: Engine<any, any, true>
   state: TState
@@ -142,7 +143,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
   }: {
     engine: Engine<any, any, true>
     client: EngineClient<true>
-    points: ClientPoints
+    points: ClientPoints<TError>
     runtime: ClientRuntime
     id: string
     scope: PointsScope
@@ -177,7 +178,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     this.cookieGetter = cookieGetter
   }
 
-  static create<TState extends FakeClientState = FakeClientState>({
+  static create<TState extends FakeClientState = FakeClientState, TError extends ErrorPoint0 = ErrorPoint0>({
     engine,
     scope,
     globals,
@@ -195,7 +196,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     engine: Engine<any, any, any>
     scope: PointsScope
     globals: Record<string, unknown>
-    points?: ClientPoints
+    points?: ClientPoints<TError>
     onRunStartOutside?: FakeClientCallback<TState> | undefined
     onRunStartInside?: FakeClientCallback<TState> | undefined
     onRunEndOutside?: FakeClientCallback<TState> | undefined
@@ -205,11 +206,11 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     cookieSetter?: CookiesStoreSetter | undefined
     cookieGetter?: CookiesStoreGetter | undefined
     state?: TState | undefined
-  }): FakeClient<TState> {
+  }): FakeClient<TState, TError> {
     if (!engine.prepared) {
       throw new Error('Engine is not prepared. Please call engine.prepare() first.')
     }
-    const client = engine.clients.find((client) => client.scope === scope)
+    const client = engine.clients.find((client) => client.scope === scope) as EngineClient<true, TError> | undefined
     if (!client) {
       throw new Error(`No client found with scope "${scope}"`)
     }
@@ -325,7 +326,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     for (const [key, value] of Object.entries(globalsWithClientEnv)) {
       GlobalThisItemProxy.create(fakeClient as unknown as FakeClient<FakeClientState>, key, value)
     }
-    return fakeClient as unknown as FakeClient<TState>
+    return fakeClient as unknown as FakeClient<TState, TError>
   }
 
   // async getCookies(url: string | undefined = undefined, httpOnly: boolean | undefined = undefined): Promise<Cookie[]> {

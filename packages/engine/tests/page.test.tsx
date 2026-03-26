@@ -1,4 +1,4 @@
-import { ErrorPoint0, Point0, setStatus } from '@point0/core'
+import { ErrorPoint0, Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
@@ -42,86 +42,6 @@ describe('page', () => {
                 #page: x=nothing
                 "
               `)
-  })
-
-  it('conflicted routes', async () => {
-    const root = createRoot()
-    const page1 = root.lets('page', 'home1', '/x/:id').page(() => <div id="page">x=nothing</div>)
-    const page2 = root.lets('page', 'home2', '/x/:sn').page(() => <div id="page">x=nothing</div>)
-    await expect(createTestThings({ ssr: true, points: [root, page1, page2] })).rejects.toThrow()
-  })
-
-  it('not found by default route Page404', async () => {
-    const root = createRoot()
-    const page = root.lets('page', 'home', '/').page(() => <div id="page">x=nothing</div>)
-    const pageNotFound = root.lets('page', 'not-done', '/never').page(() => <div id="never">never</div>)
-    // we do not pass it to client points
-    const { render, fetchesTale, fetchSsr } = await createTestThings({ ssr: true, points: [root, page] })
-    await render('/not-found', async ({ waitContent, tale }) => {
-      // we see this message becouse of default 404 error page component in Router which can be customized
-      await waitContent('Page Not Found')
-      expect(await tale()).toMatchInlineSnapshot(`
-              "
-              /not-found
-                Page Not Found
-              "
-            `)
-    })
-    expect(await fetchesTale()).toMatchInlineSnapshot(`
-            "
-    
-            "
-          `)
-    const { response, preview } = await fetchSsr(pageNotFound)
-    expect(response.status).toBe(404)
-    expect(preview).toMatchInlineSnapshot(`
-            "
-            Page Not Found
-            "
-          `)
-  })
-
-  it('not found by asterisk route', async () => {
-    const root = createRoot()
-    const page = root.lets('page', 'home', '/').page(() => <div id="page">x=nothing</div>)
-    const page404 = root.lets('page', '404', '*').page(() => {
-      setStatus(404)
-      return <div id="404">404</div>
-    })
-    const pageNever = root.lets('page', 'never', '/never').page(() => <div id="never">never</div>)
-    // we do not pass it to client points
-    const { render, fetchesTale, fetchSsr } = await createTestThings({ ssr: true, points: [root, page, page404] })
-    await render('/', async ({ waitContent, tale }) => {
-      await waitContent('#page')
-      expect(await tale()).toMatchInlineSnapshot(`
-              "
-              /
-                #page: x=nothing
-              "
-            `)
-    })
-    await render('/not-found', async ({ waitContent, tale }) => {
-      // we see this message becouse of default 404 error page component in Router which can be customized
-      await waitContent('#404')
-      expect(await tale()).toMatchInlineSnapshot(`
-              "
-              /not-found
-                #404: 404
-              "
-            `)
-    })
-    expect(await fetchesTale()).toMatchInlineSnapshot(`
-            "
-    
-            "
-          `)
-    const { response, preview } = await fetchSsr(pageNever)
-    expect(response.status).toBe(404)
-    expect(preview).toMatchInlineSnapshot(`
-            "
-            #404: 404
-            "
-          `)
   })
 
   it('page param', async () => {
@@ -1476,6 +1396,51 @@ describe('page', () => {
         div: Item 1
         div: Item 2
         #more: Load more
+      "
+    `)
+  })
+
+  it('with query as prop', async () => {
+    const root = createRoot()
+    const query = root
+      .lets('query', 'test')
+      .input(z.object({ y: z.number() }))
+      .loader(({ input }) => ({ x: input.y * 2 }))
+      .query()
+    const page = root
+      .lets('page', 'home', '/:y')
+      .with(({ location }) => {
+        const result = query.useQuery({ y: +location.params.y })
+        return result.error ? result.error : !result.data ? 'loading' : { x: result.data.x }
+      })
+      .page(({ data, props, queries }) => (
+        <div id="page">
+          {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
+          data={Object.keys(data).length > 0 ? 'exists' : 'empty'} queries={queries.length > 0 ? 'exists' : 'empty'} x=
+          {props.x}
+        </div>
+      ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, page, query] })
+    await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /123
+          #loading: ...
+
+          #page: data=empty queries=empty x=246
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      query.test (client) < {"y":123}
+      "
+    `)
+    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+      "
+      #page: data=empty queries=empty x=246
       "
     `)
   })

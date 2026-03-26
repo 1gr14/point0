@@ -1,5 +1,5 @@
 import { Point0 } from '@point0/core'
-import { useNavigationPageState } from '@point0/core/navigation'
+import { useNavigationPageState, useSetNavigationPageState } from '@point0/core/navigation'
 import { describe, expect, it } from 'bun:test'
 import { createTestThings, waitReturn, waitThrow } from './utils/internal-testing.js'
 
@@ -22,7 +22,11 @@ describe('page state', () => {
     const root = createRoot()
     const PageStateComponent = () => {
       const pageState = useNavigationPageState()
-      return <div id="page-state">status={pageState.status}</div>
+      return (
+        <div id="page-state">
+          status={pageState.status}, error={pageState.error?.message ?? 'undefined'}
+        </div>
+      )
     }
     const layout = root.lets('layout', 'layout').layout(({ children }) => (
       <div id="layout">
@@ -38,7 +42,7 @@ describe('page state', () => {
         "
         /
           #layout:
-            #page-state: status=success
+            #page-state: status=success, error=undefined
             #page: x=1
         "
       `)
@@ -46,7 +50,7 @@ describe('page state', () => {
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #layout:
-        #page-state: status=success
+        #page-state: status=success, error=undefined
         #page: x=1
       "
     `)
@@ -60,7 +64,11 @@ describe('page state', () => {
       .query()
     const PageStateComponent = () => {
       const pageState = useNavigationPageState()
-      return <div id="page-state">status={pageState.status}</div>
+      return (
+        <div id="page-state">
+          status={pageState.status}, error={pageState.error?.message ?? 'undefined'}
+        </div>
+      )
     }
     const layout = root.lets('layout', 'layout').layout(({ children }) => (
       <div id="layout">
@@ -82,15 +90,15 @@ describe('page state', () => {
         "
         /
           #layout:
-            #page-state: status=loading
+            #page-state: status=loading, error=undefined
             #loading: ...
 
           #layout:
-            #page-state: status=loading
+            #page-state: status=loading, error=undefined
             #page: x=1
 
           #layout:
-            #page-state: status=success
+            #page-state: status=success, error=undefined
             #page: x=1
         "
       `)
@@ -98,7 +106,7 @@ describe('page state', () => {
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #layout:
-        #page-state: status=success
+        #page-state: status=success, error=undefined
         #page: x=1
       "
     `)
@@ -112,7 +120,11 @@ describe('page state', () => {
       .query()
     const PageStateComponent = () => {
       const pageState = useNavigationPageState()
-      return <div id="page-state">status={pageState.status}</div>
+      return (
+        <div id="page-state">
+          status={pageState.status}, error={pageState.error?.message ?? 'undefined'}
+        </div>
+      )
     }
     const layout = root.lets('layout', 'layout').layout(({ children }) => (
       <div id="layout">
@@ -131,15 +143,15 @@ describe('page state', () => {
         "
         /
           #layout:
-            #page-state: status=loading
+            #page-state: status=loading, error=undefined
             #loading: ...
 
           #layout:
-            #page-state: status=loading
+            #page-state: status=loading, error=undefined
             #error: test
 
           #layout:
-            #page-state: status=error
+            #page-state: status=error, error=test
             #error: test
         "
       `)
@@ -147,7 +159,7 @@ describe('page state', () => {
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #layout:
-        #page-state: status=loading
+        #page-state: status=loading, error=undefined
         #loading: ...
       "
     `)
@@ -157,7 +169,11 @@ describe('page state', () => {
     const root = createRoot()
     const PageStateComponent = () => {
       const pageState = useNavigationPageState()
-      return <div id="page-state">status={pageState.status}</div>
+      return (
+        <div id="page-state">
+          status={pageState.status}, error={pageState.error?.message ?? 'undefined'}
+        </div>
+      )
     }
     const layout = root
       .lets('layout', 'layout')
@@ -182,12 +198,12 @@ describe('page state', () => {
           #loading: ...
 
           #layout:
-            #page-state: status=loading
+            #page-state: status=loading, error=undefined
             #layout-data: x=1
             #page-data: empty
 
           #layout:
-            #page-state: status=success
+            #page-state: status=success, error=undefined
             #layout-data: x=1
             #page-data: empty
         "
@@ -196,7 +212,7 @@ describe('page state', () => {
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #layout:
-        #page-state: status=success
+        #page-state: status=success, error=undefined
         #layout-data: x=1
         #page-data: empty
       "
@@ -207,7 +223,11 @@ describe('page state', () => {
     const root = createRoot()
     const PageStateComponent = () => {
       const pageState = useNavigationPageState()
-      return <div id="page-state">status={pageState.status}</div>
+      return (
+        <div id="page-state">
+          status={pageState.status}, error={pageState.error?.message ?? 'undefined'}
+        </div>
+      )
     }
     const layout = root
       .lets('layout', 'layout')
@@ -235,17 +255,17 @@ describe('page state', () => {
           #loading: ...
 
           #layout:
-            #page-state: status=loading
+            #page-state: status=loading, error=undefined
             #layout-data: x=1
             #loading: ...
 
           #layout:
-            #page-state: status=loading
+            #page-state: status=loading, error=undefined
             #layout-data: x=1
             #page-data: y=1
 
           #layout:
-            #page-state: status=success
+            #page-state: status=success, error=undefined
             #layout-data: x=1
             #page-data: y=1
         "
@@ -254,7 +274,7 @@ describe('page state', () => {
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #layout:
-        #page-state: status=success
+        #page-state: status=success, error=undefined
         #layout-data: x=1
         #page-data: y=1
       "
@@ -265,7 +285,11 @@ describe('page state', () => {
     const root = createRoot()
     const PageStateComponent = () => {
       const pageState = useNavigationPageState()
-      return <div id="page-state">status={pageState.status}</div>
+      return (
+        <div id="page-state">
+          status={pageState.status}, error={pageState.error?.message ?? 'undefined'}
+        </div>
+      )
     }
     const layout = root
       .lets('layout', 'layout')
@@ -304,7 +328,11 @@ describe('page state', () => {
     const root = createRoot()
     const PageStateComponent = () => {
       const pageState = useNavigationPageState()
-      return <div id="page-state">status={pageState.status}</div>
+      return (
+        <div id="page-state">
+          status={pageState.status}, error={pageState.error?.message ?? 'undefined'}
+        </div>
+      )
     }
     const layout = root
       .lets('layout', 'layout')
@@ -346,7 +374,11 @@ describe('page state', () => {
     const root = createRoot()
     const PageStateComponent = () => {
       const pageState = useNavigationPageState()
-      return <div id="page-state">status={pageState.status}</div>
+      return (
+        <div id="page-state">
+          status={pageState.status}, error={pageState.error?.message ?? 'undefined'}
+        </div>
+      )
     }
     const layout = root
       .lets('layout', 'layout')
@@ -374,17 +406,17 @@ describe('page state', () => {
           #loading: ...
 
           #layout:
-            #page-state: status=loading
+            #page-state: status=loading, error=undefined
             #layout-data: x=1
             #loading: ...
 
           #layout:
-            #page-state: status=loading
+            #page-state: status=loading, error=undefined
             #layout-data: x=1
             #error: test
 
           #layout:
-            #page-state: status=error
+            #page-state: status=error, error=test
             #layout-data: x=1
             #error: test
         "
@@ -393,7 +425,7 @@ describe('page state', () => {
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #layout:
-        #page-state: status=loading
+        #page-state: status=loading, error=undefined
         #layout-data: x=1
         #loading: ...
       "
@@ -404,9 +436,14 @@ describe('page state', () => {
     const root = createRoot()
     const PageStateComponent = () => {
       const pageState = useNavigationPageState()
-      return <div id="page-state">status={pageState.status}</div>
+      return (
+        <div id="page-state">
+          status={pageState.status}, error={pageState.error?.message}
+        </div>
+      )
     }
     const Page404 = () => {
+      useSetNavigationPageState({ status: 'error', error: 'My Page Not Found' })
       return (
         <div id="page-404">
           <PageStateComponent />
@@ -428,14 +465,14 @@ describe('page state', () => {
         "
         /never
           #page-404:
-            #page-state: status=error
+            #page-state: status=error, error=My Page Not Found
         "
       `)
     })
     expect(await fetchPreview(neverPage)).toMatchInlineSnapshot(`
       "
       #page-404:
-        #page-state: status=error
+        #page-state: status=error, error=My Page Not Found
       "
     `)
   })

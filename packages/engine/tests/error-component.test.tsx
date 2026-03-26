@@ -225,4 +225,45 @@ describe('error component', () => {
           `)
     })
   })
+
+  it('uses error component defined in plugin', async () => {
+    const root = createRootWithPageLoading()
+    const plugin = Point0.lets('plugin', 'test-plugin')
+      .error(({ error }) => <div id="plugin-error">{error.message}</div>)
+      .plugin()
+    const layout = root
+      .lets('layout', 'layout')
+      .pageError(({ error }) => <div id="page-error">{error.message}</div>)
+      .layoutError(({ error }) => <div id="layout-error">{error.message}</div>)
+      .use(plugin)
+      .loader(() => waitReturn({ x: 1 }))
+      .layout(({ children, data }) => (
+        <div id="layout">
+          <div id="layout-data">x={data.x}</div>
+          {children}
+        </div>
+      ))
+    const page = layout
+      .lets('page', 'home', '/')
+      .loader(() => waitThrow<{ y: number }>(new Error('test')))
+      .page(({ data }) => <div id="page-data">y={data.y}</div>)
+    const { render } = await createTestThings({ points: [root, layout, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#plugin-error')
+      expect(await tale()).toMatchInlineSnapshot(`
+            "
+            /
+              #loading: ...
+
+              #layout:
+                #layout-data: x=1
+                #loading: ...
+
+              #layout:
+                #layout-data: x=1
+                #plugin-error: test
+            "
+          `)
+    })
+  })
 })

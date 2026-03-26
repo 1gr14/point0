@@ -328,7 +328,7 @@ export async function getReadableStreamWithWrapper({
   prefix?: string
   clientBundlePath?: string
   renderer?: ReadableStreamRenderer
-  clientPoints: ClientPoints
+  clientPoints: ClientPoints<any>
   executor: Executor
 }) {
   const encoder = new TextEncoder()
@@ -378,7 +378,7 @@ export async function renderReadableStream({
   App: AppComponent
   envVars?: Record<string, string | number | boolean | undefined>
   envConsts?: Record<string, string | number | boolean | undefined>
-  clientPoints: ClientPoints
+  clientPoints: ClientPoints<any>
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
   originalIndexHtml: string

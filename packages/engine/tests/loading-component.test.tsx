@@ -194,4 +194,45 @@ describe('loading component', () => {
           `)
     })
   })
+
+  it('uses loading component defined in plugin', async () => {
+    const root = createRootWithPageLoading()
+    const plugin = Point0.lets('plugin', 'test-plugin')
+      .loading(() => <div id="plugin-loading">...</div>)
+      .plugin()
+    const layout = root
+      .lets('layout', 'layout')
+      .pageLoading(() => <div id="page-loading">...</div>)
+      .layoutLoading(() => <div id="layout-loading">...</div>)
+      .use(plugin)
+      .loader(() => waitReturn({ x: 1 }))
+      .layout(({ children, data }) => (
+        <div id="layout">
+          <div id="layout-data">x={data.x}</div>
+          {children}
+        </div>
+      ))
+    const page = layout
+      .lets('page', 'home', '/')
+      .loader(() => waitReturn({ y: 1 }))
+      .page(({ data }) => <div id="page-data">y={data.y}</div>)
+    const { render } = await createTestThings({ points: [root, layout, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page-data')
+      expect(await tale()).toMatchInlineSnapshot(`
+            "
+            /
+              #plugin-loading: ...
+
+              #layout:
+                #layout-data: x=1
+                #plugin-loading: ...
+
+              #layout:
+                #layout-data: x=1
+                #page-data: y=1
+            "
+          `)
+    })
+  })
 })

@@ -20,9 +20,7 @@ import type { LayoutPoint, PagePoint, PointsScope, RichFetchFn } from './types.j
 
 const initUndefined = () => undefined as never
 
-type LikeFakeClient =
-  | { id: string; scope: PointsScope; fetch: RichFetchFn; points: ClientPoints<ErrorPoint0> }
-  | undefined
+type LikeFakeClient = { id: string; scope: PointsScope; fetch: RichFetchFn; points: ClientPoints<any> } | undefined
 export const _getFakeClient = (): LikeFakeClient | undefined => {
   return superstore.getFakeClient() as LikeFakeClient | undefined
 }
@@ -39,7 +37,7 @@ export const _ss = {
   ),
   __POINT0_REQUEST0__: superstore.define<Request0>('__POINT0_REQUEST0__', initUndefined, 'serverOnlyStorage'),
   __POINT0_EFFECTS__: superstore.define<Effects>('__POINT0_EFFECTS__', initUndefined, 'serverOnlyStorage'),
-  __POINT0_CLIENT_POINTS__: superstore.define<ClientPoints<ErrorPoint0> | undefined>(
+  __POINT0_CLIENT_POINTS__: superstore.define<ClientPoints<any> | undefined>(
     '__POINT0_CLIENT_POINTS__',
     initUndefined,
     'clientServerIsolated',

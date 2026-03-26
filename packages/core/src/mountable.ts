@@ -43,11 +43,20 @@ export type Props = Record<string, any>
 export type UndefinedProps = undefined
 export type EmptyProps = Record<never, never>
 
-export type AppendProps<TPrevProps extends Props, TAppendProps extends Props> = TPrevProps extends Props
+export type AppendProps<
+  TPrevProps extends Props | UndefinedProps,
+  TAppendProps extends Props | UndefinedProps,
+> = TPrevProps extends Props
   ? IsNever<keyof TPrevProps> extends true
+    ? TAppendProps extends Props
+      ? TAppendProps
+      : EmptyProps
+    : TAppendProps extends Props
+      ? Omit<TPrevProps, keyof TAppendProps> & TAppendProps
+      : TPrevProps
+  : TAppendProps extends Props
     ? TAppendProps
-    : Omit<TPrevProps, keyof TAppendProps> & TAppendProps
-  : TAppendProps
+    : EmptyProps
 
 export type WithOuterPropsIfExists<TOuterProps extends Props> =
   IsEmptyObject<TOuterProps> extends true
@@ -576,7 +585,7 @@ export type WithFn<
   TQueriesDefinitions extends QueriesDefinitions = QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
   TError extends ErrorPoint0 = ErrorPoint0,
-  TNewInnerProps extends Props = TInnerProps,
+  TNewInnerProps extends Props = Props,
 > = (
   options: WithFnOptions<
     TLocation,
@@ -588,7 +597,11 @@ export type WithFn<
     TMapperOutput,
     TError
   >,
-) => TNewInnerProps | Error | 'loading' | undefined
+) => TNewInnerProps | Error | 'loading' | undefined | void
+export type InferWithFnOutputNewInnerProps<TWithFn extends WithFn<any, any, any, any, any, any, any, any, any>> =
+  Exclude<ReturnType<TWithFn>, undefined | void | Error | 'loading'> extends never
+    ? undefined
+    : Exclude<ReturnType<TWithFn>, undefined | void | Error | 'loading'>
 
 export type ClientOnlyFallbackComponentProps<
   TLocation extends AnyLocation | undefined,

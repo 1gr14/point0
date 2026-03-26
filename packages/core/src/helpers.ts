@@ -126,7 +126,7 @@ export const mountClientPoints = <TError extends ErrorPoint0>(
   return ClientPoints.mount(points)
 }
 
-export const getClientPoints = (): ClientPoints => {
+export const getClientPoints = <TError extends ErrorPoint0>(): ClientPoints<TError> => {
   return ClientPoints.getInstance()
 }
 
