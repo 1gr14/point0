@@ -694,6 +694,162 @@ export class CompilerFile<THasContent extends boolean> {
           t.blockStatement([t.throwStatement(t.newExpression(t.identifier('Error'), [t.stringLiteral(message)]))]),
           false,
         )
+      const trustPoint0IdentifiersInMdxLikeFile = CompilerFile.isMdxLikePath(this.abs)
+
+      const isPoint0CoreModuleLoadExpression = (node: Node | null | undefined): boolean => {
+        if (!node) {
+          return false
+        }
+        if (t.isAwaitExpression(node)) {
+          return isPoint0CoreModuleLoadExpression(node.argument)
+        }
+        if (
+          t.isParenthesizedExpression(node) ||
+          t.isTSAsExpression(node) ||
+          t.isTSTypeAssertion(node) ||
+          t.isTSNonNullExpression(node)
+        ) {
+          return isPoint0CoreModuleLoadExpression(node.expression)
+        }
+        if (t.isImportExpression(node)) {
+          return t.isStringLiteral(node.source) && node.source.value === '@point0/core'
+        }
+        if (!t.isCallExpression(node)) {
+          return false
+        }
+
+        // require('@point0/core')
+        if (t.isIdentifier(node.callee) && node.callee.name === 'require') {
+          const firstArg = node.arguments.at(0)
+          return (
+            node.arguments.length === 1 &&
+            !!firstArg &&
+            t.isStringLiteral(firstArg) &&
+            firstArg.value === '@point0/core'
+          )
+        }
+
+        // import('@point0/core')
+        if (t.isImport(node.callee)) {
+          const firstArg = node.arguments.at(0)
+          return (
+            node.arguments.length === 1 &&
+            !!firstArg &&
+            t.isStringLiteral(firstArg) &&
+            firstArg.value === '@point0/core'
+          )
+        }
+        return false
+      }
+
+      const isBindingStrictlyFromPoint0Core = ({
+        usagePath,
+        localName,
+        importedName,
+      }: {
+        usagePath: NodePath<Node>
+        localName: string
+        importedName: string
+      }): boolean => {
+        if (localName === '_point0_env') {
+          return true
+        }
+        if (
+          trustPoint0IdentifiersInMdxLikeFile &&
+          localName === importedName &&
+          (importedName === 'env' || importedName === 'ClientOnly')
+        ) {
+          return true
+        }
+        const binding = usagePath.scope.getBinding(localName)
+        if (!binding?.constant) {
+          return false
+        }
+
+        if (binding.path.isImportSpecifier()) {
+          const spec = binding.path.node
+          const parent = binding.path.parentPath
+          if (!parent.isImportDeclaration()) {
+            return false
+          }
+          if (parent.node.source.value !== '@point0/core') {
+            return false
+          }
+          const imported = spec.imported.type === 'Identifier' ? spec.imported.name : spec.imported.value
+          return imported === importedName
+        }
+
+        // Support destructured env import pattern:
+        // const { env } = require('@point0/core')
+        // const { env } = await import('@point0/core')
+        if (importedName === 'env' && binding.path.isVariableDeclarator()) {
+          const declarator = binding.path.node
+          if (!isPoint0CoreModuleLoadExpression(declarator.init)) {
+            return false
+          }
+          if (!t.isObjectPattern(declarator.id)) {
+            return false
+          }
+          for (const property of declarator.id.properties) {
+            if (!t.isObjectProperty(property) || property.computed) {
+              continue
+            }
+            const importedKeyName = t.isIdentifier(property.key)
+              ? property.key.name
+              : t.isStringLiteral(property.key)
+                ? property.key.value
+                : ''
+            if (importedKeyName !== importedName) {
+              continue
+            }
+            if (t.isIdentifier(property.value) && property.value.name === localName) {
+              return true
+            }
+            if (
+              t.isAssignmentPattern(property.value) &&
+              t.isIdentifier(property.value.left) &&
+              property.value.left.name === localName
+            ) {
+              return true
+            }
+          }
+          return false
+        }
+
+        return false
+      }
+
+      const isTrustedEnvIdentifier = (usagePath: NodePath<Node>, envIdentifierName: string): boolean =>
+        isBindingStrictlyFromPoint0Core({
+          usagePath,
+          localName: envIdentifierName,
+          importedName: 'env',
+        })
+
+      const isTrustedClientOnlyIdentifier = (usagePath: NodePath<Node>, clientOnlyIdentifierName: string): boolean =>
+        isBindingStrictlyFromPoint0Core({
+          usagePath,
+          localName: clientOnlyIdentifierName,
+          importedName: 'ClientOnly',
+        })
+
+      const replaceClientOnlyChildrenWithNullInProps = (props: ObjectExpression): boolean => {
+        for (const prop of props.properties) {
+          if (!t.isObjectProperty(prop) || prop.computed) {
+            continue
+          }
+          const keyName = t.isIdentifier(prop.key) ? prop.key.name : t.isStringLiteral(prop.key) ? prop.key.value : ''
+          if (keyName !== 'children') {
+            continue
+          }
+          if (t.isNullLiteral(prop.value)) {
+            return false
+          }
+          prop.value = t.nullLiteral()
+          return true
+        }
+        return false
+      }
 
       const checkReplaceVar = (
         varName: string,
@@ -760,6 +916,9 @@ export class CompilerFile<THasContent extends boolean> {
             if (!t.isJSXIdentifier(node.openingElement.name) || node.openingElement.name.name !== 'ClientOnly') {
               return
             }
+            if (!isTrustedClientOnlyIdentifier(p, node.openingElement.name.name)) {
+              return
+            }
             const alreadyNullOnlyChildren =
               node.children.length === 1 &&
               t.isJSXExpressionContainer(node.children[0]) &&
@@ -773,6 +932,7 @@ export class CompilerFile<THasContent extends boolean> {
           },
           MemberExpression: (p) => {
             const node = p.node
+            const isTrustedEnvRootIdentifier = (identifierName: string) => isTrustedEnvIdentifier(p, identifierName)
 
             // Handle env.side is.client/is.server
             if (
@@ -784,7 +944,8 @@ export class CompilerFile<THasContent extends boolean> {
               node.object.object.property.type === 'Identifier' &&
               node.object.object.property.name === 'side' &&
               node.object.property.type === 'Identifier' &&
-              node.object.property.name === 'is'
+              node.object.property.name === 'is' &&
+              isTrustedEnvRootIdentifier(node.object.object.object.name)
             ) {
               if (node.property.type === 'Identifier') {
                 const name = node.property.name
@@ -817,7 +978,8 @@ export class CompilerFile<THasContent extends boolean> {
               node.object.property.type === 'Identifier' &&
               node.object.property.name === 'mode' &&
               node.property.type === 'Identifier' &&
-              node.property.name === 'name'
+              node.property.name === 'name' &&
+              isTrustedEnvRootIdentifier(node.object.object.name)
             ) {
               p.replaceWith(makeStringLiteral(mode))
               modified = true
@@ -831,7 +993,8 @@ export class CompilerFile<THasContent extends boolean> {
               node.object.property.type === 'Identifier' &&
               node.object.property.name === 'build' &&
               node.property.type === 'Identifier' &&
-              node.property.name === 'was'
+              node.property.name === 'was' &&
+              isTrustedEnvRootIdentifier(node.object.object.name)
             ) {
               p.replaceWith(makeBooleanLiteral(built))
               modified = true
@@ -847,7 +1010,8 @@ export class CompilerFile<THasContent extends boolean> {
               node.object.object.property.type === 'Identifier' &&
               node.object.object.property.name === 'mode' &&
               node.object.property.type === 'Identifier' &&
-              node.object.property.name === 'is'
+              node.object.property.name === 'is' &&
+              isTrustedEnvRootIdentifier(node.object.object.object.name)
             ) {
               if (node.property.type === 'Identifier') {
                 const name = node.property.name
@@ -875,7 +1039,8 @@ export class CompilerFile<THasContent extends boolean> {
               node.object.property.type === 'Identifier' &&
               node.object.property.name === 'runtime' &&
               node.property.type === 'Identifier' &&
-              node.property.name === 'name'
+              node.property.name === 'name' &&
+              isTrustedEnvRootIdentifier(node.object.object.name)
             ) {
               p.replaceWith(makeStringLiteral(runtime))
               modified = true
@@ -892,7 +1057,8 @@ export class CompilerFile<THasContent extends boolean> {
               node.object.object.property.name === 'runtime' &&
               node.object.property.type === 'Identifier' &&
               node.object.property.name === 'is' &&
-              node.property.type === 'Identifier'
+              node.property.type === 'Identifier' &&
+              isTrustedEnvRootIdentifier(node.object.object.object.name)
             ) {
               p.replaceWith(makeBooleanLiteral(runtime === node.property.name))
               modified = true
@@ -907,7 +1073,8 @@ export class CompilerFile<THasContent extends boolean> {
               node.object.property.type === 'Identifier' &&
               node.object.property.name === 'os' &&
               node.property.type === 'Identifier' &&
-              node.property.name === 'name'
+              node.property.name === 'name' &&
+              isTrustedEnvRootIdentifier(node.object.object.name)
             ) {
               p.replaceWith(makeStringLiteral(os))
               modified = true
@@ -924,7 +1091,8 @@ export class CompilerFile<THasContent extends boolean> {
               node.object.object.property.name === 'os' &&
               node.object.property.type === 'Identifier' &&
               node.object.property.name === 'is' &&
-              node.property.type === 'Identifier'
+              node.property.type === 'Identifier' &&
+              isTrustedEnvRootIdentifier(node.object.object.object.name)
             ) {
               p.replaceWith(makeBooleanLiteral(os === node.property.name))
               modified = true
@@ -941,7 +1109,8 @@ export class CompilerFile<THasContent extends boolean> {
               node.object.object.property.name === 'scope' &&
               node.object.property.type === 'Identifier' &&
               node.object.property.name === 'is' &&
-              node.property.type === 'Identifier'
+              node.property.type === 'Identifier' &&
+              isTrustedEnvRootIdentifier(node.object.object.object.name)
             ) {
               const scopeName = node.property.name
               p.replaceWith(makeBooleanLiteral(scope === scopeName))
@@ -955,7 +1124,8 @@ export class CompilerFile<THasContent extends boolean> {
               (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
               node.object.property.type === 'Identifier' &&
               node.object.property.name === 'vars' &&
-              node.property.type === 'Identifier'
+              node.property.type === 'Identifier' &&
+              isTrustedEnvRootIdentifier(node.object.object.name)
             ) {
               const varName = node.property.name
               const checkResult = checkReplaceVar(varName, process.env[varName])
@@ -1001,10 +1171,27 @@ export class CompilerFile<THasContent extends boolean> {
           CallExpression: (p) => {
             const node = p.node
             const callee = node.callee
+            const args = node.arguments
+            const isTrustedEnvRootIdentifier = (identifierName: string) => isTrustedEnvIdentifier(p, identifierName)
+
+            // Handle MDX-style jsx factory call for <ClientOnly>...</ClientOnly>:
+            // _jsxDEV(ClientOnly, { children: ... })
+            if (
+              side === 'server' &&
+              t.isIdentifier(callee) &&
+              t.isIdentifier(args[0]) &&
+              args[0].name === 'ClientOnly' &&
+              isTrustedClientOnlyIdentifier(p, args[0].name) &&
+              t.isObjectExpression(args[1])
+            ) {
+              const didReplace = replaceClientOnlyChildrenWithNullInProps(args[1])
+              if (didReplace) {
+                modified = true
+                passModified = true
+              }
+            }
 
             if (callee.type !== 'MemberExpression') return
-
-            const args = node.arguments
             const replaceWithFinalValue = (value: Node | undefined) => {
               p.replaceWith(value ?? makeUndefined())
               modified = true
@@ -1072,7 +1259,8 @@ export class CompilerFile<THasContent extends boolean> {
               callee.object.object.property.type === 'Identifier' &&
               callee.object.object.property.name === 'side' &&
               callee.object.property.type === 'Identifier' &&
-              callee.object.property.name === 'define'
+              callee.object.property.name === 'define' &&
+              isTrustedEnvRootIdentifier(callee.object.object.object.name)
             ) {
               if (callee.property.type === 'Identifier') {
                 const name = callee.property.name
@@ -1098,7 +1286,8 @@ export class CompilerFile<THasContent extends boolean> {
               callee.object.object.property.type === 'Identifier' &&
               callee.object.object.property.name === 'define' &&
               callee.object.property.type === 'Identifier' &&
-              callee.object.property.name === 'unsafe'
+              callee.object.property.name === 'unsafe' &&
+              isTrustedEnvRootIdentifier(callee.object.object.object.object.name)
             ) {
               if (callee.property.type === 'Identifier') {
                 const name = callee.property.name
@@ -1121,7 +1310,8 @@ export class CompilerFile<THasContent extends boolean> {
               callee.object.object.property.name === 'runtime' &&
               callee.object.property.type === 'Identifier' &&
               callee.object.property.name === 'define' &&
-              callee.property.type === 'Identifier'
+              callee.property.type === 'Identifier' &&
+              isTrustedEnvRootIdentifier(callee.object.object.object.name)
             ) {
               const runtimeName = callee.property.name
               replaceWithFinalValue(runtime === runtimeName ? args[0] : undefined)
@@ -1141,7 +1331,8 @@ export class CompilerFile<THasContent extends boolean> {
               callee.object.object.property.name === 'define' &&
               callee.object.property.type === 'Identifier' &&
               callee.object.property.name === 'unsafe' &&
-              callee.property.type === 'Identifier'
+              callee.property.type === 'Identifier' &&
+              isTrustedEnvRootIdentifier(callee.object.object.object.object.name)
             ) {
               const runtimeName = callee.property.name
               replaceWithFinalValue(runtime === runtimeName ? args[0] : undefined)
@@ -1155,7 +1346,8 @@ export class CompilerFile<THasContent extends boolean> {
               callee.object.property.type === 'Identifier' &&
               callee.object.property.name === 'runtime' &&
               callee.property.type === 'Identifier' &&
-              callee.property.name === 'define'
+              callee.property.name === 'define' &&
+              isTrustedEnvRootIdentifier(callee.object.object.name)
             ) {
               if (args.length > 0 && args[0].type === 'ObjectExpression') {
                 replaceWithFinalValue(getObjectPropertyValue(args[0], runtime))
@@ -1172,7 +1364,8 @@ export class CompilerFile<THasContent extends boolean> {
               callee.object.object.property.name === 'os' &&
               callee.object.property.type === 'Identifier' &&
               callee.object.property.name === 'define' &&
-              callee.property.type === 'Identifier'
+              callee.property.type === 'Identifier' &&
+              isTrustedEnvRootIdentifier(callee.object.object.object.name)
             ) {
               const osName = callee.property.name
               replaceWithFinalValue(os === osName ? args[0] : undefined)
@@ -1192,7 +1385,8 @@ export class CompilerFile<THasContent extends boolean> {
               callee.object.object.property.name === 'define' &&
               callee.object.property.type === 'Identifier' &&
               callee.object.property.name === 'unsafe' &&
-              callee.property.type === 'Identifier'
+              callee.property.type === 'Identifier' &&
+              isTrustedEnvRootIdentifier(callee.object.object.object.object.name)
             ) {
               const osName = callee.property.name
               replaceWithFinalValue(os === osName ? args[0] : undefined)
@@ -1206,7 +1400,8 @@ export class CompilerFile<THasContent extends boolean> {
               callee.object.property.type === 'Identifier' &&
               callee.object.property.name === 'os' &&
               callee.property.type === 'Identifier' &&
-              callee.property.name === 'define'
+              callee.property.name === 'define' &&
+              isTrustedEnvRootIdentifier(callee.object.object.name)
             ) {
               if (args.length > 0 && args[0].type === 'ObjectExpression') {
                 replaceWithFinalValue(getObjectPropertyValue(args[0], os))
@@ -1223,7 +1418,8 @@ export class CompilerFile<THasContent extends boolean> {
               callee.object.object.property.name === 'scope' &&
               callee.object.property.type === 'Identifier' &&
               callee.object.property.name === 'define' &&
-              callee.property.type === 'Identifier'
+              callee.property.type === 'Identifier' &&
+              isTrustedEnvRootIdentifier(callee.object.object.object.name)
             ) {
               const scopeName = callee.property.name
               replaceWithFinalValue(scope === scopeName ? args[0] : undefined)
@@ -1243,7 +1439,8 @@ export class CompilerFile<THasContent extends boolean> {
               callee.object.object.property.name === 'define' &&
               callee.object.property.type === 'Identifier' &&
               callee.object.property.name === 'unsafe' &&
-              callee.property.type === 'Identifier'
+              callee.property.type === 'Identifier' &&
+              isTrustedEnvRootIdentifier(callee.object.object.object.object.name)
             ) {
               const scopeName = callee.property.name
               replaceWithFinalValue(scope === scopeName ? args[0] : undefined)
@@ -1257,7 +1454,8 @@ export class CompilerFile<THasContent extends boolean> {
               callee.object.property.type === 'Identifier' &&
               callee.object.property.name === 'scope' &&
               callee.property.type === 'Identifier' &&
-              callee.property.name === 'define'
+              callee.property.name === 'define' &&
+              isTrustedEnvRootIdentifier(callee.object.object.name)
             ) {
               if (args.length > 0 && args[0].type === 'ObjectExpression') {
                 replaceWithFinalValue(getObjectPropertyValue(args[0], scope))
@@ -1272,7 +1470,8 @@ export class CompilerFile<THasContent extends boolean> {
               callee.object.property.type === 'Identifier' &&
               callee.object.property.name === 'side' &&
               callee.property.type === 'Identifier' &&
-              callee.property.name === 'define'
+              callee.property.name === 'define' &&
+              isTrustedEnvRootIdentifier(callee.object.object.name)
             ) {
               if (args.length > 0 && args[0].type === 'ObjectExpression') {
                 replaceWithFinalValue(getObjectPropertyValue(args[0], side))
@@ -1286,7 +1485,8 @@ export class CompilerFile<THasContent extends boolean> {
               callee.object.property.type === 'Identifier' &&
               callee.object.property.name === 'build' &&
               callee.property.type === 'Identifier' &&
-              callee.property.name === 'define'
+              callee.property.name === 'define' &&
+              isTrustedEnvRootIdentifier(callee.object.object.name)
             ) {
               if (args.length > 0 && args[0].type === 'ObjectExpression') {
                 replaceWithFinalValue(getObjectPropertyValue(args[0], built ? 'after' : 'before'))

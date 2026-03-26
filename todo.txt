@@ -32,12 +32,8 @@ start0
 
 
 === REFACTOING 3000 ===
-? client frontend logger also prefix with [client]
-check if ClientOnly was imported from @point0/core
-
 types.ts file thet reexport only needed types
 index exports only realy used fns and helpers without types
-
 
 redirect
 on 'error', should not throw on redirect
@@ -146,6 +142,7 @@ shrink core/index.ts size, by remove code duplicates
 Все нулы поменять на фолсы
 Перепроверить все публичные названия методов и если надо то поменять
 ---
+? client frontend logger also prefix with [client]
 ? Индекс хтмл при вайт билде дист путь должен определяться с учётом относительности вайт Рута и энжин диры (так дист ентри сервера мы сами запускаем указывая путь руками)
 ? Компилер разрешить видеть просто летс как оторванный от поинт0 летс (lets(), а не Point0.lets?)
 ? Сделать настройку сср once

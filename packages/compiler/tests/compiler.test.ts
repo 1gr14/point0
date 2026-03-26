@@ -56,7 +56,7 @@ export const root = Point0.lets('root', 'root').root()
     it.concurrent(
       'respects side option - client',
       helper(async ({ files: [file] }) => {
-        await file.write(`const env=require('@point0/core'); if (env.side.is.client) console.info('client')`)
+        await file.write(`const {env}=require('@point0/core'); if (env.side.is.client) console.info('client')`)
         const compiler = Compiler.create({ side: 'client', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -67,7 +67,7 @@ export const root = Point0.lets('root', 'root').root()
     it.concurrent(
       'respects side option - server',
       helper(async ({ files: [file] }) => {
-        await file.write(`const env=require('@point0/core'); if (env.side.is.server) console.info('server')`)
+        await file.write(`const {env}=require('@point0/core'); if (env.side.is.server) console.info('server')`)
         const compiler = Compiler.create({ side: 'server', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -78,7 +78,7 @@ export const root = Point0.lets('root', 'root').root()
     it.concurrent(
       'removes dead guarded expression for false && branch',
       helper(async ({ files: [file] }) => {
-        await file.write(`const env=require('@point0/core'); env.side.is.server && console.info('server')`)
+        await file.write(`const {env}=require('@point0/core'); env.side.is.server && console.info('server')`)
         const compiler = Compiler.create({ side: 'client', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -89,7 +89,7 @@ export const root = Point0.lets('root', 'root').root()
     it.concurrent(
       'removes dead guarded expression for true || branch',
       helper(async ({ files: [file] }) => {
-        await file.write(`const env=require('@point0/core'); env.side.is.client || console.info('client')`)
+        await file.write(`const {env}=require('@point0/core'); env.side.is.client || console.info('client')`)
         const compiler = Compiler.create({ side: 'client', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -100,7 +100,7 @@ export const root = Point0.lets('root', 'root').root()
     it.concurrent(
       'removes dead if block for false condition',
       helper(async ({ files: [file] }) => {
-        await file.write(`const env=require('@point0/core'); if (env.side.is.client) { console.info('client') }`)
+        await file.write(`const {env}=require('@point0/core'); if (env.side.is.client) { console.info('client') }`)
         const compiler = Compiler.create({ side: 'server', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -112,7 +112,7 @@ export const root = Point0.lets('root', 'root').root()
       'removes import declaration when all imported bindings are pruned',
       helper(async ({ files: [file] }) => {
         await file.write(`import { prisma } from './lib/prisma'
-const env=require('@point0/core'); env.side.is.server && prisma.idea.findMany()`)
+const {env}=require('@point0/core'); env.side.is.server && prisma.idea.findMany()`)
         const compiler = Compiler.create({ side: 'client', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -145,7 +145,7 @@ export const ideasQuery = root
       helper(async ({ files: [file] }) => {
         await file.write(`import './lib/setup'
 import { prisma } from './lib/prisma'
-const env=require('@point0/core'); env.side.is.server && prisma.idea.findMany()`)
+const {env}=require('@point0/core'); env.side.is.server && prisma.idea.findMany()`)
         const compiler = Compiler.create({ side: 'client', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -174,9 +174,82 @@ console.info(
     )
 
     it.concurrent(
+      'does not shake env when env is not imported from @point0/core',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import { env } from 'somewhere-else'
+if (env.side.is.server) console.info('server')`)
+        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const result = compiler.compile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.code).toContain(`env.side.is.server`)
+        expect(result.code).toContain(`console.info('server')`)
+      }),
+    )
+
+    it.concurrent(
+      'shakes env for destructured await import from @point0/core',
+      helper(async ({ files: [file] }) => {
+        await file.write(`void (async () => {
+  const { env } = await import('@point0/core')
+  if (env.side.is.server) console.info('server')
+})()`)
+        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const result = compiler.compile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.code).not.toContain(`env.side.is.server`)
+        expect(result.code).not.toContain(`console.info('server')`)
+      }),
+    )
+
+    it.concurrent(
+      'does not shake env for destructured await import from non-core module',
+      helper(async ({ files: [file] }) => {
+        await file.write(`void (async () => {
+  const { env } = await import('somewhere-else')
+  if (env.side.is.server) console.info('server')
+})()`)
+        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const result = compiler.compile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.code).toContain(`env.side.is.server`)
+        expect(result.code).toContain(`console.info('server')`)
+      }),
+    )
+
+    it.concurrent(
+      'still shakes _point0_env without import source checks',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import { env as renamedEnv } from 'somewhere-else'
+const _point0_env = renamedEnv
+if (_point0_env.side.is.server) console.info('server')`)
+        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const result = compiler.compile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.code).not.toContain(`console.info('server')`)
+      }),
+    )
+
+    it.concurrent(
+      'does not replace non-core ClientOnly component on server side',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import { MyClientComponent } from './lib/my-client-component.tsx'
+const ClientOnly = ({ children }: { children: unknown }) => children
+console.info(
+  <ClientOnly>
+    <MyClientComponent />
+  </ClientOnly>,
+)`)
+        const compiler = Compiler.create({ side: 'server', scope: 'test' })
+        const result = compiler.compile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.code).toContain(`my-client-component`)
+      }),
+    )
+
+    it.concurrent(
       'respects scope option',
       helper(async ({ files: [file] }) => {
-        await file.write(`const env=require('@point0/core'); if (env.scope.is.test) console.info('test')`)
+        await file.write(`const {env}=require('@point0/core'); if (env.scope.is.test) console.info('test')`)
         const compiler = Compiler.create({ side: 'client', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -187,7 +260,7 @@ console.info(
     it.concurrent(
       'respects consts option',
       helper(async ({ files: [file] }) => {
-        await file.write(`const env=require('@point0/core'); if (env.vars.TEST_VAR) console.info('test')`)
+        await file.write(`const {env}=require('@point0/core'); if (env.vars.TEST_VAR) console.info('test')`)
         const compiler = Compiler.create({ side: 'client', scope: 'test', consts: [{ TEST_VAR: true }] })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)

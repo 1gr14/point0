@@ -2345,6 +2345,31 @@ describe('CompilerFile', () => {
       expect(result.code).not.toContain("'server'")
     })
 
+    it('compiles mdx and replaces ClientOnly children on server side', () => {
+      const compiler = Compiler.create({
+        side: 'server',
+        scope: 'test',
+        mode: 'development',
+      })
+      const result = compiler.compile({
+        file: '/virtual/page.mdx',
+        content: `
+  import { ClientOnly } from '@point0/core'
+  
+  # Test
+  
+  <ClientOnly><span>client-only-content</span></ClientOnly>
+        `,
+      })
+
+      expect(result.errors).toEqual([])
+      expect(result.modified).toBe(true)
+      expect(result.code).toContain('react/jsx-dev-runtime')
+      expect(result.code).toContain('_jsxDEV(ClientOnly')
+      expect(result.code).toContain('children:null')
+      expect(result.code).not.toContain('client-only-content')
+    })
+
     it('compiles .mdc extension', () => {
       const compiler = Compiler.create({
         side: 'client',
