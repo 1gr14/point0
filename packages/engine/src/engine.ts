@@ -657,14 +657,16 @@ export class Engine<
     if (!nodePath.isAbsolute(cwd)) {
       cwd = nodePath.resolve(process.cwd(), providedCwd)
     }
-    // TODO: add more places to look for engine file
-    const subdirs = ['.', './src']
-    const basenames = ['engine.ts', 'engine.js']
+    const subdirs = ['.', './src', './lib', './src/lib', './point0', './src/point0', './lib/point0', './src/lib/point0']
+    const basenames = ['engine']
+    const extnames = ['ts', 'js', 'tsx', 'jsx']
     for (const subdir of subdirs) {
       for (const basename of basenames) {
-        const filePath = nodePath.resolve(cwd, subdir, basename)
-        if (nodeFs.existsSync(filePath)) {
-          return filePath
+        for (const extname of extnames) {
+          const filePath = nodePath.resolve(cwd, subdir, basename + '.' + extname)
+          if (nodeFs.existsSync(filePath)) {
+            return filePath
+          }
         }
       }
     }

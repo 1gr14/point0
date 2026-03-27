@@ -7366,7 +7366,7 @@ export class Point0<
   //   component: TComponent,
   //   options?: { index?: number | undefined; prefix?: string; suffix?: string },
   // ): TComponent {
-  //   // TODO: it breaks HMR in bun (but ok in vite), lets set function CompoentName via compiler
+  //   // it breaks HMR in bun (but ok in vite), lets set function CompoentName via compiler
   //   return component
   //   // const { index, prefix, suffix } = options ?? {}
   //   // const currentName = component.displayName || component.name || 'X'
@@ -8037,7 +8037,7 @@ export class Point0<
       const updatedRequest = new Request(fetchOptions.url, updatedInit)
       Object.assign(updatedRequest, {
         __POINT0_IS_SERVER_REQUEST__: true,
-        __POINT0_PARENT_REQUEST__: currentRequest0,
+        __POINT0_PREV_REQUEST__: currentRequest0,
       })
       return updatedRequest
     } else {

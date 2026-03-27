@@ -177,7 +177,7 @@ export class CompilerFile<THasContent extends boolean> {
   }
 
   hasContent(): this is CompilerFile<true> {
-    return !!this.content
+    return this.content !== undefined
   }
 
   isParsed() {
@@ -191,7 +191,7 @@ export class CompilerFile<THasContent extends boolean> {
   }
 
   private async _readAsync(fresh: boolean): Promise<CompilerFile<true>> {
-    if (this.content && !fresh) {
+    if (this.content !== undefined && !fresh) {
       return this as CompilerFile<true>
     }
     const stats = await (async () => {
@@ -201,7 +201,7 @@ export class CompilerFile<THasContent extends boolean> {
         throw new Error(`Failed to read file ${this.abs}: ${(e as Error).message}`, { cause: e })
       }
     })()
-    if (stats.mtimeMs === this.mtime && this.content) {
+    if (stats.mtimeMs === this.mtime && this.content !== undefined) {
       return this as CompilerFile<true>
     }
     // const cf = new CompilerFile({
@@ -236,11 +236,11 @@ export class CompilerFile<THasContent extends boolean> {
   private readonly _readAsyncPendingPromises = new Map<string, Promise<CompilerFile<true>>>()
 
   readSync(fresh: boolean): CompilerFile<true> {
-    if (this.content && !fresh) {
+    if (this.content !== undefined && !fresh) {
       return this as CompilerFile<true>
     }
     const stats = nodeFsSync.statSync(this.abs)
-    if (stats.mtimeMs === this.mtime && this.content) {
+    if (stats.mtimeMs === this.mtime && this.content !== undefined) {
       return this as CompilerFile<true>
     }
     // const cf = new CompilerFile({
@@ -266,7 +266,7 @@ export class CompilerFile<THasContent extends boolean> {
   parse():
     | { ast: babel.ParseResult<File>; errors: unknown[]; ok: true }
     | { ast: undefined; errors: unknown[]; ok: false } {
-    if (!this.content) {
+    if (this.content === undefined) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
     if (this._parse) {
@@ -387,7 +387,7 @@ export class CompilerFile<THasContent extends boolean> {
 
   private _mayContainPoints: boolean | undefined = undefined
   mayContainPoints(): boolean {
-    if (!this.content) {
+    if (this.content === undefined) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
     if (this._mayContainPoints !== undefined) {
@@ -447,7 +447,7 @@ export class CompilerFile<THasContent extends boolean> {
     code: string
     map: GeneratorResult['map']
   } {
-    if (!this.content) {
+    if (this.content === undefined) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
     const { code, map } = babelGenerator(
@@ -471,7 +471,7 @@ export class CompilerFile<THasContent extends boolean> {
   optimizeGuardedExpressions(): { ok: boolean; errors: unknown[]; modified: boolean } {
     const errors: unknown[] = []
     let modified = false
-    if (!this.content) {
+    if (this.content === undefined) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
     try {
@@ -1521,7 +1521,7 @@ export class CompilerFile<THasContent extends boolean> {
   } {
     const errors: unknown[] = []
     let modified = false
-    if (!this.content) {
+    if (this.content === undefined) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
     if (this._shakeForBuiltEngine) {

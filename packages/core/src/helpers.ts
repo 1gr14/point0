@@ -17,6 +17,8 @@ export const setStatus = (status: number): void => {
   getEffectsWeak()?.set.status(status)
 }
 
+export const useSetStatus = setStatus
+
 const nativeFetch: RichFetchFn = async (...args) => await fetch(...args)
 
 export const getFetch = (): RichFetchFn => {

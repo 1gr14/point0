@@ -165,7 +165,6 @@ const _resolveFinalTo = <TRoutes extends RoutesPretty>({
   }
   const route = routes[routeName]
   if (!route) {
-    // TODO: replace with onClientError handler
     log({ level: 'error', category: ['wouter'], message: `Route "${routeName}" not found` })
     return '#'
   }

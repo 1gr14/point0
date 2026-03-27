@@ -327,30 +327,30 @@ export class ClientPoints<TError extends ErrorPoint0> {
 
   // prefetching
 
-  private static readonly prefetchLazyComponent = async (
-    component: React.ComponentType<any> | React.LazyExoticComponent<React.ComponentType<any>> | undefined,
-  ): Promise<void> => {
-    const anyComp = component as any
-    if (!anyComp) return
-    try {
-      // React 18 lazy internals
-      if (anyComp?._init && anyComp?._payload) {
-        await anyComp._init(anyComp._payload)
-        return
-      }
-      // Some libraries expose preload()
-      if (typeof anyComp?.preload === 'function') {
-        await anyComp.preload()
-        return
-      }
-      // Fallback: sometimes the payload carries a thunk
-      if (anyComp?._payload && typeof anyComp._payload._result === 'function') {
-        await anyComp._payload._result()
-      }
-    } catch {
-      // ignore — prefetch is best-effort
-    }
-  }
+  // private static readonly prefetchLazyComponent = async (
+  //   component: React.ComponentType<any> | React.LazyExoticComponent<React.ComponentType<any>> | undefined,
+  // ): Promise<void> => {
+  //   const anyComp = component as any
+  //   if (!anyComp) return
+  //   try {
+  //     // React 18 lazy internals
+  //     if (anyComp?._init && anyComp?._payload) {
+  //       await anyComp._init(anyComp._payload)
+  //       return
+  //     }
+  //     // Some libraries expose preload()
+  //     if (typeof anyComp?.preload === 'function') {
+  //       await anyComp.preload()
+  //       return
+  //     }
+  //     // Fallback: sometimes the payload carries a thunk
+  //     if (anyComp?._payload && typeof anyComp._payload._result === 'function') {
+  //       await anyComp._payload._result()
+  //     }
+  //   } catch {
+  //     // ignore — prefetch is best-effort
+  //   }
+  // }
 
   private readonly getPage = ({
     location,
@@ -366,24 +366,27 @@ export class ClientPoints<TError extends ErrorPoint0> {
         layouts: string[]
       }
     | undefined => {
-    for (const { type, name, route, point, FC, layouts } of this.manager.collection) {
-      if (type === 'page' && route && FC && layouts) {
-        if (route.isExact(location.pathname)) {
-          const relation = route.getRelation(location)
+    for (const record of this.manager.collection) {
+      if (record.type === 'page' && record.route && record.FC && record.layouts) {
+        if (record.route.isExact(location.pathname)) {
+          const relation = record.route.getRelation(location)
           const pageLocation = Object.assign(
             { ...location },
             {
-              route: route.definition,
+              route: record.route.definition,
               params: relation.params,
             },
           )
+          const pointOriginal = record.point
+          const pointOrLoader =
+            typeof pointOriginal === 'function' ? async () => (await pointOriginal()).point : pointOriginal.point
           return {
-            point: (typeof point === 'function' ? async () => (await point()).point : point.point) as ReadyPoint,
-            name,
-            type,
+            point: pointOrLoader,
+            name: record.name,
+            type: record.type,
             pageLocation,
-            FC,
-            layouts,
+            FC: record.FC,
+            layouts: record.layouts,
           }
         }
       }
@@ -411,22 +414,21 @@ export class ClientPoints<TError extends ErrorPoint0> {
     const page: ReadyPoint = typeof suitable.point === 'function' ? await suitable.point() : suitable.point
 
     // Prefetch the (possibly lazy) page component
-    await ClientPoints.prefetchLazyComponent(suitable.FC)
+    // await ClientPoints.prefetchLazyComponent(suitable.FC)
 
-    const layouts: ReadyPoint[] = await Promise.all(
-      this.manager.collection
-        .filter((p) => p.type === 'layout' && suitable.layouts.includes(p.name))
-        .map(async (layout) => {
-          await ClientPoints.prefetchLazyComponent(layout.FC)
-          return typeof layout.point === 'function' ? (await layout.point()).point : layout.point.point
-        }),
-    )
-
-    // TODO: ? maybe we should replace in pagesTree and points this page and layouts points, becouse it is loaded now
+    // const layouts: ReadyPoint[] = await Promise.all(
+    //   this.manager.collection
+    //     .filter((p) => p.type === 'layout' && suitable.layouts.includes(p.name))
+    //     .map(async (layout) => {
+    //       await ClientPoints.prefetchLazyComponent(layout.FC)
+    //       return typeof layout.point === 'function' ? (await layout.point()).point : layout.point.point
+    //     }),
+    // )
+    this.manager.setReadyPoint(page)
 
     return {
       page: page as PagePoint,
-      layouts: layouts as LayoutPoint[],
+      layouts: page._layouts as LayoutPoint[],
     }
   }
 
@@ -461,6 +463,7 @@ export class ClientPoints<TError extends ErrorPoint0> {
     const newPromise = this._loadPage({ suitable })
     loadPagePromises?.set(hash, newPromise)
     const result = await newPromise
+    loadPagePromises?.delete(hash)
     if (!result) {
       return undefined
     }

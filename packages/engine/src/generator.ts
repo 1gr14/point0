@@ -226,8 +226,14 @@ export class FilesGenerator {
       const byType = aIndex - bIndex
       if (byType !== 0) return byType
 
-      const byRoute = !a.route ? 0 : !b.route ? 1 : a.route.isMoreSpecificThan(b.route) ? -1 : 1
-      if (byRoute !== 0) return byRoute
+      if (!a.route && b.route) return -1
+      if (a.route && !b.route) return 1
+      if (a.route && b.route) {
+        if (a.route.isMoreSpecificThan(b.route)) return -1
+        if (b.route.isMoreSpecificThan(a.route)) return 1
+        const byRouteDefinition = a.route.definition.localeCompare(b.route.definition)
+        if (byRouteDefinition !== 0) return byRouteDefinition
+      }
 
       const byName = a.name.localeCompare(b.name)
       if (byName !== 0) return byName
@@ -736,7 +742,7 @@ export class FilesGenerator {
     lines.push(`import type { PointsDefinition } from '@point0/core'`)
     // lines.push(`import { Point0 } from '@point0/core'`)
 
-    // TODO: lets add .lazy() and calculate by it
+    // TODO: lets add .lazy() and calculate by it also
     const { importedPoints, rootSingleImportLine } = this.emitNamedImports({
       points,
       task,
@@ -846,7 +852,7 @@ export class FilesGenerator {
   //     const relImportPath = FileGenerator.toRelativeJsImportPath(this.outputWouterRoutesAbs, p.fileAbs)
   //     const componentVar = toComponentVar(p)
   //     const suffix = p.type === 'page' ? '.point.Page' : '.point.Layout'
-  //     // TODO: use when we will have preloaded pages and layouts
+  //     // use when we will have preloaded pages and layouts
   //     // lines.push(
   //     //   `const ${componentVar} = (await import('${relImportPath}')).${
   //     //     p.exportName === 'default' ? 'default' : p.exportName

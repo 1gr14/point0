@@ -239,6 +239,40 @@ export class PointsManager<
     })
   }
 
+  setReadyPoint(point: ReadyPoint): ReadyPointsCollectionRecord {
+    const record = this.collection.find((r) => r.name === point.name && r.type === point.type)
+    if (!record) {
+      throw new Error(`Point ${point.name} ${point.type} not found, while trying to convert to ready point`)
+    }
+    if ('ready' in record) {
+      return record
+    }
+    const result = {
+      ready: true,
+      type: point.type,
+      name: point.name,
+      route: point.route ? Route0.from(point.route) : undefined,
+      polh: point.polh,
+      point: point,
+      FC:
+        point.type === 'layout'
+          ? point.Layout
+          : point.type === 'page'
+            ? point.Page
+            : point.type === 'component'
+              ? point.Component
+              : point.type === 'provider'
+                ? point.Provider
+                : undefined,
+      layouts: point._layouts.map((l) => l.name),
+    } satisfies ReadyPointsCollectionRecord
+    Object.assign(record, result)
+    for (const layout of point._layouts) {
+      this.setReadyPoint(layout)
+    }
+    return result
+  }
+
   private static async toReadyPointsCollection(
     points: NormalizedPointsCollection | ReadyPointsCollection,
   ): Promise<{ readyPoints: ReadyPointsCollection; errors: unknown[] }> {

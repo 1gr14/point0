@@ -4,8 +4,6 @@ import { env } from '@point0/core'
 import { useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
 
-// TODO: add getIdeaChain, or getIdeaQuery and use it in layout and for example in updatePage
-
 if (env.side.is.client) {
   clientOnlyFn()
 }

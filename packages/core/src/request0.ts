@@ -25,7 +25,8 @@ export class Request0<
   id: string
   state: RequestState
   cache: RequestCache
-  parent: Request0 | undefined
+  prev: Request0 | undefined
+  first: Request0 | undefined
   variant: RequestVariant<TVariant, TError, TClient, TPublicdir>
 
   constructor({
@@ -36,7 +37,8 @@ export class Request0<
     id,
     state,
     cache,
-    parent,
+    prev,
+    first,
     variant,
   }: {
     original: Request
@@ -46,7 +48,8 @@ export class Request0<
     id: string
     state: RequestState
     cache: RequestCache
-    parent: Request0 | undefined
+    prev: Request0 | undefined
+    first: Request0 | undefined
     variant: RequestVariant<TVariant, TError, TClient, TPublicdir>
   }) {
     this.original = original
@@ -57,7 +60,8 @@ export class Request0<
     this.id = id
     this.state = state
     this.cache = cache
-    this.parent = parent
+    this.prev = prev
+    this.first = first
     this.variant = variant
   }
 
@@ -68,11 +72,12 @@ export class Request0<
       id: string
       isFromServer: boolean
       state?: RequestState
-      parent?: Request0 | undefined
+      prev?: Request0 | undefined
     },
   ): Request0<any, TError> {
-    const { bunServer, id, isFromServer, state = {}, parent } = options
-    const cache = parent?.cache ?? {}
+    const { bunServer, id, isFromServer, state = {}, prev } = options
+    const cache = prev?.cache ?? {}
+    const first = prev?.first ?? prev
 
     const location = Route0.getLocation(original.url)
     const method = original.method.toUpperCase() as WideRequestMethod
@@ -165,7 +170,8 @@ export class Request0<
       id,
       state,
       cache,
-      parent,
+      prev,
+      first,
       variant: { type: 'unknown' },
     })
   }

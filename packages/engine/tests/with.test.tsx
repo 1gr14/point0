@@ -173,13 +173,13 @@ describe('with', () => {
         useEffect(() => {
           setTimeout(() => {
             setError(new Error('test error'))
-          }, 50)
-          setTimeout(() => {
-            setError(null)
           }, 100)
           setTimeout(() => {
+            setError(null)
+          }, 200)
+          setTimeout(() => {
             setLoading(false)
-          }, 150)
+          }, 300)
         }, [])
         if (error) {
           return error
