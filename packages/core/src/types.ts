@@ -794,8 +794,12 @@ export type MergeRecordValidationSchemas<
   TSchema1 extends RecordValidationSchema
     ? TSchema2 extends RecordValidationSchema
       ? RecordValidationSchema<
-          MergeObjects<RecordValidationSchemaInput<TSchema1>, RecordValidationSchemaInput<TSchema2>>,
-          MergeObjects<RecordValidationSchemaOutput<TSchema1>, RecordValidationSchemaOutput<TSchema2>>
+          PrettifyOrEmptyObject<
+            MergeObjects<RecordValidationSchemaInput<TSchema1>, RecordValidationSchemaInput<TSchema2>>
+          >,
+          PrettifyOrEmptyObject<
+            MergeObjects<RecordValidationSchemaOutput<TSchema1>, RecordValidationSchemaOutput<TSchema2>>
+          >
         >
       : TSchema1
     : TSchema2 extends RecordValidationSchema
@@ -1167,7 +1171,7 @@ export type SimpleSafeParseInputResult<
 
 export type Prettify<T extends object> = {
   [K in keyof T]: T[K]
-}
+} & {}
 export type PrettifyOrEmptyObject<T extends object> = IsEmptyObject<T> extends true ? EmptyObject : Prettify<T>
 // export type PrettifyOrUndefined<T> = T extends object ? Prettify<T> : undefined
 
@@ -1175,13 +1179,21 @@ type EmptyObjectIfUndefined<T> = T extends undefined ? EmptyObject : T
 export type AppendCtx<
   TCtx extends UnknownCtx | UndefinedCtx,
   TAppend extends UnknownCtx | UndefinedCtx,
-> = TCtx extends Ctx
-  ? IsNever<keyof TCtx> extends true
-    ? EmptyObjectIfUndefined<TAppend>
-    : TAppend extends undefined
-      ? TCtx
-      : Omit<TCtx, keyof TAppend> & TAppend
-  : EmptyObjectIfUndefined<TAppend>
+> = PrettifyOrEmptyObject<
+  TCtx extends Ctx
+    ? IsNever<keyof TCtx> extends true
+      ? TAppend extends undefined
+        ? EmptyObject
+        : IsEmptyObject<TAppend> extends true
+          ? EmptyObject
+          : TAppend
+      : TAppend extends undefined
+        ? TCtx
+        : IsEmptyObject<TAppend> extends true
+          ? TCtx
+          : Omit<TCtx, keyof TAppend> & TAppend
+    : EmptyObjectIfUndefined<TAppend>
+>
 export type AppendCtxExposedKeys<
   TCurrent extends CtxExposedKeys | UndefinedCtxExposedKeys,
   TAppend extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -1627,12 +1639,32 @@ export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] exten
     : [Extract<TExposedKeys, ForbiddenCtxExposedKeys>] extends [never]
       ? unknown
       : ShowError<`Forbidden to expose ctx keys: ${Extract<TExposedKeys, ForbiddenCtxExposedKeys> & string}`>
+// export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, any>> =
+//   Awaited<ReturnType<TCtxFn>> extends undefined | void
+//     ? undefined
+//     : TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, infer TCtxAppend>
+//       ? TCtxAppend
+//       : undefined
 export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, any>> =
-  Awaited<ReturnType<TCtxFn>> extends undefined | void
-    ? undefined
-    : TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, infer TCtxAppend>
-      ? TCtxAppend
-      : undefined
+  TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, infer TCtxAppend>
+    ? NormalizeCtxLike<TCtxAppend>
+    : undefined
+
+export type NormalizeCtxLike<T extends Record<string, any> | undefined> = [T] extends [undefined]
+  ? Record<never, never> // strict empty object
+  : {
+        [K in keyof Exclude<T, undefined>]: Exclude<T, undefined> extends infer U
+          ? U extends any
+            ? K extends keyof U
+              ? U[K]
+              : never
+            : never
+          : never
+      } extends infer M
+    ? undefined extends T
+      ? { [K in keyof M]?: M[K] }
+      : { [K in keyof M]: M[K] }
+    : never
 
 export type InferCtxFnOutputCtxExposedKeys<
   TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, any>,

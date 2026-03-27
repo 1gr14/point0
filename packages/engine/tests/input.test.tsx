@@ -1,4 +1,3 @@
-import type { Prettify } from '@point0/core'
 import { Point0 } from '@point0/core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { z } from 'zod'
@@ -48,17 +47,17 @@ describe('input', () => {
       .lets('page', 'test', '/test/:id')
       .params(z.object({ id: z.string().transform((val) => +val) }))
       .loader(({ params }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: number }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: number }>()
         expect(params).toEqual({ id: 123 })
         return { x: 1 }
       })
       .clientLoader(({ params, data }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: number }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: number }>()
         expect(params).toEqual({ id: 123 })
         return { y: 2, ...data }
       })
       .page(({ params, data }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: number }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: number }>()
         expect(params).toEqual({ id: 123 })
         return (
           <div id="page">
@@ -90,17 +89,17 @@ describe('input', () => {
         }
       })
       .loader(({ params }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: number }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: number }>()
         expect(params).toEqual({ id: 123 })
         return { x: 1 }
       })
       .clientLoader(({ params, data }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: number }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: number }>()
         expect(params).toEqual({ id: 123 })
         return { y: 2, ...data }
       })
       .page(({ params, data }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: number }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: number }>()
         expect(params).toEqual({ id: 123 })
         return (
           <div id="page">
@@ -128,23 +127,23 @@ describe('input', () => {
       .lets('page', 'test', '/test/:id')
       .search(z.object({ cursor: z.string().transform((val) => +val) }))
       .loader(({ params, search }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
         expect(params).toEqual({ id: '123' })
-        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor: number }>()
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor: number }>()
         expect(search).toEqual({ cursor: 777 })
         return { x: 1 }
       })
       .clientLoader(({ params, search, data }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
         expect(params).toEqual({ id: '123' })
-        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor: number }>()
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor: number }>()
         expect(search).toEqual({ cursor: 777 })
         return { y: 2, ...data }
       })
       .page(({ params, search, data }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
         expect(params).toEqual({ id: '123' })
-        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor: number }>()
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor: number }>()
         expect(search).toEqual({ cursor: 777 })
         return (
           <div id="page">
@@ -176,23 +175,23 @@ describe('input', () => {
         }
       })
       .loader(({ params, search }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
         expect(params).toEqual({ id: '123' })
-        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor: number }>()
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor: number }>()
         expect(search).toEqual({ cursor: 777 })
         return { x: 1 }
       })
       .clientLoader(({ params, search, data }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
         expect(params).toEqual({ id: '123' })
-        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor: number }>()
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor: number }>()
         expect(search).toEqual({ cursor: 777 })
         return { y: 2, ...data }
       })
       .page(({ params, search, data }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
         expect(params).toEqual({ id: '123' })
-        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor: number }>()
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor: number }>()
         expect(search).toEqual({ cursor: 777 })
         return (
           <div id="page">
@@ -220,23 +219,23 @@ describe('input', () => {
       .lets('page', 'test', '/test/:id')
       .search<{ cursor?: string }>()
       .loader(({ params, search }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
         expect(params).toEqual({ id: '123' })
-        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor?: string }>()
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor?: string }>()
         expect(search).toEqual({ cursor: '777' })
         return { x: 1 }
       })
       .clientLoader(({ params, search, data }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
         expect(params).toEqual({ id: '123' })
-        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor?: string }>()
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor?: string }>()
         expect(search).toEqual({ cursor: '777' })
         return { y: 2, ...data }
       })
       .page(({ params, search, data }) => {
-        expectTypeOf<Prettify<typeof params>>().toEqualTypeOf<{ id: string }>()
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
         expect(params).toEqual({ id: '123' })
-        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ cursor?: string }>()
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor?: string }>()
         expect(search).toEqual({ cursor: '777' })
         return (
           <div id="page">
@@ -271,7 +270,7 @@ describe('input', () => {
         return { clientLoader: { input: (rest as any).input || 'undefined' }, ...data }
       })
       .mutation()
-    expectTypeOf<Prettify<typeof mutation.Infer.InputRaw>>().toEqualTypeOf<{ id: number }>()
+    expectTypeOf<typeof mutation.Infer.InputRaw>().toEqualTypeOf<{ id: number }>()
     expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<false>()
     expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<{ id: number }>()
     const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
@@ -296,7 +295,7 @@ describe('input', () => {
         return { loader: { input } }
       })
       .mutation()
-    expectTypeOf<Prettify<typeof mutation.Infer.InputRaw>>().toEqualTypeOf<{ id: string } | { sn: number }>()
+    expectTypeOf<typeof mutation.Infer.InputRaw>().toEqualTypeOf<{ id: string } | { sn: number }>()
     expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<false>()
     expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<{ id: string } | { sn: number }>()
     const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
@@ -319,7 +318,7 @@ describe('input', () => {
         return { loader: { input } }
       })
       .mutation()
-    expectTypeOf<Prettify<typeof mutation.Infer.InputRaw>>().toEqualTypeOf<{ id: string } | { sn?: number }>()
+    expectTypeOf<typeof mutation.Infer.InputRaw>().toEqualTypeOf<{ id: string } | { sn?: number }>()
     expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<true>()
     expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<{ id: string } | { sn?: number }>()
     const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
@@ -329,6 +328,35 @@ describe('input', () => {
       loader: 
         input: 
           {}
+      "
+    `)
+  })
+
+  it('works with unions and additional extension', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const mutation = root
+      .lets('mutation', 'test')
+      .input(z.union([z.object({ id: z.string() }), z.object({ sn: z.number() })]))
+      .input(z.object({ x: z.string() }))
+      .loader(({ input }) => {
+        return { loader: { input } }
+      })
+      .mutation()
+    expectTypeOf<typeof mutation.Infer.InputRaw>().toEqualTypeOf<
+      { x: string; id: string } | { x: string; sn: number }
+    >()
+    expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<false>()
+    expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<
+      { x: string; id: string } | { x: string; sn: number }
+    >()
+    const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
+    const result = await loadPointYml(mutation, { id: '456', x: '123' })
+    expect(result).toMatchInlineSnapshot(`
+      "
+      loader: 
+        input: 
+          id: "456"
+          x: "123"
       "
     `)
   })
@@ -343,10 +371,12 @@ describe('input', () => {
         return { loader: { input } }
       })
       .mutation()
-    expectTypeOf<typeof mutation.Infer.InputRaw>().toEqualTypeOf<{ x: string } & ({ id: string } | { sn?: number })>()
+    expectTypeOf<typeof mutation.Infer.InputRaw>().toEqualTypeOf<
+      { x: string; id: string } | { x: string; sn?: number | undefined }
+    >()
     expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<false>()
     expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<
-      { x: string } & ({ id: string } | { sn?: number })
+      { x: string; id: string } | { x: string; sn?: number }
     >()
     const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
     const result = await loadPointYml(mutation, { x: '123', id: '456' })
@@ -370,10 +400,12 @@ describe('input', () => {
         return { loader: { input } }
       })
       .mutation()
-    expectTypeOf<typeof mutation.Infer.InputRaw>().toEqualTypeOf<{ x: string } & ({ id: string } | { sn?: number })>()
+    expectTypeOf<typeof mutation.Infer.InputRaw>().toEqualTypeOf<
+      { x: string; id: string } | { x: string; sn?: number }
+    >()
     expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<false>()
     expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<
-      { x: string } & ({ id: string } | { sn?: number })
+      { x: string; id: string } | { x: string; sn?: number }
     >()
     const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
     const result = await loadPointYml(mutation, { x: '123', id: '456' })
@@ -430,8 +462,8 @@ describe('input', () => {
         return { loader: { input } }
       })
       .mutation()
-    expectTypeOf<Prettify<(typeof mutation)['Infer']['InputRaw']>>().toEqualTypeOf<{ id: string; sn: number; o: 1 }>()
-    expectTypeOf<Prettify<(typeof mutation)['Infer']['ServerInputParsed']>>().toEqualTypeOf<{
+    expectTypeOf<(typeof mutation)['Infer']['InputRaw']>().toEqualTypeOf<{ id: string; sn: number; o: 1 }>()
+    expectTypeOf<(typeof mutation)['Infer']['ServerInputParsed']>().toEqualTypeOf<{
       id: string
       sn: number
       xxx: number
@@ -467,8 +499,8 @@ describe('input', () => {
         return { clientLoader: { input } }
       })
       .mutation()
-    expectTypeOf<Prettify<(typeof mutation)['Infer']['InputRaw']>>().toEqualTypeOf<{ id: string; sn: number; o: 1 }>()
-    expectTypeOf<Prettify<(typeof mutation)['Infer']['ClientInputParsed']>>().toEqualTypeOf<{
+    expectTypeOf<(typeof mutation)['Infer']['InputRaw']>().toEqualTypeOf<{ id: string; sn: number; o: 1 }>()
+    expectTypeOf<(typeof mutation)['Infer']['ClientInputParsed']>().toEqualTypeOf<{
       id: string
       sn: number
       xxx: number
@@ -546,11 +578,11 @@ describe('input', () => {
       .clientInput(z.object({ d: z.boolean() }))
       .input(z.object({ e: z.number() }))
       .loader(({ input }) => {
-        expectTypeOf<Prettify<typeof input>>().toEqualTypeOf<{ a: string; c: number; e: number }>()
+        expectTypeOf<typeof input>().toEqualTypeOf<{ a: string; c: number; e: number }>()
         return { loader: { input } }
       })
       .clientLoader(({ input, data }) => {
-        expectTypeOf<Prettify<typeof input>>().toEqualTypeOf<{ b: number; c: number; d: boolean }>()
+        expectTypeOf<typeof input>().toEqualTypeOf<{ b: number; c: number; d: boolean }>()
         return { clientLoader: { input }, ...data }
       })
       .mutation()

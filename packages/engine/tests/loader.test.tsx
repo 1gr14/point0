@@ -40,7 +40,7 @@ describe('loader', () => {
       .loader(() => ({ x: 1, date: new Date('2026-01-01') }))
       .page(({ data }) => {
         // but actually without transformer date is string
-        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ x: number; date: Date }>()
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number; date: Date }>()
         expect(data.date).toBe('2026-01-01T00:00:00.000Z' as never)
         return ymlify(data)
       })
@@ -61,7 +61,7 @@ describe('loader', () => {
       .lets('page', 'home', '/')
       .loader(() => ({ x: 1, date: new Date('2026-01-01') }))
       .page(({ data }) => {
-        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ x: number; date: Date }>()
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number; date: Date }>()
         expect(data.date).toBeInstanceOf(Date)
         return ymlify({ ...data, date: data.date.toISOString() })
       })
@@ -167,7 +167,7 @@ describe('loader', () => {
       .loader(() => ({ x: 1, y: 2 }))
       .loader(({ data }) => ({ ...data, y: 100, z: 3 }))
       .page(({ data }) => {
-        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ x: number; y: number; z: number }>()
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number; y: number; z: number }>()
         return ymlify(data)
       })
     const { fetchPreview, fetchSsr } = await createTestThings({ ssr: true, points: [root, page] })

@@ -45,7 +45,7 @@ import type {
   EngineSharedPluginsDefinition,
 } from './utils.js'
 
-export class EngineServer<TPrepared extends boolean = boolean, TError extends ErrorPoint0 = ErrorPoint0> {
+export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0> {
   scope: PointsScope
   cwd: string
   points: TPrepared extends true ? ServerPoints<TError> | null : undefined
@@ -145,10 +145,10 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     this.ssr = input.ssr
   }
 
-  static create(input: {
+  static create<TError extends ErrorPoint0>(input: {
     cwd: string
     scope: PointsScope
-    pointsProvided: PointsDefinitionSource<any, any> | null
+    pointsProvided: PointsDefinitionSource<any, TError> | null
     engineFile: string | null
     cwdBeforeBuild: string
     itWasBuilt: boolean
@@ -166,16 +166,16 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     bunPlugins: EngineServerPluginsDefinition
     generalBunPlugins: EngineSharedPluginsDefinition
     log: LogFn
-    clients: EngineClient[]
+    clients: EngineClient<any, TError>[]
     viteConfig: EngineOptionsViteConfig | null
     hmrPort: number | false
     portPolicy: PortPolicy
     serveRetries: number
     compiler: EngineOptionsCompilerSpecificParsed | false
     ssr: boolean
-  }): EngineServer<false> {
+  }): EngineServer<false, TError> {
     const publicdir = input.publicdir
-      ? Publicdir.create({
+      ? Publicdir.create<TError>({
           serving: true,
           source: input.publicdir.source,
           outdir: input.publicdir.outdir,
@@ -188,7 +188,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
 
     const viteDevServer = null
 
-    const server = new EngineServer<false>({
+    const server = new EngineServer<false, TError>({
       ...input,
       publicdir,
       prepared: false,
@@ -200,7 +200,7 @@ export class EngineServer<TPrepared extends boolean = boolean, TError extends Er
     return server
   }
 
-  isPrepared(): this is EngineServer<true> {
+  isPrepared(): this is EngineServer<true, TError> {
     return !!this.prepared
   }
 

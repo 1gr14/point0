@@ -32,10 +32,14 @@ start0
 
 
 === REFACTOING 3000 ===
-types.ts file thet reexport only needed types
-index exports only realy used fns and helpers without types
+
+И всё же как-то должен юзСетПейджСтейт сочетаться с изменениями в глобальных хедах
+В реквест добавить рут реквест самый первыый. Вероятно как прев и ферст
+find TODO in code
 
 redirect
+Запрос с редиректом с точки зрения хттп возвращает не ошибку, но сровит ошибку из квери фетча
+Редирект можно как сровнуть, так и ретёрнуть
 on 'error', should not throw on redirect
 on 'redirect'
 Еррор0 должна мочь захендлить редирект, и тогда еррор компонент пусть просто сам разбирается
@@ -63,6 +67,11 @@ fetchServer shoul accept onRedirect instructions else it throws
 
 
 
+Причёска экзамплов
+Пьюр вайт экзампл
+
+
+
 Короткая летс нотация с автозаменой имени поинта и выкидом ошибки если компилер не енаблед иди экспорт конст не именованный
 При экспорт дефаулт короткий летс берёт имя файла, а если то индекс, то имя папки
 
@@ -74,8 +83,6 @@ fetchServer shoul accept onRedirect instructions else it throws
 
 
 
-Причёска экзамплов
-Пью вайт экзампл
 
 (import protection) cli inspect by filepath how this file and in which place come to files via cli command
 Импортм рестрик, аллоу, и можно передать прямо пакейдж Джейсон в список рестрикта
@@ -88,8 +95,25 @@ mcp
 openapi
 scalar
 
+В генерейт позволить в вхот пробросить функцию, которая уже определить что делать с поинтами, когда они меняются
+В генерейт добавить флаг енаблед
+
 Проверка под линукс и виндоус
 
+types.ts file thet reexport only needed types
+index exports only realy used fns and helpers without types
+
+
+
+
+
+
+
++++
++ filerouting
++ react-dom testing library
++ route0 should exports from another file normalizeDefinition, so we can keep tiny size
++ return feature([], () => {}) and prune by compiler
 ???
 ? Генерейт мап и она может быть mirror как эни поинт с указанием бейза иначе руи, а может быть с прямым импортом поинтов, а также с выбором того как генерируются ключи
 ? Генерейт mirror тогда там будет просто экспорт констс также с названными ключами и опередлёнными бейзами, бейзы тоже могут быть строкой  могт быть функцией, котрая вернёт поинт 
@@ -97,11 +121,6 @@ scalar
 ? мирор разрешить только на кверянки и экшены
 ? Миррор и мапа всегда генерирует констс, но может экспортнуть, а может и нет, и может объединить в объект
 ? Возможность импортануть серверный поинт игнорируя всё вокруг то есть берём как есть а функции снаружи не считая поинтов игнорируем
-+++
-+ filerouting
-+ react-dom testing library
-+ route0 should exports from another file normalizeDefinition, so we can keep tiny size
-+ return feature([], () => {}) and prune by compiler
 --+
 ? Бан билд клиент фикс сделать отключаемым
 ? Супер стор штучки должны сами себя подставлять на места
@@ -122,7 +141,7 @@ tranformerSerializeWithErrorLogging (and deserialize)
 При невалидных поиниах убедиться, что валидные подгружаются
 test onPrefetchPage and other prefetchModes
 --+
-find TODO in code
+? В виз тоже добавить расширитель пропсов через массивный указатель
 ? Серверурл с большой буквы
 ? Сделать чтобы роут когда сделан от эни всё равно возвращал будто он от строки, а когда он от строки там все варианты и любой роут от него экстендится
 ? bun watcher, not parcel watcher
@@ -142,6 +161,8 @@ shrink core/index.ts size, by remove code duplicates
 Все нулы поменять на фолсы
 Перепроверить все публичные названия методов и если надо то поменять
 ---
+Пейдж Стейт должен принимать ещё и рута, и там он возьмёт глобалхеды до кучи
+? usePagePoint (page point by current location)
 ? client frontend logger also prefix with [client]
 ? Индекс хтмл при вайт билде дист путь должен определяться с учётом относительности вайт Рута и энжин диры (так дист ентри сервера мы сами запускаем указывая путь руками)
 ? Компилер разрешить видеть просто летс как оторванный от поинт0 летс (lets(), а не Point0.lets?)

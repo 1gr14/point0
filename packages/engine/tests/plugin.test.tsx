@@ -140,7 +140,7 @@ describe('plugin', () => {
       .use(plugin)
       .input(z.object({ query: z.number().transform((v) => v * 3) }))
       .loader(({ input }) => {
-        expectTypeOf<Prettify<typeof input>>().toEqualTypeOf<{ plugin: number; query: number }>()
+        expectTypeOf<typeof input>().toEqualTypeOf<{ plugin: number; query: number }>()
         expect(input.plugin).toBe(200)
         expect(input.query).toBe(600)
         return input
@@ -169,7 +169,7 @@ describe('plugin', () => {
       .use(plugin)
       .fetchOptions(() => ({ headers: { 'X-Plugin': '100' } }))
       .loader(({ headers }) => {
-        expectTypeOf<Prettify<typeof headers>>().toEqualTypeOf<{ 'x-plugin': number }>()
+        expectTypeOf<typeof headers>().toEqualTypeOf<{ 'x-plugin': number }>()
         expect(headers['x-plugin']).toBe(200)
         return headers
       })
@@ -196,7 +196,7 @@ describe('plugin', () => {
       .lets('action', 'test', 'GET', '/test')
       .use(plugin)
       .loader(({ search }) => {
-        expectTypeOf<Prettify<typeof search>>().toEqualTypeOf<{ plugin: number }>()
+        expectTypeOf<typeof search>().toEqualTypeOf<{ plugin: number }>()
         expect(search.plugin).toBe(200)
         return search
       })
@@ -223,7 +223,7 @@ describe('plugin', () => {
       .lets('action', 'test', 'GET', '/test')
       .use(plugin)
       .loader(({ body }) => {
-        expectTypeOf<Prettify<typeof body>>().toEqualTypeOf<{ plugin: number }>()
+        expectTypeOf<typeof body>().toEqualTypeOf<{ plugin: number }>()
         expect(body.plugin).toBe(200)
         return body
       })
@@ -413,7 +413,7 @@ describe('plugin', () => {
       .use(plugin)
       .input(z.object({ query: z.number() }))
       .loader(({ input }) => {
-        expectTypeOf<Prettify<typeof input>>().toEqualTypeOf<{ plugin: number; query: number }>()
+        expectTypeOf<typeof input>().toEqualTypeOf<{ plugin: number; query: number }>()
         return input
       })
       .query()

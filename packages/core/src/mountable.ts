@@ -7,6 +7,7 @@ import type {
 } from '@tanstack/react-query'
 import type * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
+import type { ErrorPoint0 } from './error.js'
 import type { NavigationPageState } from './navigation.js'
 import type {
   AnyPoint,
@@ -26,7 +27,9 @@ import type {
   IsNever,
   LoaderOutput,
   MapperOutput,
+  NormalizeCtxLike,
   PointType,
+  PrettifyOrEmptyObject,
   QueryableReadyPointType,
   QueryResultType,
   ReadyPointType,
@@ -37,7 +40,6 @@ import type {
   UndefinedReadyPointType,
   UndefinedRouteDefinition,
 } from './types.js'
-import type { ErrorPoint0 } from './error.js'
 
 export type Props = Record<string, any>
 export type UndefinedProps = undefined
@@ -46,17 +48,25 @@ export type EmptyProps = Record<never, never>
 export type AppendProps<
   TPrevProps extends Props | UndefinedProps,
   TAppendProps extends Props | UndefinedProps,
-> = TPrevProps extends Props
-  ? IsNever<keyof TPrevProps> extends true
-    ? TAppendProps extends Props
-      ? TAppendProps
-      : EmptyProps
+> = PrettifyOrEmptyObject<
+  TPrevProps extends Props
+    ? IsNever<keyof TPrevProps> extends true
+      ? TAppendProps extends Props
+        ? TAppendProps
+        : EmptyProps
+      : TAppendProps extends Props
+        ? // ? Omit<TPrevProps, keyof TAppendProps> & TAppendProps
+          IsEmptyObject<TAppendProps> extends true
+          ? TPrevProps
+          : Omit<TPrevProps, keyof TAppendProps> & TAppendProps
+        : TPrevProps
     : TAppendProps extends Props
-      ? Omit<TPrevProps, keyof TAppendProps> & TAppendProps
-      : TPrevProps
-  : TAppendProps extends Props
-    ? TAppendProps
-    : EmptyProps
+      ? // ? TAppendProps
+        IsEmptyObject<TAppendProps> extends true
+        ? EmptyProps
+        : TAppendProps
+      : EmptyProps
+>
 
 export type WithOuterPropsIfExists<TOuterProps extends Props> =
   IsEmptyObject<TOuterProps> extends true
@@ -78,17 +88,16 @@ export type IsOuterPropsOptional<TOuterProps extends Props> =
 
 export type UseQueryOrInfiniteQueryResult = UseInfiniteQueryResult | UseQueryResult
 export type QueriesResults = readonly UseQueryOrInfiniteQueryResult[]
-export type QueryDefinition<TQueryResultType extends QueryResultType, TQueriedData extends Data> = {
+export type QueryDefinition<TQueryResultType extends QueryResultType, TQueriedData extends Data, TError> = {
   type: TQueryResultType
   data: TQueriedData // it is infinite data in infinite data case
+  error: TError
 }
-export type QueriesDefinitions = Array<QueryDefinition<any, any>>
-export type QueryByDefinition<
-  TQueryDefinition extends QueryDefinition<any, any>,
-  TError extends ErrorPoint0,
-> = TQueryDefinition extends {
+export type QueriesDefinitions = Array<QueryDefinition<any, any, any>>
+export type QueryByDefinition<TQueryDefinition extends QueryDefinition<any, any, any>> = TQueryDefinition extends {
   type: infer TQueryResultType
   data: infer TQueriedData
+  error: infer TError
 }
   ? TQueryResultType extends 'query'
     ? UseQueryResult<TQueriedData, TError>
@@ -96,21 +105,23 @@ export type QueryByDefinition<
       ? UseInfiniteQueryResult<TQueriedData, TError>
       : never
   : never
-export type SuccessQueryByDefinition<TQueryDefinition extends QueryDefinition<any, any>> = TQueryDefinition extends {
-  type: infer TQueryResultType
-  data: infer TQueriedData
-}
-  ? TQueryResultType extends 'query'
-    ? QueryObserverSuccessResult<TQueriedData, any>
-    : TQueryResultType extends 'infiniteQuery'
-      ? InfiniteQueryObserverSuccessResult<TQueriedData, any>
-      : never
-  : never
+export type SuccessQueryByDefinition<TQueryDefinition extends QueryDefinition<any, any, any>> =
+  TQueryDefinition extends {
+    type: infer TQueryResultType
+    data: infer TQueriedData
+    error: infer TError
+  }
+    ? TQueryResultType extends 'query'
+      ? QueryObserverSuccessResult<TQueriedData, TError>
+      : TQueryResultType extends 'infiniteQuery'
+        ? InfiniteQueryObserverSuccessResult<TQueriedData, TError>
+        : never
+    : never
 export type QueryDefinitionByQuery<TQueryResult extends UseQueryOrInfiniteQueryResult> =
-  TQueryResult extends UseInfiniteQueryResult<any, any>
-    ? QueryDefinition<'infiniteQuery', QueryDataByResult<TQueryResult>>
-    : TQueryResult extends UseQueryResult<any, any>
-      ? QueryDefinition<'query', QueryDataByResult<TQueryResult>>
+  TQueryResult extends UseInfiniteQueryResult<any, infer TError>
+    ? QueryDefinition<'infiniteQuery', QueryDataByResult<TQueryResult>, TError>
+    : TQueryResult extends UseQueryResult<any, infer TError>
+      ? QueryDefinition<'query', QueryDataByResult<TQueryResult>, TError>
       : never
 type Q2D<T> = T extends UseQueryOrInfiniteQueryResult ? QueryDefinitionByQuery<T> : never
 export type QueriesDefinitionsByQueries<TQueries extends QueriesResults> = IfAnyThenElse<
@@ -128,26 +139,23 @@ export type QueriesDefinitionsByQueries<TQueries extends QueriesResults> = IfAny
             ? [Q2D<Q1>]
             : []
 >
-type D2Q<T, TError extends ErrorPoint0> = T extends QueryDefinition<any, any> ? QueryByDefinition<T, TError> : never
-export type QueriesByDefinitions<
-  TQueriesDefinitions extends QueriesDefinitions,
-  TError extends ErrorPoint0,
-> = IfAnyThenElse<
+type D2Q<T> = T extends QueryDefinition<any, any, any> ? QueryByDefinition<T> : never
+export type QueriesByDefinitions<TQueriesDefinitions extends QueriesDefinitions> = IfAnyThenElse<
   TQueriesDefinitions,
   any,
   TQueriesDefinitions extends readonly [infer Q1, infer Q2, infer Q3, infer Q4, infer Q5]
-    ? [D2Q<Q1, TError>, D2Q<Q2, TError>, D2Q<Q3, TError>, D2Q<Q4, TError>, D2Q<Q5, TError>]
+    ? [D2Q<Q1>, D2Q<Q2>, D2Q<Q3>, D2Q<Q4>, D2Q<Q5>]
     : TQueriesDefinitions extends readonly [infer Q1, infer Q2, infer Q3, infer Q4]
-      ? [D2Q<Q1, TError>, D2Q<Q2, TError>, D2Q<Q3, TError>, D2Q<Q4, TError>]
+      ? [D2Q<Q1>, D2Q<Q2>, D2Q<Q3>, D2Q<Q4>]
       : TQueriesDefinitions extends readonly [infer Q1, infer Q2, infer Q3]
-        ? [D2Q<Q1, TError>, D2Q<Q2, TError>, D2Q<Q3, TError>]
+        ? [D2Q<Q1>, D2Q<Q2>, D2Q<Q3>]
         : TQueriesDefinitions extends readonly [infer Q1, infer Q2]
-          ? [D2Q<Q1, TError>, D2Q<Q2, TError>]
+          ? [D2Q<Q1>, D2Q<Q2>]
           : TQueriesDefinitions extends readonly [infer Q1]
-            ? [D2Q<Q1, TError>]
+            ? [D2Q<Q1>]
             : []
 >
-type D2SQ<T> = T extends QueryDefinition<any, any> ? SuccessQueryByDefinition<T> : never
+type D2SQ<T> = T extends QueryDefinition<any, any, any> ? SuccessQueryByDefinition<T> : never
 export type SuccessQueriesDefinitions<TQueriesDefinitions extends QueriesDefinitions> = IfAnyThenElse<
   TQueriesDefinitions,
   any,
@@ -209,7 +217,7 @@ export type QueryDataByResult<TQueryResult extends UseQueryOrInfiniteQueryResult
       ? CleanQueryData<TData>
       : Data
 >
-export type QueryDataByDefinition<TQueryDefinition extends QueryDefinition<any, any>> = TQueryDefinition extends {
+export type QueryDataByDefinition<TQueryDefinition extends QueryDefinition<any, any, any>> = TQueryDefinition extends {
   data: infer TData
 }
   ? TData extends Data
@@ -260,7 +268,7 @@ export type MountableSuccessData<
   TMapperOutput extends MapperOutput
     ? TMapperOutput
     : TQueriesDefinitions extends [infer Q1, ...any[]]
-      ? Q1 extends QueryDefinition<any, any>
+      ? Q1 extends QueryDefinition<any, any, any>
         ? QueryDataByDefinition<Q1>
         : EmptyData
       : EmptyData
@@ -281,7 +289,7 @@ export type MountableStateError<
 > = {
   props: TInnerProps
   // queries: QueriesUnknownStatus<TQueries>
-  queries: QueriesByDefinitions<TQueriesDefinitions, TError>
+  queries: QueriesByDefinitions<TQueriesDefinitions>
   data: undefined
   error: TError
   loading: false
@@ -295,11 +303,12 @@ export type MountableStateLoading<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   TError extends ErrorPoint0,
 > = {
   props: TInnerProps
   // queries: QueriesUnknownStatus<TQueries>
-  queries: QueriesByDefinitions<TQueriesDefinitions, TError>
+  queries: QueriesByDefinitions<TQueriesDefinitions>
   data: undefined
   error: undefined
   loading: true
@@ -598,10 +607,22 @@ export type WithFn<
     TError
   >,
 ) => TNewInnerProps | Error | 'loading' | undefined | void
+// XXX
 export type InferWithFnOutputNewInnerProps<TWithFn extends WithFn<any, any, any, any, any, any, any, any, any>> =
   Exclude<ReturnType<TWithFn>, undefined | void | Error | 'loading'> extends never
     ? undefined
-    : Exclude<ReturnType<TWithFn>, undefined | void | Error | 'loading'>
+    : NormalizeCtxLike<Exclude<ReturnType<TWithFn>, Error | 'loading'>>
+
+const fn = () => {
+  if (Math.random() + 1) {
+    return
+  }
+  return {
+    x: 1,
+  }
+}
+type Z = Exclude<ReturnType<typeof fn>, Error | 'loading'>
+type X = InferWithFnOutputNewInnerProps<typeof fn>
 
 export type ClientOnlyFallbackComponentProps<
   TLocation extends AnyLocation | undefined,
@@ -1554,6 +1575,7 @@ export type WithSelfQueryIfShouldBeFinalized<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TQueriesDefinitions extends QueriesDefinitions,
+  TError extends ErrorPoint0,
 > = IfAnyThenElse<
   TQueriesDefinitions | TPointType | TServerLoaderOutput | TClientLoaderOutput | TPointType,
   any,
@@ -1561,7 +1583,7 @@ export type WithSelfQueryIfShouldBeFinalized<
     ? [
         ...TQueriesDefinitions,
         // if it should be finalized, then it was not finalize with infinteQuery, so always just 'query'
-        QueryDefinition<'query', FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>,
+        QueryDefinition<'query', FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>, TError>,
       ]
     : TQueriesDefinitions
 >
@@ -1575,7 +1597,7 @@ export type MergeQueries<
 >
 export type AppendQueries<
   TQueriesDefinitions extends QueriesDefinitions,
-  TNewQueryDefinition extends QueryDefinition<any, any>,
+  TNewQueryDefinition extends QueryDefinition<any, any, any>,
 > = IfAnyThenElse<TQueriesDefinitions | TNewQueryDefinition, any, [...TQueriesDefinitions, TNewQueryDefinition]>
 
 // export type AssertMountableQueryFinalization<

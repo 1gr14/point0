@@ -304,10 +304,10 @@ type RenderTestThings = {
 }
 export type TestThings = {
   engine: Engine
-  client: FakeClient<TestThingsState>
+  client: FakeClient<TestThingsState, any>
   render: RenderTestThings
   app: AppComponent
-  fetch: FakeClient['fetch']
+  fetch: FakeClient<any, any>['fetch']
   fetchSsr: FetchSsr
   loadPoint: FetchPoint
   loadPointYml: FetchPointYml
@@ -380,7 +380,7 @@ export const createTestThings = async ({
     ssr,
     ...engineOptions,
   }).prepare({ side: preventClientDevServers ? 'server' : undefined })
-  const client = FakeClient.create<TestThingsState>({
+  const client = FakeClient.create<TestThingsState, any>({
     engine,
     scope: 'root',
     globals: {
@@ -548,7 +548,7 @@ export const createTestThings = async ({
       },
     })
   }
-  const fetch: FakeClient['fetch'] = async (input, init) => {
+  const fetch: FakeClient<any, any>['fetch'] = async (input, init) => {
     return await client.run(async () => {
       return await client.fetch(input, init)
     })

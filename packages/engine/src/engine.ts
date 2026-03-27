@@ -29,7 +29,7 @@ export class Engine<
   TError extends ErrorPoint0 = ErrorPoint0,
   TPrepared extends boolean = boolean,
 > {
-  clients: TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
+  clients: TPrepared extends true ? Array<EngineClient<true, TError>> : EngineClient<false, TError>[]
   server: TPrepared extends true ? EngineServer<true, TError> : EngineServer<false, TError>
   publicdirs: TPrepared extends true ? Array<Publicdir<true, TError>> : Array<Publicdir<false, TError>>
   log: LogFn
@@ -42,7 +42,7 @@ export class Engine<
   private readonly __POINT0_ENGINE__ = true as const
 
   private constructor(input: {
-    clients: EngineClient[]
+    clients: EngineClient<any, TError>[]
     server: EngineServer<any, any>
     log: LogFn
     prepared: TPrepared
@@ -52,7 +52,9 @@ export class Engine<
     buildWatchGlob: string[]
     cwd: string
   }) {
-    this.clients = input.clients as TPrepared extends true ? Array<EngineClient<true>> : EngineClient[]
+    this.clients = input.clients as TPrepared extends true
+      ? Array<EngineClient<true, TError>>
+      : EngineClient<false, TError>[]
     this.server = input.server as TPrepared extends true ? EngineServer<true, TError> : EngineServer<false, TError>
     this.log = input.log
     this.prepared = input.prepared

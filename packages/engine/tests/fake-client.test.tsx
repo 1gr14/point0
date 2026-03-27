@@ -317,11 +317,14 @@ describe('FakeClient', () => {
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
     }).prepare()
-    const client = FakeClient.create<{
-      container: HTMLElement
-      getButton: () => HTMLButtonElement
-      viewer: ElementViewer
-    }>({
+    const client = FakeClient.create<
+      {
+        container: HTMLElement
+        getButton: () => HTMLButtonElement
+        viewer: ElementViewer
+      },
+      any
+    >({
       engine,
       scope: 'root',
       globals: getFakeBrowserGlobals(),

@@ -62,7 +62,7 @@ class GlobalThisItemProxy {
     GlobalThisItemProxy.items.set(key, this)
   }
 
-  static create(fakeClient: FakeClient, key: string, value: unknown) {
+  static create(fakeClient: FakeClient<any, any>, key: string, value: unknown) {
     const item = GlobalThisItemProxy.items.get(key)
     if (!item) {
       return new GlobalThisItemProxy({
@@ -81,7 +81,7 @@ class GlobalThisItemProxy {
     return item
   }
 
-  static destroy(fakeClient?: FakeClient) {
+  static destroy(fakeClient?: FakeClient<any, any>) {
     if (fakeClient) {
       GlobalThisItemProxy.items.forEach((item) => {
         item.fakeClientsValues.delete(fakeClient.id)
@@ -101,14 +101,14 @@ export type FakeClientState = {
   [key: string]: unknown
 }
 
-export class FakeClient<TState extends FakeClientState = FakeClientState, TError extends ErrorPoint0 = ErrorPoint0> {
+export class FakeClient<TState extends FakeClientState, TError extends ErrorPoint0> {
   id: string
   scope: PointsScope
   runtime: ClientRuntime
-  client: EngineClient<true>
+  client: EngineClient<true, TError>
   points: ClientPoints<TError>
 
-  engine: Engine<any, any, true>
+  engine: Engine<any, TError, true>
   state: TState
   jar: CookieJar
   // fetch: FetchCookieImpl<string | URL | Request, RequestInit, Response>
@@ -142,7 +142,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState, TError
     cookieGetter,
   }: {
     engine: Engine<any, any, true>
-    client: EngineClient<true>
+    client: EngineClient<true, TError>
     points: ClientPoints<TError>
     runtime: ClientRuntime
     id: string
@@ -178,7 +178,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState, TError
     this.cookieGetter = cookieGetter
   }
 
-  static create<TState extends FakeClientState = FakeClientState, TError extends ErrorPoint0 = ErrorPoint0>({
+  static create<TState extends FakeClientState, TError extends ErrorPoint0>({
     engine,
     scope,
     globals,
@@ -297,7 +297,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState, TError
     // }
     const fakeClient = new FakeClient({
       engine: engine as Engine<any, any, true>,
-      client: client as EngineClient<true>,
+      client: client as EngineClient<true, TError>,
       id,
       scope,
       runtime: 'browser',
@@ -324,7 +324,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState, TError
       },
     }
     for (const [key, value] of Object.entries(globalsWithClientEnv)) {
-      GlobalThisItemProxy.create(fakeClient as unknown as FakeClient<FakeClientState>, key, value)
+      GlobalThisItemProxy.create(fakeClient, key, value)
     }
     return fakeClient as unknown as FakeClient<TState, TError>
   }

@@ -62,7 +62,7 @@ describe('ctx', () => {
       .ctx(({ ctx }) => ({ y: ctx.x + 1 }))
       .loader(({ ctx }) => ctx)
       .page(({ data }) => {
-        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ x: number; y: number }>()
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number; y: number }>()
         return ymlify(data)
       })
     const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
@@ -82,13 +82,40 @@ describe('ctx', () => {
       .ctx(({ ctx }) => ({ y: ctx.x + 1, x: 999 }))
       .loader(({ ctx }) => ctx)
       .page(({ data }) => {
-        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ x: number; y: number }>()
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number; y: number }>()
         return ymlify(data)
       })
     const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       x: 999
+      y: 2
+      "
+    `)
+  })
+
+  it('as fn extends optional', async () => {
+    const root = createRoot()
+    const page = root
+      .lets('page', 'home', '/')
+      .ctx(() => ({ x: 1 }))
+      .ctx(({ ctx }) => {
+        if (!(Math.random() + 1)) {
+          return
+        }
+        return { y: ctx.x + 1 }
+      })
+      .loader(({ ctx }) => {
+        return ctx
+      })
+      .page(({ data }) => {
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number; y?: number }>()
+        return ymlify(data)
+      })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      x: 1
       y: 2
       "
     `)
@@ -101,7 +128,7 @@ describe('ctx', () => {
       .ctx({ x: 1 }, true)
       .loader(({ ctx, x }) => ({ ctx, x }))
       .page(({ data }) => {
-        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ ctx: { x: number }; x: number }>()
+        expectTypeOf<typeof data>().toEqualTypeOf<{ ctx: { x: number }; x: number }>()
         return ymlify(data)
       })
     const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
@@ -127,7 +154,7 @@ describe('ctx', () => {
           o.y ?? '❌',
       }))
       .page(({ data }) => {
-        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ ctx: { x: number; y: number }; x: number; y: any }>()
+        expectTypeOf<typeof data>().toEqualTypeOf<{ ctx: { x: number; y: number }; x: number; y: any }>()
         return ymlify(data)
       })
     const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
@@ -149,7 +176,7 @@ describe('ctx', () => {
       .ctx(() => ({ x: 1 }), true)
       .loader(({ ctx, x }) => ({ ctx, x }))
       .page(({ data }) => {
-        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ ctx: { x: number }; x: number }>()
+        expectTypeOf<typeof data>().toEqualTypeOf<{ ctx: { x: number }; x: number }>()
         return ymlify(data)
       })
     const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
@@ -175,7 +202,7 @@ describe('ctx', () => {
           o.y ?? '❌',
       }))
       .page(({ data }) => {
-        expectTypeOf<Prettify<typeof data>>().toEqualTypeOf<{ ctx: { x: number; y: number }; x: number; y: any }>()
+        expectTypeOf<typeof data>().toEqualTypeOf<{ ctx: { x: number; y: number }; x: number; y: any }>()
         return ymlify(data)
       })
     const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
@@ -234,7 +261,7 @@ describe('ctx', () => {
       })
       .ctx(() => ({ y: 2 }))
       .loader(({ ctx }) => {
-        expectTypeOf<Prettify<typeof ctx>>().toEqualTypeOf<{ x: number; y: number }>()
+        expectTypeOf<typeof ctx>().toEqualTypeOf<{ x: number; y: number }>()
         expect(ctx).toEqual({ x: 1, y: 2 })
         return { x: 1 }
       })

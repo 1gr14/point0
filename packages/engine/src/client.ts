@@ -51,7 +51,7 @@ import type {
   EngineSharedPluginsDefinition,
 } from './utils.js'
 
-export class EngineClient<TPrepared extends boolean = boolean, TError extends ErrorPoint0 = ErrorPoint0> {
+export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0> {
   cwd: string
   scope: PointsScope
   engineFile: string | null
@@ -83,7 +83,7 @@ export class EngineClient<TPrepared extends boolean = boolean, TError extends Er
   bunPlugins: EngineClientPluginsDefinition
   generalBunPlugins: EngineSharedPluginsDefinition
   distIndexHtmlContent: string | null
-  server: EngineServer
+  server: EngineServer<any, TError>
   // clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
   // serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
   viteDevServer: ViteDevServer | true | null
@@ -96,7 +96,7 @@ export class EngineClient<TPrepared extends boolean = boolean, TError extends Er
     prepared: TPrepared
     cwd: string
     // pointsDistFile: string | null
-    pointsProvided: PointsDefinitionSource<any, any> | null
+    pointsProvided: PointsDefinitionSource<any, TError> | null
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
     serving: EngineOptionsServing
@@ -123,7 +123,7 @@ export class EngineClient<TPrepared extends boolean = boolean, TError extends Er
     bunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
     bunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
     viteDevServer: ViteDevServer | true | null
-    server: EngineServer
+    server: EngineServer<any, TError>
     ssr: boolean
   }) {
     this.scope = input.scope
@@ -203,7 +203,7 @@ export class EngineClient<TPrepared extends boolean = boolean, TError extends Er
     engineFile: string | null
     viteConfig: EngineOptionsViteConfig | null
     compiler: EngineOptionsCompilerSpecificParsed | false
-    server: EngineServer
+    server: EngineServer<any, TError>
     ssr: boolean
   }): EngineClient<false, TError> {
     const viteDevServer = null

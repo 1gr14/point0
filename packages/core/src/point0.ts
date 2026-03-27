@@ -2209,7 +2209,8 @@ export class Point0<
         TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueriesDefinitions
+        TQueriesDefinitions,
+        TError
       >,
       TMapperOutput,
       TError
@@ -2536,7 +2537,8 @@ export class Point0<
       TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TError
     >
   >
   error(errorComponent: ErrorComponentType<any, any> | undefined) {
@@ -2812,7 +2814,8 @@ export class Point0<
       TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TError
     >
   >
   loading(loadingComponent: LoadingComponentType<any> | undefined) {
@@ -2865,7 +2868,8 @@ export class Point0<
         TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueriesDefinitions
+        TQueriesDefinitions,
+        TError
       >,
       TMapperOutput,
       TError
@@ -2898,7 +2902,8 @@ export class Point0<
       TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TError
     >
   >
   wrapper(wrapperComponent: WrapperComponentType<any, any, any, any, any, any, any, any> | undefined) {
@@ -2933,6 +2938,7 @@ export class Point0<
         UseQueryOptions: any
         QueryResultType: 'query' | 'infiniteQuery'
         QueriedData: any
+        Error: any
       }
     },
   >(
@@ -2960,7 +2966,8 @@ export class Point0<
                       TLetsReadyPointType,
                       TServerLoaderOutput,
                       TClientLoaderOutput,
-                      TQueriesDefinitions
+                      TQueriesDefinitions,
+                      TError
                     >,
                     TMapperOutput,
                     TError
@@ -2983,7 +2990,8 @@ export class Point0<
                       TLetsReadyPointType,
                       TServerLoaderOutput,
                       TClientLoaderOutput,
-                      TQueriesDefinitions
+                      TQueriesDefinitions,
+                      TError
                     >,
                     TMapperOutput,
                     TError
@@ -3021,11 +3029,13 @@ export class Point0<
         TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueriesDefinitions
+        TQueriesDefinitions,
+        TError
       >,
       {
         type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
         data: TPoint['Infer']['QueriedData']
+        error: TPoint['Infer']['Error']
       },
     ]
   >
@@ -3041,7 +3051,8 @@ export class Point0<
         TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueriesDefinitions
+        TQueriesDefinitions,
+        TError
       >,
       TMapperOutput,
       TError,
@@ -3076,7 +3087,8 @@ export class Point0<
         TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueriesDefinitions
+        TQueriesDefinitions,
+        TError
       >,
       // ...(TNewQueries extends UseQueryOrInfiniteQueryResult
       //   ? [QueryDefinitionByQuery<TNewQueries>]
@@ -3102,7 +3114,8 @@ export class Point0<
         TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueriesDefinitions
+        TQueriesDefinitions,
+        TError
       >,
       TMapperOutput,
       TError,
@@ -3151,13 +3164,17 @@ export class Point0<
     TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
-    AppendProps<TInnerProps, InferWithFnOutputNewInnerProps<TWithFn>>,
+    // AppendProps<TInnerProps, InferWithFnOutputNewInnerProps<TWithFn>>,
+    IsUndefined<InferWithFnOutputNewInnerProps<TWithFn>> extends true
+      ? TInnerProps
+      : AppendProps<TInnerProps, InferWithFnOutputNewInnerProps<TWithFn>>,
     WithSelfQueryIfShouldBeFinalized<
       TPointType,
       TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TError
     >
   >
   with(
@@ -3177,7 +3194,8 @@ export class Point0<
                 TLetsReadyPointType,
                 TServerLoaderOutput,
                 TClientLoaderOutput,
-                TQueriesDefinitions
+                TQueriesDefinitions,
+                TError
               >,
               TMapperOutput,
               TError
@@ -3258,6 +3276,7 @@ export class Point0<
         UseQueryOptions: any
         QueryResultType: 'query' | 'infiniteQuery'
         QueriedData: any
+        Error: any
       }
     },
   >(
@@ -3314,11 +3333,13 @@ export class Point0<
         TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueriesDefinitions
+        TQueriesDefinitions,
+        TError
       >,
       {
         type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
         data: TPoint['Infer']['QueriedData']
+        error: TPoint['Infer']['Error']
       },
     ]
   >
@@ -4348,7 +4369,8 @@ export class Point0<
         TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueriesDefinitions
+        TQueriesDefinitions,
+        TError
       >,
       TMapperOutput,
       TNewMapperOutput
@@ -4381,7 +4403,8 @@ export class Point0<
       TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TError
     >
   >
   mapper(mapperFn: MapperFn<any, any, any, any, any, any, any, any> | undefined) {
@@ -4480,7 +4503,8 @@ export class Point0<
             TLetsReadyPointType,
             TServerLoaderOutput,
             TClientLoaderOutput,
-            TQueriesDefinitions
+            TQueriesDefinitions,
+            TError
           >,
           TMapperOutput,
           TError
@@ -4515,7 +4539,8 @@ export class Point0<
       TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TError
     >
   >
   head<TStatus extends 'loading' | 'error' | 'success' | 'universal' | 'global'>(
@@ -4537,7 +4562,8 @@ export class Point0<
                 TLetsReadyPointType,
                 TServerLoaderOutput,
                 TClientLoaderOutput,
-                TQueriesDefinitions
+                TQueriesDefinitions,
+                TError
               >,
               TMapperOutput,
               TError
@@ -4572,7 +4598,8 @@ export class Point0<
       TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TError
     >
   >
   head(..._args: any[]) {
@@ -5874,7 +5901,8 @@ export class Point0<
               TLetsReadyPointType,
               TServerLoaderOutput,
               TClientLoaderOutput,
-              TQueriesDefinitions
+              TQueriesDefinitions,
+              TError
             >,
             TMapperOutput
           >,
@@ -5906,7 +5934,8 @@ export class Point0<
       TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TError
     >
   >
   page(...args: any[]) {
@@ -5947,7 +5976,8 @@ export class Point0<
               TLetsReadyPointType,
               TServerLoaderOutput,
               TClientLoaderOutput,
-              TQueriesDefinitions
+              TQueriesDefinitions,
+              TError
             >,
             TMapperOutput
           >,
@@ -5979,7 +6009,8 @@ export class Point0<
       TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TError
     >
   > {
     const [component = () => null] = args as never as [
@@ -6021,7 +6052,8 @@ export class Point0<
               TLetsReadyPointType,
               TServerLoaderOutput,
               TClientLoaderOutput,
-              TQueriesDefinitions
+              TQueriesDefinitions,
+              TError
             >,
             TMapperOutput
           >,
@@ -6053,7 +6085,8 @@ export class Point0<
       TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TError
     >
   >
   layout<
@@ -6100,7 +6133,8 @@ export class Point0<
         TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueriesDefinitions
+        TQueriesDefinitions,
+        TError
       >,
     ]
   >
@@ -6210,7 +6244,8 @@ export class Point0<
         TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueriesDefinitions
+        TQueriesDefinitions,
+        TError
       >,
       TMapperOutput
     >,
@@ -6228,7 +6263,8 @@ export class Point0<
               TLetsReadyPointType,
               TServerLoaderOutput,
               TClientLoaderOutput,
-              TQueriesDefinitions
+              TQueriesDefinitions,
+              TError
             >,
             TMapperOutput,
             TNewMapperOutput
@@ -6261,7 +6297,8 @@ export class Point0<
       TLetsReadyPointType,
       TServerLoaderOutput,
       TClientLoaderOutput,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TError
     >
   >
   provider(_mapperFn?: any) {
@@ -6369,7 +6406,8 @@ export class Point0<
         TLetsReadyPointType,
         TServerLoaderOutput,
         TClientLoaderOutput,
-        TQueriesDefinitions
+        TQueriesDefinitions,
+        TError
       >,
       T['Infer']['Queries']
     >
@@ -6679,7 +6717,7 @@ export class Point0<
     TInnerProps,
     AppendQueries<
       TQueriesDefinitions,
-      QueryDefinition<'query', FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>
+      QueryDefinition<'query', FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>, TError>
     >
   >
   query(...args: any) {
@@ -6877,7 +6915,11 @@ export class Point0<
     TInnerProps,
     AppendQueries<
       TQueriesDefinitions,
-      QueryDefinition<'infiniteQuery', InfiniteData<FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>>
+      QueryDefinition<
+        'infiniteQuery',
+        InfiniteData<FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>,
+        TError
+      >
     >
   >
   infiniteQuery(...args: any[]) {
