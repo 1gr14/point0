@@ -1,7 +1,8 @@
-import { describe, expect, expectTypeOf, it } from 'bun:test'
-import type { Prettify } from '@point0/core'
 import { Point0 } from '@point0/core'
+import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { createTestThings, ymlify } from './utils/internal-testing.js'
+import { createNavigation } from '@point0/react-dom/router'
+import { Routes } from '@devp0nt/route0'
 
 describe('ctx', () => {
   const createRoot = () =>
@@ -249,7 +250,7 @@ describe('ctx', () => {
     point.ctx(() => ({ execute: 'x', ok: 1 }), ['execute'])
   })
 
-  it('can return nothing, then no ctx overrides', async () => {
+  it('can return undefined, then no ctx overrides', async () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
@@ -273,6 +274,67 @@ describe('ctx', () => {
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       x: 1
+      "
+    `)
+  })
+
+  it('can return never, then no ctx overrides', async () => {
+    const root = createRoot()
+    const page = root
+      .lets('page', 'home', '/')
+      .ctx({ x: 1 })
+      .ctx(() => {
+        throw new Error('test error')
+      })
+      .ctx(() => ({ y: 2 }))
+      .loader(({ ctx }) => {
+        expectTypeOf<typeof ctx>().toEqualTypeOf<{ x: number; y: number }>()
+        expect(ctx).toEqual({ x: 1, y: 2 })
+        return { x: 1 }
+      })
+      .page(({ data }) => {
+        expectTypeOf(data).toEqualTypeOf<{ x: number }>()
+        return ymlify(data)
+      })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #loading: ...
+      "
+    `)
+  })
+
+  it('can return redirect task, then no ctx overrides', async () => {
+    const root = createRoot()
+    const routes = Routes.create({
+      page1: '/1',
+      page2: '/2',
+    })
+    const { redirect } = createNavigation({
+      routes,
+    })
+    const page1 = root
+      .lets('page', 'page1', '/1')
+      .ctx({ x: 1 })
+      .ctx(async () => {
+        return redirect('page2')
+      })
+      .ctx(() => ({ y: 2 }))
+      .loader(({ ctx }) => {
+        // never come here, just check types
+        expectTypeOf<typeof ctx>().toEqualTypeOf<{ x: number; y: number }>()
+        expect(ctx).toEqual({ x: 1, y: 2 })
+        return { x: 1 }
+      })
+      .page(({ data }) => {
+        expectTypeOf(data).toEqualTypeOf<{ x: number }>()
+        return ymlify(data)
+      })
+    const page2 = root.lets('page', 'page2', '/2').page(() => <div id="page2">content</div>)
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page1, page2] })
+    expect(await fetchPreview(page1)).toMatchInlineSnapshot(`
+      "
+      #page2: content
       "
     `)
   })

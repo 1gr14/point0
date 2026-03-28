@@ -14,6 +14,7 @@ start0
 
 🚀 launch
 
+идеаник
 витрина-своя
 втирина-хостинги
 
@@ -33,34 +34,15 @@ start0
 
 === REFACTOING 3000 ===
 
-
-redirect
-Запрос с редиректом с точки зрения хттп возвращает не ошибку, но сровит ошибку из квери фетча
-Редирект можно как сровнуть, так и ретёрнуть
-on 'error', should not throw on redirect
-on 'redirect'
-Еррор0 должна мочь захендлить редирект, и тогда еррор компонент пусть просто сам разбирается
-Редирект компонент может принимать чилдрен, который отрисуется на время редиреета
-Тут как раз и юзссрэффект поможет
-Нам в контексте нужен не адаптер навигецт а настоящий навигецт с транзишинами
-on qeruyClient hydrate remove all that possible to remove from it (and timestamps should become now on client)
-? redirect moves to final stage
-? redirect as method is just shortcut for with((...args) => redirect(...args))
-? method redirect not needed with is enough (why )
-? lets redirect helper that just imitate action that redirects
-when fetch returns redirect and in haeders was not client request id, then we should
-with can return redirect
-redirect can returns tuple, with status as first argument
-redirect adds to mount actions and server actions
-redirect stops monts and server execution
-fetchServer should read redirect task from headers, and do this by router redirect
-wouter RedirctSimple and createRedirect
-? deepftch shmetch should on... prefetchQuery when recieved redirect should...
-on fetchPage if result is redirect, then we send real 302 or what redirect
-on qeruyFetch if result redirect, we do client redirect
-Квери после получения редиректа должна удалить его из кеша
-fetchServer shoul accept onRedirect instructions else it throws
-Разбить роутер на Стейт локейшен и хелперс провайдер
+Син левел пейдж поинт макс депс 10 / син редирект таск макс депс 10
+error0-plugin-redirect.tsx
+В эрор0 тоже добавить преттифай
+Проверить, что retryOnMount адекватно работает с ошибками и ssr (тогда не надо, В реакт квери настройки загнать useIsHydrated и в нём preventRefetchOnMountAfterHydration поначалу фалс)
+Сет кукис и кукис надо синхронизировать
+Убедиться, что компонент в котором только чилдрен реквайред, можно просто передать во враппер
+Проверить, что будет если компонент сровнет сам в рендере
+? check if dehydrate query-client correctly dehydrates and hydrates error0 and RedirectTask
+? add helpers for error.ts and error0 and Redirect task to register customs for superjson / or in hydrate dehydrate use 
 
 
 
@@ -73,7 +55,7 @@ fetchServer shoul accept onRedirect instructions else it throws
 При экспорт дефаулт короткий летс берёт имя файла, а если то индекс, то имя папки
 
 Оутдир в энжине может быть объектом где каждый ключ это нод енв
-Дев режим может принимать флаг билд, и тогда мы нон-стоп билдим проект, и запускаем именно сбилженные файлы, а там и соурс мепы как раз
+Дев режим может принимать флаг билд, и тогда мы нон-стоп билдим проект, и запускаем именно сбилженные файлы, а там и соурс мепы как раз, и тамже поинтсы лоажеры могут быть заменены на вставленные и тогда и хот заработает
 
 Попробовать в континью не создавать новый объект, а модифицировать старый, и в компилере всю цепочку разрывать на методы
 Проверить соурсмапы ещё раз (убедиться. что перемещая код, он помнит своё прежнее место)
@@ -93,14 +75,14 @@ tags
 openapi
 scalar
 
-В генерейт позволить в вхот пробросить функцию, которая уже определить что делать с поинтами, когда они меняются
+В генерейт позволить в вхот пробросить функцию (а лучше просто кастомный объект в самом массиве генерейт), которая уже определить что делать с поинтами, когда они меняются
 В генерейт добавить флаг енаблед
 
 Проверка под линукс и виндоус
 
+remove unsused commented code
 types.ts file thet reexport only needed types
 index exports only realy used fns and helpers without types
-
 
 
 
@@ -159,6 +141,9 @@ shrink core/index.ts size, by remove code duplicates
 Все нулы поменять на фолсы
 Перепроверить все публичные названия методов и если надо то поменять
 ---
+on qeruyClient hydrate remove all that possible to remove from it (shrink size)
+? eventer 'navigateStarted', 'navigateSettled', ...
+× Должен ли я трайкетчить в моунтаблах? (нет, потому что это может убить хуки в других местах)
 usePage (by location) + usePoint (by name)
 Пейдж Стейт должен принимать ещё и рута, и там он возьмёт глобалхеды до кучи
 ? usePagePoint (page point by current location)
@@ -390,18 +375,6 @@ somehow wh we have now in client-server, have same ot main-renderer process, via
 Надо сразу чекнуть электрон, вероятно консумХэндлер достаточно добавить, чтобы поинт просто взял и стал чем угодно, но будто бы тут лучше отдельную разработку для электорна делать, это подождёт
 
 
-
-
-
-
-
-
-=== REDIRECT ===
---?
-redirect вшить в router.tsx это такая же штука как кукис стор то есть использует где надо эффекты а где надо моунтабл штуки
-allow redirect by redirect() right inside outer, or via useRedirect()
-redirect (as option in loader and clientLoader for page)
-redirect as point method which will be applied to both client and server
 
 
 

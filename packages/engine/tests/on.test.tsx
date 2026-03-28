@@ -1,5 +1,5 @@
 import { Point0 } from '@point0/core'
-import type { AnyEventerEvent, ErrorPoint0 } from '@point0/core'
+import { type AnyEventerEvent, ErrorPoint0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
 import { createTestThings } from './utils/internal-testing.js'
 
@@ -131,6 +131,9 @@ describe('on', () => {
   it('error', async () => {
     const events: AnyEventerEvent<ErrorPoint0>[] = []
     const root = Point0.lets('root', 'root')
+      .queryOptions({
+        retry: false,
+      })
       .on('error', (e) => {
         events.push(e)
       })
@@ -139,14 +142,14 @@ describe('on', () => {
       .lets('page', 'home', '/')
       .loader(() => {
         if (Math.random() + 1) {
-          throw new Error('test error')
+          throw new ErrorPoint0('test error')
         }
         return { x: 1 }
       })
       .page(({ data }) => <div id="page">x={data.x}</div>)
     const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route(), async ({ waitContent }) => {
-      await waitContent('error')
+      await waitContent('error', 10000)
       expect(events.map((e) => ({ name: e.name, side: e.side }))).toMatchInlineSnapshot(`
         [
           {

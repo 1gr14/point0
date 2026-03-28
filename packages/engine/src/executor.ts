@@ -1,6 +1,6 @@
-import type { AnyLocation, AnyRoute } from '@devp0nt/route0'
-import { _ss, _ssRunWithServerStorageState } from '@point0/core'
 import * as flat0 from '@devp0nt/flat0'
+import { Route0, type AnyLocation, type AnyRoute } from '@devp0nt/route0'
+import { _ss, _ssRunWithServerStorageState } from '@point0/core'
 import type {
   AnyPoint,
   AppComponent,
@@ -34,6 +34,7 @@ import type {
   UnknownData,
 } from '@point0/core'
 import { Effects } from '@point0/core/effects'
+import { RedirectTask } from '@point0/core/navigation'
 import type { Request0 } from '@point0/core/request0'
 import { dehydrate } from '@tanstack/react-query'
 import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
@@ -394,6 +395,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           error: error0,
           status,
           response: undefined,
+          redirect: undefined,
           output: {},
           effects: effects.values,
           point,
@@ -443,6 +445,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
             error: error0,
             status,
             response: layers[0].response,
+            redirect: undefined,
             output: layers[0].output,
             effects: effects.values,
             point: undefined,
@@ -459,6 +462,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
             error: error0,
             status,
             response: layers[0].response,
+            redirect: undefined,
             output: layers[0].output,
             effects: effects.values,
             point,
@@ -476,6 +480,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
             error: error0,
             status,
             response: layers[0].response,
+            redirect: undefined,
             output: layers[0].output,
             effects: effects.values,
             point,
@@ -637,9 +642,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 // },
                 request: this.request,
                 set: effects.set,
-                point,
+                // point,
                 ...getParsed(),
               })
+              if (result instanceof RedirectTask) {
+                throw result
+              }
               const appendCtxExposedKeys = !serverExecuteAction.expose
                 ? []
                 : serverExecuteAction.expose === true
@@ -702,11 +710,19 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 // },
                 request: this.request as never,
                 set: effects.set,
-                point,
+                // point,
                 ...getParsed(),
               })
-              const result = (await (promise as any)) as [number, Data | Response] | Data | Response
+              const result = (await (promise as any)) as
+                | [number, Data | Response | undefined | RedirectTask]
+                | Data
+                | Response
+                | RedirectTask
+                | undefined
               if (Array.isArray(result)) {
+                if (result[1] instanceof RedirectTask) {
+                  throw result[1]
+                }
                 effects.set.status(result[0])
                 if (result[1] instanceof Response) {
                   layers.forEach((layer) => {
@@ -715,11 +731,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                   })
                 } else {
                   layers.forEach((layer) => {
-                    layer.data = result[1]
-                    layer.output = result[1]
+                    layer.data = result[1] ?? {}
+                    layer.output = result[1] ?? {}
                   })
                 }
               } else {
+                if (result instanceof RedirectTask) {
+                  throw result
+                }
                 if (result instanceof Response) {
                   layers.forEach((layer) => {
                     layer.response = result
@@ -727,8 +746,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                   })
                 } else {
                   layers.forEach((layer) => {
-                    layer.data = result
-                    layer.output = result
+                    layer.data = result ?? {}
+                    layer.output = result ?? {}
                   })
                 }
               }
@@ -758,6 +777,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           ctx: layers[0].ctx,
           data: layers[0].data,
           response: layers[0].response,
+          redirect: undefined,
           error: undefined,
           output: layers[0].output,
           effects: effects.values,
@@ -773,6 +793,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           data: layers[0].data,
           error: error0,
           response: layers[0].response,
+          redirect: error0.redirect,
           output: layers[0].output,
           effects: effects.values,
           point,
@@ -843,6 +864,36 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     }
   }
 
+  async handleRedirectTask({
+    clientPoints,
+    redirectPolicy,
+  }: {
+    clientPoints: ClientPoints<any>
+    redirectPolicy: 'continue' | 'throw'
+  }): Promise<{ redirectTask: RedirectTask; pagePoint: PagePoint | undefined; pageLocation: AnyLocation } | undefined> {
+    const redirectTaskHolder = _ss.__POINT0_SSR_REDIRECT_TASK__.get()
+    if (redirectTaskHolder && !redirectTaskHolder.handled) {
+      redirectTaskHolder.handled = true
+      const newLocation = clientPoints.routes._.getLocation(redirectTaskHolder.task.to)
+      this.serverStorageState.__POINT0_CURRENT_LOCATION__ = newLocation
+      this.serverStorageState.__POINT0_SSR_LOCATION__ = newLocation
+      if (redirectPolicy === 'throw') {
+        throw redirectTaskHolder.task
+      } else {
+        const toLocation = Route0.getLocation(redirectTaskHolder.task.to)
+        const result = await clientPoints.loadPage({ location: toLocation })
+        const pageLocation = result?.pageLocation ?? toLocation
+        const pagePoint = result?.page
+        return {
+          redirectTask: redirectTaskHolder.task,
+          pagePoint,
+          pageLocation,
+        }
+      }
+    }
+    return undefined
+  }
+
   async prefetchAppPagePointDeep({
     App,
     clientPoints,
@@ -851,6 +902,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     pageLocation,
     seenQueryHashes = new Set<string>(),
     level = 0,
+    redirectPolicy,
   }: {
     App: AppComponent
     clientPoints: ClientPoints<any>
@@ -859,6 +911,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     pageLocation: AnyLocation
     seenQueryHashes?: Set<string>
     level?: number
+    redirectPolicy: 'continue' | 'throw'
   }): Promise<void> {
     if (level === 0) {
       this.serverStorageState.__POINT0_CURRENT_LOCATION__ = pageLocation
@@ -868,8 +921,28 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       this.serverStorageState.__POINT0_SSR_REDIRECT_TASK__ = undefined
     }
     await this.withServerGlobalState(async () => {
+      // console.dir(await this.getQueryClientReadyDehydratedState({ withPagesDehydratedState: false }), { depth: null })
       const stream = await renderToReadableStream(React.createElement(App))
       await stream.allReady
+      const redirectTask = await this.handleRedirectTask({ clientPoints, redirectPolicy })
+
+      if (redirectTask) {
+        if (pagePoint) {
+          await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, pageLocation })
+        }
+        await this.prefetchAppPagePointDeep({
+          App,
+          renderToReadableStream,
+          pagePoint: redirectTask.pagePoint,
+          pageLocation: redirectTask.pageLocation,
+          clientPoints,
+          seenQueryHashes,
+          level: level + 1,
+          redirectPolicy,
+        })
+        return
+      }
+
       const queryClientState = _ss.__POINT0_QUERY_CLIENT__.get().getQueryCache().findAll()
       const suitableMarkers = queryClientState.flatMap((query) => {
         const parsedQueryKey = Executor.parseQueryKey({
@@ -891,13 +964,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         seenQueryHashes.add(parsedQueryKey.serverHash)
         return parsedQueryKey
       })
-
-      if (suitableMarkers.length === 0) {
-        if (level === 0 && pagePoint) {
-          await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, pageLocation })
-        }
-        return
-      }
 
       for (const suitableMarker of suitableMarkers) {
         const exactPoint = this.engine.server.points?.findExact({
@@ -930,23 +996,30 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         }
       }
 
-      await this.prefetchAppPagePointDeep({
-        App,
-        renderToReadableStream,
-        pagePoint,
-        pageLocation,
-        clientPoints,
-        seenQueryHashes,
-        level: level + 1,
-      })
-
-      if (level === 0 && pagePoint) {
-        await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, pageLocation })
+      if (suitableMarkers.length > 0) {
+        await this.prefetchAppPagePointDeep({
+          App,
+          renderToReadableStream,
+          pagePoint,
+          pageLocation,
+          clientPoints,
+          seenQueryHashes,
+          level: level + 1,
+          redirectPolicy,
+        })
+      } else {
+        if (pagePoint) {
+          await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, pageLocation })
+        }
       }
     })
   }
 
-  async getQueryClientReadyDehydratedState(): Promise<DehydratedState> {
+  async getQueryClientReadyDehydratedState({
+    withPagesDehydratedState,
+  }: {
+    withPagesDehydratedState: boolean
+  }): Promise<DehydratedState> {
     const result = await this.withServerGlobalState(async () => {
       const dehydratedState = dehydrate(_ss.__POINT0_QUERY_CLIENT__.get(), {
         shouldDehydrateQuery: (_query) => {
@@ -957,6 +1030,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       return dehydratedState
     })
     result.queries = result.queries.filter((query) => query.state.status !== 'pending')
+    if (withPagesDehydratedState) {
+      return result
+    }
+    result.queries = result.queries.filter((query) => query.queryKey.at(-1) !== 'queryClientDehydratedState')
     return result
   }
 
@@ -982,7 +1059,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         fetchOptions: undefined,
         outputType: 'queryClientDehydratedState',
       })
-      const relatedQueriesDehydratedState = await this.getQueryClientReadyDehydratedState()
+      const relatedQueriesDehydratedState = await this.getQueryClientReadyDehydratedState({
+        withPagesDehydratedState: false,
+      })
+      // TODO: filter out duplicates from different pages causes by redirects
       const queryClient = _ss.__POINT0_QUERY_CLIENT__.get()
       const { queryKey, ...restOptions } = prefetchPageQueryOptions
       queryClient.setQueryDefaults(queryKey, {

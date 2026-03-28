@@ -5,8 +5,9 @@ import {
   QueryClientProvider as QueryClientProviderOriginal,
 } from '@tanstack/react-query'
 import type { DehydratedState } from '@tanstack/react-query'
-import { superstore } from './super-store.js'
 import React from 'react'
+import { superstore } from './super-store.js'
+import { RedirectTask } from './redirect.js'
 
 export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, DehydratedState, 'readonlyRedefine'>(
   '__POINT0_QUERY_CLIENT__',
@@ -88,4 +89,17 @@ export const forceFreshDehydratedState = (
     })),
   }
   return result
+}
+
+export const removeRedirectsFromQueryClientCache = (queryClient: QueryClient, to?: string) => {
+  const cache = queryClient.getQueryCache()
+  cache.findAll().forEach((query) => {
+    const maybeRedirect = (query.state.error as Record<string, unknown> | null)?.redirect
+    const redirect = maybeRedirect instanceof RedirectTask ? maybeRedirect : undefined
+    if (redirect) {
+      if (to === undefined || redirect.to === to) {
+        cache.remove(query)
+      }
+    }
+  })
 }

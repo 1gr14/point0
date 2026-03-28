@@ -5,13 +5,12 @@ import type { ResolvableHead } from 'unhead/types'
 import type { ClientPoints } from './client-points.js'
 import type { Effects } from './effects.js'
 import { __POINT0_IS_SSR_IN_PROGRESS__ } from './env.js'
-import type { ErrorPoint0 } from './error.js'
+import type { RedirectTask } from './redirect.js'
 import type {
   NavigationHelpersContextValue,
   NavigationPageStateContextValue,
   NavigationTransitionStateContextValue,
 } from './navigation.js'
-import { ssrRedirectTask } from './navigation.js'
 import { __POINT0_QUERY_CLIENT__ } from './query-client.js'
 import type { Request0 } from './request0.js'
 import { superstore } from './super-store.js'
@@ -27,7 +26,11 @@ export const _getFakeClient = (): LikeFakeClient | undefined => {
 
 export const _ss = {
   __POINT0_HYDRATION_FINISHED__: superstore.define<boolean>('__POINT0_HYDRATION_FINISHED__', () => false, 'clientOnly'),
-  __POINT0_SSR_REDIRECT_TASK__: ssrRedirectTask,
+  __POINT0_SSR_REDIRECT_TASK__: superstore.define<{ task: RedirectTask; handled: boolean } | undefined>(
+    '__POINT0_SSR_REDIRECT_TASK__',
+    () => undefined,
+    'serverOnlyStorage',
+  ),
   __POINT0_IS_SSR_IN_PROGRESS__: __POINT0_IS_SSR_IN_PROGRESS__,
   __POINT0_FETCH_FN__: superstore.define<RichFetchFn>('__POINT0_FETCH_FN__', initUndefined, 'serverOnlyStorage'),
   __POINT0_FAKE_CLIENT__: superstore.define<LikeFakeClient>(
@@ -47,7 +50,7 @@ export const _ss = {
     initUndefined,
     'serverOnlyStorage',
   ),
-  __POINT0_QUERY_CLIENT__: __POINT0_QUERY_CLIENT__,
+  __POINT0_QUERY_CLIENT__,
   __POINT0_SSR_LOCATION__: superstore.define<AnyLocation | undefined>(
     '__POINT0_SSR_LOCATION__',
     initUndefined,

@@ -43,6 +43,7 @@ import { Executor } from './executor.js'
 import type { ExecuteOptionsKnownInput } from './executor.js'
 import type { Publicdir } from './publicdir.js'
 import type { EngineServer } from './server.js'
+import { RedirectTask } from '@point0/core/navigation'
 
 export class Fetcher<TError extends ErrorPoint0> {
   engine: Engine<RequiredCtx, TError, true>
@@ -609,11 +610,9 @@ export class Fetcher<TError extends ErrorPoint0> {
           executor,
           pagePoint: point as PagePoint,
           pageLocation: pageLocation as ExactLocation | AnyLocation,
+          redirectPolicy: 'continue',
         })
-        const dehydratedState = await executor.getQueryClientReadyDehydratedState()
-        dehydratedState.queries = dehydratedState.queries.filter(
-          (query) => query.queryKey.at(-1) !== 'queryClientDehydratedState',
-        )
+        const dehydratedState = await executor.getQueryClientReadyDehydratedState({ withPagesDehydratedState: false })
         const response = new Response(transformer.stringify({ dehydratedState }), {
           headers: { 'Content-Type': 'application/json' },
           status: 200,
@@ -632,6 +631,22 @@ export class Fetcher<TError extends ErrorPoint0> {
         effects: executor.effects, // here we pass executor effects, becouse we want to apply status and effects to it
         ErrorClass,
       })
+
+      if (executeResult.redirect && request.headers['x-point0-client-request-id']) {
+        // it is page redirect, not repsonse redirect
+        // if request was sent from point0 cleint we send in with usual response 200 and special header (in this block), but will recoginze as error in query itself
+        // if it was requested via foreign client, then it is unexpected and we return response as error (in next block: if (executeResult.error) ...)
+
+        const response = new Response(transformer.stringify(executeResult.redirect.serialize()), {
+          headers: { 'Content-Type': 'application/json', 'X-Point0-Redirect': 'true' },
+          status: executeResult.effects.status ?? 200,
+        })
+        return {
+          ...partialResult,
+          response,
+          data: undefined,
+        }
+      }
 
       if (executeResult.error) {
         const response = this.toJsonErrorResponse({
@@ -749,6 +764,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             executor,
             pagePoint: point,
             pageLocation,
+            redirectPolicy: 'throw',
           })
           const response = new Response(readableStream, {
             headers: { 'Content-Type': 'text/html' },
@@ -761,6 +777,21 @@ export class Fetcher<TError extends ErrorPoint0> {
             response,
           }
         } catch (error) {
+          if (error instanceof RedirectTask) {
+            const validRedirectStatuses = [301, 302, 303, 307, 308]
+            if (!effects.status || !validRedirectStatuses.includes(effects.status)) {
+              effects.set.status(302)
+            }
+            const response = new Response(null, {
+              headers: {
+                Location: error.to,
+              },
+            })
+            return {
+              ...partialResult,
+              response,
+            }
+          }
           // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
           if (error instanceof Error && error.message.includes('<!-- __Target__ --> not found')) {
             const indexHtml = await client.getOriginalIndexHtmlWithEnvs(request.original.url)

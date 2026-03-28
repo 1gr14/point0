@@ -14,24 +14,36 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { _point0_env } from './env.js'
 import { ErrorPoint0 } from './error.js'
 import type { ClassLikeError0 } from './error.js'
-import { getClientPoints, useEffectSsr } from './helpers.js'
+import { getClientPoints, useEffectAsap, useEffectSsr } from './helpers.js'
 import { _ss } from './internals.js'
-import { superstore } from './super-store.js'
 import type { IfAnyThenElse, PrefetchPagePolicy } from './types.js'
 import { generateId } from './utils.js'
+import type { RedirectTask } from './redirect.js'
 
-export type SpecialNavigateOptions = {
+export type NavigationCallback<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> = (
+  to: string,
+  options?: TAdapterNavigateOptions & SpecialNavigateOptions<TAdapterNavigateOptions>,
+) => void | Promise<void>
+export type SpecialNavigateOptions<TAdapterNavigateOptions extends AdapterNavigateOptions> = {
   prefetch?: PrefetchPagePolicy
+  before?: NavigationCallback<TAdapterNavigateOptions>
+  after?: NavigationCallback<TAdapterNavigateOptions>
 }
-export type SpecialLinkOptions = {
+export type SpecialLinkOptions<TAdapterNavigateOptions extends AdapterNavigateOptions> = {
   prefetch?: PrefetchPagePolicy
   prefetchOnHover?: PrefetchPagePolicy
   prefetchOnNavigate?: PrefetchPagePolicy
+  before?: NavigationCallback<TAdapterNavigateOptions>
+  after?: NavigationCallback<TAdapterNavigateOptions>
 }
-export type SpecialLinkOptionsInDataAttributes = {
+export type SpecialLinkOptionsInDataAttributes<
+  TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions,
+> = {
   ['data-prefetch-on-hover']?: PrefetchPagePolicy
   ['data-prefetch']?: PrefetchPagePolicy
   ['data-prefetch-on-navigate']?: PrefetchPagePolicy
+  ['data-before']?: NavigationCallback<TAdapterNavigateOptions>
+  ['data-after']?: NavigationCallback<TAdapterNavigateOptions>
 }
 
 export type AdapterNavigateOptions = Record<string, unknown>
@@ -58,17 +70,20 @@ export type NavigateHelper<
       ? [
           route: TRouteName,
           input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
-          options?: NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> & SpecialNavigateOptions,
+          options?: NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> &
+            SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>,
         ]
       : [
           route: TRouteName,
           input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
-          options?: NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> & SpecialNavigateOptions,
+          options?: NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> &
+            SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>,
         ]
   ): Promise<{ location: AnyLocation; error: InstanceType<TErrorClass> | undefined }>
   to: (
     to: string,
-    options?: NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> & SpecialNavigateOptions,
+    options?: NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> &
+      SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>,
   ) => Promise<{ location: AnyLocation; error: InstanceType<TErrorClass> | undefined }>
 }
 
@@ -78,24 +93,50 @@ export type RedirectHelper<TRoutes extends RoutesPretty, TAdapterNavigateFn exte
       ? [
           route: TRouteName,
           input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
-          options?: RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn>,
+          options?: RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn> &
+            SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>,
         ]
       : [
           route: TRouteName,
           input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>>,
-          options?: RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn>,
+          options?: RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn> &
+            SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>,
         ]
   ): RedirectTask<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>
   to: (
     to: string,
-    options?: RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn> & SpecialNavigateOptions,
+    options?: RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn> &
+      SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>,
   ) => RedirectTask<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>
 }
+
+export type RedirectComponentRouteProps<TRoutes extends RoutesPretty, TAdapterNavigateFn extends AdapterNavigateFn> = {
+  [TRouteName in ExtractRoutesKeys<TRoutes>]: {
+    route: TRouteName
+  } & (IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
+    ? { input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }
+    : { input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }) &
+    RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn> &
+    SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>
+}[ExtractRoutesKeys<TRoutes>]
+export type RedirectComponentProps<TRoutes extends RoutesPretty, TAdapterNavigateFn extends AdapterNavigateFn> =
+  | RedirectComponentRouteProps<TRoutes, TAdapterNavigateFn>
+  | ({ to: string } & RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn> &
+      SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>)
+  | ({ href: string } & RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn> &
+      SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>)
+  | ({
+      task: RedirectTask<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>
+    } & RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn> &
+      SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>)
+export type RedirectComponent<TRoutes extends RoutesPretty, TAdapterNavigateFn extends AdapterNavigateFn> = (
+  props: RedirectComponentProps<TRoutes, TAdapterNavigateFn>,
+) => React.ReactElement
 
 export type UseLocationOptions = { addHash?: boolean }
 export type UseLocationFn = (options?: UseLocationOptions) => ExactLocation | UnknownLocation
 
-export type NavigationStatus = 'idle' | 'prefetching' | 'transitioning'
+export type NavigationStatus = 'idle' | 'preparing' | 'transitioning'
 
 export type UseOnNavigateFn = (options: {
   prevLocation: AnyLocation
@@ -217,9 +258,16 @@ export const NavigationPageStateSetter = (
   return typeof children === 'undefined' ? null : children
 }
 
-export type NavigationHelpersContextValue = {
+export type NavigationHelpersContextValue<
+  TRoutes extends RoutesPretty = RoutesPretty,
+  TAdapterNavigateFn extends AdapterNavigateFn = AdapterNavigateFn,
+  TErrorClass extends ClassLikeError0<ErrorPoint0> = ClassLikeError0<ErrorPoint0>,
+> = {
   ssrLocation: AnyLocation | null
-  adapterNavigate: AdapterNavigateFn
+  adapterNavigate: TAdapterNavigateFn
+  navigate: NavigateHelper<TRoutes, TAdapterNavigateFn, TErrorClass>
+  redirect: RedirectHelper<TRoutes, TAdapterNavigateFn>
+  Redirect: RedirectComponent<TRoutes, TAdapterNavigateFn>
   useAdapterLocation: UseLocationFn
   addHashToLocation: boolean
   setPrevLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
@@ -271,23 +319,37 @@ export type NavigationLocationContextValue = {
 }
 export const NavigationLocationContext = React.createContext<NavigationLocationContextValue | null>(null)
 
-export type NavigationContextProviderProps = {
+export type NavigationContextProviderProps<
+  TRoutes extends RoutesPretty = RoutesPretty,
+  TAdapterNavigateFn extends AdapterNavigateFn = AdapterNavigateFn,
+  TErrorClass extends ClassLikeError0<ErrorPoint0> = ClassLikeError0<ErrorPoint0>,
+> = {
   children: React.ReactNode
   useAdapterLocation: UseLocationFn
   ssrLocation?: AnyLocation | null
   addHashToLocation?: boolean
-  adapterNavigate: AdapterNavigateFn
-  ErrorClass?: ClassLikeError0<ErrorPoint0>
+  adapterNavigate: TAdapterNavigateFn
+  navigate: NavigateHelper<TRoutes, TAdapterNavigateFn, TErrorClass>
+  redirect: RedirectHelper<TRoutes, TAdapterNavigateFn>
+  Redirect: RedirectComponent<TRoutes, TAdapterNavigateFn>
+  ErrorClass?: TErrorClass
 }
 
-export function NavigationContextProvider({
+export function NavigationContextProvider<
+  TRoutes extends RoutesPretty,
+  TAdapterNavigateFn extends AdapterNavigateFn,
+  TErrorClass extends ClassLikeError0<ErrorPoint0>,
+>({
   children,
   useAdapterLocation,
   ssrLocation,
   adapterNavigate,
+  navigate,
+  redirect,
+  Redirect,
   addHashToLocation = false,
-  ErrorClass = ErrorPoint0 as unknown as ClassLikeError0<ErrorPoint0>,
-}: NavigationContextProviderProps) {
+  ErrorClass = ErrorPoint0 as unknown as TErrorClass,
+}: NavigationContextProviderProps<TRoutes, TAdapterNavigateFn, TErrorClass>) {
   const [nextLocation, setNextLocation] = useState<AnyLocation | null>(null)
   const [prevLocation, setPrevLocation] = useState<AnyLocation | null>(null)
   const [transitionStatus, setTransitionStatus] = useState<NavigationStatus>('idle')
@@ -318,7 +380,7 @@ export function NavigationContextProvider({
   }, [])
 
   const currentLocation = useAdapterLocation()
-  useEffect(() => {
+  useEffectAsap(() => {
     _ss.__POINT0_CURRENT_LOCATION__.set(currentLocation)
   }, [currentLocation])
 
@@ -343,10 +405,13 @@ export function NavigationContextProvider({
       addHashToLocation,
       setPageState,
       ErrorClass,
+      navigate,
+      redirect,
+      Redirect,
     }),
     [ssrLocation, useAdapterLocation, adapterNavigate, addHashToLocation, ErrorClass],
   )
-  useEffect(() => {
+  useEffectAsap(() => {
     _ss.__POINT0_NAVIGATION_HELPERS__.set(helpersValue)
   }, [helpersValue])
 
@@ -360,11 +425,11 @@ export function NavigationContextProvider({
     }),
     [prevLocation, currentLocation, nextLocation, transitionStatus, transitionError],
   )
-  useEffect(() => {
+  useEffectAsap(() => {
     _ss.__POINT0_NAVIGATION_TRANSITION_STATE__.set(transitionStateValue)
   }, [transitionStateValue])
 
-  useEffect(() => {
+  useEffectAsap(() => {
     _ss.__POINT0_NAVIGATION_PAGE_STATE__.set(pageState)
   }, [pageState])
 
@@ -461,6 +526,7 @@ export type NavigateWithTransitionsReturnType<
   TErrorClass extends ClassLikeError0<ErrorPoint0> = ClassLikeError0<ErrorPoint0>,
 > = Promise<{ location: AnyLocation; error: InstanceType<TErrorClass> | undefined }>
 export async function navigateWithTransitions<
+  TAdapterNavigateFn extends AdapterNavigateFn = AdapterNavigateFn,
   TErrorClass extends ClassLikeError0<ErrorPoint0> = ClassLikeError0<ErrorPoint0>,
 >({
   to: providedTo,
@@ -470,7 +536,8 @@ export async function navigateWithTransitions<
 }: {
   to: string
   navigate: () => any
-  options?: SpecialNavigateOptions
+  options?: NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> &
+    SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>
   ErrorClass?: TErrorClass
 }): NavigateWithTransitionsReturnType<TErrorClass> {
   const navigateId = generateId()
@@ -488,8 +555,9 @@ export async function navigateWithTransitions<
   helpers.setPrevLocation(prevLocation)
   helpers.setTransitionError(undefined)
   helpers.setNextLocation(location)
-  helpers.setTransitionStatus('prefetching')
+  helpers.setTransitionStatus('preparing')
   try {
+    void options?.before?.(to, options)
     await clientPoints.prefetchPage({
       location,
       policy: options?.prefetch,
@@ -500,6 +568,7 @@ export async function navigateWithTransitions<
     }
     helpers.setTransitionStatus('transitioning')
     await navigate()
+    void options?.after?.(to, options)
     helpers.setTransitionStatus('idle')
     helpers.setNextLocation(null)
     _ss.__POINT0_CURRENT_NAVIGATE_ID__.set(undefined)
@@ -512,6 +581,7 @@ export async function navigateWithTransitions<
     helpers.setTransitionError(error0)
     helpers.setTransitionStatus('transitioning')
     await navigate()
+    void options?.after?.(to, options)
     helpers.setTransitionStatus('idle')
     helpers.setNextLocation(null)
     _ss.__POINT0_CURRENT_NAVIGATE_ID__.set(undefined)
@@ -519,69 +589,4 @@ export async function navigateWithTransitions<
   }
 }
 
-export class RedirectTask<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> {
-  readonly to: string
-  readonly status?: number
-  readonly options?: TAdapterNavigateOptions & SpecialNavigateOptions
-
-  constructor({
-    to,
-    status,
-    options,
-  }: {
-    to: string
-    status?: number
-    options?: TAdapterNavigateOptions & SpecialNavigateOptions
-  }) {
-    this.to = to
-    this.status = status
-    this.options = options
-  }
-
-  serialize() {
-    return {
-      to: this.to,
-      status: this.status,
-      options: this.options,
-    }
-  }
-
-  static from<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions>(
-    input:
-      | string
-      | Record<string, unknown>
-      | { to: string; status?: number; options?: TAdapterNavigateOptions & SpecialNavigateOptions },
-  ): RedirectTask<TAdapterNavigateOptions> {
-    try {
-      if (input instanceof RedirectTask) {
-        return input
-      }
-      const parsed = typeof input === 'string' ? JSON.parse(input) : input
-      if (typeof parsed !== 'object' || parsed === null) {
-        throw new Error('input must be an object')
-      }
-      if (typeof parsed.to !== 'string') {
-        throw new Error('to must be a string')
-      }
-      if (parsed.status !== undefined && typeof parsed.status !== 'number') {
-        throw new Error('status must be a number')
-      }
-      if ((parsed.options !== undefined && typeof parsed.options !== 'object') || parsed.options === null) {
-        throw new Error('options must be an object')
-      }
-      return new RedirectTask({
-        to: parsed.to,
-        status: parsed.status,
-        options: parsed.options as TAdapterNavigateOptions & SpecialNavigateOptions,
-      })
-    } catch (error) {
-      throw new Error('Failed to parse redirect task: ' + (error instanceof Error ? error.message : String(error)))
-    }
-  }
-}
-
-export const ssrRedirectTask = superstore.define<RedirectTask | undefined>(
-  '__POINT0_SSR_REDIRECT_TASK__',
-  () => undefined,
-  'serverOnlyStorage',
-)
+export * from './redirect.js'

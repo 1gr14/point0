@@ -1,7 +1,7 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ErrorPoint0 } from './error.js'
-import type { Request0, RequestVariant } from './request0.js'
+import type { Request0 } from './request0.js'
 import type {
   AnyNiceReadyPoint,
   Data,
@@ -14,6 +14,7 @@ import type {
   PrefetchPagePolicy,
   QueryKey,
 } from './types.js'
+import type { RedirectTask } from './navigation.js'
 
 export type EventerSide = 'client' | 'server'
 
@@ -166,10 +167,17 @@ export type EventerEventPointQuerySettled<TError extends ErrorPoint0> = EventerE
     | {
         data: Data
         error: undefined
+        redirect: undefined
       }
     | {
         data: undefined
         error: TError
+        redirect: undefined
+      }
+    | {
+        data: undefined
+        error: undefined
+        redirect: RedirectTask
       }
   )
 >
@@ -180,10 +188,18 @@ export type EventerEventPointQuerySuccess = EventerEvent<
     queryKey: QueryKey
     point: AnyNiceReadyPoint
     input: InputRaw
-    data: Data
     error: undefined
     mode: 'server' | 'client' | 'combined'
-  }
+  } & (
+    | {
+        data: Data
+        redirect: undefined
+      }
+    | {
+        data: undefined
+        redirect: RedirectTask
+      }
+  )
 >
 export type EventerEventPointQueryError<TError extends ErrorPoint0> = EventerEvent<
   'client' | 'server',
@@ -221,10 +237,17 @@ export type EventerEventPointInfiniteQuerySettled<TError extends ErrorPoint0> = 
     | {
         data: Data
         error: undefined
+        redirect: undefined
       }
     | {
         data: undefined
         error: TError
+        redirect: undefined
+      }
+    | {
+        data: undefined
+        error: undefined
+        redirect: RedirectTask
       }
   )
 >
@@ -235,10 +258,18 @@ export type EventerEventPointInfiniteQuerySuccess = EventerEvent<
     queryKey: QueryKey
     point: AnyNiceReadyPoint
     input: InputRaw
-    data: Data
     error: undefined
     mode: 'server' | 'client' | 'combined'
-  }
+  } & (
+    | {
+        data: Data
+        redirect: undefined
+      }
+    | {
+        data: undefined
+        redirect: RedirectTask
+      }
+  )
 >
 export type EventerEventPointInfiniteQueryError<TError extends ErrorPoint0> = EventerEvent<
   'client' | 'server',

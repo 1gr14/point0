@@ -39,6 +39,7 @@ import type {
   WideRequestMethod,
 } from './request0.js'
 import type { GetByPath, SetByPath } from './utils.js'
+import type { RedirectTask } from './navigation.js'
 
 // basic
 
@@ -64,7 +65,7 @@ export type UnknownData = Record<string, unknown>
 export type UndefinedData = undefined
 export type Data = UnknownData | EmptyData
 // export type Data = UnknownData
-export type LoaderOutput = Data | Response
+export type LoaderOutput = UnknownData | Response
 export type UndefinedLoaderOutput = undefined
 export type MapperOutput = Data
 export type UndefinedMapperOutput = undefined
@@ -1299,6 +1300,7 @@ export type HasAnyLoader<
 > = TServerLoaderOutput extends LoaderOutput ? true : TClientLoaderOutput extends LoaderOutput ? true : false
 
 export type IsEmptyObject<T> = keyof T extends never ? true : false
+export type IsRecord<T> = T extends object ? (string extends keyof T ? true : false) : false
 type HasAnyKeys<T> = T extends unknown ? (keyof T extends never ? never : true) : never
 export type IsEmptyObjectSpecial<T> = [T] extends [object] ? ([HasAnyKeys<T>] extends [never] ? true : false) : false
 export type IsUnknownRecord<T> = T extends Record<string, unknown> ? true : false
@@ -1557,6 +1559,7 @@ export type ServerExecuteResult<
       ctx: TCtx
       data: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
       response: TServerLoaderOutput extends Response ? TServerLoaderOutput : undefined
+      redirect: undefined
       effects: ResponseEffectsValues
       error: undefined
       output: TServerLoaderOutput
@@ -1566,6 +1569,7 @@ export type ServerExecuteResult<
       ctx: Ctx
       data: Data | UndefinedData
       response: Response | UndefinedResponse
+      redirect: RedirectTask | undefined
       effects: ResponseEffectsValues
       error: TError
       output: LoaderOutput | UndefinedLoaderOutput
@@ -1597,13 +1601,14 @@ export type CtxFnOptions<
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRequestVariant extends RequestVariantType = any,
   TError extends ErrorPoint0 = ErrorPoint0,
-> = ExposedCtxOrEmpty<TCtxPrev, TCtxExposedKeys> & {
-  request: Request0<TRequestVariant, TError>
-  point: ReadyPoint | undefined
-  set: ResponseEffectsSetHelper
-  // execute: ServerExecuteFn
-  ctx: TCtxPrev
-} & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
+> = Prettify<
+  ExposedCtxOrEmpty<TCtxPrev, TCtxExposedKeys> & {
+    request: Request0<TRequestVariant, TError>
+    set: ResponseEffectsSetHelper
+    // execute: ServerExecuteFn
+    ctx: TCtxPrev
+  } & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
+>
 export type CtxFn<
   TCtxPrev extends Ctx = Ctx,
   TCtxPrevExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -1615,7 +1620,7 @@ export type CtxFn<
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRequestVariant extends RequestVariantType = any,
   TError extends ErrorPoint0 = ErrorPoint0,
-  TCtxAppend extends Ctx | undefined = Ctx | undefined,
+  TCtxAppend extends Ctx | RedirectTask | undefined = Ctx | RedirectTask | undefined,
 > = (
   props: CtxFnOptions<
     TCtxPrev,
@@ -1629,7 +1634,7 @@ export type CtxFn<
     TRequestVariant,
     TError
   >,
-) => Promise<TCtxAppend> | TCtxAppend | Promise<void> | void
+) => Promise<TCtxAppend> | TCtxAppend | Promise<RedirectTask> | RedirectTask | Promise<void> | void
 
 export type ForbiddenCtxExposedKeys = 'request' | 'input' | 'inputRaw' | 'data' | 'set' | 'execute' | 'ctx'
 export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] extends [never]
@@ -1646,9 +1651,12 @@ export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] exten
 //       ? TCtxAppend
 //       : undefined
 export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, any>> =
-  TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, infer TCtxAppend>
-    ? NormalizeCtxLike<TCtxAppend>
-    : undefined
+  // TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, infer TCtxAppend>
+  //   ? NormalizeCtxLike<TCtxAppend>
+  //   : undefined
+  Exclude<Awaited<ReturnType<TCtxFn>>, undefined | void | RedirectTask> extends never
+    ? undefined
+    : NormalizeCtxLike<Exclude<Awaited<ReturnType<TCtxFn>>, RedirectTask>>
 
 export type NormalizeCtxLike<T extends Record<string, any> | undefined> = [T] extends [undefined]
   ? Record<never, never> // strict empty object
@@ -1669,60 +1677,8 @@ export type NormalizeCtxLike<T extends Record<string, any> | undefined> = [T] ex
 export type InferCtxFnOutputCtxExposedKeys<
   TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, any>,
 > = Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>
-export type LoaderResponseFnOptions<
-  TCtx extends Ctx = Ctx,
-  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TRequestVariant extends RequestVariantType = any,
-  TError extends ErrorPoint0 = ErrorPoint0,
-> = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
-  request: Request0<TRequestVariant, TError>
-  point: ReadyPoint | undefined
-  data: DataOrUndefinedData<TServerLoaderOutput>
-  set: ResponseEffectsSetHelper
-  // execute: ServerExecuteFn
-  ctx: TCtx
-} & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
-export type LoaderResponseFn<
-  TCtx extends Ctx = Ctx,
-  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TRequestVariant extends RequestVariantType = any,
-  TError extends ErrorPoint0 = ErrorPoint0,
-  TNewServerLoaderOutput extends LoaderOutput | void = LoaderOutput,
-> = (
-  options: LoaderResponseFnOptions<
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TServerInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TRequestVariant,
-    TError
-  >,
-) =>
-  | Promise<[number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]>
-  | [number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]
-  | Promise<TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput>
-  | (TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput)
 
-export type LoaderDataFnOptions<
+export type LoaderFnOptions<
   TCtx extends Ctx = Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
@@ -1734,15 +1690,16 @@ export type LoaderDataFnOptions<
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRequestVariant extends RequestVariantType = any,
   TError extends ErrorPoint0 = ErrorPoint0,
-> = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
-  request: Request0<TRequestVariant, TError>
-  point: ReadyPoint | undefined
-  data: DataOrUndefinedData<TServerLoaderOutput>
-  set: ResponseEffectsSetHelper
-  // execute: ServerExecuteFn
-  ctx: TCtx
-} & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
-export type LoaderDataFn<
+> = Prettify<
+  ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
+    request: Request0<TRequestVariant, TError>
+    data: DataOrUndefinedData<TServerLoaderOutput>
+    set: ResponseEffectsSetHelper
+    // execute: ServerExecuteFn
+    ctx: TCtx
+  } & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
+>
+export type LoaderFn<
   TCtx extends Ctx = Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
@@ -1754,9 +1711,13 @@ export type LoaderDataFn<
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRequestVariant extends RequestVariantType = any,
   TError extends ErrorPoint0 = ErrorPoint0,
-  TNewServerLoaderOutput extends Data | void = Data,
+  TNewServerLoaderOutput extends LoaderOutput | RedirectTask | undefined | void =
+    | LoaderOutput
+    | RedirectTask
+    | undefined
+    | void,
 > = (
-  options: LoaderDataFnOptions<
+  options: LoaderFnOptions<
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
@@ -1769,11 +1730,84 @@ export type LoaderDataFn<
     TRequestVariant,
     TError
   >,
-) =>
-  | Promise<[number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]>
-  | [number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]
-  | Promise<TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput>
-  | (TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput)
+) => // | Promise<[number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]>
+// | [number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]
+// | Promise<TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput>
+// | (TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput)
+| Promise<[number, TNewServerLoaderOutput]>
+  | [number, TNewServerLoaderOutput]
+  | Promise<TNewServerLoaderOutput>
+  | TNewServerLoaderOutput
+type InferLoaderFnOutputBase<
+  TLoaderResponseFn extends LoaderFn<any, any, any, any, any, any, any, any, any, any, any, any>,
+> =
+  Awaited<ReturnType<TLoaderResponseFn>> extends [number, infer TNewServerLoaderOutput]
+    ? TNewServerLoaderOutput extends LoaderOutput | RedirectTask | undefined | void
+      ? TNewServerLoaderOutput
+      : never
+    : Awaited<ReturnType<TLoaderResponseFn>> extends LoaderOutput | RedirectTask | undefined | void
+      ? Awaited<ReturnType<TLoaderResponseFn>>
+      : never
+
+export type InferLoaderFnOutput<
+  TLoaderResponseFn extends LoaderFn<any, any, any, any, any, any, any, any, any, any, any, any>,
+> =
+  Exclude<InferLoaderFnOutputBase<TLoaderResponseFn>, undefined | void | RedirectTask> extends never
+    ? EmptyData
+    : Exclude<InferLoaderFnOutputBase<TLoaderResponseFn>, undefined | void | RedirectTask>
+
+// export type LoaderDataFnOptions<
+//   TCtx extends Ctx = Ctx,
+//   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TRequestVariant extends RequestVariantType = any,
+//   TError extends ErrorPoint0 = ErrorPoint0,
+// > = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
+//   request: Request0<TRequestVariant, TError>
+//   point: ReadyPoint | undefined
+//   data: DataOrUndefinedData<TServerLoaderOutput>
+//   set: ResponseEffectsSetHelper
+//   // execute: ServerExecuteFn
+//   ctx: TCtx
+// } & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
+// export type LoaderDataFn<
+//   TCtx extends Ctx = Ctx,
+//   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TRequestVariant extends RequestVariantType = any,
+//   TError extends ErrorPoint0 = ErrorPoint0,
+//   TNewServerLoaderOutput extends Data | void = Data,
+// > = (
+//   options: LoaderDataFnOptions<
+//     TCtx,
+//     TCtxExposedKeys,
+//     TServerLoaderOutput,
+//     TServerInputSchema,
+//     TParamsSchema,
+//     TSearchSchema,
+//     TBodySchema,
+//     THeadersSchema,
+//     TCookiesSchema,
+//     TRequestVariant,
+//     TError
+//   >,
+// ) =>
+//   | Promise<[number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]>
+//   | [number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]
+//   | Promise<TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput>
+//   | (TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput)
 
 export type ServerExecuteAction<
   TType extends
@@ -1807,7 +1841,7 @@ export type ServerExecuteAction<
   : TType extends 'loader'
     ? {
         type: 'loader'
-        fn: LoaderResponseFn | LoaderDataFn
+        fn: LoaderFn
         unstableId: number
       }
     : TType extends 'input'
@@ -1839,7 +1873,7 @@ export type ClientExecuteAction<
 > = TType extends 'loader'
   ? {
       type: 'loader'
-      fn: ClientLoaderResponseFn | ClientLoaderDataFn
+      fn: ClientLoaderFn
       unstableId: number
     }
   : TType extends 'input'
@@ -1874,33 +1908,42 @@ type WithClientInputParsed<
 > = (TClientInputSchema extends InputSchema ? { input: InputParsed<TClientInputSchema> } : unknown) &
   (TParamsSchema extends InputSchema ? { params: InputParsed<TParamsSchema> } : unknown) &
   (TSearchSchema extends InputSchema ? { search: InputParsed<TSearchSchema> } : unknown)
-export type ClientLoaderResponseFnOptions<
+
+export type ClientLoaderFnOptions<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-> = {
-  // server can return to client only data or response
-  response: TServerLoaderOutput extends LoaderOutput ? Response : undefined
-  data: TClientLoaderOutput extends undefined
-    ? TServerLoaderOutput extends Response
-      ? UndefinedData
-      : TServerLoaderOutput extends Data
-        ? TServerLoaderOutput
-        : undefined
-    : TClientLoaderOutput
-  serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
-} & WithClientInputParsed<TClientInputSchema, TParamsSchema, TSearchSchema>
-export type ClientLoaderResponseFn<
+> = Prettify<
+  {
+    // server can return to client only data or response
+    response: TServerLoaderOutput extends LoaderOutput ? Response : undefined
+    data: TClientLoaderOutput extends undefined
+      ? TServerLoaderOutput extends Response
+        ? UndefinedData
+        : TServerLoaderOutput extends Data
+          ? TServerLoaderOutput
+          : undefined
+      : TClientLoaderOutput
+    serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
+  } & WithClientInputParsed<TClientInputSchema, TParamsSchema, TSearchSchema> &
+    (TServerLoaderOutput extends LoaderOutput ? { response: Response } : unknown) &
+    (TServerLoaderOutput extends Data ? { serverData: TServerLoaderOutput } : unknown)
+>
+export type ClientLoaderFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TNewClientLoaderOutput extends LoaderOutput = LoaderOutput,
+  TNewClientLoaderOutput extends LoaderOutput | RedirectTask | undefined | void =
+    | LoaderOutput
+    | RedirectTask
+    | undefined
+    | void,
 > = (
-  options: ClientLoaderResponseFnOptions<
+  options: ClientLoaderFnOptions<
     TClientInputSchema,
     TParamsSchema,
     TSearchSchema,
@@ -1909,40 +1952,80 @@ export type ClientLoaderResponseFn<
   >,
 ) => Promise<TNewClientLoaderOutput> | TNewClientLoaderOutput
 
-export type ClientLoaderDataFnOptions<
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TParamsSchema extends InputSchema | UndefinedInputSchema,
-  TSearchSchema extends InputSchema | UndefinedInputSchema,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-> = {
-  // server can return to client only data or response
-  response: TServerLoaderOutput extends LoaderOutput ? Response : undefined
-  data: TClientLoaderOutput extends undefined
-    ? TServerLoaderOutput extends Response
-      ? UndefinedData
-      : TServerLoaderOutput extends Data
-        ? TServerLoaderOutput
-        : undefined
-    : TClientLoaderOutput
-  serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
-} & WithClientInputParsed<TClientInputSchema, TParamsSchema, TSearchSchema>
-export type ClientLoaderDataFn<
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TNewClientLoaderOutput extends Data = Data,
-> = (
-  options: ClientLoaderDataFnOptions<
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TServerLoaderOutput,
-    TClientLoaderOutput
-  >,
-) => Promise<TNewClientLoaderOutput> | TNewClientLoaderOutput
+export type InferClientLoaderFnOutput<TClientLoaderFn extends ClientLoaderFn<any, any, any, any, any, any>> =
+  Exclude<Awaited<ReturnType<TClientLoaderFn>>, undefined | void | RedirectTask> extends never
+    ? EmptyData
+    : Exclude<Awaited<ReturnType<TClientLoaderFn>>, undefined | void | RedirectTask>
+
+// export type ClientLoaderResponseFnOptions<
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+//   TParamsSchema extends InputSchema | UndefinedInputSchema,
+//   TSearchSchema extends InputSchema | UndefinedInputSchema,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+// > = {
+//   // server can return to client only data or response
+//   response: TServerLoaderOutput extends LoaderOutput ? Response : undefined
+//   data: TClientLoaderOutput extends undefined
+//     ? TServerLoaderOutput extends Response
+//       ? UndefinedData
+//       : TServerLoaderOutput extends Data
+//         ? TServerLoaderOutput
+//         : undefined
+//     : TClientLoaderOutput
+//   serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
+// } & WithClientInputParsed<TClientInputSchema, TParamsSchema, TSearchSchema>
+// export type ClientLoaderResponseFn<
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TNewClientLoaderOutput extends LoaderOutput = LoaderOutput,
+// > = (
+//   options: ClientLoaderResponseFnOptions<
+//     TClientInputSchema,
+//     TParamsSchema,
+//     TSearchSchema,
+//     TServerLoaderOutput,
+//     TClientLoaderOutput
+//   >,
+// ) => Promise<TNewClientLoaderOutput> | TNewClientLoaderOutput
+
+// export type ClientLoaderDataFnOptions<
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+//   TParamsSchema extends InputSchema | UndefinedInputSchema,
+//   TSearchSchema extends InputSchema | UndefinedInputSchema,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+// > = {
+//   // server can return to client only data or response
+//   response: TServerLoaderOutput extends LoaderOutput ? Response : undefined
+//   data: TClientLoaderOutput extends undefined
+//     ? TServerLoaderOutput extends Response
+//       ? UndefinedData
+//       : TServerLoaderOutput extends Data
+//         ? TServerLoaderOutput
+//         : undefined
+//     : TClientLoaderOutput
+//   serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
+// } & WithClientInputParsed<TClientInputSchema, TParamsSchema, TSearchSchema>
+// export type ClientLoaderDataFn<
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TNewClientLoaderOutput extends Data = Data,
+// > = (
+//   options: ClientLoaderDataFnOptions<
+//     TClientInputSchema,
+//     TParamsSchema,
+//     TSearchSchema,
+//     TServerLoaderOutput,
+//     TClientLoaderOutput
+//   >,
+// ) => Promise<TNewClientLoaderOutput> | TNewClientLoaderOutput
 
 export type FetchServerOutput<TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput> = TServerLoaderOutput
 export type FetchServerDetailedOutput<
@@ -1953,13 +2036,22 @@ export type FetchServerDetailedOutput<
       response: Response
       data: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
       output: TServerLoaderOutput extends Data ? TServerLoaderOutput : Response
+      redirect: undefined
       error: undefined
     }
   | {
       response: Response | undefined
       data: undefined
       output: undefined
+      redirect: undefined
       error: TError
+    }
+  | {
+      response: Response
+      data: undefined
+      output: undefined
+      redirect: RedirectTask
+      error: undefined
     }
 
 export type FetchServerOutputType = 'data' | 'queryClientDehydratedState'
@@ -2114,6 +2206,9 @@ export type AssertNoForbiddenMethodsIfNotSuitableStage<
         ? ShowError<`You can not use ${TMethod}() in final stage, add it somewhere earlier`>
         : unknown
       : unknown
+export type AssertResponseNotAllowed<TOutput, TPointType extends PointType> = TOutput extends Response
+  ? ShowError<`Output can not be type of "Response" for point of type "${TPointType}"`>
+  : unknown
 export type AssertIsNotNever<TOutput extends LoaderOutput | UndefinedLoaderOutput | Ctx | UndefinedCtx> =
   IsNever<TOutput> extends true ? ShowError<`Output can not be type of "never"`> : unknown
 export type AssertNotResponseForMountable<

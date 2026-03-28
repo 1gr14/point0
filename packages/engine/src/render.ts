@@ -401,6 +401,7 @@ export async function renderAppAsReadableStream({
   pagePoint,
   pageLocation,
   clientPoints,
+  redirectPolicy,
   ...props
 }: {
   App: AppComponent
@@ -414,6 +415,7 @@ export async function renderAppAsReadableStream({
   clientBundlePath?: string
   originalIndexHtml: string
   domRootElementId?: string
+  redirectPolicy: 'continue' | 'throw'
 }): Promise<ReadableStream> {
   await executor.prefetchAppPagePointDeep({
     App,
@@ -421,6 +423,7 @@ export async function renderAppAsReadableStream({
     clientPoints,
     pagePoint,
     pageLocation,
+    redirectPolicy,
   })
   return await renderReadableStream({
     ...props,

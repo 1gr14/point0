@@ -407,7 +407,7 @@ describe('FakeClient', () => {
     })
     await client.run(async () => {
       const result = await mutation.fetchServerDetailed()
-      assert(result.error === undefined)
+      assert(result.error === undefined && result.data)
       expect(result.data.serverRequestId).toBeDefined()
       expect(result.data.clientRequestId).toBeDefined()
       expect(result.response.headers.get('x-point0-request-id')).toBe(result.data.serverRequestId)

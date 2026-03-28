@@ -26,6 +26,7 @@ import { ElementViewer } from './element-viewer.js'
 import { FetchRecorder } from './fetch-recorder.js'
 import { HtmlView } from './html-view.js'
 import type { AnyNiceReadyPoint } from '@point0/core'
+import type { RoutesPretty } from '@devp0nt/route0'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -302,7 +303,7 @@ type RenderTestThings = {
   <TResult = undefined>(callback?: (state: TestThingsState) => TResult): Promise<TResult>
   <TResult = undefined>(path: string, callback?: (state: TestThingsState) => TResult): Promise<TResult>
 }
-export type TestThings = {
+export type TestThings<TRoutes extends RoutesPretty> = {
   engine: Engine
   client: FakeClient<TestThingsState, any>
   render: RenderTestThings
@@ -316,11 +317,11 @@ export type TestThings = {
   fetchRecorder: ReturnType<typeof FetchRecorder.create>
   fetchesTale: ReturnType<typeof FetchRecorder.create>['tale']
   fetchTitle: FetchTitle
-}
+} & ReturnType<typeof createNavigation<TRoutes>>
 
 type Layout404TypeOne = string | AnyNiceReadyPoint<'layout'>
 type Layout404Type = Array<Layout404TypeOne> | Layout404TypeOne
-export const createTestThings = async ({
+export const createTestThings = async <TRoutes extends RoutesPretty>({
   points = [Point0.lets('root', 'root').root()],
   wrapper,
   ssr = false,
@@ -330,6 +331,7 @@ export const createTestThings = async ({
   preventClientDevServers = true,
   Page404,
   layout404,
+  routes,
 }: {
   wrapper?: React.ComponentType<{ children: React.ReactNode }>
   points?: PointsDefinition<any, any>
@@ -340,11 +342,13 @@ export const createTestThings = async ({
   preventClientDevServers?: boolean
   Page404?: React.ComponentType
   layout404?: Layout404Type
-}): Promise<TestThings> => {
+  routes?: TRoutes
+}): Promise<TestThings<TRoutes>> => {
   bindNotifyManager()
   const Wrapper = wrapper ?? undefined
-  const routes = ClientPoints.createFromDefintion(points).routes
-  const { Router, RouterRoutes } = createNavigation({ routes, forceRerender: true, Page404, layout404 })
+  routes ??= ClientPoints.createFromDefintion(points).routes
+  const navigation = createNavigation({ routes, forceRerender: true, Page404, layout404 })
+  const { Router, RouterRoutes } = navigation
   const { QueryClientProvider, queryClient } = createQueryClient()
   const app =
     appProvided ??
@@ -472,8 +476,8 @@ export const createTestThings = async ({
           rtl.fireEvent.click(element)
           // })
         }
-        state.waitContent = async (search: string) => {
-          await state.viewer.waitContent(search)
+        state.waitContent = async (search: string, timeout?: number) => {
+          await state.viewer.waitContent(search, timeout)
         }
 
         // Listen for window URL changes and update viewer
@@ -676,6 +680,7 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
     fetchRecorder,
     fetchesTale,
     fetchTitle,
+    ...navigation,
   }
 }
 

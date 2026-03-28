@@ -296,6 +296,7 @@ export type MountableStateError<
   status: 'error'
 } & WithParamsAndSearchAndInput<TParamsSchema, TSearchSchema, TClientInputSchema> &
   WithLocationIfExists<TLocation>
+
 export type MountableStateLoading<
   TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
@@ -315,6 +316,7 @@ export type MountableStateLoading<
   status: 'loading'
 } & WithParamsAndSearchAndInput<TParamsSchema, TSearchSchema, TClientInputSchema> &
   WithLocationIfExists<TLocation>
+
 export type MountableStateSuccess<
   TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
@@ -543,6 +545,7 @@ export type WrapperComponentProps<
 > & {
   children: Exclude<React.ReactNode, Promise<any>> | undefined
 } & WithErrorAndLoadingComponents
+
 export type WrapperComponentType<
   TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
@@ -585,6 +588,7 @@ export type WithFnOptions<
   TMapperOutput,
   TError
 >
+
 export type WithFn<
   TLocation extends AnyLocation | undefined = AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -607,22 +611,10 @@ export type WithFn<
     TError
   >,
 ) => TNewInnerProps | Error | 'loading' | undefined | void
-// XXX
 export type InferWithFnOutputNewInnerProps<TWithFn extends WithFn<any, any, any, any, any, any, any, any, any>> =
   Exclude<ReturnType<TWithFn>, undefined | void | Error | 'loading'> extends never
     ? undefined
     : NormalizeCtxLike<Exclude<ReturnType<TWithFn>, Error | 'loading'>>
-
-const fn = () => {
-  if (Math.random() + 1) {
-    return
-  }
-  return {
-    x: 1,
-  }
-}
-type Z = Exclude<ReturnType<typeof fn>, Error | 'loading'>
-type X = InferWithFnOutputNewInnerProps<typeof fn>
 
 export type ClientOnlyFallbackComponentProps<
   TLocation extends AnyLocation | undefined,
@@ -645,6 +637,7 @@ export type ClientOnlyFallbackComponentProps<
   TError
 > &
   WithErrorAndLoadingComponents
+
 export type ClientOnlyFallbackComponentType<
   TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,

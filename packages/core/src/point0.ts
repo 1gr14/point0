@@ -99,12 +99,14 @@ import type {
   WrapperComponentType,
 } from './mountable.js'
 import {
+  RedirectTask,
+  getNavigationHelpers,
   useLocation,
   useNavigationTransitionState,
   useSetNavigationPageState,
   type NavigationPageState,
 } from './navigation.js'
-import { forceFreshDehydratedState } from './query-client.js'
+import { forceFreshDehydratedState, removeRedirectsFromQueryClientCache } from './query-client.js'
 import type { PopularRequestMethod, WideRequestMethod } from './request0.js'
 import { extractKeysBySchemasHelpers } from './schema/utils.js'
 import { superstore } from './super-store.js'
@@ -122,13 +124,12 @@ import type {
   AssertNoForbiddenCtxExposedKeys,
   AssertNoForbiddenMethodsIfNotSuitableStage,
   AssertNotFunction,
+  AssertResponseNotAllowed,
   AssertRoutedInputSchemaOnly,
   AssertSchemaNotWider,
   AssertUsualInputSchemaOnly,
   BasePoint,
   ClientExecuteAction,
-  ClientLoaderDataFn,
-  ClientLoaderResponseFn,
   Ctx,
   CtxExposedKeys,
   CtxFn,
@@ -162,6 +163,7 @@ import type {
   IfNeverThen,
   Infer,
   InferCtxFnOutputCtxAppend,
+  InferLoaderFnOutput,
   InputParsed,
   InputRaw,
   InputRawUnknown,
@@ -169,9 +171,8 @@ import type {
   IsFinalInputOptional,
   IsUndefined,
   LayoutPoint,
-  LoaderDataFn,
   LoaderOutput,
-  LoaderResponseFn,
+  LoaderFn,
   MapperOutput,
   MergeRecordValidationSchemas,
   MiddlewareFn,
@@ -235,6 +236,8 @@ import type {
   UsePointQueryResult,
   UseQueryOptions,
   WithError,
+  ClientLoaderFn,
+  InferClientLoaderFnOutput,
 } from './types.js'
 import {
   blankDataTransformerExtended,
@@ -3177,9 +3180,9 @@ export class Point0<
       TError
     >
   >
-  with(
-    ...args:
-      | [withFn?: WithFn<any, any, any, any, any, any, any, any> | undefined]
+  with(...args: any[]) {
+    const _args = args as
+      | [withFn?: WithFn<any, any, any, any, any, any, any, any, any> | undefined]
       | [
           point?: AnyPoint | undefined,
           input?: (
@@ -3203,14 +3206,13 @@ export class Point0<
           ) => InputRaw,
           queryOptions?: ExtraUseQueryOptions | ExtraUseInfiniteQueryOptions<any, any, any, any, any, any> | undefined,
         ]
-  ) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
 
     // in case if we shake with for server without ssr
-    if (!args[0]) {
+    if (!_args[0]) {
       return this._continue({
         _mountActions: [...this._mountActions, ...selfQueryAction],
         ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
@@ -3218,8 +3220,8 @@ export class Point0<
     }
 
     // it is query injection
-    if ('point' in args[0]) {
-      const [{ point }, inputFnOrInput, queryOptions = {}] = args
+    if ('point' in _args[0]) {
+      const [{ point }, inputFnOrInput, queryOptions = {}] = _args
       const getInputFn =
         typeof inputFnOrInput === 'function'
           ? inputFnOrInput
@@ -3227,7 +3229,7 @@ export class Point0<
             ? () => inputFnOrInput
             : () => ({})
       const withQueryFn = ((options) => {
-        const input = getInputFn(options)
+        const input = getInputFn(options as never)
         if (point._queryResultType === 'infiniteQuery') {
           return point.useInfiniteQuery(input, queryOptions as never)
         } else {
@@ -3251,7 +3253,7 @@ export class Point0<
     }
 
     // it is with fn
-    const [withFn] = args
+    const [withFn] = _args
     return this._continue({
       _mountActions: [
         ...this._mountActions,
@@ -3982,11 +3984,11 @@ export class Point0<
       TCookiesSchema,
       'endpoint',
       TError,
-      Ctx | undefined
+      Ctx | RedirectTask | undefined
     >,
   >(
     ctxFn: TCtxFn &
-      AssertNoArrayReturn<Awaited<ReturnType<TCtxFn>>, 'Ctx fn should not return array'> &
+      AssertNoArrayReturn<IfNeverThen<Awaited<ReturnType<TCtxFn>>, undefined>, 'Ctx fn should not return array'> &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
@@ -4025,11 +4027,11 @@ export class Point0<
       TCookiesSchema,
       'endpoint',
       TError,
-      Ctx | undefined
+      Ctx | RedirectTask | undefined
     >,
   >(
     ctxFn: TCtxFn &
-      AssertNoArrayReturn<Awaited<ReturnType<TCtxFn>>, 'Ctx fn should not return array'> &
+      AssertNoArrayReturn<IfNeverThen<Awaited<ReturnType<TCtxFn>>, undefined>, 'Ctx fn should not return array'> &
       AssertNoForbiddenCtxExposedKeys<Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>> &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
     expose: true,
@@ -4072,12 +4074,12 @@ export class Point0<
       TCookiesSchema,
       'endpoint',
       TError,
-      Ctx | undefined
+      Ctx | RedirectTask | undefined
     >,
     TCtxFnExposedKeys extends Extract<keyof InferCtxFnOutputCtxAppend<TCtxFn>, string>,
   >(
     ctxFn: TCtxFn &
-      AssertNoArrayReturn<Awaited<ReturnType<TCtxFn>>, 'Ctx fn should not return array'> &
+      AssertNoArrayReturn<IfNeverThen<Awaited<ReturnType<TCtxFn>>, undefined>, 'Ctx fn should not return array'> &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
     expose: TCtxFnExposedKeys[] & AssertNoForbiddenCtxExposedKeys<TCtxFnExposedKeys>,
   ): NiceStagePoint<
@@ -4206,47 +4208,95 @@ export class Point0<
     }) as never
   }
 
-  loader<TNewServerLoaderOutput extends LoaderOutput = EmptyData>(
+  // loader<TNewServerLoaderOutput extends LoaderOutput = EmptyData>(
+  //   loaderFn: TLetsReadyPointType extends 'mutation' | 'action'
+  //     ? LoaderResponseFn<
+  //         TCtx,
+  //         TCtxExposedKeys,
+  //         TServerLoaderOutput,
+  //         TServerInputSchema,
+  //         TParamsSchema,
+  //         TSearchSchema,
+  //         TBodySchema,
+  //         THeadersSchema,
+  //         TCookiesSchema,
+  //         'endpoint',
+  //         TError,
+  //         TNewServerLoaderOutput
+  //       > &
+  //         AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>
+  //     : // AssertNotUnknownLoaderOutput<TNewServerLoaderOutput>
+  //       LoaderDataFn<
+  //         TCtx,
+  //         TCtxExposedKeys,
+  //         TServerLoaderOutput,
+  //         TServerInputSchema,
+  //         TParamsSchema,
+  //         TSearchSchema,
+  //         TBodySchema,
+  //         THeadersSchema,
+  //         TCookiesSchema,
+  //         'endpoint',
+  //         TError,
+  //         TNewServerLoaderOutput
+  //       > &
+  //         AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>, // AssertNotUnknownLoaderOutput<TNewServerLoaderOutput>
+  // ): NiceStagePoint<
+  //   TNewServerLoaderOutput extends Response ? 'clientStage' : 'serverStage',
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
+  //   TRequiredCtx,
+  //   TError,
+  //   TCtx,
+  //   TCtxExposedKeys,
+  //   IfNeverThen<TNewServerLoaderOutput, EmptyData>,
+  //   TClientLoaderOutput,
+  //   TMapperOutput,
+  //   TRouteDefinition,
+  //   TServerInputSchema,
+  //   TClientInputSchema,
+  //   TParamsSchema,
+  //   TSearchSchema,
+  //   TBodySchema,
+  //   THeadersSchema,
+  //   TCookiesSchema,
+  //   // NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
+  //   TQueryResultType,
+  //   TOuterProps,
+  //   TInnerProps,
+  //   TQueriesDefinitions
+  // >
+  loader<
+    TLoaderResponseFn extends LoaderFn<
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TServerInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      'endpoint',
+      TError
+    >,
+  >(
     loaderFn: TLetsReadyPointType extends 'mutation' | 'action'
-      ? LoaderResponseFn<
-          TCtx,
-          TCtxExposedKeys,
-          TServerLoaderOutput,
-          TServerInputSchema,
-          TParamsSchema,
-          TSearchSchema,
-          TBodySchema,
-          THeadersSchema,
-          TCookiesSchema,
-          'endpoint',
-          TError,
-          TNewServerLoaderOutput
-        > &
-          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>
-      : // AssertNotUnknownLoaderOutput<TNewServerLoaderOutput>
-        LoaderDataFn<
-          TCtx,
-          TCtxExposedKeys,
-          TServerLoaderOutput,
-          TServerInputSchema,
-          TParamsSchema,
-          TSearchSchema,
-          TBodySchema,
-          THeadersSchema,
-          TCookiesSchema,
-          'endpoint',
-          TError,
-          TNewServerLoaderOutput
-        > &
-          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>, // AssertNotUnknownLoaderOutput<TNewServerLoaderOutput>
+      ? TLoaderResponseFn & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>
+      : //  &
+        // AssertNoArrayReturn<InferLoaderResponseFnOutput<TLoaderResponseFn>, 'Loader fn should not return array'>
+        // AssertNotUnknownLoaderOutput<TNewServerLoaderOutput>
+        TLoaderResponseFn &
+          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'> &
+          // AssertNoArrayReturn<InferLoaderResponseFnOutput<TLoaderResponseFn>, 'Loader fn should not return array'> &
+          AssertResponseNotAllowed<InferLoaderFnOutput<TLoaderResponseFn>, ReadyPointTypeOrNever<TLetsReadyPointType>>, // AssertNotUnknownLoaderOutput<TNewServerLoaderOutput>
   ): NiceStagePoint<
-    TNewServerLoaderOutput extends Response ? 'clientStage' : 'serverStage',
+    InferLoaderFnOutput<TLoaderResponseFn> extends Response ? 'clientStage' : 'serverStage',
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TError,
     TCtx,
     TCtxExposedKeys,
-    IfNeverThen<TNewServerLoaderOutput, EmptyData>,
+    IfNeverThen<InferLoaderFnOutput<TLoaderResponseFn>, EmptyData>,
     TClientLoaderOutput,
     TMapperOutput,
     TRouteDefinition,
@@ -4263,52 +4313,120 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  loader(
-    loaderFn:
-      | LoaderDataFn<any, any, any, any, any, any, any, any, any, any, any, any>
-      | LoaderResponseFn<any, any, any, any, any, any, any, any, any, any, any, any>
-      | undefined,
-  ) {
+  loader(): NiceStagePoint<
+    'clientStage',
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput extends undefined ? EmptyData : TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    // NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  loader(...args: [loaderFn?: LoaderFn<any, any, any, any, any, any, any, any, any, any, any, any> | undefined]) {
+    const loaderFn = args[0] ?? ((c: any) => c.data)
     return this._continue({
       type: 'serverStage', // it should be clientStage if loader returns response, but we know it only by types, we do not know it in runtime, bu it is ok to have here for runtime serverStage. Not good, but ok.
       // _queryResultType: this._normalizeQueryResultType('query'),
       _hasServerLoader: true,
       _serverExecuteActions: [
         ...this._serverExecuteActions,
-        { type: 'loader', fn: (loaderFn as unknown) ?? ((c: any) => c.data), unstableId: Point0._getNextUnstableId() },
-      ] as never,
+        { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
+      ],
     }) as never
   }
 
-  clientLoader<TNewClientLoaderOutput extends LoaderOutput = LoaderOutput>(
+  // clientLoader<TNewClientLoaderOutput extends LoaderOutput = LoaderOutput>(
+  //   clientLoaderFn: TLetsReadyPointType extends 'mutation'
+  //     ? ClientLoaderResponseFn<
+  //         TClientInputSchema,
+  //         TParamsSchema,
+  //         TSearchSchema,
+  //         TServerLoaderOutput,
+  //         TClientLoaderOutput,
+  //         TNewClientLoaderOutput
+  //       > &
+  //         AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>
+  //     : ClientLoaderDataFn<
+  //         TClientInputSchema,
+  //         TParamsSchema,
+  //         TSearchSchema,
+  //         TServerLoaderOutput,
+  //         TClientLoaderOutput,
+  //         TNewClientLoaderOutput
+  //       > &
+  //         AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>,
+  // ): NiceStagePoint<
+  //   TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage', // response can happen only in mutation, so we not care about this happen in mountable
+  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
+  //   TRequiredCtx,
+  //   TError,
+  //   TCtx,
+  //   TCtxExposedKeys,
+  //   TServerLoaderOutput,
+  //   IfNeverThen<TNewClientLoaderOutput, EmptyData>,
+  //   TMapperOutput,
+  //   TRouteDefinition,
+  //   TServerInputSchema,
+  //   TClientInputSchema,
+  //   TParamsSchema,
+  //   TSearchSchema,
+  //   TBodySchema,
+  //   THeadersSchema,
+  //   TCookiesSchema,
+  //   // NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
+  //   TQueryResultType,
+  //   TOuterProps,
+  //   TInnerProps,
+  //   TQueriesDefinitions // so here we not try to finalize query, becouse for mutation it is not needed at all, and in mountable can not happen becouse it can not return response
+  //   // WithSelfQueryIfShouldBeFinalized<
+  //   //   TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage',
+  //   //   TLetsReadyPointType,
+  //   //   TServerLoaderOutput,
+  //   //   TNewClientLoaderOutput,
+  //   //   TQueriesDefinitions
+  //   // >
+  // >
+  clientLoader<
+    TClientLoaderFn extends ClientLoaderFn<
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TServerLoaderOutput,
+      TClientLoaderOutput
+    >,
+  >(
     clientLoaderFn: TLetsReadyPointType extends 'mutation'
-      ? ClientLoaderResponseFn<
-          TClientInputSchema,
-          TParamsSchema,
-          TSearchSchema,
-          TServerLoaderOutput,
-          TClientLoaderOutput,
-          TNewClientLoaderOutput
-        > &
-          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>
-      : ClientLoaderDataFn<
-          TClientInputSchema,
-          TParamsSchema,
-          TSearchSchema,
-          TServerLoaderOutput,
-          TClientLoaderOutput,
-          TNewClientLoaderOutput
-        > &
-          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>,
+      ? TClientLoaderFn & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>
+      : TClientLoaderFn &
+          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'> &
+          AssertResponseNotAllowed<
+            InferClientLoaderFnOutput<TClientLoaderFn>,
+            ReadyPointTypeOrNever<TLetsReadyPointType>
+          >,
   ): NiceStagePoint<
-    TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage', // response can happen only in mutation, so we not care about this happen in mountable
+    InferClientLoaderFnOutput<TClientLoaderFn> extends Response ? 'finalStage' : 'clientStage', // response can happen only in mutation, so we not care about this happen in mountable
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TError,
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
-    IfNeverThen<TNewClientLoaderOutput, EmptyData>,
+    IfNeverThen<InferClientLoaderFnOutput<TClientLoaderFn>, EmptyData>,
     TMapperOutput,
     TRouteDefinition,
     TServerInputSchema,
@@ -4331,12 +4449,7 @@ export class Point0<
     //   TQueriesDefinitions
     // >
   >
-  clientLoader(
-    clientLoaderFn:
-      | ClientLoaderDataFn<any, any, any, any, any, any>
-      | ClientLoaderResponseFn<any, any, any, any, any, any>
-      | undefined,
-  ) {
+  clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any> | undefined) {
     // in case if we shake clientLoader for server without ssr side
     clientLoaderFn ||= (o: any) => o.data
     return this._continue({
@@ -7094,7 +7207,7 @@ export class Point0<
   }
 
   action<TNewServerLoaderOutput extends LoaderOutput = LoaderOutput>(
-    loaderFn: LoaderResponseFn<
+    loaderFn: LoaderFn<
       TCtx,
       TCtxExposedKeys,
       TServerLoaderOutput,
@@ -7160,7 +7273,7 @@ export class Point0<
     TQueriesDefinitions
   >
   action(...args: any[]) {
-    const [loaderFn] = args as [LoaderResponseFn<any, any, any, any, any, any, any, any, any, any, any> | undefined]
+    const [loaderFn] = args as [LoaderFn<any, any, any, any, any, any, any, any, any, any, any> | undefined]
     const point = this._continue({
       type: 'action',
       _letsReadyPointType: undefined,
@@ -7595,14 +7708,17 @@ export class Point0<
             serverData,
             ...getParsed(),
           })
-          const result = (await (promise as any)) as Awaited<ReturnType<ClientLoaderResponseFn | ClientLoaderDataFn>>
+          const result = (await (promise as any)) as Awaited<ReturnType<ClientLoaderFn>>
+          if (result instanceof RedirectTask) {
+            throw result
+          }
           if (result instanceof Response) {
             currentClientResponse = result
             currentClientOutput = result
           } else {
             currentClientResponse = undefined
-            currentClientData = result
-            currentClientOutput = result
+            currentClientData = result ?? {}
+            currentClientOutput = result ?? {}
           }
           break
         }
@@ -8128,6 +8244,7 @@ export class Point0<
           response: res,
           data: undefined,
           error: undefined,
+          redirect: undefined,
           output: res,
         } as Extract<FetchServerDetailedOutput<TServerLoaderOutput, TError>, { error: undefined }>
         const eventData = {
@@ -8138,14 +8255,41 @@ export class Point0<
         this._emit('pointFetchServerSuccess', eventData)
         return result
       }
+
       const json = await res.json()
       const data = fetchOptions.transform ? (this._getTransformer().deserialize(json) ?? json) : json
       if (res.ok) {
+        // if (res.headers.get('X-Point0-Redirect') === 'true') {
+        //   const redirect = RedirectTask.from(json)
+        //   const result = {
+        //     response: res,
+        //     data: undefined,
+        //     redirect,
+        //     error: undefined,
+        //     output: undefined,
+        //   } as Extract<FetchServerDetailedOutput<TServerLoaderOutput, TError>, { error: undefined }>
+        //   const eventData = {
+        //     ..._eventData,
+        //     ...result,
+        //   }
+        //   this._emit('pointFetchServerSettled', eventData)
+        //   this._emit('pointFetchServerSuccess', eventData)
+        //   return result
+        // } else {
         const result = {
           response: res,
-          data,
           error: undefined,
-          output: data,
+          ...(res.headers.get('X-Point0-Redirect') === 'true'
+            ? {
+                redirect: RedirectTask.from(json),
+                data: undefined,
+                output: undefined,
+              }
+            : {
+                redirect: undefined,
+                data,
+                output: data,
+              }),
         } as Extract<FetchServerDetailedOutput<TServerLoaderOutput, TError>, { error: undefined }>
         const eventData = {
           ..._eventData,
@@ -8154,6 +8298,7 @@ export class Point0<
         this._emit('pointFetchServerSettled', eventData)
         this._emit('pointFetchServerSuccess', eventData)
         return result
+        // }
       }
       const error0 = this._Error.from(data)
       error0.status = res.status
@@ -8161,6 +8306,7 @@ export class Point0<
         response: res,
         output: undefined,
         data: undefined,
+        redirect: undefined,
         error: error0,
       }
       const eventData = {
@@ -8174,6 +8320,7 @@ export class Point0<
       const result = {
         response: res,
         data: undefined,
+        redirect: undefined,
         error: this._Error.from(error),
         output: undefined,
       }
@@ -8237,6 +8384,9 @@ export class Point0<
     const detailedResult = await this._fetchServerDetailed({ input, fetchOptions, _outputType })
     if (detailedResult.error) {
       throw detailedResult.error
+    }
+    if (detailedResult.redirect) {
+      throw detailedResult.redirect
     }
     return detailedResult.output as FetchServerOutput<TServerLoaderOutput>
   }
@@ -8457,11 +8607,13 @@ export class Point0<
     queryOptions,
     fetchOptions,
     outputType,
+    queryClient = _ss.__POINT0_QUERY_CLIENT__.get(),
   }: {
     input: InputRaw
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchServerOutputType
+    queryClient?: QueryClient
   }): UseQueryOptions<
     FetchServerOutput<TServerLoaderOutput>,
     TError,
@@ -8469,6 +8621,10 @@ export class Point0<
     QueryKey
   > {
     const queryKey = this._getServerQueryKey({ input, outputType, isInfiniteQuery: false })
+    const cache = queryClient.getQueryCache()
+    const query = cache.find({ queryKey })
+    const maybeRedirect = (query?.state.error as Record<string, unknown> | undefined)?.redirect
+    const redirect = maybeRedirect instanceof RedirectTask ? maybeRedirect : undefined
     const _eventData = {
       point: this as never as AnyPoint,
       input,
@@ -8487,6 +8643,7 @@ export class Point0<
         })
         const eventData = {
           ..._eventData,
+          redirect: undefined,
           data: data as Data,
         }
         this._emit('pointQuerySettled', eventData)
@@ -8494,13 +8651,25 @@ export class Point0<
         return data
       } catch (error) {
         const error0 = this._Error.from(error)
-        const eventData = {
-          ..._eventData,
-          error: error0,
+        if (error0.redirect) {
+          const eventData = {
+            ..._eventData,
+            error: undefined,
+            redirect: error0.redirect,
+          }
+          this._emit('pointQuerySettled', eventData)
+          this._emit('pointQuerySuccess', eventData)
+          throw error0
+        } else {
+          const eventData = {
+            ..._eventData,
+            error: error0,
+            redirect: undefined,
+          }
+          this._emit('pointQuerySettled', eventData)
+          this._emit('pointQueryError', eventData)
+          throw error0
         }
-        this._emit('pointQuerySettled', eventData)
-        this._emit('pointQueryError', eventData)
-        throw error0
       }
     }
     const mountableDefaultQueryOptions =
@@ -8510,13 +8679,40 @@ export class Point0<
         layout: this._defaultLayoutQueryOptions,
         provider: this._defaultProviderQueryOptions,
       }[this.type as string] || {}
-    const result = {
+    const megedQueryOptions = {
       ...this._defaultQueryOptions,
       ...mountableDefaultQueryOptions,
       ...this._queryOptions,
       ...queryOptions,
+    }
+    const result = {
+      ...megedQueryOptions,
       queryKey,
       queryFn,
+      retryOnMount: redirect ? false : megedQueryOptions.retryOnMount,
+      ...(_point0_env.side.is.server
+        ? {
+            retry: false,
+            refetchOnMount: false,
+            refetchOnWindowFocus: false,
+            refetchOnReconnect: false,
+            staleTime: Infinity,
+            gcTime: Infinity,
+          }
+        : {
+            retry: ((failureCount, error) => {
+              if (error.redirect) {
+                return false
+              }
+              if (typeof megedQueryOptions.retry === 'boolean') {
+                return megedQueryOptions.retry
+              }
+              if (typeof megedQueryOptions.retry === 'function') {
+                return megedQueryOptions.retry(failureCount, error)
+              }
+              return (megedQueryOptions.retry ?? 3) > failureCount
+            }) satisfies UseQueryOptions['retry'],
+          }),
     } as never
     return result
   }
@@ -8558,19 +8754,32 @@ export class Point0<
         const eventData = {
           ..._eventData,
           data: clientData as Data,
+          redirect: undefined,
         }
         this._emit('pointQuerySettled', eventData)
         this._emit('pointQuerySuccess', eventData)
         return clientData
       } catch (error) {
         const error0 = this._Error.from(error)
-        const eventData = {
-          ..._eventData,
-          error: error0,
+        if (error0.redirect) {
+          const eventData = {
+            ..._eventData,
+            error: undefined,
+            redirect: error0.redirect,
+          }
+          this._emit('pointQuerySettled', eventData)
+          this._emit('pointQuerySuccess', eventData)
+          throw error0
+        } else {
+          const eventData = {
+            ..._eventData,
+            error: error0,
+            redirect: undefined,
+          }
+          this._emit('pointQuerySettled', eventData)
+          this._emit('pointQueryError', eventData)
+          throw error0
         }
-        this._emit('pointQuerySettled', eventData)
-        this._emit('pointQueryError', eventData)
-        throw error0
       }
     }
     const mountableDefaultQueryOptions =
@@ -8580,13 +8789,28 @@ export class Point0<
         layout: this._defaultLayoutQueryOptions,
         provider: this._defaultProviderQueryOptions,
       }[this.type as string] || {}
-    return {
+    const megedQueryOptions = {
       ...this._defaultQueryOptions,
       ...mountableDefaultQueryOptions,
       ...this._queryOptions,
       ...queryOptions,
+    }
+    return {
+      ...megedQueryOptions,
       queryKey,
       queryFn,
+      retry: ((failureCount, error) => {
+        if (error.redirect) {
+          return false
+        }
+        if (typeof megedQueryOptions.retry === 'boolean') {
+          return megedQueryOptions.retry
+        }
+        if (typeof megedQueryOptions.retry === 'function') {
+          return megedQueryOptions.retry(failureCount, error)
+        }
+        return (megedQueryOptions.retry ?? 3) > failureCount
+      }) satisfies UseQueryOptions['retry'],
     } as never
   }
 
@@ -8626,7 +8850,13 @@ export class Point0<
           if (cachedServerData) {
             return cachedServerData
           }
-          const serverOpts = this._getServerQueryOptions({ input, queryOptions, fetchOptions, outputType: 'data' })
+          const serverOpts = this._getServerQueryOptions({
+            input,
+            queryOptions,
+            fetchOptions,
+            outputType: 'data',
+            queryClient,
+          })
           return await queryClient.fetchQuery(serverOpts as any)
         })()
 
@@ -8639,6 +8869,7 @@ export class Point0<
         const data = await queryClient.fetchQuery(clientOpts as any)
         const eventData = {
           ..._eventData,
+          redirect: undefined,
           data: data as Data,
         }
         this._emit('pointQuerySettled', eventData)
@@ -8646,13 +8877,25 @@ export class Point0<
         return data
       } catch (error) {
         const error0 = this._Error.from(error)
-        const eventData = {
-          ..._eventData,
-          error: error0,
+        if (error0.redirect) {
+          const eventData = {
+            ..._eventData,
+            error: undefined,
+            redirect: error0.redirect,
+          }
+          this._emit('pointQuerySettled', eventData)
+          this._emit('pointQuerySuccess', eventData)
+          throw error0
+        } else {
+          const eventData = {
+            ..._eventData,
+            error: error0,
+            redirect: undefined,
+          }
+          this._emit('pointQuerySettled', eventData)
+          this._emit('pointQueryError', eventData)
+          throw error0
         }
-        this._emit('pointQuerySettled', eventData)
-        this._emit('pointQueryError', eventData)
-        throw error0
       }
     }
     const mountableDefaultQueryOptions =
@@ -8662,14 +8905,34 @@ export class Point0<
         layout: this._defaultLayoutQueryOptions,
         provider: this._defaultProviderQueryOptions,
       }[this.type as string] || {}
-    const result = {
+    const megedQueryOptions = {
       ...this._defaultQueryOptions,
       ...mountableDefaultQueryOptions,
       ...this._queryOptions,
       ...queryOptions,
+    }
+    const result = {
+      ...megedQueryOptions,
       queryKey,
       queryFn,
-    } as any
+      retry: ((failureCount, error) => {
+        if (error.redirect) {
+          return false
+        }
+        if (typeof megedQueryOptions.retry === 'boolean') {
+          return megedQueryOptions.retry
+        }
+        if (typeof megedQueryOptions.retry === 'function') {
+          return megedQueryOptions.retry(failureCount, error)
+        }
+        return (megedQueryOptions.retry ?? 3) > failureCount
+      }) satisfies UseQueryOptions['retry'],
+    } as UseQueryOptions<
+      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+      TError,
+      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+      QueryKey
+    >
     return result
   }
 
@@ -8750,6 +9013,7 @@ export class Point0<
         queryOptions,
         fetchOptions,
         outputType,
+        queryClient,
       }) as never
     }
     throw new Error(`No loader found on point ${this.toStringWithLocation()}`)
@@ -8789,6 +9053,7 @@ export class Point0<
     infiniteQueryOptions,
     fetchOptions,
     outputType,
+    queryClient = _ss.__POINT0_QUERY_CLIENT__.get(),
   }: {
     input: InputRaw
     infiniteQueryOptions:
@@ -8803,6 +9068,7 @@ export class Point0<
       | undefined
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchServerOutputType
+    queryClient?: QueryClient
   }): UseInfiniteQueryOptions<
     FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
     InfiniteData<FetchServerOutput<TServerLoaderOutput>>,
@@ -8819,6 +9085,10 @@ export class Point0<
       error: undefined,
       data: undefined,
     }
+    const cache = queryClient.getQueryCache()
+    const query = cache.find({ queryKey })
+    const maybeRedirect = (query?.state.error as Record<string, unknown> | undefined)?.redirect
+    const redirect = maybeRedirect instanceof RedirectTask ? maybeRedirect : undefined
     const queryFn = async ({ pageParam, signal }: { pageParam: unknown; signal: AbortSignal }) => {
       try {
         this._emit('pointInfiniteQueryStart', _eventData)
@@ -8830,6 +9100,7 @@ export class Point0<
         })
         const eventData = {
           ..._eventData,
+          redirect: undefined,
           data: data as Data,
         }
         this._emit('pointInfiniteQuerySettled', eventData)
@@ -8837,22 +9108,61 @@ export class Point0<
         return data
       } catch (error) {
         const error0 = this._Error.from(error)
-        const eventData = {
-          ..._eventData,
-          error: error0,
+        if (error0.redirect) {
+          const eventData = {
+            ..._eventData,
+            error: undefined,
+            redirect: error0.redirect,
+          }
+          this._emit('pointInfiniteQuerySettled', eventData)
+          this._emit('pointInfiniteQuerySuccess', eventData)
+          throw error0
+        } else {
+          const eventData = {
+            ..._eventData,
+            error: error0,
+            redirect: undefined,
+          }
+          this._emit('pointInfiniteQuerySettled', eventData)
+          this._emit('pointInfiniteQueryError', eventData)
+          throw error0
         }
-        this._emit('pointInfiniteQuerySettled', eventData)
-        this._emit('pointInfiniteQueryError', eventData)
-        throw error0
       }
     }
-    const result = {
+    const megedQueryOptions = {
       ...this._defaultQueryOptions,
       ...this._defaultInfiniteQueryOptions,
       ...this._infiniteQueryOptions,
       ...infiniteQueryOptions,
+    }
+    const result = {
+      ...megedQueryOptions,
       queryKey,
       queryFn,
+      retryOnMount: redirect ? false : megedQueryOptions.retryOnMount,
+      ...(_point0_env.side.is.server
+        ? {
+            retry: false,
+            refetchOnMount: false,
+            refetchOnWindowFocus: false,
+            refetchOnReconnect: false,
+            staleTime: Infinity,
+            gcTime: Infinity,
+          }
+        : {
+            retry: ((failureCount, error) => {
+              if (error.redirect) {
+                return false
+              }
+              if (typeof megedQueryOptions.retry === 'boolean') {
+                return megedQueryOptions.retry
+              }
+              if (typeof megedQueryOptions.retry === 'function') {
+                return megedQueryOptions.retry(failureCount, error)
+              }
+              return (megedQueryOptions.retry ?? 3) > failureCount
+            }) satisfies UseQueryOptions['retry'],
+          }),
     }
     return result as never
   }
@@ -8904,29 +9214,65 @@ export class Point0<
         })
         const eventData = {
           ..._eventData,
+          redirect: undefined,
           data: clientData as Data,
         }
         this._emit('pointInfiniteQuerySettled', eventData)
         this._emit('pointInfiniteQuerySuccess', eventData)
         return clientData
       } catch (error) {
+        // const error0 = this._Error.from(error)
+        // const eventData = {
+        //   ..._eventData,
+        //   error: error0,
+        // }
+        // this._emit('pointInfiniteQuerySettled', eventData)
+        // this._emit('pointInfiniteQueryError', eventData)
+        // throw error0
         const error0 = this._Error.from(error)
-        const eventData = {
-          ..._eventData,
-          error: error0,
+        if (error0.redirect) {
+          const eventData = {
+            ..._eventData,
+            error: undefined,
+            redirect: error0.redirect,
+          }
+          this._emit('pointInfiniteQuerySettled', eventData)
+          this._emit('pointInfiniteQuerySuccess', eventData)
+          throw error0
+        } else {
+          const eventData = {
+            ..._eventData,
+            error: error0,
+            redirect: undefined,
+          }
+          this._emit('pointInfiniteQuerySettled', eventData)
+          this._emit('pointInfiniteQueryError', eventData)
+          throw error0
         }
-        this._emit('pointInfiniteQuerySettled', eventData)
-        this._emit('pointInfiniteQueryError', eventData)
-        throw error0
       }
     }
-    return {
+    const megedQueryOptions = {
       ...this._defaultQueryOptions,
       ...this._defaultInfiniteQueryOptions,
       ...this._infiniteQueryOptions,
       ...infiniteQueryOptions,
+    }
+    return {
+      ...megedQueryOptions,
       queryKey,
       queryFn,
+      retry: ((failureCount, error) => {
+        if (error.redirect) {
+          return false
+        }
+        if (typeof megedQueryOptions.retry === 'boolean') {
+          return megedQueryOptions.retry
+        }
+        if (typeof megedQueryOptions.retry === 'function') {
+          return megedQueryOptions.retry(failureCount, error)
+        }
+        return (megedQueryOptions.retry ?? 3) > failureCount
+      }) satisfies UseQueryOptions['retry'],
     } as never
   }
 
@@ -8994,6 +9340,7 @@ export class Point0<
             queryOptions: infiniteQueryOptions,
             fetchOptions,
             outputType: 'data',
+            queryClient,
           })
           const serverFinityResult = await queryClient.fetchQuery(serverFinityOpts as any)
           queryClient.setQueryData(infiniteServerKey, (data: { pages: any[]; pageParams: unknown[] } | undefined) => {
@@ -9018,29 +9365,65 @@ export class Point0<
         const clientData = await (clientOpts as any).queryFn({ ...input, pageParam })
         const eventData = {
           ..._eventData,
+          redirect: undefined,
           data: clientData as Data,
         }
         this._emit('pointInfiniteQuerySettled', eventData)
         this._emit('pointInfiniteQuerySuccess', eventData)
         return clientData
       } catch (error) {
+        // const error0 = this._Error.from(error)
+        // const eventData = {
+        //   ..._eventData,
+        //   error: error0,
+        // }
+        // this._emit('pointInfiniteQuerySettled', eventData)
+        // this._emit('pointInfiniteQueryError', eventData)
+        // throw error0
         const error0 = this._Error.from(error)
-        const eventData = {
-          ..._eventData,
-          error: error0,
+        if (error0.redirect) {
+          const eventData = {
+            ..._eventData,
+            error: undefined,
+            redirect: error0.redirect,
+          }
+          this._emit('pointInfiniteQuerySettled', eventData)
+          this._emit('pointInfiniteQuerySuccess', eventData)
+          throw error0
+        } else {
+          const eventData = {
+            ..._eventData,
+            error: error0,
+            redirect: undefined,
+          }
+          this._emit('pointInfiniteQuerySettled', eventData)
+          this._emit('pointInfiniteQueryError', eventData)
+          throw error0
         }
-        this._emit('pointInfiniteQuerySettled', eventData)
-        this._emit('pointInfiniteQueryError', eventData)
-        throw error0
       }
     }
-    const result = {
+    const megedQueryOptions = {
       ...this._defaultQueryOptions,
       ...this._defaultInfiniteQueryOptions,
       ...this._infiniteQueryOptions,
       ...infiniteQueryOptions,
+    }
+    const result = {
+      ...megedQueryOptions,
       queryKey,
       queryFn,
+      retry: ((failureCount, error) => {
+        if (error.redirect) {
+          return false
+        }
+        if (typeof megedQueryOptions.retry === 'boolean') {
+          return megedQueryOptions.retry
+        }
+        if (typeof megedQueryOptions.retry === 'function') {
+          return megedQueryOptions.retry(failureCount, error)
+        }
+        return (megedQueryOptions.retry ?? 3) > failureCount
+      }) satisfies UseQueryOptions['retry'],
     } as never
     return result
   }
@@ -9154,6 +9537,7 @@ export class Point0<
         input: input as never,
         infiniteQueryOptions,
         fetchOptions,
+        queryClient,
         outputType,
       }) as never
     }
@@ -10046,6 +10430,7 @@ export class Point0<
       queryOptions,
       fetchOptions,
       outputType: 'queryClientDehydratedState',
+      queryClient,
     })
     const queryKey = _queryOptions.queryKey
     const cache = queryClient.getQueryCache()
@@ -10993,7 +11378,21 @@ export class Point0<
           }
 
           // with fn
-          if (result === 'loading') {
+          const redirectTask =
+            result instanceof RedirectTask
+              ? result
+              : result instanceof Error && (result as any).redirect instanceof RedirectTask
+                ? ((result as any).redirect as RedirectTask)
+                : undefined
+          if (redirectTask) {
+            const Redirect = getNavigationHelpers().Redirect
+            return React.createElement(Redirect, {
+              task: redirectTask,
+              before: () => {
+                removeRedirectsFromQueryClientCache(_ss.__POINT0_QUERY_CLIENT__.get(), redirectTask.to)
+              },
+            })
+          } else if (result === 'loading') {
             return React.createElement(LoadingComponent)
           } else if (result instanceof Error) {
             return React.createElement(ErrorComponent, {
@@ -11090,10 +11489,23 @@ export class Point0<
     }
 
     if (mountState.status === 'error') {
-      return React.createElement(ErrorComponent, {
-        error: mountState.error,
-        _isHeadable: false, // becouse we use heads in prev block
-      })
+      const redirectTask = mountState.error.redirect
+      if (redirectTask) {
+        // TODO: allow custome redirect component ui
+        const Redirect = getNavigationHelpers().Redirect
+        return React.createElement(Redirect, {
+          task: redirectTask,
+          before: (...args) => {
+            removeRedirectsFromQueryClientCache(_ss.__POINT0_QUERY_CLIENT__.get(), redirectTask.to)
+            void redirectTask.options?.before?.(...args)
+          },
+        })
+      } else {
+        return React.createElement(ErrorComponent, {
+          error: mountState.error,
+          _isHeadable: false, // becouse we use heads in prev block
+        })
+      }
     }
 
     if (mountState.status === 'loading') {

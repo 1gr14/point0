@@ -1,8 +1,8 @@
 import { ErrorPoint0, Point0 } from '@point0/core'
-import type { Prettify } from '@point0/core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
 import superjson from 'superjson'
 import { createTestThings, ymlify } from './utils/internal-testing.js'
+import type { EmptyObject } from '@point0/core'
 
 describe('loader', () => {
   const createRoot = () =>
@@ -182,6 +182,26 @@ describe('loader', () => {
     expect(response.status).toBe(200)
   })
 
+  it('undefined equals to empty data', async () => {
+    const root = createRoot()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(() => ({ x: 1, y: 2 }))
+      .loader(() => undefined)
+      .page(({ data }) => {
+        expectTypeOf<typeof data>().toEqualTypeOf<EmptyObject>()
+        return Object.keys(data).length ? 'exists' : 'empty'
+      })
+    const { fetchPreview, fetchSsr } = await createTestThings({ ssr: true, points: [root, page] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      empty
+      "
+    `)
+    const { response } = await fetchSsr(page)
+    expect(response.status).toBe(200)
+  })
+
   it('forbids returning array as data', () => {
     const root = createRoot()
     root
@@ -189,5 +209,36 @@ describe('loader', () => {
       // @ts-expect-error -- array is forbidden to return as data
       .loader(() => [{ x: 1 }])
       .page()
+  })
+
+  it('forbids returning string as data', () => {
+    const root = createRoot()
+    root
+      .lets('page', 'home', '/')
+      // @ts-expect-error -- string is forbidden to return as data
+      .loader(() => 'zxc')
+      .page()
+  })
+
+  it('forbids returning response from page loader', () => {
+    const root = createRoot()
+    root
+      .lets('page', 'home', '/')
+      // @ts-expect-error -- response is forbidden to return as data
+      .loader(() => new Response('zxc'))
+      .page()
+  })
+
+  it('return never then empty data by type', async () => {
+    const root = createRoot()
+    root
+      .lets('page', 'home', '/')
+      .loader(() => {
+        throw new Error('test error')
+      })
+      .page(({ data }) => {
+        expectTypeOf<typeof data>().toEqualTypeOf<EmptyObject>()
+        return ymlify(data)
+      })
   })
 })

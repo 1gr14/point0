@@ -1146,10 +1146,12 @@ try {
     executor,
     pagePoint,
     pageLocation,
+    redirectPolicy,
   }: {
     executor: Executor<RequiredCtx, any>
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
+    redirectPolicy: 'continue' | 'throw'
   }): Promise<ReadableStream> {
     if (!this.points) {
       throw new Error('Client points not provided, so we can not render app as readable stream')
@@ -1164,6 +1166,7 @@ try {
       clientPoints: this.points,
       originalIndexHtml: await this.getOriginalIndexHtml(pageLocation.href ?? pageLocation.hrefRel),
       domRootElementId: this.domRootElementId,
+      redirectPolicy,
     })
   }
 
@@ -1171,10 +1174,12 @@ try {
     executor,
     pagePoint,
     pageLocation,
+    redirectPolicy,
   }: {
     executor: Executor<RequiredCtx, any>
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
+    redirectPolicy: 'continue' | 'throw'
   }): Promise<void> {
     if (!this.points) {
       throw new Error('Client points not provided, so we can not prefetch app page point deep')
@@ -1185,6 +1190,7 @@ try {
       pageLocation,
       pagePoint,
       clientPoints: this.points,
+      redirectPolicy,
     })
   }
 }

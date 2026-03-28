@@ -5,7 +5,7 @@ import svgr from 'vite-plugin-svgr'
 import tsconfigPaths from 'vite-tsconfig-paths'
 // import { analyzer } from 'vite-bundle-analyzer'
 
-export default defineViteConfig((options) => {
+export default defineViteConfig(() => {
   return {
     plugins: [
       react({ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }),

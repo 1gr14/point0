@@ -1,16 +1,20 @@
+import { RedirectTask } from './redirect.js'
+
 export class ErrorPoint0 extends Error {
   status?: number
   code?: string
+  redirect?: RedirectTask
   // meta?: Record<string, unknown>
 
   constructor(
     message: string,
     // options: { cause?: unknown; status?: number; code?: string; meta?: Record<string, unknown> } = {},
-    options: { cause?: unknown; status?: number; code?: string } = {},
+    options: { cause?: unknown; status?: number; code?: string; redirect?: RedirectTask } = {},
   ) {
     super(message, { cause: options.cause })
     this.status = options.status
     this.code = options.code
+    this.redirect = options.redirect
     this.name = 'ErrorPoint0'
     if (
       process.env.NODE_ENV !== 'production' &&
@@ -36,8 +40,16 @@ export class ErrorPoint0 extends Error {
       } catch {}
     }
     const record = typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {}
+    const redirect =
+      error instanceof RedirectTask ? error : record.redirect ? RedirectTask.from(record.redirect as never) : undefined
     const message =
-      typeof record.message === 'string' ? record.message : typeof error === 'string' ? error : 'Unknown error'
+      typeof record.message === 'string'
+        ? record.message
+        : typeof error === 'string'
+          ? error
+          : redirect
+            ? 'Page Redirect'
+            : 'Unknown error'
     const isErrorInstance = error instanceof Error
     const isOriginalError = isErrorInstance && error.constructor === Error
     const cause: unknown = isOriginalError || !isErrorInstance ? undefined : error
@@ -48,6 +60,7 @@ export class ErrorPoint0 extends Error {
       cause,
       status,
       code,
+      redirect,
     })
     if (stack) {
       error0.stack = stack
@@ -71,12 +84,13 @@ export class ErrorPoint0 extends Error {
       ...(error.code ? { code: error.code } : {}),
       // ...(meta ? { meta } : {}),
       ...(!isStacktracePublic || !error.stack ? {} : { stack: error.stack }),
+      ...(error.redirect ? { redirect: error.redirect.serialize() } : {}),
     }
   }
 }
 
 export type ClassLikeError0<T extends ErrorPoint0 = ErrorPoint0> = {
-  new (message: string, options?: { cause?: unknown; status?: number; code?: string }): T
+  new (message: string, options?: { cause?: unknown; status?: number; code?: string; redirect?: RedirectTask }): T
   from(error: unknown): T
   serialize(error: T): Record<string, unknown>
 }
