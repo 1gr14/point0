@@ -3136,8 +3136,8 @@ export class Point0<
     >,
   >(
     withFn: TWithFn, // withFn: WithFn<
-    //   TParamsSchema,
-  ) //   MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+    //   MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+  ) //   TParamsSchema,
   //   TSearchSchema,
   //   TClientInputSchema,
   //   TInnerProps,
@@ -11419,7 +11419,7 @@ export class Point0<
             return React.createElement(LoadingComponent)
           } else if (result instanceof Error) {
             return React.createElement(ErrorComponent, {
-              error: result,
+              error: this._Error.from(result),
             })
           } else {
             return React.createElement(this._Mountable, {

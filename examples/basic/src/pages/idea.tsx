@@ -8,6 +8,10 @@ if (env.side.is.client) {
   clientOnlyFn()
 }
 
+const Wrapper = ({ children }: { children: React.ReactNode }) => {
+  return <div>Wrapper {children}Endwrapper</div>
+}
+
 export const ideaPage = ideaLayout
   .lets('page', 'idea', '/')
   // .clientOnly(({ location }) => <div>ClientOnly {location.pathname}</div>)
@@ -31,6 +35,7 @@ export const ideaPage = ideaLayout
     }
   })
   .with(() => ({ idea: ideaLayout.useValue('idea') }))
+  .wrapper(Wrapper)
   // .outer(({ children, ErrorComponent, LoadingComponent, input, props, location, inputRaw }) => {
   //   const [loading, setLoading] = useState(true)
   //   useEffect(() => {
@@ -53,6 +58,9 @@ export const ideaPage = ideaLayout
     // }, [])
     // any hook or whatever here, it is just client code
     const [state, setState] = useState(() => 0)
+    // if (Math.random()) {
+    //   throw new Error('SDKJGSJHFD')
+    // }
     return (
       <div
         onClick={() => {

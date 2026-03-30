@@ -26,7 +26,11 @@ export class RedirectTask<TAdapterNavigateOptions extends AdapterNavigateOptions
   }
 
   static from<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions>(
-    input: string | Record<string, unknown> | RedirectTaskSerialized<TAdapterNavigateOptions>,
+    input:
+      | string
+      | Record<string, unknown>
+      | RedirectTaskSerialized<TAdapterNavigateOptions>
+      | RedirectTask<TAdapterNavigateOptions>,
   ): RedirectTask<TAdapterNavigateOptions> {
     try {
       if (input instanceof RedirectTask) {

@@ -402,7 +402,7 @@
     },
   },
   "catalog": {
-    "@devp0nt/error0": "^1.0.0-next.56",
+    "@devp0nt/error0": "^1.0.0-next.58",
     "@devp0nt/flat0": "^1.1.1",
     "@devp0nt/route0": "^1.0.0-next.84",
     "@sinclair/typebox": "^0.34.48",
@@ -685,7 +685,7 @@
 
     "@commitlint/types": ["@commitlint/types@19.8.1", "", { "dependencies": { "@types/conventional-commits-parser": "^5.0.0", "chalk": "^5.3.0" } }, "sha512-/yCrWGCoA1SVKOks25EGadP9Pnj0oAIHGpl2wH2M2Y46dPM2ueb8wyCVOD7O3WCTkaJ0IkKvzhl1JY7+uCT2Dw=="],
 
-    "@devp0nt/error0": ["@devp0nt/error0@1.0.0-next.57", "", {}, "sha512-BJsEHwMDMWEjV3k7JJE9ch+BJVbaGNTtYd5nJl7XrKEP3GN4TGqB3dSEn2T7r0zwlTOBgCKrk+WmpB5NOUQLGg=="],
+    "@devp0nt/error0": ["@devp0nt/error0@1.0.0-next.58", "", {}, "sha512-pWZm/NYY9R3ZaZYYOxPZA+tgR9qtSUrfdruiTI0wnSrmWKPs0TKJgyVJ8hKza9edNLQ68igS9BL4thHdFpFxjQ=="],
 
     "@devp0nt/flat0": ["@devp0nt/flat0@1.1.1", "", {}, "sha512-PZgoTXt4jgtzyYz9r6vWD/3hK8ai1n/1+uEOgwfaoJx6xRR3PSPc5PXmaRVDA3hNvipQEWi+9uS1pDVsine9oA=="],
 

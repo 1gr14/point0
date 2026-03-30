@@ -800,24 +800,24 @@ export class Fetcher<TError extends ErrorPoint0> {
               response,
             }
           }
-          // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
-          if (error instanceof Error && error.message.includes('<!-- __Target__ --> not found')) {
-            const indexHtml = await client.getOriginalIndexHtmlWithEnvs(request.original.url)
-            const response = new Response(indexHtml, {
-              headers: { 'Content-Type': 'text/html' },
-              status: 500,
-            })
-            // const ErrorClass =
-            //   client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
-            const error0 = ErrorClass.from(error)
-            return {
-              ...partialResult,
-              response,
-              error: error0,
-            }
+          // // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
+          // if (error instanceof Error && error.message.includes('<!-- __Target__ --> not found')) {
+          const indexHtml = await client.getOriginalIndexHtmlWithEnvs(request.original.url)
+          const response = new Response(indexHtml, {
+            headers: { 'Content-Type': 'text/html' },
+            // status: 500,
+          })
+          // const ErrorClass =
+          //   client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
+          const error0 = ErrorClass.from(error)
+          return {
+            ...partialResult,
+            response,
+            error: error0,
           }
-          throw error
         }
+        // throw error
+        // }
       } else if (client.indexHtml) {
         const indexHtml = await client.getOriginalIndexHtmlWithEnvs(request.original.url)
         const response = new Response(indexHtml, {

@@ -23,7 +23,7 @@
       "react": "^19.0.0",
       "react-dom": "^19.0.0",
       "@tanstack/react-query": "^5.0.0",
-      "@devp0nt/error0": "^1.0.0-next.56",
+      "@devp0nt/error0": "^1.0.0-next.58",
       "@devp0nt/route0": "^1.0.0-next.84",
       "@devp0nt/flat0": "^1.1.1",
       "arktype": "^2.2.0",

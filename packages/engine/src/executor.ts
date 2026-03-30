@@ -979,36 +979,40 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         return parsedQueryKey
       })
 
-      for (const suitableMarker of suitableMarkers) {
-        const exactPoint = this.engine.server.points?.findExact({
-          scope: suitableMarker.scope,
-          type: suitableMarker.pointType,
-          name: suitableMarker.pointName,
-        })
-        const isThisPageSelfPoint = pagePoint?.point && exactPoint?.point === pagePoint.point
-        const isThisPageLayoutPoint =
-          !isThisPageSelfPoint &&
-          pagePoint?.point &&
-          pagePoint._layouts.some((layout) => layout.point === exactPoint?.point)
-        const fixedInput = (() => {
-          if (isThisPageSelfPoint || isThisPageLayoutPoint) {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { '?': _search, ...params } = suitableMarker.input as Record<string, unknown>
-            return {
-              ...params,
-              '?': pageLocation.search,
-            } as never as InputRaw
+      await Promise.all(
+        suitableMarkers.map(async (suitableMarker) => {
+          // for (const suitableMarker of suitableMarkers) {
+          const exactPoint = this.engine.server.points?.findExact({
+            scope: suitableMarker.scope,
+            type: suitableMarker.pointType,
+            name: suitableMarker.pointName,
+          })
+          const isThisPageSelfPoint = pagePoint?.point && exactPoint?.point === pagePoint.point
+          const isThisPageLayoutPoint =
+            !isThisPageSelfPoint &&
+            pagePoint?.point &&
+            pagePoint._layouts.some((layout) => layout.point === exactPoint?.point)
+          const fixedInput = (() => {
+            if (isThisPageSelfPoint || isThisPageLayoutPoint) {
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              const { '?': _search, ...params } = suitableMarker.input as Record<string, unknown>
+              return {
+                ...params,
+                '?': pageLocation.search,
+              } as never as InputRaw
+            }
+            return suitableMarker.input
+          })()
+          if (exactPoint) {
+            if (suitableMarker.isInfiniteQuery) {
+              await exactPoint.prefetchInfiniteQuery(fixedInput, undefined, { force: true, mode: 'server' })
+            } else {
+              await exactPoint.prefetchQuery(fixedInput, undefined, { force: true, mode: 'server' })
+            }
           }
-          return suitableMarker.input
-        })()
-        if (exactPoint) {
-          if (suitableMarker.isInfiniteQuery) {
-            await exactPoint.prefetchInfiniteQuery(fixedInput, undefined, { force: true, mode: 'server' })
-          } else {
-            await exactPoint.prefetchQuery(fixedInput, undefined, { force: true, mode: 'server' })
-          }
-        }
-      }
+          // }
+        }),
+      )
 
       if (suitableMarkers.length > 0) {
         await this.prefetchAppPagePointDeep({
