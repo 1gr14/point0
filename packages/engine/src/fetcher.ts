@@ -147,7 +147,18 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
       try {
         if (request.original.headers.get('Content-Type')?.includes('multipart/form-data')) {
-          const formData = await request.original.formData()
+          const formData =
+            request.rawBody !== undefined
+              ? (() => {
+                  if (request.rawBody instanceof FormData) {
+                    return request.rawBody
+                  }
+                  throw new Error('For multipart/form-data, request.rawBody must be FormData')
+                })()
+              : await request.original.formData()
+          if (request.rawBody === undefined) {
+            request.setRawBody(formData)
+          }
           const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
             acc[key] = typeof value === 'string' ? (transform ? JSON.parse(value) : value) : value
             return acc
@@ -155,7 +166,17 @@ export class Fetcher<TError extends ErrorPoint0> {
           const unflattened = flat0.deserialize(parsed)
           return unflattened
         }
-        return await request.original.json()
+        const rawBody = request.rawBody !== undefined ? request.rawBody : await request.original.text()
+        if (request.rawBody === undefined) {
+          request.setRawBody(rawBody)
+        }
+        if (typeof rawBody !== 'string') {
+          return rawBody
+        }
+        if (!rawBody.trim()) {
+          return {}
+        }
+        return JSON.parse(rawBody)
       } catch (error) {
         console.error(error)
         return {}

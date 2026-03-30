@@ -28,6 +28,7 @@ export class Request0<
   prev: Request0 | undefined
   first: Request0 | undefined
   variant: RequestVariant<TVariant, TError, TClient, TPublicdir>
+  rawBody: unknown
 
   constructor({
     original,
@@ -212,6 +213,10 @@ export class Request0<
     })
     this._headers = headers
     return this._headers
+  }
+
+  setRawBody(rawBody: unknown) {
+    this.rawBody = rawBody
   }
 
   // static get(): Request0 {

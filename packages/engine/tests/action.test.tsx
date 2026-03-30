@@ -210,6 +210,74 @@ describe('action', () => {
     expect(json).toEqual({ c: '2026-03-11T12:00:00.000Z', id: '1' })
   })
 
+  it('uses request.rawBody when preset before body parsing', async () => {
+    const root = Point0.lets('root', 'root')
+      .loading(() => <div id="loading">...</div>)
+      .error(({ error }) => <div id="error">{error.message}</div>)
+      .transformer(superjson)
+      .queryOptions({
+        retry: false,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
+      })
+      .middleware(async ({ request, next }) => {
+        request.setRawBody(JSON.stringify({ b: 123 }))
+        return await next()
+      })
+      .root()
+    const action = root
+      .lets('action', 'test', 'POST', '/api/raw-body/preset')
+      .body(z.object({ b: z.number() }))
+      .loader(({ request, body }) => {
+        return { body, rawBody: request.rawBody, bodyUsed: request.original.bodyUsed }
+      })
+      .action()
+
+    const { engine } = await createTestThings({ ssr: true, points: [root, action] })
+    const request = new Request('http://localhost:3000/api/raw-body/preset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: 'THIS_IS_NOT_JSON',
+    })
+    const result = await engine.fetch(request)
+    const json = await result.json()
+
+    expect(json).toEqual({
+      body: { b: 123 },
+      rawBody: '{"b":123}',
+      bodyUsed: false,
+    })
+  })
+
+  it('stores original json text into request.rawBody after parsing', async () => {
+    const root = createRoot()
+    const action = root
+      .lets('action', 'test', 'POST', '/api/raw-body/store')
+      .body(z.object({ b: z.number() }))
+      .loader(({ request, body }) => {
+        return { body, rawBody: request.rawBody, bodyUsed: request.original.bodyUsed }
+      })
+      .action()
+
+    const { engine } = await createTestThings({ ssr: true, points: [root, action] })
+    const request = new Request('http://localhost:3000/api/raw-body/store', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: '{"b":777}',
+    })
+    const result = await engine.fetch(request)
+    const json = await result.json()
+
+    expect(json).toEqual({
+      body: { b: 777 },
+      rawBody: '{"b":777}',
+      bodyUsed: true,
+    })
+  })
+
   it('can be query', async () => {
     const root = createRoot()
     const action = root

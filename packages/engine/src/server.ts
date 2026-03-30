@@ -9,7 +9,7 @@ import type {
   PointsScope,
   RequiredCtx,
 } from '@point0/core'
-import type { BunPlugin } from 'bun'
+import type { BunPlugin, Serve } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { ViteDevServer } from 'vite'
@@ -64,6 +64,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   publicdirs: TPrepared extends true ? Array<Publicdir<true, TError>> : Array<Publicdir<false, TError>>
   outdir: string | null
   bunBuildConfig: EngineServerBuildConfigDefinition
+  bunServeConfig: Serve.Options<any, any> | null
   bunPlugins: EngineServerPluginsDefinition
   generalBunPlugins: EngineSharedPluginsDefinition
   prepared: TPrepared
@@ -97,6 +98,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     publicdir: Publicdir<false, TError> | null
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
+    bunServeConfig: Serve.Options<any, any> | null
     bunPlugins: EngineServerPluginsDefinition
     generalBunPlugins: EngineSharedPluginsDefinition
     viteConfig: EngineOptionsViteConfig | null
@@ -133,6 +135,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       : Array<Publicdir<false, TError>>
     this.outdir = input.outdir
     this.bunBuildConfig = input.bunBuildConfig
+    this.bunServeConfig = input.bunServeConfig
     this.bunPlugins = input.bunPlugins
     this.generalBunPlugins = input.generalBunPlugins
     this.prepared = input.prepared
@@ -163,6 +166,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     envVars: EngineOptionsEnvParsed
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
+    bunServeConfig: Serve.Options<any, any> | null
     bunPlugins: EngineServerPluginsDefinition
     generalBunPlugins: EngineSharedPluginsDefinition
     log: LogFn
@@ -527,8 +531,11 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         portPolicy,
         category: ['server'],
       },
-      async () =>
-        Bun.serve({
+      async () => {
+        const customServeConfig = ((this.bunServeConfig as unknown) ?? {}) as Record<string, unknown>
+        const customWebsocketConfig = this.bunServeConfig?.websocket as any
+        return Bun.serve({
+          ...customServeConfig,
           port: this.port,
           fetch: async (request, bunServer) => {
             const devClientsProxyResponse = await this.fetchDevClientsProxy({ request, bunServer })
@@ -536,19 +543,37 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
               return devClientsProxyResponse.response
             }
 
-            const result = await this.fetchDetailed({ request, requiredCtx, bunServer })
+            const customFetch = this.bunServeConfig?.fetch?.bind(bunServer)
+            const customResult = await customFetch?.(request, bunServer)
+            if (customResult) {
+              return customResult
+            }
 
+            const result = await this.fetchDetailed({ request, requiredCtx, bunServer })
             return result.response
           },
           websocket: {
+            ...(customWebsocketConfig ?? {}),
             // later will be user for channels
-            open() {
+            open: (ws) => {
+              const customOpen = customWebsocketConfig?.open?.bind(ws)
+              if (customOpen) {
+                return customOpen(ws)
+              }
               return undefined
             },
-            message() {
+            message: (ws, message) => {
+              const customMessage = customWebsocketConfig?.message?.bind(ws)
+              if (customMessage) {
+                return customMessage(ws, message)
+              }
               return undefined
             },
-            close() {
+            close: (ws, code, reason) => {
+              const customClose = customWebsocketConfig?.close?.bind(ws)
+              if (customClose) {
+                return customClose(ws, code, reason)
+              }
               return undefined
             },
           },
@@ -605,7 +630,8 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
           //     }
           //   },
           // },
-        }),
+        })
+      },
     )()
     setOverridenPortPolicy({ scope: this.scope, side: 'server', portPolicy: 'kill' })
     this.log({

@@ -30,6 +30,7 @@ import type {
   EngineSharedPluginsDefinition,
 } from './utils.js'
 import { _defaultLogFn } from '@point0/core'
+import type { Serve } from 'bun'
 
 export type EngineOptionsPublicdir =
   | string
@@ -68,6 +69,8 @@ export type EngineOptionsAppComponent = (() => Promise<AppComponent | AppCompone
 export type EngineOptionsRoutes = () =>
   | Promise<RoutesPretty | { routes: RoutesPretty } | { default: RoutesPretty }>
   | RoutesPretty
+
+export type AnyBunServeConfig = Serve.Options<any, any>
 
 export type EngineOptionsCompilerGeneral = {
   side?: boolean
@@ -151,6 +154,7 @@ export type EngineServerOptions<
   port?: number | string
   outdir?: string
   entry?: string | Record<string, string>
+  bunServeConfig?: Serve.Options<any, any>
   bunBuildConfig?: EngineServerBuildConfigDefinition
   bunPlugins?: EngineServerPluginsDefinition
   viteConfig?: EngineOptionsViteConfig
@@ -410,6 +414,7 @@ export type EngineServerOptionsParsed = {
   cwdBeforeBuild: string
   itWasBuilt: boolean
   bunBuildConfig: EngineServerBuildConfigDefinition
+  bunServeConfig: Serve.Options<any, any> | null
   bunPlugins: EngineServerPluginsDefinition
   viteConfig: EngineOptionsViteConfig | null
   compiler: EngineOptionsCompilerSpecificParsed | false
@@ -867,6 +872,7 @@ export const parseEngineServerOptions = ({
     itWasBuilt: generalOptionsParsed.itWasBuilt,
     bunBuildConfig: serverOptions.bunBuildConfig ?? {},
     bunPlugins: serverOptions.bunPlugins ?? [],
+    bunServeConfig: serverOptions.bunServeConfig ?? null,
     compiler,
     envVars: parseEnv(serverOptions.env?.vars ?? {}),
     envConsts: parseEnv(serverOptions.env?.consts ?? {}),
