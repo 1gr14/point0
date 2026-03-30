@@ -14,6 +14,9 @@ export const ideaPage = ideaLayout
   .loader(async ({ ctx, params }) => {
     // it excutes on server, but defined in client file,
     // prisma will never come her on client, becouse of dead code optimization on build
+    // if (Math.random()) {
+    //   throw new Error('ZXZXZ')
+    // }
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
       where: { id: +params.id },
     })

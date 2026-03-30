@@ -44,7 +44,7 @@ import type {
   ServerEventerSubscriptionCallback,
   UniqEventerErrorEventName,
 } from './eventer.js'
-import { ClientOnly, getFetch, setStatus, useIsHydrated } from './helpers.js'
+import { ClientOnly, getFetch, setStatus } from './helpers.js'
 import { _getFakeClient, _ss } from './internals.js'
 import type { LogFn } from './logger.js'
 import type {
@@ -507,12 +507,18 @@ export class Point0<
   private readonly _errorComponent: ErrorComponentType<DestinationComponentVariant, TError> | undefined
   private readonly DefaultErrorComponent: ErrorComponentType<any, TError> = ({ error }) => {
     const { stack, ...json } = this._Error.serialize(error)
-    const isHydrated = useIsHydrated()
+    // const isHydrated = useIsHydrated()
+    // return React.createElement(
+    //   React.Fragment,
+    //   null,
+    //   React.createElement('pre', null, !isHydrated ? null : JSON.stringify(json, null, 2)),
+    //   React.createElement('pre', null, !isHydrated ? null : (stack as string | undefined) || error.stack || ''),
+    // )
     return React.createElement(
       React.Fragment,
       null,
-      React.createElement('pre', null, !isHydrated ? null : JSON.stringify(json, null, 2)),
-      React.createElement('pre', null, !isHydrated ? null : (stack as string | undefined) || error.stack || ''),
+      React.createElement('pre', null, JSON.stringify(json, null, 2)),
+      React.createElement('pre', null, (stack as string | undefined) || error.stack || ''),
     )
   }
   private readonly _layoutErrorComponent: ErrorComponentType<any, TError> | undefined
@@ -3130,8 +3136,8 @@ export class Point0<
     >,
   >(
     withFn: TWithFn, // withFn: WithFn<
-    //   MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-  ) //   TParamsSchema,
+    //   TParamsSchema,
+  ) //   MountableLocation<TLetsReadyPointType, TRouteDefinition>,
   //   TSearchSchema,
   //   TClientInputSchema,
   //   TInnerProps,

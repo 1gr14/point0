@@ -576,6 +576,10 @@ export async function navigateWithTransitions<
     const tryTriggerRedirect = () => {
       const redirectTask = queryClient ? findRedirectTaskInQueryClientCache(queryClient, to) : undefined
       if (redirectTask && queryClient) {
+        if (redirectTask.to === to) {
+          removeRedirectsFromQueryClientCache(queryClient, redirectTask.to)
+          return undefined
+        }
         void helpers.navigate.to(redirectTask.to, {
           ...redirectTask.options,
           after: (...args) => {

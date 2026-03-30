@@ -901,6 +901,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     pagePoint,
     pageLocation,
     seenQueryHashes = new Set<string>(),
+    seenRedirectTo = new Map<string, number>(),
     level = 0,
     redirectPolicy,
   }: {
@@ -910,6 +911,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
     seenQueryHashes?: Set<string>
+    seenRedirectTo?: Map<string, number>
     level?: number
     redirectPolicy: 'continue' | 'throw'
   }): Promise<void> {
@@ -927,25 +929,32 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       const redirectTask = await this.handleRedirectTask({ clientPoints, redirectPolicy })
 
       if (redirectTask) {
-        if (pagePoint) {
-          await this.addPrefetchPageDehydratedStateToQueryClient({
-            pagePoint,
-            pageLocation,
-            redirectTask: redirectTask.redirectTask,
-            ErrorClass: clientPoints.manager.root._Error,
+        const redirectToKey = JSON.stringify(redirectTask.redirectTask.to)
+        const redirectToSeenCount = seenRedirectTo.get(redirectToKey) ?? 0
+        const shouldHandleRedirect = redirectToSeenCount < 10
+        if (shouldHandleRedirect) {
+          seenRedirectTo.set(redirectToKey, redirectToSeenCount + 1)
+          if (pagePoint) {
+            await this.addPrefetchPageDehydratedStateToQueryClient({
+              pagePoint,
+              pageLocation,
+              redirectTask: redirectTask.redirectTask,
+              ErrorClass: clientPoints.manager.root._Error,
+            })
+          }
+          await this.prefetchAppPagePointDeep({
+            App,
+            renderToReadableStream,
+            pagePoint: redirectTask.pagePoint,
+            pageLocation: redirectTask.pageLocation,
+            clientPoints,
+            seenQueryHashes,
+            seenRedirectTo,
+            level: level + 1,
+            redirectPolicy,
           })
+          return
         }
-        await this.prefetchAppPagePointDeep({
-          App,
-          renderToReadableStream,
-          pagePoint: redirectTask.pagePoint,
-          pageLocation: redirectTask.pageLocation,
-          clientPoints,
-          seenQueryHashes,
-          level: level + 1,
-          redirectPolicy,
-        })
-        return
       }
 
       const queryClientState = _ss.__POINT0_QUERY_CLIENT__.get().getQueryCache().findAll()
@@ -1009,6 +1018,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           pageLocation,
           clientPoints,
           seenQueryHashes,
+          seenRedirectTo,
           level: level + 1,
           redirectPolicy,
         })

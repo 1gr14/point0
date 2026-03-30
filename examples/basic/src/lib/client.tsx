@@ -1,7 +1,6 @@
 import { Point0 } from '@point0/core'
 import superjson from 'superjson'
 import { prisma } from './prisma.js'
-import { AppError } from './error.js'
 
 export const client = Point0.lets<{ zxc: number }>('root', 'client')
   .transformer(superjson)
@@ -20,6 +19,7 @@ export const client = Point0.lets<{ zxc: number }>('root', 'client')
   // .serverurl(process.env.SOURCE_BASE_URL!)
   .queryOptions({
     retry: false,
+    retryOnMount: false,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,

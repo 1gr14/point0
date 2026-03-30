@@ -277,25 +277,25 @@ export const findRedirectTaskInQueryClientCache = (
   // }
   // return undefined
   for (const query of cache.findAll()) {
-    if (isQueryClientDehydratedStateQuery(query)) {
-      if (query.queryKey[3] !== page.name) {
-        continue
-      }
-      if (query.queryKey[6] !== inputTransformed) {
-        continue
-      }
-      const dehydratedState = (query.state.data as { dehydratedState: DehydratedState | undefined } | undefined)
-        ?.dehydratedState
-      if (dehydratedState) {
-        for (const q of dehydratedState.queries) {
-          const maybeRedirect = (q.state.error as Record<string, unknown> | null)?.redirect
-          const redirect = maybeRedirect instanceof RedirectTask ? maybeRedirect : undefined
-          if (redirect) {
-            return redirect
-          }
-        }
-      }
-    }
+    // if (isQueryClientDehydratedStateQuery(query)) {
+    //   if (query.queryKey[3] !== page.name) {
+    //     continue
+    //   }
+    //   if (query.queryKey[6] !== inputTransformed) {
+    //     continue
+    //   }
+    //   const dehydratedState = (query.state.data as { dehydratedState: DehydratedState | undefined } | undefined)
+    //     ?.dehydratedState
+    //   if (dehydratedState) {
+    //     for (const q of dehydratedState.queries) {
+    //       const maybeRedirect = (q.state.error as Record<string, unknown> | null)?.redirect
+    //       const redirect = maybeRedirect instanceof RedirectTask ? maybeRedirect : undefined
+    //       if (redirect) {
+    //         return redirect
+    //       }
+    //     }
+    //   }
+    // }
     if (isQueryClientDehydratedStateRedirectQuery(query)) {
       if (query.queryKey[3] !== page.name) {
         continue
