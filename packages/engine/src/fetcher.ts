@@ -44,6 +44,7 @@ import type { ExecuteOptionsKnownInput } from './executor.js'
 import type { Publicdir } from './publicdir.js'
 import type { EngineServer } from './server.js'
 import { RedirectTask } from '@point0/core/navigation'
+import { serializeErrorsInDehydratedState } from '@point0/core'
 
 export class Fetcher<TError extends ErrorPoint0> {
   engine: Engine<RequiredCtx, TError, true>
@@ -612,7 +613,10 @@ export class Fetcher<TError extends ErrorPoint0> {
           pageLocation: pageLocation as ExactLocation | AnyLocation,
           redirectPolicy: 'continue',
         })
-        const dehydratedState = await executor.getQueryClientReadyDehydratedState({ withPagesDehydratedState: false })
+        const originalDehydratedState = await executor.getQueryClientReadyDehydratedState({
+          withPagesDehydratedState: false,
+        })
+        const dehydratedState = serializeErrorsInDehydratedState(originalDehydratedState, ErrorClass)
         const response = new Response(transformer.stringify({ dehydratedState }), {
           headers: { 'Content-Type': 'application/json' },
           status: 200,
@@ -779,13 +783,17 @@ export class Fetcher<TError extends ErrorPoint0> {
         } catch (error) {
           if (error instanceof RedirectTask) {
             const validRedirectStatuses = [301, 302, 303, 307, 308]
-            if (!effects.status || !validRedirectStatuses.includes(effects.status)) {
-              effects.set.status(302)
-            }
+            const providedRedirectStatus = error.status ?? effects.status
+            const finalRedirectStatus =
+              providedRedirectStatus !== undefined && validRedirectStatuses.includes(providedRedirectStatus)
+                ? providedRedirectStatus
+                : 302
+            effects.set.status(finalRedirectStatus)
             const response = new Response(null, {
               headers: {
                 Location: error.to,
               },
+              status: finalRedirectStatus,
             })
             return {
               ...partialResult,

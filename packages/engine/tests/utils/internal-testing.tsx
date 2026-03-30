@@ -1,5 +1,5 @@
 import { CookiesStore } from '@point0/cookies-store'
-import { createQueryClient } from '@point0/core'
+import { createQueryClient, isQueryClientDehydratedStateQuery } from '@point0/core'
 import type {
   AnyNiceRequestableReadyPoint,
   AppComponent,
@@ -605,7 +605,7 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
       //   throw new Error('Query client dehydrated state is empty')
       // }
       const queryClientDehydratedStateInDehydratedStateQuery = queryClientDehydratedState.queries.find(
-        (query) => query.queryKey.at(-1) === 'queryClientDehydratedState',
+        isQueryClientDehydratedStateQuery,
       )
       // if (!queryClientDehydratedStateInDehydratedStateQuery) {
       //   throw new Error(

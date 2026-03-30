@@ -3,7 +3,7 @@ import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0n
 import type { QueryClient } from '@tanstack/react-query'
 import { _point0_env } from './env.js'
 import type { ErrorPoint0 } from './error.js'
-import { _getFakeClient, _ss } from './internals.js'
+import { _ss } from './internals.js'
 import { _defaultLogFn, _ssClientLog } from './logger.js'
 import type { LogFn } from './logger.js'
 import { PointsManager } from './points-manager.js'
@@ -352,7 +352,7 @@ export class ClientPoints<TError extends ErrorPoint0> {
   //   }
   // }
 
-  private readonly getPage = ({
+  readonly getPage = ({
     location,
   }: {
     location: AnyLocation
@@ -558,25 +558,25 @@ export class ClientPoints<TError extends ErrorPoint0> {
     _ssClientLog.set(fromRoot ?? this.manager.log ?? _defaultLogFn)
   }
 
-  static getInstance = <TError extends ErrorPoint0>(): ClientPoints<TError> => {
-    // all this needed only for router, to know which routes and pages exists in current scope
-    // we can not here use env.scope, because for server it can be 'root' while for client it can be 'site' for example
-    // and this code will be executed on server
-    const fakeClient = _getFakeClient()
-    const clientPoints = fakeClient ? fakeClient.points : _ss.__POINT0_CLIENT_POINTS__.getWeak()
-    if (!clientPoints) {
-      if (_point0_env.side.is.server) {
-        throw new Error(
-          'Client points not found if SuperStore. Looks like you call this fn outside of client context. You should call it only in components, hooks, functions, not in top of files without wrappers',
-        )
-      } else {
-        throw new Error(
-          'Client points instance not found. You should call clientPoints.mount() first to mount it on client',
-        )
-      }
-    }
-    return clientPoints as unknown as ClientPoints<TError>
-  }
+  // static getInstance = <TError extends ErrorPoint0>(): ClientPoints<TError> => {
+  //   // all this needed only for router, to know which routes and pages exists in current scope
+  //   // we can not here use env.scope, because for server it can be 'root' while for client it can be 'site' for example
+  //   // and this code will be executed on server
+  //   const fakeClient = _getFakeClient()
+  //   const clientPoints = fakeClient ? fakeClient.points : _ss.__POINT0_CLIENT_POINTS__.getWeak()
+  //   if (!clientPoints) {
+  //     if (_point0_env.side.is.server) {
+  //       throw new Error(
+  //         'Client points not found if SuperStore. Looks like you call this fn outside of client context. You should call it only in components, hooks, functions, not in top of files without wrappers',
+  //       )
+  //     } else {
+  //       throw new Error(
+  //         'Client points instance not found. You should call clientPoints.mount() first to mount it on client',
+  //       )
+  //     }
+  //   }
+  //   return clientPoints as unknown as ClientPoints<TError>
+  // }
 }
 
 export type PagesTreeSourceRecord = {

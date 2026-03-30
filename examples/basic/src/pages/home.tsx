@@ -74,7 +74,9 @@ export const BestIdeaComponent = client
         <p>SLDATE: {typeof data.slDate}</p>
         {/* <p>CLLLL: {typeof data.cllll}</p> */}
         <p>
-          <Link to={routes.idea({ id: data.bestIdea.id })}>More</Link>
+          <Link route="idea" input={{ id: data.bestIdea.id }}>
+            More
+          </Link>
         </p>
       </div>
     )

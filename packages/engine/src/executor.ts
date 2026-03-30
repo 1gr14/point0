@@ -1,6 +1,6 @@
 import * as flat0 from '@devp0nt/flat0'
 import { Route0, type AnyLocation, type AnyRoute } from '@devp0nt/route0'
-import { _ss, _ssRunWithServerStorageState } from '@point0/core'
+import { _ss, _ssRunWithServerStorageState, isQueryClientDehydratedStateQuery } from '@point0/core'
 import type {
   AnyPoint,
   AppComponent,
@@ -928,7 +928,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
 
       if (redirectTask) {
         if (pagePoint) {
-          await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, pageLocation })
+          await this.addPrefetchPageDehydratedStateToQueryClient({
+            pagePoint,
+            pageLocation,
+            redirectTask: redirectTask.redirectTask,
+            ErrorClass: clientPoints.manager.root._Error,
+          })
         }
         await this.prefetchAppPagePointDeep({
           App,
@@ -1009,7 +1014,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         })
       } else {
         if (pagePoint) {
-          await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, pageLocation })
+          await this.addPrefetchPageDehydratedStateToQueryClient({
+            pagePoint,
+            pageLocation,
+            redirectTask: undefined,
+            ErrorClass: clientPoints.manager.root._Error,
+          })
         }
       }
     })
@@ -1033,16 +1043,20 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     if (withPagesDehydratedState) {
       return result
     }
-    result.queries = result.queries.filter((query) => query.queryKey.at(-1) !== 'queryClientDehydratedState')
+    result.queries = result.queries.filter((query) => !isQueryClientDehydratedStateQuery(query))
     return result
   }
 
   async addPrefetchPageDehydratedStateToQueryClient({
     pagePoint,
     pageLocation,
+    redirectTask,
+    ErrorClass,
   }: {
     pagePoint: ReadyPoint
     pageLocation: AnyLocation
+    redirectTask: RedirectTask | undefined
+    ErrorClass: ClassLikeError0<ErrorPoint0>
   }): Promise<void> {
     await this.withServerGlobalState(async () => {
       // do not uncomment it. If page itself has no loaders, it does not mean, that it not has any components which has loaders
@@ -1071,6 +1085,28 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       queryClient.setQueryData(queryKey, {
         dehydratedState: relatedQueriesDehydratedState,
       })
+      if (redirectTask) {
+        // replace last element with 'queryClientDehydratedStateRedirect'
+        const redirectQueryKey = queryKey.slice(0, -1).concat('queryClientDehydratedStateRedirect')
+        queryClient.setQueryDefaults(redirectQueryKey, {
+          ...(restOptions as any),
+        })
+        const redirectError = new ErrorClass(`Redirect to "${redirectTask.to}"`, {
+          redirect: redirectTask,
+        })
+        const redirectQuery =
+          queryClient.getQueryCache().find({ queryKey: redirectQueryKey }) ||
+          queryClient.getQueryCache().build(queryClient, {
+            queryKey: redirectQueryKey,
+            ...(restOptions as any),
+          })
+        redirectQuery.setState({
+          status: 'error',
+          fetchStatus: 'idle',
+          error: redirectError,
+          errorUpdatedAt: Date.now(),
+        })
+      }
     })
   }
 }

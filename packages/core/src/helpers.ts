@@ -1,11 +1,11 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ClientPoints } from './client-points.js'
+import type { ClientPoints } from './client-points.js'
 import type { Effects } from './effects.js'
 import { _point0_env } from './env.js'
 import type { ErrorPoint0 } from './error.js'
-import { _ss } from './internals.js'
-import type { PointsDefinition, PointsManager } from './points-manager.js'
+// import { _getFakeClient, _ss } from './internals.js'
+import type { _ss } from './internals.js'
 import type { Request0 } from './request0.js'
 import { superstore } from './super-store.js'
 import type { RichFetchFn } from './types.js'
@@ -23,7 +23,7 @@ const nativeFetch: RichFetchFn = async (...args) => await fetch(...args)
 
 export const getFetch = (): RichFetchFn => {
   if (_point0_env.side.is.server) {
-    const __POINT0_FETCH_FN__ = _ss.__POINT0_FETCH_FN__.getWeak()
+    const __POINT0_FETCH_FN__ = superstore.getItem('__POINT0_FETCH_FN__')?.getWeak() as RichFetchFn | undefined
     if (!__POINT0_FETCH_FN__) {
       throw new Error(
         `Fetch function in server available only inside loaders, components, etc, do not use it in top level. Or use FakeClient`,
@@ -79,10 +79,13 @@ export const useIsHydrated = (): boolean => {
   if (!_point0_env.side.is.client) {
     return false
   }
-  const [localHydrationFinished, setLocalHydrationFinished] = useState(_ss.__POINT0_HYDRATION_FINISHED__.get())
+  const __POINT0_HYDRATION_FINISHED__ = superstore.getItem(
+    '__POINT0_HYDRATION_FINISHED__',
+  ) as (typeof _ss)['__POINT0_HYDRATION_FINISHED__']
+  const [localHydrationFinished, setLocalHydrationFinished] = useState(__POINT0_HYDRATION_FINISHED__.get())
   useEffect(() => {
     if (!localHydrationFinished) {
-      _ss.__POINT0_HYDRATION_FINISHED__.set(true)
+      __POINT0_HYDRATION_FINISHED__.set(true)
       setLocalHydrationFinished(true)
     }
   }, [])
@@ -107,31 +110,54 @@ export const ClientOnly = <TChildren extends React.ReactNode = null, TFallback e
 }
 
 export const getEffects = (): Effects => {
-  return _ss.__POINT0_EFFECTS__.get()
+  const __POINT0_EFFECTS__ = superstore.getItem('__POINT0_EFFECTS__') as (typeof _ss)['__POINT0_EFFECTS__']
+  return __POINT0_EFFECTS__.get()
 }
 
 export const getEffectsWeak = (): Effects | undefined => {
-  return _ss.__POINT0_EFFECTS__.getWeak()
+  const __POINT0_EFFECTS__ = superstore.getItem('__POINT0_EFFECTS__') as (typeof _ss)['__POINT0_EFFECTS__']
+  return __POINT0_EFFECTS__.getWeak()
 }
 
 export const getRequest = (): Request0 => {
-  return _ss.__POINT0_REQUEST0__.get()
+  const __POINT0_REQUEST0__ = superstore.getItem('__POINT0_REQUEST0__') as (typeof _ss)['__POINT0_REQUEST0__']
+  return __POINT0_REQUEST0__.get()
 }
 
 export const getRequestWeak = (): Request0 | undefined => {
-  return _ss.__POINT0_REQUEST0__.getWeak()
+  const __POINT0_REQUEST0__ = superstore.getItem('__POINT0_REQUEST0__') as (typeof _ss)['__POINT0_REQUEST0__']
+  return __POINT0_REQUEST0__.getWeak()
 }
 
-export const mountClientPoints = <TError extends ErrorPoint0>(
-  points: PointsDefinition<any, TError> | PointsManager<any, any, TError>,
-): ClientPoints<TError> => {
-  return ClientPoints.mount(points)
-}
+// export const mountClientPoints = <TError extends ErrorPoint0>(
+//   points: PointsDefinition<any, TError> | PointsManager<any, any, TError>,
+// ): ClientPoints<TError> => {
+//   return ClientPoints.mount(points)
+// }
 
 export const getClientPoints = <TError extends ErrorPoint0>(): ClientPoints<TError> => {
-  return ClientPoints.getInstance()
+  const fakeClient = superstore.getFakeClient()
+  const __POINT0_CLIENT_POINTS__ = superstore.getItem(
+    '__POINT0_CLIENT_POINTS__',
+  ) as (typeof _ss)['__POINT0_CLIENT_POINTS__']
+  const clientPoints = fakeClient ? fakeClient.points : __POINT0_CLIENT_POINTS__.getWeak()
+  if (!clientPoints) {
+    if (_point0_env.side.is.server) {
+      throw new Error(
+        'Client points not found if SuperStore. Looks like you call this fn outside of client context. You should call it only in components, hooks, functions, not in top of files without wrappers',
+      )
+    } else {
+      throw new Error(
+        'Client points instance not found. You should call clientPoints.mount() first to mount it on client',
+      )
+    }
+  }
+  return clientPoints as unknown as ClientPoints<TError>
 }
 
 export const getQueryClient = (): QueryClient => {
-  return _ss.__POINT0_QUERY_CLIENT__.get()
+  const __POINT0_QUERY_CLIENT__ = superstore.getItem(
+    '__POINT0_QUERY_CLIENT__',
+  ) as (typeof _ss)['__POINT0_QUERY_CLIENT__']
+  return __POINT0_QUERY_CLIENT__.get()
 }

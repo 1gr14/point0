@@ -106,7 +106,11 @@ import {
   useSetNavigationPageState,
   type NavigationPageState,
 } from './navigation.js'
-import { forceFreshDehydratedState, removeRedirectsFromQueryClientCache } from './query-client.js'
+import {
+  deserializeErrorsInDehydratedState,
+  forceFreshDehydratedState,
+  removeRedirectsFromQueryClientCache,
+} from './query-client.js'
 import type { PopularRequestMethod, WideRequestMethod } from './request0.js'
 import { extractKeysBySchemasHelpers } from './schema/utils.js'
 import { superstore } from './super-store.js'
@@ -130,6 +134,7 @@ import type {
   AssertUsualInputSchemaOnly,
   BasePoint,
   ClientExecuteAction,
+  ClientLoaderFn,
   Ctx,
   CtxExposedKeys,
   CtxFn,
@@ -162,6 +167,7 @@ import type {
   IfAnyThenElse,
   IfNeverThen,
   Infer,
+  InferClientLoaderFnOutput,
   InferCtxFnOutputCtxAppend,
   InferLoaderFnOutput,
   InputParsed,
@@ -171,8 +177,8 @@ import type {
   IsFinalInputOptional,
   IsUndefined,
   LayoutPoint,
-  LoaderOutput,
   LoaderFn,
+  LoaderOutput,
   MapperOutput,
   MergeRecordValidationSchemas,
   MiddlewareFn,
@@ -236,8 +242,6 @@ import type {
   UsePointQueryResult,
   UseQueryOptions,
   WithError,
-  ClientLoaderFn,
-  InferClientLoaderFnOutput,
 } from './types.js'
 import {
   blankDataTransformerExtended,
@@ -3126,8 +3130,8 @@ export class Point0<
     >,
   >(
     withFn: TWithFn, // withFn: WithFn<
-    //   TParamsSchema,
-  ) //   MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+    //   MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+  ) //   TParamsSchema,
   //   TSearchSchema,
   //   TClientInputSchema,
   //   TInnerProps,
@@ -8259,6 +8263,19 @@ export class Point0<
       const json = await res.json()
       const data = fetchOptions.transform ? (this._getTransformer().deserialize(json) ?? json) : json
       if (res.ok) {
+        if (
+          _outputType === 'queryClientDehydratedState' &&
+          data &&
+          typeof data === 'object' &&
+          'dehydratedState' in data &&
+          typeof data.dehydratedState === 'object' &&
+          data.dehydratedState !== null
+        ) {
+          const originalDehydratedState = data.dehydratedState as DehydratedState
+          const freshDehydratedState = forceFreshDehydratedState(originalDehydratedState)
+          const dehydratedState = deserializeErrorsInDehydratedState(freshDehydratedState, this._Error)
+          data.dehydratedState = dehydratedState
+        }
         // if (res.headers.get('X-Point0-Redirect') === 'true') {
         //   const redirect = RedirectTask.from(json)
         //   const result = {
@@ -8281,7 +8298,7 @@ export class Point0<
           error: undefined,
           ...(res.headers.get('X-Point0-Redirect') === 'true'
             ? {
-                redirect: RedirectTask.from(json),
+                redirect: RedirectTask.from(data),
                 data: undefined,
                 output: undefined,
               }
@@ -11388,7 +11405,7 @@ export class Point0<
             const Redirect = getNavigationHelpers().Redirect
             return React.createElement(Redirect, {
               task: redirectTask,
-              before: () => {
+              after: () => {
                 removeRedirectsFromQueryClientCache(_ss.__POINT0_QUERY_CLIENT__.get(), redirectTask.to)
               },
             })
@@ -11495,9 +11512,8 @@ export class Point0<
         const Redirect = getNavigationHelpers().Redirect
         return React.createElement(Redirect, {
           task: redirectTask,
-          before: (...args) => {
+          after: () => {
             removeRedirectsFromQueryClientCache(_ss.__POINT0_QUERY_CLIENT__.get(), redirectTask.to)
-            void redirectTask.options?.before?.(...args)
           },
         })
       } else {

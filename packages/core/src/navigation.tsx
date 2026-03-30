@@ -19,6 +19,8 @@ import { _ss } from './internals.js'
 import type { IfAnyThenElse, PrefetchPagePolicy } from './types.js'
 import { generateId } from './utils.js'
 import type { RedirectTask } from './redirect.js'
+import { findRedirectTaskInQueryClientCache, removeRedirectsFromQueryClientCache } from './query-client.js'
+import { log } from './logger.js'
 
 export type NavigationCallback<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> = (
   to: string,
@@ -36,15 +38,21 @@ export type SpecialLinkOptions<TAdapterNavigateOptions extends AdapterNavigateOp
   before?: NavigationCallback<TAdapterNavigateOptions>
   after?: NavigationCallback<TAdapterNavigateOptions>
 }
-export type SpecialLinkOptionsInDataAttributes<
-  TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions,
-> = {
-  ['data-prefetch-on-hover']?: PrefetchPagePolicy
-  ['data-prefetch']?: PrefetchPagePolicy
-  ['data-prefetch-on-navigate']?: PrefetchPagePolicy
-  ['data-before']?: NavigationCallback<TAdapterNavigateOptions>
-  ['data-after']?: NavigationCallback<TAdapterNavigateOptions>
+export type SpecialRedirectOptions = {
+  status?: number
 }
+// export type SpecialLinkOptionsInDataAttributes<
+//   TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions,
+// > = {
+//   ['data-prefetch-on-hover']?: PrefetchPagePolicy
+//   ['data-prefetch']?: PrefetchPagePolicy
+//   ['data-prefetch-on-navigate']?: PrefetchPagePolicy
+//   ['data-before']?: NavigationCallback<TAdapterNavigateOptions>
+//   ['data-after']?: NavigationCallback<TAdapterNavigateOptions>
+// }
+// export type SpecialRedirectOptionsInDataAttributes = {
+//   ['data-status']?: number
+// }
 
 export type AdapterNavigateOptions = Record<string, unknown>
 export type AdapterNavigateFn<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> = (
@@ -56,9 +64,7 @@ export type NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn extends Adapte
   Parameters<TAdapterNavigateFn>[1]
 >
 export type RedirectOptionsByAdapterNavigateFn<TAdapterNavigateFn extends AdapterNavigateFn> =
-  NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> & {
-    status?: number
-  }
+  NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> & SpecialRedirectOptions
 
 export type NavigateHelper<
   TRoutes extends RoutesPretty,
@@ -131,7 +137,7 @@ export type RedirectComponentProps<TRoutes extends RoutesPretty, TAdapterNavigat
       SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>)
 export type RedirectComponent<TRoutes extends RoutesPretty, TAdapterNavigateFn extends AdapterNavigateFn> = (
   props: RedirectComponentProps<TRoutes, TAdapterNavigateFn>,
-) => React.ReactElement
+) => React.ReactElement | null
 
 export type UseLocationOptions = { addHash?: boolean }
 export type UseLocationFn = (options?: UseLocationOptions) => ExactLocation | UnknownLocation
@@ -522,6 +528,15 @@ export const useIsNavigating = (): boolean => {
   return isNavigating
 }
 
+export const specialNavigationOptionsSymbols = {
+  prefetchOnHover: Symbol('prefetchOnHover'),
+  prefetch: Symbol('prefetch'),
+  prefetchOnNavigate: Symbol('prefetchOnNavigate'),
+  before: Symbol('before'),
+  after: Symbol('after'),
+  status: Symbol('status'),
+}
+
 export type NavigateWithTransitionsReturnType<
   TErrorClass extends ClassLikeError0<ErrorPoint0> = ClassLikeError0<ErrorPoint0>,
 > = Promise<{ location: AnyLocation; error: InstanceType<TErrorClass> | undefined }>
@@ -557,25 +572,58 @@ export async function navigateWithTransitions<
   helpers.setNextLocation(location)
   helpers.setTransitionStatus('preparing')
   try {
+    const queryClient = _ss.__POINT0_QUERY_CLIENT__.getWeak()
+    const tryTriggerRedirect = () => {
+      const redirectTask = queryClient ? findRedirectTaskInQueryClientCache(queryClient, to) : undefined
+      if (redirectTask && queryClient) {
+        void helpers.navigate.to(redirectTask.to, {
+          ...redirectTask.options,
+          after: (...args) => {
+            void options?.after?.(...args)
+            removeRedirectsFromQueryClientCache(queryClient, redirectTask.to)
+          },
+        })
+        return {
+          location,
+          error: new ErrorClass(
+            'Redirect task found in query client cache, will be triggered now',
+          ) as InstanceType<TErrorClass>,
+        }
+      }
+      return undefined
+    }
     void options?.before?.(to, options)
+    const redirectResult1 = tryTriggerRedirect()
+    if (redirectResult1) {
+      return redirectResult1
+    }
     await clientPoints.prefetchPage({
       location,
       policy: options?.prefetch,
       trigger: 'navigate',
     })
+    const redirectResult2 = tryTriggerRedirect()
+    if (redirectResult2) {
+      return redirectResult2
+    }
     if (navigateId !== _ss.__POINT0_CURRENT_NAVIGATE_ID__.get()) {
-      return { location, error: new Error('Another navigate has been started') as InstanceType<TErrorClass> }
+      return { location, error: new ErrorClass('Another navigate has been started') as InstanceType<TErrorClass> }
     }
     helpers.setTransitionStatus('transitioning')
     await navigate()
     void options?.after?.(to, options)
     helpers.setTransitionStatus('idle')
     helpers.setNextLocation(null)
-    _ss.__POINT0_CURRENT_NAVIGATE_ID__.set(undefined)
     return { location, error: undefined }
   } catch (error) {
+    log({
+      level: 'error',
+      category: ['navigation'],
+      message: 'Error during navigation',
+      error,
+    })
     if (navigateId !== _ss.__POINT0_CURRENT_NAVIGATE_ID__.get()) {
-      return { location, error: new Error('Another navigate has been started') as InstanceType<TErrorClass> }
+      return { location, error: new ErrorClass('Another navigate has been started') as InstanceType<TErrorClass> }
     }
     const error0 = ErrorClass.from(error) as InstanceType<TErrorClass>
     helpers.setTransitionError(error0)
@@ -584,7 +632,6 @@ export async function navigateWithTransitions<
     void options?.after?.(to, options)
     helpers.setTransitionStatus('idle')
     helpers.setNextLocation(null)
-    _ss.__POINT0_CURRENT_NAVIGATE_ID__.set(undefined)
     return { location, error: error0 }
   }
 }

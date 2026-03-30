@@ -78,7 +78,13 @@ export class PointsManager<
   private static readonly notifyAboutDuplicates = (collection: NormalizedPointsCollection, scope?: PointsScope) => {
     const checks: Array<{ first: (typeof collection)[number]; duplicates: Array<(typeof collection)[number]> }> = []
     for (const record of collection) {
-      const check = checks.find((d) => d.first.name === record.name && d.first.type === record.type)
+      const check = checks.find(
+        (d) =>
+          d.first.name === record.name &&
+          d.first.type === record.type &&
+          ((!(d as any).first.point.scope && !(record as any).point.scope) ||
+            (d as any).first.point.scope === (record as any).point.scope),
+      )
       if (!check) {
         checks.push({ first: record, duplicates: [] })
       } else {

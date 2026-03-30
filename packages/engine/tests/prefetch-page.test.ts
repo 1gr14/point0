@@ -39,6 +39,7 @@ export const layout = root.lets('layout', 'layout_${toMark(polh, pon)}', '/${toM
         <Link to="/${mark}/with-both" onClick={(e) => { e.preventDefault(); navigate.to('/${mark}/with-both') }}>/with-both</Link>
         <Link to="/${mark}/with-related-query">/with-related-query</Link>
         <Link to="/${mark}/with-mounted-query">/with-mounted-query</Link>
+        <Link to="/${mark}/with-redirect-from">/with-redirect-from</Link>
         <NavLink to="/${mark}/with-none">/with-none</NavLink>
       </nav>
       <hr />
@@ -109,6 +110,28 @@ export const withMountedQueryPage = layout.lets('page', 'withMountedQuery_${mark
   .page(({ data }) => <div id="with-mounted-query">{data.x}</div>)
 `
 
+const pageWithRedirectFromTsx = (mark: string) => `import { layout } from './layout.js'
+import { redirect } from '../lib/navigate.js'
+export const withRedirectFromPage = layout.lets('page', 'withRedirectFrom_${mark}', 'with-redirect-from')
+  .loader(async () => {
+    if (Math.random() + 1) {
+      throw redirect.to('/${mark}/with-redirect-to')
+    }
+    await new Promise((r) => setTimeout(r, ${loaderDuration / 2}))
+    return { x: 1 }
+  })
+  .page(({ data }) => <div id="with-redirect-from">{data.x}</div>)
+`
+
+const pageWithRedirectToTsx = (mark: string) => `import { layout } from './layout.js'
+export const withRedirectToPage = layout.lets('page', 'withRedirectTo_${mark}', 'with-redirect-to')
+  .loader(async () => {
+    await new Promise((r) => setTimeout(r, ${loaderDuration / 2}))
+    return { x: 1 }
+  })
+  .page(({ data }) => <div id="with-redirect-to">{data.x}</div>)
+`
+
 const pageWithNoneTsx = (mark: string) => `import { layout } from './layout.js'
 export const withNonePage = layout.lets('page', 'withNone_${mark}', '/with-none').page(() => <div id="with-none">none</div>)
 `
@@ -128,6 +151,8 @@ async function writePages(tp: TestProjectOneClient) {
       await tp.write(`src/${mark}/with-related-query.tsx`, pageWithRelatedQueryTsx(mark))
       await tp.write(`src/${mark}/with-mounted-query.tsx`, pageWithMountedQueryTsx(mark))
       await tp.write(`src/${mark}/with-none.tsx`, pageWithNoneTsx(mark))
+      await tp.write(`src/${mark}/with-redirect-from.tsx`, pageWithRedirectFromTsx(mark))
+      await tp.write(`src/${mark}/with-redirect-to.tsx`, pageWithRedirectToTsx(mark))
     }
   }
 }
@@ -162,6 +187,9 @@ async function navigatePages(
   await click('/with-mounted-query')
   await page.waitContent('#with-mounted-query')
 
+  await click('/with-redirect-from')
+  await page.waitContent('#with-redirect-to')
+
   await click('/with-none')
   await page.waitContent('#with-none')
 
@@ -182,6 +210,8 @@ const getRequestsTale = (page: PlaywrightPage, mark: string) => {
     .replaceAll(`with-none`, 'withNone')
     .replaceAll(`related-query`, 'relatedQuery')
     .replaceAll(`mounted-query`, 'mountedQuery')
+    .replaceAll(`with-redirect-from`, 'withRedirectFrom')
+    .replaceAll(`with-redirect-to`, 'withRedirectTo')
   // -polh-false-pon-false → ''
 }
 
@@ -197,6 +227,7 @@ const getTale = (page: PlaywrightPage, mark: string) => {
     a: /with-both
     a: /with-related-query
     a: /with-mounted-query
+    a: /with-redirect-from
     a: /with-none
   hr:`,
       '',
@@ -274,6 +305,8 @@ describe('prefetch-page', () => {
 
   const modes = ['dev', 'build']
   const bundlers = ['bun', 'vite']
+  // const modes = ['dev']
+  // const bundlers = ['bun']
 
   describe.each(bundlers as ['bun', 'vite'])('%s', (bundler) => {
     describe.each(modes as ['dev', 'build'])('%s', (mode) => {
@@ -330,6 +363,15 @@ describe('prefetch-page', () => {
             
             #with-mounted-query: 1
             
+          /with-redirect-from
+            div: Loading...
+            
+            
+          /with-redirect-to
+            div: Loading...
+            
+            #with-redirect-to: 1
+            
           /with-none
             #with-none: none
             "
@@ -340,7 +382,9 @@ describe('prefetch-page', () => {
           root.page.withServer (data)
           root.page.withBoth (data)
           root.query.relatedQuery (data)
-          root.query.mountedQuery (data)"
+          root.query.mountedQuery (data)
+          root.page.withRedirectFrom (data)
+          root.page.withRedirectTo (data)"
         `)
           }),
           {
@@ -382,6 +426,15 @@ describe('prefetch-page', () => {
               
               #with-mounted-query: 1
               
+            /with-redirect-from
+              div: Loading...
+              
+              
+            /with-redirect-to
+              div: Loading...
+              
+              #with-redirect-to: 1
+              
             /with-none
               #with-none: none
               "
@@ -392,7 +445,9 @@ describe('prefetch-page', () => {
             root.page.withServer (data)
             root.page.withBoth (data)
             root.query.relatedQuery (data)
-            root.query.mountedQuery (data)"
+            root.query.mountedQuery (data)
+            root.page.withRedirectFrom (data)
+            root.page.withRedirectTo (data)"
           `)
           }),
           {
@@ -424,6 +479,9 @@ describe('prefetch-page', () => {
               /with-mounted-query
                 #with-mounted-query: 1
                 
+              /with-redirect-to
+                #with-redirect-to: 1
+                
               /with-none
                 #with-none: none
                 "
@@ -436,6 +494,8 @@ describe('prefetch-page', () => {
               root.page.withBoth (queryClientDehydratedState)
               root.page.withRelatedQuery (queryClientDehydratedState)
               root.page.withMountedQuery (queryClientDehydratedState)
+              root.page.withRedirectFrom (queryClientDehydratedState)
+              root.page.withRedirectTo (queryClientDehydratedState)
               root.page.withNone (queryClientDehydratedState)"
             `)
           }),
@@ -468,6 +528,9 @@ describe('prefetch-page', () => {
               /with-mounted-query
                 #with-mounted-query: 1
                 
+              /with-redirect-to
+                #with-redirect-to: 1
+                
               /with-none
                 #with-none: none
                 "
@@ -480,6 +543,8 @@ describe('prefetch-page', () => {
               root.page.withBoth (queryClientDehydratedState)
               root.page.withRelatedQuery (queryClientDehydratedState)
               root.page.withMountedQuery (queryClientDehydratedState)
+              root.page.withRedirectFrom (queryClientDehydratedState)
+              root.page.withRedirectTo (queryClientDehydratedState)
               root.page.withNone (queryClientDehydratedState)"
             `)
           }),
@@ -572,6 +637,9 @@ describe('prefetch-page', () => {
               /with-mounted-query
                 #with-mounted-query: 1
                 
+              /with-redirect-to
+                #with-redirect-to: 1
+                
               /with-none
                 #with-none: none
                 "
@@ -584,6 +652,7 @@ describe('prefetch-page', () => {
               root.page.withBoth (queryClientDehydratedState)
               root.page.withRelatedQuery (queryClientDehydratedState)
               root.page.withMountedQuery (queryClientDehydratedState)
+              root.page.withRedirectFrom (queryClientDehydratedState)
               root.page.withNone (queryClientDehydratedState)"
             `)
           }),
@@ -616,6 +685,9 @@ describe('prefetch-page', () => {
               /with-mounted-query
                 #with-mounted-query: 1
                 
+              /with-redirect-to
+                #with-redirect-to: 1
+                
               /with-none
                 #with-none: none
                 "
@@ -628,6 +700,8 @@ describe('prefetch-page', () => {
               root.page.withBoth (queryClientDehydratedState)
               root.page.withRelatedQuery (queryClientDehydratedState)
               root.page.withMountedQuery (queryClientDehydratedState)
+              root.page.withRedirectFrom (queryClientDehydratedState)
+              root.page.withRedirectTo (queryClientDehydratedState)
               root.page.withNone (queryClientDehydratedState)"
             `)
           }),
@@ -660,6 +734,9 @@ describe('prefetch-page', () => {
               /with-mounted-query
                 #with-mounted-query: 1
                 
+              /with-redirect-to
+                #with-redirect-to: 1
+                
               /with-none
                 #with-none: none
                 "
@@ -672,6 +749,8 @@ describe('prefetch-page', () => {
               root.page.withBoth (queryClientDehydratedState)
               root.page.withRelatedQuery (queryClientDehydratedState)
               root.page.withMountedQuery (queryClientDehydratedState)
+              root.page.withRedirectFrom (queryClientDehydratedState)
+              root.page.withRedirectTo (queryClientDehydratedState)
               root.page.withNone (queryClientDehydratedState)"
             `)
           }),
@@ -736,6 +815,15 @@ describe('prefetch-page', () => {
               
               #with-mounted-query: 1
               
+            /with-redirect-from
+              div: Loading...
+              
+              
+            /with-redirect-to
+              div: Loading...
+              
+              #with-redirect-to: 1
+              
             /with-none
               #with-none: none
               "
@@ -746,7 +834,9 @@ describe('prefetch-page', () => {
             root.page.withServer (data)
             root.page.withBoth (data)
             root.query.relatedQuery (data)
-            root.query.mountedQuery (data)"
+            root.query.mountedQuery (data)
+            root.page.withRedirectFrom (data)
+            root.page.withRedirectTo (data)"
           `)
           }),
           {
@@ -790,6 +880,15 @@ describe('prefetch-page', () => {
               
               #with-mounted-query: 1
               
+            /with-redirect-from
+              div: Loading...
+              
+              
+            /with-redirect-to
+              div: Loading...
+              
+              #with-redirect-to: 1
+              
             /with-none
               #with-none: none
               "
@@ -800,7 +899,9 @@ describe('prefetch-page', () => {
             root.page.withServer (data)
             root.page.withBoth (data)
             root.query.relatedQuery (data)
-            root.query.mountedQuery (data)"
+            root.query.mountedQuery (data)
+            root.page.withRedirectFrom (data)
+            root.page.withRedirectTo (data)"
           `)
           }),
           {
@@ -838,6 +939,11 @@ describe('prefetch-page', () => {
                 
                 #with-mounted-query: 1
                 
+              /with-redirect-from
+                
+              /with-redirect-to
+                #with-redirect-to: 1
+                
               /with-none
                 #with-none: none
                 "
@@ -848,7 +954,9 @@ describe('prefetch-page', () => {
               root.page.withServer (data)
               root.page.withBoth (data)
               root.query.relatedQuery (data)
-              root.query.mountedQuery (data)"
+              root.query.mountedQuery (data)
+              root.page.withRedirectFrom (data)
+              root.page.withRedirectTo (data)"
             `)
           }),
           {
@@ -884,6 +992,11 @@ describe('prefetch-page', () => {
                 
                 #with-mounted-query: 1
                 
+              /with-redirect-from
+                
+              /with-redirect-to
+                #with-redirect-to: 1
+                
               /with-none
                 #with-none: none
                 "
@@ -894,7 +1007,9 @@ describe('prefetch-page', () => {
               root.page.withServer (data)
               root.page.withBoth (data)
               root.query.relatedQuery (data)
-              root.query.mountedQuery (data)"
+              root.query.mountedQuery (data)
+              root.page.withRedirectFrom (data)
+              root.page.withRedirectTo (data)"
             `)
           }),
           {
@@ -938,6 +1053,13 @@ describe('prefetch-page', () => {
                 
                 #with-mounted-query: 1
                 
+              /with-redirect-from
+                
+              /with-redirect-to
+                div: Loading...
+                
+                #with-redirect-to: 1
+                
               /with-none
                 #with-none: none
                 "
@@ -948,7 +1070,9 @@ describe('prefetch-page', () => {
               root.page.withServer (data)
               root.page.withBoth (data)
               root.query.relatedQuery (data)
-              root.query.mountedQuery (data)"
+              root.query.mountedQuery (data)
+              root.page.withRedirectFrom (data)
+              root.page.withRedirectTo (data)"
             `)
           }),
           {
@@ -984,6 +1108,13 @@ describe('prefetch-page', () => {
                 
                 #with-mounted-query: 1
                 
+              /with-redirect-from
+                
+              /with-redirect-to
+                div: Loading...
+                
+                #with-redirect-to: 1
+                
               /with-none
                 #with-none: none
                 "
@@ -994,7 +1125,9 @@ describe('prefetch-page', () => {
               root.page.withServer (data)
               root.page.withBoth (data)
               root.query.relatedQuery (data)
-              root.query.mountedQuery (data)"
+              root.query.mountedQuery (data)
+              root.page.withRedirectFrom (data)
+              root.page.withRedirectTo (data)"
             `)
           }),
           {
@@ -1030,6 +1163,11 @@ describe('prefetch-page', () => {
                 
                 #with-mounted-query: 1
                 
+              /with-redirect-from
+                
+              /with-redirect-to
+                #with-redirect-to: 1
+                
               /with-none
                 #with-none: none
                 "
@@ -1040,7 +1178,10 @@ describe('prefetch-page', () => {
             root.page.withServer (data)
             root.page.withBoth (data)
             root.query.relatedQuery (data)
-            root.query.mountedQuery (data)"
+            root.query.mountedQuery (data)
+            root.page.withRedirectFrom (data)
+            root.page.withRedirectFrom (data)
+            root.page.withRedirectTo (data)"
           `)
           }),
           {
@@ -1076,6 +1217,11 @@ describe('prefetch-page', () => {
                 
                 #with-mounted-query: 1
                 
+              /with-redirect-from
+                
+              /with-redirect-to
+                #with-redirect-to: 1
+                
               /with-none
                 #with-none: none
                 "
@@ -1086,7 +1232,10 @@ describe('prefetch-page', () => {
               root.page.withServer (data)
               root.page.withBoth (data)
               root.query.relatedQuery (data)
-              root.query.mountedQuery (data)"
+              root.query.mountedQuery (data)
+              root.page.withRedirectFrom (data)
+              root.page.withRedirectFrom (data)
+              root.page.withRedirectTo (data)"
             `)
           }),
           {

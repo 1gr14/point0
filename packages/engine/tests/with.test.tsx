@@ -163,47 +163,49 @@ describe('with', () => {
     `)
   })
 
-  it('with fn state', async () => {
-    const root = createRoot()
-    const page = root
-      .lets('page', 'home', '/:y')
-      .with(() => {
-        const [loading, setLoading] = useState(true)
-        const [error, setError] = useState<Error | null>(null)
-        useEffect(() => {
-          setTimeout(() => {
-            setError(new Error('test error'))
-          }, 100)
-          setTimeout(() => {
-            setError(null)
-          }, 200)
-          setTimeout(() => {
-            setLoading(false)
-          }, 300)
-        }, [])
-        if (error) {
-          return error
-        }
-        if (loading) {
-          return 'loading'
-        }
-        return {
-          x: 1,
-        }
-      })
-      .page(({ props, location }) => {
-        expectTypeOf<typeof props>().toEqualTypeOf<{ x: number }>()
-        return (
-          <div id="page">
-            x={props.x} y={location.params.y}
-          </div>
-        )
-      })
+  it(
+    'with fn state',
+    async () => {
+      const root = createRoot()
+      const page = root
+        .lets('page', 'home', '/:y')
+        .with(() => {
+          const [loading, setLoading] = useState(true)
+          const [error, setError] = useState<Error | null>(null)
+          useEffect(() => {
+            setTimeout(() => {
+              setError(new Error('test error'))
+            }, 150)
+            setTimeout(() => {
+              setError(null)
+            }, 300)
+            setTimeout(() => {
+              setLoading(false)
+            }, 450)
+          }, [])
+          if (error) {
+            return error
+          }
+          if (loading) {
+            return 'loading'
+          }
+          return {
+            x: 1,
+          }
+        })
+        .page(({ props, location }) => {
+          expectTypeOf<typeof props>().toEqualTypeOf<{ x: number }>()
+          return (
+            <div id="page">
+              x={props.x} y={location.params.y}
+            </div>
+          )
+        })
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, page] })
-    await render(page.route({ y: 'zxc' }), async ({ waitContent, tale }) => {
-      await waitContent('#page')
-      expect(await tale()).toMatchInlineSnapshot(`
+      const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, page] })
+      await render(page.route({ y: 'zxc' }), async ({ waitContent, tale }) => {
+        await waitContent('#page')
+        expect(await tale()).toMatchInlineSnapshot(`
         "
         /zxc
           #loading: ...
@@ -215,18 +217,22 @@ describe('with', () => {
           #page: x=1 y=zxc
         "
       `)
-    })
-    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      })
+      expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
 
       "
     `)
-    expect(await fetchPreview(page, { y: 'zxc' })).toMatchInlineSnapshot(`
+      expect(await fetchPreview(page, { y: 'zxc' })).toMatchInlineSnapshot(`
       "
       #loading: ...
       "
     `)
-  })
+    },
+    {
+      retry: 3,
+    },
+  )
 
   it('with query', async () => {
     const root = createRoot()

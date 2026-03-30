@@ -1,8 +1,8 @@
+import { Routes } from '@devp0nt/route0'
 import { Point0 } from '@point0/core'
+import { createNavigation } from '@point0/react-dom/router'
 import { describe, expect, it } from 'bun:test'
 import { createTestThings } from './utils/internal-testing.js'
-import { Routes } from '@devp0nt/route0'
-import { createNavigation } from '@point0/react-dom/router'
 
 describe('redirect', () => {
   const createRoot = () =>
@@ -62,6 +62,13 @@ describe('redirect', () => {
         #page2: content
         "
       `)
+      const fetchRecords = await fetchRecorder.waitFinishedResults()
+      expect(fetchRecords.map((r) => r.response.status)).toMatchInlineSnapshot(`
+        [
+          302,
+          200,
+        ]
+      `)
       expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
         page.page1 (client) (page) < {}
@@ -75,7 +82,7 @@ describe('redirect', () => {
       const page1 = root.lets('page', 'page1', '/x/:id').page(({ params }) => (
         <div id="page1">
           {params.id}
-          <Redirect route="page2" input={{ id: '222' }} />
+          <Redirect route="page2" status={308} input={{ id: '222' }} />
         </div>
       ))
       const page2 = root.lets('page', 'page2', '/y/:id').page(({ params }) => <div id="page2">{params.id}</div>)
@@ -111,6 +118,13 @@ describe('redirect', () => {
         "
         #page2: 222
         "
+      `)
+      const fetchRecords = await fetchRecorder.waitFinishedResults()
+      expect(fetchRecords.map((r) => r.response.status)).toMatchInlineSnapshot(`
+        [
+          308,
+          200,
+        ]
       `)
       expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
@@ -505,7 +519,7 @@ describe('redirect', () => {
       const page1 = root
         .lets('page', 'page1', '/1')
         .loader(() => {
-          throw redirect('page2')
+          throw redirect.to('/2')
         })
         .page(() => <div id="page1">content</div>)
       const page2 = root.lets('page', 'page2', '/2').page(() => <div id="page2">content</div>)
@@ -526,13 +540,14 @@ describe('redirect', () => {
             #loading: ...
 
           /2
+            (Empty)
+
             #page2: content
           "
         `)
       })
       expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
-        page.page1 (client) < {}
         page.page1 (client) < {}
         "
       `)
@@ -587,13 +602,14 @@ describe('redirect', () => {
             #loading: ...
 
           /y/222?q=qwe
+            (Empty)
+
             #page2: 222, qwe
           "
         `)
       })
       expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
-        page.page1 (client) < {"q":"zxc","id":"111"}
         page.page1 (client) < {"q":"zxc","id":"111"}
         "
       `)
@@ -650,13 +666,14 @@ describe('redirect', () => {
             #loading: ...
 
           /2
+            (Empty)
+
             #page2: content
           "
         `)
       })
       expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
-        page.page1 (client) < {}
         page.page1 (client) < {}
         "
       `)
@@ -712,13 +729,14 @@ describe('redirect', () => {
             #loading: ...
 
           /y/222?q=qwe
+            (Empty)
+
             #page2: 222, qwe
           "
         `)
       })
       expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
-        page.page1 (client) < {"q":"zxc","id":"111"}
         page.page1 (client) < {"q":"zxc","id":"111"}
         "
       `)
@@ -767,6 +785,8 @@ describe('redirect', () => {
             #loading: ...
 
           /2
+            (Empty)
+
             #page2: content
           "
         `)
@@ -812,6 +832,8 @@ describe('redirect', () => {
             #loading: ...
 
           /y/222?q=qwe
+            (Empty)
+
             #page2: 222, qwe
           "
         `)
