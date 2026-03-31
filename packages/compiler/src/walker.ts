@@ -1,9 +1,11 @@
 import type traverseType from '@babel/traverse'
 import type { NodePath } from '@babel/traverse'
 import traverseModule from '@babel/traverse'
+import * as t from '@babel/types'
 import type { Node } from '@babel/types'
 import type { AnyRoute, RoutesPretty } from '@devp0nt/route0'
 import type { ReadyPointType } from '@point0/core'
+import * as nodePath from 'node:path'
 import { CompilerFile } from './file.js'
 import { ACTION_METHODS, CompilerPoint } from './point.js'
 import { FileResolver } from './resolver.js'
@@ -187,6 +189,9 @@ export class Walker {
         file.allPointsWasCollected = true
         return { points, errors, file, ok: true }
       }
+
+      const desugarResult = this.desugarLetsTypeCalls({ file })
+      errors.push(...desugarResult.errors)
 
       // We need to collect all lets() calls first, then process them async
       const letsNodePaths: Array<NodePath<Node>> = []
@@ -708,6 +713,122 @@ export class Walker {
 
   //   return isImportedFromPackage
   // }
+
+  private desugarLetsTypeCalls({ file }: { file: CompilerFile<true> }): { errors: unknown[] } {
+    const errors: unknown[] = []
+    try {
+      traverse(file.ast, {
+        CallExpression: (p) => {
+          if (!this.isLetsTypeSugarCall({ node: p.node })) {
+            return
+          }
+          const callee = p.node.callee
+          if (
+            !t.isMemberExpression(callee) ||
+            !t.isMemberExpression(callee.object) ||
+            !t.isIdentifier(callee.property)
+          ) {
+            return
+          }
+          const pointType = POINT_METHOD_TO_TYPE_MAP[callee.property.name] as ReadyPointType | undefined
+          if (!pointType) {
+            return
+          }
+
+          const pointName = this.inferPointNameFromContext({ type: pointType, callPath: p, file })
+          const letsCall = t.callExpression(t.memberExpression(callee.object.object, t.identifier('lets')), [
+            t.stringLiteral(pointType),
+            t.stringLiteral(pointName),
+            ...p.node.arguments,
+          ])
+          letsCall.loc = p.node.loc
+          letsCall.start = p.node.start
+          letsCall.end = p.node.end
+          p.replaceWith(letsCall)
+          file.modified = true
+        },
+      })
+      return { errors }
+    } catch (e) {
+      errors.push(e)
+      return { errors }
+    }
+  }
+
+  private isLetsTypeSugarCall({ node }: { node: Node }): boolean {
+    if (!t.isCallExpression(node)) return false
+    const callee = node.callee
+    if (!t.isMemberExpression(callee)) return false
+    if (!t.isIdentifier(callee.property) || callee.computed) return false
+    if (!t.isMemberExpression(callee.object)) return false
+    if (!t.isIdentifier(callee.object.property) || callee.object.computed) return false
+    if (callee.object.property.name !== 'lets') return false
+    return callee.property.name in POINT_METHOD_TO_TYPE_MAP
+  }
+
+  private inferPointNameFromContext({
+    type,
+    callPath,
+    file,
+  }: {
+    type: ReadyPointType
+    callPath: NodePath<Node>
+    file: CompilerFile<true>
+  }): string {
+    const varDecl = callPath.findParent((p) => p.node.type === 'VariableDeclarator')
+    if (varDecl?.node.type === 'VariableDeclarator' && varDecl.node.id.type === 'Identifier') {
+      const nameFromVariable = this.removeTypeSuffixFromVariableName({
+        variableName: varDecl.node.id.name,
+        pointType: type,
+      })
+      if (nameFromVariable.length > 0) {
+        return nameFromVariable
+      }
+      if (type === 'root') {
+        return 'root'
+      }
+      return this.inferNameFromFilePath({ absPath: file.abs })
+    }
+
+    const defaultDecl = callPath.findParent((p) => p.node.type === 'ExportDefaultDeclaration')
+    if (defaultDecl) {
+      return this.inferNameFromFilePath({ absPath: file.abs })
+    }
+
+    return this.inferNameFromFilePath({ absPath: file.abs })
+  }
+
+  private inferNameFromFilePath({ absPath }: { absPath: string }): string {
+    const parsed = nodePath.parse(absPath)
+    if (parsed.name === 'index') {
+      return nodePath.basename(parsed.dir)
+    }
+    return parsed.name
+  }
+
+  private removeTypeSuffixFromVariableName({
+    variableName,
+    pointType,
+  }: {
+    variableName: string
+    pointType: ReadyPointType
+  }): string {
+    const capitalizedType = pointType.slice(0, 1).toUpperCase() + pointType.slice(1)
+    const snakeType = pointType.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`)
+    const candidates = [`_${snakeType}`, `_${pointType}`, capitalizedType, pointType]
+    if (pointType === 'infiniteQuery') {
+      candidates.push('Query', '_query')
+    }
+    const sortedCandidates = candidates.sort((a, b) => b.length - a.length)
+    for (const candidate of sortedCandidates) {
+      if (!variableName.endsWith(candidate)) {
+        continue
+      }
+      const candidateFree = variableName.slice(0, variableName.length - candidate.length)
+      return candidateFree
+    }
+    return variableName
+  }
 
   // Helper: Check if a node is a .lets() call expression
   // Example: isLetsCallExpression({ node: Point0.lets('root', 'myroot') }) → true

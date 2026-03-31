@@ -1,0 +1,50 @@
+Now we have all points defined like
+
+Point0.lets('%POINT_TYPE%', '%POINT_NAME%', ...maybeOtherArgs)
+
+or
+
+anotherPoint.lets('%POINT_TYPE%', '%POINT_NAME%', ...maybeOtherArgs)
+
+only exception is action points, they can be defined like
+
+anotherPoint.lets('%METHOD%', '%ROUTE%', ...maybeOtherArgs)
+
+but it does not metter.
+
+
+I want add ability (not remove previouse behaviour, but add one more)
+
+Allow to 
+
+export const ideaPage = anotherPoint.lets.page('/idea/:id')
+export const generalLayout = anotherPoint.lets.layout()
+export const ideaLayout = generalLayout.lets.layout('/idea')
+export const mainRoot = Point0.lets.root()
+
+This notation will be never work in runtime and throw "lets[type] notation can not work without compiler, please use compiler"
+So compiler shoul transform new notation to old one.
+
+export const ideaPage = anotherPoint.lets('page', 'idea', '/idea/:id')
+export const generalLayout = anotherPoint.lets('layout', 'general')
+export const ideaLayout = generalLayout.lets('layout', 'idea', '/idea')
+export const mainRoot = Point0.lets('root', 'main')
+
+So rule is
+lets[TYPE] is point type and should be addad as first arg
+export const ideaPage we omit type from end of const (Page or _page) and it is name so it is sceond arg
+all args should be added as extra args after type and name
+if it is export default, then we get file basename as name, if file basename is index, we get dir basename as name
+
+Notes:
+
+if variable name ends not with point type, then whole variable name becomes point name
+export const ideaX = anotherPoint.lets.page('/idea/:id') → anotherPoint.lets('page', 'ideaX', '/idea/:id')
+
+Special for root
+export const root = Point0.lets.root() → Point0.lets('root', 'root')
+export default Point0.lets.root() → Point0.lets('root', 'root')
+
+We do not work now with runtime, only with comiler, so analyze whole compiler package, generate plan, and lets add implementationand tests.
+We should dothis nice, create nice helpers, and resuse it, so keep code readbility
+We should transfrom this notation even if points not yet enough valid, but related to Point0

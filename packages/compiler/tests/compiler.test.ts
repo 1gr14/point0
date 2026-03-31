@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { Compiler } from '../src/compiler.js'
+import { toText } from './utils.js'
 
 type TestFile = Bun.BunFile & { path: string; basename: string; importpath: string }
 
@@ -50,6 +51,141 @@ export const root = Point0.lets('root', 'root').root()
         expect(result.points).toHaveLength(1)
         expect(result.modified).toBe(true)
         expect(result.code).toContain('Point0.lets')
+      }),
+    )
+
+    it.concurrent(
+      'desugars lets.<type>() syntax before point processing',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import {Point0} from '@point0/core'
+export const mainRoot = Point0.lets.root().root()
+export const ideaPage = mainRoot.lets.page('/idea/:id').page(() => <div>Hello</div>)
+export const ideaLayout = mainRoot.lets.layout('/idea').layout()
+export const saveAction = mainRoot.lets.action('POST', '/save').loader(() => ({ ok: true })).action()
+        `)
+        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const result = compiler.compile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.points).toHaveLength(4)
+        expect(result.modified).toBe(true)
+        expect(await toText(result.code)).toMatchInlineSnapshot(`
+"import { Point0 } from '@point0/core'
+export const mainRoot = Point0.lets('root', 'main')
+  .root()
+  ._tail(function X() {
+    return null
+  })
+export const ideaPage = mainRoot
+  .lets('page', 'idea', '/idea/:id')
+  .page(PageIdea)
+export const ideaLayout = mainRoot
+  .lets('layout', 'idea', '/idea')
+  .layout()
+  ._tail(function X() {
+    return null
+  })
+export const saveAction = mainRoot
+  .lets('action', 'save', 'POST', '/save')
+  .loader()
+  .action()
+  ._tail(function X() {
+    return null
+  })
+function PageIdea() {
+  return <div>Hello</div>
+}
+"
+`)
+      }),
+    )
+
+    it.concurrent(
+      'desugars default export lets.<type>() using file basename as point name',
+      helper(async () => {
+        const filePath = nodePath.join(tempDir, 'lets-sugar-default.tsx')
+        try {
+          await Bun.write(
+            filePath,
+            `import {Point0} from '@point0/core'
+export const root = Point0.lets.root().root()
+export default root.lets.page('/idea').page(() => <div>Hello</div>)
+          `,
+          )
+          const compiler = Compiler.create({ side: 'client', scope: 'test' })
+          const result = compiler.compile({ file: filePath })
+          expect(result.errors).toHaveLength(0)
+          expect(result.points).toHaveLength(2)
+          expect(result.modified).toBe(true)
+          expect(await toText(result.code)).toMatchInlineSnapshot(`
+"import { Point0 } from '@point0/core'
+export const root = Point0.lets('root', 'root')
+  .root()
+  ._tail(function X() {
+    return null
+  })
+export default root
+  .lets('page', 'lets-sugar-default', '/idea')
+  .page(PageLetsSugarDefault)
+function PageLetsSugarDefault() {
+  return <div>Hello</div>
+}
+"
+`)
+        } finally {
+          await Bun.file(filePath).delete()
+        }
+      }),
+    )
+
+    it.concurrent(
+      'desugars page/layout type-only names via filepath and strips Query for infiniteQuery',
+      helper(async () => {
+        const filePath = nodePath.join(tempDir, 'lets-sugar-fallbacks.tsx')
+        try {
+          await Bun.write(
+            filePath,
+            `import {Point0} from '@point0/core'
+export const root = Point0.lets.root().root()
+export const page = root.lets.page('/page').page(() => <div>Page</div>)
+export const layout = root.lets.layout('/layout').layout()
+export const ideasQuery = root.lets.infiniteQuery().infiniteQuery()
+          `,
+          )
+          const compiler = Compiler.create({ side: 'client', scope: 'test' })
+          const result = compiler.compile({ file: filePath })
+          expect(result.errors).toHaveLength(0)
+          expect(result.points).toHaveLength(4)
+          expect(result.modified).toBe(true)
+          expect(await toText(result.code)).toMatchInlineSnapshot(`
+"import { Point0 } from '@point0/core'
+export const root = Point0.lets('root', 'root')
+  .root()
+  ._tail(function X() {
+    return null
+  })
+export const page = root
+  .lets('page', 'lets-sugar-fallbacks', '/page')
+  .page(PageLetsSugarFallbacks)
+export const layout = root
+  .lets('layout', 'lets-sugar-fallbacks', '/layout')
+  .layout()
+  ._tail(function X() {
+    return null
+  })
+export const ideasQuery = root
+  .lets('infiniteQuery', 'ideas')
+  .infiniteQuery()
+  ._tail(function X() {
+    return null
+  })
+function PageLetsSugarFallbacks() {
+  return <div>Page</div>
+}
+"
+`)
+        } finally {
+          await Bun.file(filePath).delete()
+        }
       }),
     )
 

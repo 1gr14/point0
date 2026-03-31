@@ -407,9 +407,9 @@ export class CompilerFile<THasContent extends boolean> {
           j++
           continue
         }
-        // Accept `.lets(` and `.lets<...>` without allocating extra strings.
-        // 40 === '(' and 60 === '<' (charCode values).
-        if (char === 40 || char === 60) {
+        // Accept `.lets(`, `.lets<...>`, and `.lets.<type>(...)` without allocating extra strings.
+        // 40 === '(', 60 === '<', 46 === '.'
+        if (char === 40 || char === 60 || char === 46) {
           mayContainPoints = true
         }
         // Stop at first non-whitespace char after `.lets`.

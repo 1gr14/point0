@@ -106,6 +106,126 @@ describe('Walker', () => {
         })
       }),
     )
+
+    it.concurrent(
+      'desugars lets.<type>() for named exports and infers point names',
+      helper(async ({ files: [file], walker }) => {
+        await file.write(`import {Point0} from '@point0/core'
+export const mainRoot = Point0.lets.root().root()
+export const ideaPage = mainRoot.lets.page('/idea/:id').page(() => <div>Hello</div>)
+export const idea_layout = mainRoot.lets.layout('/idea').layout()
+export const ideaX = mainRoot.lets.page('/x').page(() => <div>X</div>)
+export const page = mainRoot.lets.page('/page-fallback').page(() => <div>PageFallback</div>)
+export const layout = mainRoot.lets.layout('/layout-fallback').layout()
+export const ideasQuery = mainRoot.lets.infiniteQuery().infiniteQuery()
+export const saveAction = mainRoot.lets.action('POST', '/save').loader(() => ({ ok: true })).action()
+        `)
+        const result = walker.collectPointsFromFile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.points).toHaveLength(8)
+        const simplified = result.points.map((p) => p.simplify())
+        const byExportName = Object.fromEntries(simplified.map((p) => [p.exportName, p]))
+        expect(byExportName.mainRoot).toMatchObject({ type: 'root', name: 'main', valid: true })
+        expect(byExportName.ideaPage).toMatchObject({ type: 'page', name: 'idea', route: '/idea/:id', valid: true })
+        expect(byExportName.idea_layout).toMatchObject({ type: 'layout', name: 'idea', route: '/idea', valid: true })
+        expect(byExportName.ideaX).toMatchObject({ type: 'page', name: 'ideaX', route: '/x', valid: true })
+        expect(byExportName.page).toMatchObject({
+          type: 'page',
+          name: file.basename,
+          route: '/page-fallback',
+          valid: true,
+        })
+        expect(byExportName.layout).toMatchObject({
+          type: 'layout',
+          name: file.basename,
+          route: '/layout-fallback',
+          valid: true,
+        })
+        expect(byExportName.ideasQuery).toMatchObject({
+          type: 'infiniteQuery',
+          name: 'ideas',
+          valid: true,
+        })
+        expect(byExportName.saveAction).toMatchObject({
+          type: 'action',
+          name: 'save',
+          route: '/save',
+          endpoint: { method: 'POST', route: '/save' },
+          valid: true,
+        })
+      }),
+    )
+
+    it.concurrent(
+      'desugars lets.root() with export const root name to root',
+      helper(async ({ files: [file], walker }) => {
+        await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets.root().root()
+        `)
+        const result = walker.collectPointsFromFile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.points).toHaveLength(1)
+        expect(result.points[0].simplify()).toMatchObject({
+          type: 'root',
+          name: 'root',
+          exportName: 'root',
+          valid: true,
+        })
+      }),
+    )
+
+    it.concurrent(
+      'desugars lets.<type>() for default export and infers name from filename',
+      helper(async ({ files: [file], walker }) => {
+        await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets.root().root()
+export default root.lets.page('/idea').page(() => <div>Hello</div>)
+        `)
+        const result = walker.collectPointsFromFile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        const point = result.points.find((p) => p.exportName === 'default')?.simplify()
+        expect(point).toBeDefined()
+        expect(point).toMatchObject({
+          type: 'page',
+          name: file.basename,
+          exportName: 'default',
+          route: '/idea',
+          valid: true,
+        })
+      }),
+    )
+
+    it.concurrent(
+      'desugars lets.<type>() default export in index file and uses directory basename',
+      helper(async ({ walker }) => {
+        const dirname = `nested-${crypto.randomUUID()}`
+        const dirpath = nodePath.join(tempDir, dirname)
+        const filepath = nodePath.join(dirpath, 'index.tsx')
+        nodeFs.mkdirSync(dirpath, { recursive: true })
+        try {
+          await Bun.write(
+            filepath,
+            await toText(`import {Point0} from '@point0/core'
+export const root = Point0.lets.root().root()
+export default root.lets.layout('/idea').layout()
+          `),
+          )
+          const result = walker.collectPointsFromFile({ file: filepath })
+          expect(result.errors).toHaveLength(0)
+          const point = result.points.find((p) => p.exportName === 'default')?.simplify()
+          expect(point).toBeDefined()
+          expect(point).toMatchObject({
+            type: 'layout',
+            name: dirname,
+            exportName: 'default',
+            route: '/idea',
+            valid: true,
+          })
+        } finally {
+          nodeFs.rmSync(dirpath, { recursive: true, force: true })
+        }
+      }),
+    )
     it.concurrent(
       'can recognize page point in current file, when root point in another file',
       helper(async ({ files: [file0, file1], walker }) => {
