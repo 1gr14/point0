@@ -57,6 +57,7 @@ export const ideaPage = ideaLayout
     //   }, 1000)
     // }, [])
     // any hook or whatever here, it is just client code
+    console.error(new Error('ZXZX'))
     const [state, setState] = useState(() => 0)
     // if (Math.random()) {
     //   throw new Error('SDKJGSJHFD')

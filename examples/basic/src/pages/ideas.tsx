@@ -1,4 +1,4 @@
-import { Link, Redirect } from '@/lib/navigate'
+import { Link } from '@/lib/navigate'
 import { useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
@@ -39,7 +39,7 @@ export const ideasPage = generalLayout
     const [count, setCount] = useState(() => 0)
     return (
       <div>
-        <Redirect route="newIdea" status={308} />
+        {/* <Redirect route="newIdea" status={308} /> */}
         <h1>Ideas</h1>
         <p>Environment: {data.original.pages[0].env}</p>
         <p>xxx: {data.flattened[0].xxx}</p>

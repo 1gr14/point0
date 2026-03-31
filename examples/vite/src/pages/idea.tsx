@@ -24,6 +24,7 @@ export const ideaPage = ideaLayout
   .page(({ props: { idea }, location, data: { j } }) => {
     // any hook or whatever here, it is just client code
     const [state, setState] = useState(() => 0)
+    console.error(new Error('ZXZX'))
     return (
       <div
         onClick={() => {
