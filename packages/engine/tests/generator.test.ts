@@ -918,6 +918,17 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           tasks: [
             {
               what: 'meta',
+              engine: {
+                file: '/engine.ts',
+                server: {
+                  scope: 'myroot',
+                },
+                clients: [
+                  {
+                    scope: 'myroot',
+                  },
+                ],
+              },
               scopes: ['myroot'],
               outfile: metaFile.path,
             },
@@ -929,12 +940,26 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         await generator.sync()
 
         const content = fixPaths(await metaFile.text())
-        expect(content.replaceAll(/file: '[^']*'/g, `file: '<file>'`)).toMatchInlineSnapshot(`
+        expect(
+          content
+            .replaceAll(/file: '[^']*'/g, `file: '<file>'`)
+            .replaceAll(/engineFile: '[^']*'/g, `engineFile: '<file>'`),
+        ).toMatchInlineSnapshot(`
           "import { Route0 } from '@devp0nt/route0'
+          import { Engine } from '@point0/engine'
           export default {
-            scopes: [
-              "myroot",
-            ],
+            engine: {
+              file: '<file>',
+              import: async () => (await Engine.findAndImportSelf({ engineFile: '<file>' })).engine,
+              server: {
+                scope: 'myroot',
+              },
+              clients: [
+                {
+                  scope: 'myroot',
+                },
+              ],
+            },
             points: [
               {
                 scope: 'myroot',

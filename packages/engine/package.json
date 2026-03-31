@@ -17,7 +17,8 @@
   },
   "type": "module",
   "bin": {
-    "point0": "./dist/esm/cli.js"
+    "point0": "./dist/esm/cli.js",
+    "point0-mcp": "./dist/esm/mcp.js"
   },
   "types": "./dist/esm/index.d.ts",
   "main": "./dist/cjs/index.cjs",
@@ -26,6 +27,12 @@
     "*": {
       "": [
         "./dist/esm/index.d.ts"
+      ],
+      "analyzer": [
+        "./dist/esm/analyzer.d.ts"
+      ],
+      "cli": [
+        "./dist/esm/cli.d.ts"
       ],
       "client": [
         "./dist/esm/client.d.ts"
@@ -44,6 +51,9 @@
       ],
       "generator": [
         "./dist/esm/generator.d.ts"
+      ],
+      "mcp": [
+        "./dist/esm/mcp.d.ts"
       ],
       "port": [
         "./dist/esm/port.d.ts"
@@ -77,6 +87,11 @@
       "require": "./dist/cjs/index.cjs",
       "import": "./dist/esm/index.js"
     },
+    "./analyzer": {
+      "types": "./dist/esm/analyzer.d.ts",
+      "require": "./dist/cjs/analyzer.cjs",
+      "import": "./dist/esm/analyzer.js"
+    },
     "./client": {
       "types": "./dist/esm/client.d.ts",
       "require": "./dist/cjs/client.cjs",
@@ -106,6 +121,11 @@
       "types": "./dist/esm/generator.d.ts",
       "require": "./dist/cjs/generator.cjs",
       "import": "./dist/esm/generator.js"
+    },
+    "./mcp": {
+      "types": "./dist/esm/mcp.d.ts",
+      "require": "./dist/cjs/mcp.cjs",
+      "import": "./dist/esm/mcp.js"
     },
     "./port": {
       "types": "./dist/esm/port.d.ts",
@@ -167,6 +187,7 @@
     "postpublish": "bun ../../scripts/restore-package.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@parcel/watcher": "^2.5.1",
     "commander": "^14.0.2",
     "devalue": "^5.6.2",
@@ -177,7 +198,8 @@
     "minimatch": "^10.0.1",
     "p-retry": "^7.1.1",
     "qs": "^6.14.0",
-    "tough-cookie": "^6.0.0"
+    "tough-cookie": "^6.0.0",
+    "zod": "catalog:"
   },
   "peerDependencies": {
     "@devp0nt/route0": "catalog:",

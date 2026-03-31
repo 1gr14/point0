@@ -624,7 +624,15 @@ const parseEngineGeneralOptions = ({
     ? []
     : Array.isArray(providedGenerate)
       ? providedGenerate
-      : FilesGenerator.simpleGeneralConfigToTasks({ config: providedGenerate, scopes })
+      : FilesGenerator.simpleGeneralConfigToTasks({
+          config: providedGenerate,
+          scopes,
+          engine: {
+            file: engineFile,
+            server: { scope: serverOptions.scope },
+            clients: clientsOptions?.map((client) => ({ scope: client.scope })),
+          },
+        })
   const result = {
     log: generalOptions.log ?? _defaultLogFn,
     itWasBuilt,

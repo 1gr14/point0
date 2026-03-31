@@ -9,6 +9,7 @@ import * as nodePath from 'node:path'
 import type { EngineOptionsRoutes } from './config.js'
 import { getDirByPaths, resolveTempDirPath } from './utils.js'
 import { FilesWatcher } from './watcher.js'
+import type { PointsScope } from '@point0/core'
 
 type ChangeCollectedPointsEvent = {
   deleted: CompilerPoint[]
@@ -54,6 +55,19 @@ export type FilesGeneratorTaskRoutes = {
 export type FilesGeneratorTaskMeta = {
   scopes: string[]
   what: 'meta'
+  engine: {
+    file: string
+    server:
+      | {
+          scope: PointsScope
+        }
+      | undefined
+    clients:
+      | Array<{
+          scope: PointsScope
+        }>
+      | undefined
+  }
   banner?: string | null
   outfile: string
 }
@@ -1170,14 +1184,33 @@ export class FilesGenerator {
     const hasRoutes = points.some((p) => ((p.type === 'page' || p.type === 'layout') && p.route) || p.endpoint?.route)
     if (hasRoutes) {
       lines.push(`import { Route0 } from '@devp0nt/route0'`)
+      lines.push(`import { Engine } from '@point0/engine'`)
     }
     lines.push(`export default {`)
-    // "plugin" is an internal scope and should not be duplicated in `scopes`.
-    lines.push(`  scopes: [`)
-    for (const scope of task.scopes) {
-      lines.push(`    ${JSON.stringify(scope)},`)
+    lines.push(`  engine: {`)
+    lines.push(`    file: ${literal(task.engine.file)},`)
+    lines.push(
+      `    import: async () => (await Engine.findAndImportSelf({ engineFile: ${literal(task.engine.file)} })).engine,`,
+    )
+    if (task.engine.server) {
+      lines.push(`    server: {`)
+      lines.push(`      scope: ${literal(task.engine.server.scope)},`)
+      lines.push(`    },`)
+    } else {
+      lines.push(`    server: undefined,`)
     }
-    lines.push(`  ],`)
+    if (task.engine.clients) {
+      lines.push(`    clients: [`)
+      for (const client of task.engine.clients) {
+        lines.push(`      {`)
+        lines.push(`        scope: ${literal(client.scope)},`)
+        lines.push(`      },`)
+      }
+      lines.push(`    ],`)
+    } else {
+      lines.push(`    clients: undefined,`)
+    }
+    lines.push(`  },`)
     lines.push(`  points: [`)
     for (const point of points) {
       const importedPoint = importedPointByPoint.get(point)
@@ -1443,9 +1476,23 @@ export class FilesGenerator {
   static simpleGeneralConfigToTasks({
     config,
     scopes,
+    engine,
   }: {
     config: FilesGeneratorSimpleGeneralConfig
     scopes: string[]
+    engine: {
+      file: string
+      server:
+        | {
+            scope: PointsScope
+          }
+        | undefined
+      clients:
+        | Array<{
+            scope: PointsScope
+          }>
+        | undefined
+    }
   }): Array<FilesGeneratorTask> {
     const tasks: Array<FilesGeneratorTask> = []
     if (config.meta) {
@@ -1456,6 +1503,7 @@ export class FilesGenerator {
         outfile,
         banner,
         scopes,
+        engine,
       })
     }
     tasks.push(...this.simpleCustomConfigToTasks({ config }))

@@ -3,6 +3,7 @@ import { defineConfig, type Options } from 'tsup'
 
 const general = {
   entry: [
+    'src/analyzer.ts',
     'src/cli.ts',
     'src/client.ts',
     'src/client.bun-build-fix.ts',
@@ -13,6 +14,7 @@ const general = {
     'src/fetcher.ts',
     'src/generator.ts',
     'src/index.ts',
+    'src/mcp.ts',
     'src/port.ts',
     'src/meta.ts',
     'src/publicdir.ts',

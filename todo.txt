@@ -14,6 +14,7 @@ start0
 
 🚀 launch
 
+mcp as comments
 идеаник
 витрина-своя
 втирина-хостинги
@@ -42,13 +43,9 @@ start0
 Проверить что виз не возвращает строку, как и лоадер
 fetchOptions также принимают fetchFn
 B engine имеет withFetch(callback)
+проверка что префетч/бефор/афтер срабатывает сровнутая из редиректа, может их переименовать на onBeforeNavigate, onAfterNavigate
 
-MCP
-mcp
-tags
-description
-define meta as point
-define meta as comment in file
+cli
 
 КОРОТКИЙ ЛЕТС
 Короткая летс нотация с автозаменой имени поинта и выкидом ошибки если компилер не енаблед иди экспорт конст не именованный
@@ -84,8 +81,12 @@ In error0 import RedirectTask from "@point0/core/navigate"
 
 
 === DEBT ===
-проверка что префетч/бефор/афтер срабатывает сровнутая из редиректа
 ? Сет кукис и кукис надо синхронизировать
+
+MCP
+tags
+description
+cli
 
 БИЛД-ДЕВ
 ? Оутдир в энжине может быть объектом где каждый ключ это нод енв

@@ -1,6 +1,8 @@
 import type { AnyRoute } from '@devp0nt/route0'
 import type { CompilerPointParsedPos } from '@point0/compiler'
 import type { AnyNiceReadyPoint, PointName, PointsScope, ReadyPointType } from '@point0/core'
+import { z } from 'zod'
+import type { Engine } from './engine.js'
 
 export type AnalyzerMetaPointShort = {
   scope: PointsScope | undefined
@@ -33,79 +35,172 @@ const pickFields = (point: AnalyzerMetaPoint, fields: AnalyzerMetaPointFields[])
   }, {} as Partial<AnalyzerMetaPoint>)
 }
 
-export type AnalyzerMetaPointFields =
-  | 'id'
-  | 'scope'
-  | 'type'
-  | 'name'
-  | 'route'
-  | 'endpoint'
-  | 'pos'
-  | 'import'
-  | 'valid'
-  | 'errors'
-  | 'ssr'
-  | 'parents'
-  | 'layouts'
+const omitFields = (obj: Record<string, unknown>, keys: string[]): Partial<Record<string, unknown>> => {
+  return keys.reduce(
+    (acc, key) => {
+      delete acc[key]
+      return acc
+    },
+    { ...obj },
+  )
+}
+
+export const ANALYZER_META_POINT_FIELDS = [
+  'id',
+  'scope',
+  'type',
+  'name',
+  'route',
+  'endpoint',
+  'pos',
+  // 'import',
+  'valid',
+  'errors',
+  'ssr',
+  'parents',
+  'layouts',
+] as const
+
+export const analyzerMetaPointFieldsSchema = z.enum(ANALYZER_META_POINT_FIELDS)
+
+export type AnalyzerMetaPointFields = z.infer<typeof analyzerMetaPointFieldsSchema>
+
+export type AnalyzerMetaEngine = {
+  file: string
+  import: () => Promise<Engine>
+  server:
+    | {
+        scope: PointsScope
+      }
+    | undefined
+  clients:
+    | Array<{
+        scope: PointsScope
+      }>
+    | undefined
+}
 
 export type AnalyzerMeta = {
-  scopes: PointsScope[]
+  engine: AnalyzerMetaEngine
   points: AnalyzerMetaPoint[]
 }
 
-export type AnalyzerMetaSource = AnalyzerMeta | (() => Promise<AnalyzerMeta> | AnalyzerMeta)
+export type AnalyzerMetaSource = AnalyzerMeta | string | (() => Promise<AnalyzerMeta> | AnalyzerMeta)
 
-export type AnalyzerPointsFilterOptions = {
-  id?: string
-  scope?: PointsScope
-  type?: ReadyPointType
-  name?: PointName
-  route?: string
-  url?: string
-  endpointMethod?: string
-  endpointRoute?: string
-  endpointUrl?: string
-  valid?: boolean
-  ssr?: boolean
-  file?: string
-  parendId?: string
-  layoutId?: string
+export const analyzerPointsFilterSchemaShape = {
+  ids: z.array(z.string()).optional().describe('Exact point ids match.'),
+  id: z.string().optional().describe('Exact point id match.'),
+  scope: z.string().optional().describe('Exact point scope match.'),
+  type: z.string().optional().describe('Exact point type match.'),
+  name: z.string().optional().describe('Exact point name match.'),
+  route: z.string().optional().describe('Exact point route definition match.'),
+  url: z
+    .string()
+    .optional()
+    .describe('Exact URL (full or just path) match against point.route using analyzer route matching.'),
+  endpointMethod: z.string().optional().describe('Exact endpoint HTTP method match.'),
+  endpointRoute: z.string().optional().describe('Exact endpoint route definition match.'),
+  endpointUrl: z
+    .string()
+    .optional()
+    .describe('Exact URL (full or just path) match against endpoint.route using analyzer route matching.'),
+  valid: z.boolean().optional().describe('Filter by point validity.'),
+  ssr: z.boolean().optional().describe('Filter by SSR flag.'),
+  file: z.string().optional().describe('Exact source file path match from point.pos.file.'),
+  parendId: z.string().optional().describe("Filter by parent id. Kept with analyzer's current property spelling."),
+  layoutId: z.string().optional().describe('Filter by layout id.'),
 }
 
+export const analyzerPointsFilterOptionsSchema = z.object(analyzerPointsFilterSchemaShape)
+
+export const analyzerPointSelectSchemaShape = {
+  ...analyzerPointsFilterSchemaShape,
+  fields: z.array(analyzerMetaPointFieldsSchema).optional().describe('Optional list of fields to return.'),
+}
+
+export const analyzerPointSelectOptionsSchema = z.object(analyzerPointSelectSchemaShape)
+
+export const analyzerListPointsSchemaShape = {
+  ...analyzerPointSelectSchemaShape,
+  limit: z.number().int().nonnegative().optional().describe('Maximum number of points to return. Default 100.'),
+  offset: z.number().int().nonnegative().optional().describe('Zero-based pagination offset. Default 0.'),
+}
+
+export const analyzerListPointsOptionsSchema = z.object(analyzerListPointsSchemaShape)
+
+export type AnalyzerPointsFilterOptions = z.infer<typeof analyzerPointsFilterOptionsSchema>
+
+export type AnalyzerPointSelectOptions = z.infer<typeof analyzerPointSelectOptionsSchema>
+
+export type AnalyzerListPointsOptions = z.infer<typeof analyzerListPointsOptionsSchema>
+
 export class Analyzer {
-  meta: AnalyzerMeta
+  metas: AnalyzerMeta[]
+  engines: AnalyzerMetaEngine[]
+  points: AnalyzerMetaPoint[]
 
-  private constructor({ meta }: { meta: AnalyzerMeta }) {
-    this.meta = meta
+  private constructor({ metas }: { metas: AnalyzerMeta[] }) {
+    this.metas = metas
+    this.engines = metas.map((meta) => meta.engine)
+    this.points = metas.flatMap((meta) => meta.points)
   }
 
-  static create({ meta }: { meta: AnalyzerMeta }): Analyzer {
-    return new Analyzer({ meta })
-  }
-
-  static async load({ source }: { source: AnalyzerMetaSource }): Promise<Analyzer> {
-    if (typeof source === 'function') {
-      const meta = await source()
-      return Analyzer.create({ meta })
+  static create(meta: AnalyzerMeta | AnalyzerMeta[]): Analyzer {
+    const metas = Array.isArray(meta) ? meta : [meta]
+    if (metas.length === 0) {
+      throw new Error('No metas provided')
     }
-    return Analyzer.create({ meta: source })
+    return new Analyzer({ metas })
   }
 
-  findPoints<TFields extends AnalyzerMetaPointFields | undefined = undefined>({
+  static async load(source: AnalyzerMetaSource | AnalyzerMetaSource[]): Promise<Analyzer> {
+    const sources = Array.isArray(source) ? source : [source]
+    if (sources.length === 0) {
+      throw new Error('No sources provided')
+    }
+    const meta = await Promise.all(
+      sources.map(async (source) => {
+        if (typeof source === 'function') {
+          return await source()
+        }
+        if (typeof source === 'string') {
+          const imported = await import(source)
+          if (imported.default) {
+            return imported.default
+          }
+          return imported
+        }
+        return source
+      }),
+    )
+    return Analyzer.create(meta)
+  }
+
+  listPoints<TFields extends AnalyzerMetaPointFields | undefined = undefined>({
     filter,
     limit = 100,
     offset = 0,
     fields,
+    omitImports,
   }: {
     filter?: AnalyzerPointsFilterOptions
     limit?: number
     offset?: number
     fields?: TFields[]
-  }): TFields extends AnalyzerMetaPointFields ? Array<Pick<AnalyzerMetaPoint, TFields>> : AnalyzerMetaPoint[] {
+    omitImports?: boolean
+  } = {}): {
+    points: TFields extends AnalyzerMetaPointFields ? Array<Pick<AnalyzerMetaPoint, TFields>> : AnalyzerMetaPoint[]
+    total: number
+    hasMore: boolean
+    nextOffset: number | undefined
+  } {
     const filtered = !filter
-      ? this.meta.points
-      : this.meta.points.filter((point) => {
+      ? this.points
+      : this.points.filter((point) => {
           if (filter.id && point.id !== filter.id) {
+            return false
+          }
+          if (filter.ids && !filter.ids.includes(point.id)) {
             return false
           }
           if (filter.file && point.pos?.file !== filter.file) {
@@ -163,19 +258,25 @@ export class Analyzer {
         })
     const cutted = filtered.slice(offset, offset + limit)
     const picked = !fields ? cutted : cutted.map((point) => pickFields(point, fields as never))
-    return picked as never
+    const omited = omitImports ? picked.map((point) => omitFields(point, ['import'])) : picked
+    const total = filtered.length
+    const hasMore = total > offset + limit
+    const nextOffset = hasMore ? offset + limit : undefined
+    return { points: omited as never, total, hasMore, nextOffset }
   }
 
   getPoint<TFields extends AnalyzerMetaPointFields | undefined = undefined>({
     filter,
     fields,
+    omitImports,
   }: {
-    filter?: AnalyzerPointsFilterOptions
+    filter: AnalyzerPointsFilterOptions
     fields?: TFields[]
+    omitImports?: boolean
   }): TFields extends AnalyzerMetaPointFields
     ? Pick<AnalyzerMetaPoint, TFields> | undefined
     : AnalyzerMetaPoint | undefined {
-    const points = this.findPoints({ filter, fields })
+    const { points } = this.listPoints({ filter, fields, omitImports })
     return points[0] as never
   }
 }
