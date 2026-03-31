@@ -47,6 +47,7 @@ export default defineConfig([
   },
   {
     ...general,
+    entry: general.entry.filter((entry) => entry !== 'src/mcp.ts'),
     format: 'cjs',
     outDir: 'dist/cjs',
   },

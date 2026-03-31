@@ -1,7 +1,11 @@
 #!/usr/bin/env bun
 
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import type { PointsScope } from '@point0/core'
 import { Command } from 'commander'
+import { Analyzer } from './analyzer.js'
+import type { AnalyzerPointSelectOptions, AnalyzerPointsFilterOptions } from './analyzer.js'
 import { Engine } from './engine.js'
 
 const program = new Command()
@@ -159,6 +163,147 @@ program
     } else {
       await engine.generate()
     }
+  })
+
+const pointsCommand = program.command('points').description('Inspect points from analyzer meta files')
+
+const parseBooleanOption = (value: string): boolean => {
+  if (value === 'true') {
+    return true
+  }
+  if (value === 'false') {
+    return false
+  }
+  throw new Error(`Invalid boolean value: ${value}. Use "true" or "false".`)
+}
+const parseNonNegativeIntegerOption =
+  (optionName: string) =>
+  (value: string): number => {
+    const parsed = Number.parseInt(value, 10)
+    if (!Number.isInteger(parsed) || parsed < 0) {
+      throw new Error(`Invalid ${optionName}: ${value}. Must be a non-negative integer.`)
+    }
+    return parsed
+  }
+const ensureMetaPaths = (meta: string[] | undefined): string[] => {
+  if (!meta || meta.length === 0) {
+    throw new Error("At least one '--meta <path>' flag is required.")
+  }
+  return meta
+}
+const resolveMetaImportPaths = (metaPaths: string[]): string[] => {
+  return metaPaths.map((metaPath) => {
+    const absolutePath = path.isAbsolute(metaPath) ? metaPath : path.resolve(process.cwd(), metaPath)
+    return pathToFileURL(absolutePath).href
+  })
+}
+const loadAnalyzer = async (meta: string[] | undefined): Promise<Analyzer> => {
+  return await Analyzer.load(resolveMetaImportPaths(ensureMetaPaths(meta)))
+}
+const buildPointsFilter = (input: AnalyzerPointSelectOptions): AnalyzerPointsFilterOptions => {
+  return {
+    ids: input.ids,
+    id: input.id,
+    scope: input.scope,
+    type: input.type,
+    name: input.name,
+    route: input.route,
+    url: input.url,
+    endpointMethod: input.endpointMethod,
+    endpointRoute: input.endpointRoute,
+    endpointUrl: input.endpointUrl,
+    valid: input.valid,
+    ssr: input.ssr,
+    file: input.file,
+    parendId: input.parendId,
+    layoutId: input.layoutId,
+  }
+}
+const undefinedIfEmpty = <T>(value: T[] | undefined): T[] | undefined => {
+  if (!value || value.length === 0) {
+    return undefined
+  }
+  return value
+}
+
+pointsCommand
+  .command('list')
+  .description('List points with filters, pagination, and field selection')
+  .option('--meta <path>', 'Path to analyzer meta module', (value, previous: string[] = []) => [...previous, value])
+  .option('--ids <ids>', 'Comma-separated point ids', parseCommaSeparatedOption)
+  .option('--id <id>', 'Point id')
+  .option('--scope <scope>', 'Point scope')
+  .option('--type <type>', 'Point type')
+  .option('--name <name>', 'Point name')
+  .option('--route <route>', 'Point route definition')
+  .option('--url <url>', 'Exact URL match against point route')
+  .option('--endpoint-method <method>', 'Endpoint HTTP method')
+  .option('--endpoint-route <route>', 'Endpoint route definition')
+  .option('--endpoint-url <url>', 'Exact URL match against endpoint route')
+  .option('--valid <boolean>', 'Point validity filter (true|false)', parseBooleanOption)
+  .option('--ssr <boolean>', 'Point SSR filter (true|false)', parseBooleanOption)
+  .option('--file <path>', 'Point source file path')
+  .option('--parend-id <id>', "Filter by parent id (kept as 'parendId' for compatibility)")
+  .option('--layout-id <id>', 'Filter by layout id')
+  .option('--fields <fields>', 'Comma-separated fields to return', parseCommaSeparatedOption)
+  .option('--limit <number>', 'Maximum number of points', parseNonNegativeIntegerOption('limit'))
+  .option('--offset <number>', 'Pagination offset', parseNonNegativeIntegerOption('offset'))
+  .action(
+    async (
+      options: AnalyzerPointSelectOptions & { meta?: string[]; fields?: string[]; limit?: number; offset?: number },
+    ) => {
+      const analyzer = await loadAnalyzer(options.meta)
+      const selectOptions = {
+        ...options,
+        ids: undefinedIfEmpty(options.ids),
+        fields: undefinedIfEmpty(options.fields),
+      } as AnalyzerPointSelectOptions
+      const filter = buildPointsFilter(selectOptions)
+      const result = analyzer.listPoints({
+        filter,
+        fields: selectOptions.fields as never,
+        limit: options.limit ?? 100,
+        offset: options.offset ?? 0,
+        omitImports: true,
+      })
+      console.info(JSON.stringify(result, null, 2))
+    },
+  )
+
+pointsCommand
+  .command('get')
+  .description('Get the first point that matches provided filters')
+  .option('--meta <path>', 'Path to analyzer meta module', (value, previous: string[] = []) => [...previous, value])
+  .option('--ids <ids>', 'Comma-separated point ids', parseCommaSeparatedOption)
+  .option('--id <id>', 'Point id')
+  .option('--scope <scope>', 'Point scope')
+  .option('--type <type>', 'Point type')
+  .option('--name <name>', 'Point name')
+  .option('--route <route>', 'Point route definition')
+  .option('--url <url>', 'Exact URL match against point route')
+  .option('--endpoint-method <method>', 'Endpoint HTTP method')
+  .option('--endpoint-route <route>', 'Endpoint route definition')
+  .option('--endpoint-url <url>', 'Exact URL match against endpoint route')
+  .option('--valid <boolean>', 'Point validity filter (true|false)', parseBooleanOption)
+  .option('--ssr <boolean>', 'Point SSR filter (true|false)', parseBooleanOption)
+  .option('--file <path>', 'Point source file path')
+  .option('--parend-id <id>', "Filter by parent id (kept as 'parendId' for compatibility)")
+  .option('--layout-id <id>', 'Filter by layout id')
+  .option('--fields <fields>', 'Comma-separated fields to return', parseCommaSeparatedOption)
+  .action(async (options: AnalyzerPointSelectOptions & { meta?: string[]; fields?: string[] }) => {
+    const analyzer = await loadAnalyzer(options.meta)
+    const selectOptions = {
+      ...options,
+      ids: undefinedIfEmpty(options.ids),
+      fields: undefinedIfEmpty(options.fields),
+    } as AnalyzerPointSelectOptions
+    const filter = buildPointsFilter(selectOptions)
+    const result = analyzer.getPoint({
+      filter,
+      fields: selectOptions.fields as never,
+      omitImports: true,
+    })
+    console.info(JSON.stringify(result ?? null, null, 2))
   })
 
 program.parse()

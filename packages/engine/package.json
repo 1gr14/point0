@@ -122,11 +122,6 @@
       "require": "./dist/cjs/generator.cjs",
       "import": "./dist/esm/generator.js"
     },
-    "./mcp": {
-      "types": "./dist/esm/mcp.d.ts",
-      "require": "./dist/cjs/mcp.cjs",
-      "import": "./dist/esm/mcp.js"
-    },
     "./port": {
       "types": "./dist/esm/port.d.ts",
       "require": "./dist/cjs/port.cjs",

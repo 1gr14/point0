@@ -1159,7 +1159,6 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
 
         expect(getLastLogMessage()).toBe('5 points processed')
         expect(getLogs()).toHaveLength(2)
-        // console.log(getLogs())
       }),
     )
 

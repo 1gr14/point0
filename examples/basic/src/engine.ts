@@ -5,6 +5,7 @@ export const engine = Engine.create({
   pointsGlob: ['**/*.{ts,tsx,mdx}'],
   portPolicy: 'kill',
   ssr: true,
+  generate: { meta: './lib/meta.ts' },
   server: {
     scope: 'client',
     port: 3000,
