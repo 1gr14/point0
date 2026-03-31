@@ -58,12 +58,6 @@ OPENAPI
 openapi
 scalar
 
-ИМПОРТ-ПРОТЕКШЕН
-(import protection) cli inspect by filepath how this file and in which place come to files via cli command
-Импортм рестрик, аллоу, и можно передать прямо пакейдж Джейсон в список рестрикта
-Импорт виз мирор прямо сразу заменит поинт на отражённый и не потянет зависимости
-Импортёр просто отдельный файл и отдельная настройка в конфиге
-
 ЭКЗАМПЛЫ
 Причёска экзамплов
 Пьюр вайт экзампл
@@ -80,6 +74,12 @@ In error0 import RedirectTask from "@point0/core/navigate"
 
 === DEBT ===
 ? Сет кукис и кукис надо синхронизировать
+
+ИМПОРТ-ПРОТЕКШЕН
+(import protection) cli inspect by filepath how this file and in which place come to files via cli command
+Импортм рестрик, аллоу, и можно передать прямо пакейдж Джейсон в список рестрикта
+Импорт виз мирор прямо сразу заменит поинт на отражённый и не потянет зависимости
+Импортёр просто отдельный файл и отдельная настройка в конфиге
 
 MCP
 tags

@@ -252,7 +252,7 @@ export class FilesGenerator {
         onlyFiles: true,
         ignore: this.globExclude,
       })
-      for (const absPath of entries) {
+      for (const absPath of entries.sort((a, b) => a.localeCompare(b))) {
         this.files.add(absPath)
       }
     }
@@ -303,11 +303,10 @@ export class FilesGenerator {
     const order = END_POINT_TYPES
     const orderIndex = new Map(order.map((t, i) => [t, i]))
     return points.sort((a, b) => {
-      if (a.type === 'root') {
-        return -1
-      }
-      if (b.type === 'root') {
-        return 1
+      if (a.type === 'root' || b.type === 'root') {
+        if (a.type !== b.type) {
+          return a.type === 'root' ? -1 : 1
+        }
       }
       const aIndex = orderIndex.get(a.type) ?? Number.MAX_SAFE_INTEGER
       const bIndex = orderIndex.get(b.type) ?? Number.MAX_SAFE_INTEGER
@@ -317,8 +316,11 @@ export class FilesGenerator {
       if (!a.route && b.route) return -1
       if (a.route && !b.route) return 1
       if (a.route && b.route) {
-        if (a.route.isMoreSpecificThan(b.route)) return -1
-        if (b.route.isMoreSpecificThan(a.route)) return 1
+        const aMoreSpecific = a.route.isMoreSpecificThan(b.route)
+        const bMoreSpecific = b.route.isMoreSpecificThan(a.route)
+        if (aMoreSpecific !== bMoreSpecific) {
+          return aMoreSpecific ? -1 : 1
+        }
         const byRouteDefinition = a.route.definition.localeCompare(b.route.definition)
         if (byRouteDefinition !== 0) return byRouteDefinition
       }
@@ -326,7 +328,17 @@ export class FilesGenerator {
       const byName = a.name.localeCompare(b.name)
       if (byName !== 0) return byName
 
-      return a.file.abs.localeCompare(b.file.abs)
+      const byFile = a.file.abs.localeCompare(b.file.abs)
+      if (byFile !== 0) return byFile
+
+      const byPos = a.strpos.localeCompare(b.strpos)
+      if (byPos !== 0) return byPos
+
+      const byExportName = (a.exportName ?? '').localeCompare(b.exportName ?? '')
+      if (byExportName !== 0) return byExportName
+
+      // Absolute final tie-breaker to keep ordering deterministic.
+      return a.id.localeCompare(b.id)
     })
   }
 
@@ -350,7 +362,7 @@ export class FilesGenerator {
   // TODO: not chunk size, but max in same time processing files
   async process(chunkSize = 30, options?: { silent?: boolean }): Promise<FileGeneratorProcessResult> {
     await this.initRoutesInstances()
-    const files = [...this.files]
+    const files = [...this.files].sort((a, b) => a.localeCompare(b))
     const chunks = FilesGenerator.chunk(files, chunkSize)
     const walker = new Walker({ routes: this.routes, ssr: this.ssr })
     const collectedChunks = await Promise.all(
