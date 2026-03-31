@@ -1,7 +1,7 @@
 import type { RoutesPretty } from '@devp0nt/route0'
 import { CompilerPoint, END_POINT_TYPES, Walker } from '@point0/compiler'
-import type { LogFn } from '@point0/core'
 import { generateId, log } from '@point0/core'
+import type { LogFn } from '@point0/core'
 import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
@@ -28,10 +28,16 @@ export type FilesGeneratorOptions = {
   ssr?: boolean
 }
 
-export type FilesGeneratorTaskPoints = {
+export type FilesGeneratorTaskServerPoints = {
   scope: string
-  what: 'points'
-  side: 'client' | 'server'
+  what: 'serverPoints'
+  banner?: string | null
+  outfile: string
+}
+
+export type FilesGeneratorTaskClientPoints = {
+  scope: string
+  what: 'clientPoints'
   banner?: string | null
   outfile: string
   lazy?: boolean
@@ -52,7 +58,71 @@ export type FilesGeneratorTaskMeta = {
   outfile: string
 }
 
-export type FilesGeneratorTask = FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes | FilesGeneratorTaskMeta
+export type EmitNamedImportsResult = {
+  importLines: string[]
+  importedPoints: Array<{ point: CompilerPoint<true>; index: number; renamedExportName: string }>
+  hasNotRootPoints: boolean
+  rootSingleImportLine: string | null
+}
+
+export type FilesGeneratorTaskCustomFileHandler = (options: {
+  points: CompilerPoint<true>[]
+  cwd: string
+  log: LogFn
+  tempDir: string
+  emitPointsImports: (options: { points: Array<CompilerPoint<true>> }) => EmitNamedImportsResult
+}) => Promise<string> | string
+
+export type FilesGeneratorTaskCustomControlledHandler = (options: {
+  points: CompilerPoint<true>[]
+  cwd: string
+  log: LogFn
+  tempDir: string
+  emitPointsImports: (options: { points: Array<CompilerPoint<true>>; outfile: string }) => EmitNamedImportsResult
+}) => Promise<void> | void
+
+export type FilesGeneratorTaskCustomFile = {
+  what: 'customFile'
+  handler: FilesGeneratorTaskCustomFileHandler
+  outfile: string
+}
+
+export type FilesGeneratorTaskCustomControlled = {
+  what: 'customControlled'
+  handler: FilesGeneratorTaskCustomControlledHandler
+}
+
+export type FilesGeneratorTaskCustomFileWithoutScope = Omit<FilesGeneratorTaskCustomFile, 'scopes'>
+export type FilesGeneratorTaskCustomControlledWithoutScope = Omit<FilesGeneratorTaskCustomControlled, 'scopes'>
+
+export type FilesGeneratorTaskCustom = FilesGeneratorTaskCustomFile | FilesGeneratorTaskCustomControlled
+export type FilesGeneratorTaskCustomWithoutScope =
+  | FilesGeneratorTaskCustomFileWithoutScope
+  | FilesGeneratorTaskCustomControlledWithoutScope
+
+export type FilesGeneratorSimpleServerConfig = {
+  points?: string | { outfile: string; banner?: string | null }
+  custom?: FilesGeneratorTaskCustomWithoutScope[]
+}
+
+export type FilesGeneratorSimpleClientConfig = {
+  points?: string | { outfile: string; banner?: string | null; lazy?: boolean }
+  routes?: string | { outfile: string; banner?: string | null; origin?: string | null }
+  custom?: FilesGeneratorTaskCustomWithoutScope[]
+}
+
+export type FilesGeneratorSimpleGeneralConfig = {
+  meta?: string | { outfile: string; banner?: string | null }
+  custom?: FilesGeneratorTaskCustomWithoutScope[]
+}
+
+export type FilesGeneratorTask =
+  | FilesGeneratorTaskClientPoints
+  | FilesGeneratorTaskServerPoints
+  | FilesGeneratorTaskRoutes
+  | FilesGeneratorTaskMeta
+  | FilesGeneratorTaskCustomFile
+  | FilesGeneratorTaskCustomControlled
 
 export type FilesGeneratorPointsFilesChangeWatcher = (
   fileEvent: 'update' | 'delete',
@@ -79,9 +149,10 @@ export class FilesGenerator {
   readonly pointsFilesChangeWatchers: FilesGeneratorPointsFilesChangeWatcher[] = []
 
   private readonly files = new Set<string>()
-  private readonly points: CompilerPoint[] = []
+  // private readonly points: CompilerPoint[] = []
   private readonly pointsByPaths = new Map<string, CompilerPoint[]>()
-  private readonly stablePoints: CompilerPoint[] = []
+  private readonly allStablePoints: CompilerPoint[] = []
+  private readonly safeStablePoints: CompilerPoint[] = []
 
   // Map<outputAbs, content>
   private readonly lastEmittedContentMap = new Map<string, string>()
@@ -99,13 +170,17 @@ export class FilesGenerator {
     this.tasks = opts.tasks.map((t) => {
       const task = {
         ...t,
-        banner: [this.banner, t.banner].filter(Boolean).join('\n') || null,
-        outfile: nodePath.resolve(this.cwd, t.outfile),
-      } satisfies FilesGeneratorTask
-      if (task.what === 'points' && typeof task.lazy === 'undefined') {
-        task.lazy = task.side === 'client'
+      } as Record<string, unknown>
+      if (t.what !== 'customControlled' && t.what !== 'customFile') {
+        task.banner = [this.banner, t.banner].filter(Boolean).join('\n') || null
       }
-      return task
+      if (t.what !== 'customControlled') {
+        task.outfile = nodePath.resolve(this.cwd, t.outfile)
+      }
+      if (task.what === 'clientPoints' && task.lazy === undefined) {
+        task.lazy = true
+      }
+      return task as FilesGeneratorTask
     })
     this.routesSrc = Object.entries(opts.routes).reduce<
       Record<string, { instance: RoutesPretty | null; getter: EngineOptionsRoutes | null }>
@@ -118,7 +193,9 @@ export class FilesGenerator {
     }, {})
     this.routes = {}
     const watchDir = this.globInclude.length > 0 ? getDirByPaths({ paths: this.globInclude }) : process.cwd()
-    const watchIgnore = [...this.globExclude, ...this.tasks.map((t) => t.outfile)].flatMap((p) => p || [])
+    const watchIgnore = [...this.globExclude, ...this.tasks.map((t) => ('outfile' in t ? t.outfile : null))].flatMap(
+      (p) => p || [],
+    )
     const watchPatterns = [...this.globInclude]
     this.filesWatcher = FilesWatcher.create({
       watchDir,
@@ -208,13 +285,10 @@ export class FilesGenerator {
 
   // mutations
 
-  private updatePoints(newPoints: CompilerPoint[]): void {
+  private static sortPoints(points: CompilerPoint[]): CompilerPoint[] {
     const order = END_POINT_TYPES
     const orderIndex = new Map(order.map((t, i) => [t, i]))
-
-    const stablePoints = [...newPoints]
-
-    stablePoints.sort((a, b) => {
+    return points.sort((a, b) => {
       if (a.type === 'root') {
         return -1
       }
@@ -240,10 +314,21 @@ export class FilesGenerator {
 
       return a.file.abs.localeCompare(b.file.abs)
     })
+  }
 
-    this.points.splice(0, this.points.length, ...stablePoints)
-    this.stablePoints.splice(0, this.stablePoints.length, ...stablePoints)
-    this.actualizePointsByPaths(stablePoints)
+  private updatePoints({
+    newSafePoints,
+    allNewPoints,
+  }: {
+    newSafePoints: CompilerPoint[]
+    allNewPoints: CompilerPoint[]
+  }): void {
+    const newAllStablePoints = FilesGenerator.sortPoints([...allNewPoints])
+    const newSafeStablePoints = FilesGenerator.sortPoints([...newSafePoints])
+
+    this.allStablePoints.splice(0, this.allStablePoints.length, ...newAllStablePoints)
+    this.safeStablePoints.splice(0, this.safeStablePoints.length, ...newSafeStablePoints)
+    this.actualizePointsByPaths(newAllStablePoints)
   }
 
   // processing
@@ -281,16 +366,16 @@ export class FilesGenerator {
         this.log({ level: 'error', category: ['generator'], message })
       }
     }
-    const prevPoints = [...this.points]
+    const prevPoints = [...this.safeStablePoints]
     const validPoints = collectedPoints.filter((p) => p.valid)
     const hasPointParseErrors = invalidPoints.length > 0
     const hasCollectionErrors = errors.length > 0
     const shouldPreservePrevPoints = hasPointParseErrors || hasCollectionErrors
-    const newPoints = shouldPreservePrevPoints
+    const newSafePoints = shouldPreservePrevPoints
       ? FilesGenerator.mergeCollectedPointsWithoutDeletion(prevPoints, validPoints)
       : validPoints
-    const diff = FilesGenerator.getCollectedPointsDiff(prevPoints, newPoints)
-    this.updatePoints(newPoints)
+    const diff = FilesGenerator.getCollectedPointsDiff(prevPoints, newSafePoints)
+    this.updatePoints({ newSafePoints, allNewPoints: collectedPoints })
     const { written } = diff.changed ? await this.writeOutputs() : { written: false }
     if (!options?.silent) {
       for (const { error, file } of errors) {
@@ -323,7 +408,7 @@ export class FilesGenerator {
       }
     }
     return {
-      points: newPoints,
+      points: newSafePoints,
       deleted: diff.deleted,
       added: diff.added,
       changed: diff.changed,
@@ -376,19 +461,23 @@ export class FilesGenerator {
   }
 
   private async writeTaskOutput(task: FilesGeneratorTask): Promise<{ written: boolean }> {
-    const tasks = []
-    if (task.what === 'points' && task.lazy) {
+    const tasks: Array<
+      { content: string; outputAbs: string; tempOutputAbs: string; type: 'file' } | { type: 'controlled' }
+    > = []
+    if (task.what === 'clientPoints' && task.lazy) {
       tasks.push({
         content: this.emitLazyPointsFile(task),
         outputAbs: task.outfile,
         tempOutputAbs: nodePath.join(this.tempDir, `${task.what}.${generateId()}.lazy.ts`),
+        type: 'file',
       })
     }
-    if (task.what === 'points' && !task.lazy) {
+    if ((task.what === 'clientPoints' && !task.lazy) || task.what === 'serverPoints') {
       tasks.push({
         content: this.emitReadyPointsFile(task),
         outputAbs: task.outfile,
         tempOutputAbs: nodePath.join(this.tempDir, `${task.what}.${generateId()}.ready.ts`),
+        type: 'file',
       })
     }
     if (task.what === 'routes') {
@@ -396,6 +485,41 @@ export class FilesGenerator {
         content: this.emitRoutesPointsFile(task),
         outputAbs: task.outfile,
         tempOutputAbs: nodePath.join(this.tempDir, `${task.scope}.${generateId()}.routes.ts`),
+        type: 'file',
+      })
+    }
+    if (task.what === 'meta') {
+      tasks.push({
+        content: this.emitMetaFile(task),
+        outputAbs: task.outfile,
+        tempOutputAbs: nodePath.join(this.tempDir, `${task.scopes.join('.')}.${generateId()}.meta.ts`),
+        type: 'file',
+      })
+    }
+    if (task.what === 'customFile') {
+      tasks.push({
+        content: await task.handler({
+          points: this.allStablePoints.filter((p) => p.valid),
+          cwd: this.cwd,
+          log: this.log,
+          tempDir: this.tempDir,
+          emitPointsImports: ({ points }) => this.emitPointsImports({ points, outfile: task.outfile }),
+        }),
+        outputAbs: task.outfile,
+        tempOutputAbs: nodePath.join(this.tempDir, `${task.what}.${generateId()}.ts`),
+        type: 'file',
+      })
+    }
+    if (task.what === 'customControlled') {
+      tasks.push({
+        type: 'controlled',
+      })
+      await task.handler({
+        points: this.allStablePoints.filter((p) => p.valid),
+        cwd: this.cwd,
+        log: this.log,
+        tempDir: this.tempDir,
+        emitPointsImports: ({ points, outfile }) => this.emitPointsImports({ points, outfile }),
       })
     }
     // if (this.outputWouterRoutesAbs) {
@@ -410,6 +534,9 @@ export class FilesGenerator {
     }
     const hasChanges = await Promise.all(
       tasks.map(async (task) => {
+        if (task.type === 'controlled') {
+          return true
+        }
         if (!this.lastEmittedContentMap.has(task.outputAbs)) {
           const currentContent = await (async () => {
             try {
@@ -430,8 +557,12 @@ export class FilesGenerator {
         return true
       }),
     )
-    const tasksToWrite = tasks.filter((task, index) => hasChanges[index])
-    if (!tasksToWrite.length) {
+    const tasksToWrite = tasks.filter((task, index) => hasChanges[index] && task.type !== 'controlled') as Exclude<
+      (typeof tasks)[number],
+      { type: 'controlled' }
+    >[]
+    const contolledTasks = tasks.filter((task) => task.type === 'controlled') as { type: 'controlled' }[]
+    if (!tasksToWrite.length && !contolledTasks.length) {
       return { written: false }
     }
     await Promise.all(
@@ -503,13 +634,12 @@ export class FilesGenerator {
   //   return lines
   // }
 
-  private emitNamedImports({ points, task }: { points: Array<CompilerPoint<true>>; task: FilesGeneratorTaskPoints }): {
+  emitPointsImports({ points, outfile }: { points: Array<CompilerPoint<true>>; outfile: string }): {
     importLines: string[]
-    importedPoints: Array<{ point: CompilerPoint; index: number; renamedExportName: string }>
+    importedPoints: Array<{ point: CompilerPoint<true>; index: number; renamedExportName: string }>
     hasNotRootPoints: boolean
     rootSingleImportLine: string | null
   } {
-    points = points.filter((p) => p.scope === task.scope)
     let rootSingleImportLine: string | null = null
     const importLines: string[] = []
     // let rootSingleReexportLine: string | undefined
@@ -524,7 +654,7 @@ export class FilesGenerator {
       if (point.exportName === undefined) {
         return []
       }
-      const importPath = FilesGenerator.toRelativeJsImportPath(task.outfile, point.file.abs)
+      const importPath = FilesGenerator.toRelativeJsImportPath(outfile, point.file.abs)
       const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
       const renamedExportName =
         point.type === 'root'
@@ -560,7 +690,7 @@ export class FilesGenerator {
         const rootImportPathAndExportName = importPathAndExportNames.exports.find((e) => e.root)
         if (!rootImportPathAndExportName) {
           throw new Error(
-            `Root import path and export name not found for ${importPathAndExportNames.importPath} for scope ${task.scope}`,
+            `Root import path and export name not found for ${importPathAndExportNames.importPath} while generating ${outfile}`,
           )
         }
         rootSingleImportLine = `import { ${rootImportPathAndExportName.originalExportName} as ${rootImportPathAndExportName.renamedExportName} } from '${importPathAndExportNames.importPath}'`
@@ -587,7 +717,7 @@ export class FilesGenerator {
   //     throw new Error(`Root point not found for task ${task.scope}`)
   //   }
 
-  //   const { importedPoints, rootSingleImportLine } = this.emitNamedImports({
+  //   const { importedPoints, rootSingleImportLine } = this.emitPointsImports({
   //     points,
   //     outputAbs: task.outputPointsLazyAbs,
   //     task,
@@ -648,7 +778,7 @@ export class FilesGenerator {
   //     lines.push(task.banner)
   //   }
 
-  //   const { importLines, importedPoints, hasNotRootPoints } = this.emitNamedImports({
+  //   const { importLines, importedPoints, hasNotRootPoints } = this.emitPointsImports({
   //     points,
   //     outputAbs: task.outputPointsReadyAbs,
   //     task,
@@ -675,25 +805,22 @@ export class FilesGenerator {
   //   return lines.join('\n')
   // }
 
-  private static shouldExistsInPointsFile({
-    point,
-    side,
-  }: {
-    point: CompilerPoint
-    side: 'client' | 'server'
-  }): boolean {
+  private static shouldExistsInServerPointsFile({ point, scope }: { point: CompilerPoint; scope: string }): boolean {
     // if (point.type !== 'plugin' && point.type !== 'base' && point.exportName !== undefined && point.valid) {
     if (point.type === 'plugin' || point.type === 'base' || point.exportName === undefined || !point.valid) {
       return false
     }
-    if (side === 'client') {
-      return point.type === 'page' || point.type === 'layout' || point.type === 'root'
+    return (
+      point.scopes.includes(scope) && ((point.type === 'root' && point.scope === scope) || point.endpoint !== undefined)
+    )
+  }
+
+  private static shouldExistsInClientPointsFile({ point, scope }: { point: CompilerPoint; scope: string }): boolean {
+    // if (point.type !== 'plugin' && point.type !== 'base' && point.exportName !== undefined && point.valid) {
+    if (point.type === 'plugin' || point.type === 'base' || point.exportName === undefined || !point.valid) {
+      return false
     }
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (side === 'server') {
-      return point.type === 'root' || point.endpoint !== undefined
-    }
-    return true
+    return point.scope === scope && (point.type === 'page' || point.type === 'layout' || point.type === 'root')
   }
 
   private emitLazyPointCollectionRecord({
@@ -730,9 +857,9 @@ export class FilesGenerator {
     return lines
   }
 
-  private emitLazyPointsFile(task: FilesGeneratorTaskPoints): string {
-    const points = this.stablePoints.filter(
-      (p) => p.scope === task.scope && FilesGenerator.shouldExistsInPointsFile({ point: p, side: task.side }),
+  emitLazyPointsFile(task: FilesGeneratorTaskClientPoints): string {
+    const points = this.safeStablePoints.filter((p) =>
+      FilesGenerator.shouldExistsInClientPointsFile({ point: p, scope: task.scope }),
     ) as Array<CompilerPoint<true>>
     const lines: string[] = []
     if (task.banner) {
@@ -743,9 +870,9 @@ export class FilesGenerator {
     // lines.push(`import { Point0 } from '@point0/core'`)
 
     // TODO: lets add .lazy() and calculate by it also
-    const { importedPoints, rootSingleImportLine } = this.emitNamedImports({
+    const { importedPoints, rootSingleImportLine } = this.emitPointsImports({
       points,
-      task,
+      outfile: task.outfile,
     })
     const rootImported = importedPoints.find((p) => p.point.type === 'root')
     if (!rootImported) {
@@ -777,9 +904,12 @@ export class FilesGenerator {
     return lines.join('\n')
   }
 
-  private emitReadyPointsFile(task: FilesGeneratorTaskPoints): string {
-    const points = this.stablePoints.filter(
-      (p) => p.scope === task.scope && FilesGenerator.shouldExistsInPointsFile({ point: p, side: task.side }),
+  emitReadyPointsFile(task: FilesGeneratorTaskClientPoints | FilesGeneratorTaskServerPoints): string {
+    const side = task.what === 'clientPoints' ? 'client' : 'server'
+    const points = this.safeStablePoints.filter((p) =>
+      side === 'client'
+        ? FilesGenerator.shouldExistsInClientPointsFile({ point: p, scope: task.scope })
+        : FilesGenerator.shouldExistsInServerPointsFile({ point: p, scope: task.scope }),
     ) as Array<CompilerPoint<true>>
 
     const lines: string[] = []
@@ -787,9 +917,9 @@ export class FilesGenerator {
       lines.push(task.banner)
     }
 
-    const { importLines, importedPoints } = this.emitNamedImports({
+    const { importLines, importedPoints } = this.emitPointsImports({
       points,
-      task,
+      outfile: task.outfile,
     })
     lines.push(`import type { PointsDefinition } from '@point0/core'`)
     lines.push(...importLines)
@@ -829,7 +959,7 @@ export class FilesGenerator {
   //   lines.push(`import { Route, Switch } from 'wouter'`)
   //   lines.push(``)
 
-  //   const { importedPoints } = this.emitNamedImports({
+  //   const { importedPoints } = this.emitPointsImports({
   //     points,
   //     what: 'import',
   //     outputAbs: this.outputWouterRoutesAbs,
@@ -928,8 +1058,8 @@ export class FilesGenerator {
   //   return lines.join('\n')
   // }
 
-  private emitRoutesPointsFile(task: FilesGeneratorTaskRoutes): string {
-    const points = this.stablePoints.filter((p) => p.scope === task.scope)
+  emitRoutesPointsFile(task: FilesGeneratorTaskRoutes): string {
+    const points = this.safeStablePoints.filter((p) => p.scope === task.scope)
     const lines: string[] = []
     if (task.banner) {
       lines.push(task.banner)
@@ -965,6 +1095,184 @@ export class FilesGenerator {
     }
     lines.push(``)
 
+    return lines.join('\n')
+  }
+
+  emitMetaFile(task: FilesGeneratorTaskMeta): string {
+    const points = this.allStablePoints.filter(
+      (p) => (p.scope && task.scopes.includes(p.scope)) || p.scope === 'plugin',
+    ) as CompilerPoint<true>[]
+    const { importedPoints } = this.emitPointsImports({
+      points,
+      outfile: task.outfile,
+    })
+    const importedPointByPoint = new Map(importedPoints.map((imported) => [imported.point, imported] as const))
+    const layoutPointByScopeAndName = new Map(
+      points
+        .filter((point) => point.type === 'layout')
+        .map((point) => [`${point.scope}::${point.name}`, point] as const),
+    )
+    const literal = (value: unknown): string =>
+      value === undefined ? 'undefined' : typeof value === 'string' ? `'${value}'` : JSON.stringify(value)
+    const pushLinkedPointBlock = ({
+      lines,
+      indent,
+      point,
+    }: {
+      lines: string[]
+      indent: string
+      point: {
+        scope: string | undefined
+        type: string
+        name: string
+        id: string
+        pos: CompilerPoint['pos'] | undefined
+      }
+    }) => {
+      lines.push(`${indent}{`)
+      lines.push(`${indent}  scope: ${literal(point.scope)},`)
+      lines.push(`${indent}  type: ${literal(point.type)},`)
+      lines.push(`${indent}  name: ${literal(point.name)},`)
+      lines.push(`${indent}  id: ${literal(point.id)},`)
+      pushPosBlock({
+        lines,
+        indent: `${indent}  `,
+        key: `pos`,
+        pos: point.pos,
+      })
+      lines.push(`${indent}},`)
+    }
+    const pushPosBlock = ({
+      lines,
+      indent,
+      key,
+      pos,
+    }: {
+      lines: string[]
+      indent: string
+      key: string
+      pos: CompilerPoint['pos'] | undefined
+    }) => {
+      if (!pos) {
+        lines.push(`${indent}${key}: undefined,`)
+        return
+      }
+      lines.push(`${indent}${key}: {`)
+      lines.push(`${indent}  file: ${literal(pos.file)},`)
+      lines.push(`${indent}  line: ${literal(pos.line)},`)
+      lines.push(`${indent}  column: ${literal(pos.column)},`)
+      lines.push(`${indent}},`)
+    }
+    const lines: string[] = []
+    if (task.banner) {
+      lines.push(task.banner)
+    }
+    const hasRoutes = points.some((p) => ((p.type === 'page' || p.type === 'layout') && p.route) || p.endpoint?.route)
+    if (hasRoutes) {
+      lines.push(`import { Route0 } from '@devp0nt/route0'`)
+    }
+    lines.push(`export default {`)
+    // "plugin" is an internal scope and should not be duplicated in `scopes`.
+    lines.push(`  scopes: [`)
+    for (const scope of task.scopes) {
+      lines.push(`    ${JSON.stringify(scope)},`)
+    }
+    lines.push(`  ],`)
+    lines.push(`  points: [`)
+    for (const point of points) {
+      const importedPoint = importedPointByPoint.get(point)
+      lines.push(`    {`)
+      lines.push(`      scope: ${literal(point.scope)},`)
+      lines.push(`      type: ${literal(point.type)},`)
+      lines.push(`      name: ${literal(point.name)},`)
+      lines.push(`      id: ${literal(point.id)},`)
+      if ((point.type === 'page' || point.type === 'layout') && point.route) {
+        lines.push(`      route: Route0.create(${literal(point.route.definition)}),`)
+      } else {
+        lines.push(`      route: undefined,`)
+      }
+      if (point.endpoint) {
+        lines.push(`      endpoint: {`)
+        lines.push(`        method: ${literal(point.endpoint.method)},`)
+        lines.push(`        route: Route0.create(${literal(point.endpoint.route.definition)}),`)
+        lines.push(`      },`)
+      } else {
+        lines.push(`      endpoint: undefined,`)
+      }
+      pushPosBlock({
+        lines,
+        indent: `      `,
+        key: `pos`,
+        pos: point.pos,
+      })
+      if (importedPoint) {
+        lines.push(
+          `      import: async () => (await import('${FilesGenerator.toRelativeJsImportPath(task.outfile, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
+        )
+      } else {
+        lines.push(`      import: undefined,`)
+      }
+      lines.push(`      valid: ${literal(point.valid)},`)
+      if (point.errors.length > 0) {
+        lines.push(`      errors: [`)
+        for (const error of point.errors) {
+          lines.push(`        ${literal(error instanceof Error ? error.message : String(error))},`)
+        }
+        lines.push(`      ],`)
+      } else {
+        lines.push(`      errors: [],`)
+      }
+      lines.push(`      ssr: ${literal(point.ssr)},`)
+      if (point.parents.length > 0) {
+        lines.push(`      parents: [`)
+        for (const parent of point.parents) {
+          pushLinkedPointBlock({
+            lines,
+            indent: `        `,
+            point: {
+              scope: parent.scope,
+              type: parent.type,
+              name: parent.name,
+              id: parent.id,
+              pos: parent.pos,
+            },
+          })
+        }
+        lines.push(`      ],`)
+      } else {
+        lines.push(`      parents: [],`)
+      }
+      if (point.layouts.length > 0) {
+        lines.push(`      layouts: [`)
+        for (const layoutName of point.layouts) {
+          const layoutPoint = layoutPointByScopeAndName.get(`${point.scope}::${layoutName}`)
+          pushLinkedPointBlock({
+            lines,
+            indent: `        `,
+            point: {
+              scope: point.scope,
+              type: 'layout',
+              name: layoutName,
+              id:
+                layoutPoint?.id ??
+                CompilerPoint.toId({
+                  scope: point.scope,
+                  type: 'layout',
+                  name: layoutName,
+                }),
+              pos: layoutPoint?.pos,
+            },
+          })
+        }
+        lines.push(`      ],`)
+      } else {
+        lines.push(`      layouts: [],`)
+      }
+      lines.push(`    },`)
+    }
+    lines.push(`  ],`)
+    lines.push(`}`)
+    lines.push(``)
     return lines.join('\n')
   }
 
@@ -1104,5 +1412,111 @@ export class FilesGenerator {
     for (const watcher of this.pointsFilesChangeWatchers) {
       void watcher(fileEvent, fileAbs, pointsEvent)
     }
+  }
+
+  static simpleCustomConfigToTasks({
+    config,
+  }: {
+    config: FilesGeneratorSimpleClientConfig | FilesGeneratorSimpleServerConfig | FilesGeneratorSimpleGeneralConfig
+  }): Array<FilesGeneratorTask> {
+    const tasks: Array<FilesGeneratorTask> = []
+    if (config.custom) {
+      for (const customTask of config.custom) {
+        if (customTask.what === 'customFile') {
+          tasks.push({
+            what: 'customFile',
+            outfile: customTask.outfile,
+            handler: customTask.handler,
+          })
+        }
+        if (customTask.what === 'customControlled') {
+          tasks.push({
+            what: 'customControlled',
+            handler: customTask.handler,
+          })
+        }
+      }
+    }
+    return tasks
+  }
+
+  static simpleGeneralConfigToTasks({
+    config,
+    scopes,
+  }: {
+    config: FilesGeneratorSimpleGeneralConfig
+    scopes: string[]
+  }): Array<FilesGeneratorTask> {
+    const tasks: Array<FilesGeneratorTask> = []
+    if (config.meta) {
+      const outfile = typeof config.meta === 'string' ? config.meta : config.meta.outfile
+      const banner = typeof config.meta === 'string' ? undefined : config.meta.banner
+      tasks.push({
+        what: 'meta',
+        outfile,
+        banner,
+        scopes,
+      })
+    }
+    tasks.push(...this.simpleCustomConfigToTasks({ config }))
+    return tasks
+  }
+
+  static simpleServerConfigToTasks({
+    config,
+    scope,
+  }: {
+    config: FilesGeneratorSimpleServerConfig
+    scope: string
+  }): Array<FilesGeneratorTask> {
+    const tasks: Array<FilesGeneratorTask> = []
+    if (config.points) {
+      const outfile = typeof config.points === 'string' ? config.points : config.points.outfile
+      const banner = typeof config.points === 'string' ? undefined : config.points.banner
+      tasks.push({
+        what: 'serverPoints',
+        outfile,
+        banner,
+        scope,
+      })
+    }
+    tasks.push(...this.simpleCustomConfigToTasks({ config }))
+    return tasks
+  }
+
+  static simpleClientConfigToTasks({
+    config,
+    scope,
+  }: {
+    config: FilesGeneratorSimpleClientConfig
+    scope: string
+  }): Array<FilesGeneratorTask> {
+    const tasks: Array<FilesGeneratorTask> = []
+    if (config.points) {
+      const outfile = typeof config.points === 'string' ? config.points : config.points.outfile
+      const banner = typeof config.points === 'string' ? undefined : config.points.banner
+      const lazy = typeof config.points === 'string' ? undefined : config.points.lazy
+      tasks.push({
+        what: 'clientPoints',
+        outfile,
+        banner,
+        scope,
+        lazy,
+      })
+    }
+    if (config.routes) {
+      const outfile = typeof config.routes === 'string' ? config.routes : config.routes.outfile
+      const banner = typeof config.routes === 'string' ? undefined : config.routes.banner
+      const origin = typeof config.routes === 'string' ? undefined : config.routes.origin
+      tasks.push({
+        what: 'routes',
+        outfile,
+        banner,
+        scope,
+        origin,
+      })
+    }
+    tasks.push(...this.simpleCustomConfigToTasks({ config }))
+    return tasks
   }
 }

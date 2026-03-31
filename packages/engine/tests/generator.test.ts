@@ -4,6 +4,7 @@ import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { FilesGenerator } from '../src/generator.js'
 import { waitUntilFileChanged } from './utils/other.js'
+import { toCamelCase } from '@point0/core'
 
 type TestFile = Bun.BunFile & { path: string; basename: string; importpath: string; isExists: () => boolean }
 
@@ -98,7 +99,7 @@ describe('FilesGenerator', () => {
 
   describe('#sync', () => {
     it.concurrent(
-      'generates lazy points file for server',
+      'generates server points file',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log, getLastLogMessage, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
@@ -114,10 +115,8 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           tasks: [
             {
               scope: 'myroot',
-              what: 'points',
+              what: 'serverPoints',
               outfile: pointsFile.path,
-              lazy: true,
-              side: 'server',
             },
           ],
           log,
@@ -128,21 +127,11 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         const content = fixPaths(await pointsFile.text())
         expect(content).toMatchInlineSnapshot(`
           "import type { PointsDefinition } from '@point0/core'
-          import { root as root_0 } from './file0.js'
+          import { root as root_0, page as page_1, query as query_2 } from './file0.js'
           export default [
             root_0,
-            {
-              type: 'page',
-              name: 'mypage',
-              route: '/mypage',
-              polh: false,
-              point: async () => (await import('./file0.js')).page,
-            },
-            {
-              type: 'query',
-              name: 'myquery',
-              point: async () => (await import('./file0.js')).query,
-            },
+            page_1,
+            query_2,
           ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
@@ -150,8 +139,9 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         expect(getLogs()).toHaveLength(1)
       }),
     )
+
     it.concurrent(
-      'generates lazy points file for client',
+      'generates lazy client points file',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log, getLastLogMessage, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
@@ -166,10 +156,9 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           tasks: [
             {
               scope: 'myroot',
-              what: 'points',
+              what: 'clientPoints',
               outfile: pointsFile.path,
               lazy: true,
-              side: 'client',
             },
           ],
           log,
@@ -199,7 +188,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
     )
 
     it(
-      'generates lazy points file, and log errors for invalid points',
+      'generates lazy clients points file, and log errors for invalid points',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
@@ -213,10 +202,9 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           tasks: [
             {
               scope: 'myroot',
-              what: 'points',
+              what: 'clientPoints',
               outfile: pointsFile.path,
               lazy: true,
-              side: 'server',
             },
           ],
           log,
@@ -242,7 +230,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
     )
 
     it.concurrent(
-      'generates lazy points file (ssr)',
+      'generates server points file (ssr)',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log }) => {
         // with all pages come to server, becouse some of them have loaders, but even if it has no loader, it can be used to retrieve queryClientDehydratedState
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -262,10 +250,8 @@ export const queryWithoutLoader = layout2.lets('query', 'queryWithoutLoader').qu
           tasks: [
             {
               scope: 'myroot',
-              what: 'points',
+              what: 'serverPoints',
               outfile: pointsFile.path,
-              lazy: true,
-              side: 'server',
             },
           ],
           log,
@@ -276,37 +262,13 @@ export const queryWithoutLoader = layout2.lets('query', 'queryWithoutLoader').qu
         const content = fixPaths(await pointsFile.text())
         expect(content).toMatchInlineSnapshot(`
           "import type { PointsDefinition } from '@point0/core'
-          import { root as root_0 } from './file0.js'
+          import { root as root_0, pageNoLoader as pageNoLoader_1, pageWithLoader as pageWithLoader_2, layout1 as layout1_3, layout2 as layout2_4 } from './file0.js'
           export default [
             root_0,
-            {
-              type: 'page',
-              name: 'pageNoLoader',
-              route: '/pageNoLoader',
-              polh: false,
-              layouts: ['layout1', 'layout2'],
-              point: async () => (await import('./file0.js')).pageNoLoader,
-            },
-            {
-              type: 'page',
-              name: 'pageWithLoader',
-              route: '/pageWithLoader',
-              polh: false,
-              layouts: ['layout1', 'layout2'],
-              point: async () => (await import('./file0.js')).pageWithLoader,
-            },
-            {
-              type: 'layout',
-              name: 'layout1',
-              route: '/',
-              point: async () => (await import('./file0.js')).layout1,
-            },
-            {
-              type: 'layout',
-              name: 'layout2',
-              route: '/',
-              point: async () => (await import('./file0.js')).layout2,
-            },
+            pageNoLoader_1,
+            pageWithLoader_2,
+            layout1_3,
+            layout2_4,
           ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
@@ -314,7 +276,7 @@ export const queryWithoutLoader = layout2.lets('query', 'queryWithoutLoader').qu
     )
 
     it.concurrent(
-      'generates lazy points file (no ssr)',
+      'generates server points file (no ssr)',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log }) => {
         // without ssr only pages with loaders come to server, becouse they have endpoints
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -334,10 +296,8 @@ export const queryWithoutLoader = layout2.lets('query', 'queryWithoutLoader').qu
           tasks: [
             {
               scope: 'myroot',
-              what: 'points',
+              what: 'serverPoints',
               outfile: pointsFile.path,
-              lazy: true,
-              side: 'server',
             },
           ],
           log,
@@ -348,29 +308,12 @@ export const queryWithoutLoader = layout2.lets('query', 'queryWithoutLoader').qu
         const content = fixPaths(await pointsFile.text())
         expect(content).toMatchInlineSnapshot(`
           "import type { PointsDefinition } from '@point0/core'
-          import { root as root_0 } from './file0.js'
+          import { root as root_0, pageWithLoader as pageWithLoader_1, layout1 as layout1_2, layout2 as layout2_3 } from './file0.js'
           export default [
             root_0,
-            {
-              type: 'page',
-              name: 'pageWithLoader',
-              route: '/pageWithLoader',
-              polh: false,
-              layouts: ['layout1', 'layout2'],
-              point: async () => (await import('./file0.js')).pageWithLoader,
-            },
-            {
-              type: 'layout',
-              name: 'layout1',
-              route: '/',
-              point: async () => (await import('./file0.js')).layout1,
-            },
-            {
-              type: 'layout',
-              name: 'layout2',
-              route: '/',
-              point: async () => (await import('./file0.js')).layout2,
-            },
+            pageWithLoader_1,
+            layout1_2,
+            layout2_3,
           ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
@@ -392,10 +335,8 @@ export const page = root.lets('page', 'mypage', '/mypage').page(() => <div>Hello
           tasks: [
             {
               scope: 'myroot',
-              what: 'points',
+              what: 'serverPoints',
               outfile: pointsFile.path,
-              lazy: false,
-              side: 'server',
             },
           ],
           log,
@@ -690,17 +631,14 @@ export const layout = root.lets('layout', 'mylayout', '/layout').loader(() => ({
           tasks: [
             {
               scope: 'myroot',
-              what: 'points',
+              what: 'clientPoints',
               outfile: lazyFile.path,
               lazy: true,
-              side: 'server',
             },
             {
               scope: 'myroot',
-              what: 'points',
+              what: 'serverPoints',
               outfile: readyFile.path,
-              lazy: false,
-              side: 'server',
             },
             {
               scope: 'myroot',
@@ -778,19 +716,16 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           tasks: [
             {
               scope: 'myroot',
-              what: 'points',
+              what: 'clientPoints',
               outfile: pointsFile0.path,
               lazy: true,
               banner: '// Target-specific banner 0',
-              side: 'server',
             },
             {
               scope: 'myroot',
-              what: 'points',
+              what: 'serverPoints',
               outfile: pointsFile1.path,
-              lazy: false,
               banner: '// Target-specific banner 1',
-              side: 'server',
             },
           ],
           log,
@@ -889,24 +824,21 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
           tasks: [
             {
               scope: 'root0',
-              what: 'points',
+              what: 'clientPoints',
               outfile: lazy0File.path,
               lazy: true,
-              side: 'server',
             },
             {
               scope: 'root1',
-              what: 'points',
+              what: 'clientPoints',
               outfile: lazy1File.path,
               lazy: true,
-              side: 'server',
             },
             {
               scope: 'root2',
-              what: 'points',
+              what: 'clientPoints',
               outfile: lazy2File.path,
               lazy: true,
-              side: 'server',
             },
           ],
           log,
@@ -967,6 +899,381 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
         `)
       }),
     )
+
+    it.concurrent(
+      'generates meta file',
+      helper(async ({ dir, files: [rootFile, metaFile], fixPaths, log: log, getLastLogMessage, getLogs }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const layout = root.lets('layout', 'mylayout').layout(() => <div>Layout</div>)
+export const page = layout.lets('page', 'mypage', '/mypage').page(() => <div>Hello</div>)
+export const action = root.lets('action', 'myaction', 'GET', '/myaction').action()
+export const invalidPage = root.lets('page', 'page3')
+const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [
+            {
+              what: 'meta',
+              scopes: ['myroot'],
+              outfile: metaFile.path,
+            },
+          ],
+          log,
+          routes: {},
+        })
+
+        await generator.sync()
+
+        const content = fixPaths(await metaFile.text())
+        expect(content.replaceAll(/file: '[^']*'/g, `file: '<file>'`)).toMatchInlineSnapshot(`
+          "import { Route0 } from '@devp0nt/route0'
+          export default {
+            scopes: [
+              "myroot",
+            ],
+            points: [
+              {
+                scope: 'myroot',
+                type: 'root',
+                name: 'myroot',
+                id: 'myroot.root.myroot',
+                route: undefined,
+                endpoint: undefined,
+                pos: {
+                  file: '<file>',
+                  line: 2,
+                  column: 20,
+                },
+                import: async () => (await import('./file0.js')).root,
+                valid: true,
+                errors: [],
+                ssr: false,
+                parents: [],
+                layouts: [],
+              },
+              {
+                scope: 'plugin',
+                type: 'plugin',
+                name: 'myplugin',
+                id: 'plugin.plugin.myplugin',
+                route: undefined,
+                endpoint: undefined,
+                pos: {
+                  file: '<file>',
+                  line: 7,
+                  column: 15,
+                },
+                import: undefined,
+                valid: true,
+                errors: [],
+                ssr: false,
+                parents: [],
+                layouts: [],
+              },
+              {
+                scope: 'myroot',
+                type: 'page',
+                name: 'page3',
+                id: 'myroot.page.page3',
+                route: undefined,
+                endpoint: undefined,
+                pos: {
+                  file: '<file>',
+                  line: 6,
+                  column: 27,
+                },
+                import: async () => (await import('./file0.js')).invalidPage,
+                valid: false,
+                errors: [
+                  'Invalid route argument undefined',
+                  'Last called method name 'undefined' does not match point type 'page'. Please, use .page() in end of point chain',
+                ],
+                ssr: false,
+                parents: [
+                  {
+                    scope: 'myroot',
+                    type: 'root',
+                    name: 'myroot',
+                    id: 'myroot.root.myroot',
+                    pos: {
+                      file: '<file>',
+                      line: 2,
+                      column: 20,
+                    },
+                  },
+                ],
+                layouts: [],
+              },
+              {
+                scope: 'myroot',
+                type: 'page',
+                name: 'mypage',
+                id: 'myroot.page.mypage',
+                route: Route0.create('/mypage'),
+                endpoint: undefined,
+                pos: {
+                  file: '<file>',
+                  line: 4,
+                  column: 20,
+                },
+                import: async () => (await import('./file0.js')).page,
+                valid: true,
+                errors: [],
+                ssr: false,
+                parents: [
+                  {
+                    scope: 'myroot',
+                    type: 'layout',
+                    name: 'mylayout',
+                    id: 'myroot.layout.mylayout',
+                    pos: {
+                      file: '<file>',
+                      line: 3,
+                      column: 22,
+                    },
+                  },
+                  {
+                    scope: 'myroot',
+                    type: 'root',
+                    name: 'myroot',
+                    id: 'myroot.root.myroot',
+                    pos: {
+                      file: '<file>',
+                      line: 2,
+                      column: 20,
+                    },
+                  },
+                ],
+                layouts: [
+                  {
+                    scope: 'myroot',
+                    type: 'layout',
+                    name: 'mylayout',
+                    id: 'myroot.layout.mylayout',
+                    pos: {
+                      file: '<file>',
+                      line: 3,
+                      column: 22,
+                    },
+                  },
+                ],
+              },
+              {
+                scope: 'myroot',
+                type: 'layout',
+                name: 'mylayout',
+                id: 'myroot.layout.mylayout',
+                route: Route0.create('/'),
+                endpoint: undefined,
+                pos: {
+                  file: '<file>',
+                  line: 3,
+                  column: 22,
+                },
+                import: async () => (await import('./file0.js')).layout,
+                valid: true,
+                errors: [],
+                ssr: false,
+                parents: [
+                  {
+                    scope: 'myroot',
+                    type: 'root',
+                    name: 'myroot',
+                    id: 'myroot.root.myroot',
+                    pos: {
+                      file: '<file>',
+                      line: 2,
+                      column: 20,
+                    },
+                  },
+                ],
+                layouts: [],
+              },
+              {
+                scope: 'myroot',
+                type: 'action',
+                name: 'myaction',
+                id: 'myroot.action.myaction',
+                route: undefined,
+                endpoint: {
+                  method: 'GET',
+                  route: Route0.create('/myaction'),
+                },
+                pos: {
+                  file: '<file>',
+                  line: 5,
+                  column: 22,
+                },
+                import: async () => (await import('./file0.js')).action,
+                valid: true,
+                errors: [],
+                ssr: false,
+                parents: [
+                  {
+                    scope: 'myroot',
+                    type: 'root',
+                    name: 'myroot',
+                    id: 'myroot.root.myroot',
+                    pos: {
+                      file: '<file>',
+                      line: 2,
+                      column: 20,
+                    },
+                  },
+                ],
+                layouts: [],
+              },
+            ],
+          }
+          "
+        `)
+
+        expect(getLastLogMessage()).toBe('5 points processed')
+        expect(getLogs()).toHaveLength(2)
+        // console.log(getLogs())
+      }),
+    )
+
+    it.concurrent(
+      'generates custom file',
+      helper(async ({ dir, files: [rootFile, customFile], fixPaths, log: log, getLastLogMessage, getLogs }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const query = root.lets('query', 'myquery').loader(() => ({hello: 'World'})).query()
+export const page = root.lets('page', 'mypage', '/mypage').query(query).page(({data}) => <div>Hello, {data.hello}</div>)
+export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          ssr: true,
+          tasks: [
+            {
+              what: 'customFile',
+              outfile: customFile.path,
+              handler: async ({ points }) => {
+                return `export const pointsNames = [${points.map((p) => `'${p.name}'`).join(', ')}]`
+              },
+            },
+          ],
+          log,
+          routes: {},
+        })
+        await generator.sync()
+
+        const content = fixPaths(await customFile.text())
+        expect(content).toMatchInlineSnapshot(
+          `"export const pointsNames = ['myroot', 'myplugin', 'mypage', 'myquery']"`,
+        )
+        expect(getLastLogMessage()).toBe('4 points processed')
+        expect(getLogs()).toHaveLength(1)
+      }),
+    )
+
+    it.concurrent(
+      'generates custom file with imports',
+      helper(async ({ dir, files: [rootFile, customFile], fixPaths, log: log, getLastLogMessage, getLogs }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const query = root.lets('query', 'myquery').loader(() => ({hello: 'World'})).query()
+export const page = root.lets('page', 'mypage', '/mypage').query(query).page(({data}) => <div>Hello, {data.hello}</div>)
+export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          ssr: true,
+          tasks: [
+            {
+              what: 'customFile',
+              outfile: customFile.path,
+              handler: async ({ points, emitPointsImports }) => {
+                const { importLines, importedPoints } = emitPointsImports({ points })
+                const lines: string[] = []
+                lines.push(...importLines)
+                for (const { point, renamedExportName } of importedPoints) {
+                  lines.push(`export const ${toCamelCase(`${point.name}_${point.type}`)} = ${renamedExportName}`)
+                }
+                return lines.join('\n') + '\n'
+              },
+            },
+          ],
+          log,
+          routes: {},
+        })
+        await generator.sync()
+
+        const content = fixPaths(await customFile.text())
+        expect(content).toMatchInlineSnapshot(
+          `
+            "import { root as root_0, plugin as plugin_1, page as page_2, query as query_3 } from './file0.js'
+            export const myrootRoot = root_0
+            export const mypluginPlugin = plugin_1
+            export const mypagePage = page_2
+            export const myqueryQuery = query_3
+            "
+          `,
+        )
+        expect(getLastLogMessage()).toBe('4 points processed')
+        expect(getLogs()).toHaveLength(1)
+      }),
+    )
+
+    it.concurrent(
+      'generates custom by controlled handler',
+      helper(
+        async ({
+          dir,
+          files: [rootFile, customFile1, customFile2],
+          fixPaths,
+          log: log,
+          getLastLogMessage,
+          getLogs,
+        }) => {
+          await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const query = root.lets('query', 'myquery').loader(() => ({hello: 'World'})).query()
+export const page = root.lets('page', 'mypage', '/mypage').query(query).page(({data}) => <div>Hello, {data.hello}</div>)
+export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
+        `)
+
+          const generator = FilesGenerator.create({
+            cwd: dir,
+            glob: '**/*.tsx',
+            ssr: true,
+            tasks: [
+              {
+                what: 'customControlled',
+                handler: async ({ points }) => {
+                  const content1 = `export const pointsNames = [${points.map((p) => `'${p.name}'`).join(', ')}]`
+                  const content2 = `export const pointsCount = ${points.length}`
+                  await customFile1.write(content1)
+                  await customFile2.write(content2)
+                },
+              },
+            ],
+            log,
+            routes: {},
+          })
+          await generator.sync()
+
+          const content1 = fixPaths(await customFile1.text())
+          const content2 = fixPaths(await customFile2.text())
+          expect(content1).toMatchInlineSnapshot(
+            `"export const pointsNames = ['myroot', 'myplugin', 'mypage', 'myquery']"`,
+          )
+          expect(content2).toMatchInlineSnapshot(`"export const pointsCount = 4"`)
+          expect(getLastLogMessage()).toBe('4 points processed')
+          expect(getLogs()).toHaveLength(1)
+        },
+      ),
+    )
   })
 
   describe('#watch', () => {
@@ -985,10 +1292,9 @@ export const page = root.lets('page', 'mypage', '/mypage').page(() => <div>Hello
           tasks: [
             {
               scope: 'myroot',
-              what: 'points',
+              what: 'clientPoints',
               outfile: pointsFile.path,
               lazy: true,
-              side: 'server',
             },
           ],
           log,

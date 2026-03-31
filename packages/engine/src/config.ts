@@ -18,7 +18,14 @@ import type { Request0 } from '@point0/core/request0'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { FilesGeneratorTaskMeta, FilesGeneratorTaskPoints, FilesGeneratorTaskRoutes } from './generator.js'
+import type {
+  FilesGeneratorTaskMeta,
+  FilesGeneratorSimpleServerConfig,
+  FilesGeneratorSimpleClientConfig,
+  FilesGeneratorSimpleGeneralConfig,
+  FilesGeneratorTask,
+} from './generator.js'
+import { FilesGenerator } from './generator.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { toAbsPath, toJsExtension } from './utils.js'
 import type {
@@ -122,6 +129,7 @@ export type EngineGeneralOptions = {
   log?: LogFn
   portPolicy?: PortPolicy
   serveRetries?: number
+  generate?: FilesGeneratorSimpleGeneralConfig | FilesGeneratorTask[]
   itWasBuilt?: boolean
   cwdAfterBuild?: string
   cwdBeforeBuild?: string
@@ -144,7 +152,8 @@ export type EngineServerOptions<
 > = {
   scope: PointsScope
   points?: PointsDefinitionSource<TRequiredCtx, TError>
-  generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
+  // generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
+  generate?: FilesGeneratorSimpleServerConfig
   publicdir?: {
     source: EngineOptionsPublicdir
     outdir: string
@@ -171,7 +180,8 @@ export type EngineClientOptions = {
   scope: PointsScope
   points?: PointsDefinitionSource<any, any>
   serving?: EngineOptionsServing
-  generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
+  // generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
+  generate?: FilesGeneratorSimpleClientConfig
   app?: EngineOptionsAppComponent
   publicdir?: {
     source: EngineOptionsPublicdir
@@ -348,6 +358,7 @@ export type EngineGeneralOptionsParsed = {
   cwdBeforeBuild: string
   engineFile: string
   cwd: string
+  generate: Array<FilesGeneratorTask>
   autoFixBuiltPaths: boolean
   clientsOutdir: string | null
   pointsGlob: string[]
@@ -367,7 +378,8 @@ export type EngineClientOptionsParsed = {
   pointsProvided: PointsDefinitionSource<any, any> | null
   serving: EngineOptionsServing
   banner: string | null
-  generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
+  // generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
+  generate: Array<FilesGeneratorTask>
   routesProvided: EngineOptionsRoutes | null
   // pointsDistFile: string | null
   appProvided: EngineOptionsAppComponent | null
@@ -398,7 +410,8 @@ export type EngineServerOptionsParsed = {
   scope: PointsScope
   pointsProvided: PointsDefinitionSource<any, any> | null
   banner: string | null
-  generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
+  // generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
+  generate: Array<FilesGeneratorTask>
   routesProvided: EngineOptionsRoutes | null
   port: number
   entry: Record<string, string> | null
@@ -496,6 +509,7 @@ const isFileURL = (str: string): boolean => {
 const parseEngineGeneralOptions = ({
   generalOptions,
   serverOptions,
+  clientsOptions,
 }: {
   generalOptions: EngineGeneralOptions
   serverOptions: EngineServerOptions<any, any>
@@ -602,6 +616,15 @@ const parseEngineGeneralOptions = ({
                   ? { ssr }
                   : {}),
             }
+  const providedGenerate = generalOptions.generate
+  const scopes = [
+    ...new Set([serverOptions.scope, clientsOptions?.map((client) => client.scope)].filter(Boolean)),
+  ] as string[]
+  const generate = !providedGenerate
+    ? []
+    : Array.isArray(providedGenerate)
+      ? providedGenerate
+      : FilesGenerator.simpleGeneralConfigToTasks({ config: providedGenerate, scopes })
   const result = {
     log: generalOptions.log ?? _defaultLogFn,
     itWasBuilt,
@@ -612,6 +635,7 @@ const parseEngineGeneralOptions = ({
     autoFixBuiltPaths: generalOptions.autoFixBuiltPaths ?? true,
     banner: generalOptions.banner ?? null,
     compiler,
+    generate,
   }
   return {
     ...result,
@@ -859,6 +883,12 @@ export const parseEngineServerOptions = ({
   if (compiler) {
     compiler.consts = [...normalizeEnvConsts(compiler.consts), ...normalizeEnvConsts(serverOptions.env?.consts ?? {})]
   }
+  const providedGenerate = serverOptions.generate
+  const generate = !providedGenerate
+    ? []
+    : Array.isArray(providedGenerate)
+      ? providedGenerate
+      : FilesGenerator.simpleServerConfigToTasks({ config: providedGenerate, scope: serverOptions.scope })
   return {
     scope: serverOptions.scope,
     pointsProvided: serverOptions.points ?? null,
@@ -877,14 +907,7 @@ export const parseEngineServerOptions = ({
     envVars: parseEnv(serverOptions.env?.vars ?? {}),
     envConsts: parseEnv(serverOptions.env?.consts ?? {}),
     routesProvided: serverOptions.routes ?? null,
-    generate: (serverOptions.generate ?? []).map((task) => {
-      const baseTask = {
-        ...task,
-        scope: serverOptions.scope,
-        side: 'server' as const,
-      }
-      return baseTask
-    }),
+    generate,
     banner: serverOptions.banner ?? null,
     portPolicy: serverOptions.portPolicy ?? generalOptionsParsed.portPolicy ?? 'simple',
     serveRetries: serverOptions.serveRetries ?? generalOptionsParsed.serveRetries ?? 0,
@@ -1007,20 +1030,19 @@ const parseEngineClientOptions = ({
   if (compiler) {
     compiler.consts = [...normalizeEnvConsts(compiler.consts), ...normalizeEnvConsts(clientOptions.env?.consts ?? {})]
   }
+  const providedGenerate = clientOptions.generate
+  const generate = !providedGenerate
+    ? []
+    : Array.isArray(providedGenerate)
+      ? providedGenerate
+      : FilesGenerator.simpleClientConfigToTasks({ config: providedGenerate, scope: clientOptions.scope })
   return {
     scope: clientOptions.scope,
     compiler,
     pointsProvided: clientOptions.points ?? null,
     serving: clientOptions.serving ?? true,
     routesProvided: clientOptions.routes ?? null,
-    generate: (clientOptions.generate ?? []).map((task) => {
-      const baseTask = {
-        ...task,
-        scope: clientOptions.scope,
-        side: 'client' as const,
-      }
-      return baseTask
-    }),
+    generate,
     banner: clientOptions.banner ?? null,
     // pointsDistFile:
     //   typeof clientOptions.points === 'string'

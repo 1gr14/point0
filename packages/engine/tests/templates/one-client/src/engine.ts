@@ -8,12 +8,7 @@ export const engine = Engine.create({
     scope: 'root',
     entry: { main: './index.server.ts' },
     points: async () => await import('./lib/points.server.js'),
-    generate: [
-      {
-        what: 'points',
-        outfile: './lib/points.server.ts',
-      },
-    ],
+    generate: { points: './lib/points.server.ts' },
     outdir: '../dist/server',
     env: { vars: { MY_ENV_SERVER_VARIABLE: 'SERVER1' }, consts: ['MY_ENV_FILE_CONSTANT'] },
     // publicdir: server,
@@ -27,16 +22,7 @@ export const engine = Engine.create({
       app: async () => await import('./app.js'),
       points: async () => await import('./lib/points.client.js'),
       routes: async () => await import('./lib/routes.js'),
-      generate: [
-        {
-          what: 'points',
-          outfile: './lib/points.client.ts',
-        },
-        {
-          what: 'routes',
-          outfile: './lib/routes.ts',
-        },
-      ],
+      generate: { points: './lib/points.client.ts', routes: './lib/routes.ts' },
       indexHtml: './index.html',
       outdir: '../dist/client',
       publicdir: { source: '../public', outdir: '../dist/client' },

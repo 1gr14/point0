@@ -96,6 +96,26 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       : (undefined as TValid extends true ? CompilerPointParsedPos : CompilerPointParsedPos | undefined)
   }
 
+  static toId({
+    scope,
+    type,
+    name,
+  }: {
+    scope: PointsScope | undefined
+    type: ReadyPointType
+    name: PointName
+  }): string {
+    return `${scope ?? 'undefined'}.${type}.${name}`
+  }
+
+  get id(): string {
+    return CompilerPoint.toId({
+      scope: this.scope,
+      type: this.type,
+      name: this.name,
+    })
+  }
+
   get strpos(): string {
     return `${this.file.abs}:${this.letsNodePath.node.loc?.start.line || 0}:${this.letsNodePath.node.loc?.start.column || 0}`
   }
@@ -306,7 +326,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
           return { routeSegment: undefined, routeFull: undefined, errors }
         }
       } else {
-        errors.push(new Error(`invalid route argument CallExpression`))
+        errors.push(new Error(`Invalid route argument CallExpression`))
         return { routeSegment: undefined, routeFull: undefined, errors }
       }
     }
@@ -324,7 +344,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     }
 
     // Case 5: Invalid route argument type
-    errors.push(new Error(`invalid route argument ${routeArg?.type ?? 'undefined'}`))
+    errors.push(new Error(`Invalid route argument ${routeArg?.type ?? 'undefined'}`))
     return { routeSegment: undefined, routeFull: undefined, errors }
   }
 
@@ -380,7 +400,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         }
         errors.push(
           new Error(
-            `unknown route key '${routeKey}' for scope '${scope}', you not provide routes, or provide routes for wrong scope`,
+            `Unknown route key '${routeKey}' for scope '${scope}', you not provide routes, or provide routes for wrong scope`,
           ),
         )
         return { method, route: undefined, policy, errors }
@@ -403,11 +423,11 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         errors.push(new Error(`Route0.create() first argument must be a string literal`))
         return { method, route: undefined, policy, errors }
       }
-      errors.push(new Error(`invalid route argument CallExpression`))
+      errors.push(new Error(`Invalid route argument CallExpression`))
       return { method, route: undefined, policy, errors }
     }
 
-    errors.push(new Error(`invalid route argument ${routeArg.type}`))
+    errors.push(new Error(`Invalid route argument ${routeArg.type}`))
     return { method, route: undefined, policy, errors }
   }
 

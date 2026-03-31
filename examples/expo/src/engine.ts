@@ -8,12 +8,7 @@ export const engine = Engine.create({
     scope: 'root',
     port: 3000,
     entry: { main: './index.server.ts' },
-    generate: [
-      {
-        what: 'points',
-        outfile: './lib/points.server.ts',
-      },
-    ],
+    generate: { points: './lib/points.server.ts' },
     points: async () => await import('./lib/points.server'),
     outdir: '../dist/server',
   },

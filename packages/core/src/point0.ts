@@ -3136,8 +3136,8 @@ export class Point0<
     >,
   >(
     withFn: TWithFn & AssertNoArrayReturn<Awaited<ReturnType<TWithFn>>, 'With fn should not return array'>, // withFn: WithFn<
-    //   TParamsSchema,
-  ) //   MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+    //   MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+  ) //   TParamsSchema,
   //   TSearchSchema,
   //   TClientInputSchema,
   //   TInnerProps,
@@ -6068,10 +6068,13 @@ export class Point0<
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
+    // just for safety we can preserve here endpoint
+    const _endpoint = !this._getSsr() ? this.undefinedEndpointIfHasNotServerLoader() : this._endpoint
     const point = this._continue({
       type: 'page',
       _page: page,
       _letsReadyPointType: undefined,
+      _endpoint,
       // preserve endpoint for queryClientDehydratedState prefetching
       // _endpoint: this.undefinedEndpointIfHasNotServerLoader(),
       _mountActions: [...this._mountActions, ...selfQueryAction],

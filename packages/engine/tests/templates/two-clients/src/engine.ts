@@ -9,12 +9,7 @@ export const engine = Engine.create({
     scope: 'root',
     entry: { main: './index.server.ts' },
     points: async () => await import('./lib/points.server.js'),
-    generate: [
-      {
-        what: 'points',
-        outfile: './lib/points.server.ts',
-      },
-    ],
+    generate: { points: './lib/points.server.ts' },
     outdir: '../dist/server',
     env: { vars: { MY_ENV_SERVER_VARIABLE: 'SERVER1' }, consts: ['MY_ENV_FILE_CONSTANT'] },
     // publicdir: server,
@@ -29,16 +24,7 @@ export const engine = Engine.create({
       points: async () => await import('./lib/points1.js'),
       routes: async () => await import('./lib/routes1.js'),
       ssr: true, // ssr1
-      generate: [
-        {
-          what: 'points',
-          outfile: './lib/points1.ts',
-        },
-        {
-          what: 'routes',
-          outfile: './lib/routes1.ts',
-        },
-      ],
+      generate: { points: './lib/points1.ts', routes: './lib/routes1.ts' },
       indexHtml: './index1.html',
       outdir: '../dist/client/first',
       publicdir: { source: '../public1', outdir: '../dist/client/first' },
@@ -57,16 +43,7 @@ export const engine = Engine.create({
       points: async () => await import('./lib/points2.js'),
       routes: async () => await import('./lib/routes2.js'),
       ssr: true, // ssr2
-      generate: [
-        {
-          what: 'points',
-          outfile: './lib/points2.ts',
-        },
-        {
-          what: 'routes',
-          outfile: './lib/routes2.ts',
-        },
-      ],
+      generate: { points: './lib/points2.ts', routes: './lib/routes2.ts' },
       indexHtml: './index2.html',
       outdir: '../dist/client/second',
       publicdir: { source: '../public2', outdir: '../dist/client/second' },

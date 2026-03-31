@@ -9,12 +9,7 @@ export const engine = Engine.create({
     scope: 'client',
     port: 3000,
     entry: { main: './index.server.ts' },
-    generate: [
-      {
-        what: 'points',
-        outfile: './lib/points.server.ts',
-      },
-    ],
+    generate: { points: './lib/points.server.ts' },
     points: async () => await import('./lib/points.server'),
     outdir: '../dist/server',
   },
@@ -26,16 +21,7 @@ export const engine = Engine.create({
       // points: async () => points,
       // generatePointsLazy: './lib/points.lazy.ts',
       // generatePointsReady: './lib/points.ready.ts',
-      generate: [
-        {
-          what: 'points',
-          outfile: './lib/points.client.ts',
-        },
-        {
-          what: 'routes',
-          outfile: './lib/routes.ts',
-        },
-      ],
+      generate: { points: './lib/points.client.ts', routes: './lib/routes.ts' },
       // pointsModuleType: 'ready',
       // points: await import('./lib/points'),
       routes: async () => await import('./lib/routes'),

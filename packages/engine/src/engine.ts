@@ -111,7 +111,11 @@ export class Engine<
       cwd: parsedOptions.general.cwd,
       glob: parsedOptions.general.pointsGlob,
       routes: parsedOptions.routes,
-      tasks: [...parsedOptions.server.generate, ...parsedOptions.clients.flatMap((client) => client.generate)],
+      tasks: [
+        ...parsedOptions.general.generate,
+        ...parsedOptions.server.generate,
+        ...parsedOptions.clients.flatMap((client) => client.generate),
+      ],
     })
 
     const publicdirs = [server.publicdir, ...serverClients.map((client) => client.publicdir)].flatMap((publicdir) =>
