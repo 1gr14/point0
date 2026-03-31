@@ -1,4 +1,4 @@
-import { client } from '@/lib/client.js'
+import { root } from '@/lib/client.js'
 import {
   testCookie,
   testNumberCookie,
@@ -10,8 +10,8 @@ import { useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 
-export const createIdeaMutation = client
-  .lets('mutation', 'createIdea')
+export const createIdeaMutation = root.lets
+  .mutation()
   // .input(
   //   z.object({
   //     title: z.string().min(1).max(10),
@@ -79,7 +79,7 @@ export const createIdeaMutation = client
     },
   })
 
-export const generateIdeaMutation = client
+export const generateIdeaMutation = root
   .lets('mutation', 'generateIdea')
   .loader(async ({ set, request }) => {
     testCookie.set(Math.random().toString())
@@ -104,7 +104,7 @@ export const generateIdeaMutation = client
   })
   .mutation()
 
-export const clientFnMutation = client
+export const clientFnMutation = root
   .lets('mutation', 'clientFnMutation')
   .clientLoader(async () => {
     return new Response('HELLO!', {
@@ -113,7 +113,7 @@ export const clientFnMutation = client
   })
   .mutation()
 
-export const clientFnMutationX = client
+export const clientFnMutationX = root
   .lets('mutation', 'clientFnMutation2')
   .loader(async () => {
     return new Response('HELLO!', {
@@ -122,7 +122,7 @@ export const clientFnMutationX = client
   })
   .mutation()
 
-export const clientFn2Mutation = client
+export const clientFn2Mutation = root
   .lets('mutation', 'clientFn2Mutation')
   .loader(async () => {
     const stream = new ReadableStream({

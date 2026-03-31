@@ -2,7 +2,8 @@ import { Point0 } from '@point0/core'
 import superjson from 'superjson'
 import { prisma } from './prisma.js'
 
-export const client = Point0.lets<{ zxc: number }>('root', 'client')
+export const root = Point0.lets
+  .root<{ zxc: number }>()
   .transformer(superjson)
   // .Infer.Ctx// .Infer['RequiredCtx']
   .ctx({
@@ -48,4 +49,4 @@ export const client = Point0.lets<{ zxc: number }>('root', 'client')
   // })
   .root()
 
-export type Ctx = (typeof client)['Infer']['Ctx']
+export type Ctx = (typeof root)['Infer']['Ctx']

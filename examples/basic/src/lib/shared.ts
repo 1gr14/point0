@@ -1,6 +1,6 @@
-import { client } from './client'
+import { root } from './client'
 
-export const shared = client.lets('root', 'shared').root()
+export const shared = root.lets('root', 'shared').root()
 
 export const sharedQuery = shared
   .lets('query', 'sharedQuery')

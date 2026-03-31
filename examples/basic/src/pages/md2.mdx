@@ -1,9 +1,9 @@
 import { Link } from '@/lib/navigate'
 import { routes } from '@/lib/routes'
-import { client } from '@/lib/client'
+import { root } from '@/lib/client'
 
-export const page = client
-  .lets('page', 'md2', '/md2')
+export const page = root.lets
+  .page('/md2')
   .loader(() => ({
     a: Math.random(),
   }))

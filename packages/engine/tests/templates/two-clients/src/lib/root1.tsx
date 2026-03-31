@@ -1,8 +1,8 @@
 import { root } from './root.js'
 import superjson from 'superjson'
 
-export const root1 = root
-  .lets('root', 'first')
+export const firstRoot = root.lets
+  .root()
   // .basepath('/')
   .transformer(superjson)
   .prefetchPageOnNavigate(false)

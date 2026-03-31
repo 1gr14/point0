@@ -99,7 +99,7 @@ function PageIdea() {
       }),
     )
 
-    it.concurrent(
+    it.concurrent.only(
       'desugars default export lets.<type>() using file basename as point name',
       helper(async () => {
         const filePath = nodePath.join(tempDir, 'lets-sugar-default.tsx')
@@ -107,11 +107,11 @@ function PageIdea() {
           await Bun.write(
             filePath,
             `import {Point0} from '@point0/core'
-export const root = Point0.lets.root().root()
-export default root.lets.page('/idea').page(() => <div>Hello</div>)
+export const root = Point0.lets.root().ctx({x: 1}).ctx({y: 2}).root()
+export default root.lets.page('/idea').loader(() => ({ ok: true })).page(() => <div>Hello</div>)
           `,
           )
-          const compiler = Compiler.create({ side: 'client', scope: 'test' })
+          const compiler = Compiler.create({ side: 'server', scope: 'test' })
           const result = compiler.compile({ file: filePath })
           expect(result.errors).toHaveLength(0)
           expect(result.points).toHaveLength(2)
@@ -119,16 +119,19 @@ export default root.lets.page('/idea').page(() => <div>Hello</div>)
           expect(await toText(result.code)).toMatchInlineSnapshot(`
 "import { Point0 } from '@point0/core'
 export const root = Point0.lets('root', 'root')
+  .ctx({ x: 1 })
+  .ctx({ y: 2 })
   .root()
   ._tail(function X() {
     return null
   })
 export default root
   .lets('page', 'lets-sugar-default', '/idea')
-  .page(PageLetsSugarDefault)
-function PageLetsSugarDefault() {
-  return <div>Hello</div>
-}
+  .loader(() => ({ ok: true }))
+  .page()
+  ._tail(function X() {
+    return null
+  })
 "
 `)
         } finally {

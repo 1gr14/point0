@@ -79,14 +79,14 @@ describe('two-clients', () => {
         async ({ tp }) => {
           await tp.write(
             'src/client1.tsx',
-            `import { root1 } from './lib/root1.js'
-          export const page = root1.lets('page', 'home', '/').page(() => <div>First Client</div>)
+            `import { firstRoot } from './lib/root1.js'
+          export const page = firstRoot.lets.page('/').page(() => <div>First Client</div>)
           `,
           )
           await tp.write(
             'src/client2.tsx',
-            `import { root2 } from './lib/root2.js'
-          export const page = root2.lets('page', 'home', '/').page(() => <div>Second Client</div>)
+            `import { secondRoot } from './lib/root2.js'
+          export const page = secondRoot.lets.page('/').page(() => <div>Second Client</div>)
           `,
           )
           tp.spawn(['bun', 'run', 'dev'])
@@ -173,14 +173,14 @@ describe('two-clients', () => {
         async ({ tp }) => {
           await tp.write(
             'src/client1.tsx',
-            `import { root1 } from './lib/root1.js'
-          export const page = root1.lets('page', 'home', '/').page(() => <div>First Client</div>)
+            `import { firstRoot } from './lib/root1.js'
+          export const homePage = firstRoot.lets.page('/').page(() => <div>First Client</div>)
           `,
           )
           await tp.write(
             'src/client2.tsx',
-            `import { root2 } from './lib/root2.js'
-          export const page = root2.lets('page', 'home', '/').page(() => <div>Second Client</div>)
+            `import { secondRoot } from './lib/root2.js'
+          export const homePage = secondRoot.lets.page('/').page(() => <div>Second Client</div>)
           `,
           )
 
@@ -223,14 +223,14 @@ describe('two-clients', () => {
         async ({ tp }) => {
           await tp.write(
             'src/client1.tsx',
-            `import { root1 } from './lib/root1.js'
-          export const page = root1.lets('page', 'home', '/').page(() => <div>First Client</div>)
+            `import { firstRoot } from './lib/root1.js'
+          export const homePage = firstRoot.lets.page('/').page(() => <div>First Client</div>)
           `,
           )
           await tp.write(
             'src/client2.tsx',
-            `import { root2 } from './lib/root2.js'
-          export const page = root2.lets('page', 'home', '/').page(() => <div>Second Client</div>)
+            `import { secondRoot } from './lib/root2.js'
+          export const homePage = secondRoot.lets.page('/').page(() => <div>Second Client</div>)
           `,
           )
 
@@ -273,14 +273,14 @@ describe('two-clients', () => {
         async ({ tp }) => {
           await tp.write(
             'src/client1.tsx',
-            `import { root1 } from './lib/root1.js'
-          export const page = root1.lets('page', 'home', '/').page(() => <div>First Client</div>)
+            `import { firstRoot } from './lib/root1.js'
+          export const homePage = firstRoot.lets.page('/').page(() => <div>First Client</div>)
           `,
           )
           await tp.write(
             'src/client2.tsx',
-            `import { root2 } from './lib/root2.js'
-          export const page = root2.lets('page', 'home', '/').page(() => <div>Second Client</div>)
+            `import { secondRoot } from './lib/root2.js'
+          export const homePage = secondRoot.lets.page('/').page(() => <div>Second Client</div>)
           `,
           )
           tp.spawn(['bun', 'run', 'dev'])

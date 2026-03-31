@@ -2,8 +2,8 @@
 
 import { useEffect } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
-export const ideaNewsPage = ideaLayout
-  .lets('page', 'ideaNews', 'news')
+export const ideaNewsPage = ideaLayout.lets
+  .page('/news')
   .prefetchPageOnLinkHover(true, 2000)
   .with(() => ({ idea: ideaLayout.useValue('idea') }))
   .head(({ props }) => `${props.idea.news.length} news for idea "${props.idea.title}"`)

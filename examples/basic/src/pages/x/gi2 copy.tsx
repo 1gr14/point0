@@ -1,9 +1,9 @@
-import { client } from '@/lib/client.js'
+import { root } from '@/lib/client.js'
 import { testCookie, testNumberCookie, testNumberDefaultCookie } from '@/lib/cookies.js'
 import { useState } from 'react'
 import { generalLayout } from '../../layouts/general.js'
 
-export const generateIdeaMutation = client
+export const generateIdeaMutation = root
   .lets('mutation', 'generateIdea2')
   .loader(async () => {
     testCookie.set(Math.random().toString())

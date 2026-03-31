@@ -175,6 +175,48 @@ export const root = Point0.lets.root().root()
     )
 
     it.concurrent(
+      'desugars lets.root() with export const root name to root (separated lines)',
+      helper(async ({ files: [file], walker }) => {
+        await file.write(`import {Point0} from '@point0/core'
+export const root = Point0
+  .lets
+  .root()
+  .root()
+        `)
+        const result = walker.collectPointsFromFile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.points).toHaveLength(1)
+        expect(result.points[0].simplify()).toMatchObject({
+          type: 'root',
+          name: 'root',
+          exportName: 'root',
+          valid: true,
+        })
+      }),
+    )
+
+    it.concurrent(
+      'desugars lets.root() with export const root name to root (separated lines and generics)',
+      helper(async ({ files: [file], walker }) => {
+        await file.write(`import {Point0} from '@point0/core'
+export const root = Point0
+  .lets
+  .root()
+  .root()
+        `)
+        const result = walker.collectPointsFromFile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.points).toHaveLength(1)
+        expect(result.points[0].simplify()).toMatchObject({
+          type: 'root',
+          name: 'root',
+          exportName: 'root',
+          valid: true,
+        })
+      }),
+    )
+
+    it.concurrent(
       'desugars lets.<type>() for default export and infers name from filename',
       helper(async ({ files: [file], walker }) => {
         await file.write(`import {Point0} from '@point0/core'

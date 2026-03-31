@@ -5,28 +5,28 @@ export default {
     file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/engine.ts',
     import: async () => (await Engine.findAndImportSelf({ engineFile: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/engine.ts' })).engine,
     server: {
-      scope: 'client',
+      scope: 'root',
     },
     clients: [
       {
-        scope: 'client',
+        scope: 'root',
       },
     ],
   },
   points: [
     {
-      scope: 'client',
+      scope: 'root',
       type: 'root',
-      name: 'client',
-      id: 'client.root.client',
+      name: 'root',
+      id: 'root.root.root',
       route: undefined,
       endpoint: undefined,
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
         line: 5,
-        column: 22,
+        column: 20,
       },
-      import: async () => (await import('./client.js')).client,
+      import: async () => (await import('./client.js')).root,
       valid: true,
       errors: [],
       ssr: true,
@@ -34,18 +34,18 @@ export default {
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'page',
       name: 'home',
-      id: 'client.page.home',
+      id: 'root.page.home',
       route: Route0.create('/'),
       endpoint: {
         method: 'GET',
-        route: Route0.create('/_point0/client/page/home'),
+        route: Route0.create('/_point0/root/page/home'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/home.tsx',
-        line: 102,
+        line: 101,
         column: 15,
       },
       import: async () => (await import('../pages/home.js')).default,
@@ -54,10 +54,10 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -65,23 +65,23 @@ export default {
           },
         },
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -91,14 +91,14 @@ export default {
       ],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'page',
       name: 'empty',
-      id: 'client.page.empty',
+      id: 'root.page.empty',
       route: Route0.create('/empty/:x'),
       endpoint: {
         method: 'GET',
-        route: Route0.create('/_point0/client/page/empty/empty/:x'),
+        route: Route0.create('/_point0/root/page/empty/empty/:x'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/empty.tsx',
@@ -111,28 +111,28 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'page',
       name: 'file',
-      id: 'client.page.file',
+      id: 'root.page.file',
       route: Route0.create('/file'),
       endpoint: {
         method: 'GET',
-        route: Route0.create('/_point0/client/page/file/file'),
+        route: Route0.create('/_point0/root/page/file/file'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/file.tsx',
@@ -145,28 +145,28 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'page',
       name: 'gi1',
-      id: 'client.page.gi1',
+      id: 'root.page.gi1',
       route: Route0.create('/gi1'),
       endpoint: {
         method: 'GET',
-        route: Route0.create('/_point0/client/page/gi1/gi1'),
+        route: Route0.create('/_point0/root/page/gi1/gi1'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/x/gi2.tsx',
@@ -179,10 +179,10 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -190,23 +190,23 @@ export default {
           },
         },
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -216,14 +216,14 @@ export default {
       ],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'page',
       name: 'gi2',
-      id: 'client.page.gi2',
+      id: 'root.page.gi2',
       route: Route0.create('/gi2'),
       endpoint: {
         method: 'GET',
-        route: Route0.create('/_point0/client/page/gi2/gi2'),
+        route: Route0.create('/_point0/root/page/gi2/gi2'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/x/gi2 copy.tsx',
@@ -236,10 +236,10 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -247,23 +247,23 @@ export default {
           },
         },
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -273,14 +273,14 @@ export default {
       ],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'page',
       name: 'ideas',
-      id: 'client.page.ideas',
+      id: 'root.page.ideas',
       route: Route0.create('/ideas'),
       endpoint: {
         method: 'GET',
-        route: Route0.create('/_point0/client/page/ideas/ideas'),
+        route: Route0.create('/_point0/root/page/ideas/ideas'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/ideas.tsx',
@@ -293,10 +293,10 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -304,23 +304,23 @@ export default {
           },
         },
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -330,14 +330,14 @@ export default {
       ],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'page',
       name: 'newIdea',
-      id: 'client.page.newIdea',
+      id: 'root.page.newIdea',
       route: Route0.create('/ideas/new'),
       endpoint: {
         method: 'GET',
-        route: Route0.create('/_point0/client/page/newIdea/ideas/new'),
+        route: Route0.create('/_point0/root/page/newIdea/ideas/new'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create.tsx',
@@ -350,10 +350,10 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -361,23 +361,23 @@ export default {
           },
         },
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -387,14 +387,14 @@ export default {
       ],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'page',
       name: 'idea',
-      id: 'client.page.idea',
+      id: 'root.page.idea',
       route: Route0.create('/ideas/:id'),
       endpoint: {
         method: 'GET',
-        route: Route0.create('/_point0/client/page/idea/ideas/:id'),
+        route: Route0.create('/_point0/root/page/idea/ideas/:id'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea.tsx',
@@ -407,10 +407,10 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'idea',
-          id: 'client.layout.idea',
+          id: 'root.layout.idea',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/idea.tsx',
             line: 5,
@@ -418,10 +418,10 @@ export default {
           },
         },
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -429,23 +429,23 @@ export default {
           },
         },
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -453,10 +453,10 @@ export default {
           },
         },
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'idea',
-          id: 'client.layout.idea',
+          id: 'root.layout.idea',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/idea.tsx',
             line: 5,
@@ -466,14 +466,14 @@ export default {
       ],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'page',
       name: 'ideaNews',
-      id: 'client.page.ideaNews',
+      id: 'root.page.ideaNews',
       route: Route0.create('/ideas/:id/news'),
       endpoint: {
         method: 'GET',
-        route: Route0.create('/_point0/client/page/ideaNews/ideas/:id/news'),
+        route: Route0.create('/_point0/root/page/ideaNews/ideas/:id/news'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-news.tsx',
@@ -486,10 +486,10 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'idea',
-          id: 'client.layout.idea',
+          id: 'root.layout.idea',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/idea.tsx',
             line: 5,
@@ -497,10 +497,10 @@ export default {
           },
         },
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -508,23 +508,23 @@ export default {
           },
         },
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -532,10 +532,10 @@ export default {
           },
         },
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'idea',
-          id: 'client.layout.idea',
+          id: 'root.layout.idea',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/idea.tsx',
             line: 5,
@@ -545,14 +545,14 @@ export default {
       ],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'page',
       name: 'md2',
-      id: 'client.page.md2',
+      id: 'root.page.md2',
       route: Route0.create('/md2'),
       endpoint: {
         method: 'GET',
-        route: Route0.create('/_point0/client/page/md2/md2'),
+        route: Route0.create('/_point0/root/page/md2/md2'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/md2.mdx',
@@ -565,28 +565,28 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'page',
       name: 'sharedEmpty',
-      id: 'client.page.sharedEmpty',
+      id: 'root.page.sharedEmpty',
       route: Route0.create('/sharedEmpty2'),
       endpoint: {
         method: 'GET',
-        route: Route0.create('/_point0/client/page/sharedEmpty/sharedEmpty2'),
+        route: Route0.create('/_point0/root/page/sharedEmpty/sharedEmpty2'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/empty.tsx',
@@ -599,24 +599,24 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'layout',
       name: 'generalLayout',
-      id: 'client.layout.generalLayout',
+      id: 'root.layout.generalLayout',
       route: Route0.create('/'),
       endpoint: undefined,
       pos: {
@@ -630,28 +630,28 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'layout',
       name: 'idea',
-      id: 'client.layout.idea',
+      id: 'root.layout.idea',
       route: Route0.create('/ideas/:id'),
       endpoint: {
         method: 'GET',
-        route: Route0.create('/_point0/client/layout/idea/ideas/:id'),
+        route: Route0.create('/_point0/root/layout/idea/ideas/:id'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/idea.tsx',
@@ -664,10 +664,10 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -675,23 +675,23 @@ export default {
           },
         },
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'layout',
           name: 'generalLayout',
-          id: 'client.layout.generalLayout',
+          id: 'root.layout.generalLayout',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/layouts/general.tsx',
             line: 7,
@@ -701,18 +701,18 @@ export default {
       ],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'component',
-      name: 'bestIdea',
-      id: 'client.component.bestIdea',
+      name: 'BestIdea',
+      id: 'root.component.BestIdea',
       route: undefined,
       endpoint: {
         method: 'POST',
-        route: Route0.create('/_point0/client/component/bestIdea'),
+        route: Route0.create('/_point0/root/component/BestIdea'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/home.tsx',
-        line: 33,
+        line: 32,
         column: 33,
       },
       import: async () => (await import('../pages/home.js')).BestIdeaComponent,
@@ -721,24 +721,24 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'component',
       name: 'externalHelper2',
-      id: 'client.component.externalHelper2',
+      id: 'root.component.externalHelper2',
       route: undefined,
       endpoint: undefined,
       pos: {
@@ -746,30 +746,30 @@ export default {
         line: 30,
         column: 40,
       },
-      import: async () => (await import('../pages/home.helper.js')).ExternalHelperComponent2,
+      import: async () => (await import('../pages/home.helper.js')).externalHelper2Component,
       valid: true,
       errors: [],
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'component',
       name: 'externalHelper3',
-      id: 'client.component.externalHelper3',
+      id: 'root.component.externalHelper3',
       route: undefined,
       endpoint: undefined,
       pos: {
@@ -777,30 +777,30 @@ export default {
         line: 54,
         column: 40,
       },
-      import: async () => (await import('../pages/home.helper.js')).ExternalHelperComponent3,
+      import: async () => (await import('../pages/home.helper.js')).externalHelper3Component,
       valid: true,
       errors: [],
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'provider',
       name: 'testClientCtx1',
-      id: 'client.provider.testClientCtx1',
+      id: 'root.provider.testClientCtx1',
       route: undefined,
       endpoint: undefined,
       pos: {
@@ -814,28 +814,28 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'provider',
       name: 'testClientCtx2',
-      id: 'client.provider.testClientCtx2',
+      id: 'root.provider.testClientCtx2',
       route: undefined,
       endpoint: {
         method: 'POST',
-        route: Route0.create('/_point0/client/provider/testClientCtx2'),
+        route: Route0.create('/_point0/root/provider/testClientCtx2'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client-ctx.ts',
@@ -848,28 +848,28 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'provider',
       name: 'testClientCtx3',
-      id: 'client.provider.testClientCtx3',
+      id: 'root.provider.testClientCtx3',
       route: undefined,
       endpoint: {
         method: 'POST',
-        route: Route0.create('/_point0/client/provider/testClientCtx3'),
+        route: Route0.create('/_point0/root/provider/testClientCtx3'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client-ctx.ts',
@@ -882,28 +882,28 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'mutation',
       name: 'clientFn2Mutation',
-      id: 'client.mutation.clientFn2Mutation',
+      id: 'root.mutation.clientFn2Mutation',
       route: undefined,
       endpoint: {
         method: 'POST',
-        route: Route0.create('/_point0/client/mutation/clientFn2Mutation'),
+        route: Route0.create('/_point0/root/mutation/clientFn2Mutation'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create.tsx',
@@ -916,24 +916,24 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'mutation',
       name: 'clientFnMutation',
-      id: 'client.mutation.clientFnMutation',
+      id: 'root.mutation.clientFnMutation',
       route: undefined,
       endpoint: undefined,
       pos: {
@@ -947,28 +947,28 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'mutation',
       name: 'clientFnMutation2',
-      id: 'client.mutation.clientFnMutation2',
+      id: 'root.mutation.clientFnMutation2',
       route: undefined,
       endpoint: {
         method: 'POST',
-        route: Route0.create('/_point0/client/mutation/clientFnMutation2'),
+        route: Route0.create('/_point0/root/mutation/clientFnMutation2'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create.tsx',
@@ -981,28 +981,28 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'mutation',
       name: 'createIdea',
-      id: 'client.mutation.createIdea',
+      id: 'root.mutation.createIdea',
       route: undefined,
       endpoint: {
         method: 'POST',
-        route: Route0.create('/_point0/client/mutation/createIdea'),
+        route: Route0.create('/_point0/root/mutation/createIdea'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create.tsx',
@@ -1015,28 +1015,28 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'mutation',
       name: 'generateIdea',
-      id: 'client.mutation.generateIdea',
+      id: 'root.mutation.generateIdea',
       route: undefined,
       endpoint: {
         method: 'POST',
-        route: Route0.create('/_point0/client/mutation/generateIdea'),
+        route: Route0.create('/_point0/root/mutation/generateIdea'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create.tsx',
@@ -1049,28 +1049,28 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'mutation',
       name: 'generateIdea1',
-      id: 'client.mutation.generateIdea1',
+      id: 'root.mutation.generateIdea1',
       route: undefined,
       endpoint: {
         method: 'POST',
-        route: Route0.create('/_point0/client/mutation/generateIdea1'),
+        route: Route0.create('/_point0/root/mutation/generateIdea1'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/x/gi2.tsx',
@@ -1083,28 +1083,28 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'mutation',
       name: 'generateIdea2',
-      id: 'client.mutation.generateIdea2',
+      id: 'root.mutation.generateIdea2',
       route: undefined,
       endpoint: {
         method: 'POST',
-        route: Route0.create('/_point0/client/mutation/generateIdea2'),
+        route: Route0.create('/_point0/root/mutation/generateIdea2'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/x/gi2 copy.tsx',
@@ -1117,28 +1117,28 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],
       layouts: [],
     },
     {
-      scope: 'client',
+      scope: 'root',
       type: 'mutation',
       name: 'uploadFile',
-      id: 'client.mutation.uploadFile',
+      id: 'root.mutation.uploadFile',
       route: undefined,
       endpoint: {
         method: 'POST',
-        route: Route0.create('/_point0/client/mutation/uploadFile'),
+        route: Route0.create('/_point0/root/mutation/uploadFile'),
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/file.tsx',
@@ -1151,14 +1151,14 @@ export default {
       ssr: true,
       parents: [
         {
-          scope: 'client',
+          scope: 'root',
           type: 'root',
-          name: 'client',
-          id: 'client.root.client',
+          name: 'root',
+          id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
             line: 5,
-            column: 22,
+            column: 20,
           },
         },
       ],

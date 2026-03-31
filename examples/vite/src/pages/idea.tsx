@@ -9,8 +9,8 @@ import { ideaLayout } from '../layouts/idea.js'
 //   return { idea }
 // }
 
-export const ideaPage = ideaLayout
-  .lets('page', 'idea', '/')
+export const ideaPage = ideaLayout.lets
+  .page('/')
   .loader(async ({ ctx, params }) => {
     // it excutes on server, but defined in client file,
     // prisma will never come her on client, becouse of dead code optimization on build

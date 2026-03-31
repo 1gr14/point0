@@ -338,3 +338,23 @@ export const getByPath: GetByPath = (target, path) => {
   }
   return current
 }
+
+export const withLetsSugar = (fn: any) => {
+  const wrapped = new Proxy(fn, {
+    apply(target, thisArg, argArray) {
+      return Reflect.apply(target, thisArg, argArray)
+    },
+    get(target, prop, receiver) {
+      if (typeof prop === 'symbol') {
+        return Reflect.get(target, prop, receiver)
+      }
+      if (prop in target) {
+        return Reflect.get(target, prop, receiver)
+      }
+      return () => {
+        throw new Error('lets[type] notation can not work without compiler, please use compiler')
+      }
+    },
+  })
+  return wrapped
+}

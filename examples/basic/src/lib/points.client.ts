@@ -1,5 +1,5 @@
 import type { PointsDefinition } from '@point0/core'
-import { client as root_0 } from './client.js'
+import { root as root_0 } from './client.js'
 export default [
   root_0,
   {

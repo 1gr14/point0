@@ -1,16 +1,15 @@
+import { Link } from '@/lib/navigate'
 import { superstore } from '@point0/core'
 import { useEffect, useState } from 'react'
 import * as z from 'zod'
-import { Link } from '@/lib/navigate'
 import iconRaw from '../assets/icon.svg' with { type: 'text' }
 // import icon from '../assets/icon.svg'
 import iconUrl from '../assets/icon-1.svg'
 import { generalLayout } from '../layouts/general.js'
-import { client } from '../lib/client.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
-import { routes } from '../lib/routes.js'
+import { root } from '../lib/client.js'
 import { Svg } from '../lib/svg.js'
-import { ExternalHelperComponent, ExternalHelperComponent2, ExternalHelperComponent3 } from './home.helper.js'
+import { externalHelper2Component, externalHelper3Component, ExternalHelperComponent } from './home.helper.js'
 
 // import { Svg } from '../lib/svg.js'
 
@@ -30,8 +29,8 @@ const someDate = superstore.define('someDate', () => new Date(), 'clientServerTr
 const someStable = superstore.define('someStable', () => 123, 'clientServerTransferredSsr')
 const someVar = superstore.define('someVar', () => 0, 'clientServerTransferredSsr')
 
-export const BestIdeaComponent = client
-  .lets<{ cta: string }>('component', 'bestIdea')
+export const BestIdeaComponent = root.lets
+  .component<{ cta: string }>()
   .input(z.object({ x: z.number() }))
   .input(z.object({ y: z.number() }))
   .loader(async ({ ctx, input }) => {
@@ -155,8 +154,8 @@ export default generalLayout
         <HelperComponent />
         <hr />
         <ExternalHelperComponent />
-        <ExternalHelperComponent2.Component />
-        <ExternalHelperComponent3.X />
+        <externalHelper2Component.Component />
+        <externalHelper3Component.X />
         <hr />
         <p>Something random: {someRandom.get()}</p>
         <p>Something date: {someDate.get().getTime()}</p>

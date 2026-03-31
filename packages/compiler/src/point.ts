@@ -1,5 +1,6 @@
 import type { NodePath } from '@babel/traverse'
 import type { Node } from '@babel/types'
+import * as t from '@babel/types'
 import { Route0 } from '@devp0nt/route0'
 import type { AnyRoute } from '@devp0nt/route0'
 import { type PointName, type PointsScope, type ReadyPointType, toPascalCase } from '@point0/core'
@@ -106,6 +107,81 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     name: PointName
   }): string {
     return `${scope ?? 'undefined'}.${type}.${name}`
+  }
+
+  static isLetsTypeSugarCall({ node }: { node: Node }): boolean {
+    if (!t.isCallExpression(node)) return false
+    const callee = node.callee
+    if (!t.isMemberExpression(callee)) return false
+    if (!t.isIdentifier(callee.property) || callee.computed) return false
+    if (!t.isMemberExpression(callee.object)) return false
+    if (!t.isIdentifier(callee.object.property) || callee.object.computed) return false
+    if (callee.object.property.name !== 'lets') return false
+    return callee.property.name in POINT_METHOD_TO_TYPE_MAP
+  }
+
+  static inferPointNameFromSugarContext({
+    type,
+    callPath,
+    absPath,
+  }: {
+    type: ReadyPointType
+    callPath: NodePath<Node>
+    absPath: string
+  }): string {
+    const varDecl = callPath.findParent((p) => p.node.type === 'VariableDeclarator')
+    if (varDecl?.node.type === 'VariableDeclarator' && varDecl.node.id.type === 'Identifier') {
+      const nameFromVariable = this.removeTypeSuffixFromVariableName({
+        variableName: varDecl.node.id.name,
+        pointType: type,
+      })
+      if (nameFromVariable.length > 0) {
+        return nameFromVariable
+      }
+      if (type === 'root') {
+        return 'root'
+      }
+      return this.inferNameFromFilePath({ absPath })
+    }
+
+    const defaultDecl = callPath.findParent((p) => p.node.type === 'ExportDefaultDeclaration')
+    if (defaultDecl) {
+      return this.inferNameFromFilePath({ absPath })
+    }
+
+    return this.inferNameFromFilePath({ absPath })
+  }
+
+  private static inferNameFromFilePath({ absPath }: { absPath: string }): string {
+    const parsed = nodeFsPath.parse(absPath)
+    if (parsed.name === 'index') {
+      return nodeFsPath.basename(parsed.dir)
+    }
+    return parsed.name
+  }
+
+  private static removeTypeSuffixFromVariableName({
+    variableName,
+    pointType,
+  }: {
+    variableName: string
+    pointType: ReadyPointType
+  }): string {
+    const capitalizedType = pointType.slice(0, 1).toUpperCase() + pointType.slice(1)
+    const snakeType = pointType.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`)
+    const candidates = [`_${snakeType}`, `_${pointType}`, capitalizedType, pointType]
+    if (pointType === 'infiniteQuery') {
+      candidates.push('Query', '_query')
+    }
+    const sortedCandidates = candidates.sort((a, b) => b.length - a.length)
+    for (const candidate of sortedCandidates) {
+      if (!variableName.endsWith(candidate)) {
+        continue
+      }
+      const candidateFree = variableName.slice(0, variableName.length - candidate.length)
+      return candidateFree
+    }
+    return variableName
   }
 
   get id(): string {
@@ -1267,5 +1343,23 @@ export type CompilerPointChainMethod = {
   underAction: boolean
   point: CompilerPoint
 }
+
+export const POINT_TYPE_TO_METHOD_MAP: Record<ReadyPointType, ReadyPointType> = {
+  plugin: 'plugin',
+  page: 'page',
+  layout: 'layout',
+  component: 'component',
+  provider: 'provider',
+  mutation: 'mutation',
+  query: 'query',
+  infiniteQuery: 'infiniteQuery',
+  action: 'action',
+  base: 'base',
+  root: 'root',
+}
+export const POINT_METHOD_TO_TYPE_MAP: Partial<Record<string, ReadyPointType>> = Object.fromEntries(
+  Object.entries(POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as ReadyPointType]),
+)
+export const END_POINT_TYPES: ReadyPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as ReadyPointType[]
 
 export const ACTION_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'])

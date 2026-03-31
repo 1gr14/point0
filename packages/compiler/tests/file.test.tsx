@@ -26,7 +26,7 @@ const prepareRandomFile = (walker: Walker): TestFile => {
   // write, read, parse
   const wrp = async (content: string | (() => void)) => {
     await bunFile.write(await toText(content))
-    await cf.readAsync(true)
+    cf.readSync(true)
     cf.assertHasContent()
     return cf
   }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { client } from '@/lib/client'
+import { root } from '@/lib/client'
 
 export const ExternalHelperComponent = () => {
   const [state, setState] = useState(0)
@@ -27,7 +27,7 @@ export const ExternalHelperComponent = () => {
 
 // export const ExternalHelperComponent2 = () => null
 
-export const ExternalHelperComponent2 = client.lets('component', 'externalHelper2').component(function X() {
+export const externalHelper2Component = root.lets.component().component(function X() {
   const [state, setState] = useState(0)
   useEffect(() => {
     const interval = setInterval(() => {
@@ -51,4 +51,4 @@ export const ExternalHelperComponent2 = client.lets('component', 'externalHelper
   )
 })
 
-export const ExternalHelperComponent3 = client.lets('component', 'externalHelper3').component(ExternalHelperComponent)
+export const externalHelper3Component = root.lets.component().component(ExternalHelperComponent)

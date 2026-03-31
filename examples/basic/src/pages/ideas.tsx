@@ -3,8 +3,8 @@ import { useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 
-export const ideasPage = generalLayout
-  .lets('page', 'ideas', '/ideas')
+export const ideasPage = generalLayout.lets
+  .page('/ideas')
   .search(z.object({ page: z.coerce.number().default(0) }))
   .loader(async ({ ctx, search }) => {
     const ideasCount = await ctx.prisma.idea.count()
@@ -93,5 +93,3 @@ export const ideasPage = generalLayout
       </div>
     )
   })
-
-export default ideasPage

@@ -1,6 +1,6 @@
 import { Route0 } from '@devp0nt/route0'
 import { sharedQuery } from '@/lib/shared'
-import { client } from '../lib/client'
+import { root } from '../lib/client'
 
 // export const emptyQuery = client.lets('infiniteQuery', 'empty').infiniteQuery({})
 // export const emptyQuery1 = client.lets('infiniteQuery', 'empty').infiniteQuery()
@@ -17,8 +17,8 @@ import Md2 from './md2.mdx'
 
 // export const md2Page = client.lets('page', 'md2', '/md2').page((props) => <Md2 {...props} />)
 
-export const empty = client
-  .lets('page', 'empty', 'empty/:x')
+export const empty = root.lets
+  .page('empty/:x')
   .loader(({ params }) => {
     return {
       title: 'Empty',
@@ -52,7 +52,7 @@ export const empty = client
     )
   })
 
-export const sharedEmptyPage = client.lets('page', 'sharedEmpty', Route0.create('/sharedEmpty2')).page(() => {
+export const sharedEmptyPage = root.lets.page(Route0.create('/sharedEmpty2')).page(() => {
   return (
     <div>
       Shared Empty

@@ -1,6 +1,6 @@
-import { client } from './client'
+import { root } from './client'
 
-export const clientCtx1 = client.lets('provider', 'testClientCtx1').provider(() => {
+export const clientCtx1 = root.lets('provider', 'testClientCtx1').provider(() => {
   return {
     test: 123,
     shmest: '234',
@@ -8,7 +8,7 @@ export const clientCtx1 = client.lets('provider', 'testClientCtx1').provider(() 
   }
 })
 
-export const clientCtx2 = client
+export const clientCtx2 = root
   .lets('provider', 'testClientCtx2')
   .loader(() => ({
     o: 'o',
@@ -25,7 +25,7 @@ export const clientCtx2 = client
     }
   })
 
-export const clientCtx3 = client
+export const clientCtx3 = root
   .lets('provider', 'testClientCtx3')
   .loader(async ({ ctx }) => {
     const ideas = await ctx.prisma.idea.findMany()

@@ -8,14 +8,14 @@ import type { NodePath } from '@babel/traverse'
 import * as t from '@babel/types'
 import type { File, Node, ObjectExpression, ObjectMethod, ObjectProperty, SpreadElement } from '@babel/types'
 import { compileSync } from '@mdx-js/mdx'
-import type { EnvOsName, EnvRuntimeName, NormalizedNodeEnv } from '@point0/core'
+import type { EnvOsName, EnvRuntimeName, NormalizedNodeEnv, ReadyPointType } from '@point0/core'
 import minifyDeadCodeEliminationModule from 'babel-plugin-minify-dead-code-elimination'
 import minifyGuardedExpressionsModule from 'babel-plugin-minify-guarded-expressions'
 import * as nodeFsSync from 'node:fs'
 import * as nodeFs from 'node:fs/promises'
 import prettier from 'prettier'
 import remarkFrontmatter from 'remark-frontmatter'
-import type { CompilerPoint } from './point.js'
+import { CompilerPoint, POINT_METHOD_TO_TYPE_MAP } from './point.js'
 import { type CompilerEnvConsts, normalizeEnvConsts } from './utils.js'
 import type { Walker } from './walker.js'
 
@@ -125,6 +125,7 @@ export class CompilerFile<THasContent extends boolean> {
     cloned._mayContainPoints = this._mayContainPoints
     cloned._isIdentifierExists = this._isIdentifierExists
     cloned._shakeForEnv = this._shakeForEnv
+    cloned._desugarLetsTypeCalls = this._desugarLetsTypeCalls
     return cloned
   }
 
@@ -139,6 +140,7 @@ export class CompilerFile<THasContent extends boolean> {
     this._mayContainPoints = undefined
     this._isIdentifierExists = {}
     this._shakeForEnv = undefined
+    this._desugarLetsTypeCalls = undefined
     this.allPointsWasCollected = false
     this.modified = false
   }
@@ -160,17 +162,17 @@ export class CompilerFile<THasContent extends boolean> {
     return [...this.points.values()]
   }
 
-  static async readAsync({
-    walker,
-    file,
-    fresh,
-  }: {
-    walker: Walker
-    file: string
-    fresh: boolean
-  }): Promise<CompilerFile<true>> {
-    return await CompilerFile.create({ walker, file }).readAsync(fresh)
-  }
+  // static async readAsync({
+  //   walker,
+  //   file,
+  //   fresh,
+  // }: {
+  //   walker: Walker
+  //   file: string
+  //   fresh: boolean
+  // }): Promise<CompilerFile<true>> {
+  //   return await CompilerFile.create({ walker, file }).readAsync(fresh)
+  // }
 
   static readSync({ walker, file, fresh }: { walker: Walker; file: string; fresh: boolean }): CompilerFile<true> {
     return CompilerFile.create({ walker, file }).readSync(fresh)
@@ -190,50 +192,50 @@ export class CompilerFile<THasContent extends boolean> {
     }
   }
 
-  private async _readAsync(fresh: boolean): Promise<CompilerFile<true>> {
-    if (this.content !== undefined && !fresh) {
-      return this as CompilerFile<true>
-    }
-    const stats = await (async () => {
-      try {
-        return await nodeFs.stat(this.abs)
-      } catch (e) {
-        throw new Error(`Failed to read file ${this.abs}: ${(e as Error).message}`, { cause: e })
-      }
-    })()
-    if (stats.mtimeMs === this.mtime && this.content !== undefined) {
-      return this as CompilerFile<true>
-    }
-    // const cf = new CompilerFile({
-    //   abs: this.abs,
-    //   content: await nodeFs.readFile(this.abs, 'utf8'),
-    //   mtime: stats.mtimeMs,
-    //   rtime: new Date().getTime(),
-    //   walker: this.walker,
-    // })
-    // this.walker.files.set(this.abs, cf)
-    // return cf
-    this.pruneMemory()
-    const result = this as CompilerFile<true>
-    result.content = await nodeFs.readFile(this.abs, 'utf8')
-    result.mtime = stats.mtimeMs
-    result.rtime = Date.now()
-    return result
-  }
-  // biome-ignore lint/suspicious/useAdjacentOverloadSignatures: ok
-  async readAsync(fresh: boolean): Promise<CompilerFile<true>> {
-    const pendingPromise = this._readAsyncPendingPromises.get(this.abs)
-    if (pendingPromise) {
-      return await pendingPromise
-    }
-    const newPromise = this._readAsync(fresh).then((cf) => {
-      this._readAsyncPendingPromises.delete(this.abs)
-      return cf
-    })
-    this._readAsyncPendingPromises.set(this.abs, newPromise)
-    return await newPromise
-  }
-  private readonly _readAsyncPendingPromises = new Map<string, Promise<CompilerFile<true>>>()
+  // private async _readAsync(fresh: boolean): Promise<CompilerFile<true>> {
+  //   if (this.content !== undefined && !fresh) {
+  //     return this as CompilerFile<true>
+  //   }
+  //   const stats = await (async () => {
+  //     try {
+  //       return await nodeFs.stat(this.abs)
+  //     } catch (e) {
+  //       throw new Error(`Failed to read file ${this.abs}: ${(e as Error).message}`, { cause: e })
+  //     }
+  //   })()
+  //   if (stats.mtimeMs === this.mtime && this.content !== undefined) {
+  //     return this as CompilerFile<true>
+  //   }
+  //   // const cf = new CompilerFile({
+  //   //   abs: this.abs,
+  //   //   content: await nodeFs.readFile(this.abs, 'utf8'),
+  //   //   mtime: stats.mtimeMs,
+  //   //   rtime: new Date().getTime(),
+  //   //   walker: this.walker,
+  //   // })
+  //   // this.walker.files.set(this.abs, cf)
+  //   // return cf
+  //   this.pruneMemory()
+  //   const result = this as CompilerFile<true>
+  //   result.content = await nodeFs.readFile(this.abs, 'utf8')
+  //   result.mtime = stats.mtimeMs
+  //   result.rtime = Date.now()
+  //   return result
+  // }
+
+  // async readAsync(fresh: boolean): Promise<CompilerFile<true>> {
+  //   const pendingPromise = this._readAsyncPendingPromises.get(this.abs)
+  //   if (pendingPromise) {
+  //     return await pendingPromise
+  //   }
+  //   const newPromise = this._readAsync(fresh).then((cf) => {
+  //     this._readAsyncPendingPromises.delete(this.abs)
+  //     return cf
+  //   })
+  //   this._readAsyncPendingPromises.set(this.abs, newPromise)
+  //   return await newPromise
+  // }
+  // private readonly _readAsyncPendingPromises = new Map<string, Promise<CompilerFile<true>>>()
 
   readSync(fresh: boolean): CompilerFile<true> {
     if (this.content !== undefined && !fresh) {
@@ -394,35 +396,77 @@ export class CompilerFile<THasContent extends boolean> {
       return this._mayContainPoints
     }
     const content = this.content
-    const token = '.lets'
     let mayContainPoints = false
-
-    let i = content.indexOf(token)
-    while (i !== -1) {
-      let j = i + token.length
-      while (j < content.length) {
-        const char = content.charCodeAt(j)
-        // Skip common whitespace: space, tab, newline, carriage return.
-        if (char === 32 || char === 9 || char === 10 || char === 13) {
-          j++
-          continue
-        }
-        // Accept `.lets(`, `.lets<...>`, and `.lets.<type>(...)` without allocating extra strings.
-        // 40 === '(', 60 === '<', 46 === '.'
-        if (char === 40 || char === 60 || char === 46) {
-          mayContainPoints = true
-        }
-        // Stop at first non-whitespace char after `.lets`.
-        break
-      }
-      if (mayContainPoints) {
-        break
-      }
-      i = content.indexOf(token, i + 1)
+    // Fast pre-check to avoid regex on files that clearly do not contain point syntax.
+    if (content.includes('.let')) {
+      // Accept:
+      // - `.lets(`
+      // - `.lets<...>`
+      // - `.lets.<type>(...)`
+      // - split form `.let ... s ... (|<|.)`
+      mayContainPoints = /\.let(?:s|\s+s)\s*(?:\(|<|\.)/.test(content)
     }
 
     this._mayContainPoints = mayContainPoints
     return this._mayContainPoints
+  }
+
+  private _desugarLetsTypeCalls:
+    | {
+        ok: boolean
+        errors: unknown[]
+      }
+    | undefined = undefined
+  desugarLetsTypeCalls(): {
+    ok: boolean
+    errors: unknown[]
+  } {
+    if (this._desugarLetsTypeCalls) {
+      return this._desugarLetsTypeCalls
+    }
+    const errors: unknown[] = []
+    try {
+      traverse(this.ast, {
+        CallExpression: (p) => {
+          if (!CompilerPoint.isLetsTypeSugarCall({ node: p.node })) {
+            return
+          }
+          const callee = p.node.callee
+          if (
+            !t.isMemberExpression(callee) ||
+            !t.isMemberExpression(callee.object) ||
+            !t.isIdentifier(callee.property)
+          ) {
+            return
+          }
+          const pointType = POINT_METHOD_TO_TYPE_MAP[callee.property.name]
+          if (!pointType) {
+            return
+          }
+          const pointName = CompilerPoint.inferPointNameFromSugarContext({
+            type: pointType,
+            callPath: p,
+            absPath: this.abs,
+          })
+          const letsCall = t.callExpression(t.memberExpression(callee.object.object, t.identifier('lets')), [
+            t.stringLiteral(pointType),
+            t.stringLiteral(pointName),
+            ...p.node.arguments,
+          ])
+          letsCall.loc = p.node.loc
+          letsCall.start = p.node.start
+          letsCall.end = p.node.end
+          p.replaceWith(letsCall)
+          this.modified = true
+        },
+      })
+      this._desugarLetsTypeCalls = { ok: true, errors }
+      return this._desugarLetsTypeCalls
+    } catch (e) {
+      errors.push(e)
+      this._desugarLetsTypeCalls = { ok: false, errors }
+      return this._desugarLetsTypeCalls
+    }
   }
 
   private _isIdentifierExists: Record<string, boolean> = {}

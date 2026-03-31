@@ -7,7 +7,7 @@ export const engine = Engine.create({
   ssr: true,
   generate: { meta: './lib/meta.ts' },
   server: {
-    scope: 'client',
+    scope: 'root',
     port: 3000,
     entry: { main: './index.server.ts' },
     generate: { points: './lib/points.server.ts' },
@@ -16,7 +16,7 @@ export const engine = Engine.create({
   },
   clients: [
     {
-      scope: 'client',
+      scope: 'root',
       app: async () => await import('./app'),
       points: async () => await import('./lib/points.client'),
       // points: async () => points,

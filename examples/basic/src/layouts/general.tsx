@@ -1,10 +1,10 @@
 import { useIsNavigating } from '@point0/core/navigation'
 import { testCookie } from '@/lib/cookies'
 import { Link } from '@/lib/navigate'
-import { client } from '../lib/client'
+import { root } from '../lib/client'
 import { routes } from '../lib/routes'
 
-export const generalLayout = client.lets('layout', 'generalLayout').layout(({ children }) => {
+export const generalLayout = root.lets('layout', 'generalLayout').layout(({ children }) => {
   const isNavigating = useIsNavigating()
   const testCookieValue = testCookie.use()
   return (

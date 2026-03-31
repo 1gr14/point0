@@ -1,9 +1,9 @@
 import nodePath from 'node:path'
 import { useState } from 'react'
 import * as z from 'zod'
-import { client } from '@/lib/client'
+import { root } from '@/lib/client'
 
-export const filePage = client.lets('page', 'file', '/file').page(() => {
+export const filePage = root.lets.page('/file').page(() => {
   const uploadFile = uploadFileMutation.useMutation()
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
@@ -48,8 +48,8 @@ export const filePage = client.lets('page', 'file', '/file').page(() => {
   )
 })
 
-export const uploadFileMutation = client
-  .lets('mutation', 'uploadFile')
+export const uploadFileMutation = root.lets
+  .mutation()
   .input(z.object({ file: z.instanceof(File) }))
   .loader(async ({ input }) => {
     const size = input.file.size

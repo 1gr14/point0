@@ -12,8 +12,8 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => {
   return <div>Wrapper {children}Endwrapper</div>
 }
 
-export const ideaPage = ideaLayout
-  .lets('page', 'idea', '/')
+export const ideaPage = ideaLayout.lets
+  .page('/')
   // .clientOnly(({ location }) => <div>ClientOnly {location.pathname}</div>)
   .loader(async ({ ctx, params }) => {
     // it excutes on server, but defined in client file,
@@ -76,7 +76,7 @@ export const ideaPage = ideaLayout
         </p>
         <p>
           <b>
-            locationx: {JSON.stringify(location)} {zxccc}
+            locationxzxc: {JSON.stringify(location)} {zxccc}
           </b>
         </p>
         <p>{idea.content}</p>

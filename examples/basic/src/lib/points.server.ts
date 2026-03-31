@@ -1,5 +1,5 @@
 import type { PointsDefinition } from '@point0/core'
-import { client as root_0 } from './client.js'
+import { root as root_0 } from './client.js'
 import { default as unnamed_1, BestIdeaComponent as BestIdeaComponent_13 } from '../pages/home.js'
 import { empty as empty_2, sharedEmptyPage as sharedEmptyPage_11 } from '../pages/empty.js'
 import { filePage as filePage_3, uploadFileMutation as uploadFileMutation_22 } from '../pages/file.js'

@@ -259,6 +259,7 @@ import {
   toKebabCase,
   windowScrollPositionGetter,
   windowScrollPositionSetter,
+  withLetsSugar,
 } from './utils.js'
 import type { FsLocation } from './utils.js'
 
@@ -962,59 +963,7 @@ export class Point0<
     })
   }
 
-  static lets<TRequiredCtx extends RequiredCtx = UndefinedCtx>(
-    pointType: 'root',
-    pointName: string,
-  ): NiceRootStagePoint<
-    'coreStage',
-    'root',
-    TRequiredCtx,
-    ErrorPoint0,
-    EmptyCtx,
-    UndefinedCtxExposedKeys,
-    UndefinedLoaderOutput,
-    UndefinedLoaderOutput,
-    UndefinedMapperOutput,
-    UndefinedRoute,
-    UndefinedInputSchema,
-    UndefinedInputSchema,
-    UndefinedInputSchema,
-    UndefinedInputSchema,
-    UndefinedInputSchema,
-    UndefinedInputSchema,
-    UndefinedInputSchema,
-    UndefinedQueryResultType,
-    EmptyProps,
-    EmptyProps,
-    []
-  >
-  static lets(
-    pointType: 'plugin',
-    pointName: string,
-  ): NicePluginStagePoint<
-    'coreStage',
-    'plugin',
-    UndefinedCtx,
-    ErrorPoint0,
-    EmptyCtx,
-    UndefinedCtxExposedKeys,
-    UndefinedLoaderOutput,
-    UndefinedLoaderOutput,
-    UndefinedMapperOutput,
-    UndefinedRoute,
-    UndefinedInputSchema,
-    UndefinedInputSchema,
-    UndefinedInputSchema,
-    UndefinedInputSchema,
-    UndefinedInputSchema,
-    UndefinedInputSchema,
-    UndefinedInputSchema,
-    UndefinedQueryResultType,
-    EmptyProps,
-    EmptyProps,
-    []
-  >
-  static lets(pointType: 'root' | 'plugin', pointName: string) {
+  static lets = withLetsSugar((pointType: 'root' | 'plugin', pointName: string) => {
     const _fsLocation = _point0_env.mode.is.production || _point0_env.build.was ? undefined : getCallerLocation(3)
     if (pointType === 'root') {
       if (pointName === 'plugin') {
@@ -1042,466 +991,108 @@ export class Point0<
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Invalid point type: ${pointType}`)
     }
+  }) as never as {
+    <TRequiredCtx extends RequiredCtx = UndefinedCtx>(
+      pointType: 'root',
+      pointName: string,
+    ): NiceRootStagePoint<
+      'coreStage',
+      'root',
+      TRequiredCtx,
+      ErrorPoint0,
+      EmptyCtx,
+      UndefinedCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      UndefinedRoute,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedQueryResultType,
+      EmptyProps,
+      EmptyProps,
+      []
+    >
+    (
+      pointType: 'plugin',
+      pointName: string,
+    ): NicePluginStagePoint<
+      'coreStage',
+      'plugin',
+      UndefinedCtx,
+      ErrorPoint0,
+      EmptyCtx,
+      UndefinedCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      UndefinedRoute,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedQueryResultType,
+      EmptyProps,
+      EmptyProps,
+      []
+    >
+    root: <TRequiredCtx extends RequiredCtx = UndefinedCtx>() => NiceRootStagePoint<
+      'coreStage',
+      'root',
+      TRequiredCtx,
+      ErrorPoint0,
+      EmptyCtx,
+      UndefinedCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      UndefinedRoute,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedQueryResultType,
+      EmptyProps,
+      EmptyProps,
+      []
+    >
+    plugin: () => NicePluginStagePoint<
+      'coreStage',
+      'plugin',
+      UndefinedCtx,
+      ErrorPoint0,
+      EmptyCtx,
+      UndefinedCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      UndefinedRoute,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedQueryResultType,
+      EmptyProps,
+      EmptyProps,
+      []
+    >
   }
 
-  lets<
-    TMethod extends WideRequestMethod,
-    TProvidedRoute extends RouteDefinition,
-    TCheckError = AssertInputSchemaHasSameKeys<
-      RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
-      TParamsSchema,
-      'params'
-    > &
-      AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
-  >(
-    ...args: TPointType extends 'root' | 'base'
-      ? [letsReadyPointType: 'action', pointName: string, method: TMethod, route: TProvidedRoute]
-      : never[]
-  ): WithError<
-    TCheckError,
-    NiceStagePoint<
-      'coreStage',
-      'action',
-      TRequiredCtx,
-      TError,
-      TCtx,
-      TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-      TServerInputSchema,
-      TClientInputSchema,
-      HasParams<TProvidedRoute> extends true
-        ? MergeRecordValidationSchemas<
-            TParamsSchema,
-            RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-          >
-        : TParamsSchema,
-      TSearchSchema,
-      TBodySchema,
-      THeadersSchema,
-      TCookiesSchema,
-      UndefinedQueryResultType,
-      EmptyProps,
-      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-    >
-  >
-  lets<
-    TMethod extends WideRequestMethod,
-    TProvidedRoute extends AnyRoute,
-    TCheckError = AssertInputSchemaHasSameKeys<
-      RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>,
-      TParamsSchema,
-      'params'
-    > &
-      AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
-  >(
-    ...args: TPointType extends 'root' | 'base'
-      ? [letsReadyPointType: 'action', pointName: string, method: TMethod, route: TProvidedRoute]
-      : never[]
-  ): WithError<
-    TCheckError,
-    NiceStagePoint<
-      'coreStage',
-      'action',
-      TRequiredCtx,
-      TError,
-      TCtx,
-      TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>,
-      TServerInputSchema,
-      TClientInputSchema,
-      HasParams<TProvidedRoute['definition']> extends true
-        ? MergeRecordValidationSchemas<
-            TParamsSchema,
-            RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>
-          >
-        : TParamsSchema,
-      TSearchSchema,
-      TBodySchema,
-      THeadersSchema,
-      TCookiesSchema,
-      UndefinedQueryResultType,
-      EmptyProps,
-      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-    >
-  >
-  lets<
-    TMethod extends PopularRequestMethod,
-    TProvidedRoute extends RouteDefinition,
-    TCheckError = AssertInputSchemaHasSameKeys<
-      RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
-      TParamsSchema,
-      'params'
-    > &
-      AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
-  >(
-    ...args: TPointType extends 'root' | 'base' ? [method: TMethod, route: TProvidedRoute] : never[]
-  ): WithError<
-    TCheckError,
-    NiceStagePoint<
-      'coreStage',
-      'action',
-      TRequiredCtx,
-      TError,
-      TCtx,
-      TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-      TServerInputSchema,
-      TClientInputSchema,
-      HasParams<TProvidedRoute> extends true
-        ? MergeRecordValidationSchemas<
-            TParamsSchema,
-            RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-          >
-        : TParamsSchema,
-      TSearchSchema,
-      TBodySchema,
-      THeadersSchema,
-      TCookiesSchema,
-      UndefinedQueryResultType,
-      EmptyProps,
-      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-    >
-  >
-  lets<
-    TMethod extends PopularRequestMethod,
-    TProvidedRoute extends AnyRoute,
-    TCheckError = AssertInputSchemaHasSameKeys<
-      RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>,
-      TParamsSchema,
-      'params'
-    > &
-      AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
-  >(
-    ...args: TPointType extends 'root' | 'base' ? [method: TMethod, route: TProvidedRoute] : never[]
-  ): WithError<
-    TCheckError,
-    NiceStagePoint<
-      'coreStage',
-      'action',
-      TRequiredCtx,
-      TError,
-      TCtx,
-      TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>,
-      TServerInputSchema,
-      TClientInputSchema,
-      HasParams<TProvidedRoute['definition']> extends true
-        ? MergeRecordValidationSchemas<
-            TParamsSchema,
-            RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>
-          >
-        : TParamsSchema,
-      TSearchSchema,
-      TBodySchema,
-      THeadersSchema,
-      TCookiesSchema,
-      UndefinedQueryResultType,
-      EmptyProps,
-      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-    >
-  >
-  lets<
-    TPointName extends PointName,
-    TProvidedRoute extends RouteDefinition,
-    TCheckError = AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'page'>,
-  >(
-    ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsReadyPointType: 'page', pointName: TPointName, route: TProvidedRoute]
-      : never[]
-  ): WithError<
-    TCheckError,
-    NiceStagePoint<
-      'coreStage',
-      'page',
-      TRequiredCtx,
-      TError,
-      TCtx,
-      TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-      TServerInputSchema,
-      TClientInputSchema,
-      HasParams<TProvidedRoute> extends true
-        ? MergeRecordValidationSchemas<
-            TParamsSchema,
-            RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-          >
-        : TParamsSchema,
-      TSearchSchema,
-      TBodySchema,
-      THeadersSchema,
-      TCookiesSchema,
-      UndefinedQueryResultType,
-      EmptyProps,
-      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-    >
-  >
-  lets<
-    TPointName extends PointName,
-    TProvidedRoute extends AnyRoute,
-    TCheckError = AssertInputSchemaIncludesKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
-      AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'page'>,
-  >(
-    ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsReadyPointType: 'page', pointName: TPointName, route: TProvidedRoute]
-      : never[]
-  ): WithError<
-    TCheckError,
-    NiceStagePoint<
-      'coreStage',
-      'page',
-      TRequiredCtx,
-      TError,
-      TCtx,
-      TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
-      TServerInputSchema,
-      TClientInputSchema,
-      HasParams<TProvidedRoute['definition']> extends true
-        ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
-        : TParamsSchema,
-      TSearchSchema,
-      TBodySchema,
-      THeadersSchema,
-      TCookiesSchema,
-      UndefinedQueryResultType,
-      EmptyProps,
-      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-    >
-  >
-  lets<
-    TPointName extends PointName,
-    TProvidedRoute extends RouteDefinition = '/',
-    TCheckError = AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'layout'>,
-  >(
-    ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsReadyPointType: 'layout', pointName: TPointName, route?: TProvidedRoute]
-      : never[]
-  ): WithError<
-    TCheckError,
-    NiceStagePoint<
-      'coreStage',
-      'layout',
-      TRequiredCtx,
-      TError,
-      TCtx,
-      TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-      TServerInputSchema,
-      TClientInputSchema,
-      HasParams<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>> extends true
-        ? MergeRecordValidationSchemas<
-            TParamsSchema,
-            RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-          >
-        : TParamsSchema,
-      TSearchSchema,
-      TBodySchema,
-      THeadersSchema,
-      TCookiesSchema,
-      UndefinedQueryResultType,
-      EmptyProps,
-      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-    >
-  >
-  lets<
-    TPointName extends PointName,
-    TProvidedRoute extends AnyRoute,
-    TCheckError = AssertInputSchemaIncludesKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
-      AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'layout'>,
-  >(
-    ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsReadyPointType: 'layout', pointName: TPointName, route: TProvidedRoute]
-      : never[]
-  ): WithError<
-    TCheckError,
-    NiceStagePoint<
-      'coreStage',
-      'layout',
-      TRequiredCtx,
-      TError,
-      TCtx,
-      TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
-      TServerInputSchema,
-      TClientInputSchema,
-      HasParams<TProvidedRoute['definition']> extends true
-        ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
-        : TParamsSchema,
-      TSearchSchema,
-      TBodySchema,
-      THeadersSchema,
-      TCookiesSchema,
-      UndefinedQueryResultType,
-      EmptyProps,
-      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-    >
-  >
-  lets<
-    TNewOuterProps extends Props = EmptyProps,
-    TCheckError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'component'>,
-  >(
-    ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'component', pointName: string] : never[]
-  ): WithError<
-    TCheckError,
-    NiceStagePoint<
-      'coreStage',
-      'component',
-      TRequiredCtx,
-      TError,
-      TCtx,
-      TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      TRouteDefinition,
-      TServerInputSchema,
-      TClientInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema,
-      THeadersSchema,
-      TCookiesSchema,
-      UndefinedQueryResultType,
-      TNewOuterProps,
-      TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-    >
-  >
-  lets<
-    TNewOuterProps extends Props = EmptyProps,
-    TCheckError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'provider'>,
-  >(
-    ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'provider', pointName: string] : never[]
-  ): WithError<
-    TCheckError,
-    NiceStagePoint<
-      'coreStage',
-      'provider',
-      TRequiredCtx,
-      TError,
-      TCtx,
-      TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      TRouteDefinition,
-      TServerInputSchema,
-      TClientInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema,
-      THeadersSchema,
-      TCookiesSchema,
-      UndefinedQueryResultType,
-      TNewOuterProps,
-      TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-    >
-  >
-  lets<
-    TNewLetsReadyPointType extends 'query' | 'infiniteQuery' | 'mutation',
-    TCheckError = AssertUsualInputSchemaOnly<
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema,
-      'query' | 'infiniteQuery' | 'mutation'
-    >,
-  >(
-    ...args: TPointType extends 'root' | 'base'
-      ? [letsReadyPointType: TNewLetsReadyPointType, pointName: string]
-      : never[]
-  ): WithError<
-    TCheckError,
-    NiceStagePoint<
-      'coreStage',
-      TNewLetsReadyPointType,
-      TRequiredCtx,
-      TError,
-      TCtx,
-      TCtxExposedKeys,
-      UndefinedLoaderOutput,
-      UndefinedLoaderOutput,
-      UndefinedMapperOutput,
-      TRouteDefinition,
-      TServerInputSchema,
-      TClientInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema,
-      THeadersSchema,
-      TCookiesSchema,
-      UndefinedQueryResultType,
-      EmptyProps,
-      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-    >
-  >
-  lets<
-    TNewLetsReadyPointType extends Exclude<
-      ReadyPointType,
-      'page' | 'layout' | 'component' | 'provider' | 'action' | 'query' | 'infiniteQuery' | 'mutation'
-    >,
-    TPointName extends PointName,
-  >(
-    ...args: TPointType extends 'root' | 'base'
-      ? [letsReadyPointType: TNewLetsReadyPointType, pointName: TPointName]
-      : never[]
-  ): NiceStagePoint<
-    'coreStage',
-    TNewLetsReadyPointType,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    UndefinedLoaderOutput,
-    UndefinedLoaderOutput,
-    UndefinedMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    UndefinedQueryResultType,
-    EmptyProps,
-    TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-    TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
-  >
-  lets(...args: any[]) {
+  lets = withLetsSugar((...args: any[]) => {
     const _fsLocation = _point0_env.mode.is.production || _point0_env.build.was ? undefined : getCallerLocation(3)
     const [letsReadyPointType, pointName, providedMethod, route] = (() => {
       if (args[0] === 'action') {
@@ -1750,7 +1341,902 @@ export class Point0<
       _componentLoadingComponent: this._base?._componentLoadingComponent as never,
       X: null as never,
     }) as never
-  }
+  }) as never as {
+    <
+      TMethod extends WideRequestMethod,
+      TProvidedRoute extends RouteDefinition,
+      TCheckError = AssertInputSchemaHasSameKeys<
+        RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+        TParamsSchema,
+        'params'
+      > &
+        AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
+    >(
+      ...args: TPointType extends 'root' | 'base'
+        ? [letsReadyPointType: 'action', pointName: string, method: TMethod, route: TProvidedRoute]
+        : never[]
+    ): WithError<
+      TCheckError,
+      NiceStagePoint<
+        'coreStage',
+        'action',
+        TRequiredCtx,
+        TError,
+        TCtx,
+        TCtxExposedKeys,
+        UndefinedLoaderOutput,
+        UndefinedLoaderOutput,
+        UndefinedMapperOutput,
+        ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+        TServerInputSchema,
+        TClientInputSchema,
+        HasParams<TProvidedRoute> extends true
+          ? MergeRecordValidationSchemas<
+              TParamsSchema,
+              RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+            >
+          : TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
+        UndefinedQueryResultType,
+        EmptyProps,
+        TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      >
+    >
+    <
+      TMethod extends WideRequestMethod,
+      TProvidedRoute extends AnyRoute,
+      TCheckError = AssertInputSchemaHasSameKeys<
+        RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>,
+        TParamsSchema,
+        'params'
+      > &
+        AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
+    >(
+      ...args: TPointType extends 'root' | 'base'
+        ? [letsReadyPointType: 'action', pointName: string, method: TMethod, route: TProvidedRoute]
+        : never[]
+    ): WithError<
+      TCheckError,
+      NiceStagePoint<
+        'coreStage',
+        'action',
+        TRequiredCtx,
+        TError,
+        TCtx,
+        TCtxExposedKeys,
+        UndefinedLoaderOutput,
+        UndefinedLoaderOutput,
+        UndefinedMapperOutput,
+        ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>,
+        TServerInputSchema,
+        TClientInputSchema,
+        HasParams<TProvidedRoute['definition']> extends true
+          ? MergeRecordValidationSchemas<
+              TParamsSchema,
+              RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>
+            >
+          : TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
+        UndefinedQueryResultType,
+        EmptyProps,
+        TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      >
+    >
+    <
+      TMethod extends PopularRequestMethod,
+      TProvidedRoute extends RouteDefinition,
+      TCheckError = AssertInputSchemaHasSameKeys<
+        RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+        TParamsSchema,
+        'params'
+      > &
+        AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
+    >(
+      ...args: TPointType extends 'root' | 'base' ? [method: TMethod, route: TProvidedRoute] : never[]
+    ): WithError<
+      TCheckError,
+      NiceStagePoint<
+        'coreStage',
+        'action',
+        TRequiredCtx,
+        TError,
+        TCtx,
+        TCtxExposedKeys,
+        UndefinedLoaderOutput,
+        UndefinedLoaderOutput,
+        UndefinedMapperOutput,
+        ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+        TServerInputSchema,
+        TClientInputSchema,
+        HasParams<TProvidedRoute> extends true
+          ? MergeRecordValidationSchemas<
+              TParamsSchema,
+              RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+            >
+          : TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
+        UndefinedQueryResultType,
+        EmptyProps,
+        TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      >
+    >
+    <
+      TMethod extends PopularRequestMethod,
+      TProvidedRoute extends AnyRoute,
+      TCheckError = AssertInputSchemaHasSameKeys<
+        RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>,
+        TParamsSchema,
+        'params'
+      > &
+        AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
+    >(
+      ...args: TPointType extends 'root' | 'base' ? [method: TMethod, route: TProvidedRoute] : never[]
+    ): WithError<
+      TCheckError,
+      NiceStagePoint<
+        'coreStage',
+        'action',
+        TRequiredCtx,
+        TError,
+        TCtx,
+        TCtxExposedKeys,
+        UndefinedLoaderOutput,
+        UndefinedLoaderOutput,
+        UndefinedMapperOutput,
+        ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>,
+        TServerInputSchema,
+        TClientInputSchema,
+        HasParams<TProvidedRoute['definition']> extends true
+          ? MergeRecordValidationSchemas<
+              TParamsSchema,
+              RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>
+            >
+          : TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
+        UndefinedQueryResultType,
+        EmptyProps,
+        TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      >
+    >
+    <
+      TProvidedRoute extends RouteDefinition,
+      TCheckError = AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'page'>,
+    >(
+      ...args: TPointType extends 'root' | 'base' | 'layout'
+        ? [letsReadyPointType: 'page', pointName: string, route: TProvidedRoute]
+        : never[]
+    ): WithError<
+      TCheckError,
+      NiceStagePoint<
+        'coreStage',
+        'page',
+        TRequiredCtx,
+        TError,
+        TCtx,
+        TCtxExposedKeys,
+        UndefinedLoaderOutput,
+        UndefinedLoaderOutput,
+        UndefinedMapperOutput,
+        ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+        TServerInputSchema,
+        TClientInputSchema,
+        HasParams<TProvidedRoute> extends true
+          ? MergeRecordValidationSchemas<
+              TParamsSchema,
+              RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+            >
+          : TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
+        UndefinedQueryResultType,
+        EmptyProps,
+        TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      >
+    >
+    <
+      TProvidedRoute extends AnyRoute,
+      TCheckError = AssertInputSchemaIncludesKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
+        AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'page'>,
+    >(
+      ...args: TPointType extends 'root' | 'base' | 'layout'
+        ? [letsReadyPointType: 'page', pointName: string, route: TProvidedRoute]
+        : never[]
+    ): WithError<
+      TCheckError,
+      NiceStagePoint<
+        'coreStage',
+        'page',
+        TRequiredCtx,
+        TError,
+        TCtx,
+        TCtxExposedKeys,
+        UndefinedLoaderOutput,
+        UndefinedLoaderOutput,
+        UndefinedMapperOutput,
+        ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
+        TServerInputSchema,
+        TClientInputSchema,
+        HasParams<TProvidedRoute['definition']> extends true
+          ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
+          : TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
+        UndefinedQueryResultType,
+        EmptyProps,
+        TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      >
+    >
+    <
+      TProvidedRoute extends RouteDefinition = '/',
+      TCheckError = AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'layout'>,
+    >(
+      ...args: TPointType extends 'root' | 'base' | 'layout'
+        ? [letsReadyPointType: 'layout', pointName: string, route?: TProvidedRoute]
+        : never[]
+    ): WithError<
+      TCheckError,
+      NiceStagePoint<
+        'coreStage',
+        'layout',
+        TRequiredCtx,
+        TError,
+        TCtx,
+        TCtxExposedKeys,
+        UndefinedLoaderOutput,
+        UndefinedLoaderOutput,
+        UndefinedMapperOutput,
+        ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+        TServerInputSchema,
+        TClientInputSchema,
+        HasParams<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>> extends true
+          ? MergeRecordValidationSchemas<
+              TParamsSchema,
+              RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+            >
+          : TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
+        UndefinedQueryResultType,
+        EmptyProps,
+        TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      >
+    >
+    <
+      TProvidedRoute extends AnyRoute,
+      TCheckError = AssertInputSchemaIncludesKeys<RouteSchema<TProvidedRoute['definition']>, TParamsSchema, 'params'> &
+        AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'layout'>,
+    >(
+      ...args: TPointType extends 'root' | 'base' | 'layout'
+        ? [letsReadyPointType: 'layout', pointName: string, route: TProvidedRoute]
+        : never[]
+    ): WithError<
+      TCheckError,
+      NiceStagePoint<
+        'coreStage',
+        'layout',
+        TRequiredCtx,
+        TError,
+        TCtx,
+        TCtxExposedKeys,
+        UndefinedLoaderOutput,
+        UndefinedLoaderOutput,
+        UndefinedMapperOutput,
+        ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
+        TServerInputSchema,
+        TClientInputSchema,
+        HasParams<TProvidedRoute['definition']> extends true
+          ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
+          : TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
+        UndefinedQueryResultType,
+        EmptyProps,
+        TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      >
+    >
+    <
+      TNewOuterProps extends Props = EmptyProps,
+      TCheckError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'component'>,
+    >(
+      ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'component', pointName: string] : never[]
+    ): WithError<
+      TCheckError,
+      NiceStagePoint<
+        'coreStage',
+        'component',
+        TRequiredCtx,
+        TError,
+        TCtx,
+        TCtxExposedKeys,
+        UndefinedLoaderOutput,
+        UndefinedLoaderOutput,
+        UndefinedMapperOutput,
+        TRouteDefinition,
+        TServerInputSchema,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
+        UndefinedQueryResultType,
+        TNewOuterProps,
+        TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      >
+    >
+    <
+      TNewOuterProps extends Props = EmptyProps,
+      TCheckError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'provider'>,
+    >(
+      ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'provider', pointName: string] : never[]
+    ): WithError<
+      TCheckError,
+      NiceStagePoint<
+        'coreStage',
+        'provider',
+        TRequiredCtx,
+        TError,
+        TCtx,
+        TCtxExposedKeys,
+        UndefinedLoaderOutput,
+        UndefinedLoaderOutput,
+        UndefinedMapperOutput,
+        TRouteDefinition,
+        TServerInputSchema,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
+        UndefinedQueryResultType,
+        TNewOuterProps,
+        TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      >
+    >
+    <
+      TNewLetsReadyPointType extends 'query' | 'infiniteQuery' | 'mutation',
+      TCheckError = AssertUsualInputSchemaOnly<
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        'query' | 'infiniteQuery' | 'mutation'
+      >,
+    >(
+      ...args: TPointType extends 'root' | 'base'
+        ? [letsReadyPointType: TNewLetsReadyPointType, pointName: string]
+        : never[]
+    ): WithError<
+      TCheckError,
+      NiceStagePoint<
+        'coreStage',
+        TNewLetsReadyPointType,
+        TRequiredCtx,
+        TError,
+        TCtx,
+        TCtxExposedKeys,
+        UndefinedLoaderOutput,
+        UndefinedLoaderOutput,
+        UndefinedMapperOutput,
+        TRouteDefinition,
+        TServerInputSchema,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
+        UndefinedQueryResultType,
+        EmptyProps,
+        TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      >
+    >
+    <TNewLetsReadyPointType extends 'root' | 'base'>(
+      ...args: TPointType extends 'root' | 'base'
+        ? [letsReadyPointType: TNewLetsReadyPointType, pointName: string]
+        : never[]
+    ): NiceStagePoint<
+      'coreStage',
+      TNewLetsReadyPointType,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      UndefinedQueryResultType,
+      EmptyProps,
+      TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+    >
+  } & (TPointType extends 'root' | 'base'
+    ? {
+        root: {
+          (): NiceStagePoint<
+            'coreStage',
+            'root',
+            TRequiredCtx,
+            TError,
+            TCtx,
+            TCtxExposedKeys,
+            UndefinedLoaderOutput,
+            UndefinedLoaderOutput,
+            UndefinedMapperOutput,
+            TRouteDefinition,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema,
+            THeadersSchema,
+            TCookiesSchema,
+            UndefinedQueryResultType,
+            EmptyProps,
+            TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+            TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+          >
+        }
+        base: {
+          (): NiceStagePoint<
+            'coreStage',
+            'base',
+            TRequiredCtx,
+            TError,
+            TCtx,
+            TCtxExposedKeys,
+            UndefinedLoaderOutput,
+            UndefinedLoaderOutput,
+            UndefinedMapperOutput,
+            TRouteDefinition,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema,
+            THeadersSchema,
+            TCookiesSchema,
+            UndefinedQueryResultType,
+            EmptyProps,
+            TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+            TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+          >
+        }
+        query: {
+          <TCheckError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'query'>>(): WithError<
+            TCheckError,
+            NiceStagePoint<
+              'coreStage',
+              'query',
+              TRequiredCtx,
+              TError,
+              TCtx,
+              TCtxExposedKeys,
+              UndefinedLoaderOutput,
+              UndefinedLoaderOutput,
+              UndefinedMapperOutput,
+              TRouteDefinition,
+              TServerInputSchema,
+              TClientInputSchema,
+              TParamsSchema,
+              TSearchSchema,
+              TBodySchema,
+              THeadersSchema,
+              TCookiesSchema,
+              UndefinedQueryResultType,
+              EmptyProps,
+              TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+            >
+          >
+        }
+        infiniteQuery: {
+          <
+            TCheckError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'infiniteQuery'>,
+          >(): WithError<
+            TCheckError,
+            NiceStagePoint<
+              'coreStage',
+              'infiniteQuery',
+              TRequiredCtx,
+              TError,
+              TCtx,
+              TCtxExposedKeys,
+              UndefinedLoaderOutput,
+              UndefinedLoaderOutput,
+              UndefinedMapperOutput,
+              TRouteDefinition,
+              TServerInputSchema,
+              TClientInputSchema,
+              TParamsSchema,
+              TSearchSchema,
+              TBodySchema,
+              THeadersSchema,
+              TCookiesSchema,
+              UndefinedQueryResultType,
+              EmptyProps,
+              TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+            >
+          >
+        }
+        mutation: {
+          <
+            TCheckError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'mutation'>,
+          >(): WithError<
+            TCheckError,
+            NiceStagePoint<
+              'coreStage',
+              'mutation',
+              TRequiredCtx,
+              TError,
+              TCtx,
+              TCtxExposedKeys,
+              UndefinedLoaderOutput,
+              UndefinedLoaderOutput,
+              UndefinedMapperOutput,
+              TRouteDefinition,
+              TServerInputSchema,
+              TClientInputSchema,
+              TParamsSchema,
+              TSearchSchema,
+              TBodySchema,
+              THeadersSchema,
+              TCookiesSchema,
+              UndefinedQueryResultType,
+              EmptyProps,
+              TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+            >
+          >
+        }
+        provider: {
+          <
+            TNewOuterProps extends Props = EmptyProps,
+            TCheckError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'provider'>,
+          >(): WithError<
+            TCheckError,
+            NiceStagePoint<
+              'coreStage',
+              'provider',
+              TRequiredCtx,
+              TError,
+              TCtx,
+              TCtxExposedKeys,
+              UndefinedLoaderOutput,
+              UndefinedLoaderOutput,
+              UndefinedMapperOutput,
+              TRouteDefinition,
+              TServerInputSchema,
+              TClientInputSchema,
+              TParamsSchema,
+              TSearchSchema,
+              TBodySchema,
+              THeadersSchema,
+              TCookiesSchema,
+              UndefinedQueryResultType,
+              TNewOuterProps,
+              TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+            >
+          >
+        }
+        component: {
+          <
+            TNewOuterProps extends Props = EmptyProps,
+            TCheckError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'component'>,
+          >(): WithError<
+            TCheckError,
+            NiceStagePoint<
+              'coreStage',
+              'component',
+              TRequiredCtx,
+              TError,
+              TCtx,
+              TCtxExposedKeys,
+              UndefinedLoaderOutput,
+              UndefinedLoaderOutput,
+              UndefinedMapperOutput,
+              TRouteDefinition,
+              TServerInputSchema,
+              TClientInputSchema,
+              TParamsSchema,
+              TSearchSchema,
+              TBodySchema,
+              THeadersSchema,
+              TCookiesSchema,
+              UndefinedQueryResultType,
+              TNewOuterProps,
+              TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+            >
+          >
+        }
+        action: {
+          <
+            TMethod extends WideRequestMethod,
+            TProvidedRoute extends RouteDefinition,
+            TCheckError = AssertInputSchemaHasSameKeys<
+              RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+              TParamsSchema,
+              'params'
+            > &
+              AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
+          >(
+            method: TMethod,
+            route: TProvidedRoute,
+          ): WithError<
+            TCheckError,
+            NiceStagePoint<
+              'coreStage',
+              'action',
+              TRequiredCtx,
+              TError,
+              TCtx,
+              TCtxExposedKeys,
+              UndefinedLoaderOutput,
+              UndefinedLoaderOutput,
+              UndefinedMapperOutput,
+              ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+              TServerInputSchema,
+              TClientInputSchema,
+              HasParams<TProvidedRoute> extends true
+                ? MergeRecordValidationSchemas<
+                    TParamsSchema,
+                    RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+                  >
+                : TParamsSchema,
+              TSearchSchema,
+              TBodySchema,
+              THeadersSchema,
+              TCookiesSchema,
+              UndefinedQueryResultType,
+              EmptyProps,
+              TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+            >
+          >
+          <
+            TMethod extends WideRequestMethod,
+            TProvidedRoute extends AnyRoute,
+            TCheckError = AssertInputSchemaHasSameKeys<
+              RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>,
+              TParamsSchema,
+              'params'
+            > &
+              AssertActionSchemaOnly<TServerInputSchema, TClientInputSchema, 'action'>,
+          >(
+            method: TMethod,
+            route: TProvidedRoute,
+          ): WithError<
+            TCheckError,
+            NiceStagePoint<
+              'coreStage',
+              'action',
+              TRequiredCtx,
+              TError,
+              TCtx,
+              TCtxExposedKeys,
+              UndefinedLoaderOutput,
+              UndefinedLoaderOutput,
+              UndefinedMapperOutput,
+              ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>,
+              TServerInputSchema,
+              TClientInputSchema,
+              HasParams<TProvidedRoute['definition']> extends true
+                ? MergeRecordValidationSchemas<
+                    TParamsSchema,
+                    RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>
+                  >
+                : TParamsSchema,
+              TSearchSchema,
+              TBodySchema,
+              THeadersSchema,
+              TCookiesSchema,
+              UndefinedQueryResultType,
+              EmptyProps,
+              TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+            >
+          >
+        }
+      }
+    : unknown) &
+    (TPointType extends 'root' | 'base' | 'layout'
+      ? {
+          layout: {
+            <
+              TProvidedRoute extends RouteDefinition = '/',
+              TCheckError = AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'layout'>,
+            >(
+              route?: TProvidedRoute,
+            ): WithError<
+              TCheckError,
+              NiceStagePoint<
+                'coreStage',
+                'layout',
+                TRequiredCtx,
+                TError,
+                TCtx,
+                TCtxExposedKeys,
+                UndefinedLoaderOutput,
+                UndefinedLoaderOutput,
+                UndefinedMapperOutput,
+                ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+                TServerInputSchema,
+                TClientInputSchema,
+                HasParams<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>> extends true
+                  ? MergeRecordValidationSchemas<
+                      TParamsSchema,
+                      RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+                    >
+                  : TParamsSchema,
+                TSearchSchema,
+                TBodySchema,
+                THeadersSchema,
+                TCookiesSchema,
+                UndefinedQueryResultType,
+                EmptyProps,
+                TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+                TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+              >
+            >
+            <
+              TProvidedRoute extends AnyRoute,
+              TCheckError = AssertInputSchemaIncludesKeys<
+                RouteSchema<TProvidedRoute['definition']>,
+                TParamsSchema,
+                'params'
+              > &
+                AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'layout'>,
+            >(
+              route: TProvidedRoute,
+            ): WithError<
+              TCheckError,
+              NiceStagePoint<
+                'coreStage',
+                'layout',
+                TRequiredCtx,
+                TError,
+                TCtx,
+                TCtxExposedKeys,
+                UndefinedLoaderOutput,
+                UndefinedLoaderOutput,
+                UndefinedMapperOutput,
+                ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
+                TServerInputSchema,
+                TClientInputSchema,
+                HasParams<TProvidedRoute['definition']> extends true
+                  ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
+                  : TParamsSchema,
+                TSearchSchema,
+                TBodySchema,
+                THeadersSchema,
+                TCookiesSchema,
+                UndefinedQueryResultType,
+                EmptyProps,
+                TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+                TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+              >
+            >
+          }
+          page: {
+            <
+              TProvidedRoute extends RouteDefinition,
+              TCheckError = AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'page'>,
+            >(
+              route: TProvidedRoute,
+            ): WithError<
+              TCheckError,
+              NiceStagePoint<
+                'coreStage',
+                'page',
+                TRequiredCtx,
+                TError,
+                TCtx,
+                TCtxExposedKeys,
+                UndefinedLoaderOutput,
+                UndefinedLoaderOutput,
+                UndefinedMapperOutput,
+                ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+                TServerInputSchema,
+                TClientInputSchema,
+                HasParams<TProvidedRoute> extends true
+                  ? MergeRecordValidationSchemas<
+                      TParamsSchema,
+                      RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+                    >
+                  : TParamsSchema,
+                TSearchSchema,
+                TBodySchema,
+                THeadersSchema,
+                TCookiesSchema,
+                UndefinedQueryResultType,
+                EmptyProps,
+                TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+                TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+              >
+            >
+            <
+              TProvidedRoute extends AnyRoute,
+              TCheckError = AssertInputSchemaIncludesKeys<
+                RouteSchema<TProvidedRoute['definition']>,
+                TParamsSchema,
+                'params'
+              > &
+                AssertRoutedInputSchemaOnly<TServerInputSchema, TClientInputSchema, TBodySchema, 'page'>,
+            >(
+              route: TProvidedRoute,
+            ): WithError<
+              TCheckError,
+              NiceStagePoint<
+                'coreStage',
+                'page',
+                TRequiredCtx,
+                TError,
+                TCtx,
+                TCtxExposedKeys,
+                UndefinedLoaderOutput,
+                UndefinedLoaderOutput,
+                UndefinedMapperOutput,
+                ExtendRouteDefinition<'/', TProvidedRoute['definition']>,
+                TServerInputSchema,
+                TClientInputSchema,
+                HasParams<TProvidedRoute['definition']> extends true
+                  ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
+                  : TParamsSchema,
+                TSearchSchema,
+                TBodySchema,
+                THeadersSchema,
+                TCookiesSchema,
+                UndefinedQueryResultType,
+                EmptyProps,
+                TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+                TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+              >
+            >
+          }
+        }
+      : unknown)
 
   // root settings
 
