@@ -215,10 +215,6 @@ export class Request0<
     return this._headers
   }
 
-  setRawBody(rawBody: unknown) {
-    this.rawBody = rawBody
-  }
-
   // static get(): Request0 {
   //   if (!_point0_env.side.is.server) {
   //     throw new Error(

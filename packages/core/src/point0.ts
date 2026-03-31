@@ -3135,9 +3135,9 @@ export class Point0<
       Props
     >,
   >(
-    withFn: TWithFn, // withFn: WithFn<
-    //   MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-  ) //   TParamsSchema,
+    withFn: TWithFn & AssertNoArrayReturn<Awaited<ReturnType<TWithFn>>, 'With fn should not return array'>, // withFn: WithFn<
+    //   TParamsSchema,
+  ) //   MountableLocation<TLetsReadyPointType, TRouteDefinition>,
   //   TSearchSchema,
   //   TClientInputSchema,
   //   TInnerProps,

@@ -224,7 +224,7 @@ describe('action', () => {
         refetchIntervalInBackground: false,
       })
       .middleware(async ({ request, next }) => {
-        request.setRawBody(JSON.stringify({ b: 123 }))
+        request.rawBody = JSON.stringify({ b: 123 })
         return await next()
       })
       .root()

@@ -11,6 +11,7 @@ describe('redirect', () => {
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({
         retry: false,
+        retryOnMount: false,
         refetchOnMount: false,
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,
@@ -305,6 +306,90 @@ describe('redirect', () => {
           "
           page.page1 (client) (page) < {}
           page.page2 (client) (page) < {}
+          "
+        `)
+    })
+
+    it('two queries', async () => {
+      const root = createRoot()
+      const routes = Routes.create({
+        page1: '/x/:id',
+        page2: '/y/:id',
+      })
+      let { redirect } = createNavigation({
+        routes,
+      })
+      const query1 = root
+        .lets('query', 'query1')
+        .loader(() => {
+          return { result: 'query1' }
+        })
+        .query()
+      const query2 = root
+        .lets('query', 'query2')
+        .loader(() => {
+          if (Math.random() + 1) {
+            throw redirect('page2', { id: '234', '?': { q: 'qwe' } })
+          }
+          return { result: 'query2' }
+        })
+        .query()
+      const page1 = root
+        .lets('page', 'page1', '/x/:id')
+        .with(() => {
+          return [query1.useQuery(), query2.useQuery()]
+        })
+        .page(() => <div id="page1">content</div>)
+      const page2 = root.lets('page', 'page2', 'y/:id').page(({ params, location }) => (
+        <div id="page2">
+          {params.id}, {location.search.q as string}
+        </div>
+      ))
+      const {
+        render,
+        fetchPreview,
+        fetchesTale,
+        fetchRecorder,
+        redirect: redirect_fixCicular,
+      } = await createTestThings({
+        ssr: true,
+        points: [root, page1, page2, query1, query2],
+      })
+      redirect = redirect_fixCicular
+      await render(page1.route({ id: '111', '?': { q: 'zxc' } }), async ({ waitContent, tale }) => {
+        await waitContent('#page2')
+        expect(await tale()).toMatchInlineSnapshot(`
+            "
+            /x/111?q=zxc
+              #loading: ...
+
+            /y/234?q=qwe
+              (Empty)
+
+              #page2: 234, qwe
+            "
+          `)
+      })
+      expect(await fetchesTale()).toMatchInlineSnapshot(`
+          "
+          query.query1 (client) < {}
+          query.query2 (client) < {}
+          "
+        `)
+
+      fetchRecorder.prune()
+      expect(await fetchPreview(page1, { id: '111', '?': { q: 'zxc' } })).toMatchInlineSnapshot(`
+          "
+          #page2: 234, qwe
+          "
+        `)
+      expect(await fetchesTale()).toMatchInlineSnapshot(`
+          "
+          page.page1 (client) (page) < {}
+          query.query1 (server) < {}
+          query.query2 (server) < {}
+          page.page2 (client) (page) < {}
+          query.query2 (server) < {}
           "
         `)
     })

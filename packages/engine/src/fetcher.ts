@@ -157,7 +157,7 @@ export class Fetcher<TError extends ErrorPoint0> {
                 })()
               : await request.original.formData()
           if (request.rawBody === undefined) {
-            request.setRawBody(formData)
+            request.rawBody = formData
           }
           const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
             acc[key] = typeof value === 'string' ? (transform ? JSON.parse(value) : value) : value
@@ -168,7 +168,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
         const rawBody = request.rawBody !== undefined ? request.rawBody : await request.original.text()
         if (request.rawBody === undefined) {
-          request.setRawBody(rawBody)
+          request.rawBody = rawBody
         }
         if (typeof rawBody !== 'string') {
           return rawBody
