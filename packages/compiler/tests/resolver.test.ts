@@ -46,9 +46,9 @@ describe('FileResolver', () => {
         await Bun.write(file1Path, 'export const a = 1')
         await Bun.write(file2Path, 'export const b = 2')
 
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: './file2.ts',
-          containingFile: file1Path,
+        const resolved = FileResolver.resolveFilePath({
+          path: './file2.ts',
+          importer: file1Path,
         })
 
         expect(resolved).toBe(file2Path)
@@ -63,9 +63,9 @@ describe('FileResolver', () => {
         await Bun.write(file1Path, 'export const a = 1')
         await Bun.write(file2Path, 'export const b = 2')
 
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: './file2',
-          containingFile: file1Path,
+        const resolved = FileResolver.resolveFilePath({
+          path: './file2',
+          importer: file1Path,
         })
 
         expect(resolved).toBe(file2Path)
@@ -88,9 +88,9 @@ describe('FileResolver', () => {
           // File doesn't exist, which is what we want
         }
 
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: `./${basename}_file2`,
-          containingFile: file1Path,
+        const resolved = FileResolver.resolveFilePath({
+          path: `./${basename}_file2`,
+          importer: file1Path,
         })
 
         // Resolver prefers .ts first, but if it doesn't exist, should find .tsx
@@ -114,9 +114,9 @@ describe('FileResolver', () => {
           // Files don't exist, which is what we want
         }
 
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: `./${basename}_file2`,
-          containingFile: file1Path,
+        const resolved = FileResolver.resolveFilePath({
+          path: `./${basename}_file2`,
+          importer: file1Path,
         })
 
         // Resolver prefers .ts first, but if it doesn't exist, should find .js
@@ -134,9 +134,9 @@ describe('FileResolver', () => {
         await Bun.write(file1Path, 'export const a = 1')
         await Bun.write(file2Path, 'export const b = 2')
 
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: './subdir/file2',
-          containingFile: file1Path,
+        const resolved = FileResolver.resolveFilePath({
+          path: './subdir/file2',
+          importer: file1Path,
         })
 
         expect(resolved).toBe(file2Path)
@@ -153,9 +153,9 @@ describe('FileResolver', () => {
         await Bun.write(file1Path, 'export const a = 1')
         await Bun.write(file2Path, 'export const b = 2')
 
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: '../file2',
-          containingFile: file1Path,
+        const resolved = FileResolver.resolveFilePath({
+          path: '../file2',
+          importer: file1Path,
         })
 
         expect(resolved).toBe(file2Path)
@@ -168,9 +168,9 @@ describe('FileResolver', () => {
         const file1Path = nodePath.join(tempDir, 'file1.ts')
         await Bun.write(file1Path, 'export const a = 1')
 
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: './nonexistent',
-          containingFile: file1Path,
+        const resolved = FileResolver.resolveFilePath({
+          path: './nonexistent',
+          importer: file1Path,
         })
 
         expect(resolved).toBeUndefined()
@@ -178,17 +178,17 @@ describe('FileResolver', () => {
     )
 
     it.concurrent(
-      'returns undefined for absolute path without containingFile',
+      'returns  absolute path without containingFile',
       helper(async ({ tempDir }) => {
         const file1Path = nodePath.join(tempDir, 'file1.ts')
         await Bun.write(file1Path, 'export const a = 1')
 
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: file1Path,
-          containingFile: undefined,
+        const resolved = FileResolver.resolveFilePath({
+          path: file1Path,
+          importer: undefined,
         })
 
-        expect(resolved).toBeUndefined()
+        expect(resolved).toBe(file1Path)
       }),
     )
 
@@ -198,8 +198,8 @@ describe('FileResolver', () => {
         const file1Path = nodePath.join(tempDir, 'file1.ts')
         await Bun.write(file1Path, 'export const a = 1')
 
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: './file1',
+        const resolved = FileResolver.resolveFilePath({
+          path: './file1',
         })
 
         // Without containingFile, relative paths can't be resolved
@@ -210,8 +210,8 @@ describe('FileResolver', () => {
     it.concurrent(
       'handles non-relative import without containingFile',
       helper(async () => {
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: '@point0/core',
+        const resolved = FileResolver.resolveFilePath({
+          path: '@point0/core',
         })
 
         // Non-relative imports without containingFile can't be resolved
@@ -236,9 +236,9 @@ describe('FileResolver', () => {
           // Files don't exist, which is what we want
         }
 
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: `./${basename}_file2`,
-          containingFile: file1Path,
+        const resolved = FileResolver.resolveFilePath({
+          path: `./${basename}_file2`,
+          importer: file1Path,
         })
 
         // Resolver prefers .ts first, but if it doesn't exist, should find .mjs
@@ -264,9 +264,9 @@ describe('FileResolver', () => {
           // Files don't exist, which is what we want
         }
 
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: `./${basename}_file2`,
-          containingFile: file1Path,
+        const resolved = FileResolver.resolveFilePath({
+          path: `./${basename}_file2`,
+          importer: file1Path,
         })
 
         // Resolver prefers .ts first, but if it doesn't exist, should find .cjs
@@ -284,9 +284,9 @@ describe('FileResolver', () => {
         await Bun.write(file2TsPath, 'export const b = 2')
         await Bun.write(file2JsPath, 'export const b = 2')
 
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: './file2',
-          containingFile: file1Path,
+        const resolved = FileResolver.resolveFilePath({
+          path: './file2',
+          importer: file1Path,
         })
 
         // Should prefer .ts over .js
@@ -318,9 +318,9 @@ describe('FileResolver', () => {
         const file1Path = nodePath.join(tempDir, 'file1.ts')
         await Bun.write(file1Path, 'export const a = 1')
 
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: '@/utils',
-          containingFile: file1Path,
+        const resolved = FileResolver.resolveFilePath({
+          path: '@/utils',
+          importer: file1Path,
         })
 
         expect(resolved).toBe(aliasedFile)
@@ -348,9 +348,9 @@ describe('FileResolver', () => {
         const file1Path = nodePath.join(tempDir, 'file1.ts')
         await Bun.write(file1Path, 'export const a = 1')
 
-        const resolved = FileResolver.detectExistingFilePathByImportPath({
-          importPath: './subdir',
-          containingFile: file1Path,
+        const resolved = FileResolver.resolveFilePath({
+          path: './subdir',
+          importer: file1Path,
         })
 
         // TypeScript resolver should resolve to index.ts

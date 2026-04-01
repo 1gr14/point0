@@ -3,17 +3,18 @@ import { defineConfig, type Options } from 'tsup'
 
 const general = {
   entry: [
-    'src/index.ts',
-    'src/compiler.ts',
-    'src/walker.ts',
-    'src/file.ts',
     'src/plugin/bun-static.ts',
     'src/plugin/bun.ts',
     'src/plugin/babel.ts',
     'src/plugin/vite.ts',
+    'src/compiler.ts',
+    'src/file.ts',
+    'src/importer.ts',
+    'src/index.ts',
     'src/point.ts',
     'src/resolver.ts',
     'src/utils.ts',
+    'src/walker.ts',
   ],
   clean: false,
   dts: true,

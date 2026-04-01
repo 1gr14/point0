@@ -1,15 +1,10 @@
 import type { GeneratorResult } from '@babel/generator'
 import type { RoutesPretty } from '@devp0nt/route0'
-import {
-  normalNodeEnvs,
-  type CompilerOptions,
-  type EnvOsName,
-  type EnvRuntimeName,
-  type NormalizedNodeEnv,
-} from '@point0/core'
+import { normalNodeEnvs, type EnvOsName, type EnvRuntimeName, type NormalizedNodeEnv } from '@point0/core'
 import type { CompilerFile } from './file.js'
+import type { ImporterOptionsInput, ImporterOptionsParsed } from './importer.js'
+import { parseImporterOptions } from './importer.js'
 import { CompilerPoint } from './point.js'
-import type { CompilerEnvConsts } from './utils.js'
 import { Walker } from './walker.js'
 
 export class Compiler {
@@ -25,6 +20,7 @@ export class Compiler {
   walker: Walker
   routes: Record<string, RoutesPretty> | undefined
   ssr: boolean
+  importer: ImporterOptionsParsed | undefined
 
   /*
    * Match JS/TS and markdown-ish source files while excluding virtual/shim
@@ -52,6 +48,7 @@ export class Compiler {
     runtime,
     os,
     ssr,
+    importer,
   }: {
     filter: RegExp
     side: 'client' | 'server' | false
@@ -65,6 +62,7 @@ export class Compiler {
     runtime: EnvRuntimeName | false
     os: EnvOsName | false
     ssr: boolean
+    importer: ImporterOptionsParsed | undefined
   }) {
     this.filter = filter
     this.side = side
@@ -78,6 +76,7 @@ export class Compiler {
     this.runtime = runtime
     this.os = os
     this.ssr = ssr
+    this.importer = importer
   }
 
   static create(options: CompilerOptions) {
@@ -93,6 +92,7 @@ export class Compiler {
       runtime = false,
       os = false,
       ssr = false,
+      importer: providedImporter,
     } = options
     if (mode !== false && (!mode || !normalNodeEnvs.includes(mode as NormalizedNodeEnv))) {
       throw new Error(`Invalid mode (NODE_ENV): "${mode}". Allowed values: production, development, test`)
@@ -110,6 +110,7 @@ export class Compiler {
       runtime,
       os,
       ssr,
+      importer: providedImporter ? parseImporterOptions(providedImporter) : undefined,
     })
   }
 
@@ -199,3 +200,23 @@ export class Compiler {
     }
   }
 }
+
+export type CompilerOptions = {
+  routes?: Record<string, RoutesPretty> | undefined
+  mode?: NormalizedNodeEnv | false
+  runtime?: EnvRuntimeName | false
+  os?: EnvOsName | false
+  side: 'client' | 'server' | false
+  scope: string | false
+  built?: boolean
+  consts?: CompilerEnvConsts
+  filter?: RegExp
+  hmrFix?: boolean
+  ssr?: boolean
+  importer?: ImporterOptionsInput | undefined
+}
+export type CompilerEnvConstsObject = { [key: string]: string | number | boolean | null | undefined }
+export type CompilerEnvConstsString = string
+export type CompilerEnvConstsItem = CompilerEnvConstsString | CompilerEnvConstsObject
+export type CompilerEnvConsts = CompilerEnvConstsItem[] | CompilerEnvConstsString | CompilerEnvConstsObject | undefined
+export type CompilerEnvConstsNormalized = Array<CompilerEnvConstsString | CompilerEnvConstsObject>

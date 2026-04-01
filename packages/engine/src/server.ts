@@ -1,6 +1,5 @@
 import { _ssServerLog, env, prependAndDeappendSlash } from '@point0/core'
 import type {
-  CompilerOptions,
   ErrorPoint0,
   FetcherFetchDetailedResult,
   LogFn,
@@ -30,10 +29,10 @@ import { ServerPoints } from './server-points.js'
 import {
   createViteDevServer,
   executeEngineServerBuildConfig,
-  getViteRoot,
   extractEngineServerPlugins,
   extractViteConfig,
   getDirByPaths,
+  getViteRoot,
   loadBunPlugins,
   normalizeAndValidateNodeEnv,
   serveWithRetries,
@@ -44,6 +43,7 @@ import type {
   EngineServerPluginsDefinition,
   EngineSharedPluginsDefinition,
 } from './utils.js'
+import type { CompilerOptions } from '@point0/compiler'
 
 export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0> {
   scope: PointsScope
@@ -344,6 +344,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       consts: [...(this.compiler.consts ?? []), this.envConsts],
       filter: this.compiler.filter,
       ssr: this.compiler.ssr,
+      importer: this.compiler.importer,
     }
   }
 

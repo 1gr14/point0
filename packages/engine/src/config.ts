@@ -1,31 +1,32 @@
 import type { RoutesPretty } from '@devp0nt/route0'
 import { normalizeEnvConsts } from '@point0/compiler'
-import type { CompilerEnvConsts, CompilerEnvConstsNormalized } from '@point0/compiler'
-import { prependAndDeappendSlash } from '@point0/core'
+import type { CompilerEnvConsts, CompilerEnvConstsNormalized, ImporterOptionsInput } from '@point0/compiler'
+import { _defaultLogFn, prependAndDeappendSlash } from '@point0/core'
 import type {
   AppComponent,
   AppComponentModule,
   EnvOsName,
   EnvRuntimeName,
   ErrorPoint0,
+  LogFn,
   NormalizedNodeEnv,
   PointsDefinitionSource,
   PointsScope,
   RequiredCtx,
-  LogFn,
 } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
+import type { Serve } from 'bun'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { FilesGenerator } from './generator.js'
 import type {
-  FilesGeneratorTaskMeta,
-  FilesGeneratorSimpleServerConfig,
   FilesGeneratorSimpleClientConfig,
   FilesGeneratorSimpleGeneralConfig,
+  FilesGeneratorSimpleServerConfig,
   FilesGeneratorTask,
+  FilesGeneratorTaskMeta,
 } from './generator.js'
-import { FilesGenerator } from './generator.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { toAbsPath, toJsExtension } from './utils.js'
 import type {
@@ -36,8 +37,6 @@ import type {
   EngineServerPluginsDefinition,
   EngineSharedPluginsDefinition,
 } from './utils.js'
-import { _defaultLogFn } from '@point0/core'
-import type { Serve } from 'bun'
 
 export type EngineOptionsPublicdir =
   | string
@@ -108,6 +107,7 @@ export type EngineOptionsCompilerSpecific = {
   consts?: CompilerEnvConsts
   filter?: RegExp
   ssr?: boolean
+  importer?: ImporterOptionsInput | undefined
 }
 export type EngineOptionsCompilerSpecificParsed = {
   side: boolean
@@ -118,6 +118,7 @@ export type EngineOptionsCompilerSpecificParsed = {
   os: EnvOsName | false
   filter: RegExp | undefined
   ssr: boolean
+  importer: ImporterOptionsInput | undefined
 }
 
 export type PortPolicy = 'kill' | 'auto' | 'simple'
@@ -159,6 +160,7 @@ export type EngineServerOptions<
     outdir: string
     cacheLimit?: number | boolean
   }
+  importer?: ImporterOptionsInput
   env?: { vars?: EngineOptionsEnvStrict; consts?: EngineOptionsEnvWide }
   port?: number | string
   outdir?: string
@@ -188,6 +190,7 @@ export type EngineClientOptions = {
     outdir: string
     cacheLimit?: number | boolean
   }
+  importer?: ImporterOptionsInput
   indexHtml?: string
   domRootElementId?: string
   env?: { vars?: EngineOptionsEnvWide; consts?: EngineOptionsEnvWide }
@@ -868,6 +871,10 @@ export const parseEngineServerOptions = ({
         : generalOptionsParsedCompilerRecord.ssr !== undefined
           ? generalOptionsParsedCompilerRecord.ssr
           : ssr,
+    importer:
+      serverOptionsCompilerRecord.importer !== undefined
+        ? serverOptionsCompilerRecord.importer
+        : serverOptions.importer,
   } satisfies EngineOptionsCompilerSpecificParsed
   const compiler =
     serverOptions.compiler === false
@@ -882,6 +889,7 @@ export const parseEngineServerOptions = ({
             consts: mergedCompilerRecord.consts,
             filter: mergedCompilerRecord.filter,
             ssr: mergedCompilerRecord.ssr,
+            importer: mergedCompilerRecord.importer,
           }
         : serverOptions.compiler !== undefined
           ? mergedCompilerRecord
@@ -1015,6 +1023,10 @@ const parseEngineClientOptions = ({
         : generalOptionsParsedCompilerRecord.ssr !== undefined
           ? generalOptionsParsedCompilerRecord.ssr
           : ssr,
+    importer:
+      clientOptionsCompilerRecord.importer !== undefined
+        ? clientOptionsCompilerRecord.importer
+        : clientOptions.importer,
   } satisfies EngineOptionsCompilerSpecificParsed
   const compiler =
     clientOptions.compiler === false
@@ -1029,6 +1041,7 @@ const parseEngineClientOptions = ({
             consts: mergedCompilerRecord.consts,
             filter: mergedCompilerRecord.filter,
             ssr: mergedCompilerRecord.ssr,
+            importer: mergedCompilerRecord.importer,
           }
         : clientOptions.compiler !== undefined
           ? mergedCompilerRecord

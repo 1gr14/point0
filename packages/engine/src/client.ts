@@ -1,9 +1,9 @@
 import { type AnyLocation, Route0 } from '@devp0nt/route0'
 import type { AnyRoute } from '@devp0nt/route0'
+import type { CompilerOptions } from '@point0/compiler'
 import { ClientPoints, env } from '@point0/core'
 import type {
   AppComponent,
-  CompilerOptions,
   ErrorPoint0,
   LogFn,
   NormalizedNodeEnv,
@@ -373,6 +373,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
       consts: [...(this.compiler.consts ?? []), this.envConsts],
       filter: this.compiler.filter,
       ssr: this.compiler.ssr,
+      importer: this.compiler.importer,
     }
   }
 

@@ -1,7 +1,7 @@
 import { Compiler } from '../compiler.js'
-import type { CompilerOptions } from '@point0/core'
+import type { CompilerOptions } from '../compiler.js'
 
-export function compilerBabelPlugin(_babel: never, options: CompilerOptions | Compiler) {
+export function compilerBabelPlugin(_babel: never, options: CompilerOptions) {
   const compiler = options instanceof Compiler ? options : Compiler.create(options)
 
   return {

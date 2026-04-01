@@ -4526,24 +4526,3 @@ export type AnyNiceRequestableReadyPoint<
   TInnerProps,
   TQueriesDefinitions
 >
-
-// Compiler options
-
-export type CompilerOptions = {
-  routes?: Record<string, RoutesPretty> | undefined
-  mode?: NormalizedNodeEnv | false
-  runtime?: EnvRuntimeName | false
-  os?: EnvOsName | false
-  side: 'client' | 'server' | false
-  scope: string | false
-  built?: boolean
-  consts?: CompilerEnvConsts
-  filter?: RegExp
-  hmrFix?: boolean
-  ssr?: boolean
-}
-export type CompilerEnvConstsObject = { [key: string]: string | number | boolean | null | undefined }
-export type CompilerEnvConstsString = string
-export type CompilerEnvConstsItem = CompilerEnvConstsString | CompilerEnvConstsObject
-export type CompilerEnvConsts = CompilerEnvConstsItem[] | CompilerEnvConstsString | CompilerEnvConstsObject | undefined
-export type CompilerEnvConstsNormalized = Array<CompilerEnvConstsString | CompilerEnvConstsObject>

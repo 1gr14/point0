@@ -340,6 +340,22 @@ export const getByPath: GetByPath = (target, path) => {
 }
 
 export const withLetsSugar = (fn: any) => {
+  const throwErrorFn = () => {
+    throw new Error('lets[type] notation can not work without compiler, please use compiler')
+  }
+  // Object.assign(fn, {
+  //   plugin: throwErrorFn,
+  //   page: throwErrorFn,
+  //   layout: throwErrorFn,
+  //   component: throwErrorFn,
+  //   provider: throwErrorFn,
+  //   mutation: throwErrorFn,
+  //   query: throwErrorFn,
+  //   infiniteQuery: throwErrorFn,
+  //   action: throwErrorFn,
+  //   base: throwErrorFn,
+  //   root: throwErrorFn,
+  // })
   const wrapped = new Proxy(fn, {
     apply(target, thisArg, argArray) {
       return Reflect.apply(target, thisArg, argArray)
@@ -351,9 +367,7 @@ export const withLetsSugar = (fn: any) => {
       if (prop in target) {
         return Reflect.get(target, prop, receiver)
       }
-      return () => {
-        throw new Error('lets[type] notation can not work without compiler, please use compiler')
-      }
+      return throwErrorFn
     },
   })
   return wrapped

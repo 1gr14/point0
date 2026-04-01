@@ -1,5 +1,6 @@
 export * from './compiler.js'
 export * from './file.js'
+export * from './importer.js'
 export * from './point.js'
 export * from './resolver.js'
 export * from './utils.js'

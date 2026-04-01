@@ -1,6 +1,7 @@
 import type { BunPlugin } from 'bun'
-import type { CompilerOptions } from '@point0/core'
+import nodeFs from 'node:fs'
 import { Compiler } from '../compiler.js'
+import type { CompilerOptions } from '../compiler.js'
 
 export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugin {
   const compiler =
@@ -9,6 +10,7 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
       : Compiler.create({
           ...options,
         })
+
   return {
     name: 'point0-compiler',
     setup(build) {
@@ -26,15 +28,20 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
           }
 
           return {
-            // contents: appendInlineSourceMap(result.code, result.map),
             contents: result.code,
             loader: guessLoader(filepath),
           }
         } catch (e) {
           console.error(e)
+          const contents = (() => {
+            try {
+              return nodeFs.readFileSync(filepath, 'utf-8')
+            } catch {
+              return ''
+            }
+          })()
           return {
-            contents: '',
-            // contents: CompilerFile.getCachedContentOrUndefined(filepath) ?? '',
+            contents,
             loader: guessLoader(filepath),
           }
         }
@@ -43,15 +50,66 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
   } satisfies BunPlugin
 }
 
-// function appendInlineSourceMap(code: string, map: Record<string, unknown> | undefined) {
-//   if (!map) return code
-//   const encoded = Buffer.from(JSON.stringify(map), 'utf8').toString('base64')
-//   return `${code}\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${encoded}\n`
-// }
+function guessLoader(path: string): Bun.Loader {
+  const cleanedPath = path.toLowerCase().replace(/[?#].*$/, '')
+  const filename = cleanedPath.split('/').pop() ?? cleanedPath
 
-function guessLoader(path: string) {
-  if (path.endsWith('.ts')) return 'ts'
-  if (path.endsWith('.tsx')) return 'tsx'
-  if (path.endsWith('.jsx')) return 'jsx'
+  if (filename.endsWith('.tsx')) return 'tsx'
+  if (filename.endsWith('.ts')) return 'ts'
+  if (filename.endsWith('.jsx')) return 'jsx'
+  if (filename.endsWith('.js') || filename.endsWith('.mjs') || filename.endsWith('.cjs')) {
+    return 'js'
+  }
+
+  if (filename.endsWith('.json')) return 'json'
+  if (filename.endsWith('.jsonc')) return 'jsonc'
+  if (filename.endsWith('.toml')) return 'toml'
+  if (filename.endsWith('.yaml') || filename.endsWith('.yml')) return 'yaml'
+
+  if (filename.endsWith('.node')) return 'napi'
+  if (filename.endsWith('.wasm')) return 'wasm'
+  if (filename.endsWith('.css')) return 'css'
+  if (filename.endsWith('.html') || filename.endsWith('.htm')) return 'html'
+
+  // Common text-like assets.
+  if (
+    filename.endsWith('.txt') ||
+    filename.endsWith('.md') ||
+    filename.endsWith('.csv') ||
+    filename.endsWith('.xml') ||
+    filename.endsWith('.svg')
+  ) {
+    return 'text'
+  }
+
+  // Common binary/static assets.
+  if (
+    filename.endsWith('.png') ||
+    filename.endsWith('.jpg') ||
+    filename.endsWith('.jpeg') ||
+    filename.endsWith('.gif') ||
+    filename.endsWith('.webp') ||
+    filename.endsWith('.avif') ||
+    filename.endsWith('.ico') ||
+    filename.endsWith('.bmp') ||
+    filename.endsWith('.mp3') ||
+    filename.endsWith('.wav') ||
+    filename.endsWith('.ogg') ||
+    filename.endsWith('.mp4') ||
+    filename.endsWith('.webm') ||
+    filename.endsWith('.mov') ||
+    filename.endsWith('.woff') ||
+    filename.endsWith('.woff2') ||
+    filename.endsWith('.ttf') ||
+    filename.endsWith('.otf') ||
+    filename.endsWith('.eot') ||
+    filename.endsWith('.pdf') ||
+    filename.endsWith('.zip') ||
+    filename.endsWith('.gz')
+  ) {
+    return 'file'
+  }
+
+  // Runtime transpilation target is usually JavaScript.
   return 'js'
 }

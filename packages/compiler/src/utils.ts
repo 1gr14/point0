@@ -1,8 +1,4 @@
-export type CompilerEnvConstsObject = { [key: string]: string | number | boolean | null | undefined }
-export type CompilerEnvConstsString = string
-export type CompilerEnvConstsItem = CompilerEnvConstsString | CompilerEnvConstsObject
-export type CompilerEnvConsts = CompilerEnvConstsItem[] | CompilerEnvConstsString | CompilerEnvConstsObject | undefined
-export type CompilerEnvConstsNormalized = Array<CompilerEnvConstsString | CompilerEnvConstsObject>
+import type { CompilerEnvConsts, CompilerEnvConstsNormalized } from './compiler.js'
 
 export const normalizeEnvConsts = (consts: CompilerEnvConsts): CompilerEnvConstsNormalized => {
   if (!consts) {

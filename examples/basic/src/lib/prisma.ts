@@ -1,4 +1,4 @@
-const wait = async (ms = 100) => await new Promise((resolve) => setTimeout(resolve, ms))
+const wait = async (ms = 0) => await new Promise((resolve) => setTimeout(resolve, ms))
 
 export const prisma = {
   idea: {

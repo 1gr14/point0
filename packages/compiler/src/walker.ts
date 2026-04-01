@@ -573,9 +573,9 @@ export class Walker {
         for (const { importPath, importedName } of importsToResolve) {
           // Resolve the import path to get the actual file path
           // This handles TypeScript path aliases and relative paths
-          const resolvedPath = FileResolver.detectExistingFilePathByImportPath({
-            importPath,
-            containingFile: file.abs,
+          const resolvedPath = FileResolver.resolveFilePath({
+            path: importPath,
+            importer: file.abs,
           })
           if (resolvedPath) {
             try {
@@ -916,9 +916,9 @@ export class Walker {
       if (!foundLetsNodePath && reExportsToResolve.length > 0) {
         for (const { sourcePath, nameToFind } of reExportsToResolve) {
           // Resolve the source path to get the actual file path
-          const resolvedPath = FileResolver.detectExistingFilePathByImportPath({
-            importPath: sourcePath,
-            containingFile: file.abs,
+          const resolvedPath = FileResolver.resolveFilePath({
+            path: sourcePath,
+            importer: file.abs,
           })
           if (resolvedPath) {
             try {

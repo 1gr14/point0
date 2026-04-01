@@ -21,11 +21,21 @@
   "module": "./dist/esm/index.js",
   "typesVersions": {
     "*": {
-      "": ["./dist/esm/index.d.ts"],
-      "plugin/vite": ["./dist/esm/plugin/vite.d.ts"],
-      "plugin/bun": ["./dist/esm/plugin/bun.d.ts"],
-      "plugin/bun-static": ["./dist/esm/plugin/bun-static.d.ts"],
-      "plugin/babel": ["./dist/esm/plugin/babel.d.ts"]
+      "": [
+        "./dist/esm/index.d.ts"
+      ],
+      "plugin/vite": [
+        "./dist/esm/plugin/vite.d.ts"
+      ],
+      "plugin/bun": [
+        "./dist/esm/plugin/bun.d.ts"
+      ],
+      "plugin/bun-static": [
+        "./dist/esm/plugin/bun-static.d.ts"
+      ],
+      "plugin/babel": [
+        "./dist/esm/plugin/babel.d.ts"
+      ]
     }
   },
   "exports": {
@@ -83,7 +93,8 @@
     "@mdx-js/mdx": "^3.1.1",
     "babel-plugin-minify-dead-code-elimination": "^0.5.2",
     "babel-plugin-minify-guarded-expressions": "^0.4.4",
-    "remark-frontmatter": "^5.0.0"
+    "remark-frontmatter": "^5.0.0",
+    "minimatch": "^10.0.1"
   },
   "peerDependencies": {
     "@devp0nt/route0": "catalog:",
