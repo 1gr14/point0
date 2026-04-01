@@ -47,11 +47,16 @@ B engine имеет withFetch(callback)
 Убедиться, что в мете сср дефолтный верный
 Серв конфиг разрешить также передавать и в саму серв функцию
 
+SHORT-LETS
+Проверка что дешугар применяется только на поинт0 релейтед
+Проверить, что летс без продолжения тоже переворачивается
+
 ИМПОРТ-ПРОТЕКШЕН
-(import protection) cli inspect by filepath how this file and in which place come to files via cli command
-Импортм рестрик, аллоу, и можно передать прямо пакейдж Джейсон в список рестрикта
-Импорт виз мирор прямо сразу заменит поинт на отражённый и не потянет зависимости
-Импортёр просто отдельный файл и отдельная настройка в конфиге
+base
+cli inspect by filepath how this file and in which place come to files via cli command
+package.json to regexes
+exclude
+import config as array
 
 OPENAPI
 ? headers as action input
@@ -75,6 +80,9 @@ In error0 import RedirectTask from "@point0/core/navigate"
 
 === DEBT ===
 ? Сет кукис и кукис надо синхронизировать
+
+COMPILER
+cache
 
 СОУРСМАП
 Попросить бан принимать соурсмапы в лоадерах
