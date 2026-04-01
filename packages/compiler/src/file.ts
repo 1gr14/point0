@@ -125,7 +125,6 @@ export class CompilerFile<THasContent extends boolean> {
     cloned._mayContainPoints = this._mayContainPoints
     cloned._isIdentifierExists = this._isIdentifierExists
     cloned._shakeForEnv = this._shakeForEnv
-    cloned._desugarLetsTypeCalls = this._desugarLetsTypeCalls
     return cloned
   }
 
@@ -140,7 +139,6 @@ export class CompilerFile<THasContent extends boolean> {
     this._mayContainPoints = undefined
     this._isIdentifierExists = {}
     this._shakeForEnv = undefined
-    this._desugarLetsTypeCalls = undefined
     this.allPointsWasCollected = false
     this.modified = false
   }
@@ -411,61 +409,51 @@ export class CompilerFile<THasContent extends boolean> {
     return this._mayContainPoints
   }
 
-  private _desugarLetsTypeCalls:
-    | {
-        ok: boolean
-        errors: unknown[]
-      }
-    | undefined = undefined
-  desugarLetsTypeCalls(): {
+  desugarLetsTypeCallAtNodePath({
+    letsSugarNodePath,
+  }: {
+    letsSugarNodePath: NodePath<Node>
+  }): {
     ok: boolean
     errors: unknown[]
+    letsNodePath?: NodePath<Node>
   } {
-    if (this._desugarLetsTypeCalls) {
-      return this._desugarLetsTypeCalls
-    }
     const errors: unknown[] = []
     try {
-      traverse(this.ast, {
-        CallExpression: (p) => {
-          if (!CompilerPoint.isLetsTypeSugarCall({ node: p.node })) {
-            return
-          }
-          const callee = p.node.callee
-          if (
-            !t.isMemberExpression(callee) ||
-            !t.isMemberExpression(callee.object) ||
-            !t.isIdentifier(callee.property)
-          ) {
-            return
-          }
-          const pointType = POINT_METHOD_TO_TYPE_MAP[callee.property.name]
-          if (!pointType) {
-            return
-          }
-          const pointName = CompilerPoint.inferPointNameFromSugarContext({
-            type: pointType,
-            callPath: p,
-            absPath: this.abs,
-          })
-          const letsCall = t.callExpression(t.memberExpression(callee.object.object, t.identifier('lets')), [
-            t.stringLiteral(pointType),
-            t.stringLiteral(pointName),
-            ...p.node.arguments,
-          ])
-          letsCall.loc = p.node.loc
-          letsCall.start = p.node.start
-          letsCall.end = p.node.end
-          p.replaceWith(letsCall)
-          this.modified = true
-        },
+      const sugarNode = letsSugarNodePath.node
+      if (!CompilerPoint.isLetsTypeSugarCall({ node: sugarNode })) {
+        return { ok: true, errors, letsNodePath: undefined }
+      }
+      if (!t.isCallExpression(sugarNode)) {
+        return { ok: true, errors, letsNodePath: undefined }
+      }
+      const callee = sugarNode.callee
+      if (!t.isMemberExpression(callee) || !t.isMemberExpression(callee.object) || !t.isIdentifier(callee.property)) {
+        return { ok: true, errors, letsNodePath: undefined }
+      }
+      const pointType = POINT_METHOD_TO_TYPE_MAP[callee.property.name]
+      if (!pointType) {
+        return { ok: true, errors, letsNodePath: undefined }
+      }
+      const pointName = CompilerPoint.inferPointNameFromSugarContext({
+        type: pointType,
+        callPath: letsSugarNodePath,
+        absPath: this.abs,
       })
-      this._desugarLetsTypeCalls = { ok: true, errors }
-      return this._desugarLetsTypeCalls
+      const letsCall = t.callExpression(t.memberExpression(callee.object.object, t.identifier('lets')), [
+        t.stringLiteral(pointType),
+        t.stringLiteral(pointName),
+        ...sugarNode.arguments,
+      ])
+      letsCall.loc = sugarNode.loc
+      letsCall.start = sugarNode.start
+      letsCall.end = sugarNode.end
+      const replaced = letsSugarNodePath.replaceWith(letsCall)
+      this.modified = true
+      return { ok: true, errors, letsNodePath: replaced.at(0) as NodePath<Node> | undefined }
     } catch (e) {
       errors.push(e)
-      this._desugarLetsTypeCalls = { ok: false, errors }
-      return this._desugarLetsTypeCalls
+      return { ok: false, errors, letsNodePath: undefined }
     }
   }
 

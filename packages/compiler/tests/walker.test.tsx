@@ -268,6 +268,60 @@ export default root.lets.layout('/idea').layout()
         }
       }),
     )
+
+    it.concurrent(
+      'does not collect non-Point0 lets sugar calls',
+      helper(async ({ files: [file], walker }) => {
+        await file.write(`import {Point0} from '@point0/core'
+const fake = { lets: { page: (_route) => ({ page: () => null }) } }
+export const root = Point0.lets.root().root()
+const notRelated = fake.lets.page('/ignore')
+        `)
+        const result = walker.collectPointsFromFile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        const simplified = result.points.map((p) => p.simplify())
+        expect(simplified).toHaveLength(1)
+        expect(simplified[0]).toMatchObject({
+          type: 'root',
+          name: 'root',
+          exportName: 'root',
+          valid: true,
+        })
+      }),
+    )
+
+    it.concurrent(
+      'resolves sugar parents across files without broad desugar',
+      helper(async ({ files: [file0, file1], walker }) => {
+        await file0.write(`import {Point0} from '@point0/core'
+export const appRoot = Point0.lets.root().root()
+        `)
+        await file1.write(`import {appRoot} from '${file0.importpath}'
+export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Dashboard</div>)
+        `)
+        const result = walker.collectPointsFromFile({ file: file1.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.points).toHaveLength(1)
+        expect(result.points[0].simplify()).toMatchObject({
+          type: 'page',
+          name: 'dashboard',
+          exportName: 'dashboardPage',
+          route: '/dashboard',
+          valid: true,
+        })
+
+        const parents = walker.collectParentPointsByPoint({ point: result.points[0] })
+        expect(parents.errors).toHaveLength(0)
+        expect(parents.parents).toHaveLength(1)
+        expect(parents.parents[0].simplify()).toMatchObject({
+          type: 'root',
+          name: 'app',
+          exportName: 'appRoot',
+          valid: true,
+        })
+      }),
+    )
+
     it.concurrent(
       'can recognize page point in current file, when root point in another file',
       helper(async ({ files: [file0, file1], walker }) => {
@@ -709,6 +763,89 @@ export default root.lets.layout('/idea').layout()
         `)
         await f5.write(`import {componentV} from '${f4.importpath}'
                       export const mutationV = componentV.lets('mutation', 'mutationN').loader().mutation()
+        `)
+        await f6.write(`import {mutationV} from '${f5.importpath}'
+                      export const queryV = mutationV.lets('query', 'queryN').loader().query()
+        `)
+        await f7.write(`import {queryV} from '${f6.importpath}'
+                      export const infiniteQueryV = queryV.lets('infiniteQuery', 'infiniteQueryN').loader().infiniteQuery()
+        `)
+        await f8.write(`import {infiniteQueryV} from '${f7.importpath}'
+                      export const providerV = infiniteQueryV.lets('provider', 'providerN').loader().provider()
+        `)
+        await f9.write(`import {providerV} from '${f8.importpath}'
+                      export const baseV = providerV.lets('base', 'baseN').base()
+        `)
+        await f10.write(`import {baseV} from '${f9.importpath}'
+                      export const baseV2 = baseV.lets('base', 'baseN2').loader().base()
+        `)
+        const result = walker.collectPointsFromFile({ file: f9.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.points).toHaveLength(1)
+        expect(result.points.map((p) => p.simplify())).toMatchObject([
+          {
+            exportName: 'baseV',
+            file: f9.basename,
+            type: 'base',
+            name: 'baseN',
+          },
+        ])
+
+        const parents0 = walker.collectParentPointsByPoint({ point: result.points[0] })
+        expect(parents0.errors).toHaveLength(0)
+        expect(parents0.parents).toHaveLength(9)
+        expect(parents0.parents.map((p) => p.extraSimplify())).toMatchObject([
+          {
+            name: 'providerN',
+          },
+          {
+            name: 'infiniteQueryN',
+          },
+          {
+            name: 'queryN',
+          },
+          {
+            name: 'mutationN',
+          },
+          {
+            name: 'componentN',
+          },
+          {
+            name: 'layoutN',
+          },
+          {
+            name: 'pageN',
+          },
+          {
+            name: 'rootN2',
+          },
+          {
+            name: 'rootN',
+          },
+        ])
+      }),
+    )
+
+    it.concurrent(
+      'can recognize nested points in different files with chaotic sugar lets calls',
+      helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
+        await f0.write(`import {Point0} from '@point0/core'
+                      export const rootNRoot = Point0.lets.root().root()                      
+        `)
+        await f1.write(`import {rootNRoot} from '${f0.importpath}'
+                      export const rootV2 = rootNRoot.lets('root', 'rootN2').root()
+        `)
+        await f2.write(`import {rootV2} from '${f1.importpath}'
+                      export const pageV = rootV2.lets('page', 'pageN', '/pageN').page(() => <div>Hello</div>)
+        `)
+        await f3.write(`import {pageV} from '${f2.importpath}'
+                      export const layoutNLayout = pageV.lets.layout().layout(() => <div>Hello</div>)
+        `)
+        await f4.write(`import {layoutNLayout} from '${f3.importpath}'
+                      export const componentNComponent = layoutNLayout.lets.component().component(() => <div>Hello</div>)
+        `)
+        await f5.write(`import {componentNComponent} from '${f4.importpath}'
+                      export const mutationV = componentNComponent.lets('mutation', 'mutationN').loader().mutation()
         `)
         await f6.write(`import {mutationV} from '${f5.importpath}'
                       export const queryV = mutationV.lets('query', 'queryN').loader().query()

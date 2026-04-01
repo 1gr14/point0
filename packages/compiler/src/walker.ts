@@ -188,28 +188,37 @@ export class Walker {
         return { points, errors, file, ok: true }
       }
 
-      const desugarResult = file.desugarLetsTypeCalls()
-      errors.push(...desugarResult.errors)
-
-      // We need to collect all lets() calls first, then process them async
-      const letsNodePaths: Array<NodePath<Node>> = []
+      const letsRealNodePaths: Array<NodePath<Node>> = []
+      const letsSugarNodePaths: Array<NodePath<Node>> = []
+      const acceptedLetsNodePaths: Array<NodePath<Node>> = []
       traverse(file.ast, {
         CallExpression: (p) => {
-          // Check if this is a .lets() call expression
-          // Example: Point0.lets('root', 'myroot') - we're looking for calls to .lets()
-          // Because: We only want to parse Point0.lets() calls, not other method calls
-          // Reusing isLetsCallExpression helper which checks:
-          //   - It's a CallExpression (already known since we're in CallExpression visitor)
-          //   - The callee is a MemberExpression (e.g., Point0.lets)
-          //   - The property is an Identifier named 'lets'
           if (this.isLetsCallExpression({ node: p.node })) {
-            letsNodePaths.push(p)
+            letsRealNodePaths.push(p)
+            return
+          }
+          if (this.isLetsTypeSugarCallExpression({ node: p.node })) {
+            letsSugarNodePaths.push(p)
           }
         },
       })
 
-      // Process all lets() calls async
-      for (const letsNodePath of letsNodePaths) {
+      acceptedLetsNodePaths.push(...letsRealNodePaths)
+
+      for (const letsSugarNodePath of letsSugarNodePaths) {
+        const relation = this.isLetsNodePathPoint0Related({ letsNodePath: letsSugarNodePath, file })
+        errors.push(...relation.errors)
+        if (!relation.isRelated) {
+          continue
+        }
+        const desugarResult = file.desugarLetsTypeCallAtNodePath({ letsSugarNodePath })
+        errors.push(...desugarResult.errors)
+        if (desugarResult.letsNodePath) {
+          acceptedLetsNodePaths.push(desugarResult.letsNodePath)
+        }
+      }
+
+      for (const letsNodePath of acceptedLetsNodePaths) {
         const result = this.collectPointByLetsNodePath({ letsNodePath, file })
         errors.push(...result.errors)
         if (result.point) {
@@ -237,6 +246,13 @@ export class Walker {
   } {
     const errors: unknown[] = []
     try {
+      if (this.isLetsTypeSugarCallExpression({ node: letsNodePath.node })) {
+        const desugarResult = file.desugarLetsTypeCallAtNodePath({ letsSugarNodePath: letsNodePath })
+        errors.push(...desugarResult.errors)
+        if (desugarResult.letsNodePath) {
+          letsNodePath = desugarResult.letsNodePath
+        }
+      }
       const pointFromMemory = file.getPointFormMemoryByLetsNodePath(letsNodePath)
       if (pointFromMemory) {
         return { point: pointFromMemory, errors }
@@ -436,6 +452,46 @@ export class Walker {
     return { parents, errors }
   }
 
+  private isLetsNodePathPoint0Related({
+    letsNodePath,
+    file,
+    visited,
+  }: {
+    letsNodePath: NodePath<Node>
+    file: CompilerFile<true>
+    visited?: Set<string>
+  }): { isRelated: boolean; errors: unknown[] } {
+    const errors: unknown[] = []
+    try {
+      const baseNodePath = this.getBaseNodePathFromLetsCallPath({ letsNodePath })
+      if (!baseNodePath || baseNodePath.node.type !== 'Identifier') {
+        return { isRelated: false, errors }
+      }
+      if (baseNodePath.node.name === 'Point0') {
+        return { isRelated: true, errors }
+      }
+      const key = `${file.abs}:${baseNodePath.node.name}:${letsNodePath.node.start ?? 0}:${letsNodePath.node.end ?? 0}`
+      const localVisited = visited ?? new Set<string>()
+      if (localVisited.has(key)) {
+        return { isRelated: false, errors }
+      }
+      localVisited.add(key)
+      const baseResult = this.findBaseLetsNodePathByBaseNodePath({ baseNodePath, file })
+      errors.push(...baseResult.errors)
+      if (!baseResult.isFound) {
+        return { isRelated: false, errors }
+      }
+      return this.isLetsNodePathPoint0Related({
+        letsNodePath: baseResult.baseLetsNodePath,
+        file: baseResult.baseFile,
+        visited: localVisited,
+      })
+    } catch (e) {
+      errors.push(e)
+      return { isRelated: false, errors }
+    }
+  }
+
   findBaseLetsNodePathByBaseNodePath({
     baseNodePath,
     file,
@@ -458,9 +514,6 @@ export class Walker {
     const errors: unknown[] = []
 
     try {
-      const desugarResult = file.desugarLetsTypeCalls()
-      errors.push(...desugarResult.errors)
-
       // Step 1: Check if baseNodePath is an Identifier (e.g., "y" in "y.lets('page')")
       // If it's not an Identifier (e.g., it's Point0 or some other expression), we can't resolve it
       if (baseNodePath.node.type !== 'Identifier') {
@@ -727,6 +780,35 @@ export class Walker {
     return node.callee.property.name === 'lets'
   }
 
+  private isLetsTypeSugarCallExpression({ node }: { node: Node }): boolean {
+    return CompilerPoint.isLetsTypeSugarCall({ node })
+  }
+
+  private isAnyLetsCallExpression({ node }: { node: Node }): boolean {
+    return this.isLetsCallExpression({ node }) || this.isLetsTypeSugarCallExpression({ node })
+  }
+
+  private getBaseNodePathFromLetsCallPath({ letsNodePath }: { letsNodePath: NodePath<Node> }): NodePath<Node> | undefined {
+    if (letsNodePath.node.type !== 'CallExpression') {
+      return undefined
+    }
+    if (!this.isLetsCallExpression({ node: letsNodePath.node }) && !this.isLetsTypeSugarCallExpression({ node: letsNodePath.node })) {
+      return undefined
+    }
+    const calleePath = letsNodePath.get('callee')
+    if (calleePath.node.type !== 'MemberExpression') {
+      return undefined
+    }
+    if (this.isLetsCallExpression({ node: letsNodePath.node })) {
+      return calleePath.get('object')
+    }
+    const objectPath = calleePath.get('object')
+    if (objectPath.node.type !== 'MemberExpression') {
+      return undefined
+    }
+    return objectPath.get('object')
+  }
+
   // Helper: Find the .lets() call in a method chain by traversing down
   // Example: findLetsCallInChain({ node: Point0.lets('root', 'myroot').root() })
   //   - Input: The entire chain CallExpression (.root())
@@ -737,7 +819,7 @@ export class Walker {
   //   Chain structure: CallExpression(.root()) -> MemberExpression(.root) -> CallExpression(.lets())
   //   The node passed here is typically from declarator.node.init or p.node.declaration
   private findLetsCallInChain({ node }: { node: Node }): Node | undefined {
-    if (!this.isLetsCallExpression({ node })) {
+    if (!this.isAnyLetsCallExpression({ node })) {
       // If this isn't a .lets() call, check if it's a CallExpression with a MemberExpression callee
       // If so, traverse down to the object to find .lets()
       if (node.type === 'CallExpression' && node.callee.type === 'MemberExpression') {
@@ -823,9 +905,6 @@ export class Walker {
     const identifierExportsToResolve: Array<{ identifierName: string }> = []
 
     try {
-      const desugarResult = file.desugarLetsTypeCalls()
-      errors.push(...desugarResult.errors)
-
       // First pass: Traverse the AST to find exports matching the exportName
       traverse(file.ast, {
         // Case 1: Named export - export const root = Point0.lets(...) or export {root} from './file'

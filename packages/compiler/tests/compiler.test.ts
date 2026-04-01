@@ -99,6 +99,31 @@ function PageIdea() {
       }),
     )
 
+    it.concurrent(
+      'desugars lets.<type>() syntax even without ending or invalid args',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import {Point0} from '@point0/core'
+export const mainRoot = Point0.lets.root()
+export const ideaPage = mainRoot.lets.page()
+export const ideaLayout = mainRoot.lets.layout('/idea')
+export const saveAction = mainRoot.lets.action('POST')
+        `)
+        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const result = compiler.compile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.points).toHaveLength(4)
+        expect(result.modified).toBe(true)
+        expect(await toText(result.code)).toMatchInlineSnapshot(`
+"import { Point0 } from '@point0/core'
+export const mainRoot = Point0.lets('root', 'main')
+export const ideaPage = mainRoot.lets('page', 'idea')
+export const ideaLayout = mainRoot.lets('layout', 'idea', '/idea')
+export const saveAction = mainRoot.lets('action', 'save', 'POST')
+"
+`)
+      }),
+    )
+
     it.concurrent.only(
       'desugars default export lets.<type>() using file basename as point name',
       helper(async () => {
