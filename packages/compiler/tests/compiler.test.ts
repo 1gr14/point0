@@ -124,7 +124,7 @@ export const saveAction = mainRoot.lets('action', 'save', 'POST')
       }),
     )
 
-    it.concurrent.only(
+    it.concurrent(
       'desugars default export lets.<type>() using file basename as point name',
       helper(async () => {
         const filePath = nodePath.join(tempDir, 'lets-sugar-default.tsx')
