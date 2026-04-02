@@ -10,6 +10,9 @@ export const engine = Engine.create({
     points: async () => await import('./lib/points.server.js'),
     generate: { points: './lib/points.server.ts' },
     outdir: '../dist/server',
+    importer: {
+      // server importer
+    },
     env: { vars: { MY_ENV_SERVER_VARIABLE: 'SERVER1' }, consts: ['MY_ENV_FILE_CONSTANT'] },
     // publicdir: server,
     // port: server,
@@ -27,6 +30,9 @@ export const engine = Engine.create({
       outdir: '../dist/client',
       publicdir: { source: '../public', outdir: '../dist/client' },
       env: { vars: ['MY_ENV_FILE_VARIABLE'], consts: ['MY_ENV_FILE_CONSTANT'] },
+      importer: {
+        // client importer
+      },
       // serving: client,
       // port: client,
       // hmrPort: client,

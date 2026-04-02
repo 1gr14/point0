@@ -16,18 +16,19 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
   const tempDir = resolveTempDirPath(['compiler-bun-plugin'])
   nodeFs.mkdirSync(tempDir, { recursive: true })
 
-  // everything may be easy if namespaces will correctly works on server side
-  // but they works only while build or static site runtime
-  // so we need to save our virtual modules to real files
-
   return {
     name: 'point0-compiler',
     setup(build) {
+      // everything may be easy if namespaces will correctly works on server side
+      // but they works only while build or static site runtime
+      // so we need to save our virtual modules to real files
+      const isNormalBundler = 'onStart' in build
+
       const loader = (filepath: string): OnLoadResult => {
-        // console.log('loader', filepath)
         try {
           const result = compiler.compile({
             file: filepath,
+            writeVirtual: !isNormalBundler,
           })
           return {
             contents: result.code,
@@ -48,29 +49,17 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
           }
         }
       }
-      build.onResolve({ filter: virtualModulePathRegex }, (args) => {
-        const options = parseVirtualModulePath(args.path)
-        const hash = getHash(args.path)
-        const filePath = nodePath.join(tempDir, hash + '.js')
-        const { code, error } = createVirtualModuleCode(options)
-        if (error) {
-          if (compiler.importer.onDeny === 'exit') {
-            console.error(error)
-            process.exit(1)
-          } else if (compiler.importer.onDeny === 'throw') {
-            throw new Error(error)
-          } else {
-            console.error(error)
+      if (isNormalBundler) {
+        build.onResolve({ filter: virtualModulePathRegex }, (args) => {
+          return {
+            path: args.path,
+            namespace: 'point0-virtual',
           }
-        }
-        if (!nodeFs.existsSync(filePath)) {
-          nodeFs.writeFileSync(filePath, code)
-        }
-        return {
-          path: filePath,
-          namespace: 'file',
-        }
-      })
+        })
+        build.onLoad({ filter: virtualModulePathRegex, namespace: 'point0-virtual' }, (args) => {
+          return loader(args.path)
+        })
+      }
       build.onLoad({ filter: compiler.filter }, (args) => {
         return loader(args.path)
       })

@@ -532,5 +532,109 @@ export const page2 = root.lets('page', 'page2', '/2')
         retry: 3,
       },
     )
+
+    it(
+      'mock imports on client side',
+      wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
+        if (bundler === 'vite') {
+          expect(engine.server.viteConfig).toBeString()
+        } else {
+          expect(engine.server.viteConfig).toBeNull()
+        }
+        expect(engine.server.port).toBeNumber()
+        expect(engine.clients[0].port).toBeNumber()
+        expect(engine.server.hmrPort).toBeFalse()
+        expect(engine.clients[0].hmrPort).toBeFalse()
+        await tp.write(
+          'src/server-module.tsx',
+          `import '@point0/core/server-only'
+          export const x = { x: () => () => "I am server module" }`,
+        )
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          import { env } from '@point0/core'
+          import { x } from './server-module.js'
+          export const page = root
+            .lets('page', 'home', '/')
+            .page(() => {
+              const result = x.x()()
+              return <div id="page">{typeof result === 'string' ? result : 'proxy'}</div>
+            })`,
+        )
+        await tp.replace('src/engine.ts', '// client importer', `mock: ['./server-module.*']`)
+        tp.spawn(['bun', 'run', 'dev'])
+        await tp.waitStarted()
+        const response = await tp.fetchServer('/')
+        const html = await response.text()
+        expect(html).toContain('I am server module')
+        const page = await tp.gotoServer('/')
+        // it returns realfrom server, but becomes mocked on client
+        expect(page.tale).toMatchInlineSnapshot(`
+          "
+          /
+            #page: I am server module
+            
+            #page: proxy
+            "
+        `)
+        const logsText = page.logs.map((log) => log.text).join('\n')
+        expect(logsText).not.toContain('Import denied on side "client"')
+      }),
+      {
+        retry: 3,
+      },
+    )
+
+    it(
+      'mock imports on server side',
+      wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
+        if (bundler === 'vite') {
+          expect(engine.server.viteConfig).toBeString()
+        } else {
+          expect(engine.server.viteConfig).toBeNull()
+        }
+        expect(engine.server.port).toBeNumber()
+        expect(engine.clients[0].port).toBeNumber()
+        expect(engine.server.hmrPort).toBeFalse()
+        expect(engine.clients[0].hmrPort).toBeFalse()
+        await tp.write(
+          'src/client-module.tsx',
+          `import '@point0/core/client-only'
+          export const x = { x: () => () => "I am client module" }`,
+        )
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          import { env } from '@point0/core'
+          import { x } from './client-module.js'
+          export const page = root
+            .lets('page', 'home', '/')
+            .page(() => {
+              const result = x.x()()
+              return <div id="page">{typeof result === 'string' ? result : 'proxy'}</div>
+            })`,
+        )
+        await tp.replace('src/engine.ts', '// server importer', `mock: ['./client-module.*']`)
+        tp.spawn(['bun', 'run', 'dev'])
+        await tp.waitStarted()
+        const response = await tp.fetchServer('/')
+        const html = await response.text()
+        expect(html).not.toContain('I am client module')
+        const page = await tp.gotoServer('/')
+        // it returns from server as mocked, and becomes real on client
+        expect(page.tale).toMatchInlineSnapshot(`
+          "
+          /
+            #page: proxy
+            
+            #page: I am client module
+            "
+        `)
+      }),
+      {
+        retry: 3,
+      },
+    )
   })
 })

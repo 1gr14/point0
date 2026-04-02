@@ -8,12 +8,12 @@ import iconUrl from '../assets/icon-1.svg'
 import { generalLayout } from '../layouts/general.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { root } from '../lib/client.js'
-import { prisma } from '../lib/prisma.js'
+// import { prisma } from '../lib/prisma.js'
 // import { x } from '../lib/client-thing.js'
 import { Svg } from '../lib/svg.js'
 import { externalHelper2Component, externalHelper3Component, ExternalHelperComponent } from './home.helper.js'
 
-console.log(prisma.idea.findMany().then((r) => console.log(r.length)))
+// console.log(prisma.idea.findMany().then((r) => console.log(r.length)))
 
 // console.log(1234, x)
 // import { Svg } from '../lib/svg.js'

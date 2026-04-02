@@ -533,7 +533,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       async () => {
         const customServeConfig = ((this.bunServeConfig as unknown) ?? {}) as Record<string, unknown>
         const customWebsocketConfig = this.bunServeConfig?.websocket as any
-        console.log(123123123, process.env.POINT0_PORT_POLICY_ROOT_SERVER)
         return Bun.serve({
           ...customServeConfig,
           port: this.port,

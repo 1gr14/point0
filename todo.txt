@@ -49,16 +49,8 @@ B engine имеет withFetch(callback)
 У сервераколлекция строго лоадед, чтобы по ней искать нормально
 Поинтс засунуть и в кткс и в лоадер и в мидлвару
 Сделать сервер опциональным, убдеиться, что клиенты опциональные
-
-ИМПОРТ-ПРОТЕКШЕН
-? deny error we should place right in file that imports this denied module, not in import, becouse it can be dynamic (but build will still fail)
-? collectImports can accept test strings and regexes, to find only needed imports (just optimization)
-? import config as array
-? exclude from importer checks
-mock should have short settings, like just mock = true
-test build|dev mock
-unbeatable client
-cli why
+unbeatable client (try import forbidden and remove import, at keep client running or restarted)
+cli trace
 
 OPENAPI
 Опенапи генерируется из рантайм поинтов, так что это не генератор, а тупо отдельный файл с хелпером опенапи
@@ -92,6 +84,12 @@ cache
 MCP
 tags
 description
+
+ИМПОРТ-ПРОТЕКШЕН
+? deny error we should place right in file that imports this denied module, not in import, becouse it can be dynamic (but build will still fail)
+? collectImports can accept test strings and regexes, to find only needed imports (just optimization)
+? import config as array
+? exclude from importer checks
 
 ? БИЛД-ДЕВ
 ? Оутдир в энжине может быть объектом где каждый ключ это нод енв

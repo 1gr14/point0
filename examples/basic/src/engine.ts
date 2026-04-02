@@ -13,6 +13,9 @@ export const engine = Engine.create({
     generate: { points: './lib/points.server.ts' },
     points: async () => await import('./lib/points.server'),
     outdir: '../dist/server',
+    importer: {
+      deny: ['./lib/client-thing.*'],
+    },
   },
   clients: [
     {

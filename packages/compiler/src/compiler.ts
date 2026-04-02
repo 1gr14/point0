@@ -10,7 +10,7 @@ import {
 } from './importer.js'
 import { parseImporterOptions } from './importer.js'
 import { CompilerPoint } from './point.js'
-import { parseVirtualModulePath } from './index.js'
+import { parseVirtualModulePath, resolveTempDirPath } from './index.js'
 import { Walker } from './walker.js'
 
 export class Compiler {
@@ -27,6 +27,7 @@ export class Compiler {
   routes: Record<string, RoutesPretty> | undefined
   ssr: boolean
   importer: ImporterOptionsParsed
+  tempDir: string | undefined
 
   /*
    * Match JS/TS and markdown-ish source files while excluding virtual/shim
@@ -128,6 +129,7 @@ export class Compiler {
     pruneWalker = !this.built,
     pruneWalkerPoints,
     pruneWalkerFiles,
+    writeVirtual,
   }: {
     content?: string
     file: string
@@ -136,6 +138,7 @@ export class Compiler {
     pruneWalker?: boolean
     pruneWalkerPoints?: boolean
     pruneWalkerFiles?: boolean
+    writeVirtual?: boolean
   }): {
     file: CompilerFile<true> | undefined
     code: string
@@ -145,6 +148,9 @@ export class Compiler {
     modified: boolean
     tryIndex: number
   } {
+    if (writeVirtual && !this.tempDir) {
+      this.tempDir = resolveTempDirPath(['compiler-bun-plugin'])
+    }
     pruneWalkerPoints = pruneWalkerPoints !== undefined ? pruneWalkerPoints : pruneWalker
     pruneWalkerFiles = pruneWalkerFiles !== undefined ? pruneWalkerFiles : pruneWalker
     if (virtualModulePathRegex.test(file)) {
@@ -217,7 +223,12 @@ export class Compiler {
     const optimizeResult = cf.optimizeGuardedExpressions()
     errors.push(...optimizeResult.errors)
     if (side) {
-      cf.replaceImportsWithVirtualModulesPaths({ importer: this.importer, scope: scope || undefined, side })
+      cf.applyImporter({
+        importer: this.importer,
+        scope: scope || undefined,
+        side,
+        writeVirtual: writeVirtual ? this.tempDir : false,
+      })
     }
     const isSomeStale = CompilerPoint.isSomeStale(collectResult.points)
     if (isSomeStale) {

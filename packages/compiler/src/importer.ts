@@ -2,6 +2,7 @@ import * as flat0 from '@devp0nt/flat0'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import nodeFs from 'node:fs'
+import { getHash } from './utils.js'
 
 export type ImporterOptionsInput = {
   mock?: Array<string | RegExp>
@@ -201,19 +202,26 @@ export const resolveImporterRule = ({
   return { shortPath, shortRule: shortRuleString ?? fullRuleString, shortImporters }
 }
 
-export type VirtualModuleOptions = {
-  exportNames: string[]
-  importers: string[]
-  pathOriginal: string
-  pathResolved: string
-  scope: string | undefined
-  side: 'client' | 'server'
-  deny: string | undefined
-}
+export type VirtualModuleOptions =
+  | {
+      exportNames: string[]
+      importers: string[]
+      pathOriginal: string
+      pathResolved: string
+      scope: string | undefined
+      side: 'client' | 'server'
+      deny: string
+    }
+  | {
+      exportNames: string[]
+      importers: undefined
+      pathOriginal: undefined
+      pathResolved: undefined
+      scope: string | undefined
+      side: 'client' | 'server'
+      deny: undefined
+    }
 
-// // Inspired by TanStack Router's virtualModules.ts
-// // https://github.com/TanStack/router/blob/main/packages/start-plugin-core/src/import-protection-plugin/virtualModules.ts
-// // Thanks a lot to the TanStack team for their work! And thanks forever for react-query
 export const createVirtualModuleCode = ({
   exportNames,
   importers,
@@ -223,6 +231,9 @@ export const createVirtualModuleCode = ({
   side,
   deny,
 }: VirtualModuleOptions): { code: string; error: string | undefined } => {
+  // Inspired by TanStack Router's virtualModules.ts
+  // https://github.com/TanStack/router/blob/main/packages/start-plugin-core/src/import-protection-plugin/virtualModules.ts
+  // Thanks a lot to the TanStack team for their work! And thanks forever for react-query
   const denyMessage = !deny
     ? undefined
     : `
@@ -261,36 +272,7 @@ Import denied on side "${side}"${scope ? ` for scope "${scope}"` : ''}
 
   const code = `
 ${denyAtModuleStart ?? ''}
-function createMock(path = 'mock') {
-  const fn = () => {}
-
-  return new Proxy(fn, {
-    get(_target, prop) {
-      if (prop === '__esModule') return true
-      if (prop === 'default') return createMock(path)
-      if (prop === 'caller') return null
-      if (prop === 'then') return (resolve) => Promise.resolve(resolve(createMock(path)))
-      if (prop === 'catch') return () => Promise.resolve(createMock(path))
-      if (prop === 'finally')
-        return (f) => {
-          f()
-          return Promise.resolve(createMock(path))
-        }
-      if (typeof prop === 'symbol') return undefined
-      return createMock(\`\${path}.\${String(prop)}\`)
-    },
-    apply() {
-      return createMock(\`\${path}()\`)
-    },
-    construct() {
-      return createMock(\`new \${path}\`)
-    },
-    set() {
-      return true
-    },
-  })
-}
-
+import { createMock } from '@point0/core/virtual'
 const mock = createMock()
 ${exportLines.join('\n')}
 export default mock
@@ -299,12 +281,29 @@ export default mock
   return { code, error: denyMessage }
 }
 
+export const writeVirtualModulePath = (options: VirtualModuleOptions, tempDir: string): string => {
+  const hash = getHash(JSON.stringify(options))
+  const filePath = nodePath.join(tempDir, hash + '.js')
+  if (!nodeFs.existsSync(filePath)) {
+    const { code } = createVirtualModuleCode(options)
+    nodeFs.writeFileSync(filePath, code)
+  }
+  return filePath
+}
+
 export const createVirtualModulePath = (options: VirtualModuleOptions): string => {
-  return `@point0/virtual?${flat0.stringify(options)}`
+  return `@point0/virtual?options=${encodeURIComponent(JSON.stringify(options))}`
+}
+
+export const writeOrCreateVirtualModulePath = (options: VirtualModuleOptions, writeVirtual: string | false): string => {
+  if (writeVirtual) {
+    return writeVirtualModulePath(options, writeVirtual)
+  }
+  return createVirtualModulePath(options)
 }
 
 export const parseVirtualModulePath = (path: string): VirtualModuleOptions => {
-  return flat0.parse(path.replace('@point0/virtual?', '')) as VirtualModuleOptions
+  return JSON.parse(decodeURIComponent(path.split('@point0/virtual?options=')[1])) as VirtualModuleOptions
 }
 
 export const virtualModulePathRegex = /^@point0\/virtual\?/

@@ -2500,7 +2500,7 @@ describe('CompilerFile', () => {
         `)
         const before = await cf.toCompressedPrettyCode()
         const resolvedImportPath = nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath)
-        const result = cf.replaceImportsWithVirtualModulesPaths({
+        const result = cf.applyImporter({
           importer: parseImporterOptions({
             mock: [resolvedImportPath],
           }),
@@ -2529,7 +2529,7 @@ describe('CompilerFile', () => {
           console.info(a)
         `)
         const before = await cf.toCompressedPrettyCode()
-        const result = cf.replaceImportsWithVirtualModulesPaths({
+        const result = cf.applyImporter({
           importer: parseImporterOptions({
             mock: ['**/*.not-matching.ext'],
             deny: ['**/*.also-not-matching.ext'],
@@ -2557,7 +2557,7 @@ describe('CompilerFile', () => {
           console.info(a, mod.b)
         `)
 
-        const result = cf.replaceImportsWithVirtualModulesPaths({
+        const result = cf.applyImporter({
           importer: parseImporterOptions({
             cwd,
             deny: [fileB.importpath],

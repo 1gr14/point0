@@ -16,7 +16,12 @@ import * as nodePath from 'node:path'
 import prettier from 'prettier'
 import remarkFrontmatter from 'remark-frontmatter'
 import type { CompilerEnvConsts } from './compiler.js'
-import { createVirtualModulePath, resolveImporterRule, type ImporterOptionsParsed } from './importer.js'
+import {
+  createVirtualModulePath,
+  resolveImporterRule,
+  writeOrCreateVirtualModulePath,
+  type ImporterOptionsParsed,
+} from './importer.js'
 import { CompilerPoint, POINT_METHOD_TO_TYPE_MAP } from './point.js'
 import { FileResolver } from './resolver.js'
 import { normalizeEnvConsts } from './utils.js'
@@ -1961,19 +1966,20 @@ export class CompilerFile<THasContent extends boolean> {
     }
   }
 
-  private _replaceImportsWithVirtualModulesPaths: { ok: boolean; errors: unknown[]; modified: boolean } | undefined =
-    undefined
-  replaceImportsWithVirtualModulesPaths({
+  private _applyImporter: { ok: boolean; errors: unknown[]; modified: boolean } | undefined = undefined
+  applyImporter({
     importer,
     scope,
     side,
+    writeVirtual = false,
   }: {
     importer: ImporterOptionsParsed
     scope: string | undefined
     side: 'client' | 'server'
+    writeVirtual?: false | string
   }): { ok: boolean; errors: unknown[]; modified: boolean } {
-    if (this._replaceImportsWithVirtualModulesPaths) {
-      return this._replaceImportsWithVirtualModulesPaths
+    if (this._applyImporter) {
+      return this._applyImporter
     }
     const errors: unknown[] = []
     let modified = false
@@ -1994,15 +2000,18 @@ export class CompilerFile<THasContent extends boolean> {
           const shortOriginalImporter = importer.cwd ? nodePath.relative(importer.cwd, this.abs) : this.abs
           this.replaceImportWithVirtualModulePath({
             importItem,
-            virtualPath: createVirtualModulePath({
-              exportNames: [],
-              importers: [shortFoundImporter, shortOriginalImporter].filter(Boolean) as string[],
-              pathOriginal: foundImporter ? foundImporter.importItem.pathOriginal : importItem.pathOriginal,
-              pathResolved: foundImporter ? foundImporter.importItem.pathResolved : importItem.pathOriginal, // pathOriginal is correct here becouse we want just see '@point0/core/client-only', not d.ts file
-              scope,
-              side,
-              deny: importItem.pathOriginal,
-            }),
+            virtualPath: writeOrCreateVirtualModulePath(
+              {
+                exportNames: [],
+                importers: [shortFoundImporter, shortOriginalImporter].filter(Boolean) as string[],
+                pathOriginal: foundImporter ? foundImporter.importItem.pathOriginal : importItem.pathOriginal,
+                pathResolved: foundImporter ? foundImporter.importItem.pathResolved : importItem.pathOriginal, // pathOriginal is correct here becouse we want just see '@point0/core/client-only', not d.ts file
+                scope,
+                side,
+                deny: importItem.pathOriginal,
+              },
+              writeVirtual,
+            ),
           })
           modified = true
           continue
@@ -2019,15 +2028,18 @@ export class CompilerFile<THasContent extends boolean> {
         if (denyResolved) {
           this.replaceImportWithVirtualModulePath({
             importItem,
-            virtualPath: createVirtualModulePath({
-              exportNames: importItem.exportNames,
-              importers: denyResolved.shortImporters,
-              pathOriginal: importItem.pathOriginal,
-              pathResolved: denyResolved.shortPath,
-              scope,
-              side,
-              deny: denyResolved.shortRule,
-            }),
+            virtualPath: writeOrCreateVirtualModulePath(
+              {
+                exportNames: importItem.exportNames,
+                importers: denyResolved.shortImporters,
+                pathOriginal: importItem.pathOriginal,
+                pathResolved: denyResolved.shortPath,
+                scope,
+                side,
+                deny: denyResolved.shortRule,
+              },
+              writeVirtual,
+            ),
           })
           modified = true
           continue
@@ -2044,27 +2056,30 @@ export class CompilerFile<THasContent extends boolean> {
         if (mockResolved) {
           this.replaceImportWithVirtualModulePath({
             importItem,
-            virtualPath: createVirtualModulePath({
-              exportNames: importItem.exportNames,
-              importers: mockResolved.shortImporters,
-              pathOriginal: importItem.pathOriginal,
-              pathResolved: mockResolved.shortPath,
-              scope,
-              side,
-              deny: undefined,
-            }),
+            virtualPath: writeOrCreateVirtualModulePath(
+              {
+                exportNames: importItem.exportNames,
+                importers: undefined,
+                pathOriginal: undefined,
+                pathResolved: undefined,
+                scope,
+                side,
+                deny: undefined,
+              },
+              writeVirtual,
+            ),
           })
           modified = true
         }
       }
       this.modified ||= modified
-      this._replaceImportsWithVirtualModulesPaths = { ok: true, errors, modified }
-      return this._replaceImportsWithVirtualModulesPaths
+      this._applyImporter = { ok: true, errors, modified }
+      return this._applyImporter
     } catch (e) {
       errors.push(e)
       this.modified ||= modified
-      this._replaceImportsWithVirtualModulesPaths = { ok: false, errors, modified }
-      return this._replaceImportsWithVirtualModulesPaths
+      this._applyImporter = { ok: false, errors, modified }
+      return this._applyImporter
     }
   }
 
