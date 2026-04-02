@@ -17,7 +17,7 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
       if (!compiler.filter.test(filepath)) return null
       const result = compiler.compile({
         content: code,
-        file: filepath,
+        file: id,
         map: true,
       })
 

@@ -11,11 +11,14 @@ import { compileSync } from '@mdx-js/mdx'
 import type { EnvOsName, EnvRuntimeName, NormalizedNodeEnv } from '@point0/core'
 import minifyDeadCodeEliminationModule from 'babel-plugin-minify-dead-code-elimination'
 import minifyGuardedExpressionsModule from 'babel-plugin-minify-guarded-expressions'
+import { minimatch } from 'minimatch'
 import * as nodeFsSync from 'node:fs'
 import prettier from 'prettier'
 import remarkFrontmatter from 'remark-frontmatter'
 import type { CompilerEnvConsts } from './compiler.js'
+import { createVirtualModulePath, type ImporterOptionsParsed } from './importer.js'
 import { CompilerPoint, POINT_METHOD_TO_TYPE_MAP } from './point.js'
+import { FileResolver } from './resolver.js'
 import { normalizeEnvConsts } from './utils.js'
 import type { Walker } from './walker.js'
 
@@ -44,6 +47,7 @@ export class CompilerFile<THasContent extends boolean> {
   points: Set<CompilerPoint>
   allPointsWasCollected: boolean
   stale: boolean
+  imports: CompilerFileImport[]
 
   private constructor({
     abs,
@@ -75,6 +79,7 @@ export class CompilerFile<THasContent extends boolean> {
     this.points = points
     this.allPointsWasCollected = allPointsWasCollected
     this.stale = stale
+    this.imports = []
   }
 
   static create<TContent extends string | undefined = undefined>({
@@ -409,11 +414,7 @@ export class CompilerFile<THasContent extends boolean> {
     return this._mayContainPoints
   }
 
-  desugarLetsTypeCallAtNodePath({
-    letsSugarNodePath,
-  }: {
-    letsSugarNodePath: NodePath<Node>
-  }): {
+  desugarLetsTypeCallAtNodePath({ letsSugarNodePath }: { letsSugarNodePath: NodePath<Node> }): {
     ok: boolean
     errors: unknown[]
     letsNodePath?: NodePath<Node>
@@ -1639,4 +1640,410 @@ export class CompilerFile<THasContent extends boolean> {
       return this._shakeForBuiltEngine
     }
   }
+
+  _collectImports: { ok: boolean; errors: unknown[]; imports: CompilerFileImport[] } | undefined = undefined
+  collectImports(): { ok: boolean; errors: unknown[]; imports: CompilerFileImport[] } {
+    if (this._collectImports) {
+      return this._collectImports
+    }
+    const errors: unknown[] = []
+    const importsByPath = new Map<string, CompilerFileImport>()
+
+    try {
+      const addImport = ({
+        pathOriginal,
+        exportNames,
+        sourceNodePath,
+      }: {
+        pathOriginal: string
+        exportNames: string[]
+        sourceNodePath?: NodePath<t.StringLiteral>
+      }): void => {
+        const pathResolved = FileResolver.resolveFilePath({
+          path: pathOriginal,
+          importer: this.abs,
+          existsing: false,
+        })
+        const normalizedPathResolved = pathResolved ?? pathOriginal
+        const key = `${pathOriginal}\n${normalizedPathResolved}`
+        const existing = importsByPath.get(key)
+        if (!existing) {
+          const next: CompilerFileImport = {
+            pathOriginal,
+            pathResolved: normalizedPathResolved,
+            exportNames: [],
+            virtualPath: undefined,
+            sourceNodePaths: sourceNodePath ? [sourceNodePath] : [],
+          }
+          for (const name of exportNames) {
+            if (name && name !== 'default' && !next.exportNames.includes(name)) {
+              next.exportNames.push(name)
+            }
+          }
+          importsByPath.set(key, next)
+          return
+        }
+        for (const name of exportNames) {
+          if (name && name !== 'default' && !existing.exportNames.includes(name)) {
+            existing.exportNames.push(name)
+          }
+        }
+        if (sourceNodePath && !existing.sourceNodePaths.includes(sourceNodePath)) {
+          existing.sourceNodePaths.push(sourceNodePath)
+        }
+      }
+
+      const collectNamespaceUsedNames = ({
+        scope,
+        localName,
+      }: {
+        scope: NodePath<Node>['scope']
+        localName: string
+      }): string[] => {
+        const used = new Set<string>()
+        const binding = scope.getBinding(localName)
+        if (!binding) {
+          return []
+        }
+        for (const referencePath of binding.referencePaths) {
+          const parentPath = referencePath.parentPath
+          if (
+            parentPath?.isMemberExpression() &&
+            parentPath.get('object') === referencePath &&
+            !parentPath.node.computed &&
+            t.isIdentifier(parentPath.node.property)
+          ) {
+            const propName = parentPath.node.property.name
+            if (propName !== 'default') {
+              used.add(propName)
+            }
+            continue
+          }
+          if (
+            parentPath?.isMemberExpression() &&
+            parentPath.get('object') === referencePath &&
+            parentPath.node.computed &&
+            t.isStringLiteral(parentPath.node.property)
+          ) {
+            const propName = parentPath.node.property.value
+            if (propName !== 'default') {
+              used.add(propName)
+            }
+          }
+        }
+        return [...used]
+      }
+
+      const collectFromObjectPattern = (pattern: t.ObjectPattern): string[] => {
+        const names = new Set<string>()
+        for (const property of pattern.properties) {
+          if (t.isObjectProperty(property)) {
+            const key = property.key
+            if (t.isIdentifier(key)) {
+              if (key.name !== 'default') {
+                names.add(key.name)
+              }
+            } else if (t.isStringLiteral(key)) {
+              if (key.value !== 'default') {
+                names.add(key.value)
+              }
+            }
+          }
+        }
+        return [...names]
+      }
+
+      const collectFromModuleObjectBinding = ({
+        scope,
+        localName,
+      }: {
+        scope: NodePath<Node>['scope']
+        localName: string
+      }): string[] => {
+        const names = new Set<string>()
+        const binding = scope.getBinding(localName)
+        if (!binding) {
+          return []
+        }
+        for (const referencePath of binding.referencePaths) {
+          const parentPath = referencePath.parentPath
+          if (
+            parentPath?.isMemberExpression() &&
+            parentPath.get('object') === referencePath &&
+            !parentPath.node.computed &&
+            t.isIdentifier(parentPath.node.property)
+          ) {
+            const name = parentPath.node.property.name
+            if (name !== 'default') {
+              names.add(name)
+            }
+            continue
+          }
+          if (
+            parentPath?.isMemberExpression() &&
+            parentPath.get('object') === referencePath &&
+            parentPath.node.computed &&
+            t.isStringLiteral(parentPath.node.property)
+          ) {
+            const name = parentPath.node.property.value
+            if (name !== 'default') {
+              names.add(name)
+            }
+          }
+        }
+        return [...names]
+      }
+
+      const maybeCollectFromVariableDeclarator = ({
+        declaratorPath,
+        pathOriginal,
+        sourceNodePath,
+      }: {
+        declaratorPath: NodePath<t.VariableDeclarator>
+        pathOriginal: string
+        sourceNodePath: NodePath<t.StringLiteral>
+      }): void => {
+        const id = declaratorPath.node.id
+        if (t.isObjectPattern(id)) {
+          addImport({ pathOriginal, exportNames: collectFromObjectPattern(id), sourceNodePath })
+          return
+        }
+        if (t.isIdentifier(id)) {
+          addImport({
+            pathOriginal,
+            exportNames: collectFromModuleObjectBinding({
+              scope: declaratorPath.scope,
+              localName: id.name,
+            }),
+            sourceNodePath,
+          })
+        }
+      }
+
+      traverse(this.ast, {
+        ImportDeclaration: (p) => {
+          const pathOriginal = p.node.source.value
+          const sourceNodePath = p.get('source')
+          const usedExportNames = new Set<string>()
+
+          if (p.node.importKind === 'type') {
+            addImport({ pathOriginal, exportNames: [], sourceNodePath })
+            return
+          }
+
+          for (const specifier of p.node.specifiers) {
+            if (t.isImportSpecifier(specifier)) {
+              if (specifier.importKind === 'type') {
+                continue
+              }
+              const imported = specifier.imported
+              const exportName = t.isIdentifier(imported) ? imported.name : imported.value
+              if (exportName !== 'default') {
+                usedExportNames.add(exportName)
+              }
+              continue
+            }
+            if (t.isImportNamespaceSpecifier(specifier)) {
+              const names = collectNamespaceUsedNames({
+                scope: p.scope,
+                localName: specifier.local.name,
+              })
+              for (const name of names) {
+                usedExportNames.add(name)
+              }
+            }
+          }
+
+          addImport({ pathOriginal, exportNames: [...usedExportNames], sourceNodePath })
+        },
+        CallExpression: (p) => {
+          // import('...')
+          if (t.isImport(p.node.callee) && p.node.arguments.length > 0 && t.isStringLiteral(p.node.arguments[0])) {
+            const pathOriginal = p.node.arguments[0].value
+            const sourceNodePath = p.get('arguments')[0]
+            if (!sourceNodePath.isStringLiteral()) {
+              addImport({ pathOriginal, exportNames: [] })
+              return
+            }
+            const parentPath = p.parentPath
+            if (parentPath.isAwaitExpression()) {
+              const maybeDeclaratorPath = parentPath.parentPath
+              if (maybeDeclaratorPath.isVariableDeclarator()) {
+                maybeCollectFromVariableDeclarator({
+                  declaratorPath: maybeDeclaratorPath,
+                  pathOriginal,
+                  sourceNodePath,
+                })
+                return
+              }
+            }
+            addImport({ pathOriginal, exportNames: [], sourceNodePath })
+            return
+          }
+
+          // require('...')
+          if (
+            t.isIdentifier(p.node.callee) &&
+            p.node.callee.name === 'require' &&
+            p.node.arguments.length > 0 &&
+            t.isStringLiteral(p.node.arguments[0])
+          ) {
+            const pathOriginal = p.node.arguments[0].value
+            const sourceNodePath = p.get('arguments')[0]
+            if (!sourceNodePath.isStringLiteral()) {
+              addImport({ pathOriginal, exportNames: [] })
+              return
+            }
+            const parentPath = p.parentPath
+
+            if (parentPath.isVariableDeclarator()) {
+              maybeCollectFromVariableDeclarator({ declaratorPath: parentPath, pathOriginal, sourceNodePath })
+              return
+            }
+
+            if (
+              parentPath.isMemberExpression() &&
+              parentPath.get('object') === p &&
+              !parentPath.node.computed &&
+              t.isIdentifier(parentPath.node.property)
+            ) {
+              const name = parentPath.node.property.name
+              addImport({
+                pathOriginal,
+                exportNames: name === 'default' ? [] : [name],
+                sourceNodePath,
+              })
+              return
+            }
+            if (
+              parentPath.isMemberExpression() &&
+              parentPath.get('object') === p &&
+              parentPath.node.computed &&
+              t.isStringLiteral(parentPath.node.property)
+            ) {
+              const name = parentPath.node.property.value
+              addImport({
+                pathOriginal,
+                exportNames: name === 'default' ? [] : [name],
+                sourceNodePath,
+              })
+              return
+            }
+
+            addImport({ pathOriginal, exportNames: [], sourceNodePath })
+          }
+        },
+      })
+
+      const imports = [...importsByPath.values()]
+      this.imports = imports
+      this._collectImports = { ok: true, errors, imports }
+      return this._collectImports
+    } catch (e) {
+      errors.push(e)
+      const imports = [...importsByPath.values()]
+      this.imports = imports
+      this._collectImports = { ok: false, errors, imports }
+      return this._collectImports
+    }
+  }
+
+  private _replaceImportsWithVirtualModulesPaths: { ok: boolean; errors: unknown[]; modified: boolean } | undefined =
+    undefined
+  replaceImportsWithVirtualModulesPaths({
+    importer,
+    scope,
+    side,
+  }: {
+    importer: ImporterOptionsParsed
+    scope: string | undefined
+    side: 'client' | 'server'
+  }): { ok: boolean; errors: unknown[]; modified: boolean } {
+    if (this._replaceImportsWithVirtualModulesPaths) {
+      return this._replaceImportsWithVirtualModulesPaths
+    }
+    const errors: unknown[] = []
+    let modified = false
+    try {
+      const collectImportsResult = this.collectImports()
+      errors.push(...collectImportsResult.errors)
+      for (const importItem of this.imports) {
+        const createPath = (deny: string | RegExp | undefined) => {
+          return createVirtualModulePath({
+            exportNames: importItem.exportNames,
+            importer: this.abs,
+            pathOriginal: importItem.pathOriginal,
+            pathResolved: importItem.pathResolved,
+            scope,
+            side,
+            deny: !deny ? undefined : typeof deny === 'string' ? deny : deny.source,
+          })
+        }
+        for (const deny of importer.deny) {
+          if (typeof deny === 'string') {
+            if (minimatch(importItem.pathResolved, deny)) {
+              this.replaceImportWithVirtualModulePath({ importItem, virtualPath: createPath(deny) })
+              modified = true
+            }
+          } else {
+            if (deny.test(importItem.pathResolved)) {
+              this.replaceImportWithVirtualModulePath({ importItem, virtualPath: createPath(deny) })
+              modified = true
+            }
+          }
+        }
+        for (const mock of importer.mock) {
+          if (typeof mock === 'string') {
+            if (minimatch(importItem.pathResolved, mock)) {
+              this.replaceImportWithVirtualModulePath({ importItem, virtualPath: createPath(undefined) })
+              modified = true
+            }
+          } else {
+            if (mock.test(importItem.pathResolved)) {
+              this.replaceImportWithVirtualModulePath({ importItem, virtualPath: createPath(undefined) })
+              modified = true
+            }
+          }
+        }
+      }
+      this.modified ||= modified
+      this._replaceImportsWithVirtualModulesPaths = { ok: true, errors, modified }
+      return this._replaceImportsWithVirtualModulesPaths
+    } catch (e) {
+      errors.push(e)
+      this.modified ||= modified
+      this._replaceImportsWithVirtualModulesPaths = { ok: false, errors, modified }
+      return this._replaceImportsWithVirtualModulesPaths
+    }
+  }
+
+  replaceImportWithVirtualModulePath({
+    importItem,
+    virtualPath,
+  }: {
+    importItem: CompilerFileImport
+    virtualPath: string
+  }): void {
+    if (importItem.virtualPath) {
+      return
+    }
+    let astModified = false
+    for (const sourceNodePath of importItem.sourceNodePaths) {
+      if (sourceNodePath.node.value === virtualPath) {
+        continue
+      }
+      sourceNodePath.replaceWith(t.stringLiteral(virtualPath))
+      astModified = true
+    }
+    importItem.virtualPath = virtualPath
+    this.modified ||= astModified
+  }
+}
+
+export type CompilerFileImport = {
+  pathOriginal: string
+  pathResolved: string
+  exportNames: string[]
+  virtualPath: string | undefined
+  sourceNodePaths: NodePath<t.StringLiteral>[]
 }

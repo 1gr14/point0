@@ -99,6 +99,7 @@
   "peerDependencies": {
     "@devp0nt/route0": "catalog:",
     "@point0/core": "workspace:*",
+    "@point0/flat0": "catalog:*",
     "typescript": "*"
   },
   "devDependencies": {

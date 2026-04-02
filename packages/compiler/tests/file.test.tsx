@@ -3,6 +3,7 @@ import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { Compiler } from '../src/compiler.js'
 import { CompilerFile } from '../src/file.js'
+import { parseImporterOptions } from '../src/importer.js'
 import { Walker } from '../src/walker.js'
 import { toText } from './utils.js'
 
@@ -2306,6 +2307,243 @@ describe('CompilerFile', () => {
           "
         `,
         )
+      }),
+    )
+  })
+
+  describe('#collectImports', () => {
+    const normalizeImports = (
+      imports: Array<{ pathOriginal: string; pathResolved: string; exportNames: string[] }>,
+    ): Array<{ pathOriginal: string; pathResolved: string; exportNames: string[] }> => {
+      return [...imports]
+        .map((entry) => ({
+          pathOriginal: entry.pathOriginal,
+          pathResolved: entry.pathResolved,
+          exportNames: [...entry.exportNames].sort(),
+        }))
+        .sort((a, b) => `${a.pathOriginal}::${a.pathResolved}`.localeCompare(`${b.pathOriginal}::${b.pathResolved}`))
+    }
+
+    it.concurrent(
+      'collects declared static named imports and excludes default import',
+      helper(async ({ files: [fileA, fileB] }) => {
+        const cf = await fileA.wrp(`
+          import def, { usedA, usedB as aliasB, unusedC } from '${fileB.importpath}'
+          console.info(usedA, aliasB, def)
+        `)
+        const result = cf.collectImports()
+        const normalized = normalizeImports(result.imports)
+        expect(result.ok).toBe(true)
+        expect(normalized).toEqual(
+          normalizeImports([
+            {
+              pathOriginal: fileB.importpath,
+              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath),
+              exportNames: ['unusedC', 'usedA', 'usedB'],
+            },
+          ]),
+        )
+      }),
+    )
+
+    it.concurrent(
+      'collects names from namespace import member usage',
+      helper(async ({ files: [fileA, fileB] }) => {
+        const cf = await fileA.wrp(`
+          import * as mod from '${fileB.importpath}'
+          console.info(mod.alpha)
+          console.info(mod['beta'])
+          console.info(mod.default)
+        `)
+        const result = cf.collectImports()
+        const normalized = normalizeImports(result.imports)
+        expect(result.ok).toBe(true)
+        expect(normalized).toEqual(
+          normalizeImports([
+            {
+              pathOriginal: fileB.importpath,
+              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath),
+              exportNames: ['alpha', 'beta'],
+            },
+          ]),
+        )
+      }),
+    )
+
+    it.concurrent(
+      'collects await import destructuring and object member usage',
+      helper(async ({ files: [fileA, fileB, fileC] }) => {
+        const cf = await fileA.wrp(`
+          const { one, two: localTwo, default: ignoredDefault } = await import('${fileB.importpath}')
+          const mod = await import('${fileC.importpath}')
+          console.info(one, localTwo, ignoredDefault, mod.three, mod['four'], mod.default)
+        `)
+        const result = cf.collectImports()
+        const normalized = normalizeImports(result.imports)
+        expect(result.ok).toBe(true)
+        expect(normalized).toEqual(
+          normalizeImports([
+            {
+              pathOriginal: fileB.importpath,
+              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath),
+              exportNames: ['one', 'two'],
+            },
+            {
+              pathOriginal: fileC.importpath,
+              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileC.importpath),
+              exportNames: ['four', 'three'],
+            },
+          ]),
+        )
+      }),
+    )
+
+    it.concurrent(
+      'collects require destructuring, object and direct member usage',
+      helper(async ({ files: [fileA, fileB, fileC, fileD] }) => {
+        const cf = await fileA.wrp(`
+          const { r1, r2: localR2, default: ignoredDefault } = require('${fileB.importpath}')
+          const req = require('${fileC.importpath}')
+          console.info(req.r3, req['r4'], req.default, localR2, ignoredDefault)
+          console.info(require('${fileD.importpath}').r5)
+          console.info(require('${fileD.importpath}')['r6'])
+          console.info(r1)
+        `)
+        const result = cf.collectImports()
+        const normalized = normalizeImports(result.imports)
+        expect(result.ok).toBe(true)
+        expect(normalized).toEqual(
+          normalizeImports([
+            {
+              pathOriginal: fileB.importpath,
+              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath),
+              exportNames: ['r1', 'r2'],
+            },
+            {
+              pathOriginal: fileC.importpath,
+              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileC.importpath),
+              exportNames: ['r3', 'r4'],
+            },
+            {
+              pathOriginal: fileD.importpath,
+              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileD.importpath),
+              exportNames: ['r5', 'r6'],
+            },
+          ]),
+        )
+      }),
+    )
+
+    it.concurrent(
+      'keeps side-effect import empty and includes unused static names',
+      helper(async ({ files: [fileA, fileB, fileC] }) => {
+        const cf = await fileA.wrp(`
+          import '${fileB.importpath}'
+          import { UnusedA, UnusedB } from '${fileC.importpath}'
+          console.info('ok')
+        `)
+        const result = cf.collectImports()
+        const normalized = normalizeImports(result.imports)
+        expect(result.ok).toBe(true)
+        expect(normalized).toEqual(
+          normalizeImports([
+            {
+              pathOriginal: fileB.importpath,
+              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath),
+              exportNames: [],
+            },
+            {
+              pathOriginal: fileC.importpath,
+              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileC.importpath),
+              exportNames: ['UnusedA', 'UnusedB'],
+            },
+          ]),
+        )
+      }),
+    )
+
+    it.concurrent(
+      'merges repeated imports from same path and deduplicates names',
+      helper(async ({ files: [fileA, fileB] }) => {
+        const cf = await fileA.wrp(`
+          import { a } from '${fileB.importpath}'
+          import * as ns from '${fileB.importpath}'
+          const req = require('${fileB.importpath}')
+          const { c } = await import('${fileB.importpath}')
+          console.info(a, ns.b, req.d, ns.b, c)
+        `)
+        const result = cf.collectImports()
+        const normalized = normalizeImports(result.imports)
+        expect(result.ok).toBe(true)
+        expect(normalized).toEqual(
+          normalizeImports([
+            {
+              pathOriginal: fileB.importpath,
+              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath),
+              exportNames: ['a', 'b', 'c', 'd'],
+            },
+          ]),
+        )
+      }),
+    )
+  })
+
+  describe('#replaceImportsWithVirtualModulesPaths', () => {
+    it.concurrent(
+      'rewrites all matched import source literals and marks file modified',
+      helper(async ({ files: [fileA, fileB] }) => {
+        const cf = await fileA.wrp(`
+          import { a } from '${fileB.importpath}'
+          const mod = await import('${fileB.importpath}')
+          const req = require('${fileB.importpath}')
+          console.info(a, mod.b, req.c)
+        `)
+        const before = await cf.toCompressedPrettyCode()
+        const resolvedImportPath = nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath)
+        const result = cf.replaceImportsWithVirtualModulesPaths({
+          importer: parseImporterOptions({
+            mock: [resolvedImportPath],
+          }),
+          scope: 'test',
+          side: 'client',
+        })
+        const after = await cf.toCompressedPrettyCode()
+        expect(result.ok).toBe(true)
+        expect(result.errors).toEqual([])
+        expect(result.modified).toBe(true)
+        expect(cf.modified).toBe(true)
+        expect(before).toContain(fileB.importpath)
+        expect(after).not.toContain(fileB.importpath)
+        expect(after.match(/@point0\/virtual\?/g)?.length).toBe(3)
+        expect(cf.imports).toHaveLength(1)
+        expect(cf.imports[0]?.sourceNodePaths).toHaveLength(3)
+        expect(cf.imports[0]?.virtualPath).toContain('@point0/virtual?')
+      }),
+    )
+
+    it.concurrent(
+      'does not rewrite when deny/mock patterns do not match',
+      helper(async ({ files: [fileA, fileB] }) => {
+        const cf = await fileA.wrp(`
+          import { a } from '${fileB.importpath}'
+          console.info(a)
+        `)
+        const before = await cf.toCompressedPrettyCode()
+        const result = cf.replaceImportsWithVirtualModulesPaths({
+          importer: parseImporterOptions({
+            mock: ['**/*.not-matching.ext'],
+            deny: ['**/*.also-not-matching.ext'],
+          }),
+          scope: 'test',
+          side: 'server',
+        })
+        const after = await cf.toCompressedPrettyCode()
+
+        expect(result.ok).toBe(true)
+        expect(result.errors).toEqual([])
+        expect(result.modified).toBe(false)
+        expect(cf.modified).toBe(false)
+        expect(after).toEqual(before)
       }),
     )
   })

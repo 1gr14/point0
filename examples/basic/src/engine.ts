@@ -23,6 +23,9 @@ export const engine = Engine.create({
       // generatePointsLazy: './lib/points.lazy.ts',
       // generatePointsReady: './lib/points.ready.ts',
       generate: { points: './lib/points.client.ts', routes: './lib/routes.ts' },
+      importer: {
+        deny: ['**/prisma.*'],
+      },
       // pointsModuleType: 'ready',
       // points: await import('./lib/points'),
       routes: async () => await import('./lib/routes'),

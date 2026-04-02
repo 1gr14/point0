@@ -2,9 +2,15 @@ import type { GeneratorResult } from '@babel/generator'
 import type { RoutesPretty } from '@devp0nt/route0'
 import { normalNodeEnvs, type EnvOsName, type EnvRuntimeName, type NormalizedNodeEnv } from '@point0/core'
 import type { CompilerFile } from './file.js'
-import type { ImporterOptionsInput, ImporterOptionsParsed } from './importer.js'
+import {
+  createVirtualModuleCode,
+  virtualModulePathRegex,
+  type ImporterOptionsInput,
+  type ImporterOptionsParsed,
+} from './importer.js'
 import { parseImporterOptions } from './importer.js'
 import { CompilerPoint } from './point.js'
+import { parseVirtualModulePath } from './index.js'
 import { Walker } from './walker.js'
 
 export class Compiler {
@@ -135,6 +141,28 @@ export class Compiler {
     modified: boolean
     tryIndex: number
   } {
+    if (virtualModulePathRegex.test(file)) {
+      const virtualOptions = parseVirtualModulePath(file)
+      const { code, error } = createVirtualModuleCode(virtualOptions)
+      if (error) {
+        if (this.importer?.exitOnDeny) {
+          throw new Error(error)
+        } else {
+          console.error(error)
+        }
+      }
+      return {
+        file: undefined,
+        code,
+        map: null,
+        points: [],
+        errors: [],
+        modified: true,
+        tryIndex,
+      }
+    }
+
+    file = file.split('?', 1)[0]
     if (pruneWalkerPoints) {
       this.walker.prunePoints()
     }
@@ -176,6 +204,9 @@ export class Compiler {
     }
     const optimizeResult = cf.optimizeGuardedExpressions()
     errors.push(...optimizeResult.errors)
+    if (this.importer && side) {
+      cf.replaceImportsWithVirtualModulesPaths({ importer: this.importer, scope: scope || undefined, side })
+    }
     const isSomeStale = CompilerPoint.isSomeStale(collectResult.points)
     if (isSomeStale) {
       if (tryIndex >= 10) {

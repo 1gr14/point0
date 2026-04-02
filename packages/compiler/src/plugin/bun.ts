@@ -1,7 +1,8 @@
-import type { BunPlugin } from 'bun'
+import type { BunPlugin, OnLoadResult } from 'bun'
 import nodeFs from 'node:fs'
 import { Compiler } from '../compiler.js'
 import type { CompilerOptions } from '../compiler.js'
+import { virtualModulePathRegex } from '../importer.js'
 
 export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugin {
   const compiler =
@@ -14,19 +15,11 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
   return {
     name: 'point0-compiler',
     setup(build) {
-      build.onLoad({ filter: compiler.filter }, (args) => {
-        const filepath = args.path
+      const loader = (filepath: string): OnLoadResult => {
         try {
           const result = compiler.compile({
             file: filepath,
           })
-          if (!result.modified) {
-            return {
-              contents: result.code,
-              loader: guessLoader(filepath),
-            }
-          }
-
           return {
             contents: result.code,
             loader: guessLoader(filepath),
@@ -45,7 +38,15 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
             loader: guessLoader(filepath),
           }
         }
+      }
+      build.onResolve({ filter: virtualModulePathRegex }, (args) => {
+        return {
+          path: args.path,
+          namespace: 'point0-virtual',
+        }
       })
+      build.onLoad({ filter: virtualModulePathRegex, namespace: 'point0-virtual' }, (args) => loader(args.path))
+      build.onLoad({ filter: compiler.filter }, (args) => loader(args.path))
     },
   } satisfies BunPlugin
 }

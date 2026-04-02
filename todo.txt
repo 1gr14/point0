@@ -46,20 +46,29 @@ B engine имеет withFetch(callback)
 проверка что префетч/бефор/афтер срабатывает сровнутая из редиректа, может их переименовать на onBeforeNavigate, onAfterNavigate
 Убедиться, что в мете сср дефолтный верный
 Серв конфиг разрешить также передавать и в саму серв функцию
-
-SHORT-LETS
-Проверка что дешугар применяется только на поинт0 релейтед
-Проверить, что летс без продолжения тоже переворачивается
+У сервераколлекция строго лоадед, чтобы по ней искать нормально
+Поинтс засунуть и в кткс и в лоадер и в мидлвару
 
 ИМПОРТ-ПРОТЕКШЕН
-base
-cli inspect by filepath how this file and in which place come to files via cli command
-package.json to regexes
-exclude
-import config as array
+Мок и денай позитивные и негативные
+? deny error we should place right in file that imports this denied module, not in import, becouse it can be dynamic (but build will still fail)
+Провайдить cwd как путь энжины, чтоыб красиво обрезать пути
+Поменять местами резолвед и оригинал в ошибке
+Хранить оригинальное название правила до трансформации
+collectImports can accept test strings and regexes, to find only needed imports
+vite, babel plugin
+if started from . sthen right in engine transform to abs
+prefix node_modules when not started from * and .
+parse package.json
+test build throw on deny
+test build|dev mock
+cli why
+import @point0/core/client-only, @point0/core/server-only as error
+? import config as array
+? exclude from importer checks
 
 OPENAPI
-? headers as action input
+Опенапи генерируется из рантайм поинтов, так что это не генератор, а тупо отдельный файл с хелпером опенапи
 openapi
 scalar
 
@@ -147,6 +156,8 @@ shrink core/index.ts size, by remove code duplicates
 Все нулы поменять на фолсы
 Перепроверить все публичные названия методов и если надо то поменять
 ---
+? headers as action input
+Добавить нотацию билд тчк пейдж
 ? Добавить генерейт ауто как строка. И генерейт ауто как вхот для выбора папки. И пакет который скроет всё сгенерированное под собой. Этот генерейт может быть сразу просто нод модулес по названию скоупа и сайда
 ? В генерейт добавить флаг енаблед
 ? Сущность энтити в поинт0
@@ -430,6 +441,7 @@ Route0.create('>+zxc') → will be rewritten () => Route0.create('>currentfilepa
 
 
 === DOCS ===
+Маркдаун мидлвара
 docs in comments
 LLM docs
 respect /v1/ at start
