@@ -201,6 +201,7 @@
         "remark-frontmatter": "^5.0.0",
       },
       "devDependencies": {
+        "@devp0nt/flat0": "catalog:",
         "@point0/engine": "workspace:*",
         "@types/babel__traverse": "^7.28.0",
         "@types/bun": "^1.2.22",
@@ -211,6 +212,7 @@
         "typescript": "catalog:",
       },
       "peerDependencies": {
+        "@devp0nt/flat0": "catalog:",
         "@devp0nt/route0": "catalog:",
         "@point0/core": "workspace:*",
         "typescript": "*",

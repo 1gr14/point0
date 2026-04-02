@@ -48,24 +48,17 @@ B engine имеет withFetch(callback)
 Серв конфиг разрешить также передавать и в саму серв функцию
 У сервераколлекция строго лоадед, чтобы по ней искать нормально
 Поинтс засунуть и в кткс и в лоадер и в мидлвару
+Сделать сервер опциональным, убдеиться, что клиенты опциональные
 
 ИМПОРТ-ПРОТЕКШЕН
-Мок и денай позитивные и негативные
 ? deny error we should place right in file that imports this denied module, not in import, becouse it can be dynamic (but build will still fail)
-Провайдить cwd как путь энжины, чтоыб красиво обрезать пути
-Поменять местами резолвед и оригинал в ошибке
-Хранить оригинальное название правила до трансформации
-collectImports can accept test strings and regexes, to find only needed imports
-vite, babel plugin
-if started from . sthen right in engine transform to abs
-prefix node_modules when not started from * and .
-parse package.json
-test build throw on deny
-test build|dev mock
-cli why
-import @point0/core/client-only, @point0/core/server-only as error
+? collectImports can accept test strings and regexes, to find only needed imports (just optimization)
 ? import config as array
 ? exclude from importer checks
+mock should have short settings, like just mock = true
+test build|dev mock
+unbeatable client
+cli why
 
 OPENAPI
 Опенапи генерируется из рантайм поинтов, так что это не генератор, а тупо отдельный файл с хелпером опенапи

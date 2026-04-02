@@ -1,5 +1,6 @@
 import { Compiler } from '../compiler.js'
 import type { CompilerOptions } from '../compiler.js'
+import { virtualModulePathRegex } from '../importer.js'
 
 export function compilerBabelPlugin(_babel: never, options: CompilerOptions) {
   const compiler = options instanceof Compiler ? options : Compiler.create(options)
@@ -11,7 +12,7 @@ export function compilerBabelPlugin(_babel: never, options: CompilerOptions) {
       parse: (code: string, options: unknown) => unknown,
     ) {
       const filename = parserOptions.sourceFileName
-      if (!filename || !compiler.filter.test(filename)) {
+      if (!filename || !compiler.filter.test(filename) || virtualModulePathRegex.test(filename)) {
         return parse(code, parserOptions)
       }
 

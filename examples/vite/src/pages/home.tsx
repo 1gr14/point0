@@ -9,6 +9,9 @@ import { client } from '../lib/client.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { routes } from '../lib/routes.js'
 import { ExternalHelperComponent } from './home.helper.js'
+import { prisma } from '../lib/prisma'
+
+console.log(prisma.idea.findMany().then((r) => console.log(r.length)))
 
 // const something = SuperStore.define('something', () => {
 //   return {

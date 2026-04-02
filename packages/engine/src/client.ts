@@ -1,7 +1,7 @@
 import { type AnyLocation, Route0 } from '@devp0nt/route0'
 import type { AnyRoute } from '@devp0nt/route0'
 import type { CompilerOptions } from '@point0/compiler'
-import { ClientPoints, env } from '@point0/core'
+import { ClientPoints } from '@point0/core'
 import type {
   AppComponent,
   ErrorPoint0,
@@ -42,7 +42,6 @@ import {
   getViteRoot,
   isAsyncFn,
   normalizeAndValidateNodeEnv,
-  resolveTempDirPath,
   serveWithRetries,
 } from './utils.js'
 import type {
@@ -50,6 +49,8 @@ import type {
   EngineClientPluginsDefinition,
   EngineSharedPluginsDefinition,
 } from './utils.js'
+import { resolveTempDirPath } from '@point0/compiler'
+import { _point0_env } from '@point0/core'
 
 export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0> {
   cwd: string
@@ -360,7 +361,9 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     ])
   }
 
-  getCompilerOptions(): CompilerOptions | false {
+  getCompilerOptions({ built, onDeny }: { built?: boolean; onDeny?: 'exit' | 'throw' | 'log' } = {}):
+    | CompilerOptions
+    | false {
     if (!this.compiler) {
       return false
     }
@@ -373,7 +376,8 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
       consts: [...(this.compiler.consts ?? []), this.envConsts],
       filter: this.compiler.filter,
       ssr: this.compiler.ssr,
-      importer: this.compiler.importer,
+      importer: { ...this.compiler.importer, onDeny: onDeny !== undefined ? onDeny : this.compiler.importer.onDeny },
+      built,
     }
   }
 
@@ -407,7 +411,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
       errorOnNotString: `Bun dev plugins for client "${this.scope}" should be strings`,
     })
     const pluginsStrings = [...generalPluginsStrings, ...ownPluginsStrings]
-    const compilerOptions = this.getCompilerOptions()
+    const compilerOptions = this.getCompilerOptions({ built: _point0_env.build.was })
     const scriptPath = nodePath.join(tempDir, `serve.js`)
     const bunfigTomlPath = nodePath.join(tempDir, 'bunfig.toml')
     const combinedPluginsStrings = compilerOptions
@@ -564,7 +568,7 @@ try {
       mode: normalizeAndValidateNodeEnv(),
       envConsts: this.envConsts,
       engineFile: this.engineFile,
-      compilerOptions: this.getCompilerOptions(),
+      compilerOptions: this.getCompilerOptions({ built: _point0_env.build.was }),
     })
     this.viteDevServer = viteDevServer
     if (!this.indexHtml) {
@@ -838,7 +842,7 @@ try {
     bunBuildConfig?: EngineClientBuildConfigDefinition
     clean?: boolean
   }): Promise<string[] | null> {
-    if (env.build.was) {
+    if (_point0_env.build.was) {
       throw new Error('You can not build by built engine')
     } else {
       const { NODE_ENV } = this.setEnvVars({ nodeEnvFallback: 'production' })
@@ -871,13 +875,9 @@ try {
           })
         : {}
 
-      const compilerOptions = this.getCompilerOptions()
+      const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'exit' })
       const compilerPlugin = compilerOptions
-        ? [
-            await import('@point0/compiler/plugin/bun').then((module) =>
-              module.compilerBunPlugin({ ...compilerOptions, built: true }),
-            ),
-          ]
+        ? [await import('@point0/compiler/plugin/bun').then((module) => module.compilerBunPlugin(compilerOptions))]
         : []
 
       const envConstsWithBuilt = {
@@ -930,7 +930,7 @@ try {
   }
 
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
-    if (env.build.was) {
+    if (_point0_env.build.was) {
       throw new Error('You can not build by built engine')
     } else {
       const { NODE_ENV } = this.setEnvVars({ nodeEnvFallback: 'production' })
@@ -979,13 +979,9 @@ try {
         ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
         : rollupOptionsOutput
 
-      const compilerOptions = this.getCompilerOptions()
+      const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'exit' })
       const compilerPlugin = compilerOptions
-        ? [
-            await import('@point0/compiler/plugin/vite').then((module) =>
-              module.compilerVitePlugin({ ...compilerOptions, built: true }),
-            ),
-          ]
+        ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
         : []
 
       const envConstsWithBuilt = {

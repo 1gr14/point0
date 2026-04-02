@@ -82,8 +82,9 @@ describe('dev', () => {
           'src/page.tsx',
           `import { root } from './lib/root.js'
           import { env } from '@point0/core'
-          export const page = root
-            .lets('page', 'home', '/')
+          export const homePage = root
+            .lets
+            .page('/')
             .page(() => <div>Hello, {process.env.MY_ENV_FILE_VARIABLE}, {process.env.MY_ENV_FILE_CONSTANT}, {env.vars.MY_ENV_FILE_VARIABLE}, {env.vars.MY_ENV_FILE_CONSTANT}</div>)`,
         )
         tp.spawn(['bun', 'run', 'dev'])
@@ -443,6 +444,89 @@ export const page2 = root.lets('page', 'page2', '/2')
         if (pos2.column !== 11 && pos2.column !== 15) {
           throw new Error('Column for page2 is not 11 or 15, it is ' + pos2.column)
         }
+      }),
+      {
+        retry: 3,
+      },
+    )
+
+    it(
+      'deny imports on client side',
+      wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
+        if (bundler === 'vite') {
+          expect(engine.server.viteConfig).toBeString()
+        } else {
+          expect(engine.server.viteConfig).toBeNull()
+        }
+        expect(engine.server.port).toBeNumber()
+        expect(engine.clients[0].port).toBeNumber()
+        expect(engine.server.hmrPort).toBeFalse()
+        expect(engine.clients[0].hmrPort).toBeFalse()
+        await tp.write(
+          'src/server-module.tsx',
+          `import '@point0/core/server-only'
+          export const x = "I am server module"`,
+        )
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          import { env } from '@point0/core'
+          import { x } from './server-module.js'
+          export const page = root
+            .lets('page', 'home', '/')
+            .page(() => <div>{x}</div>)`,
+        )
+        tp.spawn(['bun', 'run', 'dev'])
+        await tp.waitStarted()
+        const response = await tp.fetchServer('/')
+        const html = await response.text()
+        expect(html).toContain('I am server module')
+        const page = await tp.gotoServer('/')
+        // it returns from server, but was denied on client
+        expect(page.tale).toMatchInlineSnapshot(`
+          "
+          /
+            div: I am server module
+            
+            (Empty)
+            "
+        `)
+        const logsText = page.logs.map((log) => log.text).join('\n')
+        expect(logsText).toContain('Import denied on side "client"')
+      }),
+      {
+        retry: 3,
+      },
+    )
+
+    it(
+      'deny imports on server side',
+      wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
+        if (bundler === 'vite') {
+          expect(engine.server.viteConfig).toBeString()
+        } else {
+          expect(engine.server.viteConfig).toBeNull()
+        }
+        expect(engine.server.port).toBeNumber()
+        expect(engine.clients[0].port).toBeNumber()
+        expect(engine.server.hmrPort).toBeFalse()
+        expect(engine.clients[0].hmrPort).toBeFalse()
+        await tp.write(
+          'src/client-module.tsx',
+          `import '@point0/core/client-only'
+          export const x = "I am client module"`,
+        )
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          import { env } from '@point0/core'
+          import { x } from './client-module.js'
+          export const page = root
+            .lets('page', 'home', '/')
+            .page(() => <div>{x}</div>)`,
+        )
+        tp.spawn(['bun', 'run', 'dev'])
+        await tp.waitOutput('Import denied on side "server"')
       }),
       {
         retry: 3,

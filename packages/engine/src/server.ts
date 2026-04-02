@@ -1,4 +1,5 @@
-import { _ssServerLog, env, prependAndDeappendSlash } from '@point0/core'
+import type { CompilerOptions } from '@point0/compiler'
+import { _point0_env, _ssServerLog, prependAndDeappendSlash } from '@point0/core'
 import type {
   ErrorPoint0,
   FetcherFetchDetailedResult,
@@ -43,7 +44,6 @@ import type {
   EngineServerPluginsDefinition,
   EngineSharedPluginsDefinition,
 } from './utils.js'
-import type { CompilerOptions } from '@point0/compiler'
 
 export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0> {
   scope: PointsScope
@@ -297,7 +297,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     }
     this.setEnvVars({ assignToProcessEnv: true, nodeEnvFallback: undefined })
     await Promise.all([
-      this.loadBunPlugins({ built: env.build.was }).then(async () => await this.readServerPoints()),
+      this.loadBunPlugins({ built: _point0_env.build.was }).then(async () => await this.readServerPoints()),
       this.publicdir ? this.publicdir.prepare() : Promise.resolve(),
     ])
     this.prepared = true as never
@@ -331,7 +331,9 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     return points
   }
 
-  getCompilerOptions(): CompilerOptions | false {
+  getCompilerOptions({ built, onDeny }: { built?: boolean; onDeny?: 'exit' | 'throw' | 'log' } = {}):
+    | CompilerOptions
+    | false {
     if (!this.compiler) {
       return false
     }
@@ -344,17 +346,20 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       consts: [...(this.compiler.consts ?? []), this.envConsts],
       filter: this.compiler.filter,
       ssr: this.compiler.ssr,
-      importer: this.compiler.importer,
+      importer: { ...this.compiler.importer, onDeny: onDeny !== undefined ? onDeny : this.compiler.importer.onDeny },
+      built,
     }
   }
 
   async extractBunPlugins({
-    built,
+    built = _point0_env.build.was,
+    onDeny,
     extraPlugins = [],
   }: {
-    built: boolean
+    built?: boolean
+    onDeny?: 'exit' | 'throw' | 'log'
     extraPlugins?: BunPlugin[]
-  }): Promise<BunPlugin[]> {
+  } = {}): Promise<BunPlugin[]> {
     const ownExtractedPlugins = await extractEngineServerPlugins({
       mode: normalizeAndValidateNodeEnv(),
       command: 'serve',
@@ -368,19 +373,12 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       scope: this.scope,
     })
     const extractedPlugins = [...generalExtractedPlugins, ...ownExtractedPlugins]
-    const compilerOptions = this.getCompilerOptions()
+    const compilerOptions = this.getCompilerOptions({ built, onDeny })
     const compilerPlugin = this.viteConfig // we inject vite compiler plugin in vite config
       ? []
-      : env.build.was || !compilerOptions
+      : _point0_env.build.was || !compilerOptions
         ? []
-        : [
-            await import('@point0/compiler/plugin/bun').then((module) =>
-              module.compilerBunPlugin({
-                built,
-                ...compilerOptions,
-              }),
-            ),
-          ]
+        : [await import('@point0/compiler/plugin/bun').then((module) => module.compilerBunPlugin(compilerOptions))]
     const extractedBunPlugins = [...compilerPlugin, ...extraPlugins, ...extractedPlugins]
     return extractedBunPlugins
   }
@@ -406,7 +404,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       mode: normalizeAndValidateNodeEnv(),
       envConsts: this.envConsts,
       engineFile: this.engineFile,
-      compilerOptions: this.getCompilerOptions(),
+      compilerOptions: this.getCompilerOptions({ built: _point0_env.build.was }),
     })
     this.viteDevServer = viteDevServer
     this.installViteSsrStacktraceFixer()
@@ -535,6 +533,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       async () => {
         const customServeConfig = ((this.bunServeConfig as unknown) ?? {}) as Record<string, unknown>
         const customWebsocketConfig = this.bunServeConfig?.websocket as any
+        console.log(123123123, process.env.POINT0_PORT_POLICY_ROOT_SERVER)
         return Bun.serve({
           ...customServeConfig,
           port: this.port,
@@ -810,6 +809,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       plugins: [
         ...(await this.extractBunPlugins({
           built: true,
+          onDeny: 'exit',
           extraPlugins: [...(thisBunBuildConfig.plugins ?? []), ...(providedBunBuildConfig.plugins ?? [])],
         })),
       ],
@@ -836,7 +836,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   }
 
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
-    if (env.build.was) {
+    if (_point0_env.build.was) {
       throw new Error('You can not build by built engine')
     } else {
       const { NODE_ENV } = this.setEnvVars({ assignToProcessEnv: false, nodeEnvFallback: 'production' })
@@ -886,13 +886,9 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
         : rollupOptionsOutput
 
-      const compilerOptions = this.getCompilerOptions()
+      const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'exit' })
       const compilerPlugin = compilerOptions
-        ? [
-            await import('@point0/compiler/plugin/vite').then((module) =>
-              module.compilerVitePlugin({ ...compilerOptions, built: true }),
-            ),
-          ]
+        ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
         : []
 
       const config: ExtractedViteConfig = {

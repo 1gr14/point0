@@ -118,7 +118,7 @@ export type EngineOptionsCompilerSpecificParsed = {
   os: EnvOsName | false
   filter: RegExp | undefined
   ssr: boolean
-  importer: ImporterOptionsInput | undefined
+  importer: ImporterOptionsInput
 }
 
 export type PortPolicy = 'kill' | 'auto' | 'simple'
@@ -873,8 +873,18 @@ export const parseEngineServerOptions = ({
           : ssr,
     importer:
       serverOptionsCompilerRecord.importer !== undefined
-        ? serverOptionsCompilerRecord.importer
-        : serverOptions.importer,
+        ? {
+            ...serverOptionsCompilerRecord.importer,
+            cwd: serverOptionsCompilerRecord.importer.cwd ?? generalOptionsParsed.cwd,
+          }
+        : serverOptions.importer !== undefined
+          ? {
+              ...serverOptions.importer,
+              cwd: serverOptions.importer.cwd ?? generalOptionsParsed.cwd,
+            }
+          : {
+              cwd: generalOptionsParsed.cwd,
+            },
   } satisfies EngineOptionsCompilerSpecificParsed
   const compiler =
     serverOptions.compiler === false
@@ -1025,8 +1035,18 @@ const parseEngineClientOptions = ({
           : ssr,
     importer:
       clientOptionsCompilerRecord.importer !== undefined
-        ? clientOptionsCompilerRecord.importer
-        : clientOptions.importer,
+        ? {
+            ...clientOptionsCompilerRecord.importer,
+            cwd: clientOptionsCompilerRecord.importer.cwd ?? generalOptionsParsed.cwd,
+          }
+        : clientOptions.importer !== undefined
+          ? {
+              ...clientOptions.importer,
+              cwd: clientOptions.importer.cwd ?? generalOptionsParsed.cwd,
+            }
+          : {
+              cwd: generalOptionsParsed.cwd,
+            },
   } satisfies EngineOptionsCompilerSpecificParsed
   const compiler =
     clientOptions.compiler === false

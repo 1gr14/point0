@@ -22,6 +22,9 @@ export const engine = Engine.create({
       points: async () => await import('./lib/points.client'),
       generate: { points: './lib/points.client.ts', routes: './lib/routes.ts' },
       routes: async () => await import('./lib/routes').then((m) => m.routes),
+      importer: {
+        deny: ['**/prisma.*'],
+      },
       indexHtml: './index.html',
       port: 3021,
       env: { vars: ['SOURCE_BASE_URL'] },

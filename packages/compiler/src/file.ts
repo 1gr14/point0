@@ -11,12 +11,12 @@ import { compileSync } from '@mdx-js/mdx'
 import type { EnvOsName, EnvRuntimeName, NormalizedNodeEnv } from '@point0/core'
 import minifyDeadCodeEliminationModule from 'babel-plugin-minify-dead-code-elimination'
 import minifyGuardedExpressionsModule from 'babel-plugin-minify-guarded-expressions'
-import { minimatch } from 'minimatch'
 import * as nodeFsSync from 'node:fs'
+import * as nodePath from 'node:path'
 import prettier from 'prettier'
 import remarkFrontmatter from 'remark-frontmatter'
 import type { CompilerEnvConsts } from './compiler.js'
-import { createVirtualModulePath, type ImporterOptionsParsed } from './importer.js'
+import { createVirtualModulePath, resolveImporterRule, type ImporterOptionsParsed } from './importer.js'
 import { CompilerPoint, POINT_METHOD_TO_TYPE_MAP } from './point.js'
 import { FileResolver } from './resolver.js'
 import { normalizeEnvConsts } from './utils.js'
@@ -258,6 +258,7 @@ export class CompilerFile<THasContent extends boolean> {
     // this.walker.files.set(this.abs, cf)
     this.pruneMemory()
     const result = this as CompilerFile<true>
+    this.walker.files.set(this.abs, result)
     result.content = nodeFsSync.readFileSync(this.abs, 'utf8')
     result.mtime = stats.mtimeMs
     result.rtime = Date.now()
@@ -1650,6 +1651,14 @@ export class CompilerFile<THasContent extends boolean> {
     const importsByPath = new Map<string, CompilerFileImport>()
 
     try {
+      const resolveImportLoc = (sourceNodePath?: NodePath<t.StringLiteral>): { line: number; column: number } => {
+        const loc = sourceNodePath?.node.loc?.start
+        if (!loc) {
+          return { line: 0, column: 0 }
+        }
+        return { line: loc.line, column: loc.column }
+      }
+
       const addImport = ({
         pathOriginal,
         exportNames,
@@ -1673,6 +1682,7 @@ export class CompilerFile<THasContent extends boolean> {
             pathResolved: normalizedPathResolved,
             exportNames: [],
             virtualPath: undefined,
+            loc: resolveImportLoc(sourceNodePath),
             sourceNodePaths: sourceNodePath ? [sourceNodePath] : [],
           }
           for (const name of exportNames) {
@@ -1690,6 +1700,9 @@ export class CompilerFile<THasContent extends boolean> {
         }
         if (sourceNodePath && !existing.sourceNodePaths.includes(sourceNodePath)) {
           existing.sourceNodePaths.push(sourceNodePath)
+        }
+        if (existing.loc.line === 0) {
+          existing.loc = resolveImportLoc(sourceNodePath)
         }
       }
 
@@ -1968,42 +1981,80 @@ export class CompilerFile<THasContent extends boolean> {
       const collectImportsResult = this.collectImports()
       errors.push(...collectImportsResult.errors)
       for (const importItem of this.imports) {
-        const createPath = (deny: string | RegExp | undefined) => {
-          return createVirtualModulePath({
-            exportNames: importItem.exportNames,
-            importer: this.abs,
-            pathOriginal: importItem.pathOriginal,
-            pathResolved: importItem.pathResolved,
-            scope,
-            side,
-            deny: !deny ? undefined : typeof deny === 'string' ? deny : deny.source,
+        if (
+          (side === 'server' && importItem.pathOriginal === '@point0/core/client-only') ||
+          (side === 'client' && importItem.pathOriginal === '@point0/core/server-only')
+        ) {
+          const foundImporter = this.walker.findFileByImport({ pathResolved: this.abs })
+          const shortFoundImporter = foundImporter
+            ? importer.cwd
+              ? `${nodePath.relative(importer.cwd, foundImporter.file.abs)}:${foundImporter.importItem.loc.line}:${foundImporter.importItem.loc.column}`
+              : `${foundImporter.file.abs}:${foundImporter.importItem.loc.line}:${foundImporter.importItem.loc.column}`
+            : undefined
+          const shortOriginalImporter = importer.cwd ? nodePath.relative(importer.cwd, this.abs) : this.abs
+          this.replaceImportWithVirtualModulePath({
+            importItem,
+            virtualPath: createVirtualModulePath({
+              exportNames: [],
+              importers: [shortFoundImporter, shortOriginalImporter].filter(Boolean) as string[],
+              pathOriginal: foundImporter ? foundImporter.importItem.pathOriginal : importItem.pathOriginal,
+              pathResolved: foundImporter ? foundImporter.importItem.pathResolved : importItem.pathOriginal, // pathOriginal is correct here becouse we want just see '@point0/core/client-only', not d.ts file
+              scope,
+              side,
+              deny: importItem.pathOriginal,
+            }),
           })
+          modified = true
+          continue
         }
-        for (const deny of importer.deny) {
-          if (typeof deny === 'string') {
-            if (minimatch(importItem.pathResolved, deny)) {
-              this.replaceImportWithVirtualModulePath({ importItem, virtualPath: createPath(deny) })
-              modified = true
-            }
-          } else {
-            if (deny.test(importItem.pathResolved)) {
-              this.replaceImportWithVirtualModulePath({ importItem, virtualPath: createPath(deny) })
-              modified = true
-            }
-          }
+
+        const denyResolved = resolveImporterRule({
+          map: importer.map.deny,
+          rules: importer.deny,
+          path: importItem.pathResolved,
+          importers: [this.abs],
+          cwd: importer.cwd,
+          loc: importItem.loc,
+        })
+        if (denyResolved) {
+          this.replaceImportWithVirtualModulePath({
+            importItem,
+            virtualPath: createVirtualModulePath({
+              exportNames: importItem.exportNames,
+              importers: denyResolved.shortImporters,
+              pathOriginal: importItem.pathOriginal,
+              pathResolved: denyResolved.shortPath,
+              scope,
+              side,
+              deny: denyResolved.shortRule,
+            }),
+          })
+          modified = true
+          continue
         }
-        for (const mock of importer.mock) {
-          if (typeof mock === 'string') {
-            if (minimatch(importItem.pathResolved, mock)) {
-              this.replaceImportWithVirtualModulePath({ importItem, virtualPath: createPath(undefined) })
-              modified = true
-            }
-          } else {
-            if (mock.test(importItem.pathResolved)) {
-              this.replaceImportWithVirtualModulePath({ importItem, virtualPath: createPath(undefined) })
-              modified = true
-            }
-          }
+
+        const mockResolved = resolveImporterRule({
+          map: importer.map.mock,
+          rules: importer.mock,
+          path: importItem.pathResolved,
+          importers: [this.abs],
+          cwd: importer.cwd,
+          loc: importItem.loc,
+        })
+        if (mockResolved) {
+          this.replaceImportWithVirtualModulePath({
+            importItem,
+            virtualPath: createVirtualModulePath({
+              exportNames: importItem.exportNames,
+              importers: mockResolved.shortImporters,
+              pathOriginal: importItem.pathOriginal,
+              pathResolved: mockResolved.shortPath,
+              scope,
+              side,
+              deny: undefined,
+            }),
+          })
+          modified = true
         }
       }
       this.modified ||= modified
@@ -2045,5 +2096,6 @@ export type CompilerFileImport = {
   pathResolved: string
   exportNames: string[]
   virtualPath: string | undefined
+  loc: { line: number; column: number }
   sourceNodePaths: NodePath<t.StringLiteral>[]
 }

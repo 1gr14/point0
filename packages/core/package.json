@@ -24,6 +24,15 @@
       "": [
         "./dist/esm/index.d.ts"
       ],
+      "client-only": [
+        "./dist/esm/client-only.d.ts"
+      ],
+      "server-only": [
+        "./dist/esm/server-only.d.ts"
+      ],
+      "virtual": [
+        "./dist/esm/virtual.d.ts"
+      ],
       "effects": [
         "./dist/esm/effects.d.ts"
       ],
@@ -61,6 +70,21 @@
       "types": "./dist/esm/index.d.ts",
       "require": "./dist/cjs/index.cjs",
       "import": "./dist/esm/index.js"
+    },
+    "./client-only": {
+      "types": "./dist/esm/client-only.d.ts",
+      "require": "./dist/cjs/client-only.cjs",
+      "import": "./dist/esm/client-only.js"
+    },
+    "./server-only": {
+      "types": "./dist/esm/server-only.d.ts",
+      "require": "./dist/cjs/server-only.cjs",
+      "import": "./dist/esm/server-only.js"
+    },
+    "./virtual": {
+      "types": "./dist/esm/virtual.d.ts",
+      "require": "./dist/cjs/virtual.cjs",
+      "import": "./dist/esm/virtual.js"
     },
     "./effects": {
       "types": "./dist/esm/effects.d.ts",

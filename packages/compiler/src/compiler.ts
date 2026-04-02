@@ -26,7 +26,7 @@ export class Compiler {
   walker: Walker
   routes: Record<string, RoutesPretty> | undefined
   ssr: boolean
-  importer: ImporterOptionsParsed | undefined
+  importer: ImporterOptionsParsed
 
   /*
    * Match JS/TS and markdown-ish source files while excluding virtual/shim
@@ -68,7 +68,7 @@ export class Compiler {
     runtime: EnvRuntimeName | false
     os: EnvOsName | false
     ssr: boolean
-    importer: ImporterOptionsParsed | undefined
+    importer: ImporterOptionsParsed
   }) {
     this.filter = filter
     this.side = side
@@ -116,7 +116,7 @@ export class Compiler {
       runtime,
       os,
       ssr,
-      importer: providedImporter ? parseImporterOptions(providedImporter) : undefined,
+      importer: parseImporterOptions(providedImporter ?? {}),
     })
   }
 
@@ -125,13 +125,17 @@ export class Compiler {
     file,
     tryIndex = 0,
     map: sourceMaps = false,
-    pruneWalkerPoints = true,
+    pruneWalker = !this.built,
+    pruneWalkerPoints,
+    pruneWalkerFiles,
   }: {
     content?: string
     file: string
     tryIndex?: number
     map?: boolean
+    pruneWalker?: boolean
     pruneWalkerPoints?: boolean
+    pruneWalkerFiles?: boolean
   }): {
     file: CompilerFile<true> | undefined
     code: string
@@ -141,11 +145,16 @@ export class Compiler {
     modified: boolean
     tryIndex: number
   } {
+    pruneWalkerPoints = pruneWalkerPoints !== undefined ? pruneWalkerPoints : pruneWalker
+    pruneWalkerFiles = pruneWalkerFiles !== undefined ? pruneWalkerFiles : pruneWalker
     if (virtualModulePathRegex.test(file)) {
       const virtualOptions = parseVirtualModulePath(file)
       const { code, error } = createVirtualModuleCode(virtualOptions)
       if (error) {
-        if (this.importer?.exitOnDeny) {
+        if (this.importer.onDeny === 'exit') {
+          console.error(error)
+          process.exit(1)
+        } else if (this.importer.onDeny === 'throw') {
           throw new Error(error)
         } else {
           console.error(error)
@@ -165,6 +174,9 @@ export class Compiler {
     file = file.split('?', 1)[0]
     if (pruneWalkerPoints) {
       this.walker.prunePoints()
+    }
+    if (pruneWalkerFiles) {
+      this.walker.pruneFiles()
     }
     const side = this.side
     const scope = this.scope
@@ -204,7 +216,7 @@ export class Compiler {
     }
     const optimizeResult = cf.optimizeGuardedExpressions()
     errors.push(...optimizeResult.errors)
-    if (this.importer && side) {
+    if (side) {
       cf.replaceImportsWithVirtualModulesPaths({ importer: this.importer, scope: scope || undefined, side })
     }
     const isSomeStale = CompilerPoint.isSomeStale(collectResult.points)
@@ -212,7 +224,14 @@ export class Compiler {
       if (tryIndex >= 10) {
         throw new Error('Too many tries to compile file. Looks like it is endless loop of changes.')
       }
-      return this.compile({ content, file, tryIndex: tryIndex + 1, map: sourceMaps, pruneWalkerPoints: false })
+      return this.compile({
+        content,
+        file,
+        tryIndex: tryIndex + 1,
+        map: sourceMaps,
+        // pruneWalkerPoints: false,
+        // pruneWalkerFiles: false,
+      })
     }
     const { code, map } = (() => {
       if (cf.modified) {

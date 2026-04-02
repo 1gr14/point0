@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { Compiler } from '../src/compiler.js'
+import { parseVirtualModulePath } from '../src/importer.js'
 import { toText } from './utils.js'
 
 type TestFile = Bun.BunFile & { path: string; basename: string; importpath: string }
@@ -489,6 +490,115 @@ export const root = Point0.lets('root', 'root').root()
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(0)
         expect(result.modified).toBe(false)
+      }),
+    )
+
+    it.concurrent(
+      'rewrites @point0/core/client-only to denied virtual module on server side',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import { ClientOnly } from '@point0/core/client-only'
+console.info(ClientOnly)`)
+        const compiler = Compiler.create({
+          side: 'server',
+          scope: 'test',
+          importer: {
+            cwd: nodePath.dirname(file.path),
+          },
+        })
+        const result = compiler.compile({ file: file.path })
+        const virtualPath = result.file?.imports[0]?.virtualPath
+
+        expect(result.errors).toHaveLength(0)
+        expect(virtualPath).toBeDefined()
+        expect(result.code).toContain('@point0/virtual?')
+
+        const parsed = parseVirtualModulePath(virtualPath as string)
+        expect(parsed.deny).toBe('@point0/core/client-only')
+        expect(parsed.pathOriginal).toBe('@point0/core/client-only')
+        expect(parsed.pathResolved).toBe('@point0/core/client-only')
+        expect(parsed.importers.some((importer) => importer.includes(`${file.basename}.tsx`))).toBe(true)
+      }),
+    )
+
+    it.concurrent(
+      'rewrites @point0/core/server-only to denied virtual module on client side',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import { ServerOnly } from '@point0/core/server-only'
+console.info(ServerOnly)`)
+        const compiler = Compiler.create({
+          side: 'client',
+          scope: 'test',
+          importer: {
+            cwd: nodePath.dirname(file.path),
+          },
+        })
+        const result = compiler.compile({ file: file.path })
+        const virtualPath = result.file?.imports[0]?.virtualPath
+
+        expect(result.errors).toHaveLength(0)
+        expect(virtualPath).toBeDefined()
+        expect(result.code).toContain('@point0/virtual?')
+
+        const parsed = parseVirtualModulePath(virtualPath as string)
+        expect(parsed.deny).toBe('@point0/core/server-only')
+        expect(parsed.pathOriginal).toBe('@point0/core/server-only')
+        expect(parsed.pathResolved).toBe('@point0/core/server-only')
+        expect(parsed.importers.some((importer) => importer.includes(`${file.basename}.tsx`))).toBe(true)
+      }),
+    )
+
+    it.concurrent(
+      'throws when compiling denied virtual module when importer.onDeny is throw',
+      helper(async ({ files: [file1, file2] }) => {
+        await file1.write(`import '@point0/core/client-only'
+    export const x = 1
+    `)
+        await file2.write(`import { x } from '${file1.importpath}'
+    console.info(x)`)
+        const compiler = Compiler.create({
+          side: 'server',
+          scope: 'test',
+          importer: {
+            cwd: nodePath.dirname(file1.path),
+            onDeny: 'throw',
+          },
+        })
+        compiler.compile({ file: file2.path })
+        const pass1 = compiler.compile({ file: file1.path, pruneWalker: false })
+        expect(compiler.walker.files.size).toBe(2)
+        const virtualPath = pass1.file?.imports[0]?.virtualPath
+        expect(virtualPath).toBeDefined()
+        expect(() => compiler.compile({ file: virtualPath as string })).toThrow('Import denied on side "server"')
+      }),
+    )
+
+    it.concurrent(
+      'returns deny virtual module code without throwing when importer.onDeny is log',
+      helper(async ({ files: [file1, file2] }) => {
+        await file1.write(`import '@point0/core/client-only'
+export const x = 1
+`)
+        await file2.write(`import { x } from '${file1.importpath}'
+console.info(x)`)
+        const compiler = Compiler.create({
+          side: 'server',
+          scope: 'test',
+          importer: {
+            cwd: nodePath.dirname(file2.path),
+            onDeny: 'log',
+          },
+        })
+        compiler.compile({ file: file2.path })
+        const pass1 = compiler.compile({ file: file1.path, pruneWalker: false })
+        expect(compiler.walker.files.size).toBe(2)
+        const virtualPath = pass1.file?.imports[0]?.virtualPath
+        expect(virtualPath).toBeDefined()
+
+        const virtualResult = compiler.compile({ file: virtualPath as string })
+        expect(virtualResult.errors).toHaveLength(0)
+        expect(virtualResult.code).toContain('throw new Error(')
+        expect(virtualResult.code).toContain('Import denied on side \\"server\\"')
+        expect(virtualResult.code).toContain('Rule: @point0/core/client-only')
       }),
     )
   })

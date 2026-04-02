@@ -3,7 +3,7 @@ import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { Compiler } from '../src/compiler.js'
 import { CompilerFile } from '../src/file.js'
-import { parseImporterOptions } from '../src/importer.js'
+import { parseImporterOptions, parseVirtualModulePath } from '../src/importer.js'
 import { Walker } from '../src/walker.js'
 import { toText } from './utils.js'
 
@@ -2544,6 +2544,37 @@ describe('CompilerFile', () => {
         expect(result.modified).toBe(false)
         expect(cf.modified).toBe(false)
         expect(after).toEqual(before)
+      }),
+    )
+
+    it.concurrent(
+      'includes compact importer location metadata in deny virtual paths',
+      helper(async ({ files: [fileA, fileB] }) => {
+        const cwd = nodePath.dirname(fileA.path)
+        const cf = await fileA.wrp(`
+          import { a } from '${fileB.importpath}'
+          const mod = await import('${fileB.importpath}')
+          console.info(a, mod.b)
+        `)
+
+        const result = cf.replaceImportsWithVirtualModulesPaths({
+          importer: parseImporterOptions({
+            cwd,
+            deny: [fileB.importpath],
+          }),
+          scope: 'test',
+          side: 'server',
+        })
+        const virtualPath = cf.imports[0]?.virtualPath
+        expect(result.ok).toBe(true)
+        expect(result.modified).toBe(true)
+        expect(virtualPath).toBeDefined()
+
+        const parsed = parseVirtualModulePath(virtualPath as string)
+        expect(parsed.pathResolved).toBe(`${fileB.basename}.js`)
+        expect(parsed.deny).toBe(fileB.importpath)
+        expect(parsed.importers.some((importer) => importer.includes(`${fileA.basename}.tsx:`))).toBe(true)
+        expect(parsed.importers.some((importer) => importer.startsWith('/'))).toBe(false)
       }),
     )
   })

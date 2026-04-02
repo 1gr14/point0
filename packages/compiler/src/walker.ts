@@ -1,9 +1,10 @@
+import traverseModule from '@babel/traverse'
 import type traverseType from '@babel/traverse'
 import type { NodePath } from '@babel/traverse'
-import traverseModule from '@babel/traverse'
 import type { Node } from '@babel/types'
 import type { AnyRoute, RoutesPretty } from '@devp0nt/route0'
 import type { ReadyPointType } from '@point0/core'
+import type { CompilerFileImport } from './file.js'
 import { CompilerFile } from './file.js'
 import { ACTION_METHODS, CompilerPoint, END_POINT_TYPES } from './point.js'
 import { FileResolver } from './resolver.js'
@@ -147,6 +148,10 @@ export class Walker {
 
   prunePoints(): void {
     this.points.clear()
+  }
+
+  pruneFiles(): void {
+    this.files.clear()
   }
 
   // async readManyAsync({ files }: { files: string[]; fresh: boolean }): Promise<Array<CompilerFile<true>>> {
@@ -788,11 +793,18 @@ export class Walker {
     return this.isLetsCallExpression({ node }) || this.isLetsTypeSugarCallExpression({ node })
   }
 
-  private getBaseNodePathFromLetsCallPath({ letsNodePath }: { letsNodePath: NodePath<Node> }): NodePath<Node> | undefined {
+  private getBaseNodePathFromLetsCallPath({
+    letsNodePath,
+  }: {
+    letsNodePath: NodePath<Node>
+  }): NodePath<Node> | undefined {
     if (letsNodePath.node.type !== 'CallExpression') {
       return undefined
     }
-    if (!this.isLetsCallExpression({ node: letsNodePath.node }) && !this.isLetsTypeSugarCallExpression({ node: letsNodePath.node })) {
+    if (
+      !this.isLetsCallExpression({ node: letsNodePath.node }) &&
+      !this.isLetsTypeSugarCallExpression({ node: letsNodePath.node })
+    ) {
       return undefined
     }
     const calleePath = letsNodePath.get('callee')
@@ -1091,5 +1103,25 @@ export class Walker {
       errors.push(e)
       return { isFound: false, foundFile: undefined, letsNodePath: undefined, errors }
     }
+  }
+
+  findFileByImport({
+    pathOriginal,
+    pathResolved,
+  }: {
+    pathOriginal?: string
+    pathResolved?: string
+  }): { file: CompilerFile<any>; importItem: CompilerFileImport } | undefined {
+    for (const f of this.files.values()) {
+      for (const importItem of f.imports) {
+        if (
+          (pathOriginal && importItem.pathOriginal === pathOriginal) ||
+          (pathResolved && importItem.pathResolved === pathResolved)
+        ) {
+          return { file: f, importItem }
+        }
+      }
+    }
+    return undefined
   }
 }

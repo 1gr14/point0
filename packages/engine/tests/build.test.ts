@@ -361,6 +361,78 @@ return (
         retry: 3,
       },
     )
+
+    it(
+      'deny imports on client side',
+      wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
+        if (bundler === 'vite') {
+          expect(engine.server.viteConfig).toBeString()
+        } else {
+          expect(engine.server.viteConfig).toBeNull()
+        }
+        expect(engine.server.port).toBeNumber()
+        expect(engine.clients[0].port).toBeNumber()
+        expect(engine.server.hmrPort).toBeFalse()
+        expect(engine.clients[0].hmrPort).toBeFalse()
+        await tp.write(
+          'src/server-module.tsx',
+          `import '@point0/core/server-only'
+          export const x = "I am server module"`,
+        )
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          import { env } from '@point0/core'
+          import { x } from './server-module.js'
+          export const page = root
+            .lets('page', 'home', '/')
+            .page(() => <div>{x}</div>)`,
+        )
+        await tp.generate()
+        const bp = tp.spawn(['bun', 'run', 'build'])
+        await bp.waitOutput('Import denied on side "client"')
+        expect(await bp.exited).toBe(1)
+      }),
+      {
+        retry: 3,
+      },
+    )
+
+    it(
+      'deny imports on server side',
+      wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
+        if (bundler === 'vite') {
+          expect(engine.server.viteConfig).toBeString()
+        } else {
+          expect(engine.server.viteConfig).toBeNull()
+        }
+        expect(engine.server.port).toBeNumber()
+        expect(engine.clients[0].port).toBeNumber()
+        expect(engine.server.hmrPort).toBeFalse()
+        expect(engine.clients[0].hmrPort).toBeFalse()
+        await tp.write(
+          'src/client-module.tsx',
+          `import '@point0/core/client-only'
+          export const x = "I am client module"`,
+        )
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          import { env } from '@point0/core'
+          import { x } from './client-module.js'
+          export const page = root
+            .lets('page', 'home', '/')
+            .page(() => <div>{x}</div>)`,
+        )
+        await tp.generate()
+        const bp = tp.spawn(['bun', 'run', 'build'])
+        await bp.waitOutput('Import denied on side "server"')
+        expect(await bp.exited).toBe(1)
+      }),
+      {
+        retry: 3,
+      },
+    )
   })
 
   it(

@@ -99,7 +99,7 @@
   "peerDependencies": {
     "@devp0nt/route0": "catalog:",
     "@point0/core": "workspace:*",
-    "@point0/flat0": "catalog:*",
+    "@devp0nt/flat0": "catalog:",
     "typescript": "*"
   },
   "devDependencies": {
@@ -107,6 +107,7 @@
     "@types/babel__traverse": "^7.28.0",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
+    "@devp0nt/flat0": "catalog:",
     "dedent": "^1.7.1",
     "esbuild-fix-imports-plugin": "^1.0.22",
     "tsup": "^8.0.0",

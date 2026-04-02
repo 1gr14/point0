@@ -45,7 +45,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/home.tsx',
-        line: 101,
+        line: 106,
         column: 15,
       },
       import: async () => (await import('../pages/home.js')).default,
@@ -712,7 +712,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/home.tsx',
-        line: 32,
+        line: 37,
         column: 33,
       },
       import: async () => (await import('../pages/home.js')).BestIdeaComponent,
