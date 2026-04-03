@@ -4,6 +4,7 @@ import { Compiler } from '../compiler.js'
 import type { CompilerOptions } from '../compiler.js'
 import { virtualModulePathRegex } from '../importer.js'
 import { resolveTempDirPath } from '../utils.js'
+import { CriticalCompilerError } from '../error.js'
 
 export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugin {
   const compiler =
@@ -35,6 +36,9 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
             loader: guessLoader(filepath),
           }
         } catch (e) {
+          if (e instanceof CriticalCompilerError) {
+            throw e
+          }
           console.error(e)
           const contents = (() => {
             try {

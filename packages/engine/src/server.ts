@@ -331,9 +331,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     return points
   }
 
-  getCompilerOptions({ built, onDeny }: { built?: boolean; onDeny?: 'exit' | 'throw' | 'log' } = {}):
-    | CompilerOptions
-    | false {
+  getCompilerOptions({ built, onDeny }: { built?: boolean; onDeny?: 'throw' | 'log' } = {}): CompilerOptions | false {
     if (!this.compiler) {
       return false
     }
@@ -357,7 +355,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     extraPlugins = [],
   }: {
     built?: boolean
-    onDeny?: 'exit' | 'throw' | 'log'
+    onDeny?: 'throw' | 'log'
     extraPlugins?: BunPlugin[]
   } = {}): Promise<BunPlugin[]> {
     const ownExtractedPlugins = await extractEngineServerPlugins({
@@ -808,7 +806,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       plugins: [
         ...(await this.extractBunPlugins({
           built: true,
-          onDeny: 'exit',
+          onDeny: 'throw',
           extraPlugins: [...(thisBunBuildConfig.plugins ?? []), ...(providedBunBuildConfig.plugins ?? [])],
         })),
       ],
@@ -885,7 +883,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
         : rollupOptionsOutput
 
-      const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'exit' })
+      const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
       const compilerPlugin = compilerOptions
         ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
         : []

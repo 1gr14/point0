@@ -199,6 +199,7 @@ export class Engine<
     entries?: string[] // paths or names
     bunRunArgs?: string[]
     watch?: boolean
+    restart?: boolean
     cwd?: string
   }): Promise<void> {
     // const hot = options.hot !== false
@@ -308,12 +309,14 @@ export class Engine<
           }
 
           let processes = start()
+          // if (options?.restart) {
           this.onPointFileChange((_event, _path, _points) => {
             processes.forEach((p) => {
               p.kill('SIGKILL')
             })
             processes = start()
           })
+          // }
           return []
         }
       })()
@@ -732,7 +735,10 @@ export class Engine<
     }
   }
 
-  guessSideAndScope(options?: { side?: string; scope?: PointsScope }): { side: 'server' | 'client'; scope: PointsScope } {
+  guessSideAndScope(options?: { side?: string; scope?: PointsScope }): {
+    side: 'server' | 'client'
+    scope: PointsScope
+  } {
     const { side, scope } = options ?? {}
     if (side && side !== 'server' && side !== 'client') {
       throw new Error(`Invalid side: ${side}, valid values are 'server' or 'client'`)
@@ -794,7 +800,9 @@ export class Engine<
     }
 
     if (hasServer && hasClient) {
-      throw new Error('Can not detect scope: both server and client are available. Provide "--side" (and maybe "--scope")')
+      throw new Error(
+        'Can not detect scope: both server and client are available. Provide "--side" (and maybe "--scope")',
+      )
     }
     if (!hasServer && !hasClient) {
       throw new Error('Can not detect scope: both server and client are unavailable in engine')

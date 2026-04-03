@@ -40,11 +40,10 @@ mcp as comments
 
 === REFACTOING 3000 ===
 
-Не экСит а сроу который проходит через кетч
+unbeatable client (try import forbidden and remove import, at keep client running or restarted) (Вероятно это из-за промис ал а не ал сетлед в энжин дев)
 
 В мсп лучше комментарии написать
 Си озер тестс ин энжин
-unbeatable client (try import forbidden and remove import, at keep client running or restarted) (Вероятно это из-за промис ал а не ал сетлед в энжин дев)
 Проверить что виз не возвращает строку, как и лоадер
 fetchOptions также принимают fetchFn
 B engine имеет withFetch(callback)
@@ -77,6 +76,7 @@ In error0 import RedirectTask from "@point0/core/navigate"
 
 === DEBT ===
 ? Сет кукис и кукис надо синхронизировать
+merge engines and have shared server and fetch functions
 
 COMPILER
 recomendations for importer deny

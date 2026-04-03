@@ -13,6 +13,7 @@ import { CompilerPoint } from './point.js'
 import { parseVirtualModulePath, resolveTempDirPath } from './index.js'
 import { Walker } from './walker.js'
 import nodePath from 'node:path'
+import { CriticalCompilerError } from './error.js'
 
 export class Compiler {
   filter: RegExp
@@ -160,11 +161,8 @@ export class Compiler {
       const virtualOptions = parseVirtualModulePath(file)
       const { code, error } = createVirtualModuleCode(virtualOptions)
       if (error) {
-        if (this.importer.onDeny === 'exit') {
-          console.error(error)
-          process.exit(1)
-        } else if (this.importer.onDeny === 'throw') {
-          throw new Error(error)
+        if (this.importer.onDeny === 'throw') {
+          throw new CriticalCompilerError(error)
         } else {
           console.error(error)
         }
@@ -237,7 +235,7 @@ export class Compiler {
     const isSomeStale = CompilerPoint.isSomeStale(collectResult.points)
     if (isSomeStale) {
       if (tryIndex >= 10) {
-        throw new Error('Too many tries to compile file. Looks like it is endless loop of changes.')
+        throw new CriticalCompilerError('Too many tries to compile file. Looks like it is endless loop of changes.')
       }
       return this.compile({
         content,

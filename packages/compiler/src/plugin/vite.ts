@@ -1,6 +1,7 @@
 import type { Plugin } from 'vite'
 import { Compiler } from '../compiler.js'
 import type { CompilerOptions } from '../compiler.js'
+import { CriticalCompilerError } from '../error.js'
 import { virtualModulePathRegex } from '../importer.js'
 
 export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin {
@@ -21,34 +22,50 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
       return `${virtualPrefix}${source}`
     },
     load(id) {
-      const normalizedId = stripVirtualPrefix(id)
-      if (!virtualModulePathRegex.test(normalizedId)) return null
+      try {
+        const normalizedId = stripVirtualPrefix(id)
+        if (!virtualModulePathRegex.test(normalizedId)) return null
 
-      const result = compiler.compile({
-        file: normalizedId,
-        map: true,
-      })
+        const result = compiler.compile({
+          file: normalizedId,
+          map: true,
+        })
 
-      return {
-        code: result.code,
-        map: result.map,
+        return {
+          code: result.code,
+          map: result.map,
+        }
+      } catch (e) {
+        if (e instanceof CriticalCompilerError) {
+          throw e
+        }
+        console.error(e)
+        return null
       }
     },
     transform(code, id) {
-      const normalizedId = stripVirtualPrefix(id)
-      const [filepath] = normalizedId.split('?', 1)
-      if (!compiler.filter.test(filepath)) return null
-      const result = compiler.compile({
-        content: code,
-        file: normalizedId,
-        map: true,
-      })
+      try {
+        const normalizedId = stripVirtualPrefix(id)
+        const [filepath] = normalizedId.split('?', 1)
+        if (!compiler.filter.test(filepath)) return null
+        const result = compiler.compile({
+          content: code,
+          file: normalizedId,
+          map: true,
+        })
 
-      if (!result.modified) return null
+        if (!result.modified) return null
 
-      return {
-        code: result.code,
-        map: result.map,
+        return {
+          code: result.code,
+          map: result.map,
+        }
+      } catch (e) {
+        if (e instanceof CriticalCompilerError) {
+          throw e
+        }
+        console.error(e)
+        return null
       }
     },
   }

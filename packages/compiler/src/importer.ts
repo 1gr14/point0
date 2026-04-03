@@ -8,7 +8,7 @@ export type ImporterOptionsInput = {
   deny?: Array<string | RegExp>
   // path will be relative to it
   cwd?: string
-  onDeny?: 'exit' | 'throw' | 'log'
+  onDeny?: 'throw' | 'log'
 }
 
 export type ImporterOptionsParsed = {
@@ -17,7 +17,7 @@ export type ImporterOptionsParsed = {
   // full rule → short rule
   map: { mock: Record<string, string>; deny: Record<string, string> }
   cwd: string | undefined
-  onDeny: 'exit' | 'throw' | 'log'
+  onDeny: 'throw' | 'log'
 }
 
 export const parseImporterOptions = (options: ImporterOptionsInput): ImporterOptionsParsed => {

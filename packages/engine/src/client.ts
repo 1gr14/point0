@@ -361,9 +361,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     ])
   }
 
-  getCompilerOptions({ built, onDeny }: { built?: boolean; onDeny?: 'exit' | 'throw' | 'log' } = {}):
-    | CompilerOptions
-    | false {
+  getCompilerOptions({ built, onDeny }: { built?: boolean; onDeny?: 'throw' | 'log' } = {}): CompilerOptions | false {
     if (!this.compiler) {
       return false
     }
@@ -875,7 +873,7 @@ try {
           })
         : {}
 
-      const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'exit' })
+      const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
       const compilerPlugin = compilerOptions
         ? [await import('@point0/compiler/plugin/bun').then((module) => module.compilerBunPlugin(compilerOptions))]
         : []
@@ -979,7 +977,7 @@ try {
         ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
         : rollupOptionsOutput
 
-      const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'exit' })
+      const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
       const compilerPlugin = compilerOptions
         ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
         : []

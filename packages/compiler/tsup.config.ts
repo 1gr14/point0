@@ -8,6 +8,7 @@ const general = {
     'src/plugin/babel.ts',
     'src/plugin/vite.ts',
     'src/compiler.ts',
+    'src/error.ts',
     'src/file.ts',
     'src/importer.ts',
     'src/index.ts',
