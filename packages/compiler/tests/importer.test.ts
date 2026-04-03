@@ -137,7 +137,7 @@ describe('importer', () => {
     it('returns shortened importer, path, and mapped rule', () => {
       const cwd = nodePath.join(tempDir, crypto.randomUUID())
       const path = nodePath.join(cwd, 'node_modules', 'react', 'index.js')
-      const importers = [nodePath.join(cwd, 'src', 'page.tsx')]
+      const importer = nodePath.join(cwd, 'src', 'page.tsx')
       const includeRule = '**/node_modules/react{,/**}'
       const result = resolveImporterRule({
         map: { [includeRule]: 'deps/package.json:react' },
@@ -147,14 +147,14 @@ describe('importer', () => {
         },
         path,
         cwd,
-        importers,
+        importer,
         loc: { line: 12, column: 8 },
       })
 
       expect(result).toEqual({
         shortPath: nodePath.join('node_modules', 'react', 'index.js'),
         shortRule: 'deps/package.json:react',
-        shortImporters: [`src${nodePath.sep}page.tsx:12:8`],
+        shortImporter: `src${nodePath.sep}page.tsx:12:8`,
       })
     })
 
@@ -168,7 +168,7 @@ describe('importer', () => {
         },
         path: '/repo/node_modules/react/index.js',
         cwd: '/repo',
-        importers: ['/repo/src/page.tsx'],
+        importer: '/repo/src/page.tsx',
         loc: { line: 1, column: 0 },
       })
 

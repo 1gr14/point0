@@ -12,6 +12,7 @@ import { parseImporterOptions } from './importer.js'
 import { CompilerPoint } from './point.js'
 import { parseVirtualModulePath, resolveTempDirPath } from './index.js'
 import { Walker } from './walker.js'
+import nodePath from 'node:path'
 
 export class Compiler {
   filter: RegExp
@@ -127,6 +128,7 @@ export class Compiler {
     tryIndex = 0,
     map: sourceMaps = false,
     pruneWalker = !this.built,
+    hmrFix = this.hmrFix,
     pruneWalkerPoints,
     pruneWalkerFiles,
     writeVirtual,
@@ -135,6 +137,7 @@ export class Compiler {
     file: string
     tryIndex?: number
     map?: boolean
+    hmrFix?: boolean
     pruneWalker?: boolean
     pruneWalkerPoints?: boolean
     pruneWalkerFiles?: boolean
@@ -187,7 +190,7 @@ export class Compiler {
     const side = this.side
     const scope = this.scope
     const consts = this.consts
-    const hmrFix = this.hmrFix
+    // const hmrFix = this.hmrFix // now provided in props
     const built = this.built
     const mode = this.mode
     const runtime = this.runtime
@@ -228,6 +231,7 @@ export class Compiler {
         scope: scope || undefined,
         side,
         writeVirtual: writeVirtual ? this.tempDir : false,
+        compiler: this,
       })
     }
     const isSomeStale = CompilerPoint.isSomeStale(collectResult.points)
@@ -260,6 +264,284 @@ export class Compiler {
       tryIndex,
     }
   }
+
+  private traceByMemory({
+    target,
+    includeTarget,
+    cwd,
+  }: {
+    target: string | CompilerFile<any>
+    includeTarget: boolean
+    cwd?: string
+  }): ImportsTraceResult {
+    const normalizePath = (value: string): string => value.split('?', 1)[0] as string
+    const targetInput = typeof target === 'string' ? target : target.abs
+    const targetPath = normalizePath(targetInput)
+    const files = [...this.walker.files.values()]
+
+    const formatTrace = (startPath: string, items: ImportsTraceResult['items']): string[] => {
+      if (items.length === 0) {
+        return []
+      }
+      const trace: string[] = []
+      const startIndex = includeTarget ? 0 : 1
+      for (let i = startIndex; i <= items.length; i++) {
+        const currentPath = i === 0 ? startPath : (items[i - 1] as ImportsTraceResult['items'][number]).importer
+        const line = i === 0 ? 0 : (items[i - 1] as ImportsTraceResult['items'][number]).line
+        const column = i === 0 ? 0 : (items[i - 1] as ImportsTraceResult['items'][number]).column
+        const prettyCurrentPath = cwd ? nodePath.relative(cwd, currentPath) : currentPath
+        trace.push(`${prettyCurrentPath}:${line}:${column}`)
+      }
+      return trace
+    }
+
+    const isImportMatch = ({
+      importPathOriginal,
+      importPathResolved,
+      target,
+    }: {
+      importPathOriginal: string
+      importPathResolved: string
+      target: string
+    }): boolean => {
+      const targetNormalized = normalizePath(target)
+      return (
+        importPathOriginal === target ||
+        importPathResolved === target ||
+        normalizePath(importPathOriginal) === targetNormalized ||
+        normalizePath(importPathResolved) === targetNormalized
+      )
+    }
+
+    const collectImportersByResolvedPath = (path: string): ImportsTraceResult['items'] => {
+      const importers: ImportsTraceResult['items'] = []
+      for (const file of files) {
+        for (const importItem of file.imports) {
+          if (
+            !isImportMatch({
+              importPathOriginal: importItem.pathOriginal,
+              importPathResolved: importItem.pathResolved,
+              target: path,
+            })
+          ) {
+            continue
+          }
+          importers.push({
+            importer: file.abs,
+            pathOriginal: importItem.pathOriginal,
+            pathResolved: importItem.pathResolved,
+            line: importItem.loc.line,
+            column: importItem.loc.column,
+          })
+        }
+      }
+      return importers
+    }
+
+    const walkDeepest = ({
+      currentPath,
+      currentItems,
+      visited,
+    }: {
+      currentPath: string
+      currentItems: ImportsTraceResult['items']
+      visited: Set<string>
+    }): ImportsTraceResult['items'] => {
+      const importers = collectImportersByResolvedPath(currentPath)
+      let best = currentItems
+      for (const importer of importers) {
+        if (visited.has(importer.importer)) {
+          continue
+        }
+        const nextVisited = new Set(visited)
+        nextVisited.add(importer.importer)
+        const candidate = walkDeepest({
+          currentPath: importer.importer,
+          currentItems: [...currentItems, importer],
+          visited: nextVisited,
+        })
+        if (candidate.length > best.length) {
+          best = candidate
+        }
+      }
+      return best
+    }
+
+    const items = walkDeepest({
+      currentPath: targetPath,
+      currentItems: [],
+      visited: new Set([targetPath]),
+    })
+    const found = items.length > 0
+    const trace = formatTrace(targetPath, items)
+    return { items, trace, files, found }
+  }
+
+  private traceByCompiling({
+    target,
+    source,
+    cwd,
+    includeTarget,
+  }: {
+    target: string | CompilerFile<any>
+    source: string | CompilerFile<any>
+    cwd?: string
+    includeTarget: boolean
+  }): ImportsTraceResult {
+    const normalizePath = (value: string): string => value.split('?', 1)[0] as string
+    const targetInput = typeof target === 'string' ? target : target.abs
+    const sourceInput = typeof source === 'string' ? source : source.abs
+    const targetPath = normalizePath(targetInput)
+    const sourcePath = normalizePath(sourceInput)
+
+    const isImportMatch = ({
+      importPathOriginal,
+      importPathResolved,
+      target,
+    }: {
+      importPathOriginal: string
+      importPathResolved: string
+      target: string
+    }): boolean => {
+      const targetNormalized = normalizePath(target)
+      return (
+        importPathOriginal === target ||
+        importPathResolved === target ||
+        normalizePath(importPathOriginal) === targetNormalized ||
+        normalizePath(importPathResolved) === targetNormalized
+      )
+    }
+
+    const formatTrace = (startPath: string, items: ImportsTraceResult['items']): string[] => {
+      if (items.length === 0) {
+        return []
+      }
+      const trace: string[] = []
+      const startIndex = includeTarget ? 0 : 1
+      for (let i = startIndex; i <= items.length; i++) {
+        const currentPath = i === 0 ? startPath : (items[i - 1] as ImportsTraceResult['items'][number]).importer
+        const line = i === 0 ? 0 : (items[i - 1] as ImportsTraceResult['items'][number]).line
+        const column = i === 0 ? 0 : (items[i - 1] as ImportsTraceResult['items'][number]).column
+        const prettyCurrentPath = cwd ? nodePath.relative(cwd, currentPath) : currentPath
+        trace.push(`${prettyCurrentPath}:${line}:${column}`)
+      }
+      return trace
+    }
+
+    const visited = new Set<string>()
+    const walk = ({
+      currentPath,
+      currentItems,
+    }: {
+      currentPath: string
+      currentItems: ImportsTraceResult['items']
+    }): ImportsTraceResult['items'] | undefined => {
+      if (normalizePath(currentPath) === targetPath) {
+        return currentItems
+      }
+      if (visited.has(currentPath)) {
+        return undefined
+      }
+      visited.add(currentPath)
+
+      try {
+        const result = this.compile({
+          file: currentPath,
+          pruneWalker: false,
+        })
+        const file = result.file
+        if (!file) {
+          return undefined
+        }
+
+        for (const importItem of file.imports) {
+          const nextPath = normalizePath(importItem.pathResolved)
+          const isTarget = isImportMatch({
+            importPathOriginal: importItem.pathOriginal,
+            importPathResolved: importItem.pathResolved,
+            target: targetInput,
+          })
+          const shouldFollow = isTarget || this.filter.test(nextPath)
+          if (!shouldFollow) {
+            continue
+          }
+          const nextItems = [
+            ...currentItems,
+            {
+              importer: currentPath,
+              pathOriginal: importItem.pathOriginal,
+              pathResolved: importItem.pathResolved,
+              line: importItem.loc.line,
+              column: importItem.loc.column,
+            },
+          ]
+          if (isTarget) {
+            return nextItems
+          }
+          const foundItems = walk({ currentPath: nextPath, currentItems: nextItems })
+          if (foundItems) {
+            return foundItems
+          }
+        }
+      } catch {}
+
+      return undefined
+    }
+
+    const forwardItems = walk({ currentPath: sourcePath, currentItems: [] }) ?? []
+    const found = normalizePath(sourcePath) === targetPath || forwardItems.length > 0
+    const items = [...forwardItems].reverse()
+    const trace = found ? formatTrace(targetPath, items) : []
+    const files = [...this.walker.files.values()]
+    return { items, trace, files, found }
+  }
+
+  trace({
+    target,
+    policy,
+    source,
+    cwd,
+    includeTarget = false,
+    pruneWalker = false,
+  }: {
+    target: string | CompilerFile<any>
+    policy: 'memory' | 'compiling'
+    source?: string | CompilerFile<any> | false
+    cwd?: string
+    includeTarget?: boolean
+    pruneWalker?: boolean
+  }): ImportsTraceResult {
+    if (pruneWalker) {
+      this.walker.prunePoints()
+      this.walker.pruneFiles()
+    }
+
+    if (policy === 'compiling') {
+      if (!source) {
+        throw new Error('To create trace by compiling policy, "source" is required')
+      }
+      if (typeof source === 'string' && !nodePath.isAbsolute(source)) {
+        throw new Error('To create trace by compiling policy, "source" must be an absolute path')
+      }
+      return this.traceByCompiling({ target, source, includeTarget, cwd })
+    }
+
+    return this.traceByMemory({ target, includeTarget, cwd })
+  }
+}
+
+export type ImportsTraceResult = {
+  items: Array<{
+    importer: string
+    pathOriginal: string
+    pathResolved: string
+    line: number
+    column: number
+  }>
+  // array of stings lile ["/path/to/file.ts:10:20" (to file), "/path/to/file.ts:10:20", "/path/to/file.ts:10:20" (from file)]
+  trace: string[]
+  files: CompilerFile<any>[]
+  found: boolean
 }
 
 export type CompilerOptions = {

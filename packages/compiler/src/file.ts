@@ -15,13 +15,8 @@ import * as nodeFsSync from 'node:fs'
 import * as nodePath from 'node:path'
 import prettier from 'prettier'
 import remarkFrontmatter from 'remark-frontmatter'
-import type { CompilerEnvConsts } from './compiler.js'
-import {
-  createVirtualModulePath,
-  resolveImporterRule,
-  writeOrCreateVirtualModulePath,
-  type ImporterOptionsParsed,
-} from './importer.js'
+import type { Compiler, CompilerEnvConsts } from './compiler.js'
+import { resolveImporterRule, writeOrCreateVirtualModulePath, type ImporterOptionsParsed } from './importer.js'
 import { CompilerPoint, POINT_METHOD_TO_TYPE_MAP } from './point.js'
 import { FileResolver } from './resolver.js'
 import { normalizeEnvConsts } from './utils.js'
@@ -1972,11 +1967,13 @@ export class CompilerFile<THasContent extends boolean> {
     scope,
     side,
     writeVirtual = false,
+    compiler,
   }: {
     importer: ImporterOptionsParsed
     scope: string | undefined
     side: 'client' | 'server'
     writeVirtual?: false | string
+    compiler: Compiler
   }): { ok: boolean; errors: unknown[]; modified: boolean } {
     if (this._applyImporter) {
       return this._applyImporter
@@ -1991,26 +1988,32 @@ export class CompilerFile<THasContent extends boolean> {
           (side === 'server' && importItem.pathOriginal === '@point0/core/client-only') ||
           (side === 'client' && importItem.pathOriginal === '@point0/core/server-only')
         ) {
-          const foundImporter = this.walker.findFileByImport({ pathResolved: this.abs })
-          const shortFoundImporter = foundImporter
-            ? importer.cwd
-              ? `${nodePath.relative(importer.cwd, foundImporter.file.abs)}:${foundImporter.importItem.loc.line}:${foundImporter.importItem.loc.column}`
-              : `${foundImporter.file.abs}:${foundImporter.importItem.loc.line}:${foundImporter.importItem.loc.column}`
-            : undefined
+          // const foundImporter = this.walker.findFileByImport({ pathResolved: this.abs })
+          // const shortFoundImporter = foundImporter
+          //   ? importer.cwd
+          //     ? `${nodePath.relative(importer.cwd, foundImporter.file.abs)}:${foundImporter.importItem.loc.line}:${foundImporter.importItem.loc.column}`
+          //     : `${foundImporter.file.abs}:${foundImporter.importItem.loc.line}:${foundImporter.importItem.loc.column}`
+          //   : undefined
           const shortOriginalImporter = importer.cwd ? nodePath.relative(importer.cwd, this.abs) : this.abs
+          const trace = compiler.trace({
+            target: importItem.pathOriginal,
+            policy: 'memory',
+            cwd: importer.cwd,
+          })
           this.replaceImportWithVirtualModulePath({
             importItem,
             virtualPath: writeOrCreateVirtualModulePath(
               {
                 exportNames: [],
-                importers: [shortFoundImporter, shortOriginalImporter].filter(Boolean) as string[],
-                pathOriginal: foundImporter ? foundImporter.importItem.pathOriginal : importItem.pathOriginal,
-                pathResolved: foundImporter ? foundImporter.importItem.pathResolved : importItem.pathOriginal, // pathOriginal is correct here becouse we want just see '@point0/core/client-only', not d.ts file
+                importer: shortOriginalImporter,
+                pathOriginal: importItem.pathOriginal,
+                pathResolved: importItem.pathOriginal, // pathOriginal is correct here becouse we want just see '@point0/core/client-only', not d.ts file
                 scope,
                 side,
                 deny: importItem.pathOriginal,
+                trace: trace.found ? trace.trace : undefined,
               },
-              writeVirtual,
+              { writeVirtual },
             ),
           })
           modified = true
@@ -2021,24 +2024,30 @@ export class CompilerFile<THasContent extends boolean> {
           map: importer.map.deny,
           rules: importer.deny,
           path: importItem.pathResolved,
-          importers: [this.abs],
+          importer: this.abs,
           cwd: importer.cwd,
           loc: importItem.loc,
         })
         if (denyResolved) {
+          const trace = compiler.trace({
+            target: importItem.pathResolved,
+            policy: 'memory',
+            cwd: importer.cwd,
+          })
           this.replaceImportWithVirtualModulePath({
             importItem,
             virtualPath: writeOrCreateVirtualModulePath(
               {
                 exportNames: importItem.exportNames,
-                importers: denyResolved.shortImporters,
+                importer: denyResolved.shortImporter,
                 pathOriginal: importItem.pathOriginal,
                 pathResolved: denyResolved.shortPath,
                 scope,
                 side,
                 deny: denyResolved.shortRule,
+                trace: trace.found ? trace.trace : undefined,
               },
-              writeVirtual,
+              { writeVirtual },
             ),
           })
           modified = true
@@ -2049,7 +2058,7 @@ export class CompilerFile<THasContent extends boolean> {
           map: importer.map.mock,
           rules: importer.mock,
           path: importItem.pathResolved,
-          importers: [this.abs],
+          importer: this.abs,
           cwd: importer.cwd,
           loc: importItem.loc,
         })
@@ -2059,14 +2068,15 @@ export class CompilerFile<THasContent extends boolean> {
             virtualPath: writeOrCreateVirtualModulePath(
               {
                 exportNames: importItem.exportNames,
-                importers: undefined,
+                importer: undefined,
                 pathOriginal: undefined,
                 pathResolved: undefined,
                 scope,
                 side,
                 deny: undefined,
+                trace: undefined,
               },
-              writeVirtual,
+              { writeVirtual },
             ),
           })
           modified = true

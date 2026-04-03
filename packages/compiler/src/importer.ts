@@ -1,7 +1,6 @@
-import * as flat0 from '@devp0nt/flat0'
 import { minimatch } from 'minimatch'
-import nodePath from 'node:path'
 import nodeFs from 'node:fs'
+import nodePath from 'node:path'
 import { getHash } from './utils.js'
 
 export type ImporterOptionsInput = {
@@ -168,20 +167,20 @@ export const parseImporterOptions = (options: ImporterOptionsInput): ImporterOpt
   }
 }
 
-export type ResolvedImporterRule = { shortPath: string; shortRule: string; shortImporters: string[] }
+export type ResolvedImporterRule = { shortPath: string; shortRule: string; shortImporter: string }
 export const resolveImporterRule = ({
   map,
   rules,
   path,
   cwd,
-  importers,
+  importer,
   loc,
 }: {
   map: Record<string, string>
   rules: { include: Array<string | RegExp>; exclude: Array<string | RegExp> }
   path: string
   cwd: string | undefined
-  importers: string[]
+  importer: string
   loc: { line: number; column: number } | undefined
 }): ResolvedImporterRule | undefined => {
   const isMatch = (rule: string | RegExp): boolean => {
@@ -198,58 +197,85 @@ export const resolveImporterRule = ({
   const shortRuleString = map[fullRuleString] as string | undefined
   const shortPath = cwd ? nodePath.relative(cwd, path) : path
   const locString = loc ? `:${loc.line}:${loc.column}` : ''
-  const shortImporters = importers.map((importer) => `${cwd ? nodePath.relative(cwd, importer) : importer}${locString}`)
-  return { shortPath, shortRule: shortRuleString ?? fullRuleString, shortImporters }
+  const shortImporter = `${cwd ? nodePath.relative(cwd, importer) : importer}${locString}`
+  return { shortPath, shortRule: shortRuleString ?? fullRuleString, shortImporter }
 }
 
 export type VirtualModuleOptions =
   | {
       exportNames: string[]
-      importers: string[]
+      importer: string
       pathOriginal: string
       pathResolved: string
       scope: string | undefined
       side: 'client' | 'server'
       deny: string
+      trace: string[] | undefined
     }
   | {
       exportNames: string[]
-      importers: undefined
+      importer: undefined
       pathOriginal: undefined
       pathResolved: undefined
       scope: string | undefined
       side: 'client' | 'server'
       deny: undefined
+      trace: undefined
     }
 
 export const createVirtualModuleCode = ({
   exportNames,
-  importers,
+  importer,
   pathOriginal,
   pathResolved,
   scope,
   side,
   deny,
+  trace,
 }: VirtualModuleOptions): { code: string; error: string | undefined } => {
   // Inspired by TanStack Router's virtualModules.ts
   // https://github.com/TanStack/router/blob/main/packages/start-plugin-core/src/import-protection-plugin/virtualModules.ts
   // Thanks a lot to the TanStack team for their work! And thanks forever for react-query
-  const denyMessage = !deny
-    ? undefined
-    : `
+  const { denyMessage, denyThrower } = (() => {
+    if (!deny) {
+      return { denyMessage: undefined, denyThrower: '' }
+    }
+    // const resolvedTrace = ((): string[] | undefined => {
+    //   if (trace === false) {
+    //     return undefined
+    //   }
+    //   if (trace) {
+    //     return trace
+    //   }
+    //   const result = compiler.trace({
+    //     target: pathOriginal,
+    //     policy: 'memory',
+    //     source: pathResolved,
+    //   })
+    //   if (result.found) {
+    //     return result.trace
+    //   }
+    //   return undefined
+    // })()
+    const traceMessage = trace
+      ? `Trace:
+${trace.map((item) => `  ${item}`).join('\n')}`
+      : `To know trace of imports to target "${pathOriginal}" from source <source-file-path> run in terminal:
+point0 trace --side ${side} --scope ${scope || '<scope>'} "./${pathResolved}" "<source-file-path>"`
+    const denyMessage = `
 Import denied on side "${side}"${scope ? ` for scope "${scope}"` : ''}
   Rule: ${deny}
-  Importer: ${importers.join(' ← ')}
+  Importer: ${importer}
   Import: ${pathOriginal}
   Resolved: ${pathResolved}
 
-  To know trace of imports from "${pathOriginal}" to <dest-file-path> run in terminal:
-  point0 trace --side ${side} --scope ${scope || '<scope>'} "${pathResolved}" "<dest-file-path>"
+${traceMessage}
   `
-  const denyAtModuleStart = denyMessage ? `throw new Error(${JSON.stringify(denyMessage)})` : undefined
+    const denyThrower = `throw new Error(${JSON.stringify(denyMessage)})`
+    return { denyMessage, denyThrower }
+  })()
 
   const validExportNames = exportNames.filter((name) => name.length > 0 && name !== 'default')
-
   const exportLines: string[] = []
   const stringExports: Array<{ alias: string; name: string }> = []
   const identifierRe = /^[$A-Z_][0-9A-Z_$]*$/i
@@ -270,8 +296,7 @@ Import denied on side "${side}"${scope ? ` for scope "${scope}"` : ''}
     exportLines.push(`export { ${reexports} };`)
   }
 
-  const code = `
-${denyAtModuleStart ?? ''}
+  const code = `${denyThrower}
 import { createMock } from '@point0/core/virtual'
 const mock = createMock()
 ${exportLines.join('\n')}
@@ -281,7 +306,7 @@ export default mock
   return { code, error: denyMessage }
 }
 
-export const writeVirtualModulePath = (options: VirtualModuleOptions, tempDir: string): string => {
+export const writeVirtualModulePath = (options: VirtualModuleOptions, { tempDir }: { tempDir: string }): string => {
   const hash = getHash(JSON.stringify(options))
   const filePath = nodePath.join(tempDir, hash + '.js')
   if (!nodeFs.existsSync(filePath)) {
@@ -295,9 +320,12 @@ export const createVirtualModulePath = (options: VirtualModuleOptions): string =
   return `@point0/virtual?options=${encodeURIComponent(JSON.stringify(options))}`
 }
 
-export const writeOrCreateVirtualModulePath = (options: VirtualModuleOptions, writeVirtual: string | false): string => {
+export const writeOrCreateVirtualModulePath = (
+  options: VirtualModuleOptions,
+  { writeVirtual }: { writeVirtual: string | false },
+): string => {
   if (writeVirtual) {
-    return writeVirtualModulePath(options, writeVirtual)
+    return writeVirtualModulePath(options, { tempDir: writeVirtual })
   }
   return createVirtualModulePath(options)
 }

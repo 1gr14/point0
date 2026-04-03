@@ -153,6 +153,10 @@ export class Walker {
   pruneFiles(): void {
     this.files.clear()
   }
+  prune(): void {
+    this.prunePoints()
+    this.pruneFiles()
+  }
 
   // async readManyAsync({ files }: { files: string[]; fresh: boolean }): Promise<Array<CompilerFile<true>>> {
   //   return await Promise.all(

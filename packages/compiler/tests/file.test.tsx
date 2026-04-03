@@ -2506,6 +2506,10 @@ describe('CompilerFile', () => {
           }),
           scope: 'test',
           side: 'client',
+          compiler: Compiler.create({
+            side: 'client',
+            scope: 'test',
+          }),
         })
         const after = await cf.toCompressedPrettyCode()
         expect(result.ok).toBe(true)
@@ -2536,6 +2540,10 @@ describe('CompilerFile', () => {
           }),
           scope: 'test',
           side: 'server',
+          compiler: Compiler.create({
+            side: 'server',
+            scope: 'test',
+          }),
         })
         const after = await cf.toCompressedPrettyCode()
 
@@ -2564,6 +2572,10 @@ describe('CompilerFile', () => {
           }),
           scope: 'test',
           side: 'server',
+          compiler: Compiler.create({
+            side: 'server',
+            scope: 'test',
+          }),
         })
         const virtualPath = cf.imports[0]?.virtualPath
         expect(result.ok).toBe(true)
@@ -2573,8 +2585,8 @@ describe('CompilerFile', () => {
         const parsed = parseVirtualModulePath(virtualPath as string)
         expect(parsed.pathResolved).toBe(`${fileB.basename}.js`)
         expect(parsed.deny).toBe(fileB.importpath)
-        expect(parsed.importers.some((importer) => importer.includes(`${fileA.basename}.tsx:`))).toBe(true)
-        expect(parsed.importers.some((importer) => importer.startsWith('/'))).toBe(false)
+        expect(parsed.importer?.includes(`${fileA.basename}.tsx:`)).toBe(true)
+        expect(parsed.importer?.startsWith('/')).toBe(false)
       }),
     )
   })

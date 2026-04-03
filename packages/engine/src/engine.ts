@@ -732,6 +732,85 @@ export class Engine<
     }
   }
 
+  guessSideAndScope(options?: { side?: string; scope?: PointsScope }): { side: 'server' | 'client'; scope: PointsScope } {
+    const { side, scope } = options ?? {}
+    if (side && side !== 'server' && side !== 'client') {
+      throw new Error(`Invalid side: ${side}, valid values are 'server' or 'client'`)
+    }
+    const hasServer = this.server.compiler !== false
+    const serverScope = hasServer ? this.server.scope : undefined
+    const clientScopes = [
+      ...new Set(this.clients.filter((client) => client.compiler !== false).map((client) => client.scope)),
+    ]
+    const hasClient = clientScopes.length > 0
+
+    if (scope) {
+      const matchesServer = hasServer && scope === serverScope
+      const matchesClient = hasClient && clientScopes.includes(scope)
+      if (side === 'server') {
+        if (!hasServer) {
+          throw new Error('Server side is not available in engine')
+        }
+        if (!matchesServer) {
+          throw new Error(`Scope "${scope}" is not suitable for side "server"`)
+        }
+        return { side: 'server', scope }
+      }
+      if (side === 'client') {
+        if (!hasClient) {
+          throw new Error('Client side is not available in engine')
+        }
+        if (!matchesClient) {
+          throw new Error(`Scope "${scope}" is not suitable for side "client"`)
+        }
+        return { side: 'client', scope }
+      }
+      if (matchesServer && matchesClient) {
+        throw new Error(`Scope "${scope}" is available for both server and client. Provide "--side" explicitly`)
+      }
+      if (matchesServer) {
+        return { side: 'server', scope }
+      }
+      if (matchesClient) {
+        return { side: 'client', scope }
+      }
+      throw new Error(`Scope "${scope}" was not found in engine`)
+    }
+
+    if (side === 'server') {
+      if (!hasServer || !serverScope) {
+        throw new Error('Server side is not available in engine')
+      }
+      return { side: 'server', scope: serverScope }
+    }
+    if (side === 'client') {
+      if (!hasClient) {
+        throw new Error('Client side is not available in engine')
+      }
+      if (clientScopes.length > 1) {
+        throw new Error('Option "--scope" is required for side "client" when multiple client scopes are available')
+      }
+      return { side: 'client', scope: clientScopes[0] as PointsScope }
+    }
+
+    if (hasServer && hasClient) {
+      throw new Error('Can not detect scope: both server and client are available. Provide "--side" (and maybe "--scope")')
+    }
+    if (!hasServer && !hasClient) {
+      throw new Error('Can not detect scope: both server and client are unavailable in engine')
+    }
+    if (hasServer && serverScope) {
+      return { side: 'server', scope: serverScope }
+    }
+    if (clientScopes.length === 1) {
+      return { side: 'client', scope: clientScopes[0] as PointsScope }
+    }
+    if (clientScopes.length > 1) {
+      throw new Error('Can not detect scope automatically: multiple client scopes are available')
+    }
+    throw new Error('Scope was not detected by provided options')
+  }
+
   getEmit({
     point,
     scope,

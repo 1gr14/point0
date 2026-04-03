@@ -1,12 +1,15 @@
 #!/usr/bin/env bun
 
-import path from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { Compiler } from '@point0/compiler'
 import type { PointsScope } from '@point0/core'
 import { Command } from 'commander'
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { Analyzer } from './analyzer.js'
 import type { AnalyzerPointSelectOptions, AnalyzerPointsFilterOptions } from './analyzer.js'
 import { Engine } from './engine.js'
+import { normalizeAndValidateNodeEnv } from './utils.js'
+import nodePath from 'node:path'
 
 const program = new Command()
 
@@ -164,6 +167,128 @@ program
       await engine.generate()
     }
   })
+
+program
+  .command('compile <file>')
+  .description('Show compiled code for file')
+  .option('--engine <path>', dictionary.enginePath)
+  .option('--side <side>', "Trace side: 'server' or 'client'")
+  .option('--scope <scope>', 'Trace scope (optional, inferred from side when omitted)')
+  .option('--hmr', 'Do not omit hmr fix')
+  .action(
+    async (
+      file: string,
+      options: {
+        hmr?: boolean
+        engine?: string
+        side?: string
+        scope?: PointsScope
+      },
+    ) => {
+      const cwd = process.cwd()
+      normalizeAndValidateNodeEnv('development')
+      const { engine } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd })
+      const { side: compileSide, scope: compileScope } = engine.guessSideAndScope({
+        side: options.side,
+        scope: options.scope,
+      })
+      const runtime =
+        compileSide === 'server' ? engine.server : engine.clients.find((client) => client.scope === compileScope)
+      if (!runtime) {
+        throw new Error(`Can not find ${compileSide} runtime for scope "${compileScope}"`)
+      }
+      const compilerOptions = runtime.getCompilerOptions({
+        built: process.env.POINT0_BUILT === 'true',
+      })
+      if (!compilerOptions) {
+        throw new Error(`Compiler is disabled for ${compileSide} scope "${compileScope}"`)
+      }
+      const compiler = Compiler.create({
+        ...compilerOptions,
+        // Keep output readable by default; enable with --hmr.
+        hmrFix: options.hmr === true,
+      })
+      const resolvedFile = path.isAbsolute(file) ? file : path.resolve(cwd, file)
+      const result = compiler.compile({ file: resolvedFile })
+      if (result.errors.length > 0) {
+        throw result.errors[0] as Error
+      }
+      console.info(result.code)
+    },
+  )
+
+program
+  .command('trace <target> <source>')
+  .description('Trace import chain using compiler from engine config')
+  .option('--engine <path>', dictionary.enginePath)
+  .option('--side <side>', "Trace side: 'server' or 'client'")
+  .option('--scope <scope>', 'Trace scope (optional, inferred from side when omitted)')
+  .option('--cwd <cwd>', 'Trace cwd (optional, inferred from engine file when omitted)')
+  // .option('--policy <policy>', "Trace policy: 'memory' or 'compiling' (default: compiling)")
+  .action(
+    async (
+      target: string,
+      source: string | undefined,
+      options: {
+        engine?: string
+        side?: string
+        scope?: PointsScope
+        cwd?: string
+        // policy?: string
+      },
+    ) => {
+      const cwd = process.cwd()
+      normalizeAndValidateNodeEnv('development')
+      const { engine, engineFile } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd })
+      const normalizedCwd = options.cwd ? path.resolve(cwd, options.cwd) : nodePath.dirname(engineFile)
+      const { side: traceSide, scope: traceScope } = engine.guessSideAndScope({
+        side: options.side,
+        scope: options.scope,
+      })
+      // const policy = options.policy ?? 'compiling'
+      // if (policy !== 'memory' && policy !== 'compiling') {
+      // throw new Error(`Invalid policy: ${policy}, valid values are 'memory' or 'compiling'`)
+      // }
+
+      const runtime =
+        traceSide === 'server' ? engine.server : engine.clients.find((client) => client.scope === traceScope)
+      if (!runtime) {
+        throw new Error(`Can not find ${traceSide} runtime for scope "${traceScope}"`)
+      }
+
+      const compilerOptions = runtime.getCompilerOptions({
+        built: process.env.POINT0_BUILT === 'true',
+      })
+      if (!compilerOptions) {
+        throw new Error(`Compiler is disabled for ${traceSide} scope "${traceScope}"`)
+      }
+
+      const compiler = Compiler.create(compilerOptions)
+      const resolvedSource = source ? (path.isAbsolute(source) ? source : path.resolve(cwd, source)) : undefined
+
+      // if (policy === 'compiling' && !resolvedSource) {
+      //   throw new Error('To create trace by compiling policy, "source" is required')
+      // }
+      if (!resolvedSource) {
+        throw new Error('To create trace, "source" is required')
+      }
+
+      // const result =
+      //   policy === 'compiling'
+      //     ? compiler.trace({ policy, target, source: resolvedSource as string })
+      //     : compiler.trace({ policy, target })
+      const result = compiler.trace({
+        policy: 'compiling',
+        target,
+        source: resolvedSource as string,
+        cwd: normalizedCwd,
+      })
+      if (!result.found) {
+        throw new Error('Trace was not found')
+      }
+      console.info(result.trace.join('\n'))
+    },
+  )
 
 const pointsCommand = program.command('points').description('Inspect points from analyzer meta files')
 

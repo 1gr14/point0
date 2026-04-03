@@ -13,9 +13,6 @@ import { root } from '../lib/client.js'
 import { Svg } from '../lib/svg.js'
 import { externalHelper2Component, externalHelper3Component, ExternalHelperComponent } from './home.helper.js'
 
-// console.log(prisma.idea.findMany().then((r) => console.log(r.length)))
-
-// console.log(1234, x)
 // import { Svg } from '../lib/svg.js'
 
 // const IconText = ``

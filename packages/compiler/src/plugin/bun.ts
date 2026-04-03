@@ -1,10 +1,9 @@
 import type { BunPlugin, OnLoadResult } from 'bun'
 import nodeFs from 'node:fs'
-import * as nodePath from 'node:path'
 import { Compiler } from '../compiler.js'
 import type { CompilerOptions } from '../compiler.js'
-import { createVirtualModuleCode, parseVirtualModulePath, virtualModulePathRegex } from '../importer.js'
-import { getHash, resolveTempDirPath } from '../utils.js'
+import { virtualModulePathRegex } from '../importer.js'
+import { resolveTempDirPath } from '../utils.js'
 
 export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugin {
   const compiler =
@@ -29,6 +28,7 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
           const result = compiler.compile({
             file: filepath,
             writeVirtual: !isNormalBundler,
+            // pruneWalker: !isNormalBundler,
           })
           return {
             contents: result.code,
@@ -50,6 +50,9 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
         }
       }
       if (isNormalBundler) {
+        // build.onStart(() => {
+        //   compiler.walker.prune()
+        // })
         build.onResolve({ filter: virtualModulePathRegex }, (args) => {
           return {
             path: args.path,

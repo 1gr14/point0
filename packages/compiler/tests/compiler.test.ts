@@ -516,7 +516,7 @@ console.info(ClientOnly)`)
         expect(parsed.deny).toBe('@point0/core/client-only')
         expect(parsed.pathOriginal).toBe('@point0/core/client-only')
         expect(parsed.pathResolved).toBe('@point0/core/client-only')
-        expect(parsed.importers.some((importer) => importer.includes(`${file.basename}.tsx`))).toBe(true)
+        expect(parsed.importer?.includes(`${file.basename}.tsx`)).toBe(true)
       }),
     )
 
@@ -543,7 +543,7 @@ console.info(ServerOnly)`)
         expect(parsed.deny).toBe('@point0/core/server-only')
         expect(parsed.pathOriginal).toBe('@point0/core/server-only')
         expect(parsed.pathResolved).toBe('@point0/core/server-only')
-        expect(parsed.importers.some((importer) => importer.includes(`${file.basename}.tsx`))).toBe(true)
+        expect(parsed.importer?.includes(`${file.basename}.tsx`)).toBe(true)
       }),
     )
 
@@ -599,6 +599,126 @@ console.info(x)`)
         expect(virtualResult.code).toContain('throw new Error(')
         expect(virtualResult.code).toContain('Import denied on side \\"server\\"')
         expect(virtualResult.code).toContain('Rule: @point0/core/client-only')
+      }),
+    )
+  })
+
+  describe('#trace', () => {
+    it.concurrent(
+      'finds memory trace when "to" is package specifier',
+      helper(async ({ files: [fileA, fileB] }) => {
+        await fileA.write(`import 'react-native'
+export const a = 1`)
+        await fileB.write(`import { a } from '${fileA.importpath}'
+console.info(a)`)
+
+        const compiler = Compiler.create({
+          side: 'client',
+          scope: 'test',
+          importer: { cwd: nodePath.dirname(fileA.path) },
+        })
+        compiler.compile({ file: fileA.path, pruneWalker: false })
+        compiler.compile({ file: fileB.path, pruneWalker: false })
+
+        const result = compiler.trace({
+          target: 'react-native',
+          policy: 'memory',
+        })
+
+        expect(result.found).toBe(true)
+        expect(result.items).toHaveLength(2)
+        expect(result.items[0]?.importer).toBe(fileA.path)
+        expect(result.items[0]?.pathOriginal).toBe('react-native')
+        expect(result.items[1]?.importer).toBe(fileB.path)
+        expect(result.trace).toHaveLength(2)
+        expect(result.trace[0]).toBe(
+          `${result.items[0]?.importer}:${result.items[0]?.line}:${result.items[0]?.column}`,
+        )
+        expect(result.trace[1]).toBe(
+          `${result.items[1]?.importer}:${result.items[1]?.line}:${result.items[1]?.column}`,
+        )
+
+        const resultWithTarget = compiler.trace({
+          target: 'react-native',
+          policy: 'memory',
+          includeTarget: true,
+        })
+        expect(resultWithTarget.trace[0]?.startsWith('react-native:')).toBe(true)
+      }),
+    )
+
+    it.concurrent(
+      'finds compiling trace when "to" matches import pathOriginal',
+      helper(async ({ files: [fileA, fileB] }) => {
+        await fileA.write(`import 'react-native'
+export const a = 1`)
+        await fileB.write(`import { a } from '${fileA.importpath}'
+console.info(a)`)
+
+        const compiler = Compiler.create({
+          side: 'client',
+          scope: 'test',
+          importer: { cwd: nodePath.dirname(fileA.path) },
+        })
+
+        const result = compiler.trace({
+          target: 'react-native',
+          source: fileB.path,
+          policy: 'compiling',
+        })
+
+        expect(result.found).toBe(true)
+        expect(result.items).toHaveLength(2)
+        expect(result.items[0]?.importer).toBe(fileA.path)
+        expect(result.items[0]?.pathOriginal).toBe('react-native')
+        expect(result.items[1]?.importer).toBe(fileB.path)
+        expect(result.trace).toHaveLength(2)
+        expect(result.trace[0]).toBe(
+          `${result.items[0]?.importer}:${result.items[0]?.line}:${result.items[0]?.column}`,
+        )
+        expect(result.trace[1]).toBe(
+          `${result.items[1]?.importer}:${result.items[1]?.line}:${result.items[1]?.column}`,
+        )
+      }),
+    )
+
+    it.concurrent(
+      'finds memory trace across 5 files with circular dependencies',
+      helper(async ({ files: [fileA, fileB, fileC, fileD, fileE] }) => {
+        await fileA.write(`import 'react-native'
+import { e } from '${fileE.importpath}'
+export const a = e + 1`)
+        await fileB.write(`import { a } from '${fileA.importpath}'
+export const b = a + 1`)
+        await fileC.write(`import { b } from '${fileB.importpath}'
+export const c = b + 1`)
+        await fileD.write(`import { c } from '${fileC.importpath}'
+export const d = c + 1`)
+        await fileE.write(`import { d } from '${fileD.importpath}'
+export const e = d + 1`)
+
+        const compiler = Compiler.create({
+          side: 'client',
+          scope: 'test',
+          importer: { cwd: nodePath.dirname(fileA.path) },
+        })
+        compiler.compile({ file: fileA.path, pruneWalker: false })
+        compiler.compile({ file: fileB.path, pruneWalker: false })
+        compiler.compile({ file: fileC.path, pruneWalker: false })
+        compiler.compile({ file: fileD.path, pruneWalker: false })
+        compiler.compile({ file: fileE.path, pruneWalker: false })
+
+        const result = compiler.trace({
+          target: 'react-native',
+          policy: 'memory',
+        })
+
+        expect(result.found).toBe(true)
+        expect(result.items).toHaveLength(5)
+        expect(result.trace).toHaveLength(5)
+        expect(result.items[0]?.importer).toBe(fileA.path)
+        expect(result.items[4]?.importer).toBe(fileE.path)
+        expect(new Set(result.items.map((item) => item.importer)).size).toBe(result.items.length)
       }),
     )
   })

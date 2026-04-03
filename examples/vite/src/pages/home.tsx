@@ -11,8 +11,6 @@ import { routes } from '../lib/routes.js'
 import { ExternalHelperComponent } from './home.helper.js'
 // import { prisma } from '../lib/prisma'
 
-// console.log(prisma.idea.findMany().then((r) => console.log(r.length)))
-
 // const something = SuperStore.define('something', () => {
 //   return {
 //     random: Math.random(),
