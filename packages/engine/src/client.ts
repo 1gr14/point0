@@ -1,7 +1,8 @@
 import { type AnyLocation, Route0 } from '@devp0nt/route0'
 import type { AnyRoute } from '@devp0nt/route0'
+import { resolveTempDirPath } from '@point0/compiler'
 import type { CompilerOptions } from '@point0/compiler'
-import { ClientPoints } from '@point0/core'
+import { _point0_env, ClientPoints } from '@point0/core'
 import type {
   AppComponent,
   ErrorPoint0,
@@ -29,7 +30,7 @@ import type {
   PortPolicy,
 } from './config.js'
 import type { Executor } from './executor.js'
-import { getOverridenPortPolicy, resolvePortByPolicy, setOverridenPortPolicy } from './port.js'
+import { killPort } from './port.js'
 import { Publicdir } from './publicdir.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
@@ -42,15 +43,12 @@ import {
   getViteRoot,
   isAsyncFn,
   normalizeAndValidateNodeEnv,
-  serveWithRetries,
 } from './utils.js'
 import type {
   EngineClientBuildConfigDefinition,
   EngineClientPluginsDefinition,
   EngineSharedPluginsDefinition,
 } from './utils.js'
-import { resolveTempDirPath } from '@point0/compiler'
-import { _point0_env } from '@point0/core'
 
 export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0> {
   cwd: string
@@ -70,8 +68,6 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
   domRootElementId: string
   port: number
   hmrPort: number | false
-  portPolicy: PortPolicy
-  serveRetries: number
   compiler: EngineOptionsCompilerSpecificParsed | false
   viteConfig: EngineOptionsViteConfig | null
   index: number
@@ -112,8 +108,6 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     domRootElementId: string
     port: number
     hmrPort: number | false
-    portPolicy: PortPolicy
-    serveRetries: number
     compiler: EngineOptionsCompilerSpecificParsed | false
     viteConfig: EngineOptionsViteConfig | null
     index: number
@@ -142,8 +136,6 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     this.domRootElementId = input.domRootElementId
     this.port = input.port
     this.hmrPort = input.hmrPort
-    this.portPolicy = input.portPolicy
-    this.serveRetries = input.serveRetries
     this.compiler = input.compiler
     this.viteConfig = input.viteConfig
     this.index = input.index
@@ -195,8 +187,6 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     domRootElementId: string
     port: number
     hmrPort: number | false
-    portPolicy: PortPolicy
-    serveRetries: number
     index: number
     log: LogFn
     envVars: EngineOptionsEnvParsed
@@ -386,11 +376,6 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     if (!this.engineFile) {
       throw new Error(`Engine file path is not provided for client "${this.scope}"`)
     }
-    const portPolicy = getOverridenPortPolicy({ scope: this.scope, side: 'client', portPolicy: this.portPolicy })
-    this.port = await resolvePortByPolicy({
-      port: this.port,
-      portPolicy,
-    })
     const tempDir = resolveTempDirPath(['client-bun-dev-server', `${this.scope}-${this.port}`])
     const ownPluginsStrings = await extractEngineClientDevPluginsStrings({
       cwd: this.cwd,
@@ -426,18 +411,18 @@ plugins = [${combinedPluginsStrings.map((p) => `"${p}"`).join(', ')}]
     const scriptContent = `
 import indexHtml from '${this.indexHtml}';
 import { Engine } from '@point0/engine';
-import { serveWithRetries } from '@point0/engine/utils';
-import { getOverridenPortPolicy, setOverridenPortPolicy } from '@point0/engine/port';
+import { killPort } from '@point0/engine/port';
 const { engine } = await Engine.findAndImportSelf({ engineFile: '${this.engineFile}' });
 try {
-  const portPolicy = getOverridenPortPolicy({ scope: '${this.scope}', side: 'client', portPolicy: '${portPolicy}' });
-  await serveWithRetries({
+  if (process.env[\`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_CLIENT\`] === 'kill') {
+    await killPort([${this.port}, ${this.hmrPort}].filter(Boolean), { force: true, category: ['client'] })
+  }
+  const bunServer = Bun.serve({
     port: ${this.port},
-    serveRetries: ${this.serveRetries},
-    portPolicy,
-    category: ['client'],
-  }, async () => Bun.serve({
-    port: ${this.port},
+    development: {
+      console: false,
+      hmr: true,
+    },
     routes: {
       '/index.html': indexHtml,
     },
@@ -463,8 +448,8 @@ try {
         },
       )
     },
-  }))();
-  setOverridenPortPolicy({ scope: '${this.scope}', side: 'client', portPolicy: 'kill' });
+  })
+  process.env[\`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_CLIENT\`] = 'kill'
   engine.log({
     level: 'info',
     category: ['client'],
@@ -481,18 +466,32 @@ try {
 `
     await Bun.write(bunfigTomlPath, bunfigTomlContent)
     await Bun.write(scriptPath, scriptContent)
-    const childProcess = Bun.spawn(['bun', scriptPath], {
-      cwd: tempDir,
-      stdout: 'pipe',
-      stderr: 'pipe',
-      stdin: 'inherit',
-      env: {
-        ...process.env,
-        FORCE_COLOR: process.env.FORCE_COLOR ?? '1',
-        ...(compilerOptions ? { POINT0_COMPILER_OPTIONS: JSON.stringify(compilerOptions) } : {}),
-        NODE_ENV: process.env.NODE_ENV,
-      },
-    })
+
+    if (
+      this.bunNativeDevServer &&
+      typeof this.bunNativeDevServer !== 'boolean' &&
+      this.bunNativeDevServer.exitCode === null
+    ) {
+      throw new Error('Client dev server is already running')
+    }
+
+    let childProcess: Bun.Subprocess<'ignore', 'pipe', 'pipe'>
+    const startChildProcess = () => {
+      childProcess = Bun.spawn(['bun', 'run', scriptPath], {
+        cwd: tempDir,
+        stdout: 'pipe',
+        stderr: 'pipe',
+        stdin: 'ignore',
+        env: {
+          ...process.env,
+          FORCE_COLOR: process.env.FORCE_COLOR ?? '1',
+          ...(compilerOptions ? { POINT0_COMPILER_OPTIONS: JSON.stringify(compilerOptions) } : {}),
+          NODE_ENV: process.env.NODE_ENV,
+        },
+      })
+      return childProcess
+    }
+    childProcess = startChildProcess()
 
     const stripTerminalClearSequences = (text: string): string =>
       text
@@ -553,11 +552,6 @@ try {
     if (!this.viteConfig) {
       throw new Error(`Vite config not found for client "${this.scope}"`)
     }
-    const portPolicy = getOverridenPortPolicy({ scope: this.scope, side: 'client', portPolicy: this.portPolicy })
-    this.port = await resolvePortByPolicy({
-      port: this.port,
-      portPolicy,
-    })
     const viteDevServer = await createViteDevServer({
       viteConfig: this.viteConfig,
       scope: this.scope,
@@ -573,60 +567,51 @@ try {
       throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
     }
     const srcIndexHtmlContent = await Bun.file(this.indexHtml).text()
-    const bunViteDevServer = await serveWithRetries(
-      {
-        port: this.port,
-        serveRetries: this.serveRetries,
-        portPolicy,
-        category: ['client'],
+    if (process.env[`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_CLIENT`] === 'kill') {
+      await killPort([this.port, this.hmrPort].filter(Boolean) as number[], { force: true, category: ['client'] })
+    }
+    const bunViteDevServer = Bun.serve({
+      port: this.port,
+      development: {
+        console: false,
+        hmr: false, // vite provides it own hmr
       },
-      async () =>
-        Bun.serve({
-          port: this.port,
-          development: {
-            console: false,
-            hmr: false, // vite provides it own hmr
-          },
-          fetch: async (request) => {
-            const location = Route0.getLocation(request.url)
-            if (location.pathname === '/index.html') {
-              const originalIndexHtml = await viteDevServer.transformIndexHtml(request.url, srcIndexHtmlContent)
-              return new Response(originalIndexHtml, {
-                headers: {
-                  'Content-Type': 'text/html',
-                },
-              })
-            }
-            const middlewareResponse = await this.fetchViteDevServerMiddleware({
-              request,
-            })
-            if (middlewareResponse) {
-              return middlewareResponse
-            }
-            if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
-              return new Response('__NO_RESPONSE__', {
-                headers: {
-                  'Content-Type': 'text/plain',
-                },
-                status: 404,
-              })
-            }
-            const forwardedHeaders = new Headers(request.headers)
-            forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client', this.scope)
-            const res = await fetch(
-              `http://localhost:${this.server.port}${location.pathname}${location.searchString}`,
-              {
-                method: request.method,
-                headers: forwardedHeaders,
-                body: request.body,
-                redirect: 'manual',
-              },
-            )
-            return res
-          },
-        }),
-    )()
-    setOverridenPortPolicy({ scope: this.scope, side: 'client', portPolicy: 'kill' })
+      fetch: async (request) => {
+        const location = Route0.getLocation(request.url)
+        if (location.pathname === '/index.html') {
+          const originalIndexHtml = await viteDevServer.transformIndexHtml(request.url, srcIndexHtmlContent)
+          return new Response(originalIndexHtml, {
+            headers: {
+              'Content-Type': 'text/html',
+            },
+          })
+        }
+        const middlewareResponse = await this.fetchViteDevServerMiddleware({
+          request,
+        })
+        if (middlewareResponse) {
+          return middlewareResponse
+        }
+        if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
+          return new Response('__NO_RESPONSE__', {
+            headers: {
+              'Content-Type': 'text/plain',
+            },
+            status: 404,
+          })
+        }
+        const forwardedHeaders = new Headers(request.headers)
+        forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client', this.scope)
+        const res = await fetch(`http://localhost:${this.server.port}${location.pathname}${location.searchString}`, {
+          method: request.method,
+          headers: forwardedHeaders,
+          body: request.body,
+          redirect: 'manual',
+        })
+        return res
+      },
+    })
+    process.env[`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_CLIENT`] = 'kill'
     this.log({
       level: 'info',
       category: ['client'],

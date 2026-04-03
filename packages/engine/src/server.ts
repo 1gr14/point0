@@ -23,7 +23,7 @@ import type {
 } from './config.js'
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
-import { getOverridenPortPolicy, resolvePortByPolicy, setOverridenPortPolicy } from './port.js'
+import { killPort } from './port.js'
 import { Publicdir } from './publicdir.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { ServerPoints } from './server-points.js'
@@ -36,7 +36,6 @@ import {
   getViteRoot,
   loadBunPlugins,
   normalizeAndValidateNodeEnv,
-  serveWithRetries,
   validateEntrypoints,
 } from './utils.js'
 import type {
@@ -54,8 +53,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   engineFile: string | null
   cwdBeforeBuild: string
   port: number
-  portPolicy: PortPolicy
-  serveRetries: number
   clients: TPrepared extends true ? Array<EngineClient<true, TError>> : EngineClient<false, TError>[]
   log: LogFn
   entry: Record<string, string> | null
@@ -88,8 +85,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     engineFile: string | null
     cwdBeforeBuild: string
     port: number
-    portPolicy: PortPolicy
-    serveRetries: number
     log: LogFn
     clients: EngineClient<any, TError>[]
     envConsts: EngineOptionsEnvParsed
@@ -121,7 +116,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     this.envVars = input.envVars
     this.cwdBeforeBuild = process.env.POINT0_ENGINE_CWD_BEFORE_BUILD ?? input.cwdBeforeBuild
     this.port = input.port
-    this.serveRetries = input.serveRetries
     this.clients = input.clients as TPrepared extends true
       ? Array<EngineClient<true, TError>>
       : EngineClient<false, TError>[]
@@ -142,7 +136,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     this.viteConfig = input.viteConfig
     this.viteDevServer = input.viteDevServer
     this.hmrPort = input.hmrPort
-    this.portPolicy = input.portPolicy
     this.compiler = input.compiler
     this.fetcher = null as TPrepared extends true ? Fetcher<TError> : null
     this.ssr = input.ssr
@@ -173,8 +166,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     clients: EngineClient<any, TError>[]
     viteConfig: EngineOptionsViteConfig | null
     hmrPort: number | false
-    portPolicy: PortPolicy
-    serveRetries: number
     compiler: EngineOptionsCompilerSpecificParsed | false
     ssr: boolean
   }): EngineServer<false, TError> {
@@ -519,118 +510,119 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     if (!this.isPrepared()) {
       throw new Error('Server is not prepared')
     }
-    const portPolicy = getOverridenPortPolicy({ scope: this.scope, side: 'server', portPolicy: this.portPolicy })
-    this.port = await resolvePortByPolicy({ port: this.port, portPolicy })
-    this.bunServer = await serveWithRetries(
-      {
-        port: this.port,
-        serveRetries: this.serveRetries,
-        portPolicy,
+
+    if (this.bunServer) {
+      throw new Error('Server is already running')
+    }
+
+    const customServeConfig = ((this.bunServeConfig as unknown) ?? {}) as Record<string, unknown>
+    const customWebsocketConfig = this.bunServeConfig?.websocket as any
+    const serveConfig: Serve.Options<any, any> = {
+      ...customServeConfig,
+      port: this.port,
+      fetch: async (request, bunServer) => {
+        const devClientsProxyResponse = await this.fetchDevClientsProxy({ request, bunServer })
+        if (devClientsProxyResponse) {
+          return devClientsProxyResponse.response
+        }
+
+        const customFetch = this.bunServeConfig?.fetch?.bind(bunServer)
+        const customResult = await customFetch?.(request, bunServer)
+        if (customResult) {
+          return customResult
+        }
+
+        const result = await this.fetchDetailed({ request, requiredCtx, bunServer })
+        return result.response
+      },
+      websocket: {
+        ...(customWebsocketConfig ?? {}),
+        // later will be user for channels
+        open: (ws) => {
+          const customOpen = customWebsocketConfig?.open?.bind(ws)
+          if (customOpen) {
+            return customOpen(ws)
+          }
+          return undefined
+        },
+        message: (ws, message) => {
+          const customMessage = customWebsocketConfig?.message?.bind(ws)
+          if (customMessage) {
+            return customMessage(ws, message)
+          }
+          return undefined
+        },
+        close: (ws, code, reason) => {
+          const customClose = customWebsocketConfig?.close?.bind(ws)
+          if (customClose) {
+            return customClose(ws, code, reason)
+          }
+          return undefined
+        },
+      },
+      // websocket: {
+      //   open(ws) {
+      //     if (process.env.NODE_ENV !== 'production') {
+      //       // Only proxy WebSocket connections that have a wsUrl (Bun dev server connections)
+      //       const data = ws.data as unknown as { wsUrl?: string; upstream?: WebSocket }
+      //       if (!data.wsUrl) {
+      //         return
+      //       }
+
+      //       // Connect to upstream WebSocket when client connects
+      //       const upstream = new WebSocket(data.wsUrl)
+
+      //       upstream.onopen = () => {
+      //         // Store upstream reference in ws data
+      //         data.upstream = upstream
+      //       }
+
+      //       upstream.onmessage = (event) => {
+      //         // Forward messages from upstream to client
+      //         ws.send(event.data)
+      //       }
+
+      //       upstream.onclose = () => {
+      //         ws.close()
+      //       }
+
+      //       upstream.onerror = () => {
+      //         ws.close()
+      //       }
+
+      //       // Store upstream for later use
+      //       data.upstream = upstream
+      //     }
+      //   },
+      //   message(ws, message) {
+      //     // Forward messages from client to upstream (only for proxied connections)
+      //     if (process.env.NODE_ENV !== 'production') {
+      //       const data = ws.data as unknown as { upstream?: WebSocket }
+      //       if (data.upstream?.readyState === WebSocket.OPEN) {
+      //         data.upstream.send(message)
+      //       }
+      //     }
+      //   },
+      //   close(ws) {
+      //     if (process.env.NODE_ENV !== 'production') {
+      //       // Clean up upstream connection when client disconnects
+      //       const data = ws.data as unknown as { upstream?: WebSocket }
+      //       if (data.upstream) {
+      //         data.upstream.close()
+      //       }
+      //     }
+      //   },
+      // },
+    }
+
+    if (process.env[`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_SERVER`] === 'kill') {
+      await killPort([this.port, this.hmrPort].filter(Boolean) as number[], {
+        force: true,
         category: ['server'],
-      },
-      async () => {
-        const customServeConfig = ((this.bunServeConfig as unknown) ?? {}) as Record<string, unknown>
-        const customWebsocketConfig = this.bunServeConfig?.websocket as any
-        return Bun.serve({
-          ...customServeConfig,
-          port: this.port,
-          fetch: async (request, bunServer) => {
-            const devClientsProxyResponse = await this.fetchDevClientsProxy({ request, bunServer })
-            if (devClientsProxyResponse) {
-              return devClientsProxyResponse.response
-            }
-
-            const customFetch = this.bunServeConfig?.fetch?.bind(bunServer)
-            const customResult = await customFetch?.(request, bunServer)
-            if (customResult) {
-              return customResult
-            }
-
-            const result = await this.fetchDetailed({ request, requiredCtx, bunServer })
-            return result.response
-          },
-          websocket: {
-            ...(customWebsocketConfig ?? {}),
-            // later will be user for channels
-            open: (ws) => {
-              const customOpen = customWebsocketConfig?.open?.bind(ws)
-              if (customOpen) {
-                return customOpen(ws)
-              }
-              return undefined
-            },
-            message: (ws, message) => {
-              const customMessage = customWebsocketConfig?.message?.bind(ws)
-              if (customMessage) {
-                return customMessage(ws, message)
-              }
-              return undefined
-            },
-            close: (ws, code, reason) => {
-              const customClose = customWebsocketConfig?.close?.bind(ws)
-              if (customClose) {
-                return customClose(ws, code, reason)
-              }
-              return undefined
-            },
-          },
-          // websocket: {
-          //   open(ws) {
-          //     if (process.env.NODE_ENV !== 'production') {
-          //       // Only proxy WebSocket connections that have a wsUrl (Bun dev server connections)
-          //       const data = ws.data as unknown as { wsUrl?: string; upstream?: WebSocket }
-          //       if (!data.wsUrl) {
-          //         return
-          //       }
-
-          //       // Connect to upstream WebSocket when client connects
-          //       const upstream = new WebSocket(data.wsUrl)
-
-          //       upstream.onopen = () => {
-          //         // Store upstream reference in ws data
-          //         data.upstream = upstream
-          //       }
-
-          //       upstream.onmessage = (event) => {
-          //         // Forward messages from upstream to client
-          //         ws.send(event.data)
-          //       }
-
-          //       upstream.onclose = () => {
-          //         ws.close()
-          //       }
-
-          //       upstream.onerror = () => {
-          //         ws.close()
-          //       }
-
-          //       // Store upstream for later use
-          //       data.upstream = upstream
-          //     }
-          //   },
-          //   message(ws, message) {
-          //     // Forward messages from client to upstream (only for proxied connections)
-          //     if (process.env.NODE_ENV !== 'production') {
-          //       const data = ws.data as unknown as { upstream?: WebSocket }
-          //       if (data.upstream?.readyState === WebSocket.OPEN) {
-          //         data.upstream.send(message)
-          //       }
-          //     }
-          //   },
-          //   close(ws) {
-          //     if (process.env.NODE_ENV !== 'production') {
-          //       // Clean up upstream connection when client disconnects
-          //       const data = ws.data as unknown as { upstream?: WebSocket }
-          //       if (data.upstream) {
-          //         data.upstream.close()
-          //       }
-          //     }
-          //   },
-          // },
-        })
-      },
-    )()
-    setOverridenPortPolicy({ scope: this.scope, side: 'server', portPolicy: 'kill' })
+      })
+    }
+    this.bunServer = Bun.serve(serveConfig)
+    process.env[`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_SERVER`] = 'kill'
     this.log({
       level: 'info',
       category: ['server'],

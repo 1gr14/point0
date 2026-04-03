@@ -688,53 +688,53 @@ export const readableStreamToString = async (readableStream: ReadableStream): Pr
 //   }) as T
 // }
 
-export const serveWithRetries = <T extends (...args: any[]) => Promise<any>>(
-  options: {
-    port: number
-    serveRetries: number
-    filterErrorMessages?: string[]
-    portPolicy: PortPolicy
-    category: string[]
-  },
-  fn: T,
-): T => {
-  const { serveRetries: providedServeRetries, filterErrorMessages, portPolicy, category, port } = options
-  const serveRetries = (() => {
-    if (!providedServeRetries && portPolicy === 'kill') {
-      return 3
-    }
-    return Math.max(providedServeRetries, 3)
-  })()
-  // We return a new function that mimics the original function's signature
-  return (async (...innerArgs: Parameters<T>) => {
-    let retryIndex = 0
+// export const serveWithRetries = <T extends (...args: any[]) => Promise<any>>(
+//   options: {
+//     port: number
+//     serveRetries: number
+//     filterErrorMessages?: string[]
+//     portPolicy: PortPolicy
+//     category: string[]
+//   },
+//   fn: T,
+// ): T => {
+//   const { serveRetries: providedServeRetries, filterErrorMessages, portPolicy, category, port } = options
+//   const serveRetries = (() => {
+//     if (!providedServeRetries && portPolicy === 'kill') {
+//       return 3
+//     }
+//     return Math.max(providedServeRetries, 3)
+//   })()
+//   // We return a new function that mimics the original function's signature
+//   return (async (...innerArgs: Parameters<T>) => {
+//     let retryIndex = 0
 
-    const attempt = async () => {
-      try {
-        return await fn(...innerArgs)
-      } catch (error) {
-        // Sync case error
-        await handleError(error)
-        return attempt()
-      }
-    }
+//     const attempt = async () => {
+//       try {
+//         return await fn(...innerArgs)
+//       } catch (error) {
+//         // Sync case error
+//         await handleError(error)
+//         return attempt()
+//       }
+//     }
 
-    const handleError = async (error: unknown) => {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      const isFiltered = !!filterErrorMessages && !filterErrorMessages.some((f) => errorMessage.includes(f))
+//     const handleError = async (error: unknown) => {
+//       const errorMessage = error instanceof Error ? error.message : String(error)
+//       const isFiltered = !!filterErrorMessages && !filterErrorMessages.some((f) => errorMessage.includes(f))
 
-      if (isFiltered || retryIndex >= serveRetries) {
-        throw error
-      }
-      if (portPolicy === 'kill') {
-        await killPort(port, { force: true, category })
-      }
-      retryIndex++
-    }
+//       if (isFiltered || retryIndex >= serveRetries) {
+//         throw error
+//       }
+//       if (portPolicy === 'kill') {
+//         await killPort(port, { force: true, category })
+//       }
+//       retryIndex++
+//     }
 
-    return await attempt()
-  }) as T
-}
+//     return await attempt()
+//   }) as T
+// }
 
 type WithAsyncRetriesFn = {
   <T extends (...args: any[]) => any>(

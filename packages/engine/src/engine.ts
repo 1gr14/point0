@@ -218,55 +218,8 @@ export class Engine<
     const isSideServer = !side || side === 'server'
     const isSideClient = !side || side === 'client'
     const isScopeServer = !scope || scope === this.server.scope
-    const isScopeClient = (clientScope: PointsScope) => !scope || clientScope === scope
+    // const isScopeClient = (clientScope: PointsScope) => !scope || clientScope === scope
 
-    const registerKillPortsOnSelfProcessEnding = (): void => {
-      const ports = [
-        ...(!isSideServer || !isScopeServer ? [] : [this.server.port, this.server.hmrPort]),
-        ...this.clients.flatMap((client) =>
-          !isSideClient || !isScopeClient(client.scope) ? [] : [client.port, client.hmrPort],
-        ),
-      ].flatMap((port) => (typeof port === 'number' ? [port] : []))
-      const uniqPorts = [...new Set(ports)]
-      if (uniqPorts.length === 0) {
-        return
-      }
-      let inProgress = false
-      const onEnd = async (): Promise<void> => {
-        if (inProgress) {
-          return
-        }
-        inProgress = true
-        try {
-          await killPort(uniqPorts, {
-            force: true,
-            silent: true,
-            category: ['engine', 'dev', 'shutdown'],
-          })
-        } finally {
-          inProgress = false
-        }
-      }
-      process.once('beforeExit', () => {
-        void onEnd()
-      })
-      process.once('exit', () => {
-        void onEnd()
-      })
-      process.once('SIGINT', () => {
-        void onEnd().finally(() => {
-          process.exit(130)
-        })
-      })
-      process.once('SIGTERM', () => {
-        void onEnd().finally(() => {
-          process.exit(143)
-        })
-      })
-    }
-    registerKillPortsOnSelfProcessEnding()
-
-    // const generatorProcess = generateFiles ? (watch ? this.generateWatch() : this.generate()) : null
     if (generateFiles) {
       await this.generate({ logOnNotWritten: false })
     }
@@ -302,6 +255,7 @@ export class Engine<
                     ...overridenPortPolicyEnv,
                     POINT0_PREVENT_CLIENT_DEV_SERVER: 'true',
                   },
+                  stdin: 'ignore',
                   stdout: 'inherit',
                   stderr: 'inherit',
                 })
@@ -309,14 +263,19 @@ export class Engine<
           }
 
           let processes = start()
-          // if (options?.restart) {
-          this.onPointFileChange((_event, _path, _points) => {
-            processes.forEach((p) => {
-              p.kill('SIGKILL')
+          if (watch) {
+            this.onPointFileChange((_event, _path, _points) => {
+              this.log({
+                level: 'info',
+                category: ['server'],
+                message: `Server "${this.server.scope}" restarting...`,
+              })
+              processes.forEach((p) => {
+                p.kill('SIGKILL')
+              })
+              processes = start()
             })
-            processes = start()
-          })
-          // }
+          }
           return []
         }
       })()
@@ -555,7 +514,7 @@ export class Engine<
         cwd: this.cwd, // this.cwd becouse we will found it here 100%
         stdout: 'inherit',
         stderr: 'inherit',
-        stdin: 'inherit',
+        stdin: 'ignore',
         env: {
           ...process.env,
           FORCE_COLOR: process.env.FORCE_COLOR ?? '1',

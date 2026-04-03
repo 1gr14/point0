@@ -45,7 +45,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/home.tsx',
-        line: 103,
+        line: 105,
         column: 15,
       },
       import: async () => (await import('../pages/home.js')).default,
@@ -712,7 +712,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/home.tsx',
-        line: 34,
+        line: 36,
         column: 33,
       },
       import: async () => (await import('../pages/home.js')).BestIdeaComponent,
@@ -907,7 +907,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create.tsx',
-        line: 125,
+        line: 100,
         column: 33,
       },
       import: async () => (await import('../pages/idea-create.js')).clientFn2Mutation,
@@ -938,7 +938,7 @@ export default {
       endpoint: undefined,
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create.tsx',
-        line: 107,
+        line: 82,
         column: 32,
       },
       import: async () => (await import('../pages/idea-create.js')).clientFnMutation,
@@ -972,7 +972,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create.tsx',
-        line: 116,
+        line: 91,
         column: 33,
       },
       import: async () => (await import('../pages/idea-create.js')).clientFnMutationX,
@@ -1040,7 +1040,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create.tsx',
-        line: 82,
+        line: 129,
         column: 36,
       },
       import: async () => (await import('../pages/idea-create.js')).generateIdeaMutation,

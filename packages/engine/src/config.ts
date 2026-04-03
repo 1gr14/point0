@@ -128,8 +128,6 @@ export type EngineGeneralOptions = {
   file: string
   generte?: Array<Omit<FilesGeneratorTaskMeta, 'scopes'>>
   log?: LogFn
-  portPolicy?: PortPolicy
-  serveRetries?: number
   generate?: FilesGeneratorSimpleGeneralConfig | FilesGeneratorTask[]
   itWasBuilt?: boolean
   cwdAfterBuild?: string
@@ -173,8 +171,6 @@ export type EngineServerOptions<
   routes?: EngineOptionsRoutes
   banner?: string
   hmrPort?: number | string | boolean
-  portPolicy?: PortPolicy
-  serveRetries?: number
   ssr?: boolean
 }
 
@@ -196,8 +192,6 @@ export type EngineClientOptions = {
   env?: { vars?: EngineOptionsEnvWide; consts?: EngineOptionsEnvWide }
   port?: number | string
   hmrPort?: number | string | boolean
-  portPolicy?: PortPolicy
-  serveRetries?: number
   bunBuildConfig?: EngineClientBuildConfigDefinition
   bunPlugins?: EngineClientPluginsDefinition
   viteConfig?: EngineOptionsViteConfig
@@ -371,8 +365,6 @@ export type EngineGeneralOptionsParsed = {
   viteConfig: EngineOptionsViteConfig | null
   bunBuildConfig: BunBuildConfigDefinition | null
   bunPlugins: EngineSharedPluginsDefinition
-  portPolicy: PortPolicy | null
-  serveRetries: number | null
   ssr: boolean | undefined
 }
 export type EngineClientOptionsParsed = {
@@ -405,8 +397,6 @@ export type EngineClientOptionsParsed = {
     outdir: string
     cacheLimit: number | boolean
   } | null
-  portPolicy: PortPolicy
-  serveRetries: number
   ssr: boolean
 }
 export type EngineServerOptionsParsed = {
@@ -435,8 +425,6 @@ export type EngineServerOptionsParsed = {
   viteConfig: EngineOptionsViteConfig | null
   compiler: EngineOptionsCompilerSpecificParsed | false
   hmrPort: number | false
-  portPolicy: PortPolicy
-  serveRetries: number
   ssr: boolean
 }
 export type EngineOptionsParsed = {
@@ -676,8 +664,6 @@ const parseEngineGeneralOptions = ({
       : Array.isArray(generalOptions.buildWatchGlob)
         ? generalOptions.buildWatchGlob
         : [generalOptions.buildWatchGlob],
-    portPolicy: generalOptions.portPolicy ?? null,
-    serveRetries: generalOptions.serveRetries ?? null,
     ssr,
   }
 }
@@ -935,8 +921,6 @@ export const parseEngineServerOptions = ({
     routesProvided: serverOptions.routes ?? null,
     generate,
     banner: serverOptions.banner ?? null,
-    portPolicy: serverOptions.portPolicy ?? generalOptionsParsed.portPolicy ?? 'simple',
-    serveRetries: serverOptions.serveRetries ?? generalOptionsParsed.serveRetries ?? 0,
     viteConfig:
       typeof serverOptions.viteConfig === 'string'
         ? toFinalPath({
@@ -1138,8 +1122,6 @@ const parseEngineClientOptions = ({
     bunBuildConfig: clientOptions.bunBuildConfig ?? {},
     bunPlugins: clientOptions.bunPlugins ?? [],
     engineFile: generalOptionsParsed.engineFile,
-    portPolicy: clientOptions.portPolicy ?? generalOptionsParsed.portPolicy ?? 'simple',
-    serveRetries: clientOptions.serveRetries ?? generalOptionsParsed.serveRetries ?? 0,
     ssr,
   }
 }

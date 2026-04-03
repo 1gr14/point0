@@ -3,7 +3,6 @@ import { Engine } from '@point0/engine'
 export const engine = Engine.create({
   file: import.meta.url,
   pointsGlob: ['**/*.{ts,tsx,mdx}'],
-  portPolicy: 'kill',
   ssr: true,
   generate: { meta: './lib/meta.ts' },
   server: {

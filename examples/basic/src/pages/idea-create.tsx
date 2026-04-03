@@ -79,31 +79,6 @@ export const createIdeaMutation = root.lets
     },
   })
 
-export const generateIdeaMutation = root
-  .lets('mutation', 'generateIdea')
-  .loader(async ({ set, request }) => {
-    testCookie.set(Math.random().toString())
-    console.info('request from ip', request.from.ip)
-    set.headers('X-Y', 'zxczxc')
-    set.cookies('X-Y', 'kjhkj')
-    const stream = new ReadableStream({
-      async start(controller) {
-        const text = 'x'.repeat(100) // 100 symbols
-        for (const char of text) {
-          controller.enqueue(char)
-          await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol
-        }
-        controller.close()
-      },
-    })
-
-    // Return a streaming response
-    return new Response(stream, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    })
-  })
-  .mutation()
-
 export const clientFnMutation = root
   .lets('mutation', 'clientFnMutation')
   .clientLoader(async () => {
@@ -127,7 +102,7 @@ export const clientFn2Mutation = root
   .loader(async () => {
     const stream = new ReadableStream({
       async start(controller) {
-        const text = 'o'.repeat(100) // 100 symbols
+        const text = 'oo'.repeat(100) // 100 symbols
         for (const char of text) {
           controller.enqueue(char)
           await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol
@@ -146,6 +121,31 @@ export const clientFn2Mutation = root
   })
   .clientLoader(async () => {
     return new Response('HELLO!', {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    })
+  })
+  .mutation()
+
+export const generateIdeaMutation = root
+  .lets('mutation', 'generateIdea')
+  .loader(async ({ set, request }) => {
+    testCookie.set(Math.random().toString())
+    console.info('request from ip', request.from.ip)
+    set.headers('X-Y', 'zxczxc')
+    set.cookies('X-Y', 'kjhkj')
+    const stream = new ReadableStream({
+      async start(controller) {
+        const text = 'g'.repeat(100) // 100 symbols
+        for (const char of text) {
+          controller.enqueue(char)
+          await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol
+        }
+        controller.close()
+      },
+    })
+
+    // Return a streaming response
+    return new Response(stream, {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     })
   })
@@ -172,7 +172,7 @@ export const ideaCreatePage = generalLayout
       <div>
         <div>
           <label>
-            Title133: {testCookieValue}, {testNumberCookieValue}, {testNumberDefaultCookieValue}
+            Title1x: {testCookieValue}, {testNumberCookieValue}, {testNumberDefaultCookieValue}
           </label>
           <input
             type="text"

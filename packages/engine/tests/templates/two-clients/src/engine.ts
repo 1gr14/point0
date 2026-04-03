@@ -2,8 +2,6 @@ import { Engine } from '@point0/engine'
 export const engine = Engine.create({
   file: import.meta.url,
   pointsGlob: ['**/*.{ts,tsx}'],
-  serveRetries: 99,
-  portPolicy: 'kill',
   ssr: true,
   server: {
     scope: 'root',
