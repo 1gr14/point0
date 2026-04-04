@@ -1,7 +1,6 @@
 // https://github.com/gastrodia/port-bun/blob/main/src/lib.ts
 
 import { log, type LogFn } from '@point0/core'
-import type { PortPolicy } from './config.js'
 
 const platform = process.platform
 

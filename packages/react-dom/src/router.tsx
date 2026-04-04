@@ -27,13 +27,10 @@ import type {
   RedirectHelper,
   RedirectOptionsByAdapterNavigateFn,
   SpecialLinkOptions,
-  // SpecialLinkOptionsInDataAttributes,
   SpecialNavigateOptions,
   SpecialRedirectOptions,
-  // SpecialRedirectOptionsInDataAttributes,
   UseLocationFn,
 } from '@point0/core/navigation'
-// import { useNavigationHelpers } from '@point0/core/navigation'
 import React, { Fragment, useCallback, useMemo, useRef } from 'react'
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
 import {
@@ -191,7 +188,6 @@ const _useFinalTo = <TRoutes extends RoutesPretty>({
 
 const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = BrowserLocationHook>(
   props: LinkProps<TBaseLocationHook>,
-  // navigate: NavigateFnByHook<TBaseLocationHook>,
 ): {
   wouterLinkProps: LinkProps
   to: string
@@ -202,10 +198,8 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
   const {
     to,
     href,
-    // onClick: providedOnClick,
     onMouseEnter: providedOnMouseEnter,
     onMouseLeave: providedOnMouseLeave,
-    // replace,
     prefetchOnNavigate,
     prefetchOnHover,
     prefetch,
@@ -315,88 +309,18 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
   }
 }
 
-// const toSpecialNavigateOptions = <TAdapterNavigateOptions extends AdapterNavigateOptions>(
-//   options:
-//     | undefined
-//     | (NavigateOptions<any> &
-//         SpecialNavigateOptions<TAdapterNavigateOptions> &
-//         SpecialLinkOptions<TAdapterNavigateOptions> &
-//         // SpecialLinkOptionsInDataAttributes<TAdapterNavigateOptions> &
-//         SpecialRedirectOptions),
-//   // SpecialRedirectOptionsInDataAttributes),
-// ): SpecialNavigateOptions<TAdapterNavigateOptions> &
-//   SpecialRedirectOptions &
-//   SpecialLinkOptions<TAdapterNavigateOptions> => {
-//   const getOptionValue = (key: keyof typeof specialNavigationOptionsSymbols) => {
-//     const normalValue = options?.[key]
-//     if (typeof normalValue !== 'undefined') {
-//       return normalValue
-//     }
-//     const symbolValue = (options as any)?.[specialNavigationOptionsSymbols[key]]
-//     if (typeof symbolValue !== 'undefined') {
-//       return symbolValue
-//     }
-//     return undefined
-//   }
-//   const result = {
-//     prefetchOnNavigate: getOptionValue('prefetchOnNavigate'),
-//     prefetchOnHover: getOptionValue('prefetchOnHover'),
-//     prefetch: getOptionValue('prefetch'),
-//     before: getOptionValue('before'),
-//     after: getOptionValue('after'),
-//     status: getOptionValue('status'),
-//   }
-// }
-
 const splitOptions = <TAdapterNavigateFn extends AdapterNavigateFn = AdapterNavigateFn>(
   options:
     | undefined
     | (NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> &
         SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>> &
         SpecialLinkOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>> &
-        // SpecialLinkOptionsInDataAttributes &
         SpecialRedirectOptions),
-  // SpecialRedirectOptionsInDataAttributes),
 ): {
   normalOptions: SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>> &
     SpecialLinkOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>
-  // specialNavigateOptions: SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>
   wouterOptions: NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>
-  // wouterAndSpecialNavigateOptions: NavigateOptions<any> &
-  //   SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>> &
-  //   SpecialLinkOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>
 } => {
-  // const {
-  //   prefetch,
-  //   prefetchOnHover,
-  //   prefetchOnNavigate,
-  //   before,
-  //   after,
-  //   status,
-  //   ['data-prefetch-on-hover']: prefetchOnHoverByDataAttribute,
-  //   ['data-prefetch']: prefetchByDataAttribute,
-  //   ['data-prefetch-on-navigate']: prefetchOnNavigateByDataAttribute,
-  //   ['data-before']: beforeByDataAttribute,
-  //   ['data-after']: afterByDataAttribute,
-  //   ['data-status']: statusByDataAttribute,
-  //   ...wouterOptions
-  // } = options ?? {}
-  // const specialOptions = {
-  //   prefetchOnNavigate: prefetchOnNavigate !== undefined ? prefetchOnNavigate : prefetchOnNavigateByDataAttribute,
-  //   prefetchOnHover: prefetchOnHover !== undefined ? prefetchOnHover : prefetchOnHoverByDataAttribute,
-  //   prefetch: prefetch !== undefined ? prefetch : prefetchByDataAttribute,
-  //   before: before !== undefined ? before : beforeByDataAttribute,
-  //   after: after !== undefined ? after : afterByDataAttribute,
-  //   status: status !== undefined ? status : statusByDataAttribute,
-  // }
-  // const specialNavigateOptions = toSpecialNavigateOptions(specialOptions)
-  // const wouterAndSpecialNavigateOptions = { ...wouterOptions, ...specialNavigateOptions }
-  // return {
-  //   specialOptions,
-  //   specialNavigateOptions,
-  //   wouterOptions,
-  //   wouterAndSpecialNavigateOptions,
-  // }
   const getOptionValue = (key: keyof typeof specialNavigationOptionsSymbols) => {
     const normalValue = options?.[key]
     if (typeof normalValue !== 'undefined') {

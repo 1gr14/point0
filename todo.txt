@@ -40,6 +40,7 @@ mcp as comments
 === REFACTOING 3000 ===
 
 remove unsused commented code
+compiler cache
 
 OPENAPI
 Поинтс засунуть и в кткс и в лоадер и в мидлвару

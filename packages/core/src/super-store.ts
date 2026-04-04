@@ -215,45 +215,6 @@ export class SuperStore {
     }
   }
 
-  // getState(): SuperStoreState {
-  //   const { clientState, fakeClientState, serverStorageState } = this.getStates()
-  //   if (clientState) {
-  //     return clientState
-  //   }
-  //   if (fakeClientState) {
-  //     return fakeClientState
-  //   }
-  //   if (serverStorageState) {
-  //     return serverStorageState
-  //   }
-  //   throw new Error('State not found. It is a critical bug, please report it')
-  // }
-
-  // getState(): SuperStoreState {
-  //   const fakeClient = this.getFakeClient()
-  //   if (env.side.is.client && !fakeClient) {
-  //     return this.clientState
-  //   } else {
-  //     const serverStorage = this.serverStorage
-  //     if (!serverStorage) {
-  //       throw new Error(
-  //         'Server storage is not initialized. We do not know how it is possible. Please, report this issue to the developers',
-  //       )
-  //     }
-  //     const serverStorageState = serverStorage.getStore()
-  //     if (!serverStorageState) {
-  //       throw new Error(
-  //         'Server store not found. You should call this function on server only inside server context wrapped in superstore.runWithServerStorageProvider(serverStorageState, callback). So call it in hooks, components, functions, not in top of files without wrappers',
-  //       )
-  //     }
-  //     if (!fakeClient) {
-  //       return serverStorageState
-  //     }
-  //     serverStorageState[fakeClient.id] ||= {}
-  //     return serverStorageState[fakeClient.id] as SuperStoreState
-  //   }
-  // }
-
   private _parseDefineArgs(
     ...args:
       | [
@@ -385,24 +346,8 @@ export class SuperStore {
     policy: SuperStoreItemPolicy,
     states: ReturnType<typeof this.getStates>,
   ): SuperStoreState {
-    // if (policy === 'clientOnly' && states.variant === 'server') {
-    //   throw new Error(`Cannot access clientOnly item "${name}" from server`)
-    // }
-    // if (policy === 'serverOnlyGlobal' && states.variant === 'client') {
-    //   throw new Error(`Cannot access serverOnlyGlobal item "${name}" from client`)
-    // }
-    // if (policy === 'serverOnlyStorage' && states.variant === 'client') {
-    //   throw new Error(`Cannot access serverOnlyStorage item "${name}" from client`)
     // }
     const result = (() => {
-      // if (policy === 'clientonly') {
-      //   return states.clientState || states.fakeClientState
-      // }
-      // if (policy === 'ssr') {
-      //   return states.clientState || states.fakeClientState || states.serverStorageState
-      // }
-      // // server only
-      // return states.serverStorageState
       switch (policy) {
         case 'clientOnly': {
           if (states.variant === 'server') {
@@ -748,16 +693,3 @@ export type AnyNiceSuperStoreItem<TValue = any, TDehydratedValue = any> =
   | NiceSuperStoreItem<TValue, TDehydratedValue>
   | NiceReadonlyRedefinableSuperStoreItem<TValue, TDehydratedValue>
   | NiceReadonlySuperStoreItem<TValue, TDehydratedValue>
-
-// export type ToNiceSuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<
-//   TSuperStorItem,
-//   'get' | 'getWeak' | 'set' | 'config'
-// >
-// export type ToNiceUnsettableRedefinableSuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<
-//   TSuperStorItem,
-//   'get' | 'getWeak' | 'redefine' | 'config'
-// >
-// export type ToNiceReadonlySuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<
-//   TSuperStorItem,
-//   'get' | 'getWeak' | 'config'
-// >

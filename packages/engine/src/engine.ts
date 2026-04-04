@@ -199,9 +199,7 @@ export class Engine<
   }
 
   async dev(options?: {
-    // engineFile: string
     generateFiles?: boolean
-    // clientDevServersOnly?: boolean
     side?: 'server' | 'client' | undefined
     scope?: PointsScope | undefined
     entries?: string[] // paths or names
@@ -210,11 +208,8 @@ export class Engine<
     restart?: boolean
     cwd?: string
   }): Promise<void> {
-    // const hot = options.hot !== false
     const {
-      // engineFile,
       generateFiles = true,
-      // clientDevServersOnly,
       side,
       scope,
       entries,
@@ -234,7 +229,6 @@ export class Engine<
     const isSideServer = !side || side === 'server'
     const isSideClient = !side || side === 'client'
     const isScopeServer = !scope || scope === this.server.scope
-    // const isScopeClient = (clientScope: PointsScope) => !scope || clientScope === scope
 
     if (generateFiles) {
       await this.generate({ logOnNotWritten: false })
@@ -386,16 +380,6 @@ export class Engine<
     })
   }
 
-  // richFetch: RichFetchFn = async (...args) => {
-  //   const request = args[0] instanceof Request ? args[0] : new Request(args[0], args[1])
-  //   return await (this.fetch as any)(request)
-  // }
-
-  // richFetchDetailed: RichFetchFn = async (...args) => {
-  //   const request = args[0] instanceof Request ? args[0] : new Request(args[0], args[1])
-  //   return await (this.fetchDetailed as any)(request)
-  // }
-
   async clean(): Promise<void> {
     await Promise.all([...this.clients.map(async (client) => await client.clean()), this.server.clean()])
   }
@@ -432,8 +416,6 @@ export class Engine<
     const isSideClient = side === 'client' || !side
     const isScopeServer = !scope || (scope && scope === this.server.scope)
     const isScopeClient = (clientScope: PointsScope) => !scope || clientScope === scope
-
-    // const preparedEngine = await this.prepare()
 
     if (clean) {
       await Promise.all([
@@ -840,8 +822,4 @@ export class Engine<
     }
     return undefined
   }
-
-  // getErrorClass<TError extends ErrorPoint0>(fallback: ClassLikeError0<TError> | undefined): ClassLikeError0<TError> {
-  //   return (this.server.points?.manager.root._Error ?? fallback ?? ErrorPoint0) as ClassLikeError0<TError>
-  // }
 }

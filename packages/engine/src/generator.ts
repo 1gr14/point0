@@ -163,7 +163,6 @@ export class FilesGenerator {
   readonly pointsFilesChangeWatchers: FilesGeneratorPointsFilesChangeWatcher[] = []
 
   private readonly files = new Set<string>()
-  // private readonly points: CompilerPoint[] = []
   private readonly pointsByPaths = new Map<string, CompilerPoint[]>()
   private readonly points: CompilerPoint[] = []
   private readonly safePoints: CompilerPoint[] = []
@@ -548,13 +547,6 @@ export class FilesGenerator {
         emitPointsImports: ({ points, outfile }) => this.emitPointsImports({ points, outfile }),
       })
     }
-    // if (this.outputWouterRoutesAbs) {
-    //   tasks.push({
-    //     content: this.emitWouterRoutesFile(this.points),
-    //     outputAbs: this.outputWouterRoutesAbs,
-    //     tempOutputAbs: nodePath.join(this.tempDir, 'wouter-routes.ts'),
-    //   })
-    // }
     if (!tasks.length) {
       return { written: false }
     }
@@ -615,50 +607,6 @@ export class FilesGenerator {
   }
 
   // emit
-
-  // async isOutputFilesExists(): Promise<boolean> {
-  //   const results = await Promise.all(this.tasks.map(async (task) => await this.isTaskOutputFilesExists(task)))
-  //   return results.every((r) => r)
-  // }
-
-  // async isTaskOutputFilesExists(task: FilesGeneratorTask): Promise<boolean> {
-  //   if (!task.outputPointsLazyAbs && !task.outputPointsReadyAbs && !task.outputRoutesAbs) {
-  //     return true
-  //   }
-  //   const promises: Array<Promise<boolean>> = []
-  //   if (task.outputPointsLazyAbs) {
-  //     promises.push(
-  //       nodeFs
-  //         .access(task.outputPointsLazyAbs)
-  //         .then(() => true)
-  //         .catch(() => false),
-  //     )
-  //   }
-  //   if (task.outputPointsReadyAbs) {
-  //     promises.push(
-  //       nodeFs
-  //         .access(task.outputPointsReadyAbs)
-  //         .then(() => true)
-  //         .catch(() => false),
-  //     )
-  //   }
-  //   if (task.outputRoutesAbs) {
-  //     promises.push(
-  //       nodeFs
-  //         .access(task.outputRoutesAbs)
-  //         .then(() => true)
-  //         .catch(() => false),
-  //     )
-  //   }
-  //   const results = await Promise.all(promises)
-  //   return results.every((r) => r)
-  // }
-
-  // private emitSuperStoreInitialization(): string[] {
-  //   const lines: string[] = []
-  //   lines.push(`await import('point0/core/super-store.js').then(async ({ SuperStore }) => await SuperStore.init({}))`)
-  //   return lines
-  // }
 
   emitPointsImports({ points, outfile }: { points: Array<CompilerPoint<true>>; outfile: string }): {
     importLines: string[]
@@ -726,111 +674,6 @@ export class FilesGenerator {
     return { importLines, importedPoints, rootSingleImportLine, hasNotRootPoints }
   }
 
-  // private emitLazyPointsFile(task: FilesGeneratorTask): string {
-  //   if (!task.outputPointsLazyAbs) {
-  //     throw new Error('outputPointsLazyAbs is not set')
-  //   }
-  //   const points = this.points.filter((p) => p.scope === task.scope && p.valid) as Array<CompilerPoint<true>>
-  //   const lines: string[] = []
-  //   if (task.banner) {
-  //     lines.push(task.banner)
-  //   }
-  //   // lines.push(...this.emitSuperStoreInitialization())
-  //   lines.push(`import type { LazyPointsCollectionRecord } from '@point0/core'`)
-  //   // lines.push(`import { Point0 } from '@point0/core'`)
-
-  //   if (!points.find((p) => p.type === 'root' && p.scope === task.scope)) {
-  //     throw new Error(`Root point not found for task ${task.scope}`)
-  //   }
-
-  //   const { importedPoints, rootSingleImportLine } = this.emitPointsImports({
-  //     points,
-  //     outputAbs: task.outputPointsLazyAbs,
-  //     task,
-  //   })
-
-  //   if (rootSingleImportLine) {
-  //     lines.push(rootSingleImportLine)
-  //   }
-  //   lines.push(``)
-
-  //   if (points.length === 0) {
-  //     lines.push(`export {}`)
-  //   } else {
-  //     for (const { point, renamedExportName } of importedPoints) {
-  //       if (point.type === 'root') {
-  //         lines.push(`export const _${renamedExportName} = root`)
-  //         continue
-  //       }
-  //       lines.push(`export const _${renamedExportName} = {`)
-  //       lines.push(`  type: '${point.type}',`)
-  //       lines.push(`  name: '${point.name}',`)
-  //       if (point.route) {
-  //         lines.push(`  route: '${point.route.definition}',`)
-  //       }
-  //       if (point.type === 'page') {
-  //         lines.push(`  polh: ${point.polh === true ? 'true' : point.polh === false ? 'false' : point.polh},`)
-  //       }
-  //       if (point.type === 'page' && point.layouts.length) {
-  //         const arr = point.layouts.map((r) => `'${r}'`).join(', ')
-  //         lines.push(`  layouts: [${arr}],`)
-  //       }
-
-  //       lines.push(
-  //         `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(task.outputPointsLazyAbs, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
-  //       )
-  //       lines.push(`} as LazyPointsCollectionRecord`)
-  //       lines.push(``)
-  //     }
-  //   }
-
-  //   lines.push(``)
-  //   return lines.join('\n')
-  // }
-
-  // private emitReadyPointsFile(task: FilesGeneratorTask): string {
-  //   if (!task.outputPointsReadyAbs) {
-  //     throw new Error('outputReadyAbs is not set')
-  //   }
-
-  //   const points = this.points.filter((p) => p.scope === task.scope && p.valid) as Array<CompilerPoint<true>>
-
-  //   if (!points.find((p) => p.type === 'root' && p.scope === task.scope)) {
-  //     throw new Error(`Root point not found for task ${task.scope}`)
-  //   }
-
-  //   const lines: string[] = []
-  //   if (task.banner) {
-  //     lines.push(task.banner)
-  //   }
-
-  //   const { importLines, importedPoints, hasNotRootPoints } = this.emitPointsImports({
-  //     points,
-  //     outputAbs: task.outputPointsReadyAbs,
-  //     task,
-  //   })
-  //   if (hasNotRootPoints) {
-  //     lines.push(`import type { RawPointsCollectionRecord } from '@point0/core'`)
-  //   }
-  //   lines.push(...importLines)
-
-  //   if (points.length === 0) {
-  //     lines.push(`export {}`)
-  //   } else {
-  //     lines.push(``)
-  //     for (const { point, renamedExportName } of importedPoints) {
-  //       if (point.type === 'root') {
-  //         lines.push(`export const _${renamedExportName} = ${renamedExportName}`)
-  //       } else {
-  //         lines.push(`export const _${renamedExportName} = ${renamedExportName} as RawPointsCollectionRecord`)
-  //       }
-  //       lines.push(``)
-  //     }
-  //   }
-
-  //   return lines.join('\n')
-  // }
-
   private static shouldExistsInServerPointsFile({ point, scope }: { point: CompilerPoint; scope: string }): boolean {
     // if (point.type !== 'plugin' && point.type !== 'base' && point.exportName !== undefined && point.valid) {
     if (point.type === 'plugin' || point.type === 'base' || point.exportName === undefined || !point.valid) {
@@ -891,9 +734,7 @@ export class FilesGenerator {
     if (task.banner) {
       lines.push(task.banner)
     }
-    // lines.push(...this.emitSuperStoreInitialization())
     lines.push(`import type { PointsDefinition } from '@point0/core'`)
-    // lines.push(`import { Point0 } from '@point0/core'`)
 
     // TODO: lets add .lazy() and calculate by it also
     const { importedPoints, rootSingleImportLine } = this.emitPointsImports({
@@ -969,6 +810,8 @@ export class FilesGenerator {
 
     return lines.join('\n')
   }
+
+  // maybe later will use it to generate expo router
 
   // private emitWouterRoutesFile(points: CollectedPoint[]): string {
   //   if (!this.outputWouterRoutesAbs) {

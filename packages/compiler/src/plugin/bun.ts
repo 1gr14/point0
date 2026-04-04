@@ -54,9 +54,6 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
         }
       }
       if (isNormalBundler) {
-        // build.onStart(() => {
-        //   compiler.walker.prune()
-        // })
         build.onResolve({ filter: virtualModulePathRegex }, (args) => {
           return {
             path: args.path,

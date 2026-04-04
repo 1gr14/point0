@@ -1,7 +1,6 @@
 import { createHead as createHeadClient, UnheadProvider as UnheadProviderClient } from '@unhead/react/client'
 import { UnheadProvider as UnheadProviderServer } from '@unhead/react/server'
 import { createElement } from 'react'
-// import type { ResolvableHead, Unhead } from 'unhead/types'
 import { _point0_env } from './env.js'
 import { _ss } from './internals.js'
 

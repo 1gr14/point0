@@ -263,66 +263,6 @@ import {
 } from './utils.js'
 import type { FsLocation } from './utils.js'
 
-// import stringify from 'safe-stable-stringify'
-
-// known stage fns
-
-// requireCtx: server, nothing to prune
-// serverurl: client, nothing to prune
-// basepath: both, nothing to prune
-// ssr: both, nothing to prune
-// mutationOptions: client, prune on server
-// queryOptions: client, prune on server
-// infiniteQueryOptions: client, prune on server
-// pageQueryOptions: client, prune on server
-// componentQueryOptions: client, prune on server
-// providerQueryOptions: client, prune on server
-// layoutQueryOptions: client, prune on server
-// fetchOptions: client, prune on server
-
-// error: both, prune on nossr-server
-// layoutError: both, prune on nossr-server
-// pageError: both, prune on nossr-server
-// componentError: both, prune on nossr-server
-// layoutLoading: both, prune on nossr-server
-// pageLoading: both, prune on nossr-server
-// componentLoading: both, prune on nossr-server
-// loading: both, prune on nossr-server
-// wrapper: both, prune on nossr-server
-// with: both, prune on nossr-server !!!
-
-// scrollPosition: client, prune on server
-// scrollRestore: client, prune on server
-// prefetchPolicy: both, nothing to prune (but in fact right now not used in server code)
-// onPrefetch: client, prune on server
-// prefetchPageOnLinkHover: client, prune on server
-
-// transformer: both, nothing to prune
-
-// ctx: server, prune on client
-// loader: server, prune on client
-
-// clientLoader: client, prune on server
-
-// mapper: both, nothing to prune !!! prune on nossr-server
-
-// head: both, nothing to prune
-// props: both, nothing to prune
-// input: server, prune on client
-// clientInput: client, prune on server
-// sharedInput: both, nothing to prune
-
-// root: both, nothing to prune
-// base: both, nothing to prune
-// page: both, prune on nossr-server (replace last argument wirh () => null)
-
-// component: both, prune on nossr-server
-// layout: both, prune on nossr-server
-// provider: both, nothing to prune
-// query: client, prune on server
-// infiniteQuery: client, prune on server
-// mutation: client, prune on server
-
 export class Point0<
   in out TPointType extends PointType,
   out TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
@@ -2653,49 +2593,6 @@ export class Point0<
     }) as never
   }
 
-  // ssr(
-  //   ssr: false,
-  // ): NiceStagePoint<
-  //   StagePointTypeOrNever<TPointType>,
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TError,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   TParamsSchema,
-  //   TSearchSchema,
-  //   TBodySchema,
-  //   THeadersSchema,
-  //   TCookiesSchema,
-  //   TQueryResultType,
-  //   TOuterProps,
-  //   TInnerProps,
-  //   TQueriesDefinitions
-  // > {
-  //   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  //   if (ssr) {
-  //     throw new Error(
-  //       `To enable ssr add ssr: true to engine config. In point you can only disable ssr bye .ssr(false) on point ${this.toStringWithLocation()}`,
-  //     )
-  //   }
-  //   const mountActions = (() => {
-  //     if (!this._getSsr()) {
-  //       return this._mountActions
-  //     }
-  //     return [...this._mountActions, { type: 'clientOnly' as const, unstableId: Point0._getNextUnstableId() }]
-  //   })()
-  //   return this._continue({
-  //     _ssr: ssr,
-  //     _mountActions: mountActions,
-  //   }) as never
-  // }
-
   clientOnly(
     Fallback?: ClientOnlyFallbackComponentType<
       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
@@ -3441,13 +3338,7 @@ export class Point0<
       }
     },
   >(
-    // ...args: TLetsReadyPointType extends MountablePointType
-    //   ?
     ...args: [
-      // point: TPoint &
-      //   (TPoint['Infer']['IsInputOptional'] extends true
-      //     ? unknown
-      //     : Record<`Input as second argument is required`, `Input as second argument is required`>),
       point: TPoint,
       ...rest: TPoint['Infer']['IsInputOptional'] extends true
         ? [
@@ -3589,11 +3480,6 @@ export class Point0<
         TQueriesDefinitions,
         TError
       >,
-      // ...(TNewQueries extends UseQueryOrInfiniteQueryResult
-      //   ? [QueryDefinitionByQuery<TNewQueries>]
-      //   : TNewQueries extends UseQueryOrInfiniteQueryResult[]
-      //     ? QueriesDefinitionsByQueries<TNewQueries>
-      //     : never),
       ...(TNewQueries extends QueriesResults
         ? QueriesDefinitionsByQueries<TNewQueries>
         : TNewQueries extends UseQueryOrInfiniteQueryResult
@@ -3622,26 +3508,7 @@ export class Point0<
     >,
   >(
     withFn: TWithFn & AssertNoArrayReturn<Awaited<ReturnType<TWithFn>>, 'With fn should not return array'>, // withFn: WithFn<
-    //   MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-  ) //   TParamsSchema,
-  //   TSearchSchema,
-  //   TClientInputSchema,
-  //   TInnerProps,
-  //   WithSelfQueryIfShouldBeFinalized<
-  //     TPointType,
-  //     TLetsReadyPointType,
-  //     TServerLoaderOutput,
-  //     TClientLoaderOutput,
-  //     TQueriesDefinitions
-  //   >,
-  //   TMapperOutput,
-  //   TError,
-  //   TNewInnerProps
-  // > &
-  //   (TNewInnerProps extends UseQueryOrInfiniteQueryResult[]
-  //     ? ShowError<`To return array of queries add as const after array like return [q1, q2] as const`>
-  //     : unknown),
-  : NiceStagePoint<
+  ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
@@ -4270,6 +4137,7 @@ export class Point0<
       _middlewares: [...this._middlewares, middleware],
     }) as never
   }
+
   // prefetch mode
 
   onPrefetchPage(
@@ -4704,63 +4572,6 @@ export class Point0<
     }) as never
   }
 
-  // loader<TNewServerLoaderOutput extends LoaderOutput = EmptyData>(
-  //   loaderFn: TLetsReadyPointType extends 'mutation' | 'action'
-  //     ? LoaderResponseFn<
-  //         TCtx,
-  //         TCtxExposedKeys,
-  //         TServerLoaderOutput,
-  //         TServerInputSchema,
-  //         TParamsSchema,
-  //         TSearchSchema,
-  //         TBodySchema,
-  //         THeadersSchema,
-  //         TCookiesSchema,
-  //         'endpoint',
-  //         TError,
-  //         TNewServerLoaderOutput
-  //       > &
-  //         AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>
-  //     : // AssertNotUnknownLoaderOutput<TNewServerLoaderOutput>
-  //       LoaderDataFn<
-  //         TCtx,
-  //         TCtxExposedKeys,
-  //         TServerLoaderOutput,
-  //         TServerInputSchema,
-  //         TParamsSchema,
-  //         TSearchSchema,
-  //         TBodySchema,
-  //         THeadersSchema,
-  //         TCookiesSchema,
-  //         'endpoint',
-  //         TError,
-  //         TNewServerLoaderOutput
-  //       > &
-  //         AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>, // AssertNotUnknownLoaderOutput<TNewServerLoaderOutput>
-  // ): NiceStagePoint<
-  //   TNewServerLoaderOutput extends Response ? 'clientStage' : 'serverStage',
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TError,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   IfNeverThen<TNewServerLoaderOutput, EmptyData>,
-  //   TClientLoaderOutput,
-  //   TMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   TParamsSchema,
-  //   TSearchSchema,
-  //   TBodySchema,
-  //   THeadersSchema,
-  //   TCookiesSchema,
-  //   // NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
-  //   TQueryResultType,
-  //   TOuterProps,
-  //   TInnerProps,
-  //   TQueriesDefinitions
-  // >
   loader<
     TLoaderResponseFn extends LoaderFn<
       TCtx,
@@ -4846,57 +4657,6 @@ export class Point0<
     }) as never
   }
 
-  // clientLoader<TNewClientLoaderOutput extends LoaderOutput = LoaderOutput>(
-  //   clientLoaderFn: TLetsReadyPointType extends 'mutation'
-  //     ? ClientLoaderResponseFn<
-  //         TClientInputSchema,
-  //         TParamsSchema,
-  //         TSearchSchema,
-  //         TServerLoaderOutput,
-  //         TClientLoaderOutput,
-  //         TNewClientLoaderOutput
-  //       > &
-  //         AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>
-  //     : ClientLoaderDataFn<
-  //         TClientInputSchema,
-  //         TParamsSchema,
-  //         TSearchSchema,
-  //         TServerLoaderOutput,
-  //         TClientLoaderOutput,
-  //         TNewClientLoaderOutput
-  //       > &
-  //         AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>,
-  // ): NiceStagePoint<
-  //   TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage', // response can happen only in mutation, so we not care about this happen in mountable
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TError,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   IfNeverThen<TNewClientLoaderOutput, EmptyData>,
-  //   TMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   TClientInputSchema,
-  //   TParamsSchema,
-  //   TSearchSchema,
-  //   TBodySchema,
-  //   THeadersSchema,
-  //   TCookiesSchema,
-  //   // NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
-  //   TQueryResultType,
-  //   TOuterProps,
-  //   TInnerProps,
-  //   TQueriesDefinitions // so here we not try to finalize query, becouse for mutation it is not needed at all, and in mountable can not happen becouse it can not return response
-  //   // WithSelfQueryIfShouldBeFinalized<
-  //   //   TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage',
-  //   //   TLetsReadyPointType,
-  //   //   TServerLoaderOutput,
-  //   //   TNewClientLoaderOutput,
-  //   //   TQueriesDefinitions
-  //   // >
-  // >
   clientLoader<
     TClientLoaderFn extends ClientLoaderFn<
       TClientInputSchema,
@@ -4932,7 +4692,6 @@ export class Point0<
     TBodySchema,
     THeadersSchema,
     TCookiesSchema,
-    // NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -5024,7 +4783,6 @@ export class Point0<
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
     return this._continue({
-      // _sameQueryPoint: null,
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
@@ -5033,70 +4791,6 @@ export class Point0<
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
   }
-
-  // too strange, just use usual mapper if you need it
-  // flatter<
-  //   TDataKey extends FinalLoaderMappedOutput<
-  //     TQueryResultType,
-  //     TServerLoaderOutput,
-  //     TClientLoaderOutput,
-  //     TMapperOutput
-  //   > extends { pages: Array<Record<infer TAnyDataKey, any>> }
-  //     ? Extract<TAnyDataKey, string>
-  //     : never,
-  // >(
-  //   dataKey: TDataKey,
-  // ): NiceStagePoint<
-  //   TPointType,
-  //   ReadyPointTypeOrNever<TLetsReadyPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput> extends {
-  //     pages: Array<Record<any, any>>
-  //   }
-  //     ? {
-  //         flattened: FinalLoaderMappedOutput<
-  //           TQueryResultType,
-  //           TServerLoaderOutput,
-  //           TClientLoaderOutput,
-  //           TMapperOutput
-  //         >['pages'][number][TDataKey]
-  //         original: FinalLoaderMappedOutput<
-  //           TQueryResultType,
-  //           TServerLoaderOutput,
-  //           TClientLoaderOutput,
-  //           TMapperOutput
-  //         >
-  //       }
-  //     : never,
-  //   TRouteDefinition,
-  //   TPrevRouteDefinition,
-  //   TInputSchema,
-  //   TQueryResultType,
-  //   TProps
-  // > {
-  //   return this._continue({
-  //     _mapperFns: [
-  //       ...this._mapperFns,
-  //       ({
-  //         data,
-  //       }: {
-  //         data: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput>
-  //       }) => {
-  //         if (typeof data !== 'object' || !('pages' in data) || !Array.isArray(data.pages)) {
-  //           throw new Error(`Flatter can be called only on infinite query data`)
-  //         }
-  //         return {
-  //           flattened: data.pages.flatMap((page) => page[dataKey]),
-  //           original: data,
-  //         }
-  //       },
-  //     ] as never,
-  //   }) as never
-  // }
 
   head(
     head:
@@ -7865,39 +7559,6 @@ export class Point0<
     })
   }
 
-  // private static _isReadyPointType(pointType: PointType): boolean {
-  //   return (
-  //     pointType === 'root' ||
-  //     pointType === 'base' ||
-  //     pointType === 'page' ||
-  //     pointType === 'layout' ||
-  //     pointType === 'plugin' ||
-  //     pointType === 'query' ||
-  //     pointType === 'infiniteQuery' ||
-  //     pointType === 'mutation' ||
-  //     pointType === 'component' ||
-  //     pointType === 'provider'
-  //   )
-  // }
-  // private _isReadyPoint(): boolean {
-  //   return Point0._isReadyPointType(this.type)
-  // }
-  // private static _isQueryableReadyPointType(pointType: PointType): boolean {
-  //   return (
-  //     pointType === 'query' ||
-  //     pointType === 'infiniteQuery' ||
-  //     pointType === 'page' ||
-  //     pointType === 'layout' ||
-  //     pointType === 'component' ||
-  //     pointType === 'provider'
-  //   )
-  // }
-  // private _isQueryableReadyPoint(): boolean {
-  //   return Point0._isQueryableReadyPointType(this._letsReadyPointType || this.type)
-  // }
-  // private _normalizeQueryResultType(newQueryResultType: QueryResultType): QueryResultType | UndefinedQueryResultType {
-  //   return this._isQueryableReadyPoint() ? (this._queryResultType ?? newQueryResultType) : this._queryResultType
-  // }
   private static _isMountablePointType(pointType: PointType): boolean {
     return pointType === 'page' || pointType === 'layout' || pointType === 'component' || pointType === 'provider'
   }
@@ -7920,50 +7581,10 @@ export class Point0<
       provider: 'page' as const,
     }[this.type as MountablePointType]
   }
-  // private _getLoadingComponent(): LoadingComponentType<any> {
-  //   const variant = this._getDestinationComponentVariant()
-  //   return (
-  //     this._loadingComponent ??
-  //     (variant
-  //       ? ({
-  //           page: this._pageLoadingComponent,
-  //           component: this._componentLoadingComponent,
-  //           layout: this._layoutLoadingComponent,
-  //         }[variant] ?? Point0.DefaultLoadingComponent)
-  //       : Point0.DefaultLoadingComponent)
-  //   )
-  // }
-  // private _getErrorComponent(): ErrorComponentType<any> {
-  //   const variant = this._getDestinationComponentVariant()
-  //   return (
-  //     this._errorComponent ??
-  //     (variant
-  //       ? ({
-  //           page: this._pageErrorComponent,
-  //           component: this._componentErrorComponent,
-  //           layout: this._layoutErrorComponent,
-  //         }[variant] ?? Point0.DefaultErrorComponent)
-  //       : Point0.DefaultErrorComponent)
-  //   )
-  // }
 
   _hasClientLoader(): boolean {
     return this._clientExecuteActions.length > 0 && this._clientExecuteActions.some((fn) => fn.type === 'loader')
   }
-
-  // private _hasClientAsyncLoader(): boolean {
-  //   return (
-  //     this._clientExecuteActions.length > 0 &&
-  //     this._clientExecuteActions.some((fn) => fn.type === 'loader' && fn.fn.constructor.name === 'AsyncFunction')
-  //   )
-  // }
-
-  // private _getRouteForce(): CallableRoute<NonNullable<TRouteDefinition>> {
-  //   if (!this.route) {
-  //     throw new Error(`No client route provided for this point. Name: ${this.name}.`)
-  //   }
-  //   return this.route as CallableRoute<NonNullable<TRouteDefinition>>
-  // }
 
   // private _generateComponentDisplayName(options?: {
   //   index?: number | undefined
@@ -8115,12 +7736,10 @@ export class Point0<
   private async _executeClientAsync({
     serverData,
     serverResponse,
-    // location: providedLocation,
     input,
   }: {
     serverData: Data | undefined
     serverResponse: Response | undefined
-    // location?: AnyLocation
     input: InputRaw<TClientInputSchema>
   }): Promise<{
     clientData: Data | undefined
@@ -8306,9 +7925,6 @@ export class Point0<
     const [input = {}, queryOptions, { fetchOptions } = {}] = args
     const serverQueryEnabled = !!this._hasServerLoader
     const clientQueryEnabled = this._hasClientLoader()
-    // if (this._queryResultType === 'infiniteQuery') {
-    //   throw new Error(`It is not a finite query on point ${this.toStringWithLocation()} `)
-    // }
     if (!serverQueryEnabled && !clientQueryEnabled) {
       return { data: {}, query: undefined, clientQuery: undefined } as never
     }
@@ -8407,9 +8023,6 @@ export class Point0<
     const [input = {}, infiniteQueryOptions, { fetchOptions } = {}] = args
     const serverQueryEnabled = !!this._hasServerLoader
     const clientQueryEnabled = this._hasClientLoader()
-    // if (this._queryResultType !== 'infiniteQuery') {
-    //   throw new Error(`It is not an infinite query on point ${this.toStringWithLocation()} `)
-    // }
     if (!serverQueryEnabled && !clientQueryEnabled) {
       return { data: {}, query: undefined, clientQuery: undefined } as never
     }
@@ -8509,7 +8122,6 @@ export class Point0<
           return (input as any).body
         }
         if ((input as any).body instanceof FormData) {
-          // headers.set('Content-Type', 'multipart/form-data')
           return (input as any).body
         }
         const currentHeadersContentType = headers.get('Content-Type')
@@ -8546,7 +8158,6 @@ export class Point0<
             }
           }
         }
-        // headers.set('Content-Type', 'multipart/form-data')
         return formData
       } else {
         headers.set('Content-Type', 'application/json')
@@ -8775,23 +8386,6 @@ export class Point0<
           const dehydratedState = deserializeErrorsInDehydratedState(freshDehydratedState, this._Error)
           data.dehydratedState = dehydratedState
         }
-        // if (res.headers.get('X-Point0-Redirect') === 'true') {
-        //   const redirect = RedirectTask.from(json)
-        //   const result = {
-        //     response: res,
-        //     data: undefined,
-        //     redirect,
-        //     error: undefined,
-        //     output: undefined,
-        //   } as Extract<FetchServerDetailedOutput<TServerLoaderOutput, TError>, { error: undefined }>
-        //   const eventData = {
-        //     ..._eventData,
-        //     ...result,
-        //   }
-        //   this._emit('pointFetchServerSettled', eventData)
-        //   this._emit('pointFetchServerSuccess', eventData)
-        //   return result
-        // } else {
         const result = {
           response: res,
           error: undefined,
@@ -8814,7 +8408,6 @@ export class Point0<
         this._emit('pointFetchServerSettled', eventData)
         this._emit('pointFetchServerSuccess', eventData)
         return result
-        // }
       }
       const error0 = this._Error.from(data)
       error0.status = res.status
@@ -9236,11 +8829,9 @@ export class Point0<
   private _getClientQueryOptions({
     input = {} as never,
     queryOptions,
-    // location,
     serverData,
   }: {
     input: InputRaw
-    // location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
     serverData?: Data
   }): UseQueryOptions<
@@ -9263,7 +8854,6 @@ export class Point0<
       try {
         const { clientData } = await this._executeClientAsync({
           serverData,
-          // location,
           input: input as InputRaw<TClientInputSchema>,
           serverResponse: undefined,
         })
@@ -9332,13 +8922,11 @@ export class Point0<
 
   private _getCombinedQueryOptions({
     input = {} as never,
-    // location,
     queryClient = _ss.__POINT0_QUERY_CLIENT__.get(),
     queryOptions,
     fetchOptions,
   }: {
     input: InputRaw
-    // location?: AnyLocation
     queryClient?: QueryClient
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
@@ -9379,7 +8967,6 @@ export class Point0<
         const clientOpts = this._getClientQueryOptions({
           input: input as never,
           queryOptions,
-          // location,
           serverData: serverData as never,
         })
         const data = await queryClient.fetchQuery(clientOpts as any)
@@ -9472,7 +9059,6 @@ export class Point0<
           >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
-            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
             outputType?: FetchServerOutputType
@@ -9490,7 +9076,6 @@ export class Point0<
           >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
-            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
             outputType?: FetchServerOutputType
@@ -9513,14 +9098,12 @@ export class Point0<
         queryClient,
         queryOptions,
         fetchOptions,
-        // location,
       }) as never
     }
     if (hasClientLoader && (mode === 'client' || mode === 'serverAndClient')) {
       return this._getClientQueryOptions({
         input: input as never,
         queryOptions,
-        // location,
       }) as never
     }
     if (hasServerLoader && (mode === 'server' || mode === 'serverAndClient')) {
@@ -9687,11 +9270,9 @@ export class Point0<
     input = {} as never,
     infiniteQueryOptions,
     serverData,
-    // location,
   }: {
     input: InputRaw
     serverData?: Data
-    // location?: AnyLocation
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
@@ -9724,7 +9305,6 @@ export class Point0<
         const inputWithPageParam = this._toInputWithPageParam({ input, pageParam })
         const { clientData } = await this._executeClientAsync({
           serverData,
-          // location,
           serverResponse: undefined,
           input: inputWithPageParam as InputRaw<TClientInputSchema>,
         })
@@ -9737,14 +9317,6 @@ export class Point0<
         this._emit('pointInfiniteQuerySuccess', eventData)
         return clientData
       } catch (error) {
-        // const error0 = this._Error.from(error)
-        // const eventData = {
-        //   ..._eventData,
-        //   error: error0,
-        // }
-        // this._emit('pointInfiniteQuerySettled', eventData)
-        // this._emit('pointInfiniteQueryError', eventData)
-        // throw error0
         const error0 = this._Error.from(error)
         if (error0.redirect) {
           const eventData = {
@@ -9796,11 +9368,9 @@ export class Point0<
     input = {} as never,
     infiniteQueryOptions,
     fetchOptions,
-    // location,
     queryClient,
   }: {
     input: InputRaw
-    // location?: AnyLocation
     fetchOptions?: FetchOptions | undefined
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
@@ -9876,7 +9446,6 @@ export class Point0<
           input: input as never,
           serverData: serverData as never,
           infiniteQueryOptions,
-          // location,
         })
         const clientData = await (clientOpts as any).queryFn({ ...input, pageParam })
         const eventData = {
@@ -9888,14 +9457,6 @@ export class Point0<
         this._emit('pointInfiniteQuerySuccess', eventData)
         return clientData
       } catch (error) {
-        // const error0 = this._Error.from(error)
-        // const eventData = {
-        //   ..._eventData,
-        //   error: error0,
-        // }
-        // this._emit('pointInfiniteQuerySettled', eventData)
-        // this._emit('pointInfiniteQueryError', eventData)
-        // throw error0
         const error0 = this._Error.from(error)
         if (error0.redirect) {
           const eventData = {
@@ -9980,7 +9541,6 @@ export class Point0<
               >
             | undefined,
           options?: {
-            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
             outputType?: FetchServerOutputType
@@ -10014,7 +9574,6 @@ export class Point0<
               >
             | undefined,
           options?: {
-            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
             outputType?: FetchServerOutputType
@@ -10038,14 +9597,12 @@ export class Point0<
         infiniteQueryOptions,
         fetchOptions,
         queryClient,
-        // location,
       }) as never
     }
     if (hasClientLoader && (mode === 'client' || mode === 'serverAndClient')) {
       return this._getClientInfiniteQueryOptions({
         input: input as never,
         infiniteQueryOptions,
-        // location,
       }) as never
     }
     if (hasServerLoader && (mode === 'server' || mode === 'serverAndClient')) {
@@ -10077,17 +9634,14 @@ export class Point0<
   private _useClientQuery({
     input = {} as never,
     queryOptions,
-    // location,
   }: {
     input: InputRaw
-    // location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
   }): UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, TError> {
     return useQuery(
       this._getClientQueryOptions({
         input,
         queryOptions,
-        // location,
       }),
     )
   }
@@ -10095,11 +9649,9 @@ export class Point0<
   private _useCombinedQuery({
     input = {} as never,
     queryOptions,
-    // location,
     fetchOptions,
   }: {
     input: InputRaw
-    // location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
   }): UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, TError> {
@@ -10108,7 +9660,6 @@ export class Point0<
       this._getCombinedQueryOptions({
         input,
         queryOptions,
-        // location,
         queryClient,
         fetchOptions,
       }),
@@ -10147,10 +9698,8 @@ export class Point0<
   private _useClientInfiniteQuery({
     input = {} as never,
     infiniteQueryOptions: providedInfiniteQueryOptions,
-    // location,
   }: {
     input: InputRaw
-    // location?: AnyLocation
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
@@ -10165,7 +9714,6 @@ export class Point0<
     const infiniteQueryOptions = this._getClientInfiniteQueryOptions({
       input,
       infiniteQueryOptions: providedInfiniteQueryOptions,
-      // location,
     })
     return useInfiniteQuery(infiniteQueryOptions) as never
   }
@@ -10174,10 +9722,8 @@ export class Point0<
     input = {} as never,
     infiniteQueryOptions: providedInfiniteQueryOptions,
     fetchOptions,
-    // location,
   }: {
     input: InputRaw
-    // location?: AnyLocation
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
@@ -10195,7 +9741,6 @@ export class Point0<
       input,
       infiniteQueryOptions: providedInfiniteQueryOptions,
       queryClient,
-      // location,
       fetchOptions,
     })
     return useInfiniteQuery(infiniteQueryOptions) as never
@@ -10386,23 +9931,6 @@ export class Point0<
     return (this.fetchQuery as (...args: any[]) => never)(input, fetchOptions)
   }
 
-  // async _callPrefetchFns({ preventPrefetchFns }: { preventPrefetchFns?: boolean | OnPrefetchFn[] }): Promise<void> {
-  //   const prefetchFns =
-  //     preventPrefetchFns === true ? new Set<OnPrefetchFn>() : new Set<OnPrefetchFn>([...this._onPrefetchMountableFns])
-  //   if (Array.isArray(preventPrefetchFns)) {
-  //     for (const fn of preventPrefetchFns) {
-  //       if (prefetchFns.has(fn)) {
-  //         prefetchFns.delete(fn)
-  //       }
-  //     }
-  //   }
-  //   await Promise.all(
-  //     Array.from(prefetchFns).map(async (fn) => {
-  //       await fn()
-  //     }),
-  //   )
-  // }
-
   private _prepareFetchQuery({
     input,
     mode,
@@ -10410,7 +9938,6 @@ export class Point0<
     queryOptions: providedQueryOptions,
     fetchOptions,
     outputType,
-    // location,
   }: {
     input: InputRaw
     mode: QueryMode
@@ -10418,7 +9945,6 @@ export class Point0<
     queryOptions?: ExtraUseQueryOptions
     fetchOptions?: FetchOptions
     outputType?: FetchServerOutputType
-    // location?: AnyLocation
   }):
     | false
     | {
@@ -10442,7 +9968,6 @@ export class Point0<
     }
     const queryClient = providedQueryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
     const queryOptions = this.getQueryOptions(input as never, providedQueryOptions, {
-      // location,
       queryClient,
       fetchOptions,
       outputType,
@@ -10473,7 +9998,6 @@ export class Point0<
           >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
-            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -10493,7 +10017,6 @@ export class Point0<
           >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
-            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -10523,7 +10046,6 @@ export class Point0<
   > {
     const [input = {}, providedQueryOptions, options = {}] = args
     const {
-      // location,
       queryClient: providedQueryClient,
       fetchOptions,
       outputType,
@@ -10538,7 +10060,6 @@ export class Point0<
       queryOptions: providedQueryOptions,
       fetchOptions,
       outputType,
-      // location,
     })
     if (!preparedFetch) {
       return undefined as never
@@ -10573,7 +10094,6 @@ export class Point0<
           >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
-            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -10592,7 +10112,6 @@ export class Point0<
           >,
           queryOptions?: ExtraUseQueryOptions | undefined,
           options?: {
-            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -10602,14 +10121,7 @@ export class Point0<
         ]
   ): Promise<void> {
     const [input = {}, providedQueryOptions, options = {}] = args
-    const {
-      // location,
-      queryClient: providedQueryClient,
-      fetchOptions,
-      outputType,
-      force,
-      mode = 'serverAndClient',
-    } = options
+    const { queryClient: providedQueryClient, fetchOptions, outputType, force, mode = 'serverAndClient' } = options
     const preparedFetch = this._prepareFetchQuery({
       input,
       mode,
@@ -10617,7 +10129,6 @@ export class Point0<
       queryOptions: providedQueryOptions,
       fetchOptions,
       outputType,
-      // location,
     })
     if (!preparedFetch) {
       return
@@ -10626,7 +10137,6 @@ export class Point0<
     if (cacheData && !force) {
       return
     }
-    // await Promise.all([this._callPrefetchFns({ preventPrefetchFns }), queryClient.prefetchQuery(queryOptions as never)])
     await queryClient.prefetchQuery(queryOptions as never)
   }
 
@@ -10637,7 +10147,6 @@ export class Point0<
     infiniteQueryOptions: providedInfiniteQueryOptions,
     fetchOptions,
     outputType,
-    // location,
   }: {
     input: InputRaw
     mode: QueryMode
@@ -10645,7 +10154,6 @@ export class Point0<
     infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<any, any, any, any, any, any>
     fetchOptions?: FetchOptions
     outputType?: FetchServerOutputType
-    // location?: AnyLocation
   }):
     | false
     | {
@@ -10669,7 +10177,6 @@ export class Point0<
     }
     const queryClient = providedQueryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
     const infiniteQueryOptions = this.getInfiniteQueryOptions(input as never, providedInfiniteQueryOptions, {
-      // location,
       queryClient,
       fetchOptions,
       outputType,
@@ -10716,7 +10223,6 @@ export class Point0<
               >
             | undefined,
           options?: {
-            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -10752,7 +10258,6 @@ export class Point0<
               >
             | undefined,
           options?: {
-            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -10782,7 +10287,6 @@ export class Point0<
   > {
     const [input = {}, providedInfiniteQueryOptions, options = {}] = args
     const {
-      // location,
       queryClient: providedQueryClient,
       fetchOptions,
       outputType,
@@ -10797,7 +10301,6 @@ export class Point0<
       infiniteQueryOptions: providedInfiniteQueryOptions,
       fetchOptions,
       outputType,
-      // location,
     })
     if (!preparedFetch) {
       return undefined as never
@@ -10848,7 +10351,6 @@ export class Point0<
               >
             | undefined,
           options?: {
-            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -10883,7 +10385,6 @@ export class Point0<
               >
             | undefined,
           options?: {
-            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -10893,14 +10394,7 @@ export class Point0<
         ]
   ): Promise<void> {
     const [input = {}, providedInfiniteQueryOptions, options = {}] = args
-    const {
-      // location,
-      queryClient: providedQueryClient,
-      fetchOptions,
-      outputType,
-      force,
-      mode = 'serverAndClient',
-    } = options
+    const { queryClient: providedQueryClient, fetchOptions, outputType, force, mode = 'serverAndClient' } = options
     const preparedFetch = this._prepareFetchInfiniteQuery({
       input,
       mode,
@@ -10908,7 +10402,6 @@ export class Point0<
       infiniteQueryOptions: providedInfiniteQueryOptions,
       fetchOptions,
       outputType,
-      // location,
     })
     if (!preparedFetch) {
       return
@@ -10917,10 +10410,6 @@ export class Point0<
     if (cacheData && !force) {
       return
     }
-    // await Promise.all([
-    //   this._callPrefetchFns({ preventPrefetchFns }),
-    //   queryClient.prefetchInfiniteQuery(infiniteQueryOptions as never),
-    // ])
     await queryClient.prefetchInfiniteQuery(infiniteQueryOptions as never)
   }
 
@@ -10969,7 +10458,6 @@ export class Point0<
   }: {
     input: InputRaw
     options: {
-      // location?: AnyLocation
       queryClient?: QueryClient
       fetchOptions?: FetchOptions
       force?: boolean
@@ -10985,7 +10473,6 @@ export class Point0<
       options,
       error: undefined,
     }
-    // const { location: providedLocation, queryClient, fetchOptions, force, trigger } = options
     const { queryClient, fetchOptions, force, trigger } = options
     const policy = this._getPrefetchPagePolicy(trigger, options.policy)
     if (policy === 'none') {
@@ -10999,16 +10486,9 @@ export class Point0<
       this._emit('pointPrefetchPageError', { ...eventData, error })
       throw error
     }
-    // const location = providedLocation ?? this.route.getLocation(this.route.get(input))
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { '?': _search, ...paramsRaw } = input as Record<string, unknown>
     const paramsWithStrings = flat0.parse(flat0.stringify(paramsRaw))
-    // const location =
-    //   providedLocation ??
-    //   Object.assign(Route0.getLocation(this.route.get(input)), {
-    //     route: this.route.definition,
-    //     params,
-    //   })
     const location = Object.assign(
       Route0.getLocation(this.route.get(input, typeof window !== 'undefined' ? window.location.origin : undefined)),
       {
@@ -11087,7 +10567,6 @@ export class Point0<
             relatedQuery.queryOptions as never,
             {
               queryClient,
-              // location,
               fetchOptions,
               force,
               mode,
@@ -11099,7 +10578,6 @@ export class Point0<
             relatedQuery.queryOptions as never,
             {
               queryClient,
-              // location,
               fetchOptions,
               force,
               mode,
@@ -11140,7 +10618,6 @@ export class Point0<
         if (p._queryResultType === 'infiniteQuery') {
           return await p.prefetchInfiniteQuery(inputHere as never, undefined, {
             queryClient,
-            // location,
             fetchOptions,
             force,
             mode,
@@ -11148,7 +10625,6 @@ export class Point0<
         } else {
           return await p.prefetchQuery(inputHere as never, undefined, {
             queryClient,
-            // location,
             fetchOptions,
             force,
             mode,
@@ -11188,7 +10664,6 @@ export class Point0<
             TBodySchema
           >,
           options?: {
-            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -11206,7 +10681,6 @@ export class Point0<
             TBodySchema
           >,
           options?: {
-            // location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
             force?: boolean
@@ -12222,9 +11696,6 @@ export class Point0<
   }
 
   getValue(
-    // ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-    //   ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
-    //   : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
     input?: FinalInputRawOrUndefined<
       TPointType,
       TServerInputSchema,
@@ -12247,9 +11718,6 @@ export class Point0<
   }
 
   getValueWeak(
-    // ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-    //   ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
-    //   : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
     input?: FinalInputRawOrUndefined<
       TPointType,
       TServerInputSchema,
@@ -12382,7 +11850,6 @@ export class Point0<
     preventEmitError = false,
   ) {
     const event = { name, data, side: _point0_env.side.name } as AnyEventerEvent<TError>
-    // const logger = getLogFnForPoint(this)
     for (const subscription of this._eventerSubscriptions) {
       if (subscription.side && subscription.side !== event.side) {
         continue

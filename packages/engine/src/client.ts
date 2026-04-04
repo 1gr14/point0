@@ -262,7 +262,6 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     }
     this.setEnvVars({ nodeEnvFallback: undefined })
 
-    // const devServersStart = performance.now()
     const [{ bunViteDevServer, viteDevServer }, bunNativeDevServer] = await Promise.all([
       this.viteConfig && process.env.NODE_ENV !== 'production'
         ? preventDevServer
@@ -405,6 +404,7 @@ plugins = [${combinedPluginsStrings.map((p) => `"${p}"`).join(', ')}]
 `
 
     // This broke everything, I do not know why, so hmr will be always enabled for now
+    // please do not try this... Very hard to debug...
     // development: {
     //   hmr: ${this.hmrPort ? 'true' : 'false'},
     // },
@@ -421,10 +421,6 @@ try {
   }
   const bunServer = Bun.serve({
     port: ${this.port},
-    development: {
-      console: false,
-      hmr: true,
-    },
     routes: {
       '/index.html': indexHtml,
     },
@@ -893,9 +889,6 @@ try {
         define: {
           ...thisBunBuildConfig.define,
           ...providedBunBuildConfig.define,
-          // 'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-          // 'process.env.Target': JSON.stringify('client'),
-          // 'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
           ...Object.fromEntries(
             Object.entries(envConstsWithBuilt).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
           ),
@@ -1000,29 +993,6 @@ try {
         },
         define: {
           ...loadedViteConfig.define,
-
-          // ...Object.fromEntries(
-          //   Object.entries({ ...this.envVars, ...this.envConsts }).map(([key, value]) => [
-          //     `process.env.${key}`,
-          //     JSON.stringify(value),
-          //   ]),
-          // ),
-          // ...Object.fromEntries(
-          //   Object.entries({ ...this.envVars, ...this.envConsts }).map(([key, value]) => [
-          //     `import.meta.env.${key}`,
-          //     JSON.stringify(value),
-          //   ]),
-          // ),
-
-          // 'process.env': JSON.stringify({ ...this.envVars, ...this.envConsts }),
-
-          // 'process.env': {
-          //   ...Object.fromEntries(
-          //     Object.entries(this.envVars).map(([key, value]) => [key, `globalThis.__POINT0_ENV_VARS__['${key}']`]),
-          //   ),
-          //   ...Object.fromEntries(Object.entries(this.envConsts).map(([key, value]) => [key, JSON.stringify(value)])),
-          // },
-
           ...Object.fromEntries(
             Object.entries(envVarsWithBuild).map(([key]) => [
               `process.env.${key}`,
@@ -1032,8 +1002,6 @@ try {
           ...Object.fromEntries(
             Object.entries(envConstsWithBuilt).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
           ),
-
-          // 'process.env.POINT0_BUILT': JSON.stringify('true'),
         },
       }
 

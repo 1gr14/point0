@@ -270,24 +270,6 @@ export class Effects {
     return Effects.apply(response, this.values)
   }
 
-  // static get(): Effects {
-  //   if (!_point0_env.side.is.server) {
-  //     throw new Error(
-  //       'You can not get effects not in server. Please call Effects.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
-  //     )
-  //   }
-  //   const effects = _ss.__POINT0_EFFECTS__.get()
-  //   return effects
-  // }
-
-  // static getWeak(): Effects | undefined {
-  //   try {
-  //     return _ss.__POINT0_EFFECTS__.get()
-  //   } catch {
-  //     return undefined
-  //   }
-  // }
-
   static encodeCookieName = (name: string): string => {
     return encodeURIComponent(name)
       .replace(/%(2[346B]|5E|60|7C)/g, decodeURIComponent)

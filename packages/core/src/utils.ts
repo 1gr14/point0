@@ -35,40 +35,6 @@ export type ParsedUrl = {
   urlStr: string
 }
 
-// export const getOriginFromBaseurlOrNull = (baseurl: string | null | undefined): string | null => {
-//   if (!baseurl) {
-//     return null
-//   }
-//   if (/^https?:\/\//.test(baseurl)) {
-//     return new URL(baseurl).origin
-//   }
-//   return null
-// }
-
-// export const getHostOrNull = (baseurl: string | null | undefined): string | null => {
-//   if (!baseurl) {
-//     return null
-//   }
-//   if (/^https?:\/\//.test(baseurl)) {
-//     return new URL(baseurl).host
-//   }
-//   return null
-// }
-
-// export const getBasepathOrNull = (baseurl: string | null | undefined): string | null => {
-//   if (!baseurl) {
-//     return null
-//   }
-//   if (/^https?:\/\//.test(baseurl)) {
-//     return new URL(baseurl).pathname
-//   }
-//   return baseurl
-// }
-
-// export const dedupeSlashes = (path: string) => {
-//   return path.replace(/\/\/+/g, '/')
-// }
-
 export const prependAndDeappendSlash = <T extends string | undefined | null>(path: T): T => {
   if (!path) {
     return undefined as T
@@ -78,34 +44,6 @@ export const prependAndDeappendSlash = <T extends string | undefined | null>(pat
   result = result.replace(/\/$/, '')
   return result as T
 }
-
-// export const prependAndAppendSlash = <T extends string | undefined | null>(path: T): T => {
-//   if (!path) {
-//     return undefined as T
-//   }
-//   return (prependAndDeappendSlash(path) + '/') as T
-// }
-
-// export const appendSlash = <T extends string | undefined | null>(path: T): T => {
-//   if (!path) {
-//     return undefined as T
-//   }
-//   return (path + '/').replace(/\/\/+/g, '/') as T
-// }
-
-// export const deprependSlash = <T extends string | undefined | null>(path: T): T => {
-//   if (!path) {
-//     return undefined as T
-//   }
-//   return path.replace(/^\/+/, '') as T
-// }
-
-// export const deappendSlash = <T extends string | undefined | null>(path: T): T => {
-//   if (!path) {
-//     return undefined as T
-//   }
-//   return path.replace(/\/+$/, '') as T
-// }
 
 export const windowScrollPositionGetter: ScrollPositionGetter = () => {
   if (typeof window === 'undefined' || typeof document === 'undefined') {

@@ -92,11 +92,6 @@ export class PointsManager<
       }
     }
     const duplicates = checks.filter((c) => c.duplicates.length > 0).map((c) => [c.first, ...c.duplicates])
-    // for (const duplicateCheck of duplicatesChecks) {
-    //   console.error(
-    //     `Duplicate points found: ${[duplicateCheck.first, ...duplicateCheck.duplicates].map((r) => PointsManager.recordToString(r)).join(', ')}`,
-    //   )
-    // }
     if (duplicates.length > 0) {
       throw new Error(
         'Duplicate points found:\n' +
@@ -167,12 +162,6 @@ export class PointsManager<
     this.root = this.collection.at(0)?.point as RootPoint
     this.scope = this.root.scope
     return this as PointsManager<true, TRequiredCtx, TError>
-    // return new PointsManager<true, TRequiredCtx>({
-    //   root: this.root,
-    //   scope: this.root.scope,
-    //   collection: readyPoints,
-    //   ready: true,
-    // })
   }
 
   static toNormalizedPointsCollection(

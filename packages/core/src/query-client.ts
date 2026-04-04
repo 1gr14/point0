@@ -19,11 +19,9 @@ export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, Dehydrated
     dehydrate: (queryClient) => {
       const dehydratedStateOriginal = dehydrate(queryClient, {
         shouldDehydrateQuery: () => {
-          // This will include all queries, including failed ones
           return true
         },
       })
-      // const clientPoints = ClientPoints.getInstance()
       const clientPoints = getClientPoints()
       const ErrorClass = clientPoints.manager.root._Error
       const dehydratedState = serializeErrorsInDehydratedState(dehydratedStateOriginal, ErrorClass)
@@ -37,7 +35,6 @@ export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, Dehydrated
     },
     hydrate: (originalDehydratedState, createQueryClient) => {
       const freshDehydratedState = forceFreshDehydratedState(originalDehydratedState)
-      // const clientPoints = ClientPoints.getInstance()
       const clientPoints = getClientPoints()
       const ErrorClass = clientPoints.manager.root._Error
       const dehydratedState = deserializeErrorsInDehydratedState(freshDehydratedState, ErrorClass)
@@ -244,58 +241,7 @@ export const findRedirectTaskInQueryClientCache = (
   const input = { ...pageLocation.params, ...(pageLocation.searchString ? { '?': pageLocation.search } : {}) }
   const inputTransformed = clientPoints.transformer.stringify(input)
 
-  // [
-  //   'point0',
-  //   this.scope,
-  //   this.type,
-  //   this.name,
-  //   'server',
-  //   isInfiniteQuery ? 'infinite' : 'finite',
-  //   this._getTransformer().stringify(
-  //     this._rawInputToRoutedRawInputForQueryKey({ inputRaw: input as never }),
-  //   ) as string,
-  //   outputType,
-  // ]
-
-  // TODO: find location by to, and thenby location input find needed queryCleintState query or  redirectQuery
-  // const query = cache.findAll().find(isQueryClientDehydratedStateQuery)
-  // if (!query) {
-  //   return undefined
-  // }
-  // const dehydratedState = (query.state.data as { dehydratedState: DehydratedState | undefined }).dehydratedState
-  // if (!dehydratedState) {
-  //   return undefined
-  // }
-  // for (const q of dehydratedState.queries) {
-  //   const maybeRedirect = (q.state.error as Record<string, unknown> | null)?.redirect
-  //   const redirect = maybeRedirect instanceof RedirectTask ? maybeRedirect : undefined
-  //   if (redirect) {
-  //     if (redirect.to === to) {
-  //       return redirect
-  //     }
-  //   }
-  // }
-  // return undefined
   for (const query of cache.findAll()) {
-    // if (isQueryClientDehydratedStateQuery(query)) {
-    //   if (query.queryKey[3] !== page.name) {
-    //     continue
-    //   }
-    //   if (query.queryKey[6] !== inputTransformed) {
-    //     continue
-    //   }
-    //   const dehydratedState = (query.state.data as { dehydratedState: DehydratedState | undefined } | undefined)
-    //     ?.dehydratedState
-    //   if (dehydratedState) {
-    //     for (const q of dehydratedState.queries) {
-    //       const maybeRedirect = (q.state.error as Record<string, unknown> | null)?.redirect
-    //       const redirect = maybeRedirect instanceof RedirectTask ? maybeRedirect : undefined
-    //       if (redirect) {
-    //         return redirect
-    //       }
-    //     }
-    //   }
-    // }
     if (isQueryClientDehydratedStateRedirectQuery(query)) {
       if (query.queryKey[3] !== page.name) {
         continue

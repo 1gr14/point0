@@ -55,14 +55,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     engine,
     request,
     requiredCtx,
-    // serverExecuteActionsWithOutput,
     serverStorageState,
     effects,
   }: {
     engine: Engine<RequiredCtx, TError, true>
     request: Request0<any, TError>
     requiredCtx: TRequiredCtx
-    // serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
     serverStorageState: SuperStoreInternalValues
     effects: Effects
   }) {
@@ -70,7 +68,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     this.request = request
     this.effects = effects
     this.requiredCtx = requiredCtx
-    // this.serverExecuteActionsWithOutput = serverExecuteActionsWithOutput
     this.serverStorageState = serverStorageState
   }
 
@@ -103,7 +100,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       __POINT0_SSR_REDIRECT_TASK__: undefined,
       __POINT0_IS_SSR_IN_PROGRESS__: false,
       __POINT0_CURRENT_LOCATION__: new Error('Current location will exists only on ssr phase') as never,
-      // __POINT0_NAVIGATION_CONTEXT__: new Error('Navigation context will exists only on ssr phase') as never,
       __POINT0_NAVIGATION_HELPERS__: new Error('Navigation helpers will exists only on ssr phase') as never,
       __POINT0_NAVIGATION_PAGE_STATE__: new Error('Navigation page state will exists only on ssr phase') as never,
       __POINT0_CURRENT_NAVIGATE_ID__: new Error('Current navigate id will exists only on ssr phase') as never,
@@ -120,7 +116,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       engine,
       request,
       requiredCtx,
-      // serverExecuteActionsWithOutput: [],
       effects,
       serverStorageState,
     })
@@ -249,16 +244,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     return { success: true, error: undefined }
   }
 
-  // async execute<
-  //   TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
-  // >(
-  //   point: TPoint,
-  //   ...args: TPoint['Infer']['IsServerInputOptional'] extends true
-  //     ? [input?: TPoint['Infer']['ServerInputRaw'], effects?: Effects]
-  //     : [input: TPoint['Infer']['ServerInputRaw'], effects?: Effects]
-  // ): Promise<
-  //   ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput'], TPoint['Infer']['Error']>
-  // >
   async execute<TPoint extends ReadyPoint | undefined, TErrorClass extends ClassLikeError0<ErrorPoint0>>({
     point,
     input,
@@ -270,22 +255,11 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       TPoint extends { Infer: { ServerLoaderOutput: LoaderOutput | UndefinedLoaderOutput } }
         ? TPoint['Infer']['ServerLoaderOutput']
         : UnknownData,
-      // TPoint extends NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
-      //   ? TPoint['Infer']['Error']
-      //   : unknown
       IfAnyThenElse<InstanceType<TErrorClass>, ErrorPoint0, InstanceType<TErrorClass>>
     >
   >
   async execute(
     ...args: [options: ExecuteOptions<any, ClassLikeError0<ErrorPoint0>>]
-    // | [
-    //     point:
-    //       | ReadyPoint
-    //       | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
-    //       | undefined,
-    //     input?: InputRaw,
-    //     effects?: Effects,
-    //   ]
   ): Promise<ServerExecuteResult<any, any, any>> {
     const {
       point,
@@ -305,11 +279,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       effects?: Effects
       ErrorClass: ClassLikeError0<ErrorPoint0>
     } => {
-      // if (args[0] === undefined || 'Infer' in args[0]) {
-      //   // so it is NiceReadyPoint provided like first argument
-      //   return { point: args[0]?.point, input: args[1] as InputRaw, effects: args[2] }
-      // }
-      // so it is ReadyPoint provided in object
       return {
         point: args[0].point,
         inputProvided: args[0].input,
@@ -318,9 +287,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         ErrorClass: args[0].ErrorClass,
       }
     })()
-    // const search = (point?.type === 'action' ? (input.search) : undefined) as Record<string, unknown>
-    // const params = (point?.type === 'action' ? (input.params) : undefined) as Record<string, unknown>
-    // const body = (point?.type === 'action' ? (input.body) : undefined) as Record<string, unknown>
     const { search, params, body, input } = (() => {
       if (_known) {
         return {
@@ -612,39 +578,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               break
             }
             case 'ctx': {
-              // const ex = this.serverExecuteActionsWithOutput.find(
-              //   (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'ctx',
-              // ) as ServerExecuteActionWithOutput<'ctx'> | undefined
-              // if (ex) {
-              //   if (Array.isArray(ex.output)) {
-              //     const appendCtxExposedKeys =
-              //       ex.output.length > 1 ? (ex.output.slice(1) as string[]) : Object.keys(ex.output[0])
-              //     currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
-              //     currentCtx = { ...currentCtx, ...ex.output[0] }
-              //     // eslint-disable-next-line @typescript-eslint/no-loop-func
-              //     currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
-              //   } else {
-              //     currentCtx = { ...currentCtx, ...ex.output }
-              //     // eslint-disable-next-line @typescript-eslint/no-loop-func
-              //     currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
-              //   }
-              // } else {
               const result = await serverExecuteAction.fn({
                 ...layers[0].ctxExposed,
                 ctx: { ...layers[0].ctx },
-                // execute: (
-                //   point:
-                //     | ReadyPoint
-                //     | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
-                //     | undefined,
-                //   input?: InputRaw,
-                // ) => {
-                //   return this.execute({ point, input, ErrorClass })
-                // },
                 request: this.request,
                 set: effects.set,
                 points: this.engine.server.points?.collection ?? [],
-                // point,
                 ...getParsed(),
               })
               if (result instanceof RedirectTask) {
@@ -660,60 +599,16 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 layer.ctx = { ...layer.ctx, ...result }
                 layer.ctxExposed = Object.fromEntries(layer.ctxExposedKeys.map((key) => [key, layer.ctx[key]]))
               })
-              // } else {
-              //   layers.forEach((layer) => {
-              //     layer.ctx = { ...layer.ctx, ...result }
-              //     layer.ctxExposed = Object.fromEntries(layer.ctxExposedKeys.map((key) => [key, layer.ctx[key]]))
-              //   })
-              // }
-              // this.serverExecuteActionsWithOutput.push({
-              //   output: result,
-              //   record: serverExecuteAction,
-              // })
-              // }
               break
             }
             case 'loader': {
-              // const ex = this.serverExecuteActionsWithOutput.find(
-              //   (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'loader',
-              // ) as ServerExecuteActionWithOutput<'loader'> | undefined
-              // if (ex) {
-              //   if (Array.isArray(ex.output)) {
-              //     this.effects.set.status(ex.output[0])
-              //     if (ex.output[1] instanceof Response) {
-              //       currentResponse = ex.output[1]
-              //       currentOutput = ex.output[1]
-              //     } else {
-              //       currentData = ex.output[1]
-              //       currentOutput = ex.output[1]
-              //     }
-              //   } else {
-              //     if (ex.output instanceof Response) {
-              //       currentResponse = ex.output
-              //       currentOutput = ex.output
-              //     } else {
-              //       currentData = ex.output
-              //       currentOutput = ex.output
-              //     }
-              //   }
-              // } else {
               const promise = serverExecuteAction.fn({
                 ...layers[0].ctxExposed,
                 ctx: { ...layers[0].ctx },
                 data: { ...layers[0].data },
-                // execute: (
-                //   point:
-                //     | ReadyPoint
-                //     | NiceReadyPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
-                //     | undefined,
-                //   input?: InputRaw,
-                // ) => {
-                //   return this.execute({ point, input, ErrorClass })
-                // },
                 request: this.request as never,
                 set: effects.set,
                 points: this.engine.server.points?.collection ?? [],
-                // point,
                 ...getParsed(),
               })
               const result = (await (promise as any)) as
@@ -754,11 +649,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                   })
                 }
               }
-              // this.serverExecuteActionsWithOutput.push({
-              //   output: result,
-              //   record: serverExecuteAction,
-              // })
-              // }
               break
             }
 
@@ -926,7 +816,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       this.serverStorageState.__POINT0_SSR_REDIRECT_TASK__ = undefined
     }
     await this.withServerGlobalState(async () => {
-      // console.dir(await this.getQueryClientReadyDehydratedState({ withPagesDehydratedState: false }), { depth: null })
       const stream = await renderToReadableStream(React.createElement(App))
       await stream.allReady
       const redirectTask = await this.handleRedirectTask({ clientPoints, redirectPolicy })
@@ -984,7 +873,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
 
       await Promise.all(
         suitableMarkers.map(async (suitableMarker) => {
-          // for (const suitableMarker of suitableMarkers) {
           const exactPoint = this.engine.server.points?.findExact({
             scope: suitableMarker.scope,
             type: suitableMarker.pointType,
@@ -1013,7 +901,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               await exactPoint.prefetchQuery(fixedInput, undefined, { force: true, mode: 'server' })
             }
           }
-          // }
         }),
       )
 
@@ -1076,10 +963,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     ErrorClass: ClassLikeError0<ErrorPoint0>
   }): Promise<void> {
     await this.withServerGlobalState(async () => {
-      // do not uncomment it. If page itself has no loaders, it does not mean, that it not has any components which has loaders
-      // if (!pagePoint._hasLoader()) {
-      //   return
-      // }
       const input = {
         ...pageLocation.params,
         ...(pageLocation.searchString ? { '?': pageLocation.search } : {}),
@@ -1093,7 +976,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       const relatedQueriesDehydratedState = await this.getQueryClientReadyDehydratedState({
         withPagesDehydratedState: false,
       })
-      // TODO: filter out duplicates from different pages causes by redirects
+      // TODO: maybe we should filter out duplicates from different pages causes by redirects
       const queryClient = _ss.__POINT0_QUERY_CLIENT__.get()
       const { queryKey, ...restOptions } = prefetchPageQueryOptions
       queryClient.setQueryDefaults(queryKey, {

@@ -153,16 +153,11 @@ export class Walker {
   pruneFiles(): void {
     this.files.clear()
   }
+
   prune(): void {
     this.prunePoints()
     this.pruneFiles()
   }
-
-  // async readManyAsync({ files }: { files: string[]; fresh: boolean }): Promise<Array<CompilerFile<true>>> {
-  //   return await Promise.all(
-  //     files.map(async (file) => await CompilerFile.readAsync({ walker: this, file, fresh: false })),
-  //   )
-  // }
 
   collectPointsFromFile({ file: providedFile, content }: { file: string | CompilerFile<true>; content?: string }):
     | {
@@ -722,60 +717,6 @@ export class Walker {
       return { isFound: false, baseLetsNodePath: undefined, baseFile: undefined, errors }
     }
   }
-
-  // Helper: Check if an identifier is imported as a named import from a specific package
-  // Example: import { Point0 } from '@point0/core' → returns true for Point0 identifier
-  // Example: import { anything } from 'any-package' → returns true for anything identifier
-  // Example: const Point0 = something → returns false (not imported from package)
-  // Because: We need to verify that an identifier is actually imported from a specific package and not just a variable with the same name
-  // private isIdentifierImportedNamedFromPackage({
-  //   identifierNodePath,
-  //   file,
-  //   packageName,
-  //   importedName,
-  // }: {
-  //   identifierNodePath: NodePath<Node>
-  //   file: CompilerFile<true>
-  //   packageName: string
-  //   importedName: string
-  // }): boolean {
-  //   // Must be an Identifier node
-  //   if (identifierNodePath.node.type !== 'Identifier') {
-  //     return false
-  //   }
-
-  //   const identifierName = identifierNodePath.node.name
-
-  //   // Search for ImportDeclaration nodes in the file's AST
-  //   let isImportedFromPackage = false
-  //   traverse(file.ast, {
-  //     ImportDeclaration: (p) => {
-  //       // Check if this import is from the specified package
-  //       const importSource = p.node.source.value
-  //       if (typeof importSource !== 'string' || importSource !== packageName) {
-  //         return
-  //       }
-
-  //       // Check all import specifiers for named imports only
-  //       for (const spec of p.node.specifiers) {
-  //         // Named import - import { importedName } from 'packageName'
-  //         if (spec.type === 'ImportSpecifier') {
-  //           const specImportedName = spec.imported.type === 'Identifier' ? spec.imported.name : spec.imported.value
-  //           const localName = spec.local.name
-
-  //           // Check if the local name matches our identifier and it's imported with the expected name
-  //           if (localName === identifierName && specImportedName === importedName) {
-  //             isImportedFromPackage = true
-  //             p.stop() // Stop traversal once we found a match
-  //             return
-  //           }
-  //         }
-  //       }
-  //     },
-  //   })
-
-  //   return isImportedFromPackage
-  // }
 
   // Helper: Check if a node is a .lets() call expression
   // Example: isLetsCallExpression({ node: Point0.lets('root', 'myroot') }) → true

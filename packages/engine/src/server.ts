@@ -478,10 +478,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     if (forwardedFromClientScope) {
       return undefined
     }
-    // const client = this.clients.find((client) => client.scope === clientScope)
-    // if (!client) {
-    //   throw new Error(`Client "${clientScope}" not found in server "${this.scope}"`)
-    // }
     for (const client of this.clients) {
       bunServer ??= this.bunServer
       // it is provided when we serve via bun, if we serve via elysia, then elysia manages websocket by itself
@@ -526,7 +522,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       ...customServeConfig,
       ...providedServeConfig,
       port: this.port,
-      // reusePort: true,
       fetch: async (request, bunServer) => {
         const devClientsProxyResponse = await this.fetchDevClientsProxy({ request, bunServer })
         if (devClientsProxyResponse) {
@@ -568,59 +563,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
           return undefined
         },
       },
-      // websocket: {
-      //   open(ws) {
-      //     if (process.env.NODE_ENV !== 'production') {
-      //       // Only proxy WebSocket connections that have a wsUrl (Bun dev server connections)
-      //       const data = ws.data as unknown as { wsUrl?: string; upstream?: WebSocket }
-      //       if (!data.wsUrl) {
-      //         return
-      //       }
-
-      //       // Connect to upstream WebSocket when client connects
-      //       const upstream = new WebSocket(data.wsUrl)
-
-      //       upstream.onopen = () => {
-      //         // Store upstream reference in ws data
-      //         data.upstream = upstream
-      //       }
-
-      //       upstream.onmessage = (event) => {
-      //         // Forward messages from upstream to client
-      //         ws.send(event.data)
-      //       }
-
-      //       upstream.onclose = () => {
-      //         ws.close()
-      //       }
-
-      //       upstream.onerror = () => {
-      //         ws.close()
-      //       }
-
-      //       // Store upstream for later use
-      //       data.upstream = upstream
-      //     }
-      //   },
-      //   message(ws, message) {
-      //     // Forward messages from client to upstream (only for proxied connections)
-      //     if (process.env.NODE_ENV !== 'production') {
-      //       const data = ws.data as unknown as { upstream?: WebSocket }
-      //       if (data.upstream?.readyState === WebSocket.OPEN) {
-      //         data.upstream.send(message)
-      //       }
-      //     }
-      //   },
-      //   close(ws) {
-      //     if (process.env.NODE_ENV !== 'production') {
-      //       // Clean up upstream connection when client disconnects
-      //       const data = ws.data as unknown as { upstream?: WebSocket }
-      //       if (data.upstream) {
-      //         data.upstream.close()
-      //       }
-      //     }
-      //   },
-      // },
     }
 
     if (!_point0_env.mode.is.production) {
@@ -976,19 +918,4 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     }
     return await this.fetcher.fetchDetailed({ request, requiredCtx, bunServer })
   }
-
-  // async fetch({
-  //   request,
-  //   requiredCtx,
-  //   scope,
-  //   bunServer,
-  // }: {
-  //   request: Request
-  //   requiredCtx: RequiredCtx
-  //   scope?: PointsScope
-  //   bunServer?: Bun.Server<unknown>
-  // }): Promise<Response | undefined> {
-  //   const result = await this.fetchDetailed({ request, requiredCtx, scope, bunServer })
-  //   return result.response
-  // }
 }

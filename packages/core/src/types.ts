@@ -266,15 +266,6 @@ export type ReadyPointTypeOrNever<TPointType extends PointType | UndefinedReadyP
   TPointType extends ReadyPointType ? TPointType : never
 export type StagePointTypeOrNever<TPointType extends PointType | UndefinedReadyPointType> =
   TPointType extends StagePointType ? TPointType : StagePointType
-// export type NormalizeQueryResultType<
-//   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
-//   TCurrentQueryResultType extends QueryResultType | UndefinedQueryResultType,
-//   TNewQueryResultType extends QueryResultType,
-// > = TCurrentQueryResultType extends QueryResultType
-//   ? TCurrentQueryResultType
-//   : TLetsReadyPointType extends QueryableReadyPointType
-//     ? TNewQueryResultType
-//     : UndefinedQueryResultType
 
 export type AnyPoint<
   TPointType extends PointType = any,
@@ -978,29 +969,6 @@ export type FinalInputRaw<
     : TPointType extends 'component' | 'provider' | 'query' | 'infiniteQuery' | 'mutation'
       ? InputRaw<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
       : InputRaw
-// export type RoutedInputParsed<
-//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > = (TParamsSchema extends InputSchema ? InputRaw<TParamsSchema> : EmptyObject) &
-//   (TSearchSchema extends InputSchema
-//     ? IsSchemaOptional<TSearchSchema> extends true
-//       ? { '?'?: InputParsed<TSearchSchema> }
-//       : { '?': InputParsed<TSearchSchema> }
-//     : { '?'?: UnknownSearchInput })
-// export type FinalInputParsed<
-//   TPointType extends PointType,
-//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > = TPointType extends 'action'
-//   ? ActionInputParsed<TParamsSchema, TSearchSchema, TBodySchema>
-//   : TPointType extends 'page' | 'layout'
-//     ? RoutedInputParsed<TSearchSchema, TParamsSchema>
-//     : TPointType extends 'component' | 'provider' | 'query' | 'infiniteQuery' | 'mutation'
-//       ? InputParsed<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
-//       : InputParsed
 export type IsFinalInputOptional<
   TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -1020,21 +988,9 @@ export type IsFinalServerInputOptional<
 > = IsObjectOptional<FinalServerInputRaw<TPointType, TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema>>
 export type InputParsed<TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema> =
   TInputSchema extends RecordValidationSchema ? RecordValidationSchemaOutput<TInputSchema> : EmptyObject
-// export type InputsParsed<
-//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > = InputParsed<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
 export type InputRaw<TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema> =
   TInputSchema extends RecordValidationSchema ? RecordValidationSchemaInput<TInputSchema> : EmptyObject
-// export type InputsRaw<
-//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > = InputRaw<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
 type UndefinedIfEmptyObject<T> = IsEmptyObjectSpecial<T> extends true ? undefined : T
-// export type InputsRawOrUndefined<
-//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > = UndefinedIfEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
 export type FinalInputRawOrUndefined<
   TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -1048,10 +1004,7 @@ export type FinalInputRawOrUndefined<
 
 // TO KEEP IT, DO NOT REMOVE
 type UndefinedOrVoidIfEmptyObject<T> = IsEmptyObjectSpecial<T> extends true ? undefined | void : T
-// export type InputsRawOrUndefinedOrVoid<
-//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > = UndefinedOrVoidIfEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
+
 export type FinalInputRawOrUndefinedOrVoid<
   TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -1062,10 +1015,6 @@ export type FinalInputRawOrUndefinedOrVoid<
 > = UndefinedOrVoidIfEmptyObject<
   FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>
 >
-// export type IsInputsEmpty<
-//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > = IsEmptyObject<InputsRaw<TServerInputSchema, TClientInputSchema>>
 
 export type IsInputsSchemasDefined<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -1077,62 +1026,8 @@ export type IsInputFlat<
   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = TBodySchema extends InputSchema ? (TSearchSchema extends InputSchema ? false : true) : true
 
-// export type InputRawMaybeOptional<
-//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > =
-//   IsInputOptional<TInputSchema> extends true
-//     ? // biome-ignore lint/suspicious/noConfusingVoidType: VERY IMPORTANT TO KEEP IT
-//       InputRaw<TInputSchema> | undefined | void
-//     : InputRaw<TInputSchema>
-// export type InputsRawMaybeOptional<
-//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > = InputRawMaybeOptional<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
 export type InputRawUnknown = Record<string, unknown>
-// export type InputParseResult<
-//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TError extends ErrorPoint0 = ErrorPoint0,
-// > =
-//   | {
-//       inputParsed: InputParsed<TInputSchema>
-//       inputParseError: null
-//     }
-//   | {
-//       inputParsed: null // to undefined
-//       inputParseError: TError
-//     }
-// export type InputsParseResult<
-//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TError extends ErrorPoint0 = ErrorPoint0,
-// > = InputParseResult<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>, TError>
 
-// export type SafeParseInputResult<
-//   TPointType extends PointType,
-//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TError = unknown,
-// > =
-//   | {
-//       success: true
-//       data: FinalInputParsed<
-//         TPointType,
-//         TServerInputSchema,
-//         TClientInputSchema,
-//         TParamsSchema,
-//         TSearchSchema,
-//         TBodySchema
-//       >
-//       error: undefined
-//     }
-//   | {
-//       success: false
-//       data: undefined
-//       error: TError
-//     }
 export type SimpleSafeParseInputResult<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TError = unknown,
@@ -1147,23 +1042,6 @@ export type SimpleSafeParseInputResult<
       data: undefined
       error: TError
     }
-// export type SafeParseInputsResult<
-//   TPointType extends PointType,
-//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TError = Error,
-// > = SafeParseInputResult<
-//   TPointType,
-//   TServerInputSchema,
-//   TClientInputSchema,
-//   TParamsSchema,
-//   TSearchSchema,
-//   TBodySchema,
-//   TError
-// >
 
 // utils
 
@@ -1171,7 +1049,6 @@ export type Prettify<T extends object> = {
   [K in keyof T]: T[K]
 } & {}
 export type PrettifyOrEmptyObject<T extends object> = IsEmptyObject<T> extends true ? EmptyObject : Prettify<T>
-// export type PrettifyOrUndefined<T> = T extends object ? Prettify<T> : undefined
 
 type EmptyObjectIfUndefined<T> = T extends undefined ? EmptyObject : T
 export type AppendCtx<
@@ -1322,11 +1199,6 @@ export type AssertNoArrayReturn<TValue, TMessage extends string> = TValue extend
 export type AssertNotFunction<TValue, TMessage extends string> = TValue extends (...args: any[]) => any
   ? ShowError<TMessage>
   : unknown
-// export type WithError<TError, T> = unknown extends TError
-//   ? T
-//   : TError extends ShowError<infer TMessage>
-//     ? ShowError<`↑ Error in previous method: ${TMessage}`>
-//     : TError
 export type WithError<TError, T> = unknown extends TError
   ? T
   : TError extends ShowError<infer TMessage>
@@ -1642,16 +1514,7 @@ export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] exten
     : [Extract<TExposedKeys, ForbiddenCtxExposedKeys>] extends [never]
       ? unknown
       : ShowError<`Forbidden to expose ctx keys: ${Extract<TExposedKeys, ForbiddenCtxExposedKeys> & string}`>
-// export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, any>> =
-//   Awaited<ReturnType<TCtxFn>> extends undefined | void
-//     ? undefined
-//     : TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, infer TCtxAppend>
-//       ? TCtxAppend
-//       : undefined
 export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, any>> =
-  // TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, infer TCtxAppend>
-  //   ? NormalizeCtxLike<TCtxAppend>
-  //   : undefined
   Exclude<Awaited<ReturnType<TCtxFn>>, undefined | void | RedirectTask> extends never
     ? undefined
     : NormalizeCtxLike<Exclude<Awaited<ReturnType<TCtxFn>>, RedirectTask>>
@@ -1693,7 +1556,6 @@ export type LoaderFnOptions<
     request: Request0<TRequestVariant, TError>
     data: DataOrUndefinedData<TServerLoaderOutput>
     set: ResponseEffectsSetHelper
-    // execute: ServerExecuteFn
     ctx: TCtx
     points: ReadyPoint[]
   } & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
@@ -1729,11 +1591,8 @@ export type LoaderFn<
     TRequestVariant,
     TError
   >,
-) => // | Promise<[number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]>
-// | [number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]
-// | Promise<TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput>
-// | (TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput)
-| Promise<[number, TNewServerLoaderOutput]>
+) =>
+  | Promise<[number, TNewServerLoaderOutput]>
   | [number, TNewServerLoaderOutput]
   | Promise<TNewServerLoaderOutput>
   | TNewServerLoaderOutput
@@ -1754,59 +1613,6 @@ export type InferLoaderFnOutput<
   Exclude<InferLoaderFnOutputBase<TLoaderResponseFn>, undefined | void | RedirectTask> extends never
     ? EmptyData
     : Exclude<InferLoaderFnOutputBase<TLoaderResponseFn>, undefined | void | RedirectTask>
-
-// export type LoaderDataFnOptions<
-//   TCtx extends Ctx = Ctx,
-//   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TRequestVariant extends RequestVariantType = any,
-//   TError extends ErrorPoint0 = ErrorPoint0,
-// > = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
-//   request: Request0<TRequestVariant, TError>
-//   point: ReadyPoint | undefined
-//   data: DataOrUndefinedData<TServerLoaderOutput>
-//   set: ResponseEffectsSetHelper
-//   // execute: ServerExecuteFn
-//   ctx: TCtx
-// } & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
-// export type LoaderDataFn<
-//   TCtx extends Ctx = Ctx,
-//   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   THeadersSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TRequestVariant extends RequestVariantType = any,
-//   TError extends ErrorPoint0 = ErrorPoint0,
-//   TNewServerLoaderOutput extends Data | void = Data,
-// > = (
-//   options: LoaderDataFnOptions<
-//     TCtx,
-//     TCtxExposedKeys,
-//     TServerLoaderOutput,
-//     TServerInputSchema,
-//     TParamsSchema,
-//     TSearchSchema,
-//     TBodySchema,
-//     THeadersSchema,
-//     TCookiesSchema,
-//     TRequestVariant,
-//     TError
-//   >,
-// ) =>
-//   | Promise<[number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]>
-//   | [number, TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput]
-//   | Promise<TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput>
-//   | (TNewServerLoaderOutput extends readonly unknown[] ? never : TNewServerLoaderOutput)
 
 export type ServerExecuteAction<
   TType extends
@@ -1956,76 +1762,6 @@ export type InferClientLoaderFnOutput<TClientLoaderFn extends ClientLoaderFn<any
     ? EmptyData
     : Exclude<Awaited<ReturnType<TClientLoaderFn>>, undefined | void | RedirectTask>
 
-// export type ClientLoaderResponseFnOptions<
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TParamsSchema extends InputSchema | UndefinedInputSchema,
-//   TSearchSchema extends InputSchema | UndefinedInputSchema,
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-// > = {
-//   // server can return to client only data or response
-//   response: TServerLoaderOutput extends LoaderOutput ? Response : undefined
-//   data: TClientLoaderOutput extends undefined
-//     ? TServerLoaderOutput extends Response
-//       ? UndefinedData
-//       : TServerLoaderOutput extends Data
-//         ? TServerLoaderOutput
-//         : undefined
-//     : TClientLoaderOutput
-//   serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
-// } & WithClientInputParsed<TClientInputSchema, TParamsSchema, TSearchSchema>
-// export type ClientLoaderResponseFn<
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-//   TNewClientLoaderOutput extends LoaderOutput = LoaderOutput,
-// > = (
-//   options: ClientLoaderResponseFnOptions<
-//     TClientInputSchema,
-//     TParamsSchema,
-//     TSearchSchema,
-//     TServerLoaderOutput,
-//     TClientLoaderOutput
-//   >,
-// ) => Promise<TNewClientLoaderOutput> | TNewClientLoaderOutput
-
-// export type ClientLoaderDataFnOptions<
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TParamsSchema extends InputSchema | UndefinedInputSchema,
-//   TSearchSchema extends InputSchema | UndefinedInputSchema,
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-// > = {
-//   // server can return to client only data or response
-//   response: TServerLoaderOutput extends LoaderOutput ? Response : undefined
-//   data: TClientLoaderOutput extends undefined
-//     ? TServerLoaderOutput extends Response
-//       ? UndefinedData
-//       : TServerLoaderOutput extends Data
-//         ? TServerLoaderOutput
-//         : undefined
-//     : TClientLoaderOutput
-//   serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
-// } & WithClientInputParsed<TClientInputSchema, TParamsSchema, TSearchSchema>
-// export type ClientLoaderDataFn<
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-//   TNewClientLoaderOutput extends Data = Data,
-// > = (
-//   options: ClientLoaderDataFnOptions<
-//     TClientInputSchema,
-//     TParamsSchema,
-//     TSearchSchema,
-//     TServerLoaderOutput,
-//     TClientLoaderOutput
-//   >,
-// ) => Promise<TNewClientLoaderOutput> | TNewClientLoaderOutput
-
 export type FetchServerOutput<TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput> = TServerLoaderOutput
 export type FetchServerDetailedOutput<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -2095,10 +1831,6 @@ export type FetcherFetchDetailedResultEndpoint<TError extends ErrorPoint0> =
   FetcherFetchDetailedResultGeneral<TError> & {
     variant: RequestVariantEndpoint & { data: Data | undefined }
   }
-// export type FetcherFetchDetailedResultUnknown<TError extends ErrorPoint0> =
-//   FetcherFetchDetailedResultGeneral<TError> & {
-//     variant: 'unknown'
-//   }
 export type FetcherFetchDetailedResultError<TError extends ErrorPoint0> = Omit<
   FetcherFetchDetailedResultGeneral<TError>,
   'error'

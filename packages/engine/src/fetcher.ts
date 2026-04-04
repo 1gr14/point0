@@ -139,8 +139,6 @@ export class Fetcher<TError extends ErrorPoint0> {
     const shouldReadBody = isAction
       ? point._serverExecuteActions.some((action) => action.type === 'body')
       : !isPage && !isLayout
-    // const shouldReadSearch =
-    //   isPage || (isLayout && point._serverExecuteActions.some((action) => action.type === 'search'))
     const body = await (async () => {
       if (!shouldReadBody) {
         return {}
@@ -255,11 +253,6 @@ export class Fetcher<TError extends ErrorPoint0> {
         if (currentClient === thatClient) {
           return undefined
         }
-        // this.server.log({
-        //   level: 'info',
-        //   category: ['fetcher'],
-        //   message: `Redirecting request to different dev client "${thatClient.scope}" because current origin not matches`,
-        // })
         return new Response('Redirecting to different dev client', {
           status: 302,
           headers: {
@@ -503,11 +496,6 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
       }
 
-      // const toScope = request.headers['x-point0-to-scope']
-      // const clientByToScope = toScope ? this.server.clients.find((client) => client.scope === toScope) : undefined
-      // const ErrorClass =
-      //   clientByToScope?.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
-
       const variant: RequestVariantUnknown = { type: 'unknown' }
       request.variant = variant
       return {
@@ -686,7 +674,6 @@ export class Fetcher<TError extends ErrorPoint0> {
         const response = this.toJsonErrorResponse({
           ErrorClass,
           error: executeResult.error,
-          // status: executeResult.effects.status >=  ?? 500,
           status:
             executeResult.error.status ??
             (!executeResult.effects.status ||
@@ -835,10 +822,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           const indexHtml = await client.getOriginalIndexHtmlWithEnvs(request.original.url)
           const response = new Response(indexHtml, {
             headers: { 'Content-Type': 'text/html' },
-            // status: 500,
           })
-          // const ErrorClass =
-          //   client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
           const error0 = ErrorClass.from(error)
           return {
             ...partialResult,
@@ -862,7 +846,6 @@ export class Fetcher<TError extends ErrorPoint0> {
         throw new ErrorClass(`Client "${client.scope}" has no indexHtml`)
       }
     } catch (error) {
-      // const ErrorClass = client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
       const error0 = ErrorClass.from(error)
       const transformer = this.getTransformer({ scope: client.scope, point, transform })
       const response = this.toJsonErrorResponse({
@@ -1031,17 +1014,6 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
       }
 
-      // if (prepareFetchResult.actionPointResult) {
-      //   const error = new Error0(`Not Implemented`, { httpStatus: 501 })
-      //   return {
-      //     request: prepareFetchResult.request,
-      //     scope: prepareFetchResult.scope,
-      //     response: toJsonErrorResponse(error),
-      //     variant: 'unknown',
-      //     error,
-      //   }
-      // }
-
       if (prepareFetchResult.variant.type === 'page') {
         if (prepareFetchResult.variant.redirect) {
           return {
@@ -1130,12 +1102,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       scope: prepareFetchResult.scope,
       error: undefined,
     }
-    // const emit =
-    //   prepareFetchResult.middlewareOptions.point?.point._emit.bind(prepareFetchResult.middlewareOptions.point.point) ??
-    //   this.server.points?.roots
-    //     .get(prepareFetchResult.scope)
-    //     ?._emit.bind(this.server.points.roots.get(prepareFetchResult.scope)) ??
-    //   this.server.points?._emit.bind(this.server.points)
+
     const emit = this.engine.getEmit({
       point: (prepareFetchResult.request.variant as { point?: AnyPoint }).point,
       scope: prepareFetchResult.scope,

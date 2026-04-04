@@ -240,23 +240,6 @@ export const createVirtualModuleCode = ({
     if (!deny) {
       return { denyMessage: undefined, denyThrower: '' }
     }
-    // const resolvedTrace = ((): string[] | undefined => {
-    //   if (trace === false) {
-    //     return undefined
-    //   }
-    //   if (trace) {
-    //     return trace
-    //   }
-    //   const result = compiler.trace({
-    //     target: pathOriginal,
-    //     policy: 'memory',
-    //     source: pathResolved,
-    //   })
-    //   if (result.found) {
-    //     return result.trace
-    //   }
-    //   return undefined
-    // })()
     const traceMessage = trace
       ? `Trace:
 ${trace.map((item) => `  ${item}`).join('\n')}`

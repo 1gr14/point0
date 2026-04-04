@@ -238,12 +238,6 @@ const scopeIs = new Proxy(
   },
 )
 
-// export type EnvScope<TScopes extends string = string> = {
-//   readonly name: TScopes
-//   readonly is: EnvScopeIs<TScopes>
-//   readonly define: ScopeDefineWithHelpers<TScopes>
-// }
-
 export type EnvScope<TScopes extends string = string> = string extends TScopes
   ? {
       readonly name: string

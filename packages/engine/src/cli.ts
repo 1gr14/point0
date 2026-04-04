@@ -238,7 +238,6 @@ program
   .option('--side <side>', "Trace side: 'server' or 'client'")
   .option('--scope <scope>', 'Trace scope (optional, inferred from side when omitted)')
   .option('--cwd <cwd>', 'Trace cwd (optional, inferred from engine file when omitted)')
-  // .option('--policy <policy>', "Trace policy: 'memory' or 'compiling' (default: compiling)")
   .action(
     async (
       target: string,
@@ -259,10 +258,6 @@ program
         side: options.side,
         scope: options.scope,
       })
-      // const policy = options.policy ?? 'compiling'
-      // if (policy !== 'memory' && policy !== 'compiling') {
-      // throw new Error(`Invalid policy: ${policy}, valid values are 'memory' or 'compiling'`)
-      // }
 
       const runtime =
         traceSide === 'server' ? engine.server : engine.clients.find((client) => client.scope === traceScope)
@@ -280,17 +275,10 @@ program
       const compiler = Compiler.create(compilerOptions)
       const resolvedSource = source ? (path.isAbsolute(source) ? source : path.resolve(cwd, source)) : undefined
 
-      // if (policy === 'compiling' && !resolvedSource) {
-      //   throw new Error('To create trace by compiling policy, "source" is required')
-      // }
       if (!resolvedSource) {
         throw new Error('To create trace, "source" is required')
       }
 
-      // const result =
-      //   policy === 'compiling'
-      //     ? compiler.trace({ policy, target, source: resolvedSource as string })
-      //     : compiler.trace({ policy, target })
       const result = compiler.trace({
         policy: 'compiling',
         target,

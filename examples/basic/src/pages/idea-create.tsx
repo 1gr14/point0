@@ -135,7 +135,7 @@ export const generateIdeaMutation = root
     set.cookies('X-Y', 'kjhkj')
     const stream = new ReadableStream({
       async start(controller) {
-        const text = 'g'.repeat(100) // 100 symbols
+        const text = 's'.repeat(100) // 100 symbols
         for (const char of text) {
           controller.enqueue(char)
           await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol

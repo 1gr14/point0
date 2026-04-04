@@ -121,7 +121,6 @@ export type EngineOptionsCompilerSpecificParsed = {
   importer: ImporterOptionsInput
 }
 
-export type PortPolicy = 'kill' | 'auto' | 'simple'
 export type EngineOptionsServing = boolean | string | ((options: { request: Request0 }) => boolean)
 
 export type EngineGeneralOptions = {
@@ -210,145 +209,6 @@ export type EngineOptions<
   clients?: EngineClientOptions[]
 }
 
-// type IsUnknown<T> = unknown extends T ? ([T] extends [unknown] ? true : false) : false
-
-// type UnknownToUndefined<T> = IsUnknown<T> extends true ? undefined : T
-
-// type UndefinedToUnknown<T extends RequiredCtx | UndefinedCtx> = T extends UndefinedCtx ? unknown : T
-
-// type MergeRequiredCtx<
-//   T1 extends RequiredCtx | UndefinedCtx,
-//   T2 extends RequiredCtx | UndefinedCtx,
-//   T3 extends RequiredCtx | UndefinedCtx,
-//   T4 extends RequiredCtx | UndefinedCtx,
-// > = UnknownToUndefined<
-//   UndefinedToUnknown<T1> & UndefinedToUnknown<T2> & UndefinedToUnknown<T3> & UndefinedToUnknown<T4>
-// >
-
-// export type RequiredCtxByEngineOptions<TOptions extends EngineOptions> = TOptions extends {
-//   server: EngineServerOptions<infer TServer>
-//   clients: []
-// }
-//   ? RequiredCtxByPointsDefinitionSourceOrUndefined<TServer>
-//   : TOptions extends {
-//         server: EngineServerOptions<infer TServer>
-//         clients: [EngineClientOptions<infer TClient1>]
-//       }
-//     ? MergeRequiredCtx<
-//         RequiredCtxByPointsDefinitionSourceOrUndefined<TServer>,
-//         RequiredCtxByPointsDefinitionSourceOrUndefined<TClient1>,
-//         undefined,
-//         undefined
-//       >
-//     : TOptions extends {
-//           server: EngineServerOptions<infer TServer>
-//           clients: [EngineClientOptions<infer TClient1>, EngineClientOptions<infer TClient2>]
-//         }
-//       ? MergeRequiredCtx<
-//           RequiredCtxByPointsDefinitionSourceOrUndefined<TServer>,
-//           RequiredCtxByPointsDefinitionSourceOrUndefined<TClient1>,
-//           RequiredCtxByPointsDefinitionSourceOrUndefined<TClient2>,
-//           undefined
-//         >
-//       : TOptions extends {
-//             server: EngineServerOptions<infer TServer>
-//             clients: [
-//               EngineClientOptions<infer TClient1>,
-//               EngineClientOptions<infer TClient2>,
-//               EngineClientOptions<infer TClient3>,
-//             ]
-//           }
-//         ? MergeRequiredCtx<
-//             RequiredCtxByPointsDefinitionSourceOrUndefined<TServer>,
-//             RequiredCtxByPointsDefinitionSourceOrUndefined<TClient1>,
-//             RequiredCtxByPointsDefinitionSourceOrUndefined<TClient2>,
-//             RequiredCtxByPointsDefinitionSourceOrUndefined<TClient3>
-//           >
-//         : never
-
-// export type EngineOptions<
-//   TServerPointsModule extends AnyPointsModule = AnyPointsModule,
-//   TClient1PointsModule extends AnyPointsModule = AnyPointsModule,
-//   TClient2PointsModule extends AnyPointsModule = AnyPointsModule,
-//   TClient3PointsModule extends AnyPointsModule = AnyPointsModule,
-// > = EngineGeneralOptions & {
-//   server: EngineServerOptions<TServerPointsModule>
-//   clients?:
-//     | []
-//     | [EngineClientOptions<TClient1PointsModule>]
-//     | [EngineClientOptions<TClient1PointsModule>, EngineClientOptions<TClient2PointsModule>]
-//     | [
-//         EngineClientOptions<TClient1PointsModule>,
-//         EngineClientOptions<TClient2PointsModule>,
-//         EngineClientOptions<TClient3PointsModule>,
-//       ]
-// }
-
-// export type RequiredCtxByEngineOptions<TOptions extends EngineOptions> = TOptions extends {
-//   server: EngineServerOptions<infer TServerPointsModule>
-//   clients: []
-// }
-//   ? RequiredCtxByPointsModules<TServerPointsModule>
-//   : TOptions extends {
-//         server: EngineServerOptions<infer TServerPointsModule>
-//         clients: [EngineClientOptions<infer TClient1PointsModule>]
-//       }
-//     ? RequiredCtxByPointsModules<TServerPointsModule, TClient1PointsModule>
-//     : TOptions extends {
-//           server: EngineServerOptions<infer TServerPointsModule>
-//           clients: [EngineClientOptions<infer TClient1PointsModule>, EngineClientOptions<infer TClient2PointsModule>]
-//         }
-//       ? RequiredCtxByPointsModules<TServerPointsModule, TClient1PointsModule, TClient2PointsModule>
-//       : TOptions extends {
-//             server: EngineServerOptions<infer TServerPointsModule>
-//             clients: [
-//               EngineClientOptions<infer TClient1PointsModule>,
-//               EngineClientOptions<infer TClient2PointsModule>,
-//               EngineClientOptions<infer TClient3PointsModule>,
-//             ]
-//           }
-//         ? RequiredCtxByPointsModules<
-//             TServerPointsModule,
-//             TClient1PointsModule,
-//             TClient2PointsModule,
-//             TClient3PointsModule
-//           >
-//         : never
-
-// export type RequiredCtxByEngineShortOptions<TOptions extends EngineShortOptions> = TOptions extends {
-//   server: infer TServerPointsDefinition extends RawPointsDefinition
-//   clients: []
-// }
-//   ? RequiredCtxByPointsDefinitions<TServerPointsDefinition>
-//   : TOptions extends {
-//         server: infer TServerPointsDefinition extends RawPointsDefinition
-//         clients: [infer TClient1PointsDefinition extends RawPointsDefinition]
-//       }
-//     ? RequiredCtxByPointsDefinitions<TServerPointsDefinition, TClient1PointsDefinition>
-//     : TOptions extends {
-//           server: infer TServerPointsDefinition extends RawPointsDefinition
-//           clients: [
-//             infer TClient1PointsDefinition extends RawPointsDefinition,
-//             infer TClient2PointsDefinition extends RawPointsDefinition,
-//           ]
-//         }
-//       ? RequiredCtxByPointsDefinitions<TServerPointsDefinition, TClient1PointsDefinition, TClient2PointsDefinition>
-//       : TOptions extends {
-//             server: infer TServerPointsDefinition extends RawPointsDefinition
-//             clients: [
-//               infer TClient1PointsDefinition extends RawPointsDefinition,
-//               infer TClient2PointsDefinition extends RawPointsDefinition,
-//               infer TClient3PointsDefinition extends RawPointsDefinition,
-//             ]
-//           }
-//         ? RequiredCtxByPointsDefinitions<
-//             TServerPointsDefinition,
-//             TClient1PointsDefinition,
-//             TClient2PointsDefinition,
-//             TClient3PointsDefinition
-//           >
-//         : never
-
 export type EngineGeneralOptionsParsed = {
   log: LogFn
   itWasBuilt: boolean
@@ -374,7 +234,6 @@ export type EngineClientOptionsParsed = {
   pointsProvided: PointsDefinitionSource<any, any> | null
   serving: EngineOptionsServing
   banner: string | null
-  // generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
   generate: Array<FilesGeneratorTask>
   routesProvided: EngineOptionsRoutes | null
   // pointsDistFile: string | null
@@ -404,7 +263,6 @@ export type EngineServerOptionsParsed = {
   scope: PointsScope
   pointsProvided: PointsDefinitionSource<any, any> | null
   banner: string | null
-  // generate: Array<FilesGeneratorTaskPoints | FilesGeneratorTaskRoutes>
   generate: Array<FilesGeneratorTask>
   routesProvided: EngineOptionsRoutes | null
   port: number
@@ -518,16 +376,6 @@ const parseEngineGeneralOptions = ({
     generalOptions.itWasBuilt ??= process.env.POINT0_ENGINE_WAS_BUILT === 'true'
 
     if (!itWasBuilt) {
-      // first
-      // if (engineFile) {
-      //   generalOptions.cwdBeforeBuild ??= nodePath.dirname(engineFile)
-      // }
-
-      // second
-      // generalOptions.cwdBeforeBuild ??= nodePath.dirname(engineFile)
-      // now
-
-      // now
       generalOptions.cwdBeforeBuild ??= nodePath.dirname(engineFile)
       serverOptions.outdir ||= 'dist'
 
@@ -1138,46 +986,12 @@ const parseEngineClientOptions = ({
   }
 }
 
-// const shortEngineOptionsToEngineOptions = (options: EngineShortOptions | EngineOptions): EngineOptions => {
-//   if (Array.isArray(options.server)) {
-//     const module = PointsManager.rawPointsDefinitionToReadyPointsModule(options.server)
-//     const scope = module._root.point.point.scope
-//     options.server = {
-//       scope,
-//       points: async () => module,
-//     }
-//   }
-//   const clients = options.clients?.flatMap((client) => {
-//     if (Array.isArray(client)) {
-//       const module = PointsManager.rawPointsDefinitionToReadyPointsModule(client)
-//       const scope = module._root.point.point.scope
-//       return {
-//         scope,
-//         points: async () => module,
-//       }
-//     }
-//     return client as EngineClientOptions
-//   })
-//   if (!options.server) {
-//     const scope = clients?.at(0)?.scope
-//     if (!scope) {
-//       throw new Error('No scope found in clients and no server points provided')
-//     }
-//     options.server = { scope }
-//   }
-//   return {
-//     ...options,
-//     clients,
-//   } as EngineOptions
-// }
-
 export const parseEngineOptions = (options: EngineOptions<any, any>): EngineOptionsParsed => {
   const {
     server: serverOptions = { scope: 'root', ssr: false },
     clients: clientsOptionsRaw,
     ...generalOptions
   } = options
-  // const clientsOptions = clientsOptionsRaw?.flatMap((clientOptions) => (clientOptions ? [clientOptions] : [])) ?? []
   const clientsOptions = clientsOptionsRaw ?? []
   const generalOptionsParsed = parseEngineGeneralOptions({
     generalOptions,

@@ -80,7 +80,6 @@ export class ErrorPoint0 extends Error {
     const isStacktracePublic = process.env.NODE_ENV !== 'production'
     return {
       message: error.message,
-      // ...(error.status ? { status: error.status } : {}),
       ...(error.code ? { code: error.code } : {}),
       // ...(meta ? { meta } : {}),
       ...(!isStacktracePublic || !error.stack ? {} : { stack: error.stack }),
@@ -94,7 +93,3 @@ export type ClassLikeError0<T extends ErrorPoint0 = ErrorPoint0> = {
   from(error: unknown): T
   serialize(error: T): Record<string, unknown>
 }
-// export type InstanceByClassError0<T extends ClassLikeError0> = T extends ClassLikeError0<infer I> ? I : never
-
-// expectTypeOf<typeof ErrorPoint0>().toExtend<ClassLikeError0<ErrorPoint0>>()
-// expectTypeOf<typeof ErrorPoint0>().toExtend<ClassLikeError0<Error>>()

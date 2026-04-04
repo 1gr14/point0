@@ -80,8 +80,6 @@ export class ClientPoints<TError extends ErrorPoint0> {
     options: { log?: LogFn } = {},
   ): ClientPoints<TError> {
     const manager = PointsManager.createFromDefinition(points, options)
-    // const manager = PointsManager.createFromCollection(_manager.collection.filter((p) => ['root', 'page', 'layout', 'provider', 'init'].))
-    // I was tried to filter not needed points, but for what? In real client we already filter it on generate pahes, on server does not matter if there more points then needed
     const roots = manager.getRoots()
     const root = roots.at(0)
     if (!root) {
@@ -414,16 +412,9 @@ export class ClientPoints<TError extends ErrorPoint0> {
     const page: ReadyPoint = typeof suitable.point === 'function' ? await suitable.point() : suitable.point
 
     // Prefetch the (possibly lazy) page component
+    // But if we fetch page, then we also fetch it components, so looks like not needed
     // await ClientPoints.prefetchLazyComponent(suitable.FC)
 
-    // const layouts: ReadyPoint[] = await Promise.all(
-    //   this.manager.collection
-    //     .filter((p) => p.type === 'layout' && suitable.layouts.includes(p.name))
-    //     .map(async (layout) => {
-    //       await ClientPoints.prefetchLazyComponent(layout.FC)
-    //       return typeof layout.point === 'function' ? (await layout.point()).point : layout.point.point
-    //     }),
-    // )
     this.manager.setReadyPoint(page)
 
     return {
@@ -496,7 +487,6 @@ export class ClientPoints<TError extends ErrorPoint0> {
     const { page } = loadPageResult
     await page.prefetchPage(page._getUnsafeInputRawByLocation(loadPageResult.pageLocation), {
       queryClient,
-      // location,
       policy,
       trigger,
       fetchOptions,
@@ -557,26 +547,6 @@ export class ClientPoints<TError extends ErrorPoint0> {
     const fromRoot = this.manager.root._getLogFn()
     _ssClientLog.set(fromRoot ?? this.manager.log ?? _defaultLogFn)
   }
-
-  // static getInstance = <TError extends ErrorPoint0>(): ClientPoints<TError> => {
-  //   // all this needed only for router, to know which routes and pages exists in current scope
-  //   // we can not here use env.scope, because for server it can be 'root' while for client it can be 'site' for example
-  //   // and this code will be executed on server
-  //   const fakeClient = _getFakeClient()
-  //   const clientPoints = fakeClient ? fakeClient.points : _ss.__POINT0_CLIENT_POINTS__.getWeak()
-  //   if (!clientPoints) {
-  //     if (_point0_env.side.is.server) {
-  //       throw new Error(
-  //         'Client points not found if SuperStore. Looks like you call this fn outside of client context. You should call it only in components, hooks, functions, not in top of files without wrappers',
-  //       )
-  //     } else {
-  //       throw new Error(
-  //         'Client points instance not found. You should call clientPoints.mount() first to mount it on client',
-  //       )
-  //     }
-  //   }
-  //   return clientPoints as unknown as ClientPoints<TError>
-  // }
 }
 
 export type PagesTreeSourceRecord = {

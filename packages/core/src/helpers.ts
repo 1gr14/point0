@@ -4,7 +4,6 @@ import type { ClientPoints } from './client-points.js'
 import type { Effects } from './effects.js'
 import { _point0_env } from './env.js'
 import type { ErrorPoint0 } from './error.js'
-// import { _getFakeClient, _ss } from './internals.js'
 import type { _ss } from './internals.js'
 import type { Request0 } from './request0.js'
 import { superstore } from './super-store.js'
@@ -136,12 +135,6 @@ export const getRequestWeak = (): Request0 | undefined => {
   const __POINT0_REQUEST0__ = superstore.getItem('__POINT0_REQUEST0__') as (typeof _ss)['__POINT0_REQUEST0__']
   return __POINT0_REQUEST0__.getWeak()
 }
-
-// export const mountClientPoints = <TError extends ErrorPoint0>(
-//   points: PointsDefinition<any, TError> | PointsManager<any, any, TError>,
-// ): ClientPoints<TError> => {
-//   return ClientPoints.mount(points)
-// }
 
 export const getClientPoints = <TError extends ErrorPoint0>(): ClientPoints<TError> => {
   const fakeClient = superstore.getFakeClient()

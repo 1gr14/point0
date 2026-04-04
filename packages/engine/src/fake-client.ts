@@ -111,7 +111,6 @@ export class FakeClient<TState extends FakeClientState, TError extends ErrorPoin
   engine: Engine<any, TError, true>
   state: TState
   jar: CookieJar
-  // fetch: FetchCookieImpl<string | URL | Request, RequestInit, Response>
   fetch: RichFetchFn
   cookieSetter: CookiesStoreSetter | undefined
   cookieGetter: CookiesStoreGetter | undefined
@@ -261,9 +260,6 @@ export class FakeClient<TState extends FakeClientState, TError extends ErrorPoin
       }
       const cookies = Effects.parseCookies(response)
       for (const cookie of cookies) {
-        // if (cookie.httpOnly) {
-        //   continue
-        // }
         cookieSetter(cookie)
       }
     }
@@ -292,9 +288,6 @@ export class FakeClient<TState extends FakeClientState, TError extends ErrorPoin
       return response
     }, jar)
     points ??= client.points ?? (undefined as never)
-    // if (!points) {
-    //   // throw new Error('Points for fake client not provided')
-    // }
     const fakeClient = new FakeClient({
       engine: engine as Engine<any, any, true>,
       client: client as EngineClient<true, TError>,
@@ -328,14 +321,6 @@ export class FakeClient<TState extends FakeClientState, TError extends ErrorPoin
     }
     return fakeClient as unknown as FakeClient<TState, TError>
   }
-
-  // async getCookies(url: string | undefined = undefined, httpOnly: boolean | undefined = undefined): Promise<Cookie[]> {
-  //   const cookiesFromJar = await this.jar.getCookies(url ?? `http://localhost:${this.engine.server.port}/`)
-  //   if (httpOnly === undefined) {
-  //     return cookiesFromJar
-  //   }
-  //   return cookiesFromJar.filter((cookie) => (httpOnly ? cookie.httpOnly : !cookie.httpOnly))
-  // }
 
   async getCookies(
     url: string | undefined = undefined,

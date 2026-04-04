@@ -214,24 +214,6 @@ export class Request0<
     this._headers = headers
     return this._headers
   }
-
-  // static get(): Request0 {
-  //   if (!_point0_env.side.is.server) {
-  //     throw new Error(
-  //       'You can not get request0 not in server. Please call Request0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
-  //     )
-  //   }
-  //   const request0 = _ss.__POINT0_REQUEST0__.get()
-  //   return request0
-  // }
-
-  // static getWeak(): Request0 | undefined {
-  //   try {
-  //     return _ss.__POINT0_REQUEST0__.getWeak()
-  //   } catch {
-  //     return undefined
-  //   }
-  // }
 }
 
 export type RequestMethod =
@@ -298,7 +280,6 @@ export type RequestVariantType = 'publicdir' | 'endpoint' | 'page' | 'error' | '
 
 export type RequestVariantPublicdir<TPublicdir = unknown> = {
   type: 'publicdir'
-  // publicdir: Publicdir<true> | undefined
   publicdir: TPublicdir
   response: Response
 }
@@ -314,7 +295,6 @@ export type RequestVariantPage<TClient = unknown> = {
   type: 'page'
   pageLocation: ExactLocation | AnyLocation
   point: PagePoint | undefined
-  // client: EngineClient<true>
   client: TClient
   redirect: Response | undefined
 }

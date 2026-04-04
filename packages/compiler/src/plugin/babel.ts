@@ -20,6 +20,7 @@ export function compilerBabelPlugin(_babel: never, options: CompilerOptions) {
         const result = compiler.compile({
           content: code,
           file: filename,
+          writeVirtual: true,
         })
         return parse(result.code, parserOptions)
       } catch (e) {

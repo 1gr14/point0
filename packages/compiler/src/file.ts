@@ -195,51 +195,6 @@ export class CompilerFile<THasContent extends boolean> {
     }
   }
 
-  // private async _readAsync(fresh: boolean): Promise<CompilerFile<true>> {
-  //   if (this.content !== undefined && !fresh) {
-  //     return this as CompilerFile<true>
-  //   }
-  //   const stats = await (async () => {
-  //     try {
-  //       return await nodeFs.stat(this.abs)
-  //     } catch (e) {
-  //       throw new Error(`Failed to read file ${this.abs}: ${(e as Error).message}`, { cause: e })
-  //     }
-  //   })()
-  //   if (stats.mtimeMs === this.mtime && this.content !== undefined) {
-  //     return this as CompilerFile<true>
-  //   }
-  //   // const cf = new CompilerFile({
-  //   //   abs: this.abs,
-  //   //   content: await nodeFs.readFile(this.abs, 'utf8'),
-  //   //   mtime: stats.mtimeMs,
-  //   //   rtime: new Date().getTime(),
-  //   //   walker: this.walker,
-  //   // })
-  //   // this.walker.files.set(this.abs, cf)
-  //   // return cf
-  //   this.pruneMemory()
-  //   const result = this as CompilerFile<true>
-  //   result.content = await nodeFs.readFile(this.abs, 'utf8')
-  //   result.mtime = stats.mtimeMs
-  //   result.rtime = Date.now()
-  //   return result
-  // }
-
-  // async readAsync(fresh: boolean): Promise<CompilerFile<true>> {
-  //   const pendingPromise = this._readAsyncPendingPromises.get(this.abs)
-  //   if (pendingPromise) {
-  //     return await pendingPromise
-  //   }
-  //   const newPromise = this._readAsync(fresh).then((cf) => {
-  //     this._readAsyncPendingPromises.delete(this.abs)
-  //     return cf
-  //   })
-  //   this._readAsyncPendingPromises.set(this.abs, newPromise)
-  //   return await newPromise
-  // }
-  // private readonly _readAsyncPendingPromises = new Map<string, Promise<CompilerFile<true>>>()
-
   readSync(fresh: boolean): CompilerFile<true> {
     if (this.content !== undefined && !fresh) {
       return this as CompilerFile<true>
@@ -248,14 +203,6 @@ export class CompilerFile<THasContent extends boolean> {
     if (stats.mtimeMs === this.mtime && this.content !== undefined) {
       return this as CompilerFile<true>
     }
-    // const cf = new CompilerFile({
-    //   abs: this.abs,
-    //   content: nodeFsSync.readFileSync(this.abs, 'utf8'),
-    //   mtime: stats.mtimeMs,
-    //   rtime: new Date().getTime(),
-    //   walker: this.walker,
-    // })
-    // this.walker.files.set(this.abs, cf)
     this.pruneMemory()
     const result = this as CompilerFile<true>
     this.walker.files.set(this.abs, result)
@@ -324,31 +271,6 @@ export class CompilerFile<THasContent extends boolean> {
         ],
       })
 
-      // const parserPluginSets = CompilerFile.getParserPluginSets(this.abs)
-      // let ast: babel.ParseResult<File> | undefined = undefined
-      // const parserErrors: unknown[] = []
-      // for (const parserPlugins of parserPluginSets) {
-      //   try {
-      //     ast = babel.parse(this.content, {
-      //       sourceType: 'module',
-      //       errorRecovery: true,
-      //       tokens: true,
-      //       createParenthesizedExpressions: true,
-      //       retainLines: true,
-      //       ...({ experimental_preserveFormat: true } as any),
-      //       plugins: parserPlugins,
-      //     })
-      //     break
-      //   } catch (e) {
-      //     parserErrors.push(e)
-      //   }
-      // }
-      // if (!ast) {
-      //   errors.push(...parserErrors)
-      //   this._parse = { ast: undefined, errors, ok: false }
-      //   return this._parse
-      // }
-
       this._parse = { ast, errors, ok: true }
       return this._parse
     } catch (e) {
@@ -361,26 +283,6 @@ export class CompilerFile<THasContent extends boolean> {
   static isMdxLikePath(path: string): boolean {
     return /\.(md|mdx|mdc)$/.test(path)
   }
-
-  // static getParserPluginSets(path: string): any[][] {
-  //   const commonParserPlugins = [
-  //     'jsx',
-  //     'decorators-legacy',
-  //     'classProperties',
-  //     'classPrivateProperties',
-  //     'classPrivateMethods',
-  //     'throwExpressions',
-  //   ]
-  //   const tsPlugins = ['typescript', ...commonParserPlugins]
-  //   const flowPlugins = [['flow', { all: true }], ...commonParserPlugins]
-  //   if (/\.(ts|tsx|mts|cts)$/.test(path)) {
-  //     return [tsPlugins]
-  //   }
-  //   if (/\.(js|jsx|mjs|cjs)$/.test(path)) {
-  //     return [tsPlugins, flowPlugins]
-  //   }
-  //   return [tsPlugins, flowPlugins]
-  // }
 
   get ast(): babel.ParseResult<File> {
     const parseResult = this.parse()
@@ -1988,12 +1890,6 @@ export class CompilerFile<THasContent extends boolean> {
           (side === 'server' && importItem.pathOriginal === '@point0/core/client-only') ||
           (side === 'client' && importItem.pathOriginal === '@point0/core/server-only')
         ) {
-          // const foundImporter = this.walker.findFileByImport({ pathResolved: this.abs })
-          // const shortFoundImporter = foundImporter
-          //   ? importer.cwd
-          //     ? `${nodePath.relative(importer.cwd, foundImporter.file.abs)}:${foundImporter.importItem.loc.line}:${foundImporter.importItem.loc.column}`
-          //     : `${foundImporter.file.abs}:${foundImporter.importItem.loc.line}:${foundImporter.importItem.loc.column}`
-          //   : undefined
           const shortOriginalImporter = importer.cwd ? nodePath.relative(importer.cwd, this.abs) : this.abs
           const trace = compiler.trace({
             target: importItem.pathOriginal,
