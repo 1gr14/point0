@@ -792,3 +792,36 @@ export const normalizeAndValidateNodeEnv = (fallback?: NormalizedNodeEnv): Norma
 
 export const isAsyncFn = (fn: unknown): fn is (...args: any[]) => Promise<any> =>
   typeof fn === 'function' && fn.constructor.name === 'AsyncFunction'
+
+export const registerOnProcessExit = (fn: () => void): void => {
+  let triggered = false
+  const triggerIfNotYet = (): void => {
+    if (!triggered) {
+      triggered = true
+      fn()
+    }
+  }
+
+  const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP']
+  const signalHandlers = new Map<NodeJS.Signals, () => void>()
+
+  const removeSignalHandlers = (): void => {
+    for (const [signal, handler] of signalHandlers.entries()) {
+      process.removeListener(signal, handler)
+    }
+    signalHandlers.clear()
+  }
+
+  for (const signal of signals) {
+    const handler = (): void => {
+      triggerIfNotYet()
+      removeSignalHandlers()
+      process.kill(process.pid, signal)
+    }
+    signalHandlers.set(signal, handler)
+    process.on(signal, handler)
+  }
+
+  process.on('beforeExit', triggerIfNotYet)
+  process.on('exit', triggerIfNotYet)
+}

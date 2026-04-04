@@ -1,4 +1,5 @@
 import {
+  __POINT0_QUERY_CLIENT__,
   _getSsItemsWithRestErrors,
   _ssRunWithServerStorageState,
   _ssServerLog,
@@ -12,6 +13,7 @@ import {
   type RequiredCtx,
   type UndefinedCtx,
 } from '@point0/core'
+import type { RichFetchFn } from '@point0/core'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -19,14 +21,11 @@ import { EngineClient } from './client.js'
 import { parseEngineOptions } from './config.js'
 import type { EngineOptions } from './config.js'
 import { FilesGenerator } from './generator.js'
-import type { FileGeneratorProcessResult, FilesGeneratorPointsFilesChangeWatcher } from './generator.js'
+import type { FileGeneratorProcessResult } from './generator.js'
 import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
 import { FilesWatcher } from './watcher.js'
-import type { RichFetchFn } from '@point0/core'
-import { getQueryClient } from '@point0/core'
-import { __POINT0_QUERY_CLIENT__ } from '@point0/core'
 
 export class Engine<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -41,6 +40,7 @@ export class Engine<
   prepared: TPrepared
   pointsGlob: string[]
   buildWatchGlob: string[]
+  serverDevWatchGlob: string[]
   cwd: string
 
   private readonly __POINT0_ENGINE__ = true as const
@@ -54,6 +54,7 @@ export class Engine<
     publicdirs: Array<Publicdir<false, TError>>
     pointsGlob: string[]
     buildWatchGlob: string[]
+    serverDevWatchGlob: string[]
     cwd: string
   }) {
     this.clients = input.clients as TPrepared extends true
@@ -68,6 +69,7 @@ export class Engine<
       : Array<Publicdir<false, TError>>
     this.pointsGlob = input.pointsGlob
     this.buildWatchGlob = input.buildWatchGlob
+    this.serverDevWatchGlob = input.serverDevWatchGlob
     this.cwd = input.cwd
   }
 
@@ -136,6 +138,7 @@ export class Engine<
       publicdirs,
       pointsGlob: parsedOptions.general.pointsGlob,
       buildWatchGlob: parsedOptions.general.buildWatchGlob,
+      serverDevWatchGlob: parsedOptions.server.devWatchGlob,
       cwd: parsedOptions.general.cwd,
     })
   }
@@ -202,7 +205,7 @@ export class Engine<
     scope?: PointsScope | undefined
     entries?: string[] // paths or names
     bunRunArgs?: string[]
-    watch?: boolean
+    watch?: string | string[] | boolean
     restart?: boolean
     cwd?: string
   }): Promise<void> {
@@ -215,9 +218,17 @@ export class Engine<
       scope,
       entries,
       bunRunArgs = [],
-      watch = true,
+      watch: watchProvided,
       cwd = process.cwd(),
     } = options ?? {}
+    const watch =
+      watchProvided === true || watchProvided === undefined
+        ? this.serverDevWatchGlob
+        : watchProvided === false
+          ? false
+          : Array.isArray(watchProvided)
+            ? watchProvided
+            : [watchProvided]
     normalizeAndValidateNodeEnv('development')
     const isSideServer = !side || side === 'server'
     const isSideClient = !side || side === 'client'
@@ -234,12 +245,17 @@ export class Engine<
         ? entries.map((entry) => this.toEntryPath({ entry, cwd }))
         : Object.values(this.server.entry || {})
     if (withServer) {
+      if (watch && watch.length === 0) {
+        throw new Error(
+          'Watch glob is not provided, please provide --watch <glob> or set devWatchGlob in server engine options',
+        )
+      }
       // here we run server entries which already serving server, but prevent multiple client dev servers, so we do not run it here
       const serverEntryProcesses: Array<Promise<any>> = await (async () => {
         if (this.server.viteConfig) {
           process.env.POINT0_PREVENT_CLIENT_DEV_SERVER = 'true'
           await this.server.startViteDevServer()
-          return [this.server.loadViteDevEntries({ watch, entriesFiles })]
+          return [this.server.loadViteDevEntries({ watch: !!watch, entriesFiles })]
         } else {
           let isFirstStart = true
           const start = () => {
@@ -268,16 +284,32 @@ export class Engine<
 
           let processes = start()
           if (watch) {
-            this.onPointFileChange((_event, _path, _points) => {
-              this.log({
-                level: 'info',
-                category: ['server'],
-                message: `Server "${this.server.scope}" restarting...`,
-              })
-              processes.forEach((p) => {
-                p.kill('SIGKILL')
-              })
-              processes = start()
+            const globInclude = watch.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(cwd, g))
+            const globExclude = watch.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(cwd, g.slice(1)))
+            const watcher = FilesWatcher.create({
+              ignore: globExclude,
+              patterns: globInclude,
+            })
+            await watcher.start({
+              onEvent: async (event) => {
+                this.log({
+                  level: 'info',
+                  category: ['server'],
+                  message: `Server restarting... Changed: ${nodePath.relative(this.cwd, event.path)}`,
+                })
+                processes.forEach((p) => {
+                  p.kill('SIGKILL')
+                })
+                processes = start()
+              },
+              onError: async (error) => {
+                this.log({
+                  level: 'error',
+                  category: ['dev', 'watch'],
+                  message: 'Watcher error. Still watching for changes...',
+                  error,
+                })
+              },
             })
           }
           return []
@@ -466,7 +498,7 @@ export class Engine<
 
   async buildWatch(options?: {
     generate?: boolean
-    watch?: string | string[] | undefined
+    watch?: string | string[] | true | undefined
     side?: 'server' | 'client' | undefined
     scope?: PointsScope
     clean?: boolean
@@ -475,7 +507,7 @@ export class Engine<
     cwd?: string
   }): Promise<void> {
     const { watch, cwd = this.cwd, ...buildOptions } = options ?? {}
-    const glob = !watch ? this.buildWatchGlob : Array.isArray(watch) ? watch : [watch]
+    const glob = !watch || watch === true ? this.buildWatchGlob : Array.isArray(watch) ? watch : [watch]
     if (glob.length === 0) {
       throw new Error(
         'Build watch glob is not provided, please provide --watch <glob> or set buildWatchGlob in engine options',
@@ -629,10 +661,6 @@ export class Engine<
       })
     }
     await this.generator.watch()
-  }
-
-  onPointFileChange(callback: FilesGeneratorPointsFilesChangeWatcher): void {
-    this.generator.onPointFileChange(callback)
   }
 
   static findSelfFile(options?: { cwd: string }): string | undefined {

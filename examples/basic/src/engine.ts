@@ -6,6 +6,7 @@ export const engine = Engine.create({
   ssr: true,
   generate: { meta: './lib/meta.ts' },
   server: {
+    devWatchGlob: ['**/*.{ts,tsx,mdx}'],
     scope: 'root',
     port: 3000,
     entry: { main: './index.server.ts' },

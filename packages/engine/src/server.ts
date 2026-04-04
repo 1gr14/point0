@@ -19,7 +19,6 @@ import type {
   EngineOptionsEnvParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
-  PortPolicy,
 } from './config.js'
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
@@ -36,6 +35,7 @@ import {
   getViteRoot,
   loadBunPlugins,
   normalizeAndValidateNodeEnv,
+  registerOnProcessExit,
   validateEntrypoints,
 } from './utils.js'
 import type {
@@ -520,6 +520,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     const serveConfig: Serve.Options<any, any> = {
       ...customServeConfig,
       port: this.port,
+      // reusePort: true,
       fetch: async (request, bunServer) => {
         const devClientsProxyResponse = await this.fetchDevClientsProxy({ request, bunServer })
         if (devClientsProxyResponse) {
@@ -615,18 +616,21 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       // },
     }
 
-    if (process.env[`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_SERVER`] === 'kill') {
-      await killPort([this.port, this.hmrPort].filter(Boolean) as number[], {
-        force: true,
-        category: ['server'],
-      })
-    }
+    // if (process.env[`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_SERVER`] === 'kill') {
+    await killPort([this.port, this.hmrPort].filter(Boolean) as number[], {
+      force: true,
+      category: ['server'],
+    })
+    // }
     this.bunServer = Bun.serve(serveConfig)
+    registerOnProcessExit(() => {
+      void this.bunServer?.stop()
+    })
     process.env[`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_SERVER`] = 'kill'
     this.log({
       level: 'info',
       category: ['server'],
-      message: `Server "${this.scope}" started http://localhost:${this.port}`,
+      message: `Server started http://localhost:${this.port}`,
     })
   }
 

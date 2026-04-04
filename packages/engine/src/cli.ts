@@ -3,13 +3,12 @@
 import { Compiler } from '@point0/compiler'
 import type { PointsScope } from '@point0/core'
 import { Command } from 'commander'
-import path from 'node:path'
+import { default as nodePath, default as path } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Analyzer } from './analyzer.js'
 import type { AnalyzerPointSelectOptions, AnalyzerPointsFilterOptions } from './analyzer.js'
 import { Engine } from './engine.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
-import nodePath from 'node:path'
 
 const program = new Command()
 
@@ -34,6 +33,12 @@ program
   .option('--scope <scope>', 'Server only one scope')
   .option('-W, --no-watch', 'Prevent watch file changes, restrat server, regenrate files')
   .option(
+    '-w, --watch [glob]',
+    'Watch files and rebuild on changes (no value = default devWatchGlob glob from server engine config, comma-separated or repeated values supported)',
+    parseCommaSeparatedOption,
+    [],
+  )
+  .option(
     '--entry <name|path>',
     'Server entry points, names or paths (--entry <entry1>,<entry2>,...) or (--entry <entry1> --entry <entry2> ...)',
     parseCommaSeparatedOption,
@@ -57,7 +62,7 @@ program
       side?: 'server' | 'client' | undefined
       scope?: string | undefined
       generate?: boolean
-      watch?: boolean
+      watch?: boolean | string[]
     }) => {
       // const { engine, engineFile } = await Engine.findAndImportSelf(options.engine)
       const cwd = process.cwd()
@@ -65,7 +70,11 @@ program
       const dashDashIndex = process.argv.indexOf('--')
       const bunRunArgs = dashDashIndex === -1 ? [] : process.argv.slice(dashDashIndex + 1)
       const generateFiles = options.generate !== false
-      const watch = options.watch !== false
+      const watch = Array.isArray(options.watch)
+        ? options.watch.length === 0
+          ? undefined
+          : options.watch.map((w) => nodePath.resolve(cwd, w))
+        : options.watch
       const entries = options.entry
       for (const env of options.env ?? []) {
         const [name, ...valueParts] = env.split('=')
@@ -99,7 +108,7 @@ program
   .option('--engine <path>', dictionary.enginePath)
   .option(
     '-w, --watch [glob]',
-    'Watch files and rebuild on changes (no value = default points glob, comma-separated or repeated values supported)',
+    'Watch files and rebuild on changes (no value = default buildWatchGlob glob from engine config, comma-separated or repeated values supported)',
     parseCommaSeparatedOption,
   )
   .option('--side <side>', 'Build only one side: server or client')
@@ -134,7 +143,12 @@ program
         const value = valueParts.join('=')
         process.env[name] = value
       }
-      const watch = Array.isArray(options.watch) ? options.watch : undefined
+      const watch = Array.isArray(options.watch)
+        ? options.watch.length === 0
+          ? undefined
+          : options.watch.map((w) => nodePath.resolve(process.cwd(), w))
+        : options.watch
+
       const buildOptions = {
         generate: options.generate !== false,
         side: options.side as 'server' | 'client' | undefined,
@@ -142,7 +156,7 @@ program
         clean: options.clean !== false,
         publicdir: options.publicdir !== false,
       }
-      if (options.watch) {
+      if (watch) {
         await engine.buildWatch({
           ...buildOptions,
           watch,

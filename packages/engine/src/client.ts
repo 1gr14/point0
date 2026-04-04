@@ -27,7 +27,6 @@ import type {
   EngineOptionsServing,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
-  PortPolicy,
 } from './config.js'
 import type { Executor } from './executor.js'
 import { killPort } from './port.js'
@@ -43,6 +42,7 @@ import {
   getViteRoot,
   isAsyncFn,
   normalizeAndValidateNodeEnv,
+  registerOnProcessExit,
 } from './utils.js'
 import type {
   EngineClientBuildConfigDefinition,
@@ -412,11 +412,12 @@ plugins = [${combinedPluginsStrings.map((p) => `"${p}"`).join(', ')}]
 import indexHtml from '${this.indexHtml}';
 import { Engine } from '@point0/engine';
 import { killPort } from '@point0/engine/port';
+import { registerOnProcessExit } from '@point0/engine/utils';
 const { engine } = await Engine.findAndImportSelf({ engineFile: '${this.engineFile}' });
 try {
-  if (process.env[\`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_CLIENT\`] === 'kill') {
+  // if (process.env[\`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_CLIENT\`] === 'kill') {
     await killPort([${this.port}, ${this.hmrPort}].filter(Boolean), { force: true, category: ['client'] })
-  }
+  // }
   const bunServer = Bun.serve({
     port: ${this.port},
     development: {
@@ -450,10 +451,13 @@ try {
     },
   })
   process.env[\`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_CLIENT\`] = 'kill'
+  registerOnProcessExit(() => {
+    bunServer.stop()
+  })
   engine.log({
     level: 'info',
     category: ['client'],
-    message: 'Client "${this.scope}" dev server started http://localhost:${this.port}',
+    message: 'Client started http://localhost:${this.port}',
   })
 } catch (error) {
   engine.log({
@@ -567,9 +571,9 @@ try {
       throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
     }
     const srcIndexHtmlContent = await Bun.file(this.indexHtml).text()
-    if (process.env[`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_CLIENT`] === 'kill') {
-      await killPort([this.port, this.hmrPort].filter(Boolean) as number[], { force: true, category: ['client'] })
-    }
+    // if (process.env[`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_CLIENT`] === 'kill') {
+    await killPort([this.port, this.hmrPort].filter(Boolean) as number[], { force: true, category: ['client'] })
+    // }
     const bunViteDevServer = Bun.serve({
       port: this.port,
       development: {
@@ -611,11 +615,14 @@ try {
         return res
       },
     })
+    registerOnProcessExit(() => {
+      void bunViteDevServer.stop()
+    })
     process.env[`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_CLIENT`] = 'kill'
     this.log({
       level: 'info',
       category: ['client'],
-      message: `Client "${this.scope}" dev server started http://localhost:${this.port}`,
+      message: `Started http://localhost:${this.port}`,
     })
     return { bunViteDevServer, viteDevServer }
   }

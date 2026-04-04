@@ -5,9 +5,10 @@ export const engine = Engine.create({
   // clientsServerOutdir: '../dist/server',
   // clientsSelfOutdir: '../dist',
   ssr: true,
-  pointsGlob: ['**/*.{ts,tsx}'],
+  pointsGlob: ['**/*.{ts,tsx,mdx}'],
   server: {
     scope: 'client',
+    devWatchGlob: ['**/*.{ts,tsx,mdx}'],
     points: async () => await import('./lib/points.server'),
     generate: { points: './lib/points.server.ts' },
     port: 3020,

@@ -163,6 +163,7 @@ export type EngineServerOptions<
   port?: number | string
   outdir?: string
   entry?: string | Record<string, string>
+  devWatchGlob?: string | string[]
   bunServeConfig?: Serve.Options<any, any>
   bunBuildConfig?: EngineServerBuildConfigDefinition
   bunPlugins?: EngineServerPluginsDefinition
@@ -426,6 +427,7 @@ export type EngineServerOptionsParsed = {
   compiler: EngineOptionsCompilerSpecificParsed | false
   hmrPort: number | false
   ssr: boolean
+  devWatchGlob: string[]
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -654,16 +656,18 @@ const parseEngineGeneralOptions = ({
       cwdIfWasBuilt: null,
       path: generalOptions.clientsOutdir,
     }),
-    pointsGlob: !generalOptions.pointsGlob
+    pointsGlob: (!generalOptions.pointsGlob
       ? []
       : Array.isArray(generalOptions.pointsGlob)
         ? generalOptions.pointsGlob
-        : [generalOptions.pointsGlob],
-    buildWatchGlob: !generalOptions.buildWatchGlob
+        : [generalOptions.pointsGlob]
+    ).map((g) => nodePath.resolve(cwd, g)),
+    buildWatchGlob: (!generalOptions.buildWatchGlob
       ? []
       : Array.isArray(generalOptions.buildWatchGlob)
-        ? generalOptions.buildWatchGlob
-        : [generalOptions.buildWatchGlob],
+        ? generalOptions.buildWatchGlob.map((g) => nodePath.resolve(cwd, g))
+        : [generalOptions.buildWatchGlob]
+    ).map((g) => nodePath.resolve(cwd, g)),
     ssr,
   }
 }
@@ -901,6 +905,13 @@ export const parseEngineServerOptions = ({
     : Array.isArray(providedGenerate)
       ? providedGenerate
       : FilesGenerator.simpleServerConfigToTasks({ config: providedGenerate, scope: serverOptions.scope })
+  const devWatchGlob = (
+    !serverOptions.devWatchGlob
+      ? []
+      : Array.isArray(serverOptions.devWatchGlob)
+        ? serverOptions.devWatchGlob
+        : [serverOptions.devWatchGlob]
+  ).map((g) => nodePath.resolve(generalOptionsParsed.cwd, g))
   return {
     scope: serverOptions.scope,
     pointsProvided: serverOptions.points ?? null,
@@ -931,6 +942,7 @@ export const parseEngineServerOptions = ({
           })
         : (serverOptions.viteConfig ?? generalOptionsParsed.viteConfig ?? null),
     ssr,
+    devWatchGlob,
   }
 }
 const parseEngineClientOptions = ({
