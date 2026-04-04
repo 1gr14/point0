@@ -506,7 +506,10 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     return undefined // this mean that we did not find any dev client proxy response, and should continue to fetch point
   }
 
-  async serve({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
+  async serve({
+    requiredCtx,
+    ..._providedServeConfig
+  }: { requiredCtx: RequiredCtx } & Partial<Serve.Options<any, any>>): Promise<void> {
     if (!this.isPrepared()) {
       throw new Error('Server is not prepared')
     }
@@ -517,8 +520,11 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
 
     const customServeConfig = ((this.bunServeConfig as unknown) ?? {}) as Record<string, unknown>
     const customWebsocketConfig = this.bunServeConfig?.websocket as any
+    const providedServeConfig = _providedServeConfig as Record<string, unknown>
+    const providedWebsocketConfig = _providedServeConfig.websocket as any
     const serveConfig: Serve.Options<any, any> = {
       ...customServeConfig,
+      ...providedServeConfig,
       port: this.port,
       // reusePort: true,
       fetch: async (request, bunServer) => {
@@ -538,6 +544,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       },
       websocket: {
         ...(customWebsocketConfig ?? {}),
+        ...(providedWebsocketConfig ?? {}),
         // later will be user for channels
         open: (ws) => {
           const customOpen = customWebsocketConfig?.open?.bind(ws)

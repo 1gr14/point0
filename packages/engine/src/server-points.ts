@@ -74,6 +74,7 @@ export class ServerPoints<TError extends ErrorPoint0> {
   load = async (): Promise<typeof this> => {
     await this.manager.load()
     this.generateIndex()
+    this._collection = undefined
     return this
   }
 
@@ -213,6 +214,15 @@ export class ServerPoints<TError extends ErrorPoint0> {
       return transformerByScope
     }
     throw new Error(`Transformer not found for scope "${scope}"`)
+  }
+
+  private _collection: ReadyPoint[] | undefined
+  get collection(): ReadyPoint[] {
+    if (this._collection) {
+      return this._collection
+    }
+    this._collection = this.manager.collection.map((p) => p.point)
+    return this._collection
   }
 }
 

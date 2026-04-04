@@ -293,6 +293,7 @@ export class Fetcher<TError extends ErrorPoint0> {
                 request,
                 set: effects.set,
                 scope,
+                points: this.server.points?.collection ?? [],
               },
             }
           }
@@ -334,6 +335,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             request,
             set: effects.set,
             scope: endpoint.point.scope,
+            points: this.server.points?.collection ?? [],
           },
         }
       }
@@ -358,6 +360,7 @@ export class Fetcher<TError extends ErrorPoint0> {
               request,
               set: effects.set,
               scope: this.engine.server.scope,
+              points: this.server.points?.collection ?? [],
             },
           }
         }
@@ -406,6 +409,7 @@ export class Fetcher<TError extends ErrorPoint0> {
               request,
               set: effects.set,
               scope: foundExactPage.page.scope,
+              points: this.server.points?.collection ?? [],
             },
           }
         }
@@ -428,6 +432,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             request,
             set: effects.set,
             scope: foundExactPage.client.scope,
+            points: this.server.points?.collection ?? [],
           },
         }
       }
@@ -470,6 +475,7 @@ export class Fetcher<TError extends ErrorPoint0> {
               request,
               set: effects.set,
               scope: foundSuitableClient.scope,
+              points: this.server.points?.collection ?? [],
             },
           }
         }
@@ -492,6 +498,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             request,
             set: effects.set,
             scope: foundSuitableClient.scope,
+            points: this.server.points?.collection ?? [],
           },
         }
       }
@@ -514,6 +521,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           request,
           set: effects.set,
           scope: this.server.scope,
+          points: this.server.points?.collection ?? [],
         },
       }
     } catch (error) {
@@ -532,6 +540,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           request,
           set: effects.set,
           scope: this.server.scope,
+          points: this.server.points?.collection ?? [],
         },
       }
     }

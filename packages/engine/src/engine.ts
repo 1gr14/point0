@@ -26,6 +26,7 @@ import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
 import { FilesWatcher } from './watcher.js'
+import type { Serve } from 'bun'
 
 export class Engine<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -331,17 +332,17 @@ export class Engine<
       ? [
           options?: {
             requiredCtx?: TRequiredCtx
-          },
+          } & Partial<Serve.Options<any, any>>,
         ]
       : [
           options: {
             requiredCtx: TRequiredCtx
-          },
+          } & Partial<Serve.Options<any, any>>,
         ]
   ): Promise<void> {
-    const { requiredCtx } = args[0] ?? {}
+    const options = args[0] ?? {}
     await this.prepare()
-    await this.server.serve({ requiredCtx })
+    await this.server.serve(options as never)
   }
 
   async dispose(): Promise<void> {

@@ -642,6 +642,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 // },
                 request: this.request,
                 set: effects.set,
+                points: this.engine.server.points?.collection ?? [],
                 // point,
                 ...getParsed(),
               })
@@ -710,6 +711,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 // },
                 request: this.request as never,
                 set: effects.set,
+                points: this.engine.server.points?.collection ?? [],
                 // point,
                 ...getParsed(),
               })

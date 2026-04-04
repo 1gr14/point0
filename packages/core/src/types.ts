@@ -7,7 +7,6 @@ import type {
   HasParams,
   ParamsInput,
   ParamsOutput,
-  RoutesPretty,
   UnknownSearchInput,
 } from '@devp0nt/route0'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
@@ -19,8 +18,6 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import type { ResponseEffectsSetHelper, ResponseEffectsValues } from './effects.js'
-import type { EnvOsName, EnvRuntimeName } from './env.js'
-import type { NormalizedNodeEnv } from './env.types.js'
 import type { ErrorPoint0 } from './error.js'
 import type {
   EmptyProps,
@@ -29,6 +26,7 @@ import type {
   Props,
   QueriesDefinitions,
 } from './mountable.js'
+import type { RedirectTask } from './navigation.js'
 import type { Point0 } from './point0.js'
 import type {
   Request0,
@@ -39,7 +37,6 @@ import type {
   WideRequestMethod,
 } from './request0.js'
 import type { GetByPath, SetByPath } from './utils.js'
-import type { RedirectTask } from './navigation.js'
 
 // basic
 
@@ -1607,6 +1604,7 @@ export type CtxFnOptions<
     set: ResponseEffectsSetHelper
     // execute: ServerExecuteFn
     ctx: TCtxPrev
+    points: ReadyPoint[]
   } & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
 >
 export type CtxFn<
@@ -1697,6 +1695,7 @@ export type LoaderFnOptions<
     set: ResponseEffectsSetHelper
     // execute: ServerExecuteFn
     ctx: TCtx
+    points: ReadyPoint[]
   } & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
 >
 export type LoaderFn<
@@ -2154,6 +2153,7 @@ export type MiddlewareFnOptions<
   set: ResponseEffectsSetHelper
   scope: PointsScope
   next: MiddlewareNextFn<TError>
+  points: ReadyPoint[]
 } & (TRouteDefinition extends RouteDefinition
   ? HasParams<TRouteDefinition> extends true
     ? { params: ParamsOutput<TRouteDefinition> }
