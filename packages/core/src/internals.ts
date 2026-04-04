@@ -39,6 +39,11 @@ export const _ss = {
     'serverOnlyStorage',
   ),
   __POINT0_REQUEST0__: superstore.define<Request0>('__POINT0_REQUEST0__', initUndefined, 'serverOnlyStorage'),
+  __POINT0_SERVER_PORT__: superstore.define<number | undefined>(
+    '__POINT0_SERVER_PORT__',
+    initUndefined,
+    'serverOnlyStorage',
+  ),
   __POINT0_EFFECTS__: superstore.define<Effects>('__POINT0_EFFECTS__', initUndefined, 'serverOnlyStorage'),
   __POINT0_CLIENT_POINTS__: superstore.define<ClientPoints<any> | undefined>(
     '__POINT0_CLIENT_POINTS__',

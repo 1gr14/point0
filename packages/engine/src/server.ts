@@ -623,17 +623,16 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       // },
     }
 
-    // if (process.env[`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_SERVER`] === 'kill') {
-    await killPort([this.port, this.hmrPort].filter(Boolean) as number[], {
-      force: true,
-      category: ['server'],
-    })
-    // }
+    if (!_point0_env.mode.is.production) {
+      await killPort([this.port, this.hmrPort].filter(Boolean) as number[], {
+        force: true,
+        category: ['server'],
+      })
+    }
     this.bunServer = Bun.serve(serveConfig)
     registerOnProcessExit(() => {
       void this.bunServer?.stop()
     })
-    process.env[`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_SERVER`] = 'kill'
     this.log({
       level: 'info',
       category: ['server'],

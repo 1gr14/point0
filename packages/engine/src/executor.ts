@@ -92,6 +92,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       __POINT0_FAKE_CLIENT__: undefined,
       __POINT0_FETCH_FN__: engine.fetch.bind(engine),
       __POINT0_REQUEST0__: request,
+      __POINT0_SERVER_PORT__: engine.server.port,
       __POINT0_EFFECTS__: effects,
       __POINT0_CLIENT_POINTS__: undefined,
       // in case of recursive server response we want preserve query client to keep state

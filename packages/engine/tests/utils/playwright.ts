@@ -19,11 +19,13 @@ export class PlaywrightBrowser {
   headless: boolean
   timeout: number
   pages = new Set<PlaywrightPage>()
+  options: PlaywrightBrowserInitOptions
 
   constructor(options: Required<PlaywrightBrowserConstructoeOptions>) {
     this.original = options.original
     this.headless = options.headless
     this.timeout = options.timeout
+    this.options = options
   }
 
   static async init(options: PlaywrightBrowserInitOptions = {}): Promise<PlaywrightBrowser> {
@@ -33,27 +35,55 @@ export class PlaywrightBrowser {
     return new PlaywrightBrowser({ headless: options.headless ?? true, timeout: options.timeout ?? 7000, original })
   }
 
+  async recreate(): Promise<PlaywrightBrowser> {
+    const newInstance = await PlaywrightBrowser.init(this.options)
+    try {
+      await this.close()
+    } catch {}
+    this.original = newInstance.original
+    this.headless = newInstance.headless
+    this.timeout = newInstance.timeout
+    this.options = newInstance.options
+    this.pages = new Set()
+    return newInstance
+  }
+
+  async recreateIfBrowserWasClosed<T extends (intsance: typeof this) => any>(fn: T): Promise<Awaited<ReturnType<T>>> {
+    try {
+      return await fn(this)
+    } catch {
+      const newInstance = await this.recreate()
+      return await fn(newInstance as typeof this)
+    }
+  }
+
   async createPage(): Promise<PlaywrightPage> {
-    const pageOriginal = await this.original.newPage()
-    const page = await PlaywrightPage.create({ original: pageOriginal, browser: this })
-    this.pages.add(page)
-    return page
+    return await this.recreateIfBrowserWasClosed(async (instance) => {
+      const pageOriginal = await instance.original.newPage()
+      const page = await PlaywrightPage.create({ original: pageOriginal, browser: instance })
+      this.pages.add(page)
+      return page
+    })
   }
 
   async goto(url: string): Promise<PlaywrightPage> {
-    const page = await this.createPage()
-    await page.goto(url)
-    return page
+    return await this.recreateIfBrowserWasClosed(async (instance) => {
+      const page = await instance.createPage()
+      await page.goto(url)
+      return page
+    })
   }
 
   async close(): Promise<void> {
-    await Promise.all(
-      Array.from(this.pages).map(async (p) => {
-        await p.close()
-      }),
-    )
-    this.pages.clear()
-    await this.original.close()
+    try {
+      await Promise.all(
+        Array.from(this.pages).map(async (p) => {
+          await p.close()
+        }),
+      )
+      this.pages.clear()
+      await this.original.close()
+    } catch {}
   }
 }
 

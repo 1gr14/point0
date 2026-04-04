@@ -413,11 +413,12 @@ import indexHtml from '${this.indexHtml}';
 import { Engine } from '@point0/engine';
 import { killPort } from '@point0/engine/port';
 import { registerOnProcessExit } from '@point0/engine/utils';
+import { env } from '@point0/core';
 const { engine } = await Engine.findAndImportSelf({ engineFile: '${this.engineFile}' });
 try {
-  // if (process.env[\`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_CLIENT\`] === 'kill') {
+  if (!env.mode.is.production) {
     await killPort([${this.port}, ${this.hmrPort}].filter(Boolean), { force: true, category: ['client'] })
-  // }
+  }
   const bunServer = Bun.serve({
     port: ${this.port},
     development: {
@@ -450,7 +451,6 @@ try {
       )
     },
   })
-  process.env[\`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_CLIENT\`] = 'kill'
   registerOnProcessExit(() => {
     bunServer.stop()
   })
@@ -571,9 +571,9 @@ try {
       throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
     }
     const srcIndexHtmlContent = await Bun.file(this.indexHtml).text()
-    // if (process.env[`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_CLIENT`] === 'kill') {
-    await killPort([this.port, this.hmrPort].filter(Boolean) as number[], { force: true, category: ['client'] })
-    // }
+    if (!_point0_env.mode.is.production) {
+      await killPort([this.port, this.hmrPort].filter(Boolean) as number[], { force: true, category: ['client'] })
+    }
     const bunViteDevServer = Bun.serve({
       port: this.port,
       development: {
@@ -618,7 +618,6 @@ try {
     registerOnProcessExit(() => {
       void bunViteDevServer.stop()
     })
-    process.env[`POINT0_PORT_POLICY_${this.scope.toUpperCase()}_CLIENT`] = 'kill'
     this.log({
       level: 'info',
       category: ['client'],

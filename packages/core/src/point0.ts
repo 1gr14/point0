@@ -8450,6 +8450,10 @@ export class Point0<
     if (typeof window !== 'undefined') {
       return window.location.origin
     }
+    const serverPort = _ss.__POINT0_SERVER_PORT__.getWeak()
+    if (serverPort) {
+      return `http://localhost:${serverPort}`
+    }
     return undefined
   }
 

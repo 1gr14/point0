@@ -258,14 +258,7 @@ export class Engine<
           await this.server.startViteDevServer()
           return [this.server.loadViteDevEntries({ watch: !!watch, entriesFiles })]
         } else {
-          let isFirstStart = true
           const start = () => {
-            const overridenPortPolicyEnv = isFirstStart
-              ? {}
-              : {
-                  [`POINT0_PORT_POLICY_${this.server.scope.toUpperCase()}_SERVER`]: 'kill',
-                }
-            isFirstStart = false
             return Object.values(this.server.entry || [])
               .filter((entryFile) => entriesFiles.includes(entryFile))
               .map((entryFile) => {
@@ -273,7 +266,6 @@ export class Engine<
                   cmd: ['bun', 'run', ...(watch ? ['--watch'] : []), ...bunRunArgs, entryFile],
                   env: {
                     ...process.env,
-                    ...overridenPortPolicyEnv,
                     POINT0_PREVENT_CLIENT_DEV_SERVER: 'true',
                   },
                   stdin: 'ignore',
@@ -383,6 +375,7 @@ export class Engine<
     const fetchFn = this.fetch.bind(this)
     const serverStorageState = _getSsItemsWithRestErrors(
       {
+        __POINT0_SERVER_PORT__: this.server.port,
         __POINT0_FETCH_FN__: fetchFn as RichFetchFn,
         __POINT0_QUERY_CLIENT__: __POINT0_QUERY_CLIENT__.getWeak() || __POINT0_QUERY_CLIENT__.config.init(),
       },
