@@ -39,7 +39,6 @@ mcp as comments
 
 === REFACTOING 3000 ===
 
-Сделать сервер опциональным, убедиться, что клиенты опциональные
 remove unsused commented code
 
 OPENAPI

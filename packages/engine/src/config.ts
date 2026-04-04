@@ -206,7 +206,7 @@ export type EngineOptions<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TError extends ErrorPoint0 = ErrorPoint0,
 > = EngineGeneralOptions & {
-  server: EngineServerOptions<TRequiredCtx, TError>
+  server?: EngineServerOptions<TRequiredCtx, TError>
   clients?: EngineClientOptions[]
 }
 
@@ -1172,7 +1172,11 @@ const parseEngineClientOptions = ({
 // }
 
 export const parseEngineOptions = (options: EngineOptions<any, any>): EngineOptionsParsed => {
-  const { server: serverOptions, clients: clientsOptionsRaw, ...generalOptions } = options
+  const {
+    server: serverOptions = { scope: 'root', ssr: false },
+    clients: clientsOptionsRaw,
+    ...generalOptions
+  } = options
   // const clientsOptions = clientsOptionsRaw?.flatMap((clientOptions) => (clientOptions ? [clientOptions] : [])) ?? []
   const clientsOptions = clientsOptionsRaw ?? []
   const generalOptionsParsed = parseEngineGeneralOptions({
