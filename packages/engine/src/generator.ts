@@ -165,8 +165,8 @@ export class FilesGenerator {
   private readonly files = new Set<string>()
   // private readonly points: CompilerPoint[] = []
   private readonly pointsByPaths = new Map<string, CompilerPoint[]>()
-  private readonly allStablePoints: CompilerPoint[] = []
-  private readonly safeStablePoints: CompilerPoint[] = []
+  private readonly points: CompilerPoint[] = []
+  private readonly safePoints: CompilerPoint[] = []
 
   // Map<outputAbs, content>
   private readonly lastEmittedContentMap = new Map<string, string>()
@@ -352,8 +352,8 @@ export class FilesGenerator {
     const newAllStablePoints = FilesGenerator.sortPoints([...allNewPoints])
     const newSafeStablePoints = FilesGenerator.sortPoints([...newSafePoints])
 
-    this.allStablePoints.splice(0, this.allStablePoints.length, ...newAllStablePoints)
-    this.safeStablePoints.splice(0, this.safeStablePoints.length, ...newSafeStablePoints)
+    this.points.splice(0, this.points.length, ...newAllStablePoints)
+    this.safePoints.splice(0, this.safePoints.length, ...newSafeStablePoints)
     this.actualizePointsByPaths(newAllStablePoints)
   }
 
@@ -392,7 +392,7 @@ export class FilesGenerator {
         this.log({ level: 'error', category: ['generator'], message })
       }
     }
-    const prevPoints = [...this.safeStablePoints]
+    const prevPoints = [...this.safePoints]
     const validPoints = collectedPoints.filter((p) => p.valid)
     const hasPointParseErrors = invalidPoints.length > 0
     const hasCollectionErrors = errors.length > 0
@@ -525,7 +525,7 @@ export class FilesGenerator {
     if (task.what === 'customFile') {
       tasks.push({
         content: await task.handler({
-          points: this.allStablePoints.filter((p) => p.valid),
+          points: this.points.filter((p) => p.valid),
           cwd: this.cwd,
           log: this.log,
           tempDir: this.tempDir,
@@ -541,7 +541,7 @@ export class FilesGenerator {
         type: 'controlled',
       })
       await task.handler({
-        points: this.allStablePoints.filter((p) => p.valid),
+        points: this.points.filter((p) => p.valid),
         cwd: this.cwd,
         log: this.log,
         tempDir: this.tempDir,
@@ -884,7 +884,7 @@ export class FilesGenerator {
   }
 
   emitLazyPointsFile(task: FilesGeneratorTaskClientPoints): string {
-    const points = this.safeStablePoints.filter((p) =>
+    const points = this.safePoints.filter((p) =>
       FilesGenerator.shouldExistsInClientPointsFile({ point: p, scope: task.scope }),
     ) as Array<CompilerPoint<true>>
     const lines: string[] = []
@@ -932,7 +932,7 @@ export class FilesGenerator {
 
   emitReadyPointsFile(task: FilesGeneratorTaskClientPoints | FilesGeneratorTaskServerPoints): string {
     const side = task.what === 'clientPoints' ? 'client' : 'server'
-    const points = this.safeStablePoints.filter((p) =>
+    const points = this.safePoints.filter((p) =>
       side === 'client'
         ? FilesGenerator.shouldExistsInClientPointsFile({ point: p, scope: task.scope })
         : FilesGenerator.shouldExistsInServerPointsFile({ point: p, scope: task.scope }),
@@ -1085,7 +1085,7 @@ export class FilesGenerator {
   // }
 
   emitRoutesPointsFile(task: FilesGeneratorTaskRoutes): string {
-    const points = this.safeStablePoints.filter((p) => p.scope === task.scope)
+    const points = this.safePoints.filter((p) => p.scope === task.scope)
     const lines: string[] = []
     if (task.banner) {
       lines.push(task.banner)
@@ -1125,7 +1125,7 @@ export class FilesGenerator {
   }
 
   emitMetaFile(task: FilesGeneratorTaskMeta): string {
-    const points = this.allStablePoints.filter(
+    const points = this.points.filter(
       (p) => (p.scope && task.scopes.includes(p.scope)) || p.scope === 'plugin',
     ) as CompilerPoint<true>[]
     const { importedPoints } = this.emitPointsImports({
