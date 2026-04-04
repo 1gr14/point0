@@ -889,4 +889,22 @@ describe('with', () => {
       "
     `)
   })
+
+  it('forbids returning array as data', () => {
+    const root = createRoot()
+    root
+      .lets('page', 'home', '/')
+      // @ts-expect-error -- array is forbidden to return as data
+      .with(() => [{ x: 1 }])
+      .page()
+  })
+
+  it('forbids returning string as data', () => {
+    const root = createRoot()
+    root
+      .lets('page', 'home', '/')
+      // @ts-expect-error -- string is forbidden to return as data
+      .with(() => 'zxc')
+      .page()
+  })
 })

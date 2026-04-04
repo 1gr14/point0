@@ -574,7 +574,17 @@ export class SuperStore {
     if (!serverStorageState) {
       return undefined
     }
-    return serverStorageState.__POINT0_FAKE_CLIENT__ as never
+    const fakeClient = serverStorageState.__POINT0_FAKE_CLIENT__ as
+      | { id: string; scope: PointsScope; runtime: ClientRuntime; fetch: RichFetchFn; points: ClientPoints<any> }
+      | Error
+      | undefined
+    if (!fakeClient) {
+      return undefined
+    }
+    if (fakeClient instanceof Error) {
+      return undefined
+    }
+    return fakeClient
   }
 
   isFakeClient(): boolean {

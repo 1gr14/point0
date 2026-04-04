@@ -1,4 +1,6 @@
 import {
+  _getSsItemsWithRestErrors,
+  _ssRunWithServerStorageState,
   _ssServerLog,
   type AnyNiceReadyPoint,
   type AnyPoint,
@@ -18,11 +20,13 @@ import { parseEngineOptions } from './config.js'
 import type { EngineOptions } from './config.js'
 import { FilesGenerator } from './generator.js'
 import type { FileGeneratorProcessResult, FilesGeneratorPointsFilesChangeWatcher } from './generator.js'
-import { killPort } from './port.js'
 import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
 import { FilesWatcher } from './watcher.js'
+import type { RichFetchFn } from '@point0/core'
+import { getQueryClient } from '@point0/core'
+import { __POINT0_QUERY_CLIENT__ } from '@point0/core'
 
 export class Engine<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -340,6 +344,20 @@ export class Engine<
   ): Promise<Response> {
     const result = await this.fetchDetailed(...args)
     return result.response
+  }
+
+  withFetch<TCallback extends (fetch: typeof this.fetch) => any>(callback: TCallback): ReturnType<TCallback> {
+    const fetchFn = this.fetch.bind(this)
+    const serverStorageState = _getSsItemsWithRestErrors(
+      {
+        __POINT0_FETCH_FN__: fetchFn as RichFetchFn,
+        __POINT0_QUERY_CLIENT__: __POINT0_QUERY_CLIENT__.getWeak() || __POINT0_QUERY_CLIENT__.config.init(),
+      },
+      'Value "%s" not exists in server storage context yet',
+    )
+    return _ssRunWithServerStorageState(serverStorageState, () => {
+      return callback(fetchFn)
+    })
   }
 
   // richFetch: RichFetchFn = async (...args) => {

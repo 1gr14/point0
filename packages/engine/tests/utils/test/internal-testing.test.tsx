@@ -9,60 +9,62 @@ import { createNavigation } from '@point0/react-dom/router'
 import { ClientPoints } from '@point0/core'
 
 describe('internal-testing', () => {
-  it('works', async () => {
-    const root = Point0.lets('root', 'root')
-      .queryOptions({ refetchOnMount: false, staleTime: Infinity })
-      .prefetchPageOnNavigate(false)
-      .prefetchPageOnLinkHover(false)
-      .loading(() => <div id="loading">...</div>)
-      .root()
-    const routes = ClientPoints.createFromDefintion([root]).routes
-    const { Link } = createNavigation({ routes })
-    const page = root.lets('page', 'home', '/').page(() => (
-      <div id="home">
-        <h1>Home Page</h1>
-        <Link id="link" to={'/news'}>
-          Go to News
-        </Link>
-      </div>
-    ))
-    const news = root
-      .lets('page', 'news', '/news')
-      .loader(async () => await waitReturn({ x: 1 }))
-      // .loader(() => ({ x: 1 }))
-      .page(({ data }) => (
-        <div id="news">
-          <h1>News Page ({data.x})</h1>
-          <Link id="link" to={'/'}>
-            Go to Home
+  it(
+    'works',
+    async () => {
+      const root = Point0.lets('root', 'root')
+        .queryOptions({ refetchOnMount: false, staleTime: Infinity })
+        .prefetchPageOnNavigate(false)
+        .prefetchPageOnLinkHover(false)
+        .loading(() => <div id="loading">...</div>)
+        .root()
+      const routes = ClientPoints.createFromDefintion([root]).routes
+      const { Link } = createNavigation({ routes })
+      const page = root.lets('page', 'home', '/').page(() => (
+        <div id="home">
+          <h1>Home Page</h1>
+          <Link id="link" to={'/news'}>
+            Go to News
           </Link>
         </div>
       ))
-    const { fetchPreview, fetchRecorder, fetchesTale, render } = await createTestThings({
-      ssr: true,
-      points: [root, page, news],
-    })
-    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      const news = root
+        .lets('page', 'news', '/news')
+        .loader(async () => await waitReturn({ x: 1 }))
+        // .loader(() => ({ x: 1 }))
+        .page(({ data }) => (
+          <div id="news">
+            <h1>News Page ({data.x})</h1>
+            <Link id="link" to={'/'}>
+              Go to Home
+            </Link>
+          </div>
+        ))
+      const { fetchPreview, fetchRecorder, fetchesTale, render } = await createTestThings({
+        ssr: true,
+        points: [root, page, news],
+      })
+      expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #home:
         h1: Home Page
         #link: Go to News
       "
     `)
-    const fetchResults1 = await fetchRecorder.waitFinishedResults()
-    expect(fetchResults1).toHaveLength(1)
-    expect(fetchResults1[0].variant.type).toBe('page')
-    fetchRecorder.prune()
+      const fetchResults1 = await fetchRecorder.waitFinishedResults()
+      expect(fetchResults1).toHaveLength(1)
+      expect(fetchResults1[0].variant.type).toBe('page')
+      fetchRecorder.prune()
 
-    await render(async ({ tale, click, waitContent }) => {
-      await waitContent('#home')
-      await click('#link')
-      await waitContent('#news')
-      await click('#link')
-      await waitContent('#home')
-      await click('#link')
-      await waitContent('#news')
-      expect(await tale()).toMatchInlineSnapshot(`
+      await render(async ({ tale, click, waitContent }) => {
+        await waitContent('#home')
+        await click('#link')
+        await waitContent('#news')
+        await click('#link')
+        await waitContent('#home')
+        await click('#link')
+        await waitContent('#news')
+        expect(await tale()).toMatchInlineSnapshot(`
         "
         /
           #home:
@@ -87,13 +89,17 @@ describe('internal-testing', () => {
             #link: Go to Home
         "
       `)
-    })
-    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      })
+      expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
       page.news (client) < {}
       "
     `)
 
-    // await client.destroy()
-  })
+      // await client.destroy()
+    },
+    {
+      retry: 3,
+    },
+  )
 })

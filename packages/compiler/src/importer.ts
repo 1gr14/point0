@@ -270,6 +270,9 @@ Import denied on side "${side}"${scope ? ` for scope "${scope}"` : ''}
   Resolved: ${pathResolved}
 
 ${traceMessage}
+
+Suggestions:${!trace ? '' : `\n  - To see better trace run in terminal: point0 trace --side ${side} --scope ${scope || '<scope>'} "./${pathResolved}" "<source-file-path>"`}
+  - To see how <source-file-path> looks after compiling without ${side === 'server' ? 'client' : 'server'} code, run in terminal: point0 compile --side ${side} --scope ${scope || '<scope>'} "<source-file-path>"
   `
     const denyThrower = `throw new Error(${JSON.stringify(denyMessage)})`
     return { denyMessage, denyThrower }

@@ -34,6 +34,14 @@ export const getFetch = (): RichFetchFn => {
   return superstore.getFakeClient()?.fetch ?? nativeFetch
 }
 
+export const getFetchWeak = (): RichFetchFn | undefined => {
+  try {
+    return getFetch()
+  } catch {
+    return undefined
+  }
+}
+
 export const useLayoutEffectSsr: typeof useLayoutEffect = (effect, deps) => {
   if (_point0_env.side.is.server) {
     effect()

@@ -15,6 +15,7 @@ declare module '@point0/core/request0' {
 describe('fetch', () => {
   const createRoot = () =>
     Point0.lets('root', 'root')
+      .serverurl('http://localhost:3000')
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({
@@ -171,6 +172,23 @@ describe('fetch', () => {
               #c2-content: c1: c1Value, page2: pageValue2
         "
       `)
+    })
+  })
+
+  it('can fetch point with engine.withFetch', async () => {
+    const root = createRoot()
+    const query = root
+      .lets('query', 'test')
+      .loader(() => {
+        return { x: 1 }
+      })
+      .query()
+    const { engine } = await createTestThings({ ssr: true, points: [root, query] })
+    const result = await engine.withFetch(async () => {
+      return await query.fetch()
+    })
+    expect(result).toMatchObject({
+      x: 1,
     })
   })
 })

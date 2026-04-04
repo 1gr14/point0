@@ -8,7 +8,6 @@
 refactoring
 
 devp0nt
-create-app
 docs
 start0
 
@@ -40,20 +39,15 @@ mcp as comments
 
 === REFACTOING 3000 ===
 
-Разобраться, где должна быть опция ssr в конфиге
-В мсп лучше комментарии написать
-В мсп добавить трейс и шоу
 bunDevWatchGlob
-Си озер тестс ин энжин
-Проверить что виз не возвращает строку, как и лоадер
-fetchOptions также принимают fetchFn
-B engine имеет withFetch(callback)
 проверка что префетч/бефор/афтер срабатывает сровнутая из редиректа, может их переименовать на onBeforeNavigate, onAfterNavigate
 Убедиться, что в мете сср дефолтный верный
 Серв конфиг разрешить также передавать и в саму серв функцию
 У сервераколлекция строго лоадед, чтобы по ней искать нормально
 Сделать сервер опциональным, убдеиться, что клиенты опциональные
 В генераторе переименовать на просто points и safePoints
+Трейс без соурса по умолчанию берёт все энтри за основу то есть массив
+remove unsused commented code
 
 OPENAPI
 Поинтс засунуть и в кткс и в лоадер и в мидлвару
@@ -63,14 +57,15 @@ scalar
 
 ЭКЗАМПЛЫ
 Причёска экзамплов
-Пьюр вайт экзампл
+? Пьюр вайт экзампл
 Экзампл докер
 Экзампл электробан симпл и два сервера
+Экзампл экспо с метро
 Тесты
+create-app
 
 FINISH
 Проверка под линукс и виндоус
-remove unsused commented code
 types.ts file thet reexport only needed types
 index exports only realy used fns and helpers without types
 In error0 import RedirectTask from "@point0/core/navigate"
@@ -79,6 +74,8 @@ In error0 import RedirectTask from "@point0/core/navigate"
 === DEBT ===
 ? Сет кукис и кукис надо синхронизировать
 merge engines and have shared server and fetch functions
+fetchOptions также принимают fetchFn
+when electrobun allow passing replaceFetch to point
 
 COMPILER
 recomendations for importer deny
@@ -438,6 +435,7 @@ Route0.create('>+zxc') → will be rewritten () => Route0.create('>currentfilepa
 
 
 === DOCS ===
+Разобраться, где должна быть опция ssr в конфиге
 Маркдаун мидлвара
 docs in comments
 LLM docs
