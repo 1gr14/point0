@@ -25,7 +25,7 @@ describe('search', () => {
 
   const createRootWithSchemaHelper = () =>
     Point0.lets('root', 'root')
-      .schemaHelper(zodSchemaHelper)
+      .schemaHelper(zodSchemaHelper())
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({

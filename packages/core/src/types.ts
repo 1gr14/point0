@@ -738,6 +738,7 @@ export type IsActionInputOptional<
 export type SchemaHelper = {
   isSuitable: ((schema: unknown) => boolean) | string // if string, then just pick by standard schema vendor
   extractKeys?: (schema: unknown) => string[] | undefined
+  toJson?: (schema: unknown) => object | undefined
 }
 
 // input

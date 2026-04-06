@@ -41,3 +41,11 @@ export const extractKeysBySchemasHelpers = (
   const schemaHelper = getSutableSchemaHelper(schema, schemaHelpers)
   return schemaHelper?.extractKeys?.(schema)
 }
+
+export const extractJsonSchemaBySchemasHelpers = (
+  schema: unknown,
+  schemaHelpers: SchemaHelper[] | undefined,
+): object | undefined => {
+  const schemaHelper = getSutableSchemaHelper(schema, schemaHelpers)
+  return schemaHelper?.toJson?.(schema)
+}

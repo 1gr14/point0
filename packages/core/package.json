@@ -45,6 +45,9 @@
       "unhead": [
         "./dist/esm/unhead.d.ts"
       ],
+      "schema/utils": [
+        "./dist/esm/schema/utils.d.ts"
+      ],
       "schema/arktype": [
         "./dist/esm/schema/arktype.d.ts"
       ],
@@ -105,6 +108,11 @@
       "types": "./dist/esm/unhead.d.ts",
       "require": "./dist/cjs/unhead.cjs",
       "import": "./dist/esm/unhead.js"
+    },
+    "./schema/utils": {
+      "types": "./dist/esm/schema/utils.d.ts",
+      "require": "./dist/cjs/schema/utils.cjs",
+      "import": "./dist/esm/schema/utils.js"
     },
     "./schema/arktype": {
       "types": "./dist/esm/schema/arktype.d.ts",
@@ -173,16 +181,17 @@
     "@sinclair/typebox": "catalog:",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
+    "@unhead/react": "catalog:",
+    "@valibot/to-json-schema": "^1.6.0",
     "arktype": "catalog:",
     "esbuild-fix-imports-plugin": "^1.0.22",
-    "superstruct": "catalog:",
+    "react": "catalog:",
     "superjson": "^2.2.6",
+    "superstruct": "catalog:",
     "tsup": "^8.0.0",
     "typescript": "catalog:",
     "valibot": "catalog:",
     "yup": "catalog:",
-    "react": "catalog:",
-    "@unhead/react": "catalog:",
     "zod": "catalog:"
   },
   "publishConfig": {
