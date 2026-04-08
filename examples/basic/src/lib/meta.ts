@@ -23,7 +23,7 @@ export default {
       endpoint: undefined,
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-        line: 5,
+        line: 7,
         column: 20,
       },
       import: async () => (await import('./client.js')).root,
@@ -71,7 +71,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -117,7 +117,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -151,7 +151,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -196,7 +196,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -253,7 +253,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -310,7 +310,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -367,7 +367,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -435,7 +435,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -514,7 +514,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -571,7 +571,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -605,7 +605,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -636,7 +636,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -681,7 +681,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -727,7 +727,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -758,7 +758,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -789,7 +789,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -820,7 +820,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -854,7 +854,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -888,7 +888,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -922,7 +922,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -953,7 +953,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -987,7 +987,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -1021,7 +1021,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -1055,7 +1055,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -1089,7 +1089,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -1123,7 +1123,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },
@@ -1157,7 +1157,7 @@ export default {
           id: 'root.root.root',
           pos: {
             file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/client.tsx',
-            line: 5,
+            line: 7,
             column: 20,
           },
         },

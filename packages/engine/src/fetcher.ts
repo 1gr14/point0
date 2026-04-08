@@ -671,17 +671,19 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       if (executeResult.error) {
-        const response = this.toJsonErrorResponse({
-          ErrorClass,
-          error: executeResult.error,
-          status:
-            executeResult.error.status ??
-            (!executeResult.effects.status ||
-            (executeResult.effects.status >= 200 && executeResult.effects.status < 400)
-              ? undefined
-              : executeResult.effects.status),
-          transformer,
-        })
+        const response =
+          executeResult.error.response ??
+          this.toJsonErrorResponse({
+            ErrorClass,
+            error: executeResult.error,
+            status:
+              executeResult.error.status ??
+              (!executeResult.effects.status ||
+              (executeResult.effects.status >= 200 && executeResult.effects.status < 400)
+                ? undefined
+                : executeResult.effects.status),
+            transformer,
+          })
         return {
           ...partialResult,
           response,
@@ -862,21 +864,21 @@ export class Fetcher<TError extends ErrorPoint0> {
     }
   }
 
-  private async _composeMiddlewares({
+  private async _composeMiddlewares<TError extends ErrorPoint0>({
     middlewares,
     finalHandler,
     baseOptions,
     transform,
   }: {
-    middlewares: MiddlewareFn<any>[]
-    finalHandler: () => Promise<FetcherFetchDetailedResultNoMiddleware<any>>
-    baseOptions: MiddlewareFnOptionsBase<any>
+    middlewares: MiddlewareFn<TError>[]
+    finalHandler: () => Promise<FetcherFetchDetailedResultNoMiddleware<TError>>
+    baseOptions: MiddlewareFnOptionsBase<TError>
     transform: boolean
-  }): Promise<FetcherFetchDetailedResult<any>> {
+  }): Promise<FetcherFetchDetailedResult<TError>> {
     let index = -1
     let isMiddleware = true as boolean
 
-    async function dispatch(i: number): Promise<Response | FetcherFetchDetailedResult<any>> {
+    async function dispatch(i: number): Promise<Response | FetcherFetchDetailedResult<TError>> {
       if (i <= index) {
         throw new Error('next() called multiple times')
       }
@@ -1128,7 +1130,7 @@ export class Fetcher<TError extends ErrorPoint0> {
     return await _ssRunWithServerStorageState(serverStorageState, async () => {
       emit?.('engineFetchStart', _eventData)
       try {
-        const result = await this._composeMiddlewares({
+        const result = await this._composeMiddlewares<TError>({
           middlewares,
           finalHandler: async () =>
             await this._fetchDetailed({
@@ -1139,6 +1141,9 @@ export class Fetcher<TError extends ErrorPoint0> {
           baseOptions: middlewareOptions,
           transform: prepareFetchResult.transform,
         })
+        if (result.error?.headers) {
+          prepareFetchResult.effects.set.headers(result.error.headers)
+        }
         const response = prepareFetchResult.effects.apply(result.response)
         const finalResult = {
           ...result,

@@ -3,7 +3,7 @@ import { cors } from '@point0/cors'
 
 export const root = Point0.lets
   .root()
-  .use(cors())
+  .middleware(cors())
   .queryOptions({
     retry: false,
     refetchOnMount: false,

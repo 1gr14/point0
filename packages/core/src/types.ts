@@ -733,6 +733,36 @@ export type IsActionInputOptional<
   TBodySchema extends InputSchema | UndefinedInputSchema,
 > = EmptyObject extends ActionInputRaw<TParamsSchema, TSearchSchema, TBodySchema> ? true : false
 
+export type ResponseContentType =
+  | 'application/json'
+  | 'text/plain'
+  | 'text/html'
+  | 'text/css'
+  | 'text/javascript'
+  | 'application/javascript'
+  | 'application/xml'
+  | 'application/pdf'
+  | 'application/octet-stream'
+  | 'multipart/form-data'
+  | 'application/x-www-form-urlencoded'
+  | `image/${string}`
+  | `audio/${string}`
+  | `video/${string}`
+  | (string & {})
+export type NormalizedResponseSchema = {
+  [status: number]: {
+    description?: string
+    content: Record<
+      ResponseContentType,
+      {
+        schema: InputSchema
+        description?: string
+        examples?: Record<string, any>
+      }
+    >
+  }
+}
+
 // schema helper
 
 export type SchemaHelper = {
@@ -1836,6 +1866,7 @@ export type FetcherFetchDetailedResultError<TError extends ErrorPoint0> = Omit<
   FetcherFetchDetailedResultGeneral<TError>,
   'error'
 > & {
+  error: TError
   variant: { type: 'error'; error: TError }
 }
 export type FetcherFetchDetailedResultPublicdir<
@@ -2088,6 +2119,7 @@ export type NiceRootStagePoint<
   | 'search'
   | 'body'
   | 'input'
+  | 'models'
   | 'clientInput'
   | 'sharedInput'
   | 'ctx'
@@ -2287,6 +2319,7 @@ export type NiceBaseStagePoint<
   // | 'params'
   | 'search'
   | 'body'
+  | 'models'
   | 'input'
   | 'clientInput'
   | 'sharedInput'
@@ -2524,6 +2557,7 @@ export type NiceActionStagePoint<
   | 'params'
   | 'search'
   | 'body'
+  | 'response'
   | 'ctx'
   | 'loader'
   | 'point'

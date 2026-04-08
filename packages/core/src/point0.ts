@@ -200,6 +200,7 @@ import type {
   NiceStagePoint,
   // NormalizeQueryResultType,
   NormalizedPrefetchPagePolicy,
+  NormalizedResponseSchema,
   PartialUseInfiniteQueryOptions,
   PointName,
   PointType,
@@ -253,6 +254,7 @@ import {
   getWindowScrollPositionSetterByElementGetter,
   getWindowScrollPositionSetterBySelector,
   isContainsBinary,
+  isErrorCode,
   mergeHeaders,
   setByPath,
   toExtendedTransformer,
@@ -391,6 +393,8 @@ export class Point0<
     unknown
   >
   readonly _queryResultType: TQueryResultType
+  readonly _modelsShemas: Record<string, InputSchema> | undefined
+  readonly _responseSchema: NormalizedResponseSchema | undefined
   readonly _serverExecuteActions: ServerExecuteAction[]
   private readonly _clientExecuteActions: ClientExecuteAction[]
   private readonly _mountActions: MountAction[]
@@ -577,6 +581,8 @@ export class Point0<
       | undefined
     _queryResultType?: TQueryResultType
     // _asFormData?: boolean | undefined
+    _modelsShemas?: Record<string, InputSchema> | undefined
+    _responseSchema?: NormalizedResponseSchema | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
     _mountActions?: MountAction[]
@@ -642,6 +648,8 @@ export class Point0<
     this._infiniteQueryOptions = options._infiniteQueryOptions ?? ({} as never)
     this._queryResultType = (options._queryResultType ?? undefined) as TQueryResultType
     // this._asFormData = options._asFormData
+    this._modelsShemas = options._modelsShemas ?? undefined
+    this._responseSchema = options._responseSchema ?? undefined
     this._serverExecuteActions = options._serverExecuteActions ?? []
     this._clientExecuteActions = options._clientExecuteActions ?? []
     this._mountActions = options._mountActions ?? []
@@ -747,6 +755,8 @@ export class Point0<
       | undefined
     _queryResultType?: TQueryResultType
     // _asFormData?: boolean | undefined
+    _modelsShemas?: Record<string, InputSchema> | undefined
+    _responseSchema?: NormalizedResponseSchema | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
     _mountActions?: MountAction[]
@@ -872,6 +882,8 @@ export class Point0<
       }),
       _queryResultType: set('_queryResultType'),
       // _asFormData: overrides._asFormData ?? this._asFormData,
+      _modelsShemas: set('_modelsShemas'),
+      _responseSchema: set('_responseSchema'),
       _serverExecuteActions: set('_serverExecuteActions'),
       _clientExecuteActions: set('_clientExecuteActions'),
       _mountActions: set('_mountActions'),
@@ -6096,6 +6108,154 @@ export class Point0<
         ...this._serverExecuteActions,
         { type: 'cookies', schema, unstableId: Point0._getNextUnstableId() },
       ],
+    }) as never
+  }
+
+  response(
+    responseSchema: InputSchema,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  response(
+    responseSchemas: Record<number, InputSchema>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  response(
+    responseSchemas: NormalizedResponseSchema,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  >
+  response(schemas: InputSchema | Record<number, InputSchema> | NormalizedResponseSchema) {
+    const keys = Object.keys(schemas)
+    const allKeysAreNumbers = keys.every((key) => Number.isInteger(Number(key)))
+    const normalizedResponseSchema = (() => {
+      if (!allKeysAreNumbers) {
+        return {
+          200: {
+            description: 'Successful response',
+            content: {
+              'application/json': {
+                schema: schemas,
+              },
+            },
+          },
+        }
+      }
+      const firstValue = (schemas as any)[keys[0]] as object
+      const isAlreadyNormalizedResponseSchema = typeof firstValue === 'object' && 'content' in firstValue
+      if (isAlreadyNormalizedResponseSchema) {
+        return firstValue
+      }
+      return Object.fromEntries(
+        keys.map((key) => [
+          key,
+          {
+            description: isErrorCode(Number(key)) ? 'Error response' : 'Successful response',
+            content: {
+              'application/json': {
+                schema: (schemas as any)[key] as InputSchema,
+              },
+            },
+          },
+        ]),
+      )
+    })()
+    return this._continue({
+      _responseSchema: normalizedResponseSchema as NormalizedResponseSchema,
+    }) as never
+  }
+
+  models(
+    modelsSchemas: Record<string, InputSchema>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  > {
+    return this._continue({
+      _modelsShemas: {
+        ...(this._modelsShemas ?? {}),
+        ...modelsSchemas,
+      },
     }) as never
   }
 

@@ -8,7 +8,7 @@ import { cors } from '../src/index.js'
 
 describe('cors', () => {
   const prepare = async (options?: Parameters<typeof cors>[0]) => {
-    const root = Point0.lets('root', 'root').use(cors(options)).root()
+    const root = Point0.lets('root', 'root').middleware(cors(options)).root()
     const page = root
       .lets('page', 'home', '/')
       .loader(({ request }) => ({ headers: request.headers }))

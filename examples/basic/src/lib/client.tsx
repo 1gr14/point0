@@ -1,16 +1,20 @@
 import { Point0 } from '@point0/core'
+import { zodSchemaHelper } from '@point0/core/schema/zod'
 import superjson from 'superjson'
 import { prisma } from './prisma.js'
+import { openapi } from '@point0/openapi'
 
 export const root = Point0.lets
   .root<{ zxc: number }>()
   .transformer(superjson)
+  .middleware(openapi({ route: '/openapi.json', scalar: true }))
   // .Infer.Ctx// .Infer['RequiredCtx']
   .ctx({
     prisma,
     env: process.env,
     Bun,
   })
+  .schemaHelper(zodSchemaHelper())
   // .errorClass(AppError)
   // .Infer['Ctx']
   .ctx([{ oklmn: 123 }])
@@ -26,6 +30,9 @@ export const root = Point0.lets
     refetchOnReconnect: false,
     refetchInterval: false,
     refetchIntervalInBackground: false,
+  })
+  .on('error', ({ data }) => {
+    console.error(data.error)
   })
   .prefetchPageOnNavigate(true)
   .prefetchPageOnLinkHover(true)

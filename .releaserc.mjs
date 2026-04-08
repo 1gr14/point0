@@ -53,6 +53,12 @@ export default {
         pkgRoot: 'packages/cors',
       },
     ],
+    [
+      '@semantic-release/npm',
+      {
+        pkgRoot: 'packages/openapi',
+      },
+    ],
     branch === 'next'
       ? undefined
       : [

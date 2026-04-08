@@ -10,6 +10,32 @@ export type LogOptions = {
 }
 export type LogFn = (options: LogOptions) => void
 export const _defaultLogFn: LogFn = (options: LogOptions) => {
+  if (_point0_env.mode.is.production) {
+    const serializedError = (() => {
+      try {
+        return !options.error
+          ? undefined
+          : typeof options.error === 'object' && 'toJSON' in options.error && typeof options.error.toJSON === 'function'
+            ? options.error.toJSON()
+            : { message: options.error instanceof Error ? options.error.message : String(options.error) }
+      } catch (error) {
+        return {
+          message: error instanceof Error ? error.message : String(error),
+        }
+      }
+    })()
+    const payload = {
+      level: options.level,
+      category: options.category.join(':'),
+      message: options.message,
+      ...(options.error !== undefined ? { error: serializedError } : {}),
+      ...(options.meta ? { meta: options.meta } : {}),
+    }
+    // eslint-disable-next-line no-console
+    console[options.level](JSON.stringify(payload))
+    return
+  }
+
   const categoryPrefix = `[${options.category.join(':')}]`
   const trailingArgs = [...(options.error ? [options.error] : []), ...(options.meta ? [options.meta] : [])]
 

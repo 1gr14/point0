@@ -1,5 +1,5 @@
-import type { MiddlewareFnOptionsBase, NicePristinePluginReadyPoint } from '@point0/core'
-import { env, Point0 } from '@point0/core'
+import { env } from '@point0/core'
+import type { MiddlewareFn, MiddlewareFnOptionsBase } from '@point0/core'
 import type { RequestMethod } from '@point0/core/request0'
 
 // inspired by https://github.com/elysiajs/elysia-cors/tree/main
@@ -20,114 +20,118 @@ export type CorsOptions = {
   preflight?: boolean
 }
 
-export const cors = (options: CorsOptions = {}): NicePristinePluginReadyPoint => {
+export const cors = (options: CorsOptions = {}): MiddlewareFn<any> => {
   if (env.side.is.client) {
-    return Point0.lets('plugin', 'cors').plugin()
-  }
+    return async ({ next }) => {
+      return await next()
+    }
+  } else {
+    // everything below will not exists on client becouse of compiler
+    const normalizeHeaderList = (value: string | string[] | null | undefined): string | undefined =>
+      value === undefined || value === null || value === ''
+        ? undefined
+        : Array.isArray(value)
+          ? value.join(', ')
+          : value
 
-  // everything below will not exists on client becouse of compiler
-  const normalizeHeaderList = (value: string | string[] | null | undefined): string | undefined =>
-    value === undefined || value === null || value === '' ? undefined : Array.isArray(value) ? value.join(', ') : value
-
-  const headerKeysFromHeaders = (headers: Headers): string => {
-    const keys: string[] = []
-    headers.forEach((_, key) => {
-      keys.push(key)
-    })
-    return keys.join(', ')
-  }
-
-  const normalizeOriginForDomainCompare = (origin: string): string => {
-    const protocolIndex = origin.indexOf('://')
-    return protocolIndex === -1 ? origin : origin.slice(protocolIndex + 3)
-  }
-
-  const hasProtocol = (origin: string): boolean => origin.includes('://')
-
-  const appendVaryValue = (existing: string | undefined, valueToAdd: string): string => {
-    if (!existing) {
-      return valueToAdd
+    const headerKeysFromHeaders = (headers: Headers): string => {
+      const keys: string[] = []
+      headers.forEach((_, key) => {
+        keys.push(key)
+      })
+      return keys.join(', ')
     }
 
-    const normalized = existing
-      .split(',')
-      .map((value) => value.trim().toLowerCase())
-      .filter(Boolean)
-    if (normalized.includes(valueToAdd.toLowerCase())) {
-      return existing
+    const normalizeOriginForDomainCompare = (origin: string): string => {
+      const protocolIndex = origin.indexOf('://')
+      return protocolIndex === -1 ? origin : origin.slice(protocolIndex + 3)
     }
-    return `${existing}, ${valueToAdd}`
-  }
 
-  const resolveAllowOrigin = async ({
-    requestOrigin,
-    originOption,
-    context,
-  }: {
-    requestOrigin: string | null
-    originOption: CorsOptions['origin']
-    context: MiddlewareFnOptionsBase<any>
-  }): Promise<string | undefined> => {
-    const evaluate = async (candidate: CorsOriginValue): Promise<string | undefined> => {
-      if (typeof candidate === 'string') {
-        if (!requestOrigin) {
-          return undefined
-        }
-        if (candidate === requestOrigin) {
-          return requestOrigin
-        }
-        if (hasProtocol(candidate)) {
-          return undefined
-        }
-        return normalizeOriginForDomainCompare(candidate) === normalizeOriginForDomainCompare(requestOrigin)
-          ? requestOrigin
-          : undefined
+    const hasProtocol = (origin: string): boolean => origin.includes('://')
+
+    const appendVaryValue = (existing: string | undefined, valueToAdd: string): string => {
+      if (!existing) {
+        return valueToAdd
       }
 
-      if (candidate instanceof RegExp) {
-        return requestOrigin && candidate.test(requestOrigin) ? requestOrigin : undefined
+      const normalized = existing
+        .split(',')
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean)
+      if (normalized.includes(valueToAdd.toLowerCase())) {
+        return existing
+      }
+      return `${existing}, ${valueToAdd}`
+    }
+
+    const resolveAllowOrigin = async ({
+      requestOrigin,
+      originOption,
+      context,
+    }: {
+      requestOrigin: string | null
+      originOption: CorsOptions['origin']
+      context: MiddlewareFnOptionsBase<any>
+    }): Promise<string | undefined> => {
+      const evaluate = async (candidate: CorsOriginValue): Promise<string | undefined> => {
+        if (typeof candidate === 'string') {
+          if (!requestOrigin) {
+            return undefined
+          }
+          if (candidate === requestOrigin) {
+            return requestOrigin
+          }
+          if (hasProtocol(candidate)) {
+            return undefined
+          }
+          return normalizeOriginForDomainCompare(candidate) === normalizeOriginForDomainCompare(requestOrigin)
+            ? requestOrigin
+            : undefined
+        }
+
+        if (candidate instanceof RegExp) {
+          return requestOrigin && candidate.test(requestOrigin) ? requestOrigin : undefined
+        }
+
+        const allowed = await candidate(context)
+        return allowed && requestOrigin ? requestOrigin : undefined
       }
 
-      const allowed = await candidate(context)
-      return allowed && requestOrigin ? requestOrigin : undefined
-    }
+      const origin = originOption ?? true
+      if (origin === true) {
+        return requestOrigin ?? '*'
+      }
+      if (origin === false) {
+        return undefined
+      }
 
-    const origin = originOption ?? true
-    if (origin === true) {
-      return requestOrigin ?? '*'
-    }
-    if (origin === false) {
+      const items = Array.isArray(origin) ? origin : [origin]
+
+      for (const item of items) {
+        const allowedOrigin = await evaluate(item)
+        if (allowedOrigin !== undefined) {
+          return allowedOrigin
+        }
+      }
+
       return undefined
     }
 
-    const items = Array.isArray(origin) ? origin : [origin]
+    const methods = options.methods ?? true
+    const allowedHeaders = options.allowedHeaders ?? true
+    const exposeHeaders = options.exposeHeaders ?? true
+    const normalizedMethods = normalizeHeaderList(typeof methods === 'boolean' ? undefined : methods)
+    const normalizedAllowedHeaders = normalizeHeaderList(
+      allowedHeaders === true ? undefined : (allowedHeaders as string | string[] | null | undefined),
+    )
+    const normalizedExposeHeaders = normalizeHeaderList(
+      exposeHeaders === true ? undefined : (exposeHeaders as string | string[] | null | undefined),
+    )
+    const shouldAllowCredentials = options.credentials ?? true
+    const shouldHandlePreflight = options.preflight ?? true
+    const maxAge = typeof options.maxAge === 'number' && Number.isFinite(options.maxAge) ? String(options.maxAge) : '5'
 
-    for (const item of items) {
-      const allowedOrigin = await evaluate(item)
-      if (allowedOrigin !== undefined) {
-        return allowedOrigin
-      }
-    }
-
-    return undefined
-  }
-
-  const methods = options.methods ?? true
-  const allowedHeaders = options.allowedHeaders ?? true
-  const exposeHeaders = options.exposeHeaders ?? true
-  const normalizedMethods = normalizeHeaderList(typeof methods === 'boolean' ? undefined : methods)
-  const normalizedAllowedHeaders = normalizeHeaderList(
-    allowedHeaders === true ? undefined : (allowedHeaders as string | string[] | null | undefined),
-  )
-  const normalizedExposeHeaders = normalizeHeaderList(
-    exposeHeaders === true ? undefined : (exposeHeaders as string | string[] | null | undefined),
-  )
-  const shouldAllowCredentials = options.credentials ?? true
-  const shouldHandlePreflight = options.preflight ?? true
-  const maxAge = typeof options.maxAge === 'number' && Number.isFinite(options.maxAge) ? String(options.maxAge) : '5'
-
-  return Point0.lets('plugin', 'cors')
-    .middleware(async (middlewareOptions) => {
+    const middleware: MiddlewareFn<any> = async (middlewareOptions) => {
       const { request, set, next } = middlewareOptions
       const requestOrigin = request.original.headers.get('origin')
       const isOptionsRequest = request.original.method.toUpperCase() === 'OPTIONS'
@@ -187,6 +191,7 @@ export const cors = (options: CorsOptions = {}): NicePristinePluginReadyPoint =>
       }
 
       return await next()
-    })
-    .plugin()
+    }
+    return middleware
+  }
 }

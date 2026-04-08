@@ -14,6 +14,7 @@ import {
   type UndefinedCtx,
 } from '@point0/core'
 import type { RichFetchFn } from '@point0/core'
+import type { Serve } from 'bun'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -26,7 +27,6 @@ import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
 import { FilesWatcher } from './watcher.js'
-import type { Serve } from 'bun'
 
 export class Engine<
   TRequiredCtx extends RequiredCtx = RequiredCtx,

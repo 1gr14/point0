@@ -1,5 +1,5 @@
 import { Link } from '@/lib/navigate'
-import { superstore } from '@point0/core'
+import { ErrorPoint0, superstore } from '@point0/core'
 import { useEffect, useState } from 'react'
 import * as z from 'zod'
 import iconRaw from '../assets/icon.svg' with { type: 'text' }

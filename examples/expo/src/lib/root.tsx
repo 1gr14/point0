@@ -7,7 +7,7 @@ const SERVER_URL = process.env.EXPO_PUBLIC_SERVER_URL ?? 'http://localhost:3000'
 
 export const root = Point0.lets('root', 'root')
   .serverurl(SERVER_URL)
-  .use(cors())
+  .middleware(cors())
   .transformer(superjson)
   .queryOptions({
     retry: false,

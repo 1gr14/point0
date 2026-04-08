@@ -4,18 +4,45 @@ export class ErrorPoint0 extends Error {
   status?: number
   code?: string
   redirect?: RedirectTask
+  response?: Response
+  headers?: Record<string, string | undefined>
   // meta?: Record<string, unknown>
 
   constructor(
     message: string,
     // options: { cause?: unknown; status?: number; code?: string; meta?: Record<string, unknown> } = {},
-    options: { cause?: unknown; status?: number; code?: string; redirect?: RedirectTask } = {},
+    options: {
+      cause?: unknown
+      status?: number
+      code?: string
+      redirect?: RedirectTask
+      response?: Response
+      headers?: Record<string, string | undefined>
+    } = {},
   ) {
     super(message, { cause: options.cause })
-    this.status = options.status
-    this.code = options.code
-    this.redirect = options.redirect
+    if (options.status) {
+      this.status = options.status
+    }
+    if (options.code) {
+      this.code = options.code
+    }
+    if (options.redirect) {
+      this.redirect = options.redirect
+    }
+    if (options.response) {
+      this.response = options.response
+    }
+    if (options.headers) {
+      this.headers = options.headers
+    }
     this.name = 'ErrorPoint0'
+    Object.defineProperty(this, 'toJSON', {
+      value: () => ErrorPoint0.serialize(this),
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    })
     if (
       process.env.NODE_ENV !== 'production' &&
       typeof (globalThis as unknown as Record<string, unknown>).__ERROR0_FIX_STACKTRACE__ === 'function'
@@ -89,7 +116,17 @@ export class ErrorPoint0 extends Error {
 }
 
 export type ClassLikeError0<T extends ErrorPoint0 = ErrorPoint0> = {
-  new (message: string, options?: { cause?: unknown; status?: number; code?: string; redirect?: RedirectTask }): T
+  new (
+    message: string,
+    options?: {
+      cause?: unknown
+      status?: number
+      code?: string
+      redirect?: RedirectTask
+      response?: Response
+      headers?: Record<string, string | undefined>
+    },
+  ): T
   from(error: unknown): T
   serialize(error: T): Record<string, unknown>
 }

@@ -685,7 +685,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           ctx: layers[0].ctx,
           data: layers[0].data,
           error: error0,
-          response: layers[0].response,
+          response: error0.response ?? layers[0].response,
           redirect: error0.redirect,
           output: layers[0].output,
           effects: effects.values,

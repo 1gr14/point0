@@ -310,3 +310,7 @@ export const withLetsSugar = (fn: any) => {
   })
   return wrapped
 }
+
+export const isErrorCode = (code: number): boolean => {
+  return code >= 400 && code < 500
+}

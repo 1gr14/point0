@@ -36,8 +36,8 @@ export type ResponseStatus = number
 
 export type SetResponseHeaderFn = {
   (headers: Headers): void
-  (headers: Record<string, string>): void
-  (headerName: string, headerValue: string): void
+  (headers: Record<string, string | undefined>): void
+  (headerName: string, headerValue: string | undefined): void
 }
 
 export type SetResponseCookieFn = {
@@ -107,11 +107,11 @@ export class Effects {
         })
       } else if (typeof arg === 'object' && arg !== null) {
         for (const [name, value] of Object.entries(arg)) {
-          this.headers[name.toLowerCase()] = typeof value === 'string' ? value : (value as string | undefined)
+          this.headers[name.toLowerCase()] = value as string | undefined
         }
       }
     } else if (args.length === 2) {
-      const [name, value] = args as [string, string]
+      const [name, value] = args as [string, string | undefined]
       this.headers[name.toLowerCase()] = value
     }
   }
