@@ -198,6 +198,7 @@ import type {
   NiceRootReadyPoint,
   NiceRootStagePoint,
   NiceStagePoint,
+  NormalizedEndpoindOpenapiSchema,
   // NormalizeQueryResultType,
   NormalizedPrefetchPagePolicy,
   NormalizedResponseSchema,
@@ -255,6 +256,7 @@ import {
   getWindowScrollPositionSetterBySelector,
   isContainsBinary,
   isErrorCode,
+  mergeEndpointOpenapiSchemas,
   mergeHeaders,
   setByPath,
   toExtendedTransformer,
@@ -395,6 +397,7 @@ export class Point0<
   readonly _queryResultType: TQueryResultType
   readonly _modelsShemas: Record<string, InputSchema> | undefined
   readonly _responseSchema: NormalizedResponseSchema | undefined
+  readonly _openapiSchema: NormalizedEndpoindOpenapiSchema | undefined
   readonly _serverExecuteActions: ServerExecuteAction[]
   private readonly _clientExecuteActions: ClientExecuteAction[]
   private readonly _mountActions: MountAction[]
@@ -582,6 +585,7 @@ export class Point0<
     _queryResultType?: TQueryResultType
     // _asFormData?: boolean | undefined
     _modelsShemas?: Record<string, InputSchema> | undefined
+    _openapiSchema?: NormalizedEndpoindOpenapiSchema | undefined
     _responseSchema?: NormalizedResponseSchema | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
@@ -649,6 +653,7 @@ export class Point0<
     this._queryResultType = (options._queryResultType ?? undefined) as TQueryResultType
     // this._asFormData = options._asFormData
     this._modelsShemas = options._modelsShemas ?? undefined
+    this._openapiSchema = options._openapiSchema ?? undefined
     this._responseSchema = options._responseSchema ?? undefined
     this._serverExecuteActions = options._serverExecuteActions ?? []
     this._clientExecuteActions = options._clientExecuteActions ?? []
@@ -756,6 +761,7 @@ export class Point0<
     _queryResultType?: TQueryResultType
     // _asFormData?: boolean | undefined
     _modelsShemas?: Record<string, InputSchema> | undefined
+    _openapiSchema?: NormalizedEndpoindOpenapiSchema | undefined
     _responseSchema?: NormalizedResponseSchema | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
@@ -883,6 +889,7 @@ export class Point0<
       _queryResultType: set('_queryResultType'),
       // _asFormData: overrides._asFormData ?? this._asFormData,
       _modelsShemas: set('_modelsShemas'),
+      _openapiSchema: set('_openapiSchema'),
       _responseSchema: set('_responseSchema'),
       _serverExecuteActions: set('_serverExecuteActions'),
       _clientExecuteActions: set('_clientExecuteActions'),
@@ -6226,6 +6233,36 @@ export class Point0<
     }) as never
   }
 
+  openapi(
+    endpointSchema: NormalizedEndpoindOpenapiSchema,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  > {
+    return this._continue({
+      _openapiSchema: mergeEndpointOpenapiSchemas(this._openapiSchema, endpointSchema),
+    }) as never
+  }
+
   models(
     modelsSchemas: Record<string, InputSchema>,
   ): NiceStagePoint<
@@ -7043,6 +7080,9 @@ export class Point0<
           ...newFetchOptions,
           headers: mergeHeaders(prevFetchOptions.headers, newFetchOptions.headers),
         }
+      }),
+      ...set('_openapiSchema', () => {
+        return mergeEndpointOpenapiSchemas(this._openapiSchema, point._openapiSchema)
       }),
       ...set('_scrollPositionGetter'),
       ...set('_scrollPositionSetter'),

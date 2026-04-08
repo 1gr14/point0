@@ -3,10 +3,15 @@ import { zodSchemaHelper } from '@point0/core/schema/zod'
 import { describe, expect, it } from 'bun:test'
 import superjson from 'superjson'
 import { z } from 'zod'
-import { getOpenapiSchemaFromPoints } from '../src/index.js'
+import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
+import { openapi } from '../src/index.js'
 
 describe('openapi', () => {
-  const zResult = z.object({ id: z.string().min(1), name: z.string().optional(), nickname: z.string().min(1) })
+  const zResult = z.object({
+    id: z.string().min(1).describe('id description'),
+    name: z.string().optional().describe('name description'),
+    nickname: z.string().min(1).describe('nickname description'),
+  })
 
   const createRoot = () =>
     Point0.lets('root', 'root')
@@ -14,6 +19,17 @@ describe('openapi', () => {
       .models({
         entity: zResult,
       })
+      .middleware(
+        openapi({
+          route: '/openapi.json',
+          scalar: '/openapi',
+          filter: 'all',
+          info: {
+            title: 'Test API',
+            version: '1.0.0',
+          },
+        }),
+      )
       .queryOptions({
         retry: false,
         refetchOnMount: false,
@@ -27,13 +43,29 @@ describe('openapi', () => {
 
   it('general', async () => {
     const root = createRoot()
+    const query = root
+      .lets('query', 'query1')
+      .loader(() => {
+        return {
+          x: 'test-1',
+        }
+      })
+      .query()
+
     const action1 = root
       .lets('action', 'action1', 'POST', '/api/my-test/:id')
-      .params(z.object({ id: z.string().min(1) }))
-      .headers(z.object({ x: z.string().min(1) }))
-      .search(z.object({ y: z.string().min(1) }))
-      .body(z.object({ b: z.number().min(1), d: z.bigint() }))
-      .response(z.object({ entity: zResult, x: z.string().min(1) }))
+      .openapi({
+        description: 'Action 1 description',
+        summary: 'Action 1 summary',
+        operationId: 'action1',
+        tags: ['actions', 'action1'],
+        deprecated: true,
+      })
+      .params(z.object({ id: z.string().min(1).describe('id description') }))
+      .headers(z.object({ x: z.string().min(1).describe('x description') }))
+      .search(z.object({ y: z.string().min(1).describe('y description') }))
+      .body(z.object({ b: z.number().min(1).describe('b description'), d: z.bigint().describe('d description') }))
+      .response(z.object({ entity: zResult, x: z.string().min(1).describe('x description') }))
       .loader(() => {
         return {
           x: 'test-1',
@@ -45,6 +77,7 @@ describe('openapi', () => {
         }
       })
       .action()
+
     const action2 = root
       .lets('action', 'action2', 'POST', '/api/my-test')
       .headers(z.object({ x: z.string().min(1) }))
@@ -63,13 +96,10 @@ describe('openapi', () => {
       })
       .action()
 
-    const schema1 = getOpenapiSchemaFromPoints([action1, action2], {
-      info: {
-        title: 'Test API',
-        version: '1.0.0',
-      },
-    })
-    expect(schema1).toMatchInlineSnapshot(`
+    const { fetch } = await createTestThings({ points: [root, query, action1, action2] })
+    const response1 = await fetch('http://localhost:3000/openapi.json')
+    const json1 = await response1.json()
+    expect(json1).toMatchInlineSnapshot(`
       {
         "components": {
           "schemas": {
@@ -77,13 +107,16 @@ describe('openapi', () => {
               "additionalProperties": false,
               "properties": {
                 "id": {
+                  "description": "id description",
                   "minLength": 1,
                   "type": "string",
                 },
                 "name": {
+                  "description": "name description",
                   "type": "string",
                 },
                 "nickname": {
+                  "description": "nickname description",
                   "minLength": 1,
                   "type": "string",
                 },
@@ -101,6 +134,17 @@ describe('openapi', () => {
           "version": "1.0.0",
         },
         "paths": {
+          "/_point0/root/query/query1": {
+            "post": {
+              "parameters": [],
+              "responses": {
+                "200": {
+                  "description": "Successful response",
+                },
+              },
+              "summary": "root.query.query1",
+            },
+          },
           "/api/my-test": {
             "post": {
               "parameters": [
@@ -127,8 +171,6 @@ describe('openapi', () => {
                 "200": {
                   "content": {
                     "application/json": {
-                      "description": undefined,
-                      "examples": undefined,
                       "schema": {
                         "additionalProperties": false,
                         "properties": {
@@ -155,12 +197,16 @@ describe('openapi', () => {
           },
           "/api/my-test/{id}": {
             "post": {
+              "deprecated": true,
+              "description": "Action 1 description",
+              "operationId": "action1",
               "parameters": [
                 {
                   "in": "path",
                   "name": "id",
                   "required": true,
                   "schema": {
+                    "description": "id description",
                     "minLength": 1,
                     "type": "string",
                   },
@@ -170,6 +216,7 @@ describe('openapi', () => {
                   "name": "y",
                   "required": true,
                   "schema": {
+                    "description": "y description",
                     "minLength": 1,
                     "type": "string",
                   },
@@ -179,6 +226,7 @@ describe('openapi', () => {
                   "name": "x",
                   "required": true,
                   "schema": {
+                    "description": "x description",
                     "minLength": 1,
                     "type": "string",
                   },
@@ -188,8 +236,6 @@ describe('openapi', () => {
                 "200": {
                   "content": {
                     "application/json": {
-                      "description": undefined,
-                      "examples": undefined,
                       "schema": {
                         "additionalProperties": false,
                         "properties": {
@@ -197,6 +243,7 @@ describe('openapi', () => {
                             "$ref": "#/components/schemas/entity",
                           },
                           "x": {
+                            "description": "x description",
                             "minLength": 1,
                             "type": "string",
                           },
@@ -212,10 +259,39 @@ describe('openapi', () => {
                   "description": "Successful response",
                 },
               },
+              "summary": "Action 1 summary",
+              "tags": [
+                "actions",
+                "action1",
+              ],
             },
           },
         },
       }
+    `)
+
+    const response2 = await fetch('http://localhost:3000/openapi')
+    const html2 = await response2.text()
+    expect(html2).toMatchInlineSnapshot(`
+      "<!doctype html>
+            <html>
+              <head>
+                <title>API Reference</title>
+                <meta charset="utf-8" />
+                <meta
+                  name="viewport"
+                  content="width=device-width, initial-scale=1" />
+              </head>
+              <body>
+                <div id="app"></div>
+                <!-- Load the Script -->
+                <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+                <!-- Initialize the API Reference -->
+                <script>
+                  Scalar.createApiReference('#app', { url: '/openapi.json' })
+                </script>
+              </body>
+            </html>"
     `)
   })
 })

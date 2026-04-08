@@ -173,6 +173,7 @@
     "@devp0nt/route0": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@unhead/react": "catalog:",
+    "openapi-types": "catalog:",
     "react": "catalog:"
   },
   "devDependencies": {

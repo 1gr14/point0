@@ -16,7 +16,7 @@ import stringify from 'safe-stable-stringify'
 export type OpenapiMiddlewareOptionsGeneral = {
   route: string
   filter?: ((point: AnyNiceRequestableReadyPoint) => boolean) | 'all' | 'action'
-  scalar?: (Partial<ApiReferenceConfigurationWithSource> & { route?: string }) | true
+  scalar?: (Partial<ApiReferenceConfigurationWithSource> & { route: string }) | string
 }
 
 export type OpenapiMiddlewareOptions<TOpenapiVersion extends string> = OpenapiOptions<TOpenapiVersion> &
@@ -423,6 +423,7 @@ export const getOpenapiSchemaFromPoint = (
   ]
   const bodySchema = jsonSchemas.body ?? jsonSchemas.input
   const operationSchema: Record<string, unknown> = {
+    ...(normalizedPoint._openapiSchema ?? {}),
     parameters,
     responses: jsonSchemas.response ?? {
       200: {
@@ -438,6 +439,11 @@ export const getOpenapiSchemaFromPoint = (
           schema: bodySchema,
         },
       },
+    }
+  }
+  if (normalizedPoint.type !== 'action') {
+    if (!operationSchema.summary) {
+      operationSchema.summary = normalizedPoint.toString()
     }
   }
 
@@ -523,17 +529,15 @@ export const openapi = <TOpenapiVersion extends string>(
           ? (point: AnyNiceRequestableReadyPoint) => point.type === 'action'
           : (filterProvided ?? ((point: AnyNiceRequestableReadyPoint) => point.type === 'action'))
     const { route: scalarRouteProvided, ...scalarOptions } = (
-      scalar === true ? {} : scalar || {}
-    ) as Partial<ApiReferenceConfigurationWithSource> & { route?: string }
+      typeof scalar === 'string' ? { route: scalar } : scalar || {}
+    ) as Partial<ApiReferenceConfigurationWithSource> & { route: string }
     const scalarOptionsNormalized = !scalar
       ? undefined
       : {
           ...scalarOptions,
           url: scalarOptions.url ?? jsonRoute,
         }
-    const scalarRoute = !scalar
-      ? undefined
-      : (scalarRouteProvided ?? (jsonRoute.endsWith('.json') ? jsonRoute.slice(0, -5) : `${jsonRoute}.scalar`))
+    const scalarRoute = !scalar ? undefined : scalarRouteProvided
 
     const middleware: MiddlewareFn<any> = async ({ next, request, points }) => {
       if (request.method !== 'GET') {

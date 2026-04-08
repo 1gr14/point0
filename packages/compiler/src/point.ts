@@ -957,38 +957,39 @@ export class CompilerPoint<TValid extends boolean = boolean> {
 
   private shakeMethodsForClient(): void {
     for (const method of this.getSelfRichMethods()) {
-      if (method.name === 'ctx') {
-        this.removeMethodArgs({ nodePath: method.nodePath })
-      }
-      if (method.name === 'loader') {
-        this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
-      }
-      if (method.name === 'action') {
-        this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
-      }
-      if (method.name === 'headers') {
-        this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
-      }
-      if (method.name === 'cookies') {
-        this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
-      }
-      if (method.name === 'body') {
-        this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
-      }
-      if (method.name === 'input') {
-        this.replaceAllArgsWithArrowFnReturnEmptyObject({ nodePath: method.nodePath })
-      }
-      if (method.name === 'serverOn') {
-        this.removeLastMethodArg({ nodePath: method.nodePath })
-      }
-      if (method.name === 'middleware') {
-        this.removeMethodArgs({ nodePath: method.nodePath })
-      }
-      if (method.underAction && method.name === 'params') {
-        this.removeMethodArgs({ nodePath: method.nodePath })
-      }
-      if (method.underAction && method.name === 'search') {
-        this.removeMethodArgs({ nodePath: method.nodePath })
+      switch (method.name) {
+        case 'ctx': {
+          this.removeMethodArgs({ nodePath: method.nodePath })
+          break
+        }
+        case 'loader':
+        case 'action':
+        case 'headers':
+        case 'cookies':
+        case 'body': {
+          this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
+          break
+        }
+        case 'input': {
+          this.replaceAllArgsWithArrowFnReturnEmptyObject({ nodePath: method.nodePath })
+          break
+        }
+        case 'serverOn': {
+          this.removeLastMethodArg({ nodePath: method.nodePath })
+          break
+        }
+        case 'middleware':
+        case 'response': {
+          this.removeMethodArgs({ nodePath: method.nodePath })
+          break
+        }
+        case 'params':
+        case 'search': {
+          if (method.underAction) {
+            this.removeMethodArgs({ nodePath: method.nodePath })
+          }
+          break
+        }
       }
     }
   }

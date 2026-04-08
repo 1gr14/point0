@@ -1,6 +1,12 @@
 import type { DehydratedState } from '@tanstack/react-query'
 import { stringify } from 'safe-stable-stringify'
-import type { DataTransformer, DataTransformerExtended, ScrollPositionGetter, ScrollPositionSetter } from './types.js'
+import type {
+  DataTransformer,
+  DataTransformerExtended,
+  NormalizedEndpoindOpenapiSchema,
+  ScrollPositionGetter,
+  ScrollPositionSetter,
+} from './types.js'
 
 export function mergeHeaders(base?: HeadersInit, ...extras: Array<HeadersInit | undefined>): Headers {
   const merged = new Headers(base)
@@ -313,4 +319,35 @@ export const withLetsSugar = (fn: any) => {
 
 export const isErrorCode = (code: number): boolean => {
   return code >= 400 && code < 500
+}
+
+export const mergeEndpointOpenapiSchemas = (
+  prevSchema: NormalizedEndpoindOpenapiSchema | undefined,
+  nextSchema: NormalizedEndpoindOpenapiSchema | undefined,
+): NormalizedEndpoindOpenapiSchema | undefined => {
+  if (!prevSchema) {
+    return nextSchema
+  }
+  if (!nextSchema) {
+    return prevSchema
+  }
+  const tags = (() => {
+    const prevTags = prevSchema.tags
+    const nextTags = nextSchema.tags
+    if (!prevTags && !nextTags) {
+      return undefined
+    }
+    if (!prevTags) {
+      return nextTags
+    }
+    if (!nextTags) {
+      return prevTags
+    }
+    return Array.from(new Set([...prevTags, ...nextTags]))
+  })()
+  return {
+    ...prevSchema,
+    ...nextSchema,
+    ...(tags ? { tags } : {}),
+  }
 }

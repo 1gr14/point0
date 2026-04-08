@@ -39,8 +39,11 @@ mcp as comments
 
 === REFACTOING 3000 ===
 
+OPENAPI
+more tests
+add default description for points and allow provide its own
 http-auth
-scalar route as string
+вырезать респонсес и опенапи из чейна
 tests for middleware itself
 В опенапи стараться пользоваться стандартом то Джейсон если нет хелпера
 
@@ -70,9 +73,6 @@ fetchOptions также принимают fetchFn
 when electrobun allow passing replaceFetch to point
 
 
-OPENAPI
-more tests
-add default description for points and allow provide its own
 
 
 COMPILER

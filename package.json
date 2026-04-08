@@ -34,7 +34,8 @@
       "yup": "^1.7.1",
       "zod": "^4.0.0",
       "@typescript/native-preview": "^7.0.0-dev.20260212.1",
-      "typescript": "^5.9.3"
+      "typescript": "^5.9.3",
+      "openapi-types": "^12.0.0"
     }
   },
   "files": [

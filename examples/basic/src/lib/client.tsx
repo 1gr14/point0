@@ -7,7 +7,7 @@ import { openapi } from '@point0/openapi'
 export const root = Point0.lets
   .root<{ zxc: number }>()
   .transformer(superjson)
-  .middleware(openapi({ route: '/openapi.json', scalar: true }))
+  .middleware(openapi({ route: '/openapi.json', scalar: '/openapi' }))
   // .Infer.Ctx// .Infer['RequiredCtx']
   .ctx({
     prisma,

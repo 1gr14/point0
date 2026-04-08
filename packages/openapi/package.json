@@ -54,7 +54,7 @@
   "peerDependencies": {
     "@point0/core": "workspace:*",
     "@point0/engine": "workspace:*",
-    "openapi-types": "^12.0.0",
+    "openapi-types": "catalog:",
     "safe-stable-stringify": "catalog:",
     "@scalar/api-reference": "^1.51.0"
   },
@@ -64,7 +64,7 @@
     "esbuild-fix-imports-plugin": "^1.0.22",
     "tsup": "^8.0.0",
     "typescript": "catalog:",
-    "openapi-types": "^12.1.3",
+    "openapi-types": "catalog:",
     "@scalar/api-reference": "^1.51.0"
   },
   "publishConfig": {

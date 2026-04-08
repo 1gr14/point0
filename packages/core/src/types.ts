@@ -37,6 +37,7 @@ import type {
   WideRequestMethod,
 } from './request0.js'
 import type { GetByPath, SetByPath } from './utils.js'
+import type { OpenAPIV3 } from 'openapi-types'
 
 // basic
 
@@ -762,6 +763,10 @@ export type NormalizedResponseSchema = {
     >
   }
 }
+export type NormalizedEndpoindOpenapiSchema = Omit<
+  OpenAPIV3.OperationObject,
+  'parameters' | 'requestBody' | 'responses'
+>
 
 // schema helper
 
@@ -2221,6 +2226,7 @@ export type NicePluginStagePoint<
   // | 'params'
   | 'search'
   | 'body'
+  | 'openapi'
   | 'input'
   | 'clientInput'
   | 'sharedInput'
@@ -2320,6 +2326,7 @@ export type NiceBaseStagePoint<
   | 'search'
   | 'body'
   | 'models'
+  | 'openapi'
   | 'input'
   | 'clientInput'
   | 'sharedInput'
@@ -2558,6 +2565,7 @@ export type NiceActionStagePoint<
   | 'search'
   | 'body'
   | 'response'
+  | 'openapi'
   | 'ctx'
   | 'loader'
   | 'point'
