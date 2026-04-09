@@ -906,23 +906,6 @@ export const root = Point0.lets('root', 'root').loader(() => ({ b: 2 })).root()
       )
 
       it.concurrent(
-        'keeps loader args if boolean literal',
-        helper(async ({ files: [file], walker }) => {
-          await file.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'root').loader(true).root()
-        `)
-          const result = walker.collectPointsFromFile({ file: file.path })
-          const point = result.points[0]
-          point.shakeMethods({ side: 'client' })
-          expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core'
-            export const root = Point0.lets('root', 'root').loader(true).root()
-            "
-          `)
-        }),
-      )
-
-      it.concurrent(
         'handles ctx and loader in chain',
         helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
@@ -957,23 +940,6 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).ctx(() => 
       )
 
       it.concurrent(
-        'handles loader with boolean literal and non-boolean',
-        helper(async ({ files: [file], walker }) => {
-          await file.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'root').loader(true).loader(() => ({ b: 2 })).root()
-        `)
-          const result = walker.collectPointsFromFile({ file: file.path })
-          const point = result.points[0]
-          point.shakeMethods({ side: 'client' })
-          expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core'
-            export const root = Point0.lets('root', 'root').loader(true).loader().root()
-            "
-          `)
-        }),
-      )
-
-      it.concurrent(
         'handles page point with ctx and loader',
         helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
@@ -997,7 +963,7 @@ export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(
       )
 
       it.concurrent(
-        'removes last arg from serverOn for client side and keeps on untouched',
+        'removes args from serverOn for client side and keeps on untouched',
         helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root')
@@ -1011,7 +977,7 @@ export const root = Point0.lets('root', 'root')
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root')
-              .serverOn('pointFetchServerError')
+              .serverOn()
               .on('pointFetchServerError', (event) => console.info(event))
               .root()
             "
@@ -1123,6 +1089,8 @@ export const page = root.lets('page', 'page', '/')
               .body(() => console.info('fake'))
               .headers(() => console.info('fake'))
               .cookies(() => console.info('fake'))
+              .response(() => console.info('fake'))
+              .openapi({ summary: 'fake' })
               .action(() => console.info('fake'))
               .root(() => console.info('fake'))
               .base(() => console.info('fake'))
@@ -1176,7 +1144,7 @@ export const page = root.lets('page', 'page', '/')
               .loader()
               .clientLoader(() => console.info('fake'))
               .head(() => console.info('fake'))
-              .input(() => ({}))
+              .input()
               .clientInput(() => console.info('fake'))
               .sharedInput(() => console.info('fake'))
               .params(() => console.info('fake'))
@@ -1184,6 +1152,8 @@ export const page = root.lets('page', 'page', '/')
               .body()
               .headers()
               .cookies()
+              .response()
+              .openapi()
               .action()
               .root(() => console.info('fake'))
               .base(() => console.info('fake'))
@@ -1211,6 +1181,8 @@ export const page = root.lets('page', 'page', '/')
                 .body(() => console.info('fake'))
                 .headers(() => console.info('fake'))
                 .cookies(() => console.info('fake'))
+                .response(() => console.info('fake'))
+                .openapi({ summary: 'fake' })
                 .action(() => console.info('fake'))
                 .INVALID_ENDGING()
               export const action2 = root.lets('action', 'test', 'POST', '/api/my-test/:id')
@@ -1219,6 +1191,8 @@ export const page = root.lets('page', 'page', '/')
                 .body(() => console.info('fake'))
                 .headers(() => console.info('fake'))
                 .cookies(() => console.info('fake'))
+                .response(() => console.info('fake'))
+                .openapi({ summary: 'fake' })
                 .action(() => console.info('fake'))
 
         `)
@@ -1237,6 +1211,8 @@ export const page = root.lets('page', 'page', '/')
               .body()
               .headers()
               .cookies()
+              .response()
+              .openapi()
               .action()
               .INVALID_ENDGING()
             export const action2 = root
@@ -1246,6 +1222,8 @@ export const page = root.lets('page', 'page', '/')
               .body()
               .headers()
               .cookies()
+              .response()
+              .openapi()
               .action()
             "
           `)
@@ -1299,6 +1277,8 @@ export const page = root.lets('page', 'page', '/')
               .body(() => console.info('fake'))
               .headers(() => console.info('fake'))
               .cookies(() => console.info('fake'))
+              .response(() => console.info('fake'))
+              .openapi({ summary: 'fake' })
               .action(() => console.info('fake'))
               .root(() => console.info('fake'))
               .base(() => console.info('fake'))
@@ -1363,6 +1343,8 @@ export const page = root.lets('page', 'page', '/')
               .body(() => console.info('fake'))
               .headers(() => console.info('fake'))
               .cookies(() => console.info('fake'))
+              .response(() => console.info('fake'))
+              .openapi({ summary: 'fake' })
               .action(() => console.info('fake'))
               .root(() => console.info('fake'))
               .base(() => console.info('fake'))
@@ -1543,6 +1525,8 @@ export const page = root.lets('page', 'page', '/')
               .input(() => console.info('fake'))
               .clientInput(() => ({}))
               .sharedInput(() => console.info('fake'))
+              .response(() => console.info('fake'))
+              .openapi({ summary: 'fake' })
               .root(() => console.info('fake'))
               .base(() => console.info('fake'))
               .page(() => console.info('fake'))
@@ -1598,6 +1582,8 @@ export const page = root.lets('page', 'page', '/')
               .input(() => console.info('fake'))
               .clientInput(() => ({}))
               .sharedInput(() => console.info('fake'))
+              .response(() => console.info('fake'))
+              .openapi({ summary: 'fake' })
               .root(() => console.info('fake'))
               .base(() => console.info('fake'))
               .page(() => console.info('fake'))

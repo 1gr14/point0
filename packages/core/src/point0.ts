@@ -258,6 +258,7 @@ import {
   isErrorCode,
   mergeEndpointOpenapiSchemas,
   mergeHeaders,
+  mergeMiddlewares,
   setByPath,
   toExtendedTransformer,
   toKebabCase,
@@ -2513,14 +2514,20 @@ export class Point0<
     TQueriesDefinitions
   >
   serverOn(
-    name: ServerEventerEventName | 'error' | '*' | Array<ServerEventerEventName>,
-    callback: ServerEventerSubscriptionCallback<any, TError> | undefined = () => {},
+    ...args:
+      | [
+          name: ServerEventerEventName | 'error' | '*' | Array<ServerEventerEventName>,
+          callback?: ServerEventerSubscriptionCallback<any, TError> | undefined,
+        ]
+      | []
   ) {
+    if (args.length === 0) {
+      return this._continue({}) as never
+    }
+    const [name, callback = () => {}] = args
     const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
     const subscriptions = names.map((name) => ({ name, callback, side: 'server' as const }))
-    return this._continue({
-      _eventerSubscriptions: [...this._eventerSubscriptions, ...subscriptions],
-    }) as never
+    return this._continue({ _eventerSubscriptions: [...this._eventerSubscriptions, ...subscriptions] }) as never
   }
 
   clientOn<TEventName extends ClientEventerEventName | '*'>(
@@ -2602,9 +2609,17 @@ export class Point0<
     TQueriesDefinitions
   >
   clientOn(
-    name: ClientEventerEventName | 'error' | '*' | Array<ClientEventerEventName>,
-    callback: ClientEventerSubscriptionCallback<any, TError> | undefined = () => {},
+    ...args:
+      | [
+          name: ClientEventerEventName | 'error' | '*' | Array<ClientEventerEventName>,
+          callback: ClientEventerSubscriptionCallback<any, TError> | undefined,
+        ]
+      | []
   ) {
+    if (args.length === 0) {
+      return this._continue({}) as never
+    }
+    const [name, callback = () => {}] = args
     const names = Array.isArray(name) ? name : name === 'error' ? uniqEventerErrorEventNames : [name]
     const subscriptions = names.map((name) => ({ name, callback, side: 'client' as const }))
     return this._continue({
@@ -3957,7 +3972,7 @@ export class Point0<
   // middlewares
 
   middleware(
-    middlewareFn: MiddlewareFn<TError, undefined>,
+    ...middlewares: [MiddlewareFn<TError, undefined>, ...MiddlewareFn<TError, undefined>[]]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -3983,7 +3998,10 @@ export class Point0<
   >
   middleware<TProvidedRoute extends RouteDefinition>(
     route: TProvidedRoute,
-    middlewareFn: MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+    ...middlewares: [
+      MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+      ...MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>[],
+    ]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -4009,7 +4027,10 @@ export class Point0<
   >
   middleware<TProvidedRoute extends AnyRoute>(
     route: TProvidedRoute,
-    middlewareFn: MiddlewareFn<TError, TProvidedRoute['definition']>,
+    ...middlewares: [
+      MiddlewareFn<TError, TProvidedRoute['definition']>,
+      ...MiddlewareFn<TError, TProvidedRoute['definition']>[],
+    ]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -4036,7 +4057,10 @@ export class Point0<
   middleware<TProvidedRoute extends RouteDefinition>(
     method: WideRequestMethod | WideRequestMethod[],
     route: TProvidedRoute,
-    middlewareFn: MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+    ...middlewares: [
+      MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+      ...MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>[],
+    ]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -4063,7 +4087,10 @@ export class Point0<
   middleware<TProvidedRoute extends AnyRoute>(
     method: WideRequestMethod | WideRequestMethod[],
     route: TProvidedRoute,
-    middlewareFn: MiddlewareFn<TError, TProvidedRoute['definition']>,
+    ...middlewares: [
+      MiddlewareFn<TError, TProvidedRoute['definition']>,
+      ...MiddlewareFn<TError, TProvidedRoute['definition']>[],
+    ]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -4089,24 +4116,26 @@ export class Point0<
   >
   middleware(
     ...args:
-      | [MiddlewareFn<TError, any>]
-      | [route: RouteDefinition | AnyRoute, middlewareFn: MiddlewareFn<TError, any>]
+      | [...middlewares: [MiddlewareFn<TError, any>, ...MiddlewareFn<TError, any>[]]]
+      | [route: RouteDefinition | AnyRoute, ...middlewares: [MiddlewareFn<TError, any>, ...MiddlewareFn<TError, any>[]]]
       | [
           method: WideRequestMethod | WideRequestMethod[],
           route: RouteDefinition | AnyRoute,
-          middlewareFn: MiddlewareFn<TError, any>,
+          ...middlewares: [MiddlewareFn<TError, any>, ...MiddlewareFn<TError, any>[]],
         ]
       | []
   ) {
+    const isFunction = (arg: any): arg is MiddlewareFn<TError, any> => {
+      return typeof arg === 'function'
+    }
     const middleware = ((): MiddlewareFn<TError, any> => {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (_point0_env.side.is.client || args.length === 0 || args[0] === undefined) {
         return ({ next }: MiddlewareFnOptions<TError>) => next()
       }
-      if (args.length === 1) {
-        return args[0]
+      if (isFunction(args[0])) {
+        return mergeMiddlewares(args as MiddlewareFn<TError, any>[])
       }
-      if (args.length === 2) {
+      if (isFunction(args[1])) {
         const route = (() => {
           if (!args[0]) {
             throw new Error(`Route is required for middleware in point ${this.toStringWithLocation()}`)
@@ -4114,21 +4143,21 @@ export class Point0<
           if (typeof args[0] === 'string') {
             return this.route?.extend(args[0]) ?? Route0.create(args[0])
           }
-          return args[0]
+          return args[0] as AnyRoute
         })()
-        const handler = args[1]
+        const middlewares = args.slice(1) as MiddlewareFn<TError, any>[]
+        const mergedMiddlewares = mergeMiddlewares(middlewares)
         const hasParams = route.getParamsKeys().length > 0
         return (options: MiddlewareFnOptions<TError>) => {
           if (route.isExact(options.request.location.pathname)) {
             const params = hasParams ? route.getRelation(options.request.location).params : undefined
             const optionsWithParams = hasParams ? { ...options, params } : options
-            return handler(optionsWithParams)
+            return mergedMiddlewares(optionsWithParams)
           }
           return options.next()
         }
       }
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (args.length === 3) {
+      if (isFunction(args[2])) {
         const methods = Array.isArray(args[0]) ? args[0] : [args[0]]
         const route = (() => {
           if (!args[1]) {
@@ -4139,13 +4168,14 @@ export class Point0<
           }
           return args[1]
         })()
-        const handler = args[2] as MiddlewareFn<TError, any>
+        const middlewares = args.slice(2) as MiddlewareFn<TError, any>[]
+        const mergedMiddlewares = mergeMiddlewares(middlewares)
         const hasParams = route.getParamsKeys().length > 0
         return (options: MiddlewareFnOptions<TError>) => {
           if (methods.includes(options.request.method) && route.isExact(options.request.location.pathname)) {
             const params = hasParams ? route.getRelation(options.request.location).params : undefined
             const optionsWithParams = hasParams ? { ...options, params } : options
-            return handler(optionsWithParams)
+            return mergedMiddlewares(optionsWithParams)
           }
           return options.next()
         }
@@ -6193,7 +6223,10 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  response(schemas: InputSchema | Record<number, InputSchema> | NormalizedResponseSchema) {
+  response(schemas: InputSchema | Record<number, InputSchema> | NormalizedResponseSchema | undefined) {
+    if (!schemas) {
+      return this._continue({}) as never
+    }
     const keys = Object.keys(schemas)
     const allKeysAreNumbers = keys.every((key) => Number.isInteger(Number(key)))
     const normalizedResponseSchema = (() => {

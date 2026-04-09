@@ -958,28 +958,17 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   private shakeMethodsForClient(): void {
     for (const method of this.getSelfRichMethods()) {
       switch (method.name) {
-        case 'ctx': {
-          this.removeMethodArgs({ nodePath: method.nodePath })
-          break
-        }
+        case 'input':
         case 'loader':
         case 'action':
         case 'headers':
         case 'cookies':
-        case 'body': {
-          this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
-          break
-        }
-        case 'input': {
-          this.replaceAllArgsWithArrowFnReturnEmptyObject({ nodePath: method.nodePath })
-          break
-        }
-        case 'serverOn': {
-          this.removeLastMethodArg({ nodePath: method.nodePath })
-          break
-        }
+        case 'body':
+        case 'ctx':
+        case 'serverOn':
         case 'middleware':
-        case 'response': {
+        case 'response':
+        case 'openapi': {
           this.removeMethodArgs({ nodePath: method.nodePath })
           break
         }

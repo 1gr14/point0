@@ -40,12 +40,21 @@ mcp as comments
 === REFACTOING 3000 ===
 
 OPENAPI
-more tests
-add default description for points and allow provide its own
-http-auth
-вырезать респонсес и опенапи из чейна
-tests for middleware itself
+Скалар сдн а иначе прямо инжектим ксс и джс туда (да может всегда просто cdn)
+Саммари экшена это имя поинта и оперейшен айди
 В опенапи стараться пользоваться стандартом то Джейсон если нет хелпера
+Хайд трансформ хедер в опенапи
+
+separate functions that returns cached result (cache key as one of options)
+scalar helper separate
+json helper separate
+swagger helper separate
+index helper as combined
+
+http-auth package
+protect openapi by http-auth
+
+
 
 ЭКЗАМПЛЫ
 Причёска экзамплов

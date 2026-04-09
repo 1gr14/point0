@@ -148,6 +148,33 @@ describe('midleware', () => {
     expect(await response.text()).toBe('custom response')
   })
 
+  it.concurrent('mutiple middlewares in one method', async () => {
+    const root = Point0.lets('root', 'root')
+      .middleware(
+        async ({ set, next }) => {
+          set.headers('y', '3')
+          return await next()
+        },
+        async () => {
+          return new Response('custom response')
+        },
+      )
+      .root()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(({ set }) => ({ x: 1, y: set.inspect.headers.y, z: set.inspect.headers.z }))
+      .page(({ data }) => (
+        <div id="page">
+          x={data.x},y={data.y},z={data.z}
+        </div>
+      ))
+    const { fetch } = await createTestThings({ ssr: true, points: [root, page] })
+    const response = await fetch(page.route.get({}, 'http://localhost'))
+    expect(response.status).toBe(200)
+    expect(response.headers.get('y')).toBe('3')
+    expect(await response.text()).toBe('custom response')
+  })
+
   it.concurrent('throws error', async () => {
     const root = Point0.lets('root', 'root')
       .middleware(async ({ set, next }) => {

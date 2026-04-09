@@ -1,8 +1,10 @@
 import type { DehydratedState } from '@tanstack/react-query'
 import { stringify } from 'safe-stable-stringify'
+import type { ErrorPoint0 } from './error.js'
 import type {
   DataTransformer,
   DataTransformerExtended,
+  MiddlewareFn,
   NormalizedEndpoindOpenapiSchema,
   ScrollPositionGetter,
   ScrollPositionSetter,
@@ -349,5 +351,54 @@ export const mergeEndpointOpenapiSchemas = (
     ...prevSchema,
     ...nextSchema,
     ...(tags ? { tags } : {}),
+  }
+}
+
+export const mergeMiddlewares = <TError extends ErrorPoint0>(
+  middlewares: MiddlewareFn<TError>[],
+): MiddlewareFn<TError> => {
+  if (middlewares.length === 0) {
+    return async (options) => options.next()
+  }
+  if (middlewares.length === 1) {
+    return middlewares[0]
+  }
+  return async (options) => {
+    let index = -1
+
+    async function dispatch(i: number): Promise<any> {
+      if (i <= index) {
+        throw new Error('next() called multiple times')
+      }
+      index = i
+
+      if (i === middlewares.length) {
+        return await options.next()
+      }
+
+      const middleware = middlewares.at(i)
+      if (!middleware) {
+        throw new Error('Middleware is undefined')
+      }
+
+      return await middleware({
+        ...options,
+        next: async () => {
+          const result = await dispatch(i + 1)
+          if (result instanceof Response) {
+            return {
+              request: options.request,
+              scope: options.scope,
+              response: result,
+              error: undefined,
+              variant: { type: 'middleware' },
+            }
+          }
+          return result
+        },
+      })
+    }
+
+    return await dispatch(0)
   }
 }

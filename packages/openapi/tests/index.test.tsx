@@ -21,8 +21,12 @@ describe('openapi', () => {
       })
       .middleware(
         openapi({
+          before: async ({ next, set }) => {
+            set.headers('x', 'test-1')
+            return await next()
+          },
           route: '/openapi.json',
-          scalar: '/openapi',
+          scalar: { route: '/openapi', onLoaded: () => console.info('Hello') },
           filter: 'all',
           info: {
             title: 'Test API',
@@ -51,6 +55,8 @@ describe('openapi', () => {
         }
       })
       .query()
+
+    const page = root.lets('page', 'page1', '/').page(() => <div id="page">page1</div>)
 
     const action1 = root
       .lets('action', 'action1', 'POST', '/api/my-test/:id')
@@ -96,8 +102,9 @@ describe('openapi', () => {
       })
       .action()
 
-    const { fetch } = await createTestThings({ points: [root, query, action1, action2] })
+    const { fetch } = await createTestThings({ points: [root, query, action1, action2, page], ssr: true })
     const response1 = await fetch('http://localhost:3000/openapi.json')
+    expect(response1.headers.get('x')).toBe('test-1')
     const json1 = await response1.json()
     expect(json1).toMatchInlineSnapshot(`
       {
@@ -133,6 +140,7 @@ describe('openapi', () => {
           "title": "Test API",
           "version": "1.0.0",
         },
+        "openapi": "3.0.0",
         "paths": {
           "/_point0/root/query/query1": {
             "post": {
@@ -271,27 +279,28 @@ describe('openapi', () => {
     `)
 
     const response2 = await fetch('http://localhost:3000/openapi')
+    expect(response2.headers.get('x')).toBe('test-1')
     const html2 = await response2.text()
     expect(html2).toMatchInlineSnapshot(`
       "<!doctype html>
-            <html>
-              <head>
-                <title>API Reference</title>
-                <meta charset="utf-8" />
-                <meta
-                  name="viewport"
-                  content="width=device-width, initial-scale=1" />
-              </head>
-              <body>
-                <div id="app"></div>
-                <!-- Load the Script -->
-                <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
-                <!-- Initialize the API Reference -->
-                <script>
-                  Scalar.createApiReference('#app', { url: '/openapi.json' })
-                </script>
-              </body>
-            </html>"
+      <html lang="en">
+        <head>
+          <title>API Reference</title>
+          <meta charset="utf-8" />
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1" />
+        </head>
+        <body>
+          <div id="app"></div>
+          <!-- Load the Script -->
+          <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+          <!-- Initialize the API Reference -->
+          <script>
+            Scalar.createApiReference('#app', { onLoaded: () => console.info("Hello"), url: '/openapi.json' })
+          </script>
+        </body>
+      </html>"
     `)
   })
 })
