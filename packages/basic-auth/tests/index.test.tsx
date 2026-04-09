@@ -28,7 +28,99 @@ describe('basic-auth', () => {
 
     expect(result.ok).toBe(true)
     if (result.ok) {
-      expect(result.login).toBe('admin')
+      expect(result.username).toBe('admin')
+    }
+  })
+
+  test('allows users as one string "username:password"', async () => {
+    const auth = BasicAuth.create({
+      users: 'admin:secret',
+    })
+
+    const result = await auth.validateRequest(
+      getRequest({
+        authHeader: getBasicAuthHeader('admin', 'secret'),
+      }),
+    )
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.username).toBe('admin')
+    }
+  })
+
+  test('allows users as array of "username:password" strings', async () => {
+    const auth = BasicAuth.create({
+      users: ['admin:secret', 'john:pass123'],
+    })
+
+    const result = await auth.validateRequest(
+      getRequest({
+        authHeader: getBasicAuthHeader('john', 'pass123'),
+      }),
+    )
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.username).toBe('john')
+    }
+  })
+
+  test('allows users as array of { username, password } objects', async () => {
+    const auth = BasicAuth.create({
+      users: [
+        { username: 'admin', password: 'secret' },
+        { username: 'john', password: 'pass123' },
+      ],
+    })
+
+    const result = await auth.validateRequest(
+      getRequest({
+        authHeader: getBasicAuthHeader('john', 'pass123'),
+      }),
+    )
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.username).toBe('john')
+    }
+  })
+
+  test('accepts case-insensitive Basic auth scheme', async () => {
+    const auth = BasicAuth.create({
+      users: { admin: 'secret' },
+    })
+
+    const lowercaseScheme = await auth.validateRequest(
+      getRequest({
+        authHeader: `basic ${getBasicAuthHeader('admin', 'secret').slice('Basic '.length)}`,
+      }),
+    )
+    const uppercaseScheme = await auth.validateRequest(
+      getRequest({
+        authHeader: `BASIC ${getBasicAuthHeader('admin', 'secret').slice('Basic '.length)}`,
+      }),
+    )
+
+    expect(lowercaseScheme.ok).toBe(true)
+    expect(uppercaseScheme.ok).toBe(true)
+  })
+
+  test('rejects malformed basic auth token payload', async () => {
+    const auth = BasicAuth.create({
+      users: { admin: 'secret' },
+    })
+
+    const result = await auth.validateRequest(
+      getRequest({
+        authHeader: 'Basic ***',
+      }),
+    )
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.reason).toBe('unauthorized')
+      expect(result.response.status).toBe(401)
     }
   })
 
@@ -50,6 +142,36 @@ describe('basic-auth', () => {
       expect(result.reason).toBe('wrong-credentials')
       expect(result.response.status).toBe(401)
       expect(result.response.headers.get('WWW-Authenticate')).toContain('Basic')
+    }
+  })
+
+  test('returns 401 without auth challenge when challenge is disabled', async () => {
+    const auth = BasicAuth.create({
+      users: { admin: 'secret' },
+      challenge: false,
+      limitPerIp: 3,
+      limitPerUser: 3,
+    })
+
+    const wrongCredentials = await auth.validateRequest(
+      getRequest({
+        authHeader: getBasicAuthHeader('admin', 'wrong'),
+      }),
+    )
+    const missingCredentials = await auth.validateRequest(getRequest({}))
+
+    expect(wrongCredentials.ok).toBe(false)
+    if (!wrongCredentials.ok) {
+      expect(wrongCredentials.reason).toBe('wrong-credentials')
+      expect(wrongCredentials.response.status).toBe(401)
+      expect(wrongCredentials.response.headers.get('WWW-Authenticate')).toBeNull()
+    }
+
+    expect(missingCredentials.ok).toBe(false)
+    if (!missingCredentials.ok) {
+      expect(missingCredentials.reason).toBe('unauthorized')
+      expect(missingCredentials.response.status).toBe(401)
+      expect(missingCredentials.response.headers.get('WWW-Authenticate')).toBeNull()
     }
   })
 
@@ -81,11 +203,9 @@ describe('basic-auth', () => {
     }
   })
 
-  test('allows password validator function', async () => {
+  test('allows custom validator function', async () => {
     const auth = BasicAuth.create({
-      users: {
-        admin: (password) => password.startsWith('secret-'),
-      },
+      validator: ({ username, password }) => username === 'admin' && password === 'secret-token',
     })
 
     const allowed = await auth.validateRequest(
@@ -107,11 +227,9 @@ describe('basic-auth', () => {
     }
   })
 
-  test('allows async password validator function', async () => {
+  test('allows async custom validator function', async () => {
     const auth = BasicAuth.create({
-      users: {
-        admin: async (password) => password === 'secret-async',
-      },
+      validator: async ({ username, password }) => username === 'admin' && password === 'secret-async',
     })
 
     const result = await auth.validateRequest(

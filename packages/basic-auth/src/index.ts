@@ -1,51 +1,65 @@
 import type { MiddlewareFn } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 
-export const getBasicAuthHeader = (login: string, password: string): string =>
-  `Basic ${Buffer.from(`${login}:${password}`, 'utf8').toString('base64')}`
+export const getBasicAuthHeader = (username: string, password: string): string =>
+  `Basic ${Buffer.from(`${username}:${password}`, 'utf8').toString('base64')}`
 
-export type BasicAuthOptionsInputUser =
-  | string
-  | { login: string; password: string | ((password: string) => boolean | Promise<boolean>) }
+export type BasicAuthOptionsInputUser = string | { username: string; password: string }
 export type BasicAuthOptionsInputUsers =
-  | Record<string, string | ((password: string) => boolean | Promise<boolean>)>
+  | Record<string, string>
   | BasicAuthOptionsInputUser
   | BasicAuthOptionsInputUser[]
+
+type OnUnauthorizedOptions = {
+  request: Request0
+  username: string | undefined
+  ip: string | undefined
+}
+type OnUnauthorizedFn = (options: OnUnauthorizedOptions) => void | Promise<void>
+type OnWrongCredentialsOptions = {
+  request: Request0
+  username: string | undefined
+  ip: string | undefined
+}
+type OnWrongCredentialsFn = (options: OnWrongCredentialsOptions) => void | Promise<void>
+type OnLimitExceededOptions = {
+  request: Request0
+  username: string | undefined
+  ip: string | undefined
+  limitPerUser: number
+  limitPerIp: number
+  staleTimeMs: number
+}
+type OnLimitExceededFn = (options: OnLimitExceededOptions) => void | Promise<void>
+type ValidatorFn = ({
+  username,
+  password,
+  request,
+}: {
+  username: string
+  password: string
+  request: Request0
+}) => boolean | Promise<boolean>
 export type BasicAuthOptionsInput = {
-  users: BasicAuthOptionsInputUsers
   limitPerUser?: number
   limitPerIp?: number
   memorySize?: number
   staleTimeMs?: number
-  onUnauthorized?: (options: {
-    request: Request0
-    login: string | undefined
-    ip: string | undefined
-  }) => void | Promise<void>
-  onWrongCredentials?: (options: {
-    request: Request0
-    login: string | undefined
-    ip: string | undefined
-  }) => void | Promise<void>
-  onLimitExceeded?: (options: {
-    request: Request0
-    login: string | undefined
-    ip: string | undefined
-    limitPerUser: number
-    limitPerIp: number
-    staleTimeMs: number
-  }) => void | Promise<void>
-}
-export type BasicAuthUsers = Record<string, (password: string) => boolean | Promise<boolean>>
+  challenge?: boolean
+  onUnauthorized?: OnUnauthorizedFn
+  onWrongCredentials?: OnWrongCredentialsFn
+  onLimitExceeded?: OnLimitExceededFn
+} & ({ users: BasicAuthOptionsInputUsers; validator?: undefined } | { users?: undefined; validator: ValidatorFn })
+export type BasicAuthUsers = Record<string, string>
 
 export type BasicAuthValidationResult =
   | {
       ok: true
-      login: string
+      username: string
     }
   | {
       ok: false
-      login: string | undefined
+      username: string | undefined
       ip: string | undefined
       response: Response
       reason: 'unauthorized' | 'wrong-credentials' | 'limit-exceeded'
@@ -53,40 +67,31 @@ export type BasicAuthValidationResult =
 
 type MemoryItem = {
   dateMs: number
-  login: string
+  username: string
   ip: string
 }
 
 const HTTP_AUTH_CHALLENGE = 'Basic realm="Restricted", charset="UTF-8"'
+const BASIC_CREDENTIALS_REGEXP = /^ *(?:[Bb][Aa][Ss][Ii][Cc]) +([A-Za-z0-9._~+/-]+=*) *$/
+const BASIC_USER_PASS_REGEXP = /^([^:]+):(.*)$/
 
-const toPasswordChecker = (
-  password: string | ((password: string) => boolean | Promise<boolean>),
-): ((password: string) => boolean | Promise<boolean>) => {
-  if (typeof password === 'function') {
-    return password
-  }
-  return (value: string) => value === password
-}
-
-const normalizeSingleUser = (
-  user: BasicAuthOptionsInputUser,
-): { login: string; password: (password: string) => boolean | Promise<boolean> } => {
+const normalizeSingleUser = (user: BasicAuthOptionsInputUser): { username: string; password: string } => {
   if (typeof user === 'string') {
     const separatorIndex = user.indexOf(':')
     if (separatorIndex <= 0 || separatorIndex === user.length - 1) {
-      throw new Error('Invalid user string format. Expected "login:password".')
+      throw new Error('Invalid user string format. Expected "username:password".')
     }
     return {
-      login: user.slice(0, separatorIndex),
-      password: toPasswordChecker(user.slice(separatorIndex + 1)),
+      username: user.slice(0, separatorIndex),
+      password: user.slice(separatorIndex + 1),
     }
   }
-  if (!user.login || !user.password) {
-    throw new Error('Invalid user object format. Expected { login, password }.')
+  if (!user.username || !user.password) {
+    throw new Error('Invalid user object format. Expected { username, password }.')
   }
   return {
-    login: user.login,
-    password: toPasswordChecker(user.password),
+    username: user.username,
+    password: user.password,
   }
 }
 
@@ -95,57 +100,47 @@ const normalizeUsers = (users: BasicAuthOptionsInputUsers): BasicAuthUsers => {
     const output: BasicAuthUsers = {}
     for (const item of users) {
       const normalized = normalizeSingleUser(item)
-      output[normalized.login] = normalized.password
+      output[normalized.username] = normalized.password
     }
     return output
   }
-  if (typeof users === 'string' || ('login' in users && 'password' in users)) {
+  if (typeof users === 'string' || ('username' in users && 'password' in users)) {
     const normalized = normalizeSingleUser(users as BasicAuthOptionsInputUser)
-    return { [normalized.login]: normalized.password }
+    return { [normalized.username]: normalized.password }
   }
   const output: BasicAuthUsers = {}
-  for (const [login, password] of Object.entries(users)) {
-    output[login] = toPasswordChecker(password)
+  for (const [username, password] of Object.entries(users)) {
+    output[username] = password
   }
   return output
 }
 
 export class BasicAuth {
   users: BasicAuthUsers
+  validator: ValidatorFn | undefined
   staleTimeMs: number
   limitPerUser: number
   limitPerIp: number
   memorySize: number
+  challenge: boolean
 
-  onUnauthorized?: (options: {
-    request: Request0
-    login: string | undefined
-    ip: string | undefined
-  }) => void | Promise<void>
-  onLimitExceeded?: (options: {
-    request: Request0
-    login: string | undefined
-    ip: string | undefined
-    limitPerUser: number
-    limitPerIp: number
-    staleTimeMs: number
-  }) => void | Promise<void>
-  onWrongCredentials?: (options: {
-    request: Request0
-    login: string | undefined
-    ip: string | undefined
-  }) => void | Promise<void>
+  onUnauthorized?: OnUnauthorizedFn
+  onLimitExceeded?: OnLimitExceededFn
+  onWrongCredentials?: OnWrongCredentialsFn
 
   memory: MemoryItem[]
 
   private constructor(options: BasicAuthOptionsInput) {
-    this.users = normalizeUsers(options.users)
+    this.users = normalizeUsers(options.users || {})
     this.staleTimeMs = options.staleTimeMs ?? 1000 * 60 * 60 * 24
     this.limitPerUser = options.limitPerUser ?? 100
     this.limitPerIp = options.limitPerIp ?? 100
     this.memorySize = options.memorySize ?? 1000
+    this.challenge = options.challenge ?? true
     this.onUnauthorized = options.onUnauthorized
     this.onLimitExceeded = options.onLimitExceeded
+    this.onWrongCredentials = options.onWrongCredentials
+    this.validator = options.validator
     this.memory = []
   }
 
@@ -159,30 +154,35 @@ export class BasicAuth {
     const ip = request.from.ip || undefined
     const parsedAuth = this.parseAuthorizationHeader(request.headers.authorization)
     if (!parsedAuth) {
-      return await this.unauthorized({ request, ip, login: undefined })
+      return await this.unauthorized({ request, ip, username: undefined })
     }
 
-    const attemptedLogin = parsedAuth.login
+    const attemptedUsername = parsedAuth.username
 
-    if (this.isLimitExceeded({ ip, login: attemptedLogin })) {
-      return await this.limitExceeded({ request, ip, login: attemptedLogin })
+    if (this.isLimitExceeded({ ip, username: attemptedUsername })) {
+      return await this.limitExceeded({ request, ip, username: attemptedUsername })
     }
 
-    const hasLogin = Object.prototype.hasOwnProperty.call(this.users, parsedAuth.login)
-    const isPasswordCorrect = hasLogin && (await this.users[parsedAuth.login](parsedAuth.password))
+    const validator =
+      this.validator ||
+      (({ username, password }) => {
+        const hasUsername = Object.prototype.hasOwnProperty.call(this.users, username)
+        return hasUsername && this.users[username] === password
+      })
+    const isValid = await validator({ username: parsedAuth.username, password: parsedAuth.password, request })
 
-    if (!isPasswordCorrect) {
-      this.addAttempt({ ip, login: parsedAuth.login })
-      if (this.isLimitExceeded({ ip, login: parsedAuth.login })) {
-        return await this.limitExceeded({ request, ip, login: parsedAuth.login })
+    if (!isValid) {
+      this.addAttempt({ ip, username: parsedAuth.username })
+      if (this.isLimitExceeded({ ip, username: parsedAuth.username })) {
+        return await this.limitExceeded({ request, ip, username: parsedAuth.username })
       }
-      return await this.wrongCredentials({ request, ip, login: parsedAuth.login })
+      return await this.wrongCredentials({ request, ip, username: parsedAuth.username })
     }
 
-    this.clearAttemptsByIpAndLogin({ ip, login: parsedAuth.login })
+    this.clearAttemptsByIpAndUsername({ ip, username: parsedAuth.username })
     return {
       ok: true,
-      login: parsedAuth.login,
+      username: parsedAuth.username,
     }
   }
 
@@ -194,39 +194,34 @@ export class BasicAuth {
     return validation.response
   }
 
-  private parseAuthorizationHeader(value: string | undefined): { login: string; password: string } | undefined {
-    if (!value || !value.startsWith('Basic ')) {
+  private parseAuthorizationHeader(value: string | undefined): { username: string; password: string } | undefined {
+    if (!value) {
       return undefined
     }
 
-    const encoded = value.slice('Basic '.length).trim()
-    if (!encoded) {
+    const match = BASIC_CREDENTIALS_REGEXP.exec(value)
+    if (!match) {
       return undefined
     }
 
-    let decoded = ''
-    try {
-      decoded = Buffer.from(encoded, 'base64').toString('utf8')
-    } catch {
-      return undefined
-    }
+    const decoded = Buffer.from(match[1], 'base64').toString('utf8')
 
-    const separatorIndex = decoded.indexOf(':')
-    if (separatorIndex <= 0) {
+    const userPass = BASIC_USER_PASS_REGEXP.exec(decoded)
+    if (!userPass) {
       return undefined
     }
 
     return {
-      login: decoded.slice(0, separatorIndex),
-      password: decoded.slice(separatorIndex + 1),
+      username: userPass[1],
+      password: userPass[2],
     }
   }
 
-  private addAttempt({ ip = 'unknown', login }: { ip: string | undefined; login: string }): void {
+  private addAttempt({ ip = 'unknown', username }: { ip: string | undefined; username: string }): void {
     this.memory.push({
       dateMs: Date.now(),
       ip: ip || 'unknown',
-      login,
+      username,
     })
     this.removeOld()
   }
@@ -243,99 +238,111 @@ export class BasicAuth {
     return this.memory.filter((item) => item.ip === ip).length
   }
 
-  private countByLogin({ login }: { login: string }): number {
-    return this.memory.filter((item) => item.login === login).length
+  private countByUsername({ username }: { username: string }): number {
+    return this.memory.filter((item) => item.username === username).length
   }
 
   // private clearAttemptsByIp({ ip = 'unknown' }: { ip?: string | undefined }): void {
   //   this.memory = this.memory.filter((item) => item.ip !== ip)
   // }
 
-  // private clearAttemptsByLogin({ login }: { login: string }): void {
-  //   this.memory = this.memory.filter((item) => item.login !== login)
+  // private clearAttemptsByUsername({ username }: { username: string }): void {
+  //   this.memory = this.memory.filter((item) => item.username !== username)
   // }
 
-  private clearAttemptsByIpAndLogin({ ip = 'unknown', login }: { ip?: string | undefined; login: string }): void {
-    this.memory = this.memory.filter((item) => item.ip !== ip && item.login !== login)
+  private clearAttemptsByIpAndUsername({
+    ip = 'unknown',
+    username,
+  }: {
+    ip?: string | undefined
+    username: string
+  }): void {
+    this.memory = this.memory.filter((item) => item.ip !== ip && item.username !== username)
   }
 
-  private isLimitExceeded({ ip = 'unknown', login }: { ip?: string | undefined; login: string }): boolean {
-    return this.countByIp({ ip }) >= this.limitPerIp || this.countByLogin({ login }) >= this.limitPerUser
+  private isLimitExceeded({ ip = 'unknown', username }: { ip?: string | undefined; username: string }): boolean {
+    return this.countByIp({ ip }) >= this.limitPerIp || this.countByUsername({ username }) >= this.limitPerUser
   }
 
   private async unauthorized({
     request,
-    login,
+    username,
     ip,
   }: {
     request: Request0
-    login: string | undefined
+    username: string | undefined
     ip: string | undefined
   }): Promise<BasicAuthValidationResult> {
     if (this.onUnauthorized) {
       await this.onUnauthorized({
         request,
-        login,
+        username,
         ip,
       })
     }
+    const responseHeaders: HeadersInit = this.challenge
+      ? {
+          'WWW-Authenticate': HTTP_AUTH_CHALLENGE,
+        }
+      : {}
     return {
       ok: false,
       reason: 'unauthorized',
-      login,
+      username,
       ip,
       response: new Response('Unauthorized', {
         status: 401,
-        headers: {
-          'WWW-Authenticate': HTTP_AUTH_CHALLENGE,
-        },
+        headers: responseHeaders,
       }),
     }
   }
 
   private async wrongCredentials({
     request,
-    login,
+    username,
     ip,
   }: {
     request: Request0
-    login: string | undefined
+    username: string | undefined
     ip: string | undefined
   }): Promise<BasicAuthValidationResult> {
     if (this.onWrongCredentials) {
       await this.onWrongCredentials({
         request,
-        login,
+        username,
         ip,
       })
     }
+    const responseHeaders: HeadersInit = this.challenge
+      ? {
+          'WWW-Authenticate': HTTP_AUTH_CHALLENGE,
+        }
+      : {}
     return {
       ok: false,
       reason: 'wrong-credentials',
-      login,
+      username,
       ip,
       response: new Response('Unauthorized', {
         status: 401,
-        headers: {
-          'WWW-Authenticate': HTTP_AUTH_CHALLENGE,
-        },
+        headers: responseHeaders,
       }),
     }
   }
 
   private async limitExceeded({
     request,
-    login,
+    username,
     ip,
   }: {
     request: Request0
-    login: string | undefined
+    username: string | undefined
     ip: string | undefined
   }): Promise<BasicAuthValidationResult> {
     if (this.onLimitExceeded) {
       await this.onLimitExceeded({
         request,
-        login,
+        username,
         ip,
         limitPerUser: this.limitPerUser,
         limitPerIp: this.limitPerIp,
@@ -345,7 +352,7 @@ export class BasicAuth {
     return {
       ok: false,
       reason: 'limit-exceeded',
-      login,
+      username,
       ip,
       response: new Response('Too many failed HTTP auth attempts. Limit exceeded.', {
         status: 429,
