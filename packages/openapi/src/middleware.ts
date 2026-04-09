@@ -3,6 +3,7 @@ import type { AnyNiceRequestableReadyPoint, MiddlewareFn } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 import type { ApiReferenceConfigurationWithSource } from '@scalar/types/api-reference'
 import { getScalarHtml, type ScalarOptions } from './scalar.js'
+import { getSwaggerHtml, type SwaggerOptions } from './swagger.js'
 import { getOpenapiSchemaFromPoints, type OpenapiOptions } from './utils.js'
 
 export type OpenapiMiddlewareOptionsGeneral = {
@@ -11,6 +12,7 @@ export type OpenapiMiddlewareOptionsGeneral = {
   before?: MiddlewareFn<any> | MiddlewareFn<any>[]
   filter?: ((point: AnyNiceRequestableReadyPoint) => boolean) | 'all' | 'action'
   scalar?: (ScalarOptions & { route: string }) | string
+  swagger?: (SwaggerOptions & { route: string }) | string
 }
 
 export type OpenapiMiddlewareOptions<TOpenapiVersion extends string> = OpenapiOptions<TOpenapiVersion> &
@@ -24,7 +26,7 @@ export const openapi = <TOpenapiVersion extends string>(
       return await next()
     }
   } else {
-    const { route: jsonRoute, filter: filterProvided, scalar, before, cache, ...openapiOptions } = options
+    const { route: jsonRoute, filter: filterProvided, scalar, swagger, before, cache, ...openapiOptions } = options
     const cacheKey = cache === true ? jsonRoute : cache === false ? undefined : (cache ?? jsonRoute)
     const middlewares = !before ? [] : Array.isArray(before) ? before : [before]
     const filter =
@@ -33,6 +35,7 @@ export const openapi = <TOpenapiVersion extends string>(
         : filterProvided === 'action'
           ? (point: AnyNiceRequestableReadyPoint) => point.type === 'action'
           : (filterProvided ?? ((point: AnyNiceRequestableReadyPoint) => point.type === 'action'))
+
     const { route: scalarRouteProvided, ...scalarOptions } = (
       typeof scalar === 'string' ? { route: scalar } : scalar || {}
     ) as Partial<ApiReferenceConfigurationWithSource> & { route: string }
@@ -44,7 +47,18 @@ export const openapi = <TOpenapiVersion extends string>(
         }
     const scalarRoute = !scalar ? undefined : scalarRouteProvided
 
-    type RequestType = 'json' | 'scalar' | undefined
+    const { route: swaggerRouteProvided, ...swaggerOptions } = (
+      typeof swagger === 'string' ? { route: swagger } : swagger || {}
+    ) as SwaggerOptions & { route: string }
+    const swaggerOptionsNormalized = !swagger
+      ? undefined
+      : {
+          ...swaggerOptions,
+          url: swaggerOptions.url ?? jsonRoute,
+        }
+    const swaggerRoute = !swagger ? undefined : swaggerRouteProvided
+
+    type RequestType = 'json' | 'scalar' | 'swagger' | undefined
     const checkRequestType = (request: Request0): RequestType => {
       if (request.method !== 'GET') {
         return undefined
@@ -57,6 +71,12 @@ export const openapi = <TOpenapiVersion extends string>(
       }
       if (request.location.pathname === scalarRoute) {
         return 'scalar'
+      }
+      if (!swaggerRoute) {
+        return undefined
+      }
+      if (request.location.pathname === swaggerRoute) {
+        return 'swagger'
       }
       return undefined
     }
@@ -78,10 +98,18 @@ export const openapi = <TOpenapiVersion extends string>(
           })
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (requestType === 'scalar' && scalarOptionsNormalized) {
           const scalarHtml = getScalarHtml(scalarOptionsNormalized as never)
           return new Response(scalarHtml, {
+            headers: {
+              'Content-Type': 'text/html',
+            },
+          })
+        }
+
+        if (requestType === 'swagger' && swaggerOptionsNormalized) {
+          const swaggerHtml = getSwaggerHtml(swaggerOptionsNormalized)
+          return new Response(swaggerHtml, {
             headers: {
               'Content-Type': 'text/html',
             },

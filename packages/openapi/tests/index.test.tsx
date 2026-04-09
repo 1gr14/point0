@@ -13,6 +13,8 @@ describe('openapi', () => {
     nickname: z.string().min(1).describe('nickname description'),
   })
 
+  zResult['~standard'].jsonSchema.input
+
   const createRoot = () =>
     Point0.lets('root', 'root')
       .transformer(superjson)
@@ -27,6 +29,7 @@ describe('openapi', () => {
           },
           route: '/openapi.json',
           scalar: { route: '/openapi', onLoaded: () => console.info('Hello') },
+          swagger: { route: '/swagger', showExtensions: true },
           filter: 'all',
           info: {
             title: 'Test API',
@@ -85,7 +88,7 @@ describe('openapi', () => {
       .action()
 
     const action2 = root
-      .lets('action', 'action2', 'POST', '/api/my-test')
+      .lets('action', 'action2', 'POST', '/api/another-test/:id')
       .headers(z.object({ x: z.string().min(1) }))
       .search(z.object({ y: z.string().min(1) }))
       .body(z.object({ b: z.number().min(1), d: z.bigint() }))
@@ -153,9 +156,24 @@ describe('openapi', () => {
               "summary": "root.query.query1",
             },
           },
-          "/api/my-test": {
+          "/api/another-test/{id}": {
             "post": {
               "parameters": [
+                {
+                  "in": "path",
+                  "name": "id",
+                  "required": true,
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                      },
+                      {
+                        "type": "number",
+                      },
+                    ],
+                  },
+                },
                 {
                   "in": "query",
                   "name": "y",
@@ -214,6 +232,14 @@ describe('openapi', () => {
                   "name": "id",
                   "required": true,
                   "schema": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                      },
+                      {
+                        "type": "number",
+                      },
+                    ],
                     "description": "id description",
                     "minLength": 1,
                     "type": "string",
@@ -298,6 +324,33 @@ describe('openapi', () => {
           <!-- Initialize the API Reference -->
           <script>
             Scalar.createApiReference('#app', { onLoaded: () => console.info("Hello"), url: '/openapi.json' })
+          </script>
+        </body>
+      </html>"
+    `)
+
+    const response3 = await fetch('http://localhost:3000/swagger')
+    expect(response3.headers.get('x')).toBe('test-1')
+    const html3 = await response3.text()
+    expect(html3).toMatchInlineSnapshot(`
+      "<!doctype html>
+      <html lang="en">
+        <head>
+          <title>Swagger UI</title>
+          <meta charset="utf-8" />
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1" />
+          <link
+            rel="stylesheet"
+            href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+        </head>
+        <body>
+          <div id="swagger-ui"></div>
+          <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+          <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+          <script>
+            SwaggerUIBundle({ dom_id: '#swagger-ui', layout: 'BaseLayout', showExtensions: true, url: '/openapi.json' , presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset] })
           </script>
         </body>
       </html>"

@@ -2,7 +2,7 @@ import { fixImportsPlugin } from 'esbuild-fix-imports-plugin'
 import { defineConfig, type Options } from 'tsup'
 
 const general = {
-  entry: ['src/index.ts'],
+  entry: ['src/index.ts', 'src/scalar.ts', 'src/swagger.ts', 'src/utils.ts', 'src/middleware.ts', 'src/serialize.ts'],
   clean: false,
   dts: true,
   sourcemap: false,
