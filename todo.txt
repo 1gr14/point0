@@ -5,11 +5,15 @@
 ------
 ------
 
-refactoring
+
+expamples
 
 devp0nt
 docs
 start0
+
+compiler
+finishing
 
 🚀 launch
 
@@ -37,13 +41,7 @@ mcp as comments
 
 
 
-=== REFACTOING 3000 ===
 
-OPENAPI
-Саммари экшена это имя поинта и оперейшен айди
-Хайд трансформ хедер в опенапи
-http-auth package
-protect openapi by http-auth
 
 ЭКЗАМПЛЫ
 Причёска экзамплов
@@ -53,24 +51,6 @@ protect openapi by http-auth
 Экзампл экспо с метро
 Тесты
 create-app
-
-FINISH
-Проверка под линукс и виндоус
-types.ts file thet reexport only needed types
-index exports only realy used fns and helpers without types
-pipeline
-In error0 import RedirectTask from "@point0/core/navigate"
-
-
-
-=== DEBT ===
----
-? Сет кукис и кукис надо синхронизировать
-merge engines and have shared server and fetch functions
-fetchOptions также принимают fetchFn
-when electrobun allow passing replaceFetch to point
-
-
 
 
 COMPILER
@@ -86,6 +66,24 @@ cache
 Кэш папку должно быть можно устанавливать в настройках компилера
 Генератор тоже пусть по компилер поинтам работает
 ? Компилер должен сам понимать что есть такие плагины содержимое которых надо вырезать
+
+
+FINISH
+Проверка под линукс и виндоус
+types.ts file thet reexport only needed types
+index exports only realy used fns and helpers without types
+pipeline
+In error0 import RedirectTask from "@point0/core/navigate"
+
+
+
+=== REFACTOING 3000 ===
+=== DEBT ===
+---
+? Сет кукис и кукис надо синхронизировать
+merge engines and have shared server and fetch functions
+fetchOptions также принимают fetchFn
+when electrobun allow passing replaceFetch to point
 
 СОУРСМАП
 Попросить команду бан принимать соурсмапы в лоадерах
@@ -156,6 +154,7 @@ shrink core/index.ts size, by remove code duplicates
 Все нулы поменять на фолсы
 Перепроверить все публичные названия методов и если надо то поменять
 ---
+before middleware for publicdir in engine
 ? clientUse, serverUse (для чисто серверных штучек у нас middleware), а юз это для локальных плагинов в коде, так а они внутри уже какие надо
 ? ↑ Юзсервер пусть ругается при клиентских изменениях, а юзклиент пусть ругается при серверных
 ? ЮзСсрСтейт

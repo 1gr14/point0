@@ -5,6 +5,7 @@ import superjson from 'superjson'
 import { z } from 'zod'
 import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
 import { openapi } from '../src/index.js'
+import { basicAuth, getBasicAuthHeader } from '@point0/basic-auth'
 
 describe('openapi', () => {
   const zResult = z.object({
@@ -12,8 +13,6 @@ describe('openapi', () => {
     name: z.string().optional().describe('name description'),
     nickname: z.string().min(1).describe('nickname description'),
   })
-
-  zResult['~standard'].jsonSchema.input
 
   const createRoot = () =>
     Point0.lets('root', 'root')
@@ -147,7 +146,22 @@ describe('openapi', () => {
         "paths": {
           "/_point0/root/query/query1": {
             "post": {
-              "parameters": [],
+              "operationId": "query1Query",
+              "parameters": [
+                {
+                  "description": "Transform the response body by transformer or not",
+                  "in": "header",
+                  "name": "X-Point0-Transform",
+                  "required": false,
+                  "schema": {
+                    "enum": [
+                      "true",
+                      "false",
+                    ],
+                    "type": "string",
+                  },
+                },
+              ],
               "responses": {
                 "200": {
                   "description": "Successful response",
@@ -158,6 +172,7 @@ describe('openapi', () => {
           },
           "/api/another-test/{id}": {
             "post": {
+              "operationId": "action2",
               "parameters": [
                 {
                   "in": "path",
@@ -189,6 +204,19 @@ describe('openapi', () => {
                   "required": true,
                   "schema": {
                     "minLength": 1,
+                    "type": "string",
+                  },
+                },
+                {
+                  "description": "Transform the response body by transformer or not",
+                  "in": "header",
+                  "name": "X-Point0-Transform",
+                  "required": false,
+                  "schema": {
+                    "enum": [
+                      "true",
+                      "false",
+                    ],
                     "type": "string",
                   },
                 },
@@ -262,6 +290,19 @@ describe('openapi', () => {
                   "schema": {
                     "description": "x description",
                     "minLength": 1,
+                    "type": "string",
+                  },
+                },
+                {
+                  "description": "Transform the response body by transformer or not",
+                  "in": "header",
+                  "name": "X-Point0-Transform",
+                  "required": false,
+                  "schema": {
+                    "enum": [
+                      "true",
+                      "false",
+                    ],
                     "type": "string",
                   },
                 },
@@ -354,6 +395,92 @@ describe('openapi', () => {
           </script>
         </body>
       </html>"
+    `)
+  })
+
+  it('can be protected by basic-auth', async () => {
+    const root = Point0.lets('root', 'root')
+      .transformer(superjson)
+      .middleware(
+        openapi({
+          before: basicAuth({ users: { admin: 'zxc' } }),
+          cache: false,
+          route: '/openapi.json',
+          scalar: { route: '/openapi', onLoaded: () => console.info('Hello') },
+          swagger: { route: '/swagger', showExtensions: true },
+          filter: 'all',
+          info: {
+            title: 'Test API',
+            version: '1.0.0',
+          },
+        }),
+      )
+      .queryOptions({
+        retry: false,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
+      })
+      .schemaHelper(zodSchemaHelper())
+      .root()
+    const action = root.lets('action', 'action1', 'GET', '/api/test').action(() => {
+      return {
+        x: 'test',
+      }
+    })
+    const { fetch } = await createTestThings({ points: [root, action], ssr: true })
+
+    const response1 = await fetch('http://localhost:3000/openapi.json')
+    expect(response1.status).toBe(401)
+    expect(response1.headers.get('WWW-Authenticate')).toBe('Basic realm="Restricted", charset="UTF-8"')
+
+    const response2 = await fetch('http://localhost:3000/openapi.json', {
+      headers: {
+        Authorization: getBasicAuthHeader('admin', 'zxc'),
+      },
+    })
+    expect(response2.status).toBe(200)
+    const json2 = await response2.json()
+    expect(json2).toMatchInlineSnapshot(`
+      {
+        "components": {
+          "schemas": {},
+        },
+        "info": {
+          "title": "Test API",
+          "version": "1.0.0",
+        },
+        "openapi": "3.0.0",
+        "paths": {
+          "/api/test": {
+            "get": {
+              "operationId": "action1",
+              "parameters": [
+                {
+                  "description": "Transform the response body by transformer or not",
+                  "in": "header",
+                  "name": "X-Point0-Transform",
+                  "required": false,
+                  "schema": {
+                    "enum": [
+                      "true",
+                      "false",
+                    ],
+                    "type": "string",
+                  },
+                },
+              ],
+              "responses": {
+                "200": {
+                  "description": "Successful response",
+                },
+              },
+            },
+          },
+        },
+      }
     `)
   })
 })

@@ -1,5 +1,5 @@
 {
-  "name": "@point0/openapi",
+  "name": "@point0/basic-auth",
   "version": "0.1.0",
   "license": "MIT",
   "author": {
@@ -10,7 +10,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/devp0nt/point0.git",
-    "directory": "packages/openapi"
+    "directory": "packages/basic-auth"
   },
   "bugs": {
     "url": "https://github.com/devp0nt/point0/issues"
@@ -54,19 +54,13 @@
   "peerDependencies": {
     "@point0/core": "workspace:*",
     "@point0/engine": "workspace:*",
-    "openapi-types": "catalog:",
-    "safe-stable-stringify": "catalog:",
-    "@scalar/types": "^0.7.6",
-    "@types/swagger-ui": "^5.32.0"
+    "safe-stable-stringify": "catalog:"
   },
   "devDependencies": {
     "@scalar/types": "^0.7.6",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
-    "@types/swagger-ui": "^5.32.0",
-    "@point0/basic-auth": "workspace:*",
     "esbuild-fix-imports-plugin": "^1.0.22",
-    "openapi-types": "catalog:",
     "tsup": "^8.0.0",
     "typescript": "catalog:"
   },

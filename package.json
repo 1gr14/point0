@@ -50,7 +50,7 @@
   },
   "scripts": {
     "dev": "bun run build:watch",
-    "build": "bun --filter '@point0/core' build && bun --filter '@point0/compiler' build && bun --filter '@point0/engine' build && bun --filter '@point0/react-dom' build && bun --filter '@point0/cookies-store' build && bun --filter '@point0/cors' build && bun --filter '@point0/openapi' build",
+    "build": "bun --filter '@point0/core' build && bun --filter '@point0/compiler' build && bun --filter '@point0/engine' build && bun --filter '@point0/react-dom' build && bun --filter '@point0/cookies-store' build && bun --filter '@point0/cors' build && bun --filter '@point0/openapi' build && bun --filter '@point0/basic-auth' build",
     "build:watch": "bun run --parallel --if-present --filter '@point0/*' build:watch",
     "testa": "bun run scripts/test-parallel.ts",
     "testap": "cross-env SLOW_TESTS_NOT_SLOW=1 bun run scripts/test-parallel.ts",

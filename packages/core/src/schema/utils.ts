@@ -1,5 +1,3 @@
-import type { StandardJSONSchemaV1 } from '@standard-schema/spec'
-import { StandardSchemaV1 } from '@standard-schema/spec'
 import type { SchemaHelper } from '../types.js'
 
 export const getSchemaVendor = (schema: unknown): string | undefined => {

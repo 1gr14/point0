@@ -1,13 +1,22 @@
+import { basicAuth } from '@point0/basic-auth'
 import { Point0 } from '@point0/core'
 import { zodSchemaHelper } from '@point0/core/schema/zod'
+import { openapi } from '@point0/openapi'
 import superjson from 'superjson'
 import { prisma } from './prisma.js'
-import { openapi } from '@point0/openapi'
 
 export const root = Point0.lets
   .root<{ zxc: number }>()
   .transformer(superjson)
-  .middleware(openapi({ route: '/openapi.json', scalar: '/scalar', swagger: '/swagger', filter: 'all' }))
+  .middleware(
+    openapi({
+      route: '/openapi.json',
+      scalar: '/scalar',
+      swagger: '/swagger',
+      filter: 'all',
+      before: basicAuth({ users: { admin: 'secret' } }),
+    }),
+  )
   // .Infer.Ctx// .Infer['RequiredCtx']
   .ctx({
     prisma,

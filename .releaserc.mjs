@@ -59,6 +59,12 @@ export default {
         pkgRoot: 'packages/openapi',
       },
     ],
+    [
+      '@semantic-release/npm',
+      {
+        pkgRoot: 'packages/basic-auth',
+      },
+    ],
     branch === 'next'
       ? undefined
       : [

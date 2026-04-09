@@ -1,17 +1,20 @@
+import { toCamelCase } from '@point0/core'
 import type { InputSchema, ReadyPoint, RecordValidationSchema, ResponseContentType, SchemaHelper } from '@point0/core'
 import { extractJsonSchemaBySchemasHelpers } from '@point0/core/schema/utils'
 import type { OpenAPIV3, OpenAPIV3_1 } from 'openapi-types'
 import stringify from 'safe-stable-stringify'
 
-export type OpenapiOptionsV3 = {
+type OpenapiOptionsGeneral = {
   helpers?: SchemaHelper[]
   models?: Record<string, InputSchema>
+  hideTransformHeader?: boolean
+}
+
+export type OpenapiOptionsV3 = OpenapiOptionsGeneral & {
   openapi?: `3.0${string}`
 } & Partial<OpenAPIV3.Document>
 
-export type OpenapiOptionsV3_1 = {
-  helpers?: SchemaHelper[]
-  models?: Record<string, InputSchema>
+export type OpenapiOptionsV3_1 = OpenapiOptionsGeneral & {
   openapi: `3.1${string}`
 } & Partial<OpenAPIV3_1.Document>
 
@@ -36,27 +39,8 @@ export type PointServerInputJsonSchemas = {
   headers: JsonSchema | undefined
   cookies: JsonSchema | undefined
   input: JsonSchema | undefined // queries and mutations have no body, search, params, they have input, which is body
-  response: NormalizedResponseJsonSchema | undefined
+  response: OpenAPIV3.ResponsesObject | undefined
 }
-
-type NormalizedResponseJsonSchema = Partial<
-  Record<
-    number,
-    {
-      description?: string
-      content: Partial<
-        Record<
-          ResponseContentType,
-          {
-            schema: JsonSchema
-            description?: string
-            examples?: Record<string, any>
-          }
-        >
-      >
-    }
-  >
->
 
 const mergeJsonSchemas = (
   oldJsonSchema: JsonSchema | undefined,
@@ -129,7 +113,7 @@ const convertRouteDefinitionToOpenapiPath = (routeDefinition: string): string =>
 const buildOpenapiParametersBySchema = (
   schema: JsonSchema | undefined,
   kind: OpenapiParameterIn,
-): Array<Record<string, unknown>> => {
+): Array<OpenAPIV3.ParameterObject> => {
   if (!schema || !isObjectRecord(schema)) {
     return []
   }
@@ -263,7 +247,7 @@ const getJsonSchemasFromPoint = (
     }
   }
   if (normalizedPoint._responseSchema) {
-    const responseJsonSchema: NormalizedResponseJsonSchema = {}
+    const responseJsonSchema: OpenAPIV3.ResponsesObject = {}
     for (const _status of Object.keys(normalizedPoint._responseSchema)) {
       const status = Number(_status)
       const responseStatusSchema = normalizedPoint._responseSchema[status]
@@ -282,13 +266,14 @@ const getJsonSchemasFromPoint = (
         const normalizedJsonSchema = modelNameBySignature
           ? (replaceSchemaByModelRefs(jsonSchema, modelNameBySignature) as JsonSchema)
           : jsonSchema
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!responseJsonSchema[status]) {
           responseJsonSchema[status] = {
-            description: responseStatusSchema.description,
+            description: responseStatusSchema.description as never,
             content: {},
           }
         }
-        responseJsonSchema[status].content[contentType] = {
+        ;(responseJsonSchema[status] as any).content[contentType] = {
           schema: normalizedJsonSchema,
           description: responseContentSchema.description,
           examples: responseContentSchema.examples,
@@ -306,9 +291,11 @@ const getOpenapiSchemaFromPoint = (
   options?: {
     modelNameBySignature?: Map<string, string>
     schemasHelpers?: SchemaHelper[]
+    hideTransformHeader?: boolean
   },
 ): object | undefined => {
   const normalizedPoint = point.point
+  const showTransformHeader = !options?.hideTransformHeader && !!normalizedPoint._transformer
   const endpoint = normalizedPoint._endpoint // {method, route} (route.definition is string iwth /zxc/:id params)
   if (!endpoint) {
     return undefined
@@ -339,11 +326,21 @@ const getOpenapiSchemaFromPoint = (
         type: 'string',
         enum: outputTypeEnum,
       },
+      description: 'Output type of the response',
     })
     parameters.splice(0, parameters.length, ...normalizedParameters)
   }
+  if (showTransformHeader) {
+    parameters.push({
+      in: 'header',
+      name: 'X-Point0-Transform',
+      required: false,
+      schema: { type: 'string', enum: ['true', 'false'] },
+      description: 'Transform the response body by transformer or not',
+    })
+  }
   const bodySchema = jsonSchemas.body ?? jsonSchemas.input
-  const operationSchema: Record<string, unknown> = {
+  const operationSchema: OpenAPIV3.OperationObject = {
     ...(normalizedPoint._openapiSchema ?? {}),
     parameters,
     responses: jsonSchemas.response ?? {
@@ -365,6 +362,15 @@ const getOpenapiSchemaFromPoint = (
   if (normalizedPoint.type !== 'action') {
     if (!operationSchema.summary) {
       operationSchema.summary = normalizedPoint.toString()
+    }
+  }
+  if (!operationSchema.operationId) {
+    if (normalizedPoint.type === 'action') {
+      if (normalizedPoint.name !== `${normalizedPoint.method} ${normalizedPoint.route.definition}`) {
+        operationSchema.operationId = normalizedPoint.name
+      }
+    } else {
+      operationSchema.operationId = toCamelCase(normalizedPoint.name + '_' + normalizedPoint.type)
     }
   }
   return {
