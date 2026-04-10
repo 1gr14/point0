@@ -66,26 +66,6 @@ describe('basic-auth', () => {
     }
   })
 
-  test('allows users as array of { username, password } objects', async () => {
-    const auth = BasicAuth.create({
-      users: [
-        { username: 'admin', password: 'secret' },
-        { username: 'john', password: 'pass123' },
-      ],
-    })
-
-    const result = await auth.validateRequest(
-      getRequest({
-        authHeader: getBasicAuthHeader('john', 'pass123'),
-      }),
-    )
-
-    expect(result.ok).toBe(true)
-    if (result.ok) {
-      expect(result.username).toBe('john')
-    }
-  })
-
   test('accepts case-insensitive Basic auth scheme', async () => {
     const auth = BasicAuth.create({
       users: { admin: 'secret' },

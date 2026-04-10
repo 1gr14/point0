@@ -15,6 +15,8 @@ start0
 compiler
 finishing
 
+Бан плагин свгр как статья догонкадля увеличения просмотров и лайков
+
 🚀 launch
 
 mcp as comments
@@ -53,6 +55,13 @@ mcp as comments
 create-app
 
 
+
+REFACTOING 3000
+Вырезать всё из инородных скоупов
+Логируем только отличное от рута имя
+Скоуп в айди поинта тоже выводим только отличное от рута иаче только тайп и нэйм
+
+
 COMPILER
 recomendations for importer deny
 Трейс без соурса по умолчанию берёт все энтри за основу то есть массив
@@ -77,8 +86,8 @@ In error0 import RedirectTask from "@point0/core/navigate"
 
 
 
-=== REFACTOING 3000 ===
-=== DEBT ===
+
+=== LATER ===
 ---
 ? Сет кукис и кукис надо синхронизировать
 merge engines and have shared server and fetch functions

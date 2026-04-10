@@ -4,11 +4,9 @@ import type { Request0 } from '@point0/core/request0'
 export const getBasicAuthHeader = (username: string, password: string): string =>
   `Basic ${Buffer.from(`${username}:${password}`, 'utf8').toString('base64')}`
 
-export type BasicAuthOptionsInputUser = string | { username: string; password: string }
-export type BasicAuthOptionsInputUsers =
-  | Record<string, string>
-  | BasicAuthOptionsInputUser
-  | BasicAuthOptionsInputUser[]
+export type BasicAuthOptionsInputUsers = Record<string, string> | string | string[]
+
+export type BasicAuthOptionsUsers = Record<string, string>
 
 type OnUnauthorizedOptions = {
   request: Request0
@@ -75,23 +73,14 @@ const HTTP_AUTH_CHALLENGE = 'Basic realm="Restricted", charset="UTF-8"'
 const BASIC_CREDENTIALS_REGEXP = /^ *(?:[Bb][Aa][Ss][Ii][Cc]) +([A-Za-z0-9._~+/-]+=*) *$/
 const BASIC_USER_PASS_REGEXP = /^([^:]+):(.*)$/
 
-const normalizeSingleUser = (user: BasicAuthOptionsInputUser): { username: string; password: string } => {
-  if (typeof user === 'string') {
-    const separatorIndex = user.indexOf(':')
-    if (separatorIndex <= 0 || separatorIndex === user.length - 1) {
-      throw new Error('Invalid user string format. Expected "username:password".')
-    }
-    return {
-      username: user.slice(0, separatorIndex),
-      password: user.slice(separatorIndex + 1),
-    }
-  }
-  if (!user.username || !user.password) {
-    throw new Error('Invalid user object format. Expected { username, password }.')
+const normalizeUserString = (user: string): { username: string; password: string } => {
+  const separatorIndex = user.indexOf(':')
+  if (separatorIndex <= 0 || separatorIndex === user.length - 1) {
+    throw new Error('Invalid user string format. Expected "username:password".')
   }
   return {
-    username: user.username,
-    password: user.password,
+    username: user.slice(0, separatorIndex),
+    password: user.slice(separatorIndex + 1),
   }
 }
 
@@ -99,20 +88,16 @@ const normalizeUsers = (users: BasicAuthOptionsInputUsers): BasicAuthUsers => {
   if (Array.isArray(users)) {
     const output: BasicAuthUsers = {}
     for (const item of users) {
-      const normalized = normalizeSingleUser(item)
+      const normalized = normalizeUserString(item)
       output[normalized.username] = normalized.password
     }
     return output
   }
-  if (typeof users === 'string' || ('username' in users && 'password' in users)) {
-    const normalized = normalizeSingleUser(users as BasicAuthOptionsInputUser)
+  if (typeof users === 'string') {
+    const normalized = normalizeUserString(users)
     return { [normalized.username]: normalized.password }
   }
-  const output: BasicAuthUsers = {}
-  for (const [username, password] of Object.entries(users)) {
-    output[username] = password
-  }
-  return output
+  return users
 }
 
 export class BasicAuth {
