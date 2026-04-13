@@ -1,16 +1,10 @@
-import {
-  dehydrate,
-  hydrate,
-  QueryClient,
-  QueryClientProvider as QueryClientProviderOriginal,
-} from '@tanstack/react-query'
+import { dehydrate, hydrate, QueryClient } from '@tanstack/react-query'
 import type { DehydratedState, QueryKey, QueryState } from '@tanstack/react-query'
-import React from 'react'
 import type { ClassLikeError0, ErrorPoint0 } from './error.js'
 // import { getClientPoints } from './helpers.js'
+import { getClientPoints } from './helpers.js'
 import { RedirectTask } from './redirect.js'
 import { superstore } from './super-store.js'
-import { getClientPoints } from './helpers.js'
 
 export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, DehydratedState, 'readonlyRedefine'>(
   '__POINT0_QUERY_CLIENT__',
@@ -58,17 +52,23 @@ export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, Dehydrated
   'readonlyRedefine',
 )
 
+// export const createQueryClient = (init?: () => QueryClient) => {
+//   if (init) {
+//     __POINT0_QUERY_CLIENT__.redefine(init)
+//   }
+//   function QueryClientProvider({ children }: { children: React.ReactNode }) {
+//     return React.createElement(QueryClientProviderOriginal, { client: __POINT0_QUERY_CLIENT__.get() }, children)
+//   }
+//   return {
+//     queryClient: __POINT0_QUERY_CLIENT__,
+//     QueryClientProvider,
+//   }
+// }
 export const createQueryClient = (init?: () => QueryClient) => {
   if (init) {
     __POINT0_QUERY_CLIENT__.redefine(init)
   }
-  function QueryClientProvider({ children }: { children: React.ReactNode }) {
-    return React.createElement(QueryClientProviderOriginal, { client: __POINT0_QUERY_CLIENT__.get() }, children)
-  }
-  return {
-    queryClient: __POINT0_QUERY_CLIENT__,
-    QueryClientProvider,
-  }
+  return __POINT0_QUERY_CLIENT__.proxy
 }
 
 export const serializeErrorsInDehydratedState = (

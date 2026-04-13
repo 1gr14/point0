@@ -17,7 +17,7 @@ import type {
   EmptyObject,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
-  FinalInputRaw,
+  FinalInputRawOrUndefined,
   FinalLoaderDataOrNever,
   IfAnyThenElse,
   InputParsed,
@@ -1019,7 +1019,7 @@ export type MountableSelfProps<
   TBodySchema
 > extends true
   ? {
-      input?: FinalInputRaw<
+      input?: FinalInputRawOrUndefined<
         TPointType,
         TServerInputSchema,
         TClientInputSchema,
@@ -1029,7 +1029,7 @@ export type MountableSelfProps<
       >
     }
   : {
-      input: FinalInputRaw<
+      input: FinalInputRawOrUndefined<
         TPointType,
         TServerInputSchema,
         TClientInputSchema,

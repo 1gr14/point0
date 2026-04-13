@@ -1,10 +1,11 @@
-import { QueryClientProvider } from '@/lib/query-client'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { UnheadProvider } from '@point0/core/unhead'
 import { Router, RouterRoutes } from '@/lib/navigate'
+import { queryClient } from './lib/query-client'
 
 export default function App() {
   return (
-    <QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
       <UnheadProvider>
         <Router>
           <RouterRoutes />

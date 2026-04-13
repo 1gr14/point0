@@ -1,18 +1,10 @@
-// import { useNavigate } from '@/lib/routes.js'
-
-import { useEffect } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
+
 export const ideaNewsPage = ideaLayout.lets
   .page('/news')
-  .prefetchPageOnLinkHover(true, 2000)
   .with(() => ({ idea: ideaLayout.useValue('idea') }))
-  .head(({ props }) => `${props.idea.news.length} news for idea "${props.idea.title}"`)
+  .head(({ props: { idea } }) => `${idea.news.length} news for idea "${idea.title}"`)
   .page(({ props: { idea } }) => {
-    // const navigate = useNavigate()
-    useEffect(() => {
-      // navigate('home').catch(console.error)
-      // navigate('idea', { id: idea.id, pp: 3, hash: 'zxc' }).catch(console.error)
-    }, [])
     return (
       <div>
         <h3>News</h3>
@@ -30,5 +22,3 @@ export const ideaNewsPage = ideaLayout.lets
       </div>
     )
   })
-
-export default ideaNewsPage

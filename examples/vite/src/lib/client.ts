@@ -18,7 +18,8 @@ export const client = Point0.lets('root', 'client')
     refetchInterval: false,
     refetchIntervalInBackground: false,
   })
-  .prefetchPageOnLinkHover(true)
+  .prefetchPageOnNavigate('ssrDehydratedStateAndClientQuery')
+  .prefetchPageOnLinkHover('ssrDehydratedStateAndClientQuery')
   .head('global', {
     title: 'Loading...',
     titleTemplate: '%s | IdeaNick',

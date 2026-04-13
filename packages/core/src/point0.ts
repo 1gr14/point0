@@ -429,13 +429,7 @@ export class Point0<
   private readonly _normalizePrefetchPagePolicy = (
     policy: PrefetchPagePolicy | undefined,
   ): NormalizedPrefetchPagePolicy => {
-    return !policy
-      ? 'none'
-      : policy === true
-        ? this._getSsr()
-          ? 'ssrDehydratedStateAndClientQuery'
-          : 'serverAndClientQuery'
-        : policy
+    return !policy ? 'none' : policy
   }
   readonly _getPrefetchPagePolicy = (
     trigger: 'navigate' | 'linkHover' | undefined,
@@ -10681,8 +10675,7 @@ export class Point0<
     if (!data?.dehydratedState) {
       throw new Error(`Dehydrated state not found on point ${this.toStringWithLocation()}`)
     }
-    const freshDehydratedState = forceFreshDehydratedState(data.dehydratedState)
-    hydrate(queryClient, freshDehydratedState)
+    hydrate(queryClient, data.dehydratedState)
   }
 
   private async _prefetchPage({

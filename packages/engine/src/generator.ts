@@ -1104,7 +1104,7 @@ export class FilesGenerator {
       if (point.errors.length > 0) {
         lines.push(`      errors: [`)
         for (const error of point.errors) {
-          lines.push(`        ${literal(error instanceof Error ? error.message : String(error))},`)
+          lines.push(`        \`${error instanceof Error ? error.message : String(error)}\`,`)
         }
         lines.push(`      ],`)
       } else {

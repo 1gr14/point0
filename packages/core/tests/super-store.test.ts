@@ -146,6 +146,48 @@ describe('SuperStore', () => {
         const item = superstore.define('item', () => 'value', 'clientOnly')
         expect(item.get()).toBe('value3')
       })
+
+      it('createProxy delegates object property read/write and exposes superstore', () => {
+        const item = superstore.define('item', () => ({ count: 1 }), 'clientOnly')
+        const proxy = item.proxy
+
+        expect(proxy.count).toBe(1)
+        proxy.count = 2
+        expect(proxy.count).toBe(2)
+        expect(item.get()).toEqual({ count: 2 })
+        expect(proxy.superstore).toBe(item as any)
+        expect('superstore' in proxy).toBe(true)
+      })
+
+      it('createProxy supports primitive values', () => {
+        const item = superstore.define('item', () => 'hello', 'clientOnly')
+        const proxy = item.proxy
+
+        expect(proxy.length).toBe(5)
+        expect(() => {
+          // @ts-expect-error -- bad case, but still not throw
+          proxy.x = 1
+        }).not.toThrow()
+        expect(item.get()).toBe('hello')
+      })
+
+      it('createProxy keeps class private fields working', () => {
+        class PrivateClass {
+          #value = 'ok'
+          get value() {
+            return this.#value
+          }
+          read() {
+            return this.#value
+          }
+        }
+
+        const item = superstore.define('item', () => new PrivateClass(), 'clientOnly')
+        const proxy = item.proxy
+
+        expect(proxy.value).toBe('ok')
+        expect(proxy.read()).toBe('ok')
+      })
     })
 
     describe('store', () => {

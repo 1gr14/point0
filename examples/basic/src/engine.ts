@@ -2,40 +2,31 @@ import { Engine } from '@point0/engine'
 
 export const engine = Engine.create({
   file: import.meta.url,
-  pointsGlob: ['**/*.{ts,tsx,mdx}'],
   ssr: true,
-  generate: { meta: './lib/meta.ts' },
+  pointsGlob: '**/*.{ts,tsx,mdx}',
+  generate: { meta: './generated/point0/meta.ts' },
   server: {
-    devWatchGlob: ['**/*.{ts,tsx,mdx}'],
     scope: 'root',
     port: 3000,
     entry: { main: './index.server.ts' },
-    generate: { points: './lib/points.server.ts' },
-    points: async () => await import('./lib/points.server'),
+    points: async () => await import('./generated/point0/points.server'),
+    generate: { points: './generated/point0/points.server.ts' },
     outdir: '../dist/server',
-    importer: {
-      deny: ['./lib/client-thing.*'],
-    },
+    devWatchGlob: ['**/*.{ts,tsx,mdx}', '!generated/point0/**/*'],
   },
   clients: [
     {
       scope: 'root',
+      port: 3001,
+      indexHtml: './index.html',
       app: async () => await import('./app'),
-      points: async () => await import('./lib/points.client'),
-      // points: async () => points,
-      // generatePointsLazy: './lib/points.lazy.ts',
-      // generatePointsReady: './lib/points.ready.ts',
-      generate: { points: './lib/points.client.ts', routes: './lib/routes.ts' },
+      points: async () => await import('./generated/point0/points.client'),
+      routes: async () => await import('./generated/point0/routes'),
+      generate: { points: './generated/point0/points.client.ts', routes: './generated/point0/routes.ts' },
       importer: {
         deny: ['**/prisma.*'],
       },
-      // pointsModuleType: 'ready',
-      // points: await import('./lib/points'),
-      routes: async () => await import('./lib/routes'),
-      indexHtml: './index.html',
-      port: 3001,
       env: { vars: ['SOURCE_BASE_URL'] },
-      outdir: '../dist/client',
       publicdir: {
         source: [
           '../public',
@@ -46,6 +37,7 @@ export const engine = Engine.create({
         ],
         outdir: '../dist/client',
       },
+      outdir: '../dist/client',
     },
   ],
 })

@@ -225,6 +225,7 @@ export class Engine<
           : Array.isArray(watchProvided)
             ? watchProvided
             : [watchProvided]
+
     normalizeAndValidateNodeEnv('development')
     const isSideServer = !side || side === 'server'
     const isSideClient = !side || side === 'client'

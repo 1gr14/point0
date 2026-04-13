@@ -1,41 +1,48 @@
+// Simulate async database call to see loading state (cahnge 0 to 100 for example)
 const wait = async (ms = 0) => await new Promise((resolve) => setTimeout(resolve, ms))
 
 export const prisma = {
   idea: {
     count: async (): Promise<number> => {
       await wait()
-      return fakeIdeas.length
+      return ideasTable.length
     },
 
     create: async ({ data }: { data: Omit<Idea, 'id' | 'news'> }): Promise<Idea> => {
       await wait()
       const id = Math.floor(Math.random() * 1000000)
       const idea = { ...data, id, news: getFakeNews(id) }
-      fakeIdeas.push(idea)
+      ideasTable.push(idea)
       return idea
     },
 
     update: async ({ where, data }: { where: { id: number }; data: Omit<Idea, 'id' | 'news'> }): Promise<Idea> => {
-      const ideaIndex = fakeIdeas.findIndex((idea) => idea.id === where.id)
+      await wait()
+      const ideaIndex = ideasTable.findIndex((idea) => idea.id === where.id)
       if (ideaIndex === -1) {
         throw new Error(`Idea with id ${where.id} not found`)
       }
-      const idea = fakeIdeas[ideaIndex]
+      const idea = ideasTable[ideaIndex]
       const newIdea = { ...idea, ...data }
-      fakeIdeas[ideaIndex] = newIdea
+      ideasTable[ideaIndex] = newIdea
       return newIdea
     },
 
     findMany: async (options: { take?: number; skip?: number } = {}): Promise<Idea[]> => {
+      await wait()
+      return [...ideasTable].slice(options.skip ?? 0, (options.skip ?? 0) + (options.take ?? ideasTable.length))
+    },
+
+    findFirst: async (options: { take?: number; skip?: number } = {}): Promise<Idea | undefined> => {
       // Simulate async database call
       await wait()
-      return [...fakeIdeas].slice(options.skip ?? 0, (options.skip ?? 0) + (options.take ?? fakeIdeas.length))
+      return ideasTable.slice(options.skip ?? 0, (options.skip ?? 0) + (options.take ?? ideasTable.length))[0]
     },
 
     findUniqueOrThrow: async ({ where }: { where: { id: number } }): Promise<Idea> => {
       // Simulate async database call
       await wait()
-      const idea = fakeIdeas.find((idea) => idea.id === where.id)
+      const idea = ideasTable.find((idea) => idea.id === where.id)
       if (!idea) {
         throw new Error(`Idea with id ${where.id} not found`)
       }
@@ -49,6 +56,7 @@ export type Idea = {
   title: string
   description: string
   content: string
+  image?: string | null
   news: Array<{
     id: number
     title: string
@@ -64,7 +72,7 @@ const getFakeNews = (ideaId: number) => {
   }))
 }
 
-export const fakeIdeas: Idea[] = [
+const ideasTable: Idea[] = [
   {
     id: 1,
     title: 'AI-Powered Code Review Assistant',
@@ -105,14 +113,14 @@ export const fakeIdeas: Idea[] = [
       'This system would analyze spending patterns, market trends, and personal goals to automatically rebalance portfolios, suggest investment opportunities, and help users achieve their financial objectives with minimal manual intervention.',
     news: getFakeNews(5),
   },
-  // {
-  //   id: 6,
-  //   title: 'Sustainable Food Production System',
-  //   description: 'Vertical farming solution that maximizes yield while minimizing environmental impact',
-  //   content:
-  //     'Using advanced hydroponics, LED lighting, and climate control, this system would produce fresh vegetables year-round in urban environments. It would use AI to optimize growing conditions and reduce water and energy consumption.',
-  //   news: getFakeNews(6),
-  // },
+  {
+    id: 6,
+    title: 'Sustainable Food Production System',
+    description: 'Vertical farming solution that maximizes yield while minimizing environmental impact',
+    content:
+      'Using advanced hydroponics, LED lighting, and climate control, this system would produce fresh vegetables year-round in urban environments. It would use AI to optimize growing conditions and reduce water and energy consumption.',
+    news: getFakeNews(6),
+  },
   {
     id: 7,
     title: 'Mental Health Companion App',

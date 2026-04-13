@@ -148,6 +148,14 @@ export type Infer<
     TSearchSchema,
     TBodySchema
   >
+  InputRawOrUndefinedOrVoid: FinalInputRawOrUndefinedOrVoid<
+    FirstReadyPointTypeOrNever<TLetsReadyPointType, TPointType>,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema
+  >
   ClientInputRaw: InputRaw<TClientInputSchema>
   ClientInputParsed: InputParsed<TClientInputSchema>
   IsClientInputOptional: IsSchemaOptional<TClientInputSchema>
@@ -1038,7 +1046,7 @@ export type FinalInputRawOrUndefined<
   FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>
 >
 
-// TO KEEP IT, DO NOT REMOVE
+// Keep it for mutation options, so if input can be undefined, then it also can be void, so we can not pass input at all
 type UndefinedOrVoidIfEmptyObject<T> = IsEmptyObjectSpecial<T> extends true ? undefined | void : T
 
 export type FinalInputRawOrUndefinedOrVoid<
@@ -1428,7 +1436,6 @@ export type PrefetchPagePolicy =
   | 'onPrefetchOnly'
   | 'none'
   | false
-  | true
 export type NormalizedPrefetchPagePolicy = Exclude<PrefetchPagePolicy, boolean>
 
 // middlewares

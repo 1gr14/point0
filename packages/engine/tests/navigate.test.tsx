@@ -13,8 +13,8 @@ const createTestPointsAndHelpers = () => {
   const root = Point0.lets('root', 'root')
     .loading(() => <div id="loading">...</div>)
     .error(({ error }) => <div id="error">{error.message}</div>)
-    .prefetchPageOnNavigate(true)
-    .prefetchPageOnLinkHover(true)
+    .prefetchPageOnNavigate('serverAndClientQuery')
+    .prefetchPageOnLinkHover('serverAndClientQuery')
     .queryOptions({
       retry: false,
       refetchOnMount: false,

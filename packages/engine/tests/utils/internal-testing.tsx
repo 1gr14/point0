@@ -11,10 +11,12 @@ import { UnheadProvider } from '@point0/core/unhead'
 import assert from 'node:assert'
 import nodePath from 'node:path'
 // import { AsyncLocalStorage } from 'node:async_hooks'
+import type { RoutesPretty } from '@devp0nt/route0'
 import { ClientPoints, Point0 } from '@point0/core'
+import type { AnyNiceReadyPoint } from '@point0/core'
 import { createNavigation } from '@point0/react-dom/router'
 import { notifyManager } from '@tanstack/query-core'
-import type { DehydratedState, QueryClient } from '@tanstack/react-query'
+import { QueryClientProvider, type DehydratedState, type QueryClient } from '@tanstack/react-query'
 import * as rtl from '@testing-library/react/pure.js'
 import { YAML } from 'bun'
 import { Window } from 'happy-dom'
@@ -25,8 +27,6 @@ import { FakeClient } from '../../src/fake-client.js'
 import { ElementViewer } from './element-viewer.js'
 import { FetchRecorder } from './fetch-recorder.js'
 import { HtmlView } from './html-view.js'
-import type { AnyNiceReadyPoint } from '@point0/core'
-import type { RoutesPretty } from '@devp0nt/route0'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -349,11 +349,11 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
   routes ??= ClientPoints.createFromDefintion(points).routes
   const navigation = createNavigation({ routes, forceRerender: true, Page404, layout404 })
   const { Router, RouterRoutes } = navigation
-  const { QueryClientProvider, queryClient } = createQueryClient()
+  const queryClient = createQueryClient()
   const app =
     appProvided ??
     (() => (
-      <QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
         <UnheadProvider>
           {Wrapper ? (
             <Router>
@@ -524,7 +524,7 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
           clearInterval(locationCheckInterval)
         }
 
-        state.queryClient = queryClient.get()
+        state.queryClient = queryClient
         state.getQueryClientPreview = () => {
           const queryClientState = state.queryClient.getQueryCache().findAll()
           // const queryClientQueriesKeys = queryClientState.map((query) =>

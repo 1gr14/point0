@@ -43,8 +43,8 @@ export const root = Point0.lets
   .on('error', ({ data }) => {
     console.error(data.error)
   })
-  .prefetchPageOnNavigate(true)
-  .prefetchPageOnLinkHover(true)
+  .prefetchPageOnNavigate('ssrDehydratedStateAndClientQuery')
+  .prefetchPageOnLinkHover('ssrDehydratedStateAndClientQuery')
   .head('global', ({ loading, error }) => {
     return {
       ...(loading ? { title: 'Loading...' } : {}),

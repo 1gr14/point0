@@ -22,20 +22,27 @@ export const toPathsOrUndefined = (path: string | string[] | undefined): string[
   return Array.isArray(path) ? path : [path]
 }
 
-export const toAbsPath = <T extends string | undefined | null>(cwd: string | undefined, path: T): T => {
+export const toAbsPath = <T extends string | undefined | null>(
+  cwd: string | undefined,
+  path: T,
+  respectExclamationMark = false,
+): T => {
   if (!path) {
     return undefined as T
   }
+  const hasExclamationMark = respectExclamationMark && path.startsWith('!')
+  const normalizedPath = hasExclamationMark ? path.replace(/^!/, '') : path
+  const withExclamationMark = (path: string) => (hasExclamationMark ? `!${path}` : path)
   if (!cwd) {
-    if (!nodePath.isAbsolute(path)) {
-      throw new Error(`Path "${path}" is not absolute, but should be`)
+    if (!nodePath.isAbsolute(normalizedPath)) {
+      throw new Error(`Path "${normalizedPath}" is not absolute, but should be`)
     }
-    return path
+    return withExclamationMark(normalizedPath) as T
   }
   if (!nodePath.isAbsolute(cwd)) {
     throw new Error(`Cwd "${cwd}" is not absolute, but should be`)
   }
-  return nodePath.resolve(cwd, path) as T
+  return withExclamationMark(nodePath.resolve(cwd, normalizedPath)) as T
 }
 
 export const toRelPath = <T extends string | undefined | null>(cwd: string | undefined, path: T): T => {

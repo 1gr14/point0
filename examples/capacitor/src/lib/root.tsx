@@ -11,8 +11,8 @@ export const root = Point0.lets('root', 'site')
     refetchInterval: false,
     refetchIntervalInBackground: false,
   })
-  .prefetchPageOnLinkHover(true)
-  .prefetchPageOnNavigate(true)
+  .prefetchPageOnNavigate('ssrDehydratedStateAndClientQuery')
+  .prefetchPageOnLinkHover('ssrDehydratedStateAndClientQuery')
   .head('global', ({ loading, error }) => {
     return {
       ...(loading ? { title: 'Loading...' } : {}),

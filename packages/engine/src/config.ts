@@ -509,13 +509,13 @@ const parseEngineGeneralOptions = ({
       : Array.isArray(generalOptions.pointsGlob)
         ? generalOptions.pointsGlob
         : [generalOptions.pointsGlob]
-    ).map((g) => nodePath.resolve(cwd, g)),
+    ).map((g) => toAbsPath(cwd, g, true)),
     buildWatchGlob: (!generalOptions.buildWatchGlob
       ? []
       : Array.isArray(generalOptions.buildWatchGlob)
-        ? generalOptions.buildWatchGlob.map((g) => nodePath.resolve(cwd, g))
+        ? generalOptions.buildWatchGlob
         : [generalOptions.buildWatchGlob]
-    ).map((g) => nodePath.resolve(cwd, g)),
+    ).map((g) => toAbsPath(cwd, g, true)),
     ssr,
   }
 }
@@ -759,7 +759,7 @@ export const parseEngineServerOptions = ({
       : Array.isArray(serverOptions.devWatchGlob)
         ? serverOptions.devWatchGlob
         : [serverOptions.devWatchGlob]
-  ).map((g) => nodePath.resolve(generalOptionsParsed.cwd, g))
+  ).map((g) => toAbsPath(generalOptionsParsed.cwd, g, true))
   return {
     scope: serverOptions.scope,
     pointsProvided: serverOptions.points ?? null,

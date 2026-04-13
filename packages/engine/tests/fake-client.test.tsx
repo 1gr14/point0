@@ -14,6 +14,7 @@ import { FetchRecorder } from './utils/fetch-recorder.js'
 import { getFakeBrowserGlobals, ymlify } from './utils/internal-testing.js'
 import { ClientPoints } from '@point0/core'
 import { createNavigation } from '@point0/react-dom/router'
+import { QueryClientProvider } from '@tanstack/react-query'
 
 // const tpf = TestProjectFactory.create({
 //   namespace: 'test-client',
@@ -332,10 +333,10 @@ describe('FakeClient', () => {
     })
     const routes = ClientPoints.createFromDefintion(points).routes
     const { Router } = createNavigation({ routes })
-    const { QueryClientProvider } = createQueryClient()
+    const queryClient = createQueryClient()
     await client.run(async (state) => {
       const { container } = render(
-        <QueryClientProvider>
+        <QueryClientProvider client={queryClient}>
           <Router />
         </QueryClientProvider>,
       )

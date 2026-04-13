@@ -57,7 +57,7 @@ export class FilesWatcher {
         for (const event of events) {
           try {
             const path = nodePath.resolve(event.path)
-            if (!this.matchesPatterns(path)) {
+            if (!this.matches(path)) {
               continue
             }
             const exists = await this.exists(path)
@@ -95,13 +95,19 @@ export class FilesWatcher {
     this.subscription = undefined
   }
 
-  private matchesPatterns(path: string): boolean {
-    return this.patterns.some((pattern) => {
+  matches(path: string): boolean {
+    const relativePath = nodePath.relative(this.watchDir, path)
+    const matchPositive = this.patterns.some((pattern) => {
       const resolvedPattern = nodePath.resolve(this.watchDir, pattern)
-      const relativePath = nodePath.relative(this.watchDir, path)
       const relativePattern = nodePath.relative(this.watchDir, resolvedPattern)
       return minimatch(relativePath, relativePattern, { dot: true }) || minimatch(path, resolvedPattern, { dot: true })
     })
+    const matchNegative = this.ignore.some((pattern) => {
+      const resolvedPattern = nodePath.resolve(this.watchDir, pattern)
+      const relativePattern = nodePath.relative(this.watchDir, resolvedPattern)
+      return minimatch(relativePath, relativePattern, { dot: true }) || minimatch(path, resolvedPattern, { dot: true })
+    })
+    return matchPositive && !matchNegative
   }
 
   private async emitError(error: unknown): Promise<void> {

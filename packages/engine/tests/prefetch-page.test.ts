@@ -7,6 +7,7 @@ import type {
 } from './utils/project.one-client.js'
 import { TestProjectOneClientFactory } from './utils/project.one-client.js'
 import { toKebabCase } from '@point0/core'
+import type { PrefetchPagePolicy } from '@point0/core'
 
 setDefaultTimeout(20000)
 
@@ -23,13 +24,13 @@ const stringify1 = (value: any) => (typeof value === 'string' ? value : JSON.str
 const stringify2 = (value: any) => (typeof value === 'string' ? `'${value}'` : value ? 'true' : 'false')
 const toMark = (polh: string | boolean, pon: string | boolean) => `polh-${stringify1(polh)}_pon-${stringify1(pon)}`
 
-const layoutNavTsx = (polh: string | boolean, pon: string | boolean) => {
+const layoutNavTsx = (polh: string | boolean, pon: string | boolean, ssr: boolean) => {
   const mark = toMark(polh, pon)
   return `import { root } from '../lib/root.js'
 import { Link, NavLink, navigate } from '../lib/navigate.js'
 export const layout = root.lets('layout', 'layout_${toMark(polh, pon)}', '/${toMark(polh, pon)}')
-  .prefetchPageOnLinkHover(${stringify2(polh)})
-  .prefetchPageOnNavigate(${stringify2(pon)})
+  .prefetchPageOnLinkHover(${stringify2(polh === true ? (ssr ? 'ssrDehydratedStateAndClientQuery' : 'serverAndClientQuery') : polh)})
+  .prefetchPageOnNavigate(${stringify2(pon === true ? (ssr ? 'ssrDehydratedStateAndClientQuery' : 'serverAndClientQuery') : pon)})
   .layout(({ children }) => (
     <>
       <nav>
@@ -143,7 +144,7 @@ async function writePages(tp: TestProjectOneClient) {
   for (const polh of polhs) {
     for (const pon of pons) {
       const mark = toMark(polh, pon)
-      await tp.write(`src/${mark}/layout.tsx`, layoutNavTsx(polh, pon))
+      await tp.write(`src/${mark}/layout.tsx`, layoutNavTsx(polh, pon, tp.ssr))
       await tp.write(`src/${mark}/home.tsx`, pageHomeTsx(mark))
       await tp.write(`src/${mark}/with-server.tsx`, pageWithServerTsx(mark))
       await tp.write(`src/${mark}/with-client.tsx`, pageWithClientTsx(mark))
@@ -240,9 +241,9 @@ type ItFn = (done: (err?: unknown) => void) => void | Promise<void>
 
 let preventFinalFilesCleanup = false
 function wrp(
-  options: Required<
-    Pick<TestProjectOneClientFactoryCreateProjectOptions, 'prefetchPageOnLinkHover' | 'prefetchPageOnNavigate'>
-  > & {
+  options: {
+    prefetchPageOnLinkHover: true | PrefetchPagePolicy
+    prefetchPageOnNavigate: true | PrefetchPagePolicy
     mode: 'dev' | 'build'
     bundler: 'bun' | 'vite'
   },

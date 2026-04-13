@@ -1014,8 +1014,8 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 import: async () => (await import('./file0.js')).invalidPage,
                 valid: false,
                 errors: [
-                  'Invalid route argument undefined',
-                  'Last called method name 'undefined' does not match point type 'page'. Please, use .page() in end of point chain',
+                  \`Invalid route argument undefined\`,
+                  \`Last called method name 'undefined' does not match point type 'page'. Please, use .page() in end of point chain\`,
                 ],
                 ssr: false,
                 parents: [

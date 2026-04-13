@@ -616,6 +616,81 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
     throw new Error(`Cannot redefine item "${this.name}" with permission "${this.permission}"`)
   }
 
+  private _proxy: (TValue & { superstore: SuperStoreItem<TValue, TDehydratedValue> }) | undefined = undefined
+  get proxy(): TValue & { superstore: SuperStoreItem<TValue, TDehydratedValue> } {
+    if (this._proxy) {
+      return this._proxy
+    }
+    // Any property except "superstore" is delegated to the stored value.
+    const proxy = new Proxy(
+      {},
+      {
+        get: (_target, prop) => {
+          if (prop === 'superstore') {
+            return this
+          }
+          const current = this.get()
+          if (current === null || current === undefined) {
+            return undefined
+          }
+          const currentObject = Object(current)
+          const value = Reflect.get(currentObject, prop, currentObject)
+          if (typeof value === 'function') {
+            return value.bind(currentObject)
+          }
+          return value
+        },
+        set: (_target, prop, value) => {
+          if (prop === 'superstore') {
+            return false
+          }
+          const current = this.get()
+          if (current === null || current === undefined) {
+            return false
+          }
+          Reflect.set(Object(current), prop, value, Object(current))
+          this.set(current)
+          return true
+        },
+        has: (_target, prop) => {
+          if (prop === 'superstore') {
+            return true
+          }
+          const current = this.get()
+          if (current === null || current === undefined) {
+            return false
+          }
+          return prop in Object(current)
+        },
+        ownKeys: () => {
+          const current = this.get()
+          const keys = current === null || current === undefined ? [] : Reflect.ownKeys(Object(current))
+          if (!keys.includes('superstore')) {
+            keys.push('superstore')
+          }
+          return keys
+        },
+        getOwnPropertyDescriptor: (_target, prop) => {
+          if (prop === 'superstore') {
+            return {
+              configurable: true,
+              enumerable: false,
+              writable: false,
+              value: this,
+            }
+          }
+          const current = this.get()
+          if (current === null || current === undefined) {
+            return undefined
+          }
+          return Reflect.getOwnPropertyDescriptor(Object(current), prop)
+        },
+      },
+    ) as TValue & { superstore: SuperStoreItem<TValue, TDehydratedValue> }
+    this._proxy = proxy
+    return proxy
+  }
+
   get config() {
     return {
       name: this.name,
@@ -657,22 +732,22 @@ export type SuperStoreItemPolicyPermission = 'redefine' | 'readonlyRedefine' | '
 
 export type NiceSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
-  'get' | 'getWeak' | 'set' | 'config'
+  'get' | 'getWeak' | 'set' | 'config' | 'proxy'
 >
 
 export type NiceRedefinableSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
-  'get' | 'getWeak' | 'set' | 'config' | 'redefine'
+  'get' | 'getWeak' | 'set' | 'config' | 'redefine' | 'proxy'
 >
 
 export type NiceReadonlyRedefinableSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
-  'get' | 'getWeak' | 'redefine' | 'config'
+  'get' | 'getWeak' | 'redefine' | 'config' | 'proxy'
 >
 
 export type NiceReadonlySuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
-  'get' | 'getWeak' | 'config'
+  'get' | 'getWeak' | 'config' | 'proxy'
 >
 
 export type NiceSuperStoreItemByPermission<
