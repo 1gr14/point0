@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { Point0 } from '@point0/core'
+import { getMutationPredicate, Point0 } from '@point0/core'
 import { QueryClient } from '@tanstack/react-query'
 import z from 'zod'
 import { createTestThings } from './utils/internal-testing.js'
@@ -381,6 +381,52 @@ describe('mutation', () => {
       const filteredMutations = q.getMutationsCache((variables) => variables.id === 7, { queryClient })
       expect(filteredMutations.length).toBe(1)
       expect(filteredMutations[0]?.state.variables).toEqual(input)
+    })
+
+    it.concurrent('getMutationPredicate filters mutation cache by tags', async () => {
+      const root = createRoot()
+      const ma = root
+        .lets('mutation', 'helpers-tag-a')
+        .tag('my-tag-a')
+        .sharedInput(z.object({ id: z.number() }))
+        .clientLoader(({ input }) => ({ id: input.id, ok: true }))
+        .mutation()
+      const mb = root
+        .lets('mutation', 'helpers-tag-b')
+        .tag('my-tag-b')
+        .sharedInput(z.object({ id: z.number() }))
+        .clientLoader(({ input }) => ({ id: input.id, ok: true }))
+        .mutation()
+      const queryClient = new QueryClient()
+
+      const mutationA = queryClient.getMutationCache().build(queryClient, {
+        ...ma.getMutationOptions(),
+        mutationFn: async (variables: { id: number }) => ({ id: variables.id, ok: true }),
+      } as any)
+      const mutationB = queryClient.getMutationCache().build(queryClient, {
+        ...mb.getMutationOptions(),
+        mutationFn: async (variables: { id: number }) => ({ id: variables.id, ok: true }),
+      } as any)
+      await mutationA.execute({ id: 1 })
+      await mutationB.execute({ id: 2 })
+
+      const tagAMutations = queryClient.getMutationCache().findAll({
+        predicate: getMutationPredicate({ tags: 'my-tag-a' }),
+      })
+      expect(tagAMutations.length).toBe(1)
+      expect(tagAMutations[0]?.state.data).toEqual({ id: 1, ok: true })
+
+      const tagBMutations = queryClient.getMutationCache().findAll({
+        predicate: getMutationPredicate({ tags: ['my-tag-b'] }),
+      })
+      expect(tagBMutations.length).toBe(1)
+      expect(tagBMutations[0]?.state.data).toEqual({ id: 2, ok: true })
+
+      const scopedByName = queryClient.getMutationCache().findAll({
+        predicate: getMutationPredicate({ type: 'mutation', name: 'helpers-tag-a', scope: 'root' }),
+      })
+      expect(scopedByName.length).toBe(1)
+      expect(scopedByName[0]?.state.data).toEqual({ id: 1, ok: true })
     })
   })
 })

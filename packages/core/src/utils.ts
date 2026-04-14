@@ -1,4 +1,4 @@
-import type { DehydratedState } from '@tanstack/react-query'
+import type { DehydratedState, Mutation, Query } from '@tanstack/react-query'
 import { stringify } from 'safe-stable-stringify'
 import type { ErrorPoint0 } from './error.js'
 import type {
@@ -7,10 +7,15 @@ import type {
   ExtraUseInfiniteQueryOptions,
   ExtraUseMutationOptions,
   ExtraUseQueryOptions,
+  FetchServerOutputType,
   MiddlewareFn,
   MutationKey,
   NormalizedEndpoindOpenapiSchema,
+  PointName,
+  PointsScope,
+  PointType,
   QueryKey,
+  QueryMode,
   ScrollPositionGetter,
   ScrollPositionSetter,
   UseInfiniteQueryOptions,
@@ -477,4 +482,97 @@ export const parseMutationKey = (mutationKey: readonly unknown[] | undefined): M
     return undefined
   }
   return mutationKey[1] as MutationKey[1]
+}
+
+export type QueryPredicateOptions = {
+  // input?: ((input: InputRaw) => boolean) | undefined
+  tags?: string | string[] | ((tags: string[]) => boolean) | undefined
+  finiteness?: 'finite' | 'infinite'
+  output?: FetchServerOutputType | undefined
+  mode?: QueryMode | undefined
+  scope?: PointsScope | undefined
+  type?: PointType | undefined
+  name?: PointName | undefined
+}
+export const getQueryPredicate = (options: QueryPredicateOptions): ((query: Query) => boolean) => {
+  const optionsTags = options.tags
+  const tagsFunction = !optionsTags
+    ? undefined
+    : typeof optionsTags === 'function'
+      ? optionsTags
+      : Array.isArray(optionsTags)
+        ? (tags: string[]) => tags.some((tag) => optionsTags.includes(tag))
+        : (tags: string[]) => tags.some((tag) => optionsTags === tag)
+
+  return (query: Query) => {
+    const obj = parseQueryKey(query.queryKey)
+    if (!obj) {
+      return false
+    }
+    if (tagsFunction) {
+      const checkResult = tagsFunction(obj.tags)
+      if (checkResult === false) {
+        return false
+      }
+    }
+    if (options.finiteness && options.finiteness !== obj.finiteness) {
+      return false
+    }
+    if (options.output && options.output !== obj.output) {
+      return false
+    }
+    if (options.mode && options.mode !== obj.mode) {
+      return false
+    }
+    if (options.scope && options.scope !== obj.scope) {
+      return false
+    }
+    if (options.type && options.type !== obj.type) {
+      return false
+    }
+    if (options.name && options.name !== obj.name) {
+      return false
+    }
+    return true
+  }
+}
+
+export type MutationPredicateOptions = {
+  // input?: ((input: InputRaw) => boolean) | undefined
+  tags?: string | string[] | ((tags: string[]) => boolean) | undefined
+  scope?: PointsScope | undefined
+  type?: PointType | undefined
+  name?: PointName | undefined
+}
+export const getMutationPredicate = (options: MutationPredicateOptions): ((mutation: Mutation) => boolean) => {
+  const optionsTags = options.tags
+  const tagsFunction = !optionsTags
+    ? undefined
+    : typeof optionsTags === 'function'
+      ? optionsTags
+      : Array.isArray(optionsTags)
+        ? (tags: string[]) => tags.some((tag) => optionsTags.includes(tag))
+        : (tags: string[]) => tags.some((tag) => optionsTags === tag)
+  return (mutation: Mutation) => {
+    const obj = parseMutationKey(mutation.options.mutationKey)
+    if (!obj) {
+      return false
+    }
+    if (tagsFunction) {
+      const checkResult = tagsFunction(obj.tags)
+      if (checkResult === false) {
+        return false
+      }
+    }
+    if (options.scope && options.scope !== obj.scope) {
+      return false
+    }
+    if (options.type && options.type !== obj.type) {
+      return false
+    }
+    if (options.name && options.name !== obj.name) {
+      return false
+    }
+    return true
+  }
 }

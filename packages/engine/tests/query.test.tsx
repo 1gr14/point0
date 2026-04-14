@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { Point0 } from '@point0/core'
+import { getQueryPredicate, Point0 } from '@point0/core'
 import { QueryClient } from '@tanstack/react-query'
 import z from 'zod'
 import { createTestThings, waitReturn } from './utils/internal-testing.js'
@@ -404,6 +404,42 @@ describe('query', () => {
       q.removeQuery(input, options)
       expect(q.getQueryData(input, options)).toBeUndefined()
       expect(q.getQueriesCache(true, options)).toEqual([])
+    })
+
+    it.concurrent('getQueryPredicate filters query cache by tags', async () => {
+      const root = createRoot()
+      const qa = root
+        .lets('query', 'helpers-tag-a')
+        .tag('my-tag-a')
+        .clientLoader(() => ({ value: 'A' }))
+        .query()
+      const qb = root
+        .lets('query', 'helpers-tag-b')
+        .tag('my-tag-b')
+        .clientLoader(() => ({ value: 'B' }))
+        .query()
+      const queryClient = new QueryClient()
+
+      await qa.fetchQuery(undefined, undefined, { queryClient, mode: 'client' })
+      await qb.fetchQuery(undefined, undefined, { queryClient, mode: 'client' })
+
+      const tagAQueries = queryClient.getQueryCache().findAll({
+        predicate: getQueryPredicate({ tags: 'my-tag-a' }),
+      })
+      expect(tagAQueries.length).toBe(1)
+      expect(tagAQueries[0]?.state.data).toEqual({ value: 'A' })
+
+      const tagBQueries = queryClient.getQueryCache().findAll({
+        predicate: getQueryPredicate({ tags: ['my-tag-b'] }),
+      })
+      expect(tagBQueries.length).toBe(1)
+      expect(tagBQueries[0]?.state.data).toEqual({ value: 'B' })
+
+      const scopedByName = queryClient.getQueryCache().findAll({
+        predicate: getQueryPredicate({ type: 'query', name: 'helpers-tag-a', scope: 'root', mode: 'client' }),
+      })
+      expect(scopedByName.length).toBe(1)
+      expect(scopedByName[0]?.state.data).toEqual({ value: 'A' })
     })
   })
 })

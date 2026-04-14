@@ -10038,7 +10038,7 @@ export class Point0<
   }
 
   getMutationsCache = (
-    input:
+    input?:
       | FinalInputRawOrUndefined<
           TPointType,
           TServerInputSchema,
@@ -10091,14 +10091,6 @@ export class Point0<
       }
     })()
 
-    const tagsProvided: string | string[] | ((tags: string[]) => boolean) | undefined = undefined as any
-    const tagsFunctionProvided = !tagsProvided
-      ? undefined
-      : typeof tagsProvided === 'function'
-        ? tagsProvided
-        : Array.isArray(tagsProvided)
-          ? (tags: string[]) => tags.some((tag) => tagsProvided.includes(tag))
-          : (tags: string[]) => tags.some((tag) => tagsProvided === tag)
     return cache.findAll({
       predicate: (mutation) => {
         const obj = parseMutationKey(mutation.options.mutationKey)
@@ -10113,12 +10105,6 @@ export class Point0<
         }
         if (obj.name !== this.name) {
           return false
-        }
-        if (tagsFunctionProvided) {
-          const checkResult = tagsFunctionProvided(obj.tags)
-          if (checkResult === false) {
-            return false
-          }
         }
         if (inputAnyProvided) {
           // continue
@@ -10199,14 +10185,11 @@ export class Point0<
     mode: modeProvided = this._getFinalQueryMode(),
     outputType: outputTypeProvided = 'data',
     input: inputProvided,
-
-    tags: tagsProvided,
     finiteOrInfinite: finiteOrInfiniteProvided,
   }: {
     mode: QueryMode | undefined
     outputType: FetchServerOutputType | undefined
     input: InputRaw | ((input: InputRaw) => boolean) | true | undefined
-    tags: string | string[] | ((tags: string[]) => boolean) | undefined
     finiteOrInfinite: 'finite' | 'infinite'
   }): (query: Query) => boolean {
     const { inputStringifiedProvided, inputFunctionProvided, inputAnyProvided } = (() => {
@@ -10230,13 +10213,6 @@ export class Point0<
         inputAnyProvided: undefined,
       }
     })()
-    const tagsFunctionProvided = !tagsProvided
-      ? undefined
-      : typeof tagsProvided === 'function'
-        ? tagsProvided
-        : Array.isArray(tagsProvided)
-          ? (tags: string[]) => tags.some((tag) => tagsProvided.includes(tag))
-          : (tags: string[]) => tags.some((tag) => tagsProvided === tag)
     return (query) => {
       const obj = parseQueryKey(query.queryKey)
       if (!obj) {
@@ -10260,12 +10236,6 @@ export class Point0<
       }
       if (obj.output !== outputTypeProvided) {
         return false
-      }
-      if (tagsFunctionProvided) {
-        const checkResult = tagsFunctionProvided(obj.tags)
-        if (checkResult === false) {
-          return false
-        }
       }
       const inputStringified = obj.input
       if (inputAnyProvided) {
@@ -10514,7 +10484,6 @@ export class Point0<
         outputType,
         input,
         finiteOrInfinite: 'finite',
-        tags: undefined,
       }),
     }) as never
   }
@@ -10879,7 +10848,6 @@ export class Point0<
         outputType,
         input,
         finiteOrInfinite: 'infinite',
-        tags: undefined,
       }),
     }) as never
   }
