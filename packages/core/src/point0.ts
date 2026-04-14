@@ -747,7 +747,7 @@ export class Point0<
     _schemasHelpers?: SchemaHelper[] | undefined
     _searchSchemaKeys?: string[] | true | undefined
     tags?: string[]
-    _description?: string
+    _description?: string | undefined
     _basepath?: AnyRoute | undefined
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
@@ -2336,9 +2336,34 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions
+  >
+  description(
+    description?: string,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
   > {
     return this._continue({
-      _description: [this.description, description].filter(Boolean).join('\n\n'),
+      _description: description ? [this._description, description].filter(Boolean).join('\n\n') : this._description,
     }) as never
   }
 

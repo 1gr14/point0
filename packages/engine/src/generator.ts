@@ -982,7 +982,13 @@ export class FilesGenerator {
         .map((point) => [`${point.scope}::${point.name}`, point] as const),
     )
     const literal = (value: unknown): string =>
-      value === undefined ? 'undefined' : typeof value === 'string' ? `'${value}'` : JSON.stringify(value)
+      value === undefined
+        ? 'undefined'
+        : typeof value === 'string'
+          ? `'${value}'`
+          : Array.isArray(value) && value.every((v) => typeof v === 'string')
+            ? `[${value.map((v) => `'${v}'`).join(', ')}]`
+            : JSON.stringify(value)
     const pushLinkedPointBlock = ({
       lines,
       indent,
@@ -1074,6 +1080,8 @@ export class FilesGenerator {
       lines.push(`      type: ${literal(point.type)},`)
       lines.push(`      name: ${literal(point.name)},`)
       lines.push(`      id: ${literal(point.id)},`)
+      lines.push(`      tags: ${literal(point.tags)},`)
+      lines.push(`      description: ${point.description === undefined ? 'undefined' : `\`${point.description}\``},`)
       if ((point.type === 'page' || point.type === 'layout') && point.route) {
         lines.push(`      route: Route0.create(${literal(point.route.definition)}),`)
       } else {

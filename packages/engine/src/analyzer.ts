@@ -17,6 +17,8 @@ export type AnalyzerMetaPoint = {
   type: ReadyPointType
   name: PointName
   id: string
+  tags: string[]
+  description: string | undefined
   route: AnyRoute | undefined
   endpoint: { method: string; route: AnyRoute } | undefined
   pos: CompilerPointParsedPos | undefined
@@ -50,6 +52,8 @@ export const ANALYZER_META_POINT_FIELDS = [
   'scope',
   'type',
   'name',
+  'tags',
+  'description',
   'route',
   'endpoint',
   'pos',
@@ -90,6 +94,10 @@ export type AnalyzerMetaSource = AnalyzerMeta | string | (() => Promise<Analyzer
 export const analyzerPointsFilterSchemaShape = {
   ids: z.array(z.string()).optional().describe('Exact point ids match.'),
   id: z.string().optional().describe('Exact point id match.'),
+  tags: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .describe('Filter by tags: string (any match) or string[] (all required).'),
   scope: z.string().optional().describe('Exact point scope match.'),
   type: z.string().optional().describe('Exact point type match.'),
   name: z.string().optional().describe('Exact point name match.'),
@@ -202,6 +210,15 @@ export class Analyzer {
           }
           if (filter.ids && !filter.ids.includes(point.id)) {
             return false
+          }
+          if (filter.tags) {
+            const hasTags =
+              typeof filter.tags === 'string'
+                ? point.tags.some((tag) => tag === filter.tags)
+                : filter.tags.every((tag) => point.tags.includes(tag))
+            if (!hasTags) {
+              return false
+            }
           }
           if (filter.file && point.pos?.file !== filter.file) {
             return false

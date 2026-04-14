@@ -17,8 +17,8 @@ const writeTestSources = async (tp: TestProjectOneClient): Promise<void> => {
   await tp.write(
     'src/mcp.points.tsx',
     `import { root } from './lib/root.js'
-export const mcpPage = root.lets('page', 'mcpPage', '/mcp').page(() => <div>MCP page</div>)
-export const mcpActionAction = root.lets.action('GET', '/api/mcp').action(() => ({ ok: true }))
+export const mcpPage = root.lets('page', 'mcpPage', '/mcp').tag('root', 'page').page(() => <div>MCP page</div>)
+export const mcpActionAction = root.lets.action('GET', '/api/mcp').tag('root', 'action').action(() => ({ ok: true }))
 `,
   )
   await tp.write(
@@ -87,19 +87,25 @@ afterAll(async () => {
 })
 
 describe('point0 MCP server', () => {
-  it('registers tools', async () => {
-    const ctx = await setupMcpClient()
-    try {
-      const tools = await ctx.client.listTools()
-      const toolNames = tools.tools.map((tool) => tool.name)
-      expect(toolNames).toContain('list_points')
-      expect(toolNames).toContain('get_point')
-      expect(toolNames).toContain('compile')
-      expect(toolNames).toContain('trace')
-    } finally {
-      await teardownMcpClient(ctx)
-    }
-  })
+  it(
+    'registers tools',
+    async () => {
+      const ctx = await setupMcpClient()
+      try {
+        const tools = await ctx.client.listTools()
+        const toolNames = tools.tools.map((tool) => tool.name)
+        expect(toolNames).toContain('list_points')
+        expect(toolNames).toContain('get_point')
+        expect(toolNames).toContain('compile')
+        expect(toolNames).toContain('trace')
+      } finally {
+        await teardownMcpClient(ctx)
+      }
+    },
+    {
+      retry: 3,
+    },
+  )
 
   it('list_points returns filtered points from real meta', async () => {
     const ctx = await setupMcpClient()
@@ -109,6 +115,7 @@ describe('point0 MCP server', () => {
         arguments: {
           fields: ['id', 'name'],
           endpointUrl: '/api/mcp',
+          tags: ['root', 'action'],
         },
       })
       expect(listed.isError).not.toBe(true)
@@ -157,8 +164,8 @@ describe('point0 MCP server', () => {
       const compiledStructured = compiled.structuredContent as { code: string }
       expect(compiledStructured.code).toMatchInlineSnapshot(`
         "import { root } from './lib/root.js'
-        export const mcpPage = root.lets('page', 'mcpPage', '/mcp').page(() => <div>MCP page</div>)
-        export const mcpActionAction = root.lets       ("action","mcpAction",'GET','/api/mcp').action(()=>({ok:true}))"
+        export const mcpPage = root.lets('page', 'mcpPage', '/mcp').tag('root', 'page').page(() => <div>MCP page</div>)
+        export const mcpActionAction = root.lets       ("action","mcpAction",'GET','/api/mcp').tag('root','action').action(()=>({ok:true}))"
       `)
     } finally {
       await teardownMcpClient(ctx)

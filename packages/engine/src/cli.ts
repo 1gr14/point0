@@ -331,6 +331,7 @@ const buildPointsFilter = (input: AnalyzerPointSelectOptions): AnalyzerPointsFil
   return {
     ids: input.ids,
     id: input.id,
+    tags: input.tags,
     scope: input.scope,
     type: input.type,
     name: input.name,
@@ -359,6 +360,7 @@ pointsCommand
   .option('--meta <path>', 'Path to analyzer meta module', (value, previous: string[] = []) => [...previous, value])
   .option('--ids <ids>', 'Comma-separated point ids', parseCommaSeparatedOption)
   .option('--id <id>', 'Point id')
+  .option('--tags <tags>', 'Comma-separated tags (all provided tags must match)', parseCommaSeparatedOption)
   .option('--scope <scope>', 'Point scope')
   .option('--type <type>', 'Point type')
   .option('--name <name>', 'Point name')
@@ -403,6 +405,7 @@ pointsCommand
   .option('--meta <path>', 'Path to analyzer meta module', (value, previous: string[] = []) => [...previous, value])
   .option('--ids <ids>', 'Comma-separated point ids', parseCommaSeparatedOption)
   .option('--id <id>', 'Point id')
+  .option('--tags <tags>', 'Comma-separated tags (all provided tags must match)', parseCommaSeparatedOption)
   .option('--scope <scope>', 'Point scope')
   .option('--type <type>', 'Point type')
   .option('--name <name>', 'Point name')

@@ -16,8 +16,8 @@ const writeTestSources = async (tp: TestProjectOneClient): Promise<void> => {
   await tp.write(
     'src/cli.points.tsx',
     `import { root } from './lib/root.js'
-export const cliPage = root.lets('page', 'cliPage', '/cli').page(() => <div>CLI page</div>)
-export const cliActionAction = root.lets.action('GET', '/api/cli').action(() => ({ ok: true }))
+export const cliPage = root.lets('page', 'cliPage', '/cli').tag('root', 'page').page(() => <div>CLI page</div>)
+export const cliActionAction = root.lets.action('GET', '/api/cli').tag('root', 'action').action(() => ({ ok: true }))
 `,
   )
   await tp.write(
@@ -96,8 +96,8 @@ describe('point0 CLI', () => {
       expect(result.output).toContain('cliAction')
       expect(result.output).toMatchInlineSnapshot(`
         "import { root } from './lib/root.js'
-        export const cliPage = root.lets('page', 'cliPage', '/cli').page(() => <div>CLI page</div>)
-        export const cliActionAction = root.lets       ("action","cliAction",'GET','/api/cli').action(()=>({ok:true}))
+        export const cliPage = root.lets('page', 'cliPage', '/cli').tag('root', 'page').page(() => <div>CLI page</div>)
+        export const cliActionAction = root.lets       ("action","cliAction",'GET','/api/cli').tag('root','action').action(()=>({ok:true}))
         "
       `)
     } finally {
@@ -141,6 +141,8 @@ describe('point0 CLI', () => {
           tp.resolve('src/lib/meta.ts'),
           '--endpoint-url',
           '/api/cli',
+          '--tags',
+          'root,action',
           '--fields',
           'id,name',
         ],

@@ -35,6 +35,8 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   parsed: boolean
   basepath: AnyRoute | undefined
   endpoint: undefined | { method: string; route: AnyRoute }
+  tags: string[]
+  description: string | undefined
 
   constructor({
     walker,
@@ -79,6 +81,8 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     this.chainMethods = []
     this.basepath = undefined
     this.ssr = ssr
+    this.tags = []
+    this.description = undefined
 
     file.addPointToMemory(this)
   }
@@ -592,6 +596,41 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     return [...new Set(layouts)].reverse()
   }
 
+  getTags(): string[] {
+    const tags: string[] = []
+    for (const method of this.chainMethods) {
+      if (method.name !== 'tag') {
+        continue
+      }
+      if (method.nodePath.node.type !== 'CallExpression') {
+        continue
+      }
+      for (const arg of method.nodePath.node.arguments) {
+        if (arg.type === 'StringLiteral') {
+          tags.push(arg.value)
+        }
+      }
+    }
+    return [...new Set(tags)]
+  }
+
+  getDescription(): string | undefined {
+    const descriptions: string[] = []
+    for (const method of this.chainMethods) {
+      if (method.name !== 'description') {
+        continue
+      }
+      if (method.nodePath.node.type !== 'CallExpression') {
+        continue
+      }
+      const firstArg = method.nodePath.node.arguments.at(0)
+      if (firstArg?.type === 'StringLiteral' && firstArg.value) {
+        descriptions.push(firstArg.value)
+      }
+    }
+    return descriptions.length > 0 ? descriptions.join('\n\n') : undefined
+  }
+
   private resolveLayoutsFromLayoutMethod({
     methodNodePath,
     point,
@@ -652,6 +691,8 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       pos: this.pos,
       polh: this.polh,
       layouts: this.layouts,
+      tags: this.tags,
+      description: this.description,
       errors: this.errors.map((e: unknown) => (e instanceof Error ? e.message : String(e))),
       exportName: this.exportName,
       isBasePoint0: this.isBasePoint0,
@@ -701,6 +742,8 @@ export class CompilerPoint<TValid extends boolean = boolean> {
 
       this.selfMethods = this.getSelfMethods()
       this.chainMethods = this.getChainMethods()
+      this.tags = this.getTags()
+      this.description = this.getDescription()
 
       this.polh = this.getPrefetchOnLinkHover()
       this.basepath = this.getBasepath()
@@ -790,6 +833,9 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       a.polh === b.polh &&
       a.layouts.every((l) => b.layouts.includes(l)) &&
       b.layouts.every((l) => a.layouts.includes(l)) &&
+      a.tags.every((tag) => b.tags.includes(tag)) &&
+      b.tags.every((tag) => a.tags.includes(tag)) &&
+      a.description === b.description &&
       a.valid === b.valid &&
       a.file.abs === b.file.abs
     )
@@ -968,6 +1014,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         case 'serverOn':
         case 'middleware':
         case 'response':
+        case 'description':
         case 'openapi': {
           this.removeMethodArgs({ nodePath: method.nodePath })
           break
@@ -1246,6 +1293,8 @@ export type CompilerPointSimplified = {
   pos: { column: number; line: number } | undefined
   polh: boolean | number | undefined
   layouts: string[]
+  tags: string[]
+  description: string | undefined
   errors: string[]
   exportName: string | undefined
   isBasePoint0: boolean

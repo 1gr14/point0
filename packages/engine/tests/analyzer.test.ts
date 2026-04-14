@@ -9,6 +9,8 @@ const makePoint = (partial: Partial<AnalyzerMetaPoint>): AnalyzerMetaPoint =>
     type: 'page',
     name: 'home',
     id: 'point.home',
+    tags: [],
+    description: undefined,
     route: Route0.create('/'),
     endpoint: undefined,
     pos: { file: '/tmp/home.tsx' } as AnalyzerMetaPoint['pos'],
@@ -82,6 +84,29 @@ describe('Analyzer', () => {
     expect(byEndpointUrl?.id).toBe('point.endpoint')
     expect(byParent?.id).toBe('point.page')
     expect(byLayout?.id).toBe('point.page')
+  })
+
+  it('supports tags filter as string and array', () => {
+    const analyzer = Analyzer.create({
+      engine: {
+        file: '/tmp/engine.ts',
+        import: async () => ({}) as never,
+        server: undefined,
+        clients: undefined,
+      },
+      points: [
+        makePoint({ id: 'point.page', tags: ['root', 'page'] }),
+        makePoint({ id: 'point.action', type: 'action', route: undefined, tags: ['root', 'action'] }),
+      ],
+    })
+
+    const bySingleTag = analyzer.getPoint({ filter: { tags: 'action' } })
+    const byAllTags = analyzer.getPoint({ filter: { tags: ['root', 'page'] } })
+    const missingAllTags = analyzer.getPoint({ filter: { tags: ['root', 'missing'] } })
+
+    expect(bySingleTag?.id).toBe('point.action')
+    expect(byAllTags?.id).toBe('point.page')
+    expect(missingAllTags).toBeUndefined()
   })
 
   it('returns selected fields only when fields option is passed', () => {

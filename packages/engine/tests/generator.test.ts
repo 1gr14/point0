@@ -904,11 +904,11 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
       'generates meta file',
       helper(async ({ dir, files: [rootFile, metaFile], fixPaths, log: log, getLastLogMessage, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').root()
-export const layout = root.lets('layout', 'mylayout').layout(() => <div>Layout</div>)
-export const page = layout.lets('page', 'mypage', '/mypage').page(() => <div>Hello</div>)
-export const action = root.lets('action', 'myaction', 'GET', '/myaction').action()
-export const invalidPage = root.lets('page', 'page3')
+export const root = Point0.lets('root', 'myroot').tag('root-tag').description('root description').root()
+export const layout = root.lets('layout', 'mylayout').tag('layout-tag').description('layout description').layout(() => <div>Layout</div>)
+export const page = layout.lets('page', 'mypage', '/mypage').tag('page-tag-a', 'page-tag-b').description('page description').page(() => <div>Hello</div>)
+export const action = root.lets('action', 'myaction', 'GET', '/myaction').tag('action-tag').description('action description').action()
+export const invalidPage = root.lets('page', 'page3').tag('invalid-tag').description('invalid page description')
 const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         `)
 
@@ -966,6 +966,8 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 type: 'root',
                 name: 'myroot',
                 id: 'myroot.root.myroot',
+                tags: ['root-tag'],
+                description: \`root description\`,
                 route: undefined,
                 endpoint: undefined,
                 pos: {
@@ -985,6 +987,8 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 type: 'plugin',
                 name: 'myplugin',
                 id: 'plugin.plugin.myplugin',
+                tags: [],
+                description: undefined,
                 route: undefined,
                 endpoint: undefined,
                 pos: {
@@ -1004,6 +1008,10 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 type: 'page',
                 name: 'page3',
                 id: 'myroot.page.page3',
+                tags: ['root-tag', 'invalid-tag'],
+                description: \`root description
+
+          invalid page description\`,
                 route: undefined,
                 endpoint: undefined,
                 pos: {
@@ -1015,7 +1023,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 valid: false,
                 errors: [
                   \`Invalid route argument undefined\`,
-                  \`Last called method name 'undefined' does not match point type 'page'. Please, use .page() in end of point chain\`,
+                  \`Last called method name 'description' does not match point type 'page'. Please, use .page() in end of point chain\`,
                 ],
                 ssr: false,
                 parents: [
@@ -1038,6 +1046,12 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 type: 'page',
                 name: 'mypage',
                 id: 'myroot.page.mypage',
+                tags: ['root-tag', 'layout-tag', 'page-tag-a', 'page-tag-b'],
+                description: \`root description
+
+          layout description
+
+          page description\`,
                 route: Route0.create('/mypage'),
                 endpoint: undefined,
                 pos: {
@@ -1092,6 +1106,10 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 type: 'layout',
                 name: 'mylayout',
                 id: 'myroot.layout.mylayout',
+                tags: ['root-tag', 'layout-tag'],
+                description: \`root description
+
+          layout description\`,
                 route: Route0.create('/'),
                 endpoint: undefined,
                 pos: {
@@ -1123,6 +1141,10 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 type: 'action',
                 name: 'myaction',
                 id: 'myroot.action.myaction',
+                tags: ['root-tag', 'action-tag'],
+                description: \`root description
+
+          action description\`,
                 route: undefined,
                 endpoint: {
                   method: 'GET',

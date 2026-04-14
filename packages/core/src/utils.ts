@@ -501,7 +501,7 @@ export const getQueryPredicate = (options: QueryPredicateOptions): ((query: Quer
     : typeof optionsTags === 'function'
       ? optionsTags
       : Array.isArray(optionsTags)
-        ? (tags: string[]) => tags.some((tag) => optionsTags.includes(tag))
+        ? (tags: string[]) => optionsTags.every((tag) => tags.includes(tag))
         : (tags: string[]) => tags.some((tag) => optionsTags === tag)
 
   return (query: Query) => {

@@ -88,6 +88,7 @@ const buildFilter = (input: AnalyzerPointSelectOptions): AnalyzerPointsFilterOpt
   return {
     ids: input.ids,
     id: input.id,
+    tags: input.tags,
     scope: input.scope,
     type: input.type,
     name: input.name,
