@@ -4,10 +4,16 @@ import type { ErrorPoint0 } from './error.js'
 import type {
   DataTransformer,
   DataTransformerExtended,
+  ExtraUseInfiniteQueryOptions,
+  ExtraUseMutationOptions,
+  ExtraUseQueryOptions,
   MiddlewareFn,
   NormalizedEndpoindOpenapiSchema,
   ScrollPositionGetter,
   ScrollPositionSetter,
+  UseInfiniteQueryOptions,
+  UseMutationOptions,
+  UseQueryOptions,
 } from './types.js'
 
 export function mergeHeaders(base?: HeadersInit, ...extras: Array<HeadersInit | undefined>): Headers {
@@ -401,4 +407,56 @@ export const mergeMiddlewares = <TError extends ErrorPoint0>(
 
     return await dispatch(0)
   }
+}
+
+export const mergeQueryOptions = (
+  ...options: Array<(UseQueryOptions | ExtraUseQueryOptions) | undefined>
+): UseQueryOptions => {
+  return mergeOptionsWithCallbacks(['onSuccess', 'onError', 'onSettled'], ...options) as never
+}
+
+export const mergeInfiniteQueryOptions = (
+  ...options: Array<(UseInfiniteQueryOptions<any> | ExtraUseInfiniteQueryOptions<any>) | undefined>
+): UseInfiniteQueryOptions<any> => {
+  return mergeOptionsWithCallbacks(['onSuccess', 'onError', 'onSettled'], ...options) as never
+}
+
+export const mergeMutationOptions = (
+  ...options: Array<(UseMutationOptions | ExtraUseMutationOptions) | undefined>
+): UseMutationOptions => {
+  return mergeOptionsWithCallbacks(['onMutate', 'onSuccess', 'onError', 'onSettled'], ...options) as never
+}
+
+export const mergeCallbacks = <TCallback extends ((...args: any[]) => any) | undefined>(
+  ...callbacks: TCallback[]
+): TCallback => {
+  const definedCallbacks = callbacks.filter(Boolean) as Exclude<TCallback, undefined>[]
+  if (definedCallbacks.length === 0) {
+    return undefined as TCallback
+  }
+  if (definedCallbacks.length === 1) {
+    return definedCallbacks[0] as TCallback
+  }
+  return (async (...args: Parameters<Exclude<TCallback, undefined>>) => {
+    let result: unknown = undefined
+    for (const callback of definedCallbacks) {
+      result = await callback(...args)
+    }
+    return result
+  }) as TCallback
+}
+
+const mergeOptionsWithCallbacks = <TOptions extends Record<string, any>>(
+  callbackKeys: readonly string[],
+  ...options: Array<TOptions | undefined>
+): TOptions => {
+  const merged = Object.assign({}, ...options.filter(Boolean)) as TOptions
+  for (const callbackKey of callbackKeys) {
+    const callback = mergeCallbacks(...options.map((option) => (option as Record<string, any> | undefined)?.[callbackKey]))
+    if (!callback) {
+      continue
+    }
+    ;(merged as Record<string, any>)[callbackKey] = callback
+  }
+  return merged
 }

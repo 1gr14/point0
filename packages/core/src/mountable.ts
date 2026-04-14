@@ -18,6 +18,7 @@ import type {
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
   FinalInputRawOrUndefined,
+  FinalInputRawOrUndefinedOrVoid,
   FinalLoaderDataOrNever,
   IfAnyThenElse,
   InputParsed,
@@ -1010,35 +1011,16 @@ export type MountableSelfProps<
   TQueriesDefinitions extends QueriesDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TWithChildren extends boolean | null,
-> = (IsFinalInputOptional<
-  TPointType,
-  TServerInputSchema,
-  TClientInputSchema,
-  TParamsSchema,
-  TSearchSchema,
-  TBodySchema
-> extends true
-  ? {
-      input?: FinalInputRawOrUndefined<
-        TPointType,
-        TServerInputSchema,
-        TClientInputSchema,
-        TParamsSchema,
-        TSearchSchema,
-        TBodySchema
-      >
-    }
-  : {
-      input: FinalInputRawOrUndefined<
-        TPointType,
-        TServerInputSchema,
-        TClientInputSchema,
-        TParamsSchema,
-        TSearchSchema,
-        TBodySchema
-      >
-    }) &
-  TOuterProps &
+> = {
+  input?: FinalInputRawOrUndefinedOrVoid<
+    TPointType,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema
+  >
+} & TOuterProps &
   (TWithChildren extends true
     ? {
         children:

@@ -216,7 +216,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create-update.tsx',
-        line: 45,
+        line: 44,
         column: 30,
       },
       import: async () => (await import('../../pages/idea-create-update.js')).ideaCreatePage,
@@ -352,7 +352,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create-update.tsx',
-        line: 112,
+        line: 110,
         column: 30,
       },
       import: async () => (await import('../../pages/idea-create-update.js')).ideaUpdatePage,
@@ -607,7 +607,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create-update.tsx',
-        line: 9,
+        line: 8,
         column: 34,
       },
       import: async () => (await import('../../pages/idea-create-update.js')).ideaCreateMutation,
@@ -641,7 +641,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create-update.tsx',
-        line: 24,
+        line: 23,
         column: 34,
       },
       import: async () => (await import('../../pages/idea-create-update.js')).ideaUpdateMutation,

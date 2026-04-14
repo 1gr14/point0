@@ -1,8 +1,7 @@
 import { generalLayout } from '@/layouts/general'
-import { ideaViewQuery, ideaCreateSchema, ideaUpdateSchema } from '@/lib/idea'
+import { ideaCreateSchema, ideaUpdateSchema, ideaViewQuery } from '@/lib/idea'
 import { navigate } from '@/lib/navigate'
 import { prisma } from '@/lib/prisma'
-import { queryClient } from '@/lib/query-client'
 import { root } from '@/lib/root'
 import { useState } from 'react'
 
@@ -38,8 +37,7 @@ export const ideaUpdateMutation = root.lets
   })
   .mutation({
     onSuccess: async ({ idea }) => {
-      // void queryClient.refetchQueries({ queryKey: ideaViewQuery.getQueryKey({ id: idea.id }) })
-      void queryClient.setQueryData(ideaViewQuery.getQueryKey({ id: idea.id }), { idea })
+      ideaViewQuery.setQueryData({ id: idea.id }, { idea })
     },
   })
 
@@ -47,7 +45,6 @@ export const ideaCreatePage = generalLayout.lets
   .page('/ideas/new')
   .head('New Idea')
   .page(() => {
-    // any hook or whatever here, it is just client code
     const mutation = ideaCreateMutation.useMutation()
     const [title, setTitle] = useState(() => 'a')
     const [description, setDescription] = useState('b')

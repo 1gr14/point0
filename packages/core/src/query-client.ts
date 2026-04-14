@@ -95,6 +95,9 @@ export const serializeErrorsInDehydratedState = (
         state: {
           ...q.state,
           error: q.state.error ? (ErrorClass.serialize(q.state.error) as never as null) : q.state.error,
+          fetchFailureReason: q.state.fetchFailureReason
+            ? (ErrorClass.serialize(q.state.fetchFailureReason) as never as null)
+            : q.state.error,
         },
       }
     }),
@@ -103,6 +106,9 @@ export const serializeErrorsInDehydratedState = (
       state: {
         ...m.state,
         error: m.state.error ? (ErrorClass.serialize(m.state.error) as never as null) : m.state.error,
+        failureReason: m.state.failureReason
+          ? (ErrorClass.serialize(m.state.failureReason) as never as null)
+          : m.state.failureReason,
       },
     })),
   }

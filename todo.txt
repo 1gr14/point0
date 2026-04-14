@@ -46,7 +46,7 @@ mcp as comments
 
 
 ЭКЗАМПЛЫ
-Апп клиент тскс
+? Апп клиент тскс
 tailwind to basic example
 use real prisma and sqlite
 sort ideas in descendant order of ids
@@ -59,10 +59,17 @@ sort ideas in descendant order of ids
 create-app
 
 REFACTOING 3000
-Квери: рефетч, инвалидаейт, и прочие по фильтру
+reoerdee querykey: ..., tags, outputType, input
+helper parseQueryKey()
+add tags so we can filter by input, or by tags, via input | {input, tags, outputType} | tag | tag[]
+description for meta (joined via \n)
+meta tags and description
+.clientOnly('loading') will use loading component as fallback
+--+
 Проверить, что можно вверху поинтс файла прописать ипорт поинтов статический, и тогда в бан заработает хот апдейт
 Вырезать всё из инородных скоупов
-mirror generator
+? mirror generator
+? queryKey: ['point0', object] + ? and do not stringify input
 
 
 COMPILER
@@ -166,6 +173,9 @@ shrink core/index.ts size, by remove code duplicates
 Все нулы поменять на фолсы
 Перепроверить все публичные названия методов и если надо то поменять
 ---
+.tag<typeof keyof tagsMap>()
+when remove, reset or whatever combined, we should also remove cleiant and server
+Маркдаун плагин позволит сделать полностью агентик сайт, у которого дажэе формы это просто ссылки на джейсон схемы эндпоинтов
 Логируем только отличное от рута имя
 Скоуп в айди поинта тоже выводим только отличное от рута иаче только тайп и нэйм
 before middleware for publicdir in engine

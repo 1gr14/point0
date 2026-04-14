@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { Point0 } from '@point0/core'
+import { QueryClient } from '@tanstack/react-query'
 import z from 'zod'
 import { createTestThings, waitReturn } from './utils/internal-testing.js'
 
@@ -361,4 +362,48 @@ describe('query', () => {
     },
     { retry: 3 },
   )
+
+  describe('helpers', () => {
+    it.concurrent('query helper methods', async () => {
+      const root = createRoot()
+      const q = root
+        .lets('query', 'helpers')
+        .sharedInput(z.object({ id: z.number().optional() }))
+        .clientLoader(({ input }) => ({ value: (input.id ?? 0) + 1 }))
+        .query()
+      const queryClient = new QueryClient()
+      const input = { id: 2 }
+      const options = { queryClient, mode: 'client' as const }
+
+      const fetched = await q.fetchQuery(input, undefined, options)
+      expect(fetched).toEqual({ value: 3 })
+      expect(q.getQueryData(input, options)).toEqual({ value: 3 })
+
+      await q.prefetchQuery(input, undefined, options)
+      expect(await q.ensureQueryData(input, undefined, options)).toEqual({ value: 3 })
+
+      const setResult = q.setQueryData(input, () => ({ value: 10 }), undefined, options)
+      expect(setResult).toEqual({ value: 10 })
+      expect(q.getQueryData(input, options)).toEqual({ value: 10 })
+
+      const cachedQuery = q.getQueryCache(input, options)
+      expect(cachedQuery?.state.data).toEqual({ value: 10 })
+      const cachedQueries = q.getQueriesCache(true, options)
+      expect(cachedQueries.length).toBe(1)
+      expect(cachedQueries[0]?.state.data).toEqual({ value: 10 })
+      expect(q.getQueryState(input, options)?.data).toEqual({ value: 10 })
+
+      await q.refetchQuery(input, undefined, options)
+      expect(q.getQueryData(input, options)).toEqual({ value: 3 })
+      await q.cancelQuery(input, undefined, options)
+      await q.invalidateQuery(input, undefined, options)
+      expect(q.getQueryState(input, options)?.isInvalidated).toBe(true)
+      await q.resetQuery(input, undefined, options)
+      expect(q.getQueryData(input, options)).toBeUndefined()
+
+      q.removeQuery(input, options)
+      expect(q.getQueryData(input, options)).toBeUndefined()
+      expect(q.getQueriesCache(true, options)).toEqual([])
+    })
+  })
 })

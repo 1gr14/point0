@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { Point0 } from '@point0/core'
+import { QueryClient } from '@tanstack/react-query'
 import z from 'zod'
 import { createTestThings } from './utils/internal-testing.js'
 
@@ -341,6 +342,45 @@ describe('mutation', () => {
         mutation.test (client) < {"file":{}}
         "
       `)
+    })
+  })
+
+  describe('helpers', () => {
+    it.concurrent('mutation helper methods', async () => {
+      const root = createRoot()
+      const q = root
+        .lets('mutation', 'helpers')
+        .sharedInput(z.object({ id: z.number().optional() }))
+        .clientLoader(({ input }) => ({ id: input.id ?? 0, ok: true }))
+        .mutation()
+      const queryClient = new QueryClient()
+      const input = { id: 7 }
+
+      expect(q.getMutationKey()).toEqual(['point0', 'root', 'mutation', 'helpers'])
+      expect(q.getMutationOptions().mutationKey).toEqual(q.getMutationKey())
+
+      expect(q.getMutationCache(input, { queryClient })).toBeUndefined()
+      expect(q.getMutationsCache(true, { queryClient })).toEqual([])
+
+      const mutation = queryClient.getMutationCache().build(queryClient, {
+        ...q.getMutationOptions(),
+        mutationFn: async (variables: typeof input) => ({ id: variables.id, ok: true }),
+      } as any)
+      const result = await mutation.execute(input)
+      expect(result).toEqual({ id: 7, ok: true })
+
+      const cachedMutation = q.getMutationCache(input, { queryClient })
+      expect(cachedMutation?.state.variables).toEqual(input)
+      expect(cachedMutation?.state.data).toEqual({ id: 7, ok: true })
+
+      const allMutations = q.getMutationsCache(true, { queryClient })
+      expect(allMutations.length).toBe(1)
+      expect(allMutations[0]?.state.variables).toEqual(input)
+      expect(allMutations[0]?.state.data).toEqual({ id: 7, ok: true })
+
+      const filteredMutations = q.getMutationsCache((variables) => variables.id === 7, { queryClient })
+      expect(filteredMutations.length).toBe(1)
+      expect(filteredMutations[0]?.state.variables).toEqual(input)
     })
   })
 })

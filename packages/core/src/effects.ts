@@ -228,7 +228,7 @@ export class Effects {
     return merged
   }
 
-  static apply(response: Response, effects: ResponseEffectsValues): Response {
+  static apply(response: Response, effects: ResponseEffectsValues, status?: number): Response {
     const newHeaders = new Headers()
     const setCookieHeaderName = 'set-cookie'
 
@@ -256,18 +256,18 @@ export class Effects {
       newHeaders.append('Set-Cookie', cookieString)
     }
 
-    const status = effects.status ?? response.status
+    const newStatus = status ?? effects.status ?? response.status
 
     const newResponse = new Response(response.body, {
-      status,
+      status: newStatus,
       headers: newHeaders,
     })
 
     return newResponse
   }
 
-  apply(response: Response): Response {
-    return Effects.apply(response, this.values)
+  apply(response: Response, status?: number): Response {
+    return Effects.apply(response, this.values, status)
   }
 
   static encodeCookieName = (name: string): string => {

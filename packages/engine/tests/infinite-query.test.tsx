@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { Point0 } from '@point0/core'
+import { QueryClient } from '@tanstack/react-query'
 import z from 'zod'
 import { createTestThings, waitReturn } from './utils/internal-testing.js'
 
@@ -464,5 +465,75 @@ describe('infinityQuery', () => {
         #page: x=nothing
         "
       `)
+  })
+
+  describe('helpers', () => {
+    it.concurrent('infinite query helper methods', async () => {
+      const root = createRoot()
+      const q = root
+        .lets('infiniteQuery', 'helpers')
+        .sharedInput(z.object({ cursor: z.number().optional() }))
+        .clientLoader(({ input }) => {
+          const cursor = input.cursor ?? 0
+          return {
+            items: [{ id: cursor + 1, name: `Item ${cursor + 1}` }],
+            nextCursor: cursor + 1,
+          }
+        })
+        .infiniteQuery({
+          pageParamFromInput: 'cursor',
+          getNextPageParam: (lastPage) => lastPage.nextCursor,
+          initialPageParam: 0,
+        })
+      const queryClient = new QueryClient()
+      const input = { cursor: 0 }
+      const options = { queryClient, mode: 'client' as const }
+
+      const fetched = await q.fetchInfiniteQuery(input, undefined, options)
+      expect(fetched.pages).toEqual([{ items: [{ id: 1, name: 'Item 1' }], nextCursor: 1 }])
+      expect(fetched.pageParams).toEqual([0])
+      expect(q.getInfiniteQueryData(input, options)).toEqual(fetched)
+
+      await q.prefetchInfiniteQuery(input, undefined, options)
+      expect(await q.ensureInfiniteQueryData(input, undefined, options)).toEqual(fetched)
+
+      q.setInfiniteQueryData(
+        input,
+        ((old: any) => ({
+          pages: [
+            ...old.pages,
+            {
+              items: [{ id: 99, name: 'Item 99' }],
+              nextCursor: undefined,
+            },
+          ],
+          pageParams: [...old.pageParams, 99],
+        })) as any,
+        undefined,
+        options,
+      )
+
+      const updated = q.getInfiniteQueryData(input, options) as any
+      expect(updated.pages).toEqual([
+        { items: [{ id: 1, name: 'Item 1' }], nextCursor: 1 },
+        { items: [{ id: 99, name: 'Item 99' }], nextCursor: undefined },
+      ])
+      expect(updated.pageParams).toEqual([0, 99])
+      expect(q.getInfiniteQueryCache(input, options)?.state.data).toEqual(updated)
+      const allCached = q.getInfiniteQueriesCache(true, options)
+      expect(allCached.length).toBe(1)
+      expect((q.getInfiniteQueryState(input, options) as any)?.data).toEqual(updated)
+
+      await q.refetchInfiniteQuery(input, undefined, options)
+      await q.cancelInfiniteQuery(input, undefined, options)
+      await q.invalidateInfiniteQuery(input, undefined, options)
+      expect((q.getInfiniteQueryState(input, options) as any)?.isInvalidated).toBe(true)
+      await q.resetInfiniteQuery(input, undefined, options)
+      expect(q.getInfiniteQueryData(input, options)).toBeUndefined()
+
+      q.removeInfiniteQuery(input, options)
+      expect(q.getInfiniteQueryData(input, options)).toBeUndefined()
+      expect(q.getInfiniteQueriesCache(true, options)).toEqual([])
+    })
   })
 })

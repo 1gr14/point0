@@ -18,6 +18,7 @@ import type {
 } from './points-manager.js'
 import type {
   DataTransformerExtended,
+  ExtraUseQueryOptions,
   FetchOptions,
   LayoutPoint,
   MiddlewareFn,
@@ -467,14 +468,14 @@ export class ClientPoints<TError extends ErrorPoint0> {
     policy,
     trigger,
     fetchOptions,
-    force,
+    pageDehydratedStateQueryOptions,
   }: {
     location: AnyLocation
     queryClient?: QueryClient
     policy?: PrefetchPagePolicy
     trigger?: 'navigate' | 'linkHover'
     fetchOptions?: FetchOptions
-    force?: boolean
+    pageDehydratedStateQueryOptions?: ExtraUseQueryOptions
   }): Promise<PagePoint | undefined> => {
     // TODO: somehow do this requests in parallel
     // problem here, that we should know search params keys to generate correct queryKey
@@ -490,7 +491,7 @@ export class ClientPoints<TError extends ErrorPoint0> {
       policy,
       trigger,
       fetchOptions,
-      force,
+      pageDehydratedStateQueryOptions,
     })
     return page
   }

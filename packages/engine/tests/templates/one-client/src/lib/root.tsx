@@ -17,5 +17,6 @@ export const root = Point0.lets
     refetchOnReconnect: false,
     refetchInterval: false,
     refetchIntervalInBackground: false,
+    staleTime: Infinity,
   })
   .root()

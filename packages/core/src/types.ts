@@ -13,10 +13,12 @@ import type { StandardSchemaV1 } from '@standard-schema/spec'
 import type {
   InfiniteData,
   UseInfiniteQueryOptions as OriginalUseInfiniteQueryOptions,
+  UseMutationOptions as OriginalUseMutationOptions,
   UseQueryOptions as OriginalUseQueryOptions,
   UseInfiniteQueryResult,
   UseQueryResult,
 } from '@tanstack/react-query'
+import type { OpenAPIV3 } from 'openapi-types'
 import type { ResponseEffectsSetHelper, ResponseEffectsValues } from './effects.js'
 import type { ErrorPoint0 } from './error.js'
 import type {
@@ -37,7 +39,6 @@ import type {
   WideRequestMethod,
 } from './request0.js'
 import type { GetByPath, SetByPath } from './utils.js'
-import type { OpenAPIV3 } from 'openapi-types'
 
 // basic
 
@@ -86,6 +87,8 @@ export type QueryKey = readonly [
   inputStringified: string,
   outputType: FetchServerOutputType,
 ]
+
+export type MutationKey = readonly [point0: 'point0', scope: PointsScope, type: PointType, name: PointName]
 
 export type Infer<
   TPointType extends PointType,
@@ -1047,7 +1050,8 @@ export type FinalInputRawOrUndefined<
 >
 
 // Keep it for mutation options, so if input can be undefined, then it also can be void, so we can not pass input at all
-type UndefinedOrVoidIfEmptyObject<T> = IsEmptyObjectSpecial<T> extends true ? undefined | void : T
+type UndefinedOrVoidIfEmptyObjectSuitable<T> =
+  IsEmptyObjectSpecial<T> extends true ? undefined | void : IsObjectOptional<T> extends true ? undefined | void | T : T
 
 export type FinalInputRawOrUndefinedOrVoid<
   TPointType extends PointType,
@@ -1056,7 +1060,7 @@ export type FinalInputRawOrUndefinedOrVoid<
   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TBodySchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = UndefinedOrVoidIfEmptyObject<
+> = UndefinedOrVoidIfEmptyObjectSuitable<
   FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>
 >
 
@@ -1267,6 +1271,16 @@ export type BasepathByBaseurl<TBaseUrl extends string | undefined> = TBaseUrl ex
 
 // fetching and queries
 
+export type UseMutationOptions<
+  TData = any,
+  TError = any,
+  TVariables = any,
+  TContext = unknown,
+> = OriginalUseMutationOptions<TData, TError, TVariables, TContext>
+export type ExtraUseMutationOptions<TData = any, TError = any, TVariables = any, TContext = unknown> = Omit<
+  UseMutationOptions<TData, TError, TVariables, TContext>,
+  'mutationFn' | 'mutationKey'
+>
 export type UseQueryOptions<
   TQueryFnData = any,
   TError = any,
@@ -1416,6 +1430,10 @@ export type UsePointQueryOptions<
       >
     : never
 
+// query cache result
+
+// export type
+
 // settings
 
 export type FetchOptionsFn = () => FetchOptions
@@ -1426,7 +1444,7 @@ export type ScrollPositionGetter = () => { x: number; y: number } | undefined
 export type ScrollPositionSetter = (position: { x: number; y: number }) => void
 export type ScrollPositionRestorePolicy = ({ prevLocation }: { prevLocation: AnyLocation | null }) => boolean | null
 
-export type QueryMode = 'server' | 'client' | 'serverAndClient'
+export type QueryMode = 'server' | 'client' | 'combined'
 export type PrefetchPagePolicy =
   | 'serverQuery'
   | 'clientQuery'
@@ -2113,6 +2131,7 @@ export type NiceRootStagePoint<
   | 'queryOptions'
   | 'infiniteQueryOptions'
   | 'pageQueryOptions'
+  | 'pageDehydratedStateQueryOptions'
   | 'componentQueryOptions'
   | 'providerQueryOptions'
   | 'layoutQueryOptions'
@@ -2214,6 +2233,7 @@ export type NicePluginStagePoint<
   | 'queryOptions'
   | 'infiniteQueryOptions'
   | 'pageQueryOptions'
+  | 'pageDehydratedStateQueryOptions'
   | 'componentQueryOptions'
   | 'providerQueryOptions'
   | 'layoutQueryOptions'
@@ -2311,6 +2331,7 @@ export type NiceBaseStagePoint<
   | 'queryOptions'
   | 'infiniteQueryOptions'
   | 'pageQueryOptions'
+  | 'pageDehydratedStateQueryOptions'
   | 'componentQueryOptions'
   | 'providerQueryOptions'
   | 'layoutQueryOptions'
@@ -2432,6 +2453,7 @@ export type NicePageStagePoint<
   | 'type'
   | 'Infer'
   | 'query'
+  | 'pageDehydratedStateQueryOptions'
   | 'infiniteQuery'
 >
 
@@ -2836,6 +2858,7 @@ export type NiceLayoutStagePoint<
   | 'use'
   | 'fetchOptions'
   | 'pageQueryOptions'
+  | 'pageDehydratedStateQueryOptions'
   | 'error'
   | 'pageError'
   | 'layoutError'
@@ -3456,7 +3479,24 @@ export type WithQueryIfSuitable<
 > = TQueryResultType extends 'query'
   ? WithFetchIfHasServerLoader<
       TServerLoaderOutput,
-      TLiteral | 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'fetchQuery' | 'prefetchQuery' | 'fetch'
+      | TLiteral
+      | 'useQuery'
+      | 'getQueryKey'
+      | 'getQueryOptions'
+      | 'fetchQuery'
+      | 'prefetchQuery'
+      | 'getQueryData'
+      | 'ensureQueryData'
+      | 'refetchQuery'
+      | 'setQueryData'
+      | 'getQueryCache'
+      | 'getQueriesCache'
+      | 'getQueryState'
+      | 'cancelQuery'
+      | 'invalidateQuery'
+      | 'removeQuery'
+      | 'resetQuery'
+      | 'fetch'
     >
   : TQueryResultType extends 'infiniteQuery'
     ? WithFetchIfHasServerLoader<
@@ -3467,6 +3507,17 @@ export type WithQueryIfSuitable<
         | 'getInfiniteQueryOptions'
         | 'fetchInfiniteQuery'
         | 'prefetchInfiniteQuery'
+        | 'getInfiniteQueryData'
+        | 'ensureInfiniteQueryData'
+        | 'refetchInfiniteQuery'
+        | 'setInfiniteQueryData'
+        | 'getInfiniteQueryCache'
+        | 'getInfiniteQueriesCache'
+        | 'getInfiniteQueryState'
+        | 'cancelInfiniteQuery'
+        | 'invalidateInfiniteQuery'
+        | 'removeInfiniteQuery'
+        | 'resetInfiniteQuery'
         | 'fetch'
       >
     : TLiteral
@@ -3678,7 +3729,24 @@ export type NiceActionReadyPoint<
   | 'fetchServerDetailed'
   | 'getFetchServerOptions'
   | (TQueryResultType extends 'query'
-      ? 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'fetchQuery' | 'prefetchQuery' | 'fetch'
+      ?
+          | 'useQuery'
+          | 'getQueryKey'
+          | 'getQueryOptions'
+          | 'fetchQuery'
+          | 'prefetchQuery'
+          | 'getQueryData'
+          | 'ensureQueryData'
+          | 'refetchQuery'
+          | 'setQueryData'
+          | 'getQueryCache'
+          | 'getQueriesCache'
+          | 'getQueryState'
+          | 'cancelQuery'
+          | 'invalidateQuery'
+          | 'removeQuery'
+          | 'resetQuery'
+          | 'fetch'
       : TQueryResultType extends 'infiniteQuery'
         ?
             | 'useInfiniteQuery'
@@ -3686,8 +3754,26 @@ export type NiceActionReadyPoint<
             | 'getInfiniteQueryOptions'
             | 'fetchInfiniteQuery'
             | 'prefetchInfiniteQuery'
+            | 'getInfiniteQueryData'
+            | 'ensureInfiniteQueryData'
+            | 'refetchInfiniteQuery'
+            | 'setInfiniteQueryData'
+            | 'getInfiniteQueryCache'
+            | 'getInfiniteQueriesCache'
+            | 'getInfiniteQueryState'
+            | 'cancelInfiniteQuery'
+            | 'invalidateInfiniteQuery'
+            | 'removeInfiniteQuery'
+            | 'resetInfiniteQuery'
             | 'fetch'
-        : 'useMutation' | 'getMutationOptions' | 'fetchMutation' | 'fetch')
+        :
+            | 'useMutation'
+            | 'getMutationKey'
+            | 'getMutationOptions'
+            | 'getMutationCache'
+            | 'getMutationsCache'
+            | 'fetchMutation'
+            | 'fetch')
 >
 
 export type NiceQueryReadyPoint<
@@ -3836,7 +3922,16 @@ export type NiceMutationReadyPoint<
   >,
   WithFetchIfHasServerLoader<
     TServerLoaderOutput,
-    'point' | 'type' | 'getMutationOptions' | 'useMutation' | 'fetchMutation' | 'fetch' | 'Infer'
+    | 'point'
+    | 'type'
+    | 'getMutationKey'
+    | 'getMutationOptions'
+    | 'getMutationCache'
+    | 'getMutationsCache'
+    | 'useMutation'
+    | 'fetchMutation'
+    | 'fetch'
+    | 'Infer'
   >
 >
 
@@ -4219,7 +4314,7 @@ export type NiceReadyPoint<
 >[TPointType]
 
 export type AnyNiceReadyPoint<
-  TPointType extends ReadyPointType = any,
+  TPointType extends ReadyPointType = ReadyPointType,
   TLetsReadyPointType extends UndefinedReadyPointType = UndefinedReadyPointType,
   TError extends ErrorPoint0 = any,
   TRequiredCtx extends RequiredCtx = any,

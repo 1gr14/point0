@@ -635,9 +635,9 @@ export class Fetcher<TError extends ErrorPoint0> {
           withPagesDehydratedState: false,
         })
         const dehydratedState = serializeErrorsInDehydratedState(originalDehydratedState, ErrorClass)
+        effects.set.status(200)
         const response = new Response(transformer.stringify({ dehydratedState }), {
           headers: { 'Content-Type': 'application/json' },
-          status: 200,
         })
         return {
           ...partialResult,

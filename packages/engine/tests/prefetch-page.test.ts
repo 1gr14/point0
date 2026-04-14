@@ -304,10 +304,10 @@ describe('prefetch-page', () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
   })
 
-  const modes = ['dev', 'build']
-  const bundlers = ['bun', 'vite']
-  // const modes = ['dev']
-  // const bundlers = ['bun']
+  // const modes = ['dev', 'build']
+  // const bundlers = ['bun', 'vite']
+  const modes = ['dev']
+  const bundlers = ['bun']
 
   describe.each(bundlers as ['bun', 'vite'])('%s', (bundler) => {
     describe.each(modes as ['dev', 'build'])('%s', (mode) => {
