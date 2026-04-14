@@ -1,6 +1,6 @@
 import * as flat0 from '@devp0nt/flat0'
 import { Route0, type AnyLocation, type AnyRoute } from '@devp0nt/route0'
-import { _ss, _ssRunWithServerStorageState, isQueryClientDehydratedStateQuery } from '@point0/core'
+import { _ss, _ssRunWithServerStorageState, isQueryClientDehydratedStateQuery, parseQueryKey } from '@point0/core'
 import type {
   AnyPoint,
   AppComponent,
@@ -715,44 +715,40 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         serverHash: string
       }
     | undefined {
-    const [check, scope, pointType, pointName, serverOrClient, finiteOrInfinite, inputStringified, outputType] =
-      queryKey
+    const obj = parseQueryKey(queryKey)
+    if (!obj) {
+      return undefined
+    }
+    const { scope, type, name, mode, finiteness, input, output, tags } = obj
     if (
-      check !== 'point0' ||
-      typeof serverOrClient !== 'string' ||
-      typeof pointType !== 'string' ||
-      typeof pointName !== 'string' ||
-      typeof outputType !== 'string' ||
-      typeof finiteOrInfinite !== 'string' ||
-      typeof inputStringified !== 'string' ||
-      typeof scope !== 'string'
+      typeof mode !== 'string' ||
+      typeof type !== 'string' ||
+      typeof name !== 'string' ||
+      typeof output !== 'string' ||
+      typeof finiteness !== 'string' ||
+      typeof input !== 'string' ||
+      typeof scope !== 'string' ||
+      !Array.isArray(tags)
     ) {
       return undefined
     }
-    const isServer = serverOrClient === 'server' || serverOrClient === 'combined'
-    const isClient = serverOrClient === 'client' || serverOrClient === 'combined'
-    const isCombined = serverOrClient === 'combined'
-    const isInfiniteQuery = finiteOrInfinite === 'infinite'
+    const isServer = mode === 'server' || mode === 'combined'
+    const isClient = mode === 'client' || mode === 'combined'
+    const isCombined = mode === 'combined'
+    const isInfiniteQuery = finiteness === 'infinite'
     const serverHash =
-      stringify({
-        isServer,
-        scope,
-        pointType,
-        pointName,
-        outputType,
-        isInfiniteQuery,
-        inputStringified,
-      }) ?? 'unknown'
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      stringify(obj) ?? 'unknown'
     return {
       isServer,
       isClient,
       isCombined,
       scope,
-      pointType: pointType as ReadyPointType,
-      pointName,
-      outputType,
+      pointType: type as ReadyPointType,
+      pointName: name,
+      outputType: output,
       isInfiniteQuery,
-      input: transformer.parse<InputRaw>(inputStringified),
+      input: transformer.parse<InputRaw>(input),
       serverHash,
     }
   }
@@ -986,8 +982,13 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         dehydratedState: relatedQueriesDehydratedState,
       })
       if (redirectTask) {
-        // replace last element with 'queryClientDehydratedStateRedirect'
-        const redirectQueryKey = queryKey.slice(0, -1).concat('queryClientDehydratedStateRedirect')
+        const redirectQueryKey: QueryKey = [
+          'point0',
+          {
+            ...queryKey[1],
+            output: 'queryClientDehydratedStateRedirect',
+          },
+        ]
         queryClient.setQueryDefaults(redirectQueryKey, {
           ...(restOptions as any),
         })

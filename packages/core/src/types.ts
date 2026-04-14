@@ -79,16 +79,22 @@ export type QueryResultTypeOrNever<TQueryResultType extends QueryResultType | Un
 // export type QueryKey = readonly [string, ...string[]]
 export type QueryKey = readonly [
   point0: 'point0',
-  scope: PointsScope,
-  type: PointType,
-  name: PointName,
-  serverOrClient: 'server' | 'client' | 'combined',
-  finiteOrInfinite: 'finite' | 'infinite',
-  inputStringified: string,
-  outputType: FetchServerOutputType,
+  {
+    scope: PointsScope
+    type: PointType
+    name: PointName
+    mode: 'server' | 'client' | 'combined'
+    finiteness: 'finite' | 'infinite'
+    tags: string[]
+    output: FetchServerOutputType
+    input: string
+  },
 ]
 
-export type MutationKey = readonly [point0: 'point0', scope: PointsScope, type: PointType, name: PointName]
+export type MutationKey = readonly [
+  point0: 'point0',
+  { scope: PointsScope; type: PointType; name: PointName; tags: string[] },
+]
 
 export type Infer<
   TPointType extends PointType,
@@ -1850,7 +1856,11 @@ export type FetchServerDetailedOutput<
       error: undefined
     }
 
-export type FetchServerOutputType = 'data' | 'queryClientDehydratedState'
+export type FetchServerOutputType =
+  | 'data'
+  | 'queryClientDehydratedState'
+  | 'queryClientDehydratedStateRedirect'
+  | 'html'
 
 // mountable app
 
@@ -2167,6 +2177,8 @@ export type NiceRootStagePoint<
   | 'prefetchPageOnLinkHover'
   | 'prefetchPagePolicy'
   | 'point'
+  | 'tag'
+  | 'description'
   | 'type'
   | 'Infer'
 >
@@ -2270,6 +2282,8 @@ export type NicePluginStagePoint<
   // | 'prefetchPageOnNavigate'
   // | 'prefetchPageOnLinkHover'
   | 'point'
+  | 'tag'
+  | 'description'
   | 'type'
   | 'Infer'
 >
@@ -2370,6 +2384,8 @@ export type NiceBaseStagePoint<
   | 'prefetchPageOnLinkHover'
   | 'prefetchPagePolicy'
   | 'point'
+  | 'tag'
+  | 'description'
   | 'type'
   | 'Infer'
 >
@@ -2450,6 +2466,8 @@ export type NicePageStagePoint<
   | 'prefetchPageOnLinkHover'
   | 'prefetchPagePolicy'
   | 'point'
+  | 'tag'
+  | 'description'
   | 'type'
   | 'Infer'
   | 'query'
@@ -2526,6 +2544,8 @@ export type NiceComponentStagePoint<
   | 'mapper'
   // | 'onPrefetchPage'
   | 'point'
+  | 'tag'
+  | 'description'
   | 'type'
   | 'Infer'
   | 'query'
@@ -2598,6 +2618,8 @@ export type NiceActionStagePoint<
   | 'ctx'
   | 'loader'
   | 'point'
+  | 'tag'
+  | 'description'
   | 'type'
   | 'Infer'
 >
@@ -2665,6 +2687,8 @@ export type NiceQueryStagePoint<
   | 'clientLoader'
   // | 'onPrefetchPage'
   | 'point'
+  | 'tag'
+  | 'description'
   | 'type'
   | 'Infer'
 >
@@ -2732,6 +2756,8 @@ export type NiceInfiniteQueryStagePoint<
   | 'clientLoader'
   // | 'onPrefetchPage'
   | 'point'
+  | 'tag'
+  | 'description'
   | 'type'
   | 'Infer'
 >
@@ -2799,6 +2825,8 @@ export type NiceMutationStagePoint<
   | 'loader'
   | 'clientLoader'
   | 'point'
+  | 'tag'
+  | 'description'
   | 'type'
   | 'Infer'
 >
@@ -2884,6 +2912,8 @@ export type NiceLayoutStagePoint<
   | 'prefetchPageOnLinkHover'
   | 'prefetchPagePolicy'
   | 'point'
+  | 'tag'
+  | 'description'
   | 'type'
   | 'Infer'
   | 'query'
@@ -2957,6 +2987,8 @@ export type NiceProviderStagePoint<
   | 'mapper'
   // | 'onPrefetchPage'
   | 'point'
+  | 'tag'
+  | 'description'
   | 'type'
   | 'Infer'
   | 'query'
@@ -3341,7 +3373,7 @@ export type NiceRootReadyPoint<
     TInnerProps,
     TQueriesDefinitions
   >,
-  'lets' | 'point' | 'type' | 'Infer'
+  'lets' | 'point' | 'tags' | 'type' | 'Infer'
 >
 
 export type NicePluginReadyPoint<
@@ -3390,7 +3422,7 @@ export type NicePluginReadyPoint<
     TInnerProps,
     TQueriesDefinitions
   >,
-  'point' | 'type' | 'Infer'
+  'point' | 'type' | 'tags' | 'Infer'
 >
 
 export type NicePristinePluginReadyPoint = NicePluginReadyPoint<
@@ -3463,7 +3495,7 @@ export type NiceBaseReadyPoint<
     TInnerProps,
     TQueriesDefinitions
   >,
-  'lets' | 'point' | 'type' | 'Infer'
+  'lets' | 'point' | 'type' | 'tags' | 'Infer'
 >
 
 export type WithFetchIfHasServerLoader<
@@ -3568,7 +3600,11 @@ export type NicePageReadyPoint<
     TInnerProps,
     TQueriesDefinitions
   >,
-  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Page' | 'X' | 'route'>
+  WithQueryIfSuitable<
+    TServerLoaderOutput,
+    TQueryResultType,
+    'point' | 'tags' | 'type' | 'Infer' | 'Page' | 'X' | 'route'
+  >
 >
 
 export type NiceComponentReadyPoint<
@@ -3617,7 +3653,7 @@ export type NiceComponentReadyPoint<
     TInnerProps,
     TQueriesDefinitions
   >,
-  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Component' | 'X'>
+  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'tags' | 'type' | 'Infer' | 'Component' | 'X'>
 >
 
 export type NiceLayoutReadyPoint<
@@ -3669,7 +3705,7 @@ export type NiceLayoutReadyPoint<
   WithQueryIfSuitable<
     TServerLoaderOutput,
     TQueryResultType,
-    'point' | 'type' | 'lets' | 'useValue' | 'getValue' | 'getValueWeak' | 'Infer' | 'Layout' | 'X' | 'route'
+    'point' | 'tags' | 'type' | 'lets' | 'useValue' | 'getValue' | 'getValueWeak' | 'Infer' | 'Layout' | 'X' | 'route'
   >
 >
 
@@ -3720,6 +3756,7 @@ export type NiceActionReadyPoint<
     TQueriesDefinitions
   >,
   | 'point'
+  | 'tags'
   | 'route'
   | 'method'
   | 'type'
@@ -3822,7 +3859,7 @@ export type NiceQueryReadyPoint<
     TInnerProps,
     TQueriesDefinitions
   >,
-  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
+  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'tags' | 'type' | 'Infer'>
 >
 
 export type NiceInfiniteQueryReadyPoint<
@@ -3871,7 +3908,7 @@ export type NiceInfiniteQueryReadyPoint<
     TInnerProps,
     TQueriesDefinitions
   >,
-  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
+  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'tags' | 'type' | 'Infer'>
 >
 
 export type NiceMutationReadyPoint<
@@ -3923,6 +3960,7 @@ export type NiceMutationReadyPoint<
   WithFetchIfHasServerLoader<
     TServerLoaderOutput,
     | 'point'
+    | 'tags'
     | 'type'
     | 'getMutationKey'
     | 'getMutationOptions'
@@ -3984,7 +4022,7 @@ export type NiceProviderReadyPoint<
   WithQueryIfSuitable<
     TServerLoaderOutput,
     TQueryResultType,
-    'point' | 'type' | 'useValue' | 'getValue' | 'getValueWeak' | 'Provider' | 'X' | 'Infer'
+    'point' | 'tags' | 'type' | 'useValue' | 'getValue' | 'getValueWeak' | 'Provider' | 'X' | 'Infer'
   >
 >
 

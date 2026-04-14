@@ -8,7 +8,9 @@ import type {
   ExtraUseMutationOptions,
   ExtraUseQueryOptions,
   MiddlewareFn,
+  MutationKey,
   NormalizedEndpoindOpenapiSchema,
+  QueryKey,
   ScrollPositionGetter,
   ScrollPositionSetter,
   UseInfiniteQueryOptions,
@@ -452,11 +454,27 @@ const mergeOptionsWithCallbacks = <TOptions extends Record<string, any>>(
 ): TOptions => {
   const merged = Object.assign({}, ...options.filter(Boolean)) as TOptions
   for (const callbackKey of callbackKeys) {
-    const callback = mergeCallbacks(...options.map((option) => (option as Record<string, any> | undefined)?.[callbackKey]))
+    const callback = mergeCallbacks(
+      ...options.map((option) => (option as Record<string, any> | undefined)?.[callbackKey]),
+    )
     if (!callback) {
       continue
     }
     ;(merged as Record<string, any>)[callbackKey] = callback
   }
   return merged
+}
+
+export const parseQueryKey = (queryKey: readonly unknown[]): QueryKey[1] | undefined => {
+  if (queryKey.at(0) !== 'point0') {
+    return undefined
+  }
+  return queryKey[1] as QueryKey[1]
+}
+
+export const parseMutationKey = (mutationKey: readonly unknown[] | undefined): MutationKey[1] | undefined => {
+  if (mutationKey?.at(0) !== 'point0') {
+    return undefined
+  }
+  return mutationKey[1] as MutationKey[1]
 }

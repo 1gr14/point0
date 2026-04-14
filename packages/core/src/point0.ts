@@ -54,7 +54,7 @@ import type {
 } from './eventer.js'
 import { ClientOnly, getFetch, setStatus } from './helpers.js'
 import { _getFakeClient, _ss } from './internals.js'
-import { getLogFnForPoint, log, type LogFn } from './logger.js'
+import { log, type LogFn } from './logger.js'
 import type {
   AppendProps,
   AppendQueries,
@@ -273,6 +273,8 @@ import {
   mergeMiddlewares,
   mergeMutationOptions,
   mergeQueryOptions,
+  parseMutationKey,
+  parseQueryKey,
   setByPath,
   toExtendedTransformer,
   toKebabCase,
@@ -375,6 +377,8 @@ export class Point0<
   readonly _hasServerLoader: boolean | undefined
   readonly _schemasHelpers: SchemaHelper[] | undefined
   readonly _searchSchemaKeys: string[] | true | undefined
+  readonly tags: string[]
+  readonly _description: string | undefined
   readonly _basepath: AnyRoute | undefined
   readonly _endpoint: EndpointDefinition | undefined
   get method(): TPointType extends RequestableReadyPointType ? WideRequestMethod : undefined {
@@ -558,6 +562,8 @@ export class Point0<
     _hasServerLoader?: boolean | undefined
     _schemasHelpers?: SchemaHelper[] | undefined
     _searchSchemaKeys?: string[] | true | undefined
+    tags?: string[]
+    _description?: string
     _basepath?: AnyRoute | undefined
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
@@ -646,6 +652,8 @@ export class Point0<
     this._hasServerLoader = options._hasServerLoader ?? undefined
     this._schemasHelpers = options._schemasHelpers ?? undefined
     this._searchSchemaKeys = options._searchSchemaKeys
+    this.tags = options.tags ?? []
+    this._description = options._description ?? undefined
     this._basepath = options._basepath ?? undefined
     this._endpoint = options._endpoint ?? undefined
     this._endpointPrefix = options._endpointPrefix ?? undefined
@@ -738,6 +746,8 @@ export class Point0<
     _hasServerLoader?: boolean | undefined
     _schemasHelpers?: SchemaHelper[] | undefined
     _searchSchemaKeys?: string[] | true | undefined
+    tags?: string[]
+    _description?: string
     _basepath?: AnyRoute | undefined
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
@@ -877,6 +887,8 @@ export class Point0<
       _hasServerLoader: set('_hasServerLoader'),
       _schemasHelpers: set('_schemasHelpers'),
       _searchSchemaKeys: set('_searchSchemaKeys'),
+      tags: set('tags'),
+      _description: set('_description'),
       _basepath: set('_basepath'),
       _endpoint: set('_endpoint'),
       _endpointPrefix: set('_endpointPrefix'),
@@ -2270,11 +2282,71 @@ export class Point0<
 
   // general settings
 
+  tag(
+    ...tags: [string, ...string[]]
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  > {
+    return this._continue({
+      tags: [...new Set([...this.tags, ...tags])],
+    }) as never
+  }
+
+  description(
+    description: string,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  > {
+    return this._continue({
+      _description: [this.description, description].filter(Boolean).join('\n\n'),
+    }) as never
+  }
+
   schemaHelper(
     schemaHelper: SchemaHelper | undefined | false | null,
-  ): NiceRootStagePoint<
+  ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
-    'root',
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TError,
     TCtx,
@@ -7173,6 +7245,11 @@ export class Point0<
       ...set('_polhPolicy'),
       ...set('_polhDuration'),
       ...set('_ponPolicy'),
+      tags: [...new Set([...this.tags, ...point.tags])],
+      _description:
+        point._description || this._description
+          ? [this._description, point._description].filter(Boolean).join('\n\n')
+          : undefined,
       _onPrefetchMountableFns: [...this._onPrefetchMountableFns, ...point._onPrefetchMountableFns],
       ...set('_errorComponent'),
       ...set('_layoutErrorComponent'),
@@ -7796,6 +7873,7 @@ export class Point0<
       __POINT0_INSTANCE__: true,
       Infer: point.Infer,
       point,
+      tags: point.tags,
       lets: point.lets.bind(point),
 
       getQueryKey: point.getQueryKey.bind(point),
@@ -8718,15 +8796,18 @@ export class Point0<
   }): QueryKey {
     return [
       'point0',
-      this.scope,
-      this.type,
-      this.name,
-      'server',
-      isInfiniteQuery ? 'infinite' : 'finite',
-      this._getTransformer().stringify(
-        this._rawInputToRoutedRawInputForQueryKey({ inputRaw: input as never }),
-      ) as string,
-      outputType,
+      {
+        scope: this.scope,
+        type: this.type,
+        name: this.name,
+        mode: 'server',
+        finiteness: isInfiniteQuery ? 'infinite' : 'finite',
+        tags: this.tags,
+        output: outputType,
+        input: this._getTransformer().stringify(
+          this._rawInputToRoutedRawInputForQueryKey({ inputRaw: input as never }),
+        ) as string,
+      },
     ]
   }
 
@@ -8739,15 +8820,18 @@ export class Point0<
   }): QueryKey {
     return [
       'point0',
-      this.scope,
-      this.type,
-      this.name,
-      'client',
-      isInfiniteQuery ? 'infinite' : 'finite',
-      this._getTransformer().stringify(
-        this._rawInputToRoutedRawInputForQueryKey({ inputRaw: input as never }),
-      ) as string,
-      'data',
+      {
+        scope: this.scope,
+        type: this.type,
+        name: this.name,
+        mode: 'client',
+        finiteness: isInfiniteQuery ? 'infinite' : 'finite',
+        tags: this.tags,
+        output: 'data',
+        input: this._getTransformer().stringify(
+          this._rawInputToRoutedRawInputForQueryKey({ inputRaw: input as never }),
+        ) as string,
+      },
     ]
   }
 
@@ -8762,15 +8846,18 @@ export class Point0<
   }): QueryKey {
     return [
       'point0',
-      this.scope,
-      this.type,
-      this.name,
-      'combined',
-      isInfiniteQuery ? 'infinite' : 'finite',
-      this._getTransformer().stringify(
-        this._rawInputToRoutedRawInputForQueryKey({ inputRaw: input as never }),
-      ) as string,
-      outputType,
+      {
+        scope: this.scope,
+        type: this.type,
+        name: this.name,
+        mode: 'combined',
+        finiteness: isInfiniteQuery ? 'infinite' : 'finite',
+        tags: this.tags,
+        output: outputType,
+        input: this._getTransformer().stringify(
+          this._rawInputToRoutedRawInputForQueryKey({ inputRaw: input as never }),
+        ) as string,
+      },
     ]
   }
 
@@ -9819,7 +9906,7 @@ export class Point0<
   }
 
   getMutationKey(): MutationKey {
-    return ['point0', this.scope, this.type, this.name]
+    return ['point0', { scope: this.scope, type: this.type, name: this.name, tags: this.tags }]
   }
 
   getMutationOptions(
@@ -9928,16 +10015,17 @@ export class Point0<
     return cache.find({
       predicate: (mutation) => {
         const mutationKey = mutation.options.mutationKey as MutationKey
-        if (mutationKey.at(0) !== 'point0') {
+        const obj = parseMutationKey(mutationKey)
+        if (!obj) {
           return false
         }
-        if (mutationKey[1] !== this.scope) {
+        if (obj.scope !== this.scope) {
           return false
         }
-        if (mutationKey[2] !== this.type) {
+        if (obj.type !== this.type) {
           return false
         }
-        if (mutationKey[3] !== this.name) {
+        if (obj.name !== this.name) {
           return false
         }
         const inputStringified = this._getTransformer().stringify(mutation.state.variables as InputRaw)
@@ -10002,20 +10090,35 @@ export class Point0<
         inputAnyProvided: undefined,
       }
     })()
+
+    const tagsProvided: string | string[] | ((tags: string[]) => boolean) | undefined = undefined as any
+    const tagsFunctionProvided = !tagsProvided
+      ? undefined
+      : typeof tagsProvided === 'function'
+        ? tagsProvided
+        : Array.isArray(tagsProvided)
+          ? (tags: string[]) => tags.some((tag) => tagsProvided.includes(tag))
+          : (tags: string[]) => tags.some((tag) => tagsProvided === tag)
     return cache.findAll({
       predicate: (mutation) => {
-        const mutationKey = mutation.options.mutationKey as MutationKey
-        if (mutationKey.at(0) !== 'point0') {
+        const obj = parseMutationKey(mutation.options.mutationKey)
+        if (!obj) {
           return false
         }
-        if (mutationKey[1] !== this.scope) {
+        if (obj.scope !== this.scope) {
           return false
         }
-        if (mutationKey[2] !== this.type) {
+        if (obj.type !== this.type) {
           return false
         }
-        if (mutationKey[3] !== this.name) {
+        if (obj.name !== this.name) {
           return false
+        }
+        if (tagsFunctionProvided) {
+          const checkResult = tagsFunctionProvided(obj.tags)
+          if (checkResult === false) {
+            return false
+          }
         }
         if (inputAnyProvided) {
           // continue
@@ -10096,7 +10199,7 @@ export class Point0<
     mode: modeProvided = this._getFinalQueryMode(),
     outputType: outputTypeProvided = 'data',
     input: inputProvided,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     tags: tagsProvided,
     finiteOrInfinite: finiteOrInfiniteProvided,
   }: {
@@ -10127,37 +10230,44 @@ export class Point0<
         inputAnyProvided: undefined,
       }
     })()
+    const tagsFunctionProvided = !tagsProvided
+      ? undefined
+      : typeof tagsProvided === 'function'
+        ? tagsProvided
+        : Array.isArray(tagsProvided)
+          ? (tags: string[]) => tags.some((tag) => tagsProvided.includes(tag))
+          : (tags: string[]) => tags.some((tag) => tagsProvided === tag)
     return (query) => {
-      const queryKey = query.queryKey as QueryKey
-      if (queryKey.at(0) !== 'point0') {
+      const obj = parseQueryKey(query.queryKey)
+      if (!obj) {
         return false
       }
-      const scope = queryKey[1]
-      if (scope !== this.scope) {
+      if (obj.scope !== this.scope) {
         return false
       }
-      const type = queryKey[2]
-      if (type !== this.type) {
+      if (obj.type !== this.type) {
         return false
       }
-      const name = queryKey[3]
-      if (name !== this.name) {
+      if (obj.name !== this.name) {
         return false
       }
-      const mode = queryKey[4]
-      if (mode !== modeProvided) {
+      if (obj.mode !== modeProvided) {
         return false
       }
       // mode can be also combined, then it is ok
-      const finiteOrInfinite = queryKey[5]
-      if (finiteOrInfinite !== finiteOrInfiniteProvided) {
+      if (obj.finiteness !== finiteOrInfiniteProvided) {
         return false
       }
-      const outputType = queryKey[7]
-      if (outputType !== outputTypeProvided) {
+      if (obj.output !== outputTypeProvided) {
         return false
       }
-      const inputStringified = queryKey[6]
+      if (tagsFunctionProvided) {
+        const checkResult = tagsFunctionProvided(obj.tags)
+        if (checkResult === false) {
+          return false
+        }
+      }
+      const inputStringified = obj.input
       if (inputAnyProvided) {
         // continue
       } else if (inputStringifiedProvided) {

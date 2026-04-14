@@ -59,11 +59,8 @@ sort ideas in descendant order of ids
 create-app
 
 REFACTOING 3000
-reoerdee querykey: ..., tags, outputType, input
-helper parseQueryKey()
 add tags so we can filter by input, or by tags, via input | {input, tags, outputType} | tag | tag[]
-description for meta (joined via \n)
-meta tags and description
+meta tags, description
 .clientOnly('loading') will use loading component as fallback
 --+
 Проверить, что можно вверху поинтс файла прописать ипорт поинтов статический, и тогда в бан заработает хот апдейт

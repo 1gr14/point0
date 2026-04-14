@@ -5,7 +5,7 @@ import { zodSchemaHelper } from '@point0/core/schema/zod'
 import { createNavigation } from '@point0/react-dom/router'
 import { describe, expect, it } from 'bun:test'
 import { z } from 'zod'
-import { createTestThings, ymlifyline } from './utils/internal-testing.js'
+import { createTestThings, lineQueryKey, ymlifyline } from './utils/internal-testing.js'
 
 describe('search', () => {
   const createRoot = () =>
@@ -131,7 +131,7 @@ describe('search', () => {
     `)
       expect(queryClientQueriesKeys).toMatchInlineSnapshot(`
       [
-        "point0|root|page|home|server|finite|{}|data",
+        "point0|root|page|home|server|finite||data|{}",
       ]
     `)
     })
@@ -225,11 +225,11 @@ describe('search', () => {
           const queryKeys = getQueryClient()
             .getQueryCache()
             .findAll()
-            .map((q) => q.queryKey.join('|'))
+            .map((q) => lineQueryKey(q.queryKey))
           expect(queryKeys).toMatchInlineSnapshot(`
           [
-            "point0|root|page|home|server|finite|{"?":{"filter":"my-filter","utm_source":"x"}}|data",
-            "point0|root|page|home|server|finite|{"?":{"filter":"my-filter","utm_source":"y"}}|data",
+            "point0|root|page|home|server|finite||data|{"?":{"filter":"my-filter","utm_source":"x"}}",
+            "point0|root|page|home|server|finite||data|{"?":{"filter":"my-filter","utm_source":"y"}}",
           ]
         `)
         },
@@ -264,7 +264,7 @@ describe('search', () => {
     `)
       expect(queryClientQueriesKeys).toMatchInlineSnapshot(`
       [
-        "point0|root|page|home|server|finite|{"?":{"filter":"my-filter","utm_source":"x"}}|data",
+        "point0|root|page|home|server|finite||data|{"?":{"filter":"my-filter","utm_source":"x"}}",
       ]
     `)
     })
@@ -380,11 +380,11 @@ describe('search', () => {
           const queryKeys = getQueryClient()
             .getQueryCache()
             .findAll()
-            .map((q) => q.queryKey.join('|'))
+            .map((q) => lineQueryKey(q.queryKey))
           expect(queryKeys).toMatchInlineSnapshot(`
           [
-            "point0|root|page|home|server|finite|{"?":{"filter":"my-filter"}}|data",
-            "point0|root|page|home|server|finite|{"?":{"filter":"another-filter"}}|data",
+            "point0|root|page|home|server|finite||data|{"?":{"filter":"my-filter"}}",
+            "point0|root|page|home|server|finite||data|{"?":{"filter":"another-filter"}}",
           ]
         `)
         },
@@ -420,7 +420,7 @@ describe('search', () => {
     `)
       expect(queryClientQueriesKeys).toMatchInlineSnapshot(`
       [
-        "point0|root|page|home|server|finite|{"?":{"filter":"my-filter"}}|data",
+        "point0|root|page|home|server|finite||data|{"?":{"filter":"my-filter"}}",
       ]
     `)
     })
@@ -548,8 +548,8 @@ describe('search', () => {
     `)
       expect(queryClientQueriesKeys).toMatchInlineSnapshot(`
       [
-        "point0|root|layout|app|server|finite|{}|data",
-        "point0|root|page|home|server|finite|{}|data",
+        "point0|root|layout|app|server|finite||data|{}",
+        "point0|root|page|home|server|finite||data|{}",
       ]
     `)
     })
@@ -676,13 +676,13 @@ describe('search', () => {
           const queryKeys = getQueryClient()
             .getQueryCache()
             .findAll()
-            .map((q) => q.queryKey.join('|'))
+            .map((q) => lineQueryKey(q.queryKey))
           expect(queryKeys).toMatchInlineSnapshot(`
           [
-            "point0|root|layout|app|server|finite|{"?":{"filter":"my-filter","utm_source":"x"}}|data",
-            "point0|root|page|home|server|finite|{"?":{"filter":"my-filter","utm_source":"x"}}|data",
-            "point0|root|layout|app|server|finite|{"?":{"filter":"my-filter","utm_source":"y"}}|data",
-            "point0|root|page|home|server|finite|{"?":{"filter":"my-filter","utm_source":"y"}}|data",
+            "point0|root|layout|app|server|finite||data|{"?":{"filter":"my-filter","utm_source":"x"}}",
+            "point0|root|page|home|server|finite||data|{"?":{"filter":"my-filter","utm_source":"x"}}",
+            "point0|root|layout|app|server|finite||data|{"?":{"filter":"my-filter","utm_source":"y"}}",
+            "point0|root|page|home|server|finite||data|{"?":{"filter":"my-filter","utm_source":"y"}}",
           ]
         `)
         },
@@ -725,8 +725,8 @@ describe('search', () => {
     `)
       expect(queryClientQueriesKeys).toMatchInlineSnapshot(`
       [
-        "point0|root|layout|app|server|finite|{"?":{"filter":"my-filter","utm_source":"x"}}|data",
-        "point0|root|page|home|server|finite|{"?":{"filter":"my-filter","utm_source":"x"}}|data",
+        "point0|root|layout|app|server|finite||data|{"?":{"filter":"my-filter","utm_source":"x"}}",
+        "point0|root|page|home|server|finite||data|{"?":{"filter":"my-filter","utm_source":"x"}}",
       ]
     `)
     })
@@ -881,13 +881,13 @@ describe('search', () => {
           const queryKeys = getQueryClient()
             .getQueryCache()
             .findAll()
-            .map((q) => q.queryKey.join('|'))
+            .map((q) => lineQueryKey(q.queryKey))
           expect(queryKeys).toMatchInlineSnapshot(`
           [
-            "point0|root|layout|app|server|finite|{"?":{"filter":"my-filter"}}|data",
-            "point0|root|page|home|server|finite|{"?":{"filter":"my-filter"}}|data",
-            "point0|root|layout|app|server|finite|{"?":{"filter":"another-filter"}}|data",
-            "point0|root|page|home|server|finite|{"?":{"filter":"another-filter"}}|data",
+            "point0|root|layout|app|server|finite||data|{"?":{"filter":"my-filter"}}",
+            "point0|root|page|home|server|finite||data|{"?":{"filter":"my-filter"}}",
+            "point0|root|layout|app|server|finite||data|{"?":{"filter":"another-filter"}}",
+            "point0|root|page|home|server|finite||data|{"?":{"filter":"another-filter"}}",
           ]
         `)
         },
@@ -931,8 +931,8 @@ describe('search', () => {
     `)
       expect(queryClientQueriesKeys).toMatchInlineSnapshot(`
       [
-        "point0|root|layout|app|server|finite|{"?":{"filter":"my-filter"}}|data",
-        "point0|root|page|home|server|finite|{"?":{"filter":"my-filter"}}|data",
+        "point0|root|layout|app|server|finite||data|{"?":{"filter":"my-filter"}}",
+        "point0|root|page|home|server|finite||data|{"?":{"filter":"my-filter"}}",
       ]
     `)
     })

@@ -25,7 +25,7 @@ describe('ssr', () => {
     const { fetchSsr } = await createTestThings({ ssr: true, points: [root, page] })
     const result = await fetchSsr(page)
     expect(result.queryClientQueriesPreview).toMatchInlineSnapshot(`
-      "point0|root|page|home|server|finite|{}|data
+      "point0|root|page|home|server|finite||data|{}
       {"x":1}
       "
     `)
@@ -54,9 +54,9 @@ describe('ssr', () => {
     const { fetchSsr, fetchesTale } = await createTestThings({ ssr: true, points: [root, page, component] })
     const result = await fetchSsr(page)
     expect(result.queryClientQueriesPreview).toMatchInlineSnapshot(`
-      "point0|root|page|home|server|finite|{}|data
+      "point0|root|page|home|server|finite||data|{}
       {"x":1}
-      point0|root|component|component|server|finite|{}|data
+      point0|root|component|component|server|finite||data|{}
       {"y":2}
       "
     `)
@@ -94,7 +94,7 @@ describe('ssr', () => {
     const { fetchSsr, fetchesTale } = await createTestThings({ ssr: true, points: [root, page, component] })
     const result = await fetchSsr(page)
     expect(result.queryClientQueriesPreview).toMatchInlineSnapshot(`
-      "point0|root|page|home|server|finite|{}|data
+      "point0|root|page|home|server|finite||data|{}
       {"x":1}
       "
     `)
@@ -136,9 +136,9 @@ describe('ssr', () => {
     const { fetchSsr, fetchesTale } = await createTestThings({ ssr: true, points: [root, page, component] })
     const result = await fetchSsr(page)
     expect(result.queryClientQueriesPreview).toMatchInlineSnapshot(`
-      "point0|root|page|home|server|finite|{}|data
+      "point0|root|page|home|server|finite||data|{}
       {"x":1}
-      point0|root|component|component|server|finite|{}|data
+      point0|root|component|component|server|finite||data|{}
       {"z":3}
       "
     `)

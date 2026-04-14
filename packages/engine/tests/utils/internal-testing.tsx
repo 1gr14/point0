@@ -6,6 +6,7 @@ import type {
   FetchOptions,
   PointsDefinition,
   ReadyPoint,
+  QueryKey,
 } from '@point0/core'
 import { UnheadProvider } from '@point0/core/unhead'
 import assert from 'node:assert'
@@ -234,6 +235,22 @@ const createFilteredConsole = () => {
     profileEnd: createFilteredMethod(originalConsole.profileEnd.bind(originalConsole)),
     timeStamp: createFilteredMethod(originalConsole.timeStamp.bind(originalConsole)),
   }
+}
+
+export const lineQueryKey = (queryKey: any) => {
+  const normalized = queryKey as QueryKey
+  const obj = normalized[1]
+  return [
+    'point0',
+    obj.scope,
+    obj.type,
+    obj.name,
+    obj.mode,
+    obj.finiteness,
+    obj.tags.join(','),
+    obj.output,
+    obj.input,
+  ].join('|')
 }
 
 type TestThingsState = {
@@ -532,7 +549,7 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
           // )
           const queryClientQueriesState = Object.fromEntries(
             queryClientState.map((query) => [
-              query.queryKey.join('|'),
+              lineQueryKey(query.queryKey),
               {
                 status: query.state.status,
                 data: query.state.data ? JSON.stringify(query.state.data) : undefined,
@@ -625,11 +642,11 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
       //   )
       // }
       const queryClientQueriesKeys =
-        queryClientDehydratedStateInDehydratedState?.queries.map((query) => query.queryKey.join('|')) || []
+        queryClientDehydratedStateInDehydratedState?.queries.map((query) => lineQueryKey(query.queryKey)) || []
       const queryClientQueriesState = queryClientDehydratedStateInDehydratedState
         ? Object.fromEntries(
             queryClientDehydratedStateInDehydratedState.queries.map((query) => [
-              query.queryKey.join('|'),
+              lineQueryKey(query.queryKey),
               {
                 status: query.state.status,
                 data: query.state.data ? JSON.stringify(query.state.data) : undefined,

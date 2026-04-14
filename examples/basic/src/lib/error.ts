@@ -9,6 +9,7 @@ import { env } from '@point0/core'
 import type { AdapterNavigateOptions, RedirectTaskSerialized } from '@point0/core/navigation'
 import { RedirectTask } from '@point0/core/navigation'
 
+// TODO: get real redirect plugin after pkg publication
 const redirectPlugin = <TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions>() => {
   return Error0.plugin().prop('redirect', {
     init: (redirect: RedirectTaskSerialized<TAdapterNavigateOptions> | RedirectTask<TAdapterNavigateOptions>) =>
@@ -34,6 +35,5 @@ export const AppError = Error0.use(statusPlugin())
   .use('stack', {
     serialize: ({ value }) => (env.mode.is.production ? undefined : value),
   })
-// TODO: get real redirect plugin after pkg publication
 
 export type AppError = InstanceType<typeof AppError>

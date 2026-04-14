@@ -5,6 +5,7 @@ import type { ClassLikeError0, ErrorPoint0 } from './error.js'
 import { getClientPoints } from './helpers.js'
 import { RedirectTask } from './redirect.js'
 import { superstore } from './super-store.js'
+import { parseQueryKey } from './utils.js'
 
 export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, DehydratedState, 'readonlyRedefine'>(
   '__POINT0_QUERY_CLIENT__',
@@ -249,10 +250,11 @@ export const findRedirectTaskInQueryClientCache = (
 
   for (const query of cache.findAll()) {
     if (isQueryClientDehydratedStateRedirectQuery(query)) {
-      if (query.queryKey[3] !== page.name) {
+      const obj = parseQueryKey(query.queryKey)
+      if (obj?.name !== page.name) {
         continue
       }
-      if (query.queryKey[6] !== inputTransformed) {
+      if (obj?.input !== inputTransformed) {
         continue
       }
       const maybeRedirect = (query.state.error as Record<string, unknown> | null)?.redirect
@@ -265,8 +267,9 @@ export const findRedirectTaskInQueryClientCache = (
   return undefined
 }
 
-export const isQueryClientDehydratedStateQuery = (query: { queryKey: QueryKey }) => {
-  return query.queryKey.at(-1) === 'queryClientDehydratedState'
+export const isQueryClientDehydratedStateQuery = (query: { queryKey: readonly unknown[] }) => {
+  const obj = parseQueryKey(query.queryKey)
+  return obj?.output === 'queryClientDehydratedState'
 }
 
 export const getDehydratedStateFromQueryClientDehydratedStateQuery = (query: { state: QueryState }) => {
@@ -278,6 +281,7 @@ export const getDehydratedStateFromQueryClientDehydratedStateQuery = (query: { s
   return undefined
 }
 
-export const isQueryClientDehydratedStateRedirectQuery = (query: { queryKey: QueryKey }) => {
-  return query.queryKey.at(-1) === 'queryClientDehydratedStateRedirect'
+export const isQueryClientDehydratedStateRedirectQuery = (query: { queryKey: readonly unknown[] }) => {
+  const obj = parseQueryKey(query.queryKey)
+  return obj?.output === 'queryClientDehydratedStateRedirect'
 }

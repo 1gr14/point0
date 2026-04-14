@@ -356,7 +356,7 @@ describe('mutation', () => {
       const queryClient = new QueryClient()
       const input = { id: 7 }
 
-      expect(q.getMutationKey()).toEqual(['point0', 'root', 'mutation', 'helpers'])
+      expect(q.getMutationKey()).toEqual(['point0', { scope: 'root', type: 'mutation', name: 'helpers', tags: [] }])
       expect(q.getMutationOptions().mutationKey).toEqual(q.getMutationKey())
 
       expect(q.getMutationCache(input, { queryClient })).toBeUndefined()
