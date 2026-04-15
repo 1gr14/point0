@@ -3,6 +3,8 @@ declare module '*.svg' {
   export default content
 }
 
+declare module '*.css' {}
+
 declare module '*.mdx' {
   import type { ComponentType } from 'react'
 

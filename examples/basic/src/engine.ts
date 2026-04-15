@@ -23,6 +23,7 @@ export const engine = Engine.create({
       points: async () => await import('./generated/point0/points.client'),
       routes: async () => await import('./generated/point0/routes'),
       generate: { points: './generated/point0/points.client.ts', routes: './generated/point0/routes.ts' },
+      bunPlugins: ['bun-plugin-tailwind'],
       importer: {
         deny: ['**/prisma.*'],
       },

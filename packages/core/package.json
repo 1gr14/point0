@@ -165,7 +165,7 @@
   },
   "dependencies": {
     "@standard-schema/spec": "^1.1.0",
-    "safe-stable-stringify": "^2.5.0",
+    "safe-stable-stringify": "catalog:",
     "use-context-selector": "^2.0.0"
   },
   "peerDependencies": {
@@ -173,16 +173,20 @@
     "@devp0nt/route0": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@unhead/react": "catalog:",
+    "unhead": "catalog:",
     "openapi-types": "catalog:",
     "react": "catalog:"
   },
   "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "@devp0nt/flat0": "catalog:",
     "@devp0nt/route0": "catalog:",
     "@sinclair/typebox": "catalog:",
-    "@types/bun": "^1.2.22",
+    "@types/bun": "catalog:",
     "@types/node": "^20.0.0",
     "@unhead/react": "catalog:",
+    "unhead": "catalog:",
     "@valibot/to-json-schema": "^1.6.0",
     "arktype": "catalog:",
     "esbuild-fix-imports-plugin": "^1.0.22",

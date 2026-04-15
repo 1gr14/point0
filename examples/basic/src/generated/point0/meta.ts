@@ -49,7 +49,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/home.tsx',
-        line: 34,
+        line: 38,
         column: 15,
       },
       import: async () => (await import('../../pages/home.js')).default,
@@ -167,7 +167,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-list.tsx',
-        line: 6,
+        line: 9,
         column: 28,
       },
       import: async () => (await import('../../pages/idea-list.js')).ideaListPage,

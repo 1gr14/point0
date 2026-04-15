@@ -12,18 +12,22 @@ export const ideaBestComponent = root.lets
     }
   })
   .wrapper(({ children }) => {
-    return <div style={{ padding: '10px', border: '1px solid #000' }}>{children}</div>
+    return <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">{children}</div>
   })
   .loading(() => {
     return <div>Loading...</div>
   })
   .component(({ data, props }) => {
     return (
-      <div>
-        <h1>Best Idea: {data.bestIdea.title}</h1>
-        <p>{props.cta}</p>
+      <div className="space-y-3">
+        <h2 className="text-xl font-semibold text-slate-900">Best Idea: {data.bestIdea.title}</h2>
+        <p className="text-sm text-slate-600">{props.cta}</p>
         <p>
-          <Link route="ideaView" input={{ id: data.bestIdea.id }}>
+          <Link
+            className="font-medium text-indigo-600 hover:text-indigo-700"
+            route="ideaView"
+            input={{ id: data.bestIdea.id }}
+          >
             View Idea Details
           </Link>
         </p>
@@ -42,12 +46,30 @@ export default generalLayout
   })
   .page(() => {
     return (
-      <div>
-        <h1>Welocome to IdeaNick!</h1>
-        <p>
-          Read about this project <Link route="about">here</Link>
+      <div className="mx-auto max-w-3xl space-y-6 rounded-2xl bg-slate-50 p-6 md:p-10">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome to IdeaNick!</h1>
+          <p className="text-slate-600">
+            Read about this project{' '}
+            <Link className="font-medium text-indigo-600 hover:text-indigo-700" route="about">
+              here
+            </Link>
+          </p>
+        </div>
+        <p className="rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-800">
+          Discover fresh ideas and build them faster.
         </p>
-        <ideaBestComponent.X cta="It is awesome!" />
+        <p>
+          <Link
+            className="inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+            route="ideaList"
+          >
+            Browse ideas
+          </Link>
+        </p>
+        <div>
+          <ideaBestComponent.X cta="It is awesome!" />
+        </div>
       </div>
     )
   })

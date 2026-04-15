@@ -69,9 +69,18 @@
     "@point0/core": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "wouter": "^3.7.1"
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "wouter": "catalog:"
   },
   "devDependencies": {
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@devp0nt/route0": "catalog:",
+    "@point0/core": "workspace:*",
+    "wouter": "catalog:",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
     "esbuild-fix-imports-plugin": "^1.0.22",

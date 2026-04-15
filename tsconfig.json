@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "types": ["node", "bun-types"],
+    "types": ["node", "bun"],
     "module": "NodeNext",
     "target": "ES2022",
     "lib": ["ES2022", "DOM"],

@@ -198,6 +198,7 @@
   },
   "peerDependencies": {
     "@devp0nt/route0": "catalog:",
+    "@devp0nt/flat0": "catalog:",
     "@point0/compiler": "workspace:*",
     "@point0/core": "workspace:*",
     "@tanstack/react-query": "catalog:",
@@ -206,7 +207,16 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "superjson": "catalog:",
     "@devp0nt/error0": "catalog:",
+    "@devp0nt/flat0": "catalog:",
+    "@devp0nt/route0": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@types/react": "catalog:",
+    "@tanstack/query-core": "catalog:",
+    "safe-stable-stringify": "catalog:",
     "@point0/cookies-store": "workspace:*",
     "@testing-library/react": "^16.3.1",
     "@types/bun": "^1.2.22",
