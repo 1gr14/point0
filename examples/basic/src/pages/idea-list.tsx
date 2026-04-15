@@ -40,12 +40,19 @@ export const ideaListPage = generalLayout.lets
           {ideas.map((idea) => (
             <div key={idea.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <h3 className="text-lg font-semibold text-slate-900">
-                <Link className="hover:text-cyan-700" route="ideaView" input={{ id: idea.id }}>
+                <Link className="text-slate-900 hover:text-blue-600" route="ideaView" input={{ id: idea.id }}>
                   {idea.title}
                 </Link>
               </h3>
               <p className="mt-1 text-slate-600">{idea.description}</p>
-              <p className="mt-3">
+              <div className="mt-3 flex items-center gap-2">
+                <Link
+                  className="inline-flex rounded-md bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
+                  route="ideaView"
+                  input={{ id: idea.id }}
+                >
+                  Open
+                </Link>
                 <Link
                   className="inline-flex rounded-md bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
                   route="ideaNews"
@@ -53,20 +60,19 @@ export const ideaListPage = generalLayout.lets
                 >
                   News
                 </Link>
-              </p>
+              </div>
             </div>
           ))}
         </div>
-        {query.isFetchingNextPage && <div className="text-sm text-slate-500">Loading more...</div>}
         {query.hasNextPage && (
           <button
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white cursor-pointer hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-500"
             disabled={query.isFetchingNextPage}
             onClick={() => {
               query.fetchNextPage().catch(console.error)
             }}
           >
-            Load more
+            {query.isFetchingNextPage ? 'Loading more...' : 'Load more'}
           </button>
         )}
       </div>

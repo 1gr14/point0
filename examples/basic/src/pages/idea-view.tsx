@@ -34,7 +34,7 @@ export const ideaViewPage = ideaLayout.lets
 
         <nav>
           <Link
-            className="inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+            className="inline-flex rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
             route="ideaUpdate"
             input={{ id: idea.id }}
           >

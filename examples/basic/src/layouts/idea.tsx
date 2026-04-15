@@ -12,8 +12,8 @@ export const ideaLayout = generalLayout
         <ul className="flex items-center gap-2 pb-2">
           <li>
             <NavLink
-              exactClassName="pointer-events-none bg-slate-900 text-white ring-slate-900"
-              className="inline-flex rounded-md px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+              exactClassName="pointer-events-none bg-transparent! border-slate-200!"
+              className="inline-flex rounded-md border border-transparent bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
               route="ideaView"
               input={{ id: idea.id }}
             >
@@ -22,8 +22,8 @@ export const ideaLayout = generalLayout
           </li>
           <li>
             <NavLink
-              exactClassName="pointer-events-none bg-slate-900 text-white ring-slate-900"
-              className="inline-flex rounded-md px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+              exactClassName="pointer-events-none bg-transparent! border-slate-200!"
+              className="inline-flex rounded-md border border-transparent bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
               route="ideaNews"
               input={{ id: idea.id }}
             >

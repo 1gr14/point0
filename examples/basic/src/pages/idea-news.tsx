@@ -1,11 +1,10 @@
 import { ideaLayout } from '@/layouts/idea'
 import { prisma } from '@/lib/prisma'
 import { root } from '@/lib/root'
+import { Input } from '@/ui/input'
+import { Textarea } from '@/ui/textarea'
 import { useState } from 'react'
 import * as z from 'zod'
-
-const inputClassName =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-800 outline-none ring-cyan-200 transition focus:border-cyan-400 focus:ring'
 
 export const ideaNewsPostCreateSchema = z.object({
   ideaId: z.number(),
@@ -72,16 +71,15 @@ export const ideaNewsPage = ideaLayout.lets
             </div>
           ))}
         </div>
-        {query.isFetchingNextPage && <div className="text-sm text-slate-500">Loading more...</div>}
         {query.hasNextPage && (
           <button
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white cursor-pointer hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-500"
             disabled={query.isFetchingNextPage}
             onClick={() => {
               query.fetchNextPage().catch(console.error)
             }}
           >
-            Load more
+            {query.isFetchingNextPage ? 'Loading more...' : 'Load more'}
           </button>
         )}
         <CreateIdeNewsPostComponent ideaId={idea.id} />
@@ -117,30 +115,23 @@ export const CreateIdeNewsPostComponent = ({ ideaId }: { ideaId: number }) => {
             })
         }}
       >
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700">Title</label>
-          <input
-            className={inputClassName}
-            type="text"
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value)
-            }}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700">Content</label>
-          <input
-            className={inputClassName}
-            type="text"
-            value={content}
-            onChange={(e) => {
-              setContent(e.target.value)
-            }}
-          />
-        </div>
+        <Input
+          label="Title"
+          value={title}
+          onValueChange={(nextValue) => {
+            setTitle(nextValue)
+          }}
+        />
+        <Textarea
+          label="Content"
+          rows={4}
+          value={content}
+          onValueChange={(nextValue) => {
+            setContent(nextValue)
+          }}
+        />
         <button
-          className="inline-flex rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-cyan-300"
+          className="inline-flex rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-blue-300"
           type="submit"
           disabled={mutation.isPending}
         >

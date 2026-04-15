@@ -5,6 +5,7 @@ import type { ClassLikeError0, ErrorPoint0 } from './error.js'
 import { getClientPoints } from './helpers.js'
 import { RedirectTask } from './redirect.js'
 import { superstore } from './super-store.js'
+import type { QueryKey } from './types.js'
 import { parseQueryKey } from './utils.js'
 
 export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, DehydratedState, 'readonlyRedefine'>(
@@ -21,7 +22,7 @@ export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, Dehydrated
       const ErrorClass = clientPoints.manager.root._Error
       const dehydratedState = serializeErrorsInDehydratedState(dehydratedStateOriginal, ErrorClass)
       const queriesWithQueryClientDehydratedStateOnly = dehydratedState.queries.filter(
-        (q) => isQueryClientDehydratedStateQuery(q) || isQueryClientDehydratedStateRedirectQuery(q),
+        (q) => isQueryClientDehydratedStateQuery(q) || toQueryClientDehydratedStateRedirectQuery(q),
       )
       if (queriesWithQueryClientDehydratedStateOnly.length > 0) {
         dehydratedState.queries = queriesWithQueryClientDehydratedStateOnly
@@ -210,7 +211,7 @@ export const removeRedirectsFromQueryClientCache = (queryClient: QueryClient, to
         }
       }
     }
-    if (isQueryClientDehydratedStateRedirectQuery(query)) {
+    if (toQueryClientDehydratedStateRedirectQuery(query)) {
       const maybeRedirect = (query.state.error as Record<string, unknown> | null)?.redirect
       const redirect = RedirectTask.is(maybeRedirect) ? maybeRedirect : undefined
       if (redirect) {
@@ -249,12 +250,13 @@ export const findRedirectTaskInQueryClientCache = (
   const inputTransformed = clientPoints.transformer.stringify(input)
 
   for (const query of cache.findAll()) {
-    if (isQueryClientDehydratedStateRedirectQuery(query)) {
-      const obj = parseQueryKey(query.queryKey)
-      if (obj?.name !== page.name) {
+    const redirectQuery = toQueryClientDehydratedStateRedirectQuery(query)
+    if (redirectQuery) {
+      const { paresedKey } = redirectQuery
+      if (paresedKey.name !== page.name) {
         continue
       }
-      if (obj?.input !== inputTransformed) {
+      if (paresedKey.input !== inputTransformed) {
         continue
       }
       const maybeRedirect = (query.state.error as Record<string, unknown> | null)?.redirect
@@ -281,7 +283,12 @@ export const getDehydratedStateFromQueryClientDehydratedStateQuery = (query: { s
   return undefined
 }
 
-export const isQueryClientDehydratedStateRedirectQuery = (query: { queryKey: readonly unknown[] }) => {
-  const obj = parseQueryKey(query.queryKey)
-  return obj?.output === 'queryClientDehydratedStateRedirect'
+export const toQueryClientDehydratedStateRedirectQuery = <T extends { queryKey: readonly unknown[] }>(
+  query: T,
+): { query: T; paresedKey: QueryKey[1] } | undefined => {
+  const paresedKey = parseQueryKey(query.queryKey)
+  if (paresedKey?.output === 'queryClientDehydratedStateRedirect') {
+    return { query, paresedKey }
+  }
+  return undefined
 }

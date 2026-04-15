@@ -47,7 +47,10 @@ mcp as comments
 
 ЭКЗАМПЛЫ
 
-Причёска остальных экзамплов
+vite
+better-auth
+expo
+capacitor
 create-app
 --+
 Тесты
@@ -58,6 +61,10 @@ create-app
 
 REFACTOING 3000
 ...(E|e)nv...0 should be parsed as env object, and rename base to env0 (better in compiler say what will works as process.env like serverEnv0 is also process.env)
+Дев вотч глоб должен генерейтед тоже следить, но только не мету
+Провайдеры тоже должны биндиться на глобал зыс
+allow ignore in dev mode await import in engine, so generator still will not break
+when build we still want normal ogs, so specie nev varible to preserve color logs while build
 points в кткс и лоадере должен быть сервер поинтс, да и вообще ну их, просто из энжины возьмём getServerPoints и так и будем делать, ну или там должны быть штуки для фильтрации поинтов
 Лоадеру разрешить вернуть реакт сервер компонент а не дата
 Пустой пейдж или компонент или что там в случае получения из лоадера компонента рендерит его

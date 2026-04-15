@@ -257,6 +257,7 @@ import type {
   WithError,
 } from './types.js'
 import {
+  bindToGlobalThisToAvoidMultipleInstances,
   blankDataTransformerExtended,
   generateId,
   getByPath,
@@ -6872,9 +6873,10 @@ export class Point0<
 
   private _getProviderLikeProps() {
     return {
-      _ProviderReactContext: createContext<MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
-        null as never,
-      ) as never,
+      _ProviderReactContext: bindToGlobalThisToAvoidMultipleInstances(
+        `__POINT0_PROVIDER_REACT_CONTEXT__${this.toString()}`,
+        createContext<MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(null as never) as never,
+      ),
       _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
         if (!point._ProviderReactContext) {
           throw new Error(`ProviderReactContext not found on point ${point.toStringWithLocation()}`)

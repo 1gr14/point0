@@ -20,7 +20,7 @@
     "prisma:migrate:dev": "cross-env NODE_ENV=development prisma migrate dev",
     "prisma:migrate:deploy": "cross-env NODE_ENV=development prisma migrate deploy",
     "seed": "cross-env NODE_ENV=development bun run ./src/lib/seed.ts",
-    "postinstall": "bun run prisma:migrate:deploy && bun run prisma:generate && bun run seed"
+    "prepare": "bun run prisma:migrate:deploy && bun run prisma:generate && point0 generate && bun run seed"
   },
   "dependencies": {
     "bun-plugin-tailwind": "^0.1.2",

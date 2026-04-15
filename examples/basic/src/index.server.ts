@@ -1,6 +1,5 @@
 import { engine } from './engine'
-import { validateServerEnv } from './lib/env'
 
-validateServerEnv()
 await engine.prepare()
+await import('./lib/env').then((m) => m.validateServerEnv())
 await import('./app.server')

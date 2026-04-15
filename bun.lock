@@ -71,36 +71,6 @@
         "typescript": "catalog:",
       },
     },
-    "examples/basic copy": {
-      "name": "@point0/example-basic-copy",
-      "version": "1.0.0",
-      "dependencies": {
-        "@devp0nt/error0": "catalog:",
-        "@devp0nt/route0": "catalog:",
-        "@point0/basic-auth": "workspace:*",
-        "@point0/compiler": "workspace:*",
-        "@point0/cookies-store": "workspace:*",
-        "@point0/core": "workspace:*",
-        "@point0/engine": "workspace:*",
-        "@point0/openapi": "workspace:*",
-        "@point0/react-dom": "workspace:*",
-        "react": "catalog:",
-        "react-dom": "catalog:",
-        "server-only": "^0.0.1",
-        "superjson": "catalog:",
-      },
-      "devDependencies": {
-        "@svgr/core": "^8.1.0",
-        "@svgr/plugin-jsx": "^8.1.0",
-        "@types/bun": "catalog:",
-        "@types/react": "catalog:",
-        "@types/react-dom": "catalog:",
-        "cross-env": "^10.0.0",
-        "ncp": "^2.0.0",
-        "rimraf": "^6.0.1",
-        "typescript": "catalog:",
-      },
-    },
     "examples/better-auth": {
       "name": "@point0/better-auth",
       "version": "1.0.0",
@@ -1196,8 +1166,6 @@
     "@point0/engine": ["@point0/engine@workspace:packages/engine"],
 
     "@point0/example-basic": ["@point0/example-basic@workspace:examples/basic"],
-
-    "@point0/example-basic-copy": ["@point0/example-basic-copy@workspace:examples/basic copy"],
 
     "@point0/example-capacitor": ["@point0/example-capacitor@workspace:examples/capacitor"],
 

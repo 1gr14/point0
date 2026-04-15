@@ -24,7 +24,7 @@ export const ideaBestComponent = root.lets
         <p className="text-sm text-slate-600">{props.cta}</p>
         <p>
           <Link
-            className="font-medium text-indigo-600 hover:text-indigo-700"
+            className="font-medium text-blue-700 hover:text-blue-600"
             route="ideaView"
             input={{ id: data.bestIdea.id }}
           >
@@ -51,22 +51,11 @@ export default generalLayout
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome to IdeaNick!</h1>
           <p className="text-slate-600">
             Read about this project{' '}
-            <Link className="font-medium text-indigo-600 hover:text-indigo-700" route="about">
+            <Link className="font-medium text-blue-700 hover:text-blue-600" route="about">
               here
             </Link>
           </p>
         </div>
-        <p className="rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-800">
-          Discover fresh ideas and build them faster.
-        </p>
-        <p>
-          <Link
-            className="inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-            route="ideaList"
-          >
-            Browse ideas
-          </Link>
-        </p>
         <div>
           <ideaBestComponent.X cta="It is awesome!" />
         </div>

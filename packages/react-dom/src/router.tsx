@@ -606,7 +606,7 @@ export const createNavLink = <
       if (relation.ancestor) {
         return { type: 'ancestor', exact: false, same: false, ancestor: true, descendant: false, unmatched: false }
       }
-
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (relation.descendant) {
         return { type: 'descendant', exact: false, same: false, ancestor: false, descendant: true, unmatched: false }
       }
