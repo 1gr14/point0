@@ -6,6 +6,9 @@ export const engine = Engine.create({
   generate: { meta: './generated/point0/meta.ts' },
   server: {
     scope: 'root',
+    importer: {
+      mock: ['react-native'],
+    },
     port: 3000,
     entry: { main: './index.server.ts' },
     generate: { points: './generated/point0/points.server.ts' },

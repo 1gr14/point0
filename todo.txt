@@ -46,7 +46,6 @@ mcp as comments
 
 
 ЭКЗАМПЛЫ
-expo
 create-app
 --+
 Тесты

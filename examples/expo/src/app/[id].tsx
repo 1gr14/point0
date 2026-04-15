@@ -1,12 +1,21 @@
+import { prisma } from '@/lib/prisma'
 import { root } from '@/lib/root'
+import { env } from '@point0/core'
 import { Stack, useLocalSearchParams } from 'expo-router'
 import { StyleSheet, Text, View } from 'react-native'
-import { ideaQuery } from '../ideas'
-import { env } from '@point0/core'
+import * as z from 'zod'
 
-export const ideaScreenComponent = root
-  .lets<{ id: number }>('component', 'idea')
-  .with(ideaQuery, ({ props: { id } }) => ({ id }))
+// and we also can have loader right in expo code
+// export const ideaScreenComponent = root.lets.component<{ id: number }>().with(ideaQuery, ({ props: { id } }) => ({ id }))...
+
+// we can use ready query here
+export const ideaScreenComponent = root.lets
+  .component()
+  .input(z.object({ id: z.number() }))
+  .loader(async ({ input: { id } }) => {
+    const idea = await prisma.idea.findUniqueOrThrow({ where: { id } })
+    return { idea }
+  })
   .component(({ data: { idea } }) => {
     return (
       <View style={styles.container}>
@@ -20,7 +29,9 @@ export const ideaScreenComponent = root
 
 export default env.side.define.unsafe.client(function IdeaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  return <ideaScreenComponent.X id={Number(id)} />
+  // in case if we usu usual query and componet props
+  // return <ideaScreenComponent.X id={Number(id)} />
+  return <ideaScreenComponent.X input={{ id: Number(id) }} />
 })
 
 const styles = env.side.define.unsafe.client(
