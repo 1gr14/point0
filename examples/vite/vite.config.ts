@@ -11,9 +11,9 @@ export default defineViteConfig((options) => {
   return {
     plugins: [
       react({ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }),
-      tailwindcss(),
       svgr(),
       tsconfigPaths({ loose: true }),
+      tailwindcss(),
       // options.side === 'client' ? analyzer() : null,
     ] as PluginOption[],
   }

@@ -819,8 +819,6 @@ export class Fetcher<TError extends ErrorPoint0> {
               response,
             }
           }
-          // // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
-          // if (error instanceof Error && error.message.includes('<!-- __Target__ --> not found')) {
           const indexHtml = await client.getOriginalIndexHtmlWithEnvs(request.original.url)
           const response = new Response(indexHtml, {
             headers: { 'Content-Type': 'text/html' },
@@ -832,8 +830,6 @@ export class Fetcher<TError extends ErrorPoint0> {
             error: error0,
           }
         }
-        // throw error
-        // }
       } else if (client.indexHtml) {
         const indexHtml = await client.getOriginalIndexHtmlWithEnvs(request.original.url)
         const response = new Response(indexHtml, {
