@@ -1,5 +1,13 @@
 import { mount } from '@point0/react-dom/mount'
-import App from './app.js'
-import points from './lib/points.client.js'
+import App from '@/app.client'
+import points from '@/generated/point0/points.client'
+import { validateClientEnv } from '@/lib/env'
+import '@/styles/tailwind.css'
 
+validateClientEnv()
 mount(App, points)
+
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+if (import.meta.hot) {
+  import.meta.hot.accept()
+}

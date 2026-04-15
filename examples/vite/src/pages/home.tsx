@@ -1,47 +1,35 @@
-import { superstore } from '@point0/core'
-import { useEffect, useState } from 'react'
-import * as z from 'zod'
+import { generalLayout } from '@/layouts/general.js'
 import { Link } from '@/lib/navigate'
-// import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper.js'
-import Icon from '../assets/icon.svg?react'
-import { generalLayout } from '../layouts/general.js'
-import { client } from '../lib/client.js'
-import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
-import { routes } from '../lib/routes.js'
-import { ExternalHelperComponent } from './home.helper.js'
-// import { prisma } from '../lib/prisma'
+import { prisma } from '@/lib/prisma'
+import { root } from '@/lib/root'
 
-// const something = SuperStore.define('something', () => {
-//   return {
-//     random: Math.random(),
-//     date: new Date(),
-//     stable: 123,
-//     var: 0,
-//   }
-// })
-// const someRandom = Point0.define('someRandom', () => Math.random(), true)
-const someDate = superstore.define('someDate', () => new Date(), 'clientServerTransferredSsr')
-const someStable = superstore.define('someStable', () => 123, 'clientServerTransferredSsr')
-const someVar = superstore.define('someVar', () => 0, 'clientServerTransferredSsr')
-
-export const BestIdeaComponent = client
-  .lets<{ cta: string }>('component', 'bestIdea')
-  .input(z.object({ x: z.coerce.number() }))
-  .loader(async ({ ctx, input }) => ({
-    bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
-    y: input.x * 5,
-  }))
-  .wrapper(({ children }) => {
-    return children
+export const ideaBestComponent = root.lets
+  .component<{ cta: string }>()
+  .loader(async () => {
+    return {
+      // fake best idea
+      bestIdea: await prisma.idea.findFirstOrThrow({ orderBy: { id: 'desc' } }),
+    }
   })
-  .component(function Z({ data, props }) {
+  .wrapper(({ children }) => {
+    return <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">{children}</div>
+  })
+  .loading(() => {
+    return <div>Loading...</div>
+  })
+  .component(({ data, props }) => {
     return (
-      <div>
-        <h1>Best Ideax {data.y}</h1>
-        <p>{props.cta}</p>
-        <p>{data.bestIdea.title}</p>
+      <div className="space-y-3">
+        <h2 className="text-xl font-semibold text-slate-900">Best Idea: {data.bestIdea.title}</h2>
+        <p className="text-sm text-slate-600">{props.cta}</p>
         <p>
-          <Link to={routes.idea({ id: data.bestIdea.id })}>More</Link>
+          <Link
+            className="font-medium text-blue-700 hover:text-blue-600"
+            route="ideaView"
+            input={{ id: data.bestIdea.id }}
+          >
+            View Idea Details
+          </Link>
         </p>
       </div>
     )
@@ -51,76 +39,26 @@ export default generalLayout
   .lets('page', 'home', '/')
   .head({
     title: 'IdeaNick Forever!',
-    titleTemplate: undefined,
+    titleTemplate: null,
+  })
+  .loading(() => {
+    return <div>Loading...</div>
   })
   .page(() => {
-    const [state, setState] = useState(someVar.get())
-    const [state2, setState2] = useState(0)
-    useEffect(() => {
-      someVar.set(state)
-    }, [state])
-    useEffect(() => {
-      setTimeout(() => {
-        // console.info(clientCtx1.getValue())
-      }, 1000)
-    }, [])
-    const ctx1 = clientCtx1.useValue()
-    const ctx2 = clientCtx2.useValue()
-    const x = clientCtx1.useValue('shmest')
-    const y = clientCtx1.useValue(['test', 'shmest'])
-    someStable.set(456)
     return (
-      <div>
-        <button
-          onClick={() => {
-            setState(state + 1)
-            setState2(state2 + 1)
-          }}
-        >
-          Click me
-        </button>
-        <p>State: {state}</p>
-        <p>State2: {state2}</p>
-        <hr />
-        <HelperComponent />
-        <hr />
-        <ExternalHelperComponent />
-        {/* <ExternalHelperComponent2.Component /> */}
-        {/* <ExternalHelperComponent2.Component /> */}
-        <hr />
-        <p>Something date: {someDate.get().getTime()}</p>
-        <p>Something stable: {someStable.get()}</p>
-        <h1>Welcome to IdeaNick</h1>
-        <p>Test: {ctx1.test}</p>
-        <p>Test: {ctx2.ideasCountX3}</p>
-        <p>X: {x}</p>
-        <p>Y.test: {y.test}</p>
-        <p>Y.shmest: {y.shmest}</p>
-        <p>Discover and share innovative ideas that can change the world!</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 0' }}>
-          <Icon style={{ width: '24px', height: '24px', color: '#007bff' }} />
-          <span>SVG iconxxxx imported as React component via Vite SVGR plugin</span>
+      <div className="mx-auto  space-y-6">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome to IdeaNick!</h1>
+          <p className="text-slate-600">
+            Read about this project{' '}
+            <Link className="font-medium text-blue-700 hover:text-blue-600" route="about">
+              here
+            </Link>
+          </p>
         </div>
-        <BestIdeaComponent.Component cta="It is awesome!" input={{ x: 10 }} />
-        <nav>
-          <Link to="/ideas">Browse Ideas</Link>
-        </nav>
+        <div>
+          <ideaBestComponent.X cta="It is awesome!" />
+        </div>
       </div>
     )
   })
-
-const HelperComponent = () => {
-  const [state, setState] = useState(0)
-  return (
-    <div>
-      <p>Helper: {state}</p>
-      <button
-        onClick={() => {
-          setState(state + 1)
-        }}
-      >
-        Click me
-      </button>
-    </div>
-  )
-}

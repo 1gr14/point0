@@ -617,7 +617,7 @@ try {
     this.log({
       level: 'info',
       category: ['client'],
-      message: `Started http://localhost:${this.port}`,
+      message: `Client started http://localhost:${this.port}`,
     })
     return { bunViteDevServer, viteDevServer }
   }

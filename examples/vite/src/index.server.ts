@@ -1,8 +1,7 @@
-import { engine } from './engine.js'
+import { engine } from './engine'
 
 await engine.prepare()
-await engine.serve({
-  requiredCtx: undefined,
-})
+await import('./lib/env').then((m) => m.validateServerEnv())
+await import('./app.server')
 
 export const dispose = engine.dispose.bind(engine)

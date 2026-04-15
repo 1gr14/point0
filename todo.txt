@@ -97,6 +97,7 @@ types.ts file thet reexport only needed types
 index exports only realy used fns and helpers without types
 pipeline
 examples has real versions, not just catalog, and odcker file is own only its code
+catalog versions scripts never use catalog in places, but just hardly replace versions with setted in catalog, also applies it to @point0/ packages to current version
 In error0 import RedirectTask from "@point0/core/navigate"
 
 

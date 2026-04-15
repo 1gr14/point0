@@ -1,28 +1,36 @@
-import { Link } from '@/lib/navigate'
-import { routes } from '../lib/routes'
-import { generalLayout } from './general'
+import { generalLayout } from '@/layouts/general'
+import { ideaViewQuery } from '@/lib/idea'
+import { NavLink } from '@/lib/navigate'
 
 export const ideaLayout = generalLayout
-  .lets('layout', 'ideaLayout', '/ideas/:id')
-  .loader(async ({ ctx, params: { id } }) => {
-    const idea = await ctx.prisma.idea.findUniqueOrThrow({
-      where: { id: +id },
-    })
-    return { idea }
-  })
+  .lets('layout', 'idea', '/ideas/:id')
+  .with(ideaViewQuery, ({ params: { id } }) => ({ id: +id }))
   .layout(({ children, data: { idea } }) => {
     return (
-      <div>
-        <h2>Idea: {idea.title}</h2>
-        <ul>
+      <div className="space-y-5">
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900">{idea.title}</h2>
+        <ul className="flex items-center gap-2 pb-2">
           <li>
-            <Link to={routes.idea({ id: idea.id })}>Info</Link>
+            <NavLink
+              exactClassName="pointer-events-none bg-transparent! border-slate-200!"
+              className="inline-flex rounded-md border border-transparent bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
+              route="ideaView"
+              input={{ id: idea.id }}
+            >
+              Info
+            </NavLink>
           </li>
           <li>
-            <Link to={routes.ideaNews.get({ id: idea.id })}>News</Link>
+            <NavLink
+              exactClassName="pointer-events-none bg-transparent! border-slate-200!"
+              className="inline-flex rounded-md border border-transparent bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
+              route="ideaNews"
+              input={{ id: idea.id }}
+            >
+              News
+            </NavLink>
           </li>
         </ul>
-        <hr />
         {children}
       </div>
     )

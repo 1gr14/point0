@@ -2,33 +2,32 @@ import { Engine } from '@point0/engine'
 
 export const engine = Engine.create({
   file: import.meta.url,
-  // clientsServerOutdir: '../dist/server',
-  // clientsSelfOutdir: '../dist',
   ssr: true,
-  pointsGlob: ['**/*.{ts,tsx,mdx}'],
+  pointsGlob: '**/*.{ts,tsx,mdx}',
+  generate: { meta: './generated/point0/meta.ts' },
+  viteConfig: '../vite.config.ts',
   server: {
-    scope: 'client',
-    devWatchGlob: ['**/*.{ts,tsx,mdx}'],
-    points: async () => await import('./lib/points.server'),
-    generate: { points: './lib/points.server.ts' },
-    port: 3020,
-    entry: './index.server.ts',
+    scope: 'root',
+    port: 3000,
+    entry: { main: './index.server.ts' },
+    points: async () => await import('./generated/point0/points.server'),
+    generate: { points: './generated/point0/points.server.ts' },
     outdir: '../dist/server',
-    viteConfig: '../vite.config.ts',
+    devWatchGlob: ['**/*.{ts,tsx,mdx}', '!generated/point0/**/*'],
   },
   clients: [
     {
-      scope: 'client',
-      app: async () => await import('./app'),
-      points: async () => await import('./lib/points.client'),
-      generate: { points: './lib/points.client.ts', routes: './lib/routes.ts' },
-      routes: async () => await import('./lib/routes').then((m) => m.routes),
+      scope: 'root',
+      port: 3001,
+      indexHtml: './index.html',
+      app: async () => await import('./app.client'),
+      points: async () => await import('./generated/point0/points.client'),
+      routes: async () => await import('./generated/point0/routes'),
+      generate: { points: './generated/point0/points.client.ts', routes: './generated/point0/routes.ts' },
       importer: {
         deny: ['**/prisma.*'],
       },
-      indexHtml: './index.html',
-      port: 3021,
-      env: { vars: ['SOURCE_BASE_URL'] },
+      env: { vars: ['SERVER_URL'] },
       publicdir: {
         source: [
           '../public',
@@ -40,7 +39,6 @@ export const engine = Engine.create({
         outdir: '../dist/client',
       },
       outdir: '../dist/client',
-      viteConfig: '../vite.config.ts',
     },
   ],
 })

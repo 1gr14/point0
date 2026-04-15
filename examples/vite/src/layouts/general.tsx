@@ -1,26 +1,66 @@
+import { NavLink } from '@/lib/navigate'
+import { root } from '@/lib/root'
 import { useIsNavigating } from '@point0/core/navigation'
-import { Link } from '@/lib/navigate'
-import { client } from '../lib/client'
-import { routes } from '../lib/routes'
 
-export const generalLayout = client.lets('layout', 'generalLayout').layout(({ children }) => {
+export const generalLayout = root.lets('layout', 'generalLayout').layout(({ children }) => {
   const isNavigating = useIsNavigating()
   return (
-    <div style={{ opacity: isNavigating ? 0.5 : 1, transition: 'opacity 300ms ease' }}>
-      <h1>IdeaNick</h1>
-      <ul>
-        <li>
-          <Link to={routes.home()}>Home</Link>
-        </li>
-        <li>
-          <Link to={routes.ideas()}>Browse Ideas</Link>
-        </li>
-        <li>
-          <Link to={routes.newIdea()}>Create Idea</Link>
-        </li>
-      </ul>
-      <hr />
-      {children}
+    <div
+      className="min-h-screen bg-linear-to-b from-slate-100 via-slate-50 to-blue-50 text-slate-800 transition-opacity duration-300 ease-in-out"
+      style={{ opacity: isNavigating ? 0.6 : 1 }}
+    >
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+        <header className="mb-6 rounded-2xl border border-white/70 bg-white/80 p-5 shadow-sm backdrop-blur">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+              <NavLink className="hover:text-blue-700" exactClassName="pointer-events-none" route="home">
+                IdeaNick
+              </NavLink>
+            </h1>
+            <nav>
+              <ul className="flex flex-wrap items-center gap-2">
+                <li>
+                  <NavLink
+                    exactClassName="pointer-events-none text-slate-300!"
+                    className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                    route="home"
+                  >
+                    Home
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink
+                    exactClassName="pointer-events-none text-slate-300!"
+                    className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                    route="about"
+                  >
+                    About
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink
+                    exactClassName="pointer-events-none text-slate-300!"
+                    className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                    route="ideaList"
+                  >
+                    Browse Ideas
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink
+                    exactClassName="pointer-events-none text-slate-300!"
+                    className="rounded-md px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+                    route="ideaCreate"
+                  >
+                    Create Idea
+                  </NavLink>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </header>
+        <main className="rounded-2xl border border-white/70 bg-white/80 p-6 shadow-sm backdrop-blur">{children}</main>
+      </div>
     </div>
   )
 })

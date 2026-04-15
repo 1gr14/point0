@@ -5,8 +5,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": false,
-    "noEmit": true,
     "allowJs": true,
+    "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
@@ -18,6 +18,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js", "src/**/*.jsx", "src/**/*.md", "src/**/*.mdx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.md", "src/**/*.mdx", "src/**/*.js", "src/**/*.jsx"],
   "exclude": ["node_modules", "dist"]
 }
