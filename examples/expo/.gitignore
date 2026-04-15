@@ -46,6 +46,7 @@ app-example
 /android
 
 # generated files
-src/generated/
+src/generated/prisma
+src/generated/point0/meta.ts
 
 .expo/
