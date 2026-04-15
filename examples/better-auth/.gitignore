@@ -1,4 +1,5 @@
 # do not forget to uncomment this use this env file in your project
 # .env*
 src/generated/point0/meta.ts
+src/generated/prisma
 *.db

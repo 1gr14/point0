@@ -1,3 +1,4 @@
 # .env*
 src/generated/point0/meta.ts
-*.db
+src/generated/prisma
+*.dbE
