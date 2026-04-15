@@ -1,0 +1,16 @@
+services:
+  basic:
+    build:
+      context: ../..
+      dockerfile: examples/basic/Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      SERVER_URL: http://localhost:3000
+      DATABASE_URL: file:./.data/dev.db
+    volumes:
+      - basic_db:/app/examples/basic/.data
+
+volumes:
+  basic_db:

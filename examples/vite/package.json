@@ -50,6 +50,7 @@
   },
   "devDependencies": {
     "@svgr/core": "^8.1.0",
+    "@tailwindcss/typography": "^0.5.19",
     "@svgr/plugin-jsx": "^8.1.0",
     "@tanstack/react-query-devtools": "^5.99.0",
     "@types/bun": "catalog:",

@@ -1,0 +1,19 @@
+import { Link } from '@/lib/navigate'
+import { routes } from '@/lib/routes'
+import { root } from '@/lib/root'
+import { AppError } from '@/lib/error'
+import { prisma } from '@/lib/prisma'
+import { generalLayout } from '@/layouts/general'
+
+export const page = generalLayout
+  .lets('page', 'about', '/about')
+  .head('About')
+  .page((props) => (
+    <div className="prose">
+      <MDXContent {...props} />
+    </div>
+  ))
+
+# About My App
+
+My App is the best!

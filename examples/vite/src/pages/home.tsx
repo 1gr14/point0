@@ -14,9 +14,6 @@ export const ideaBestComponent = root.lets
   .wrapper(({ children }) => {
     return <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">{children}</div>
   })
-  .loading(() => {
-    return <div>Loading...</div>
-  })
   .component(({ data, props }) => {
     return (
       <div className="space-y-3">
@@ -40,9 +37,6 @@ export default generalLayout
   .head({
     title: 'IdeaNick Forever!',
     titleTemplate: null,
-  })
-  .loading(() => {
-    return <div>Loading...</div>
   })
   .page(() => {
     return (
