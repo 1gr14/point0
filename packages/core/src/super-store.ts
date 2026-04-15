@@ -1,16 +1,12 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { ClientRuntime } from './env.types.js'
 import type { DataTransformer, DataTransformerExtended, PointsScope, RichFetchFn } from './types.js'
-
 import type { ClientPoints } from './client-points.js'
-import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
-
-type SuperStoreGlobals = {
-  __POINT0_SUPER_STORE_SERVER_STORAGE__?: AsyncLocalStorage<Record<string, unknown>> | null
-  __POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__?: Record<string, unknown>
-  __POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__?: Record<string, unknown>
-  __POINT0_SUPER_STORE_INSTANCE__?: SuperStore
-}
+import {
+  bindToGlobalThisToAvoidMultipleInstances,
+  blankDataTransformerExtended,
+  toExtendedTransformer,
+} from './utils.js'
 
 const _point0_env = {
   vars: {
@@ -18,15 +14,30 @@ const _point0_env = {
   },
 }
 
-// I do not know why, but it is only way to do it to work in bun and vite at the same time
-;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||=
-  _point0_env.vars.POINT0_SIDE === 'client' ? null : new AsyncLocalStorage()
-;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ ||= {}
-;(globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ ||= {}
+const __POINT0_SUPER_STORE_SERVER_STORAGE__ = bindToGlobalThisToAvoidMultipleInstances(
+  '__POINT0_SUPER_STORE_SERVER_STORAGE__',
+  _point0_env.vars.POINT0_SIDE === 'client' ? null : new AsyncLocalStorage<Record<string, unknown>>(),
+)
+const __POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ = bindToGlobalThisToAvoidMultipleInstances(
+  '__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__',
+  {},
+)
+const __POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ = bindToGlobalThisToAvoidMultipleInstances(
+  '__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__',
+  {},
+)
 
 export class SuperStore {
-  static instance: SuperStore =
-    (globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_INSTANCE__ || new SuperStore()
+  static instance: SuperStore = bindToGlobalThisToAvoidMultipleInstances(
+    '__POINT0_SUPER_STORE_INSTANCE__',
+    new SuperStore(),
+  )
+
+  id = Math.random().toString(36).substring(2, 15)
+
+  // (globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_INSTANCE__ || new SuperStore()
+
+  // (id = Math.random().toString(36).substring(2, 15))
 
   // per client
   private readonly _prepared = new Map<string, Map<string, unknown>>()
@@ -45,14 +56,11 @@ export class SuperStore {
 
   items = new Map<string, SuperStoreItem>()
 
-  serverStorage: SuperStoreServerStorage | undefined =
-    (globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_SERVER_STORAGE__ ?? undefined
+  serverStorage: SuperStoreServerStorage | undefined = __POINT0_SUPER_STORE_SERVER_STORAGE__ ?? undefined
 
-  clientGlobalState: SuperStoreState =
-    (globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ ?? {}
+  clientGlobalState: SuperStoreState = __POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__
 
-  serverGlobalState: SuperStoreState =
-    (globalThis as unknown as SuperStoreGlobals).__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ ?? {}
+  serverGlobalState: SuperStoreState = __POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__
 
   transformer: DataTransformerExtended | undefined | false
 
@@ -99,11 +107,11 @@ export class SuperStore {
     }
   }
 
-  fixServerStorage(AsyncLocalStorageClass: typeof AsyncLocalStorage): void {
-    const globals = globalThis as unknown as SuperStoreGlobals
-    globals.__POINT0_SUPER_STORE_SERVER_STORAGE__ ||= new AsyncLocalStorageClass()
-    this.serverStorage = globals.__POINT0_SUPER_STORE_SERVER_STORAGE__
-  }
+  // fixServerStorage(AsyncLocalStorageClass: typeof AsyncLocalStorage): void {
+  //   const globals = globalThis as unknown as SuperStoreGlobals
+  //   globals.__POINT0_SUPER_STORE_SERVER_STORAGE__ ||= new AsyncLocalStorageClass()
+  //   this.serverStorage = globals.__POINT0_SUPER_STORE_SERVER_STORAGE__
+  // }
 
   setTransformer(transformer: DataTransformer | false): void {
     this.transformer = transformer === false ? false : toExtendedTransformer(transformer)
@@ -417,11 +425,10 @@ export class SuperStore {
         throw new Error(`Cannot access item "${name}" with policy "${policy}" from policy "${item.policy}"`)
       }
       const state = this.getStateByItemPolicy(item.name, item.policy, states)
-      const prepared = this.prepared
-      if (prepared.has(name)) {
-        const dehydratedValue = prepared.get(name)
+      if (this.prepared.has(name)) {
+        const dehydratedValue = this.prepared.get(name)
         const hydratedValue = item.hydrate(dehydratedValue)
-        prepared.delete(name)
+        this.prepared.delete(name)
         // this.touched.add(name)
         state[name] = hydratedValue
         return SuperStore.returnValueOrError(hydratedValue, allowError)

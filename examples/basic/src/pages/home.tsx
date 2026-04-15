@@ -20,7 +20,7 @@ export const ideaBestComponent = root.lets
   .component(({ data, props }) => {
     return (
       <div className="space-y-3">
-        <h2 className="text-xl font-semibold text-slate-900">Best Idea: {data.bestIdea.title}</h2>
+        <h2 className="text-xl text-red-500 font-semibold">Best Idea: {data.bestIdea.title}</h2>
         <p className="text-sm text-slate-600">{props.cta}</p>
         <p>
           <Link

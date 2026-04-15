@@ -28,6 +28,7 @@ import type { PublicdirDefinition } from './publicdir.js'
 import { ServerPoints } from './server-points.js'
 import {
   createViteDevServer,
+  externalizeRollupModule,
   executeEngineServerBuildConfig,
   extractEngineServerPlugins,
   extractViteConfig,
@@ -848,6 +849,10 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
               ...this.entry,
               ...(this.engineFile ? { engine: this.engineFile } : {}),
             },
+            external: externalizeRollupModule({
+              external: loadedViteConfig.build?.rollupOptions?.external,
+              moduleId: 'bun',
+            }) as never,
             output: fixedExistingRollupOptionsOutput,
           },
           copyPublicDir: false,

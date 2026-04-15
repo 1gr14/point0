@@ -586,7 +586,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 points: this.engine.server.points?.collection ?? [],
                 ...getParsed(),
               })
-              if (result instanceof RedirectTask) {
+              if (RedirectTask.is(result)) {
                 throw result
               }
               const appendCtxExposedKeys = !serverExecuteAction.expose
@@ -618,7 +618,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 | RedirectTask
                 | undefined
               if (Array.isArray(result)) {
-                if (result[1] instanceof RedirectTask) {
+                if (RedirectTask.is(result[1])) {
                   throw result[1]
                 }
                 effects.set.status(result[0])
@@ -634,7 +634,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                   })
                 }
               } else {
-                if (result instanceof RedirectTask) {
+                console.log(4444, result, RedirectTask.is(result))
+                if (RedirectTask.is(result)) {
                   throw result
                 }
                 if (result instanceof Response) {
@@ -677,6 +678,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           point,
         }
       } catch (error) {
+        console.log(ErrorClass)
         const error0 = ErrorClass.from(error)
         if (error0.status) {
           effects.set.status(error0.status)

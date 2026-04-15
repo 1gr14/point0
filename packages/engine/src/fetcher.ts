@@ -654,6 +654,8 @@ export class Fetcher<TError extends ErrorPoint0> {
         ErrorClass,
       })
 
+      console.log(request.location.pathname, !!executeResult.redirect, !!executeResult.error, executeResult.data)
+
       if (executeResult.redirect && request.headers['x-point0-client-request-id']) {
         // it is page redirect, not repsonse redirect
         // if request was sent from point0 cleint we send in with usual response 200 and special header (in this block), but will recoginze as error in query itself
@@ -800,7 +802,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             response,
           }
         } catch (error) {
-          if (error instanceof RedirectTask) {
+          if (RedirectTask.is(error)) {
             const validRedirectStatuses = [301, 302, 303, 307, 308]
             const providedRedirectStatus = error.status ?? effects.status
             const finalRedirectStatus =

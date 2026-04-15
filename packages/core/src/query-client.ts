@@ -1,5 +1,5 @@
 import { dehydrate, hydrate, QueryClient } from '@tanstack/react-query'
-import type { DehydratedState, QueryKey, QueryState } from '@tanstack/react-query'
+import type { DehydratedState, QueryState } from '@tanstack/react-query'
 import type { ClassLikeError0, ErrorPoint0 } from './error.js'
 // import { getClientPoints } from './helpers.js'
 import { getClientPoints } from './helpers.js'
@@ -195,7 +195,7 @@ export const removeRedirectsFromQueryClientCache = (queryClient: QueryClient, to
       if (dehydratedState) {
         const newQueries = dehydratedState.queries.filter((q) => {
           const maybeRedirect = (q.state.error as Record<string, unknown> | null)?.redirect
-          const redirect = maybeRedirect instanceof RedirectTask ? maybeRedirect : undefined
+          const redirect = RedirectTask.is(maybeRedirect) ? maybeRedirect : undefined
           if (redirect) {
             if (to === undefined || redirect.to === to) {
               return false
@@ -212,7 +212,7 @@ export const removeRedirectsFromQueryClientCache = (queryClient: QueryClient, to
     }
     if (isQueryClientDehydratedStateRedirectQuery(query)) {
       const maybeRedirect = (query.state.error as Record<string, unknown> | null)?.redirect
-      const redirect = maybeRedirect instanceof RedirectTask ? maybeRedirect : undefined
+      const redirect = RedirectTask.is(maybeRedirect) ? maybeRedirect : undefined
       if (redirect) {
         if (to === undefined || redirect.to === to) {
           cache.remove(query)
@@ -220,7 +220,7 @@ export const removeRedirectsFromQueryClientCache = (queryClient: QueryClient, to
       }
     }
     const maybeRedirect = (query.state.error as Record<string, unknown> | null)?.redirect
-    const redirect = maybeRedirect instanceof RedirectTask ? maybeRedirect : undefined
+    const redirect = RedirectTask.is(maybeRedirect) ? maybeRedirect : undefined
     if (redirect) {
       if (to === undefined || redirect.to === to) {
         cache.remove(query)
@@ -258,7 +258,7 @@ export const findRedirectTaskInQueryClientCache = (
         continue
       }
       const maybeRedirect = (query.state.error as Record<string, unknown> | null)?.redirect
-      const redirect = maybeRedirect instanceof RedirectTask ? maybeRedirect : undefined
+      const redirect = RedirectTask.is(maybeRedirect) ? maybeRedirect : undefined
       if (redirect) {
         return redirect
       }

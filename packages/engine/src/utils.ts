@@ -200,6 +200,36 @@ export const toJsExtension = (path: string) => {
   return path.replace(/\.tsx?$/, '.js')
 }
 
+export const externalizeRollupModule = ({
+  external,
+  moduleId,
+}: {
+  external: unknown
+  moduleId: string
+}): unknown => {
+  if (!external) {
+    return [moduleId]
+  }
+  if (typeof external === 'function') {
+    return (...args: any[]) => {
+      if (args[0] === moduleId) {
+        return true
+      }
+      return external(...args)
+    }
+  }
+  if (typeof external === 'string') {
+    return external === moduleId ? external : [external, moduleId]
+  }
+  if (external instanceof RegExp) {
+    return [external, moduleId]
+  }
+  if (Array.isArray(external)) {
+    return external.some((item) => typeof item === 'string' && item === moduleId) ? external : [...external, moduleId]
+  }
+  return [moduleId]
+}
+
 export const removeLikeJsExtension = (path: string) => {
   return path.replace(/\.(?:[cm]?jsx?|tsx?)$/i, '')
 }

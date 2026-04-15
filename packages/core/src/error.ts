@@ -67,8 +67,11 @@ export class ErrorPoint0 extends Error {
       } catch {}
     }
     const record = typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {}
-    const redirect =
-      error instanceof RedirectTask ? error : record.redirect ? RedirectTask.from(record.redirect as never) : undefined
+    const redirect = RedirectTask.is(error)
+      ? error
+      : record.redirect
+        ? RedirectTask.from(record.redirect as never)
+        : undefined
     const message =
       typeof record.message === 'string'
         ? record.message

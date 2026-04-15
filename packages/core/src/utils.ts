@@ -576,3 +576,13 @@ export const getMutationPredicate = (options: MutationPredicateOptions): ((mutat
     return true
   }
 }
+
+export const bindToGlobalThisToAvoidMultipleInstances = <T>(key: string, value: T): T => {
+  const fixedKey = `__POINT0_AVOID_MULTIPLE_INSTANCES_${key}`
+  const bindedValue = (globalThis as any)[fixedKey]
+  if (bindedValue) {
+    return bindedValue
+  }
+  ;(globalThis as any)[fixedKey] = value
+  return value
+}

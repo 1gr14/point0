@@ -16,11 +16,11 @@ import { ErrorPoint0 } from './error.js'
 import type { ClassLikeError0 } from './error.js'
 import { getClientPoints, useEffectAsap, useEffectSsr } from './helpers.js'
 import { _ss } from './internals.js'
-import type { IfAnyThenElse, PrefetchPagePolicy } from './types.js'
-import { generateId } from './utils.js'
-import type { RedirectTask } from './redirect.js'
-import { findRedirectTaskInQueryClientCache, removeRedirectsFromQueryClientCache } from './query-client.js'
 import { log } from './logger.js'
+import { findRedirectTaskInQueryClientCache, removeRedirectsFromQueryClientCache } from './query-client.js'
+import type { RedirectTask } from './redirect.js'
+import type { IfAnyThenElse, PrefetchPagePolicy } from './types.js'
+import { bindToGlobalThisToAvoidMultipleInstances, generateId } from './utils.js'
 
 export type NavigationCallback<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> = (
   to: string,
@@ -197,7 +197,10 @@ export type NavigationPageState<TStatus extends 'success' | 'loading' | 'error' 
           : never
 >
 export type NavigationPageStateContextValue = NavigationPageState<any>
-export const NavigationPageStateContext = React.createContext<NavigationPageStateContextValue | null>(null)
+export const NavigationPageStateContext = bindToGlobalThisToAvoidMultipleInstances(
+  'NavigationPageStateContext',
+  React.createContext<NavigationPageStateContextValue | null>(null),
+)
 export const getNavigationPageState = (): NavigationPageStateContextValue => {
   const navigationPageState = _ss.__POINT0_NAVIGATION_PAGE_STATE__.getWeak()
   if (navigationPageState) {
@@ -283,7 +286,10 @@ export type NavigationHelpersContextValue<
   setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
   ErrorClass: ClassLikeError0<ErrorPoint0>
 }
-export const NavigationHelpersContext = React.createContext<NavigationHelpersContextValue | null>(null)
+export const NavigationHelpersContext = bindToGlobalThisToAvoidMultipleInstances(
+  'NavigationHelpersContext',
+  React.createContext<NavigationHelpersContextValue | null>(null),
+)
 export const useNavigationHelpers = (): NavigationHelpersContextValue => {
   const ctx = React.useContext(NavigationHelpersContext)
   if (!ctx) throw new Error('useNavigationHelpers must be used within NavigationHelpersContextProvider')
@@ -304,7 +310,10 @@ export type NavigationTransitionStateContextValue = {
   status: NavigationStatus
   error: Error | undefined
 }
-export const NavigationTransitionStateContext = React.createContext<NavigationTransitionStateContextValue | null>(null)
+export const NavigationTransitionStateContext = bindToGlobalThisToAvoidMultipleInstances(
+  'NavigationTransitionStateContext',
+  React.createContext<NavigationTransitionStateContextValue | null>(null),
+)
 export const useNavigationTransitionState = (): NavigationTransitionStateContextValue => {
   const ctx = React.useContext(NavigationTransitionStateContext)
   if (!ctx) throw new Error('useNavigationTransitionState must be used within NavigationTransitionStateContextProvider')
@@ -323,7 +332,10 @@ export type NavigationLocationContextValue = {
   currentLocation: AnyLocation
   addHashToLocation: boolean
 }
-export const NavigationLocationContext = React.createContext<NavigationLocationContextValue | null>(null)
+export const NavigationLocationContext = bindToGlobalThisToAvoidMultipleInstances(
+  'NavigationLocationContext',
+  React.createContext<NavigationLocationContextValue | null>(null),
+)
 
 export type NavigationContextProviderProps<
   TRoutes extends RoutesPretty = RoutesPretty,
@@ -441,11 +453,11 @@ export function NavigationContextProvider<
 
   return (
     <NavigationHelpersContext.Provider value={helpersValue}>
-      <NavigationTransitionStateContext.Provider value={transitionStateValue}>
-        <NavigationPageStateContext.Provider value={pageState}>
-          <NavigationLocationContext.Provider value={locationValue}>{children}</NavigationLocationContext.Provider>
-        </NavigationPageStateContext.Provider>
-      </NavigationTransitionStateContext.Provider>
+      <NavigationLocationContext.Provider value={locationValue}>
+        <NavigationTransitionStateContext.Provider value={transitionStateValue}>
+          <NavigationPageStateContext.Provider value={pageState}>{children}</NavigationPageStateContext.Provider>
+        </NavigationTransitionStateContext.Provider>
+      </NavigationLocationContext.Provider>
     </NavigationHelpersContext.Provider>
   )
 }

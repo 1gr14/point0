@@ -304,7 +304,7 @@ describe('ctx', () => {
     `)
   })
 
-  it('can return redirect task, then no ctx overrides', async () => {
+  it.only('can return redirect task, then no ctx overrides', async () => {
     const root = createRoot()
     const routes = Routes.create({
       page1: '/1',

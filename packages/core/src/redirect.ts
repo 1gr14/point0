@@ -1,10 +1,13 @@
 import type { AdapterNavigateOptions, SpecialNavigateOptions } from './navigation.js'
+import { bindToGlobalThisToAvoidMultipleInstances } from './utils.js'
 
 export type RedirectTaskSerialized<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> = {
   to: string
   status?: number
   options?: TAdapterNavigateOptions & SpecialNavigateOptions<TAdapterNavigateOptions>
 }
+
+const redirectTaskSymbol = bindToGlobalThisToAvoidMultipleInstances('refirectTaskSymbol', Symbol('refirectTaskSymbol'))
 
 export class RedirectTask<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> {
   readonly to: string
@@ -15,6 +18,12 @@ export class RedirectTask<TAdapterNavigateOptions extends AdapterNavigateOptions
     this.to = to
     this.status = status
     this.options = options
+    Object.defineProperty(this, redirectTaskSymbol, {
+      value: true,
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    })
   }
 
   serialize(): RedirectTaskSerialized<TAdapterNavigateOptions> {
@@ -33,7 +42,7 @@ export class RedirectTask<TAdapterNavigateOptions extends AdapterNavigateOptions
       | RedirectTask<TAdapterNavigateOptions>,
   ): RedirectTask<TAdapterNavigateOptions> {
     try {
-      if (input instanceof RedirectTask) {
+      if (RedirectTask.is(input)) {
         return input
       }
       const parsed = typeof input === 'string' ? JSON.parse(input) : input
@@ -57,5 +66,9 @@ export class RedirectTask<TAdapterNavigateOptions extends AdapterNavigateOptions
     } catch (error) {
       throw new Error('Failed to parse redirect task: ' + (error instanceof Error ? error.message : String(error)))
     }
+  }
+
+  static is(value: unknown): value is RedirectTask<any> {
+    return typeof value === 'object' && value !== null && redirectTaskSymbol in value
   }
 }

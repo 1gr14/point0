@@ -8238,7 +8238,7 @@ export class Point0<
             ...getParsed(),
           })
           const result = (await (promise as any)) as Awaited<ReturnType<ClientLoaderFn>>
-          if (result instanceof RedirectTask) {
+          if (RedirectTask.is(result)) {
             throw result
           }
           if (result instanceof Response) {
@@ -8995,7 +8995,7 @@ export class Point0<
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey, exact: true })
     const maybeRedirect = (query?.state.error as Record<string, unknown> | undefined)?.redirect
-    const redirect = maybeRedirect instanceof RedirectTask ? maybeRedirect : undefined
+    const redirect = RedirectTask.is(maybeRedirect) ? maybeRedirect : undefined
     const _eventData = {
       point: this as never as AnyPoint,
       input,
@@ -9422,7 +9422,7 @@ export class Point0<
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey, exact: true })
     const maybeRedirect = (query?.state.error as Record<string, unknown> | undefined)?.redirect
-    const redirect = maybeRedirect instanceof RedirectTask ? maybeRedirect : undefined
+    const redirect = RedirectTask.is(maybeRedirect) ? maybeRedirect : undefined
     const queryFn = async ({ pageParam, signal }: { pageParam: unknown; signal: AbortSignal }) => {
       try {
         this._emit('pointInfiniteQueryStart', _eventData)
@@ -11907,12 +11907,11 @@ export class Point0<
           }
 
           // with fn
-          const redirectTask =
-            result instanceof RedirectTask
-              ? result
-              : result instanceof Error && (result as any).redirect instanceof RedirectTask
-                ? ((result as any).redirect as RedirectTask)
-                : undefined
+          const redirectTask = RedirectTask.is(result)
+            ? result
+            : result instanceof Error && RedirectTask.is((result as any).redirect)
+              ? ((result as any).redirect as RedirectTask)
+              : undefined
           if (redirectTask) {
             const Redirect = getNavigationHelpers().Redirect
             return React.createElement(Redirect, {

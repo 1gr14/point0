@@ -1,5 +1,5 @@
 import { generalLayout } from '@/layouts/general.js'
-import { Link } from '@/lib/navigate'
+import { Link, redirect } from '@/lib/navigate'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
@@ -13,6 +13,9 @@ export const ideaListPage = generalLayout.lets
     const ideasCount = await prisma.idea.count()
     const ideas = await prisma.idea.findMany({ take: limit, skip: page * limit, orderBy: { updatedAt: 'desc' } })
     const nextCursor = ideasCount > (page + 1) * limit ? page + 1 : undefined
+    if (Math.random() + 1 > 0.5) {
+      return redirect('ideaCreate')
+    }
     return { ideas, ideasCount, nextCursor }
   })
   .infiniteQuery({
