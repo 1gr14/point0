@@ -16,8 +16,8 @@
   },
   "workspaces": {
     "packages": [
-      "packages/*",
-      "examples/*"
+      "packages/**",
+      "examples/**"
     ],
     "catalog": {
       "react": "^19.2.2",
@@ -43,7 +43,8 @@
       "zod": "^4.0.0",
       "@typescript/native-preview": "^7.0.0-dev.20260212.1",
       "typescript": "^5.9.3",
-      "openapi-types": "^12.0.0"
+      "openapi-types": "^12.0.0",
+      "commander": "^14.0.2"
     }
   },
   "files": [
@@ -58,7 +59,7 @@
   },
   "scripts": {
     "dev": "bun run build:watch",
-    "build": "bun --filter '@point0/core' build && bun --filter '@point0/compiler' build && bun --filter '@point0/engine' build && bun --filter '@point0/react-dom' build && bun --filter '@point0/cookies-store' build && bun --filter '@point0/cors' build && bun --filter '@point0/openapi' build && bun --filter '@point0/basic-auth' build",
+    "build": "bun --filter '@point0/core' build && bun --filter '@point0/compiler' build && bun --filter '@point0/engine' build && bun --filter '@point0/react-dom' build && bun --filter '@point0/cookies-store' build && bun --filter '@point0/cors' build && bun --filter '@point0/openapi' build && bun --filter '@point0/basic-auth' build && bun --filter '@point0/create-app' build",
     "build:watch": "bun run --parallel --if-present --filter '@point0/*' build:watch",
     "testa": "bun run scripts/test-parallel.ts",
     "testap": "cross-env SLOW_TESTS_NOT_SLOW=1 bun run scripts/test-parallel.ts",

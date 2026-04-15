@@ -9,7 +9,7 @@ const general = {
   splitting: false,
   minify: false,
   target: 'es2022',
-  external: ['bun:test', '@point0/core', '@point0/engine'],
+  external: ['bun:test'],
   treeshake: false,
   bundle: false,
   outExtension: ({ format }) => ({ js: format === 'cjs' ? '.cjs' : '.js' }),

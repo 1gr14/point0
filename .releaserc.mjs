@@ -65,6 +65,12 @@ export default {
         pkgRoot: 'packages/basic-auth',
       },
     ],
+    [
+      '@semantic-release/npm',
+      {
+        pkgRoot: 'packages/create-app',
+      },
+    ],
     branch === 'next'
       ? undefined
       : [
