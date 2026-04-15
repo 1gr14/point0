@@ -5,6 +5,7 @@ export const engine = Engine.create({
   ssr: true,
   pointsGlob: '**/*.{ts,tsx,mdx}',
   generate: { meta: './generated/point0/meta.ts' },
+  // viteConfig: '../vite.config.ts',
   server: {
     scope: 'root',
     port: 3000,

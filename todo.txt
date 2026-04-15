@@ -45,14 +45,7 @@ mcp as comments
 
 
 
-ЭКЗАМПЛЫ
 create-app
---+
-Тесты
-Экзампл электробан симпл и два сервера
-Экзампл экспо с метро
-capacitor
-? Пьюр вайт экзампл
 
 
 REFACTOING 3000
@@ -105,6 +98,14 @@ In error0 import RedirectTask from "@point0/core/navigate"
 merge engines and have shared server and fetch functions
 fetchOptions также принимают fetchFn
 when electrobun allow passing replaceFetch to point
+
+
+ЭКЗАМПЛЫ
+Тесты
+Экзампл электробан симпл и два сервера
+Экзампл экспо с метро
+capacitor
+? Пьюр вайт экзампл
 
 СОУРСМАП
 Попросить команду бан принимать соурсмапы в лоадерах

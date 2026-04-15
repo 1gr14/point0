@@ -16,8 +16,8 @@
   },
   "workspaces": {
     "packages": [
-      "packages/**",
-      "examples/**"
+      "packages/*",
+      "examples/*"
     ],
     "catalog": {
       "react": "^19.2.2",
