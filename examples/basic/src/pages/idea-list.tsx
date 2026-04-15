@@ -3,12 +3,15 @@ import { Link } from '@/lib/navigate'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
+// try uncomment it to see how client will reject it by engine.importer deny options
+// console.log(!!prisma)
+
 export const ideaListPage = generalLayout.lets
   .page('/ideas')
   .search(z.object({ page: z.coerce.number().default(0), limit: z.coerce.number().default(2) }))
   .loader(async ({ search: { page, limit } }) => {
     const ideasCount = await prisma.idea.count()
-    const ideas = await prisma.idea.findMany({ take: limit, skip: page * limit })
+    const ideas = await prisma.idea.findMany({ take: limit, skip: page * limit, orderBy: { updatedAt: 'desc' } })
     const nextCursor = ideasCount > (page + 1) * limit ? page + 1 : undefined
     return { ideas, ideasCount, nextCursor }
   })
@@ -62,9 +65,6 @@ export const ideaListPage = generalLayout.lets
             Load more
           </button>
         )}
-        <nav>
-          <Link route="home">← Back to Home</Link>
-        </nav>
       </div>
     )
   })

@@ -1,3 +1,6 @@
-import { engine } from './engine.js'
+import { engine } from './engine'
+import { validateServerEnv } from './lib/env'
 
-await engine.serve()
+validateServerEnv()
+await engine.prepare()
+await import('./app.server')

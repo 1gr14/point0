@@ -19,6 +19,8 @@ export default {
       type: 'root',
       name: 'root',
       id: 'root.root.root',
+      tags: [],
+      description: undefined,
       route: undefined,
       endpoint: undefined,
       pos: {
@@ -38,6 +40,8 @@ export default {
       type: 'page',
       name: 'home',
       id: 'root.page.home',
+      tags: [],
+      description: undefined,
       route: Route0.create('/'),
       endpoint: {
         method: 'GET',
@@ -45,7 +49,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/home.tsx',
-        line: 33,
+        line: 34,
         column: 15,
       },
       import: async () => (await import('../../pages/home.js')).default,
@@ -95,6 +99,8 @@ export default {
       type: 'page',
       name: 'about',
       id: 'root.page.about',
+      tags: [],
+      description: undefined,
       route: Route0.create('/about'),
       endpoint: {
         method: 'GET',
@@ -152,6 +158,8 @@ export default {
       type: 'page',
       name: 'ideaList',
       id: 'root.page.ideaList',
+      tags: [],
+      description: undefined,
       route: Route0.create('/ideas'),
       endpoint: {
         method: 'GET',
@@ -209,6 +217,8 @@ export default {
       type: 'page',
       name: 'ideaCreate',
       id: 'root.page.ideaCreate',
+      tags: [],
+      description: undefined,
       route: Route0.create('/ideas/new'),
       endpoint: {
         method: 'GET',
@@ -216,7 +226,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create-update.tsx',
-        line: 44,
+        line: 49,
         column: 30,
       },
       import: async () => (await import('../../pages/idea-create-update.js')).ideaCreatePage,
@@ -266,6 +276,8 @@ export default {
       type: 'page',
       name: 'ideaView',
       id: 'root.page.ideaView',
+      tags: [],
+      description: undefined,
       route: Route0.create('/ideas/:id'),
       endpoint: {
         method: 'GET',
@@ -345,6 +357,8 @@ export default {
       type: 'page',
       name: 'ideaUpdate',
       id: 'root.page.ideaUpdate',
+      tags: [],
+      description: undefined,
       route: Route0.create('/ideas/:id/edit'),
       endpoint: {
         method: 'GET',
@@ -352,7 +366,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create-update.tsx',
-        line: 110,
+        line: 126,
         column: 30,
       },
       import: async () => (await import('../../pages/idea-create-update.js')).ideaUpdatePage,
@@ -402,6 +416,8 @@ export default {
       type: 'page',
       name: 'ideaNews',
       id: 'root.page.ideaNews',
+      tags: [],
+      description: undefined,
       route: Route0.create('/ideas/:id/news'),
       endpoint: {
         method: 'GET',
@@ -409,7 +425,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-news.tsx',
-        line: 3,
+        line: 32,
         column: 28,
       },
       import: async () => (await import('../../pages/idea-news.js')).ideaNewsPage,
@@ -481,6 +497,8 @@ export default {
       type: 'layout',
       name: 'generalLayout',
       id: 'root.layout.generalLayout',
+      tags: [],
+      description: undefined,
       route: Route0.create('/'),
       endpoint: undefined,
       pos: {
@@ -512,6 +530,8 @@ export default {
       type: 'layout',
       name: 'idea',
       id: 'root.layout.idea',
+      tags: [],
+      description: undefined,
       route: Route0.create('/ideas/:id'),
       endpoint: undefined,
       pos: {
@@ -566,6 +586,8 @@ export default {
       type: 'component',
       name: 'ideaBest',
       id: 'root.component.ideaBest',
+      tags: [],
+      description: undefined,
       route: undefined,
       endpoint: {
         method: 'POST',
@@ -600,6 +622,8 @@ export default {
       type: 'mutation',
       name: 'ideaCreate',
       id: 'root.mutation.ideaCreate',
+      tags: [],
+      description: undefined,
       route: undefined,
       endpoint: {
         method: 'POST',
@@ -632,8 +656,46 @@ export default {
     {
       scope: 'root',
       type: 'mutation',
+      name: 'ideaNewsPostCreate',
+      id: 'root.mutation.ideaNewsPostCreate',
+      tags: [],
+      description: undefined,
+      route: undefined,
+      endpoint: {
+        method: 'POST',
+        route: Route0.create('/_point0/root/mutation/ideaNewsPostCreate'),
+      },
+      pos: {
+        file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-news.tsx',
+        line: 13,
+        column: 42,
+      },
+      import: async () => (await import('../../pages/idea-news.js')).ideaNewsPostCreateMutation,
+      valid: true,
+      errors: [],
+      ssr: true,
+      parents: [
+        {
+          scope: 'root',
+          type: 'root',
+          name: 'root',
+          id: 'root.root.root',
+          pos: {
+            file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/root.tsx',
+            line: 8,
+            column: 20,
+          },
+        },
+      ],
+      layouts: [],
+    },
+    {
+      scope: 'root',
+      type: 'mutation',
       name: 'ideaUpdate',
       id: 'root.mutation.ideaUpdate',
+      tags: [],
+      description: undefined,
       route: undefined,
       endpoint: {
         method: 'POST',
@@ -641,7 +703,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/idea-create-update.tsx',
-        line: 23,
+        line: 28,
         column: 34,
       },
       import: async () => (await import('../../pages/idea-create-update.js')).ideaUpdateMutation,
@@ -668,6 +730,8 @@ export default {
       type: 'query',
       name: 'ideaView',
       id: 'root.query.ideaView',
+      tags: [],
+      description: undefined,
       route: undefined,
       endpoint: {
         method: 'POST',
@@ -675,7 +739,7 @@ export default {
       },
       pos: {
         file: '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/lib/idea.ts',
-        line: 22,
+        line: 21,
         column: 29,
       },
       import: async () => (await import('../../lib/idea.js')).ideaViewQuery,

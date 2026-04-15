@@ -12,6 +12,9 @@ export const generalLayout = root.lets('layout', 'generalLayout').layout(({ chil
           <Link route="home">Home</Link>
         </li>
         <li>
+          <Link route="about">About</Link>
+        </li>
+        <li>
           <Link route="ideaList">Browse Ideas</Link>
         </li>
         <li>

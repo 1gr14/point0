@@ -30,7 +30,6 @@ export const ideaViewPage = ideaLayout.lets
           <Link route="ideaUpdate" input={{ id: idea.id }}>
             Edit Idea
           </Link>
-          <Link route="ideaList">← Back to Ideas</Link>
         </nav>
       </div>
     )

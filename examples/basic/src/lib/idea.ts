@@ -4,7 +4,6 @@ import { root } from './root'
 
 export const ideaGeneralShape = {
   title: z.string().min(1).max(100),
-  date: z.date(),
   description: z.string().min(1).max(500),
   content: z.string().min(1).max(2000),
   image: z.file().optional(),
@@ -24,7 +23,7 @@ export const ideaViewQuery = root.lets
   .input(z.object({ id: z.number() }))
   .loader(async ({ input }) => {
     const idea = await prisma.idea.findUniqueOrThrow({
-      where: { id: +input.id },
+      where: { id: input.id },
     })
     return { idea }
   })

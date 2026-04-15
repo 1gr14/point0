@@ -7,7 +7,8 @@ export const ideaBestComponent = root.lets
   .component<{ cta: string }>()
   .loader(async () => {
     return {
-      bestIdea: await prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
+      // fake best idea
+      bestIdea: await prisma.idea.findFirstOrThrow({ orderBy: { id: 'desc' } }),
     }
   })
   .wrapper(({ children }) => {
@@ -47,9 +48,6 @@ export default generalLayout
           Read about this project <Link route="about">here</Link>
         </p>
         <ideaBestComponent.X cta="It is awesome!" />
-        <nav>
-          <Link to="/ideas">Browse All Ideas</Link>
-        </nav>
       </div>
     )
   })

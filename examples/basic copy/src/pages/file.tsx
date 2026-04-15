@@ -1,7 +1,7 @@
+import { root } from '@/lib/client'
 import nodePath from 'node:path'
 import { useState } from 'react'
 import * as z from 'zod'
-import { root } from '@/lib/client'
 
 export const filePage = root.lets.page('/file').page(() => {
   const uploadFile = uploadFileMutation.useMutation()
@@ -21,7 +21,13 @@ export const filePage = root.lets.page('/file').page(() => {
 
     void (async () => {
       try {
-        const result = await uploadFile.mutateAsync({ file: selectedFile })
+        const result = await uploadFile
+          .mutateAsync({
+            file: selectedFile,
+          })
+          .catch((error) => {
+            alert(error.message)
+          })
         console.info('Upload mutation result:', result)
       } catch (error) {
         console.error('Upload mutation error:', error)

@@ -11,14 +11,19 @@ export const ideaCreateMutation = root.lets
   .loader(async ({ input }) => {
     const { image, ...rest } = input
     const imageBase64 = input.image ? Buffer.from(await input.image.arrayBuffer()).toString('base64') : undefined
-    return prisma.idea.create({
+    const idea = await prisma.idea.create({
       data: {
         ...rest,
         ...(image ? { image: imageBase64 } : {}),
       },
     })
+    return { idea }
   })
-  .mutation()
+  .mutation({
+    onSuccess: async ({ idea }) => {
+      ideaViewQuery.setQueryData({ id: idea.id }, { idea })
+    },
+  })
 
 export const ideaUpdateMutation = root.lets
   .mutation()
@@ -57,7 +62,18 @@ export const ideaCreatePage = generalLayout.lets
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            void mutation.mutateAsync({ title, description, content, date: new Date(), image })
+            void mutation
+              .mutateAsync(
+                { title, description, content, image },
+                {
+                  onSuccess: async ({ idea }) => {
+                    await navigate('ideaView', { id: idea.id })
+                  },
+                },
+              )
+              .catch((error) => {
+                alert(error.message)
+              })
           }}
         >
           <input
@@ -125,14 +141,18 @@ export const ideaUpdatePage = generalLayout.lets
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            void mutation.mutateAsync(
-              { id: idea.id, title, description, content, date: new Date(), image },
-              {
-                onSuccess: async () => {
-                  await navigate('ideaView', { id: idea.id })
+            void mutation
+              .mutateAsync(
+                { id: idea.id, title, description, content, image },
+                {
+                  onSuccess: async () => {
+                    await navigate('ideaView', { id: idea.id })
+                  },
                 },
-              },
-            )
+              )
+              .catch((error) => {
+                alert(error.message)
+              })
           }}
         >
           <input

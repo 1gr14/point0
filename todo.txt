@@ -46,21 +46,25 @@ mcp as comments
 
 
 ЭКЗАМПЛЫ
-? Апп клиент тскс
 tailwind to basic example
-use real prisma and sqlite
-sort ideas in descendant order of ids
-Причёска экзамплов
+докер
+Тесты
+Причёска остальных экзамплов
 ? Пьюр вайт экзампл
-Экзампл докер
+create-app
+--+
 Экзампл электробан симпл и два сервера
 Экзампл экспо с метро
-Тесты
-create-app
+
 
 REFACTOING 3000
---+
-Проверить, что можно вверху поинтс файла прописать ипорт поинтов статический, и тогда в бан заработает хот апдейт
+...(E|e)nv...0 should be parsed as env object, and rename base to env0 (better in compiler say what will works as process.env like serverEnv0 is also process.env)
+points в кткс и лоадере должен быть сервер поинтс, да и вообще ну их, просто из энжины возьмём getServerPoints и так и будем делать, ну или там должны быть штуки для фильтрации поинтов
+Лоадеру разрешить вернуть реакт сервер компонент а не дата
+Пустой пейдж или компонент или что там в случае получения из лоадера компонента рендерит его
+Убедиться, что компоненты не могут быть async (пейдж, лэйоут, врапер, виз)
+На континью объекты все же клогировать
+Проверить, что можно вверху энтри файла прописать ипорт поинтов статический, и тогда в бан заработает хот апдейт (вероято нужен также апп сервер, а индекс сервер только препаре энжину и эвэйт импорт этот самый апп сервер, и поинт файлы в апп сервера уже просто статиечски сверху импортнуты)
 Вырезать всё из инородных скоупов
 ? mirror generator
 ? queryKey: ['point0', object] + ? and do not stringify input
@@ -100,10 +104,6 @@ when electrobun allow passing replaceFetch to point
 
 СОУРСМАП
 Попросить команду бан принимать соурсмапы в лоадерах
-
-MCP
-tags
-description
 
 ИМПОРТ-ПРОТЕКШЕН
 ? deny error we should place right in file that imports this denied module, not in import, becouse it can be dynamic (but build will still fail)
