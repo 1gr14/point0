@@ -1,28 +1,33 @@
 import { Engine } from '@point0/engine'
+
 export const engine = Engine.create({
   file: import.meta.url,
-  pointsGlob: ['**/*.{ts,tsx}'],
   ssr: true,
+  pointsGlob: '**/*.{ts,tsx,mdx}',
+  generate: { meta: './generated/point0/meta.ts' },
   server: {
-    scope: 'site',
-    devWatchGlob: ['**/*.{ts,tsx,mdx}'],
+    scope: 'root',
     port: 3000,
     entry: { main: './index.server.ts' },
-    generate: { points: './lib/points.server.ts' },
-    points: async () => await import('./lib/points.server'),
+    points: async () => await import('./generated/point0/points.server'),
+    generate: { points: './generated/point0/points.server.ts' },
     outdir: '../dist/server',
+    devWatchGlob: ['**/*.{ts,tsx,mdx}', '!generated/point0/meta.ts'],
   },
   clients: [
     {
-      scope: 'site',
-      app: async () => await import('./app'),
-      points: async () => await import('./lib/points.client'),
-      generate: { points: './lib/points.client.ts', routes: './lib/routes.ts' },
-      routes: async () => await import('./lib/routes'),
-      indexHtml: './index.html',
+      scope: 'root',
       port: 3001,
-      env: { vars: ['SOURCE_BASE_URL'] },
-      outdir: '../dist/client',
+      indexHtml: './index.html',
+      app: async () => await import('./app.client'),
+      points: async () => await import('./generated/point0/points.client'),
+      routes: async () => await import('./generated/point0/routes'),
+      generate: { points: './generated/point0/points.client.ts', routes: './generated/point0/routes.ts' },
+      importer: {
+        deny: ['**/prisma.*'],
+      },
+      bunPlugins: ['bun-plugin-tailwind'],
+      env: { vars: ['SERVER_URL', 'BETTER_AUTH_URL'] },
       publicdir: {
         source: [
           '../public',
@@ -33,6 +38,7 @@ export const engine = Engine.create({
         ],
         outdir: '../dist/client',
       },
+      outdir: '../dist/client',
     },
   ],
 })

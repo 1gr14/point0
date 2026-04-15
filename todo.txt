@@ -46,16 +46,13 @@ mcp as comments
 
 
 ЭКЗАМПЛЫ
-
-vite
-better-auth
 expo
-capacitor
 create-app
 --+
 Тесты
 Экзампл электробан симпл и два сервера
 Экзампл экспо с метро
+capacitor
 ? Пьюр вайт экзампл
 
 

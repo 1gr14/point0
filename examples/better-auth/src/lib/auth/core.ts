@@ -2,6 +2,7 @@ import { env, log } from '@point0/core'
 import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { createAuthClient } from 'better-auth/react'
+import { clientEnv, serverEnv } from '../env'
 import { prisma } from '../prisma'
 
 export const authServer = env.side.define.unsafe.server(
@@ -12,8 +13,8 @@ export const authServer = env.side.define.unsafe.server(
     emailAndPassword: {
       enabled: true,
     },
-    secret: process.env.BETTER_AUTH_SECRET ?? 'dev-only-secret-change-me-please',
-    baseURL: process.env.BETTER_AUTH_URL ?? process.env.SOURCE_BASE_URL ?? 'http://localhost:3000',
+    secret: serverEnv.BETTER_AUTH_SECRET,
+    baseURL: serverEnv.BETTER_AUTH_URL,
     logger: {
       log: (level, message, ...args) => {
         log({
@@ -29,7 +30,7 @@ export const authServer = env.side.define.unsafe.server(
 
 export const authClient = env.side.define.unsafe.client(
   createAuthClient({
-    baseURL: process.env.SOURCE_BASE_URL ?? 'http://localhost:3001',
+    baseURL: clientEnv.BETTER_AUTH_URL,
     fetchOptions: {
       onRequest: (request) => {
         return request

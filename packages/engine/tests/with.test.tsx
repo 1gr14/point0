@@ -5,6 +5,8 @@ import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { createTestThings } from './utils/internal-testing.js'
+import { createNavigation } from '@point0/react-dom/router'
+import { Routes } from '@devp0nt/route0'
 
 describe('with', () => {
   const items: Array<{ id: number; name: string }> = [
@@ -888,6 +890,46 @@ describe('with', () => {
       #error: test error
       "
     `)
+  })
+
+  it('with can override props by made it non-null', async () => {
+    const root = createRoot()
+    root
+      .lets('page', 'home', '/home')
+      .with(() => ({ x: 1 as number | null }))
+      .with(() => ({ x: 2 }))
+      .page(({ props }) => {
+        expectTypeOf<typeof props>().toEqualTypeOf<{ x: number }>()
+        return <div id="page">x={props.x}</div>
+      })
+  })
+
+  it('with can override props by made it non-null when loading and error and redirect can happen', async () => {
+    const root = createRoot()
+    const { redirect } = createNavigation({
+      routes: Routes.create({
+        home: '/home',
+      }),
+    })
+    root
+      .lets('page', 'home', '/home')
+      .with(() => ({ x: 1 as number | null }))
+      .with(() => {
+        if (!(Math.random() + 1)) {
+          return new ErrorPoint0('test error')
+        }
+        if (!(Math.random() + 1)) {
+          return 'loading'
+        }
+        if (!(Math.random() + 1)) {
+          return redirect('home')
+        }
+        return { x: 2 }
+      })
+      .page(({ props }) => {
+        expectTypeOf<typeof props>().toEqualTypeOf<{ x: number }>()
+        return <div id="page">x={props.x}</div>
+      })
   })
 
   it('forbids returning array as data', () => {

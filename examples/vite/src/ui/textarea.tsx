@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react'
-import { Field } from '@/lib/ui/field'
+import { Field } from '@/ui/field'
 
 type TextareaProps = {
   label: string

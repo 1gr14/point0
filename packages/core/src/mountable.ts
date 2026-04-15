@@ -8,7 +8,7 @@ import type {
 import type * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type { ErrorPoint0 } from './error.js'
-import type { NavigationPageState } from './navigation.js'
+import type { NavigationPageState, RedirectTask } from './navigation.js'
 import type {
   AnyPoint,
   CurrentRouteDefinition,
@@ -552,9 +552,9 @@ export type WithFn<
   >,
 ) => TNewInnerProps | Error | 'loading' | undefined | void
 export type InferWithFnOutputNewInnerProps<TWithFn extends WithFn<any, any, any, any, any, any, any, any, any>> =
-  Exclude<ReturnType<TWithFn>, undefined | void | Error | 'loading'> extends never
+  Exclude<ReturnType<TWithFn>, undefined | void | Error | RedirectTask | 'loading'> extends never
     ? undefined
-    : NormalizeCtxLike<Exclude<ReturnType<TWithFn>, Error | 'loading'>>
+    : NormalizeCtxLike<Exclude<ReturnType<TWithFn>, Error | 'loading' | RedirectTask>>
 
 export type ClientOnlyFallbackComponentProps<
   TLocation extends AnyLocation | undefined,

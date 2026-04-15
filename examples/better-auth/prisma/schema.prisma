@@ -8,6 +8,31 @@ datasource db {
   provider = "sqlite"
 }
 
+model Idea {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String
+  description String
+  image       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  newsPosts IdeaNewsPost[]
+}
+
+model IdeaNewsPost {
+  id        Int      @id @default(autoincrement())
+  ideaId    Int
+  idea      Idea     @relation(fields: [ideaId], references: [id])
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String
@@ -64,16 +89,4 @@ model Verification {
   updatedAt  DateTime @updatedAt
 
   @@index([identifier])
-}
-
-model Idea {
-  id        Int      @id @default(autoincrement())
-  title     String
-  content   String
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([authorId])
 }
