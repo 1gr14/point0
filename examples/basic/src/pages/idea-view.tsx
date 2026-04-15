@@ -17,17 +17,27 @@ export const ideaViewPage = ideaLayout.lets
   .head(({ props: { idea } }) => idea.title)
   .page(({ props: { idea } }) => {
     return (
-      <div>
-        <p>
+      <div className="space-y-5">
+        <p className="rounded-lg bg-slate-100 px-4 py-3 text-slate-700">
           <b>{idea.description}</b>
         </p>
 
-        {idea.image && <img src={`data:image/*;base64,${idea.image}`} alt={idea.title} />}
+        {idea.image && (
+          <img
+            className="max-h-96 w-full rounded-xl border border-slate-200 object-cover shadow-sm"
+            src={`data:image/*;base64,${idea.image}`}
+            alt={idea.title}
+          />
+        )}
 
-        <p>{idea.content}</p>
+        <p className="whitespace-pre-wrap text-slate-700">{idea.content}</p>
 
         <nav>
-          <Link route="ideaUpdate" input={{ id: idea.id }}>
+          <Link
+            className="inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+            route="ideaUpdate"
+            input={{ id: idea.id }}
+          >
             Edit Idea
           </Link>
         </nav>

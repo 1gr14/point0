@@ -20,7 +20,7 @@ export const ideaBestComponent = root.lets
   .component(({ data, props }) => {
     return (
       <div className="space-y-3">
-        <h2 className="text-xl text-red-500 font-semibold">Best Idea: {data.bestIdea.title}</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Best Idea: {data.bestIdea.title}</h2>
         <p className="text-sm text-slate-600">{props.cta}</p>
         <p>
           <Link
@@ -46,7 +46,7 @@ export default generalLayout
   })
   .page(() => {
     return (
-      <div className="mx-auto max-w-3xl space-y-6 rounded-2xl bg-slate-50 p-6 md:p-10">
+      <div className="mx-auto  space-y-6">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome to IdeaNick!</h1>
           <p className="text-slate-600">

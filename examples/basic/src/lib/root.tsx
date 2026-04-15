@@ -34,16 +34,26 @@ export const root = Point0.lets
     }
   })
   .loading(() => {
-    return <div>Loading...</div>
+    return (
+      <div className="mx-auto max-w-3xl">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-medium text-slate-500">Please wait</p>
+          <p className="mt-1 text-lg font-semibold text-slate-900">Loading...</p>
+        </div>
+      </div>
+    )
   })
   .error(({ error }) => {
     return (
-      <div>
-        <div>Error: {error.message}</div>
+      <div className="mx-auto max-w-3xl space-y-4">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-900 shadow-sm">
+          <p className="text-sm font-semibold uppercase tracking-wide text-red-700">Something went wrong</p>
+          <p className="mt-2 text-base font-medium">Error: {error.message}</p>
+        </div>
         <ClientOnly>
-          <code>
-            <pre>{error.stack}</pre>
-          </code>
+          <pre className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-900 p-4 text-xs leading-relaxed text-slate-100">
+            <code>{error.stack}</code>
+          </pre>
         </ClientOnly>
       </div>
     )

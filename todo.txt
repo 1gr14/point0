@@ -46,12 +46,11 @@ mcp as comments
 
 
 ЭКЗАМПЛЫ
-tailwind to basic example
-докер
-Тесты
+
 Причёска остальных экзамплов
 create-app
 --+
+Тесты
 Экзампл электробан симпл и два сервера
 Экзампл экспо с метро
 ? Пьюр вайт экзампл
@@ -90,6 +89,7 @@ FINISH
 types.ts file thet reexport only needed types
 index exports only realy used fns and helpers without types
 pipeline
+examples has real versions, not just catalog, and odcker file is own only its code
 In error0 import RedirectTask from "@point0/core/navigate"
 
 

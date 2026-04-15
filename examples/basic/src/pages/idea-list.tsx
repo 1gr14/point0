@@ -1,5 +1,5 @@
 import { generalLayout } from '@/layouts/general.js'
-import { Link, redirect } from '@/lib/navigate'
+import { Link } from '@/lib/navigate'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
@@ -13,9 +13,6 @@ export const ideaListPage = generalLayout.lets
     const ideasCount = await prisma.idea.count()
     const ideas = await prisma.idea.findMany({ take: limit, skip: page * limit, orderBy: { updatedAt: 'desc' } })
     const nextCursor = ideasCount > (page + 1) * limit ? page + 1 : undefined
-    if (Math.random() + 1 > 0.5) {
-      return redirect('ideaCreate')
-    }
     return { ideas, ideasCount, nextCursor }
   })
   .infiniteQuery({
@@ -34,32 +31,36 @@ export const ideaListPage = generalLayout.lets
   })
   .page(({ data: { ideas, total }, queries: [query] }) => {
     return (
-      <div>
-        <h1>Ideas</h1>
-        <p>Here are all the amazing ideas shared by our community: {total}</p>
+      <div className="space-y-5">
         <div>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Ideas</h1>
+          <p className="mt-1 text-slate-600">Here are all the amazing ideas shared by our community: {total}</p>
+        </div>
+        <div className="grid gap-3">
           {ideas.map((idea) => (
-            <div key={idea.id} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #ccc' }}>
-              <h3>
-                <Link route="ideaView" input={{ id: idea.id }}>
+            <div key={idea.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <h3 className="text-lg font-semibold text-slate-900">
+                <Link className="hover:text-cyan-700" route="ideaView" input={{ id: idea.id }}>
                   {idea.title}
                 </Link>
               </h3>
-              <p>
-                {idea.description}
-                <br />
-              </p>
-              <p>
-                <Link route="ideaNews" input={{ id: idea.id }}>
+              <p className="mt-1 text-slate-600">{idea.description}</p>
+              <p className="mt-3">
+                <Link
+                  className="inline-flex rounded-md bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
+                  route="ideaNews"
+                  input={{ id: idea.id }}
+                >
                   News
                 </Link>
               </p>
             </div>
           ))}
         </div>
-        {query.isFetchingNextPage && <div>Loading more...</div>}
+        {query.isFetchingNextPage && <div className="text-sm text-slate-500">Loading more...</div>}
         {query.hasNextPage && (
           <button
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
             disabled={query.isFetchingNextPage}
             onClick={() => {
               query.fetchNextPage().catch(console.error)

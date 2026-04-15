@@ -634,7 +634,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                   })
                 }
               } else {
-                console.log(4444, result, RedirectTask.is(result))
                 if (RedirectTask.is(result)) {
                   throw result
                 }
@@ -678,7 +677,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           point,
         }
       } catch (error) {
-        console.log(ErrorClass)
         const error0 = ErrorClass.from(error)
         if (error0.status) {
           effects.set.status(error0.status)
