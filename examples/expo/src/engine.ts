@@ -7,7 +7,7 @@ export const engine = Engine.create({
   server: {
     scope: 'root',
     importer: {
-      mock: ['react-native'],
+      mock: ['react-native', 'expo-router'],
     },
     port: 3000,
     entry: { main: './index.server.ts' },

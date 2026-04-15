@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/prisma'
 import { root } from '@/lib/root'
-import { env } from '@point0/core'
 import { Stack, useLocalSearchParams } from 'expo-router'
 import { StyleSheet, Text, View } from 'react-native'
 import * as z from 'zod'
@@ -27,45 +26,43 @@ export const ideaScreenComponent = root.lets
     )
   })
 
-export default env.side.define.unsafe.client(function IdeaScreen() {
+export default function IdeaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   // in case if we usu usual query and componet props
   // return <ideaScreenComponent.X id={Number(id)} />
   return <ideaScreenComponent.X input={{ id: Number(id) }} />
-})
+}
 
-const styles = env.side.define.unsafe.client(
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#16213e',
-      padding: 20,
-    },
-    center: {
-      flex: 1,
-      backgroundColor: '#16213e',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    title: {
-      color: '#fff',
-      fontSize: 28,
-      fontWeight: 'bold',
-      marginBottom: 16,
-    },
-    content: {
-      color: '#ccc',
-      fontSize: 17,
-      lineHeight: 26,
-      marginBottom: 24,
-    },
-    date: {
-      color: '#666',
-      fontSize: 14,
-    },
-    error: {
-      color: '#e94560',
-      fontSize: 16,
-    },
-  }),
-)
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#16213e',
+    padding: 20,
+  },
+  center: {
+    flex: 1,
+    backgroundColor: '#16213e',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  content: {
+    color: '#ccc',
+    fontSize: 17,
+    lineHeight: 26,
+    marginBottom: 24,
+  },
+  date: {
+    color: '#666',
+    fontSize: 14,
+  },
+  error: {
+    color: '#e94560',
+    fontSize: 16,
+  },
+})
