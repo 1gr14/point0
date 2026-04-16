@@ -22,7 +22,6 @@ export const engine = Engine.create({
       indexHtml: './index.html',
       app: async () => await import('./app.client'),
       points: async () => await import('./generated/point0/points.client'),
-      routes: async () => await import('./generated/point0/routes'),
       generate: { points: './generated/point0/points.client.ts', routes: './generated/point0/routes.ts' },
       importer: {
         deny: ['**/prisma.*'],
