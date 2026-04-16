@@ -37,6 +37,9 @@ mcp as comments
 
 
 REFACTOING 3000
+Также писать лог клиент стартинг сервер стартинг
+И писать сколько времени потребовалось на запуск или перезапуск
+
 Мы после вызова виз ждём их резолвинга, так что в виз не может быть не стейта, ни зарезолвенных кверей
 Будто бы враперынужно ставить в отдельный ряд и его вызывать до всех прочих маунт экшенов или как?
 Врапер будто бы вообще ломает всю логику, надо его тупо скрыть
@@ -45,8 +48,6 @@ REFACTOING 3000
 
 electrobun example
 Вырезать всё из инородных скоупов
-
-
 
 COMPILER
 repesct used process env values assignable to consts patter when generating settings hash for directory name
@@ -75,10 +76,12 @@ catalog versions scripts never use catalog in places, but just hardly replace ve
 catalog versions in create-app/template should be replaced also with real versions
 In error0 import RedirectTask from "@point0/core/navigate", and in examples use htis plugin
 examples normalize dockerfile
+Вставить призыв к старт0 прямо в кли и в ридми всех экзамплов и криэйт апа
 В креэйт апп можно передать флаг экзампл и тогда скопируется его код с заменой пакейджа на верные
 create-app test
 Убрать из экзамплов не нужные зависимости
 Обновить зависимости
+Зазвать подписчиков на стрим-созвон и там обсудить как мне вести канал (за миг до запуска)
 
 
 
