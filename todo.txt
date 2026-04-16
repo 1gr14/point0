@@ -43,13 +43,9 @@ REFACTOING 3000
 Проверить что виз реально попропускае не зарехолвленные квери, ведь будто бы нет, и она то как раз только зарезолвленные принимает
 Маппер можно использовать для дожидания кверей (то есть просто вызвать его пустым), проверить что оттуда можно вернуть ошибку или редирект или лоадинг, и что после него опять возможен виз
 
-Убедиться, что компоненты не могут быть async (пейдж, лэйоут, врапер, виз)
-Лоадеру разрешить вернуть реакт сервер компонент а не дата + Пустой пейдж или компонент или что там в случае получения из лоадера компонента рендерит его
-
+electrobun example
 Вырезать всё из инородных скоупов
-Разобраться с индекс хтмлом и инжектом кссосов в него
-? mirror generator
-? queryKey: ['point0', object] + ? and do not stringify input
+
 
 
 COMPILER
@@ -71,15 +67,16 @@ cache
 
 FINISH
 Проверка под линукс и виндоус
+pipeline
 types.ts file thet reexport only needed types
 index exports only realy used fns and helpers without types
-pipeline
 examples has real versions, not just catalog, and odcker file is own only its code
 catalog versions scripts never use catalog in places, but just hardly replace versions with setted in catalog, also applies it to @point0/ packages to current version
 catalog versions in create-app/template should be replaced also with real versions
 In error0 import RedirectTask from "@point0/core/navigate", and in examples use htis plugin
 examples normalize dockerfile
 В креэйт апп можно передать флаг экзампл и тогда скопируется его код с заменой пакейджа на верные
+create-app test
 Убрать из экзамплов не нужные зависимости
 Обновить зависимости
 
@@ -92,7 +89,12 @@ examples normalize dockerfile
 merge engines and have shared server and fetch functions
 fetchOptions также принимают fetchFn
 when electrobun allow passing replaceFetch to point
+? mirror generator
+? queryKey: and do not stringify input
 
+RSC
+? Убедиться, что компоненты не могут быть async (пейдж, лэйоут, врапер, виз)
+Лоадеру разрешить вернуть реакт сервер компонент а не дата + Пустой пейдж или компонент или что там в случае получения из лоадера компонента рендерит его
 
 ЭКЗАМПЛЫ
 Тесты

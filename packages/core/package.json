@@ -178,15 +178,14 @@
     "react": "catalog:"
   },
   "devDependencies": {
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
     "@devp0nt/flat0": "catalog:",
     "@devp0nt/route0": "catalog:",
     "@sinclair/typebox": "catalog:",
     "@types/bun": "catalog:",
     "@types/node": "^20.0.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "@unhead/react": "catalog:",
-    "unhead": "catalog:",
     "@valibot/to-json-schema": "^1.6.0",
     "arktype": "catalog:",
     "esbuild-fix-imports-plugin": "^1.0.22",
@@ -195,6 +194,7 @@
     "superstruct": "catalog:",
     "tsup": "^8.0.0",
     "typescript": "catalog:",
+    "unhead": "catalog:",
     "valibot": "catalog:",
     "yup": "catalog:",
     "zod": "catalog:"

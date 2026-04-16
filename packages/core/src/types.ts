@@ -19,6 +19,7 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import type { OpenAPIV3 } from 'openapi-types'
+import type React from 'react'
 import type { ResponseEffectsSetHelper, ResponseEffectsValues } from './effects.js'
 import type { ErrorPoint0 } from './error.js'
 import type {
@@ -64,6 +65,8 @@ export type UnknownData = Record<string, unknown>
 export type UndefinedData = undefined
 export type Data = UnknownData | EmptyData
 // export type Data = UnknownData
+// export type PromiseReactNode = Promise<React.ReactNode> & React.ReactNode
+// export type LoaderOutput = UnknownData | Response | React.ReactElement
 export type LoaderOutput = UnknownData | Response
 export type UndefinedLoaderOutput = undefined
 export type MapperOutput = Data
@@ -1862,6 +1865,16 @@ export type FetchServerDetailedOutput<
       response: Response
       data: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
       output: TServerLoaderOutput extends Data ? TServerLoaderOutput : Response
+      // data: TServerLoaderOutput extends Data
+      // ? TServerLoaderOutput
+      // : TServerLoaderOutput extends React.ReactElement
+      //   ? PromiseReactNode
+      //   : undefined
+      // output: TServerLoaderOutput extends Data
+      //   ? TServerLoaderOutput
+      //   : TServerLoaderOutput extends React.ReactElement
+      //     ? PromiseReactNode
+      //     : Response
       redirect: undefined
       error: undefined
     }

@@ -374,8 +374,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         ctx: UnknownCtx
         ctxExposedKeys: string[]
         ctxExposed: UnknownCtx
+        // data: UnknownData | UndefinedData | React.ReactElement
         data: UnknownData | UndefinedData
         response: Response | undefined
+        // output: LoaderOutput | UndefinedLoaderOutput | React.ReactElement
         output: LoaderOutput | UndefinedLoaderOutput
         inputParsed: InputParsed | undefined
         paramsParsed: InputParsed | undefined

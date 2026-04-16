@@ -319,6 +319,7 @@ export async function getReadableStreamWithWrapper({
   prefix,
   suffix,
   renderer = renderToReadableStream,
+  waitForAllReady,
   clientBundlePath,
   clientPoints,
   executor,
@@ -326,6 +327,7 @@ export async function getReadableStreamWithWrapper({
   App: AppComponent
   suffix?: string
   prefix?: string
+  waitForAllReady?: boolean
   clientBundlePath?: string
   renderer?: ReadableStreamRenderer
   clientPoints: ClientPoints<any>
@@ -339,6 +341,9 @@ export async function getReadableStreamWithWrapper({
     const reactStream = await renderer(createElement(App), {
       ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
     })
+    if (waitForAllReady) {
+      await reactStream.allReady
+    }
 
     // Snapshot AFTER render started, in the same state scope
     const compiledPrefix = (prefix ?? '').replace(
@@ -371,6 +376,7 @@ export async function renderReadableStream({
   clientBundlePath,
   clientPoints,
   renderer = renderToReadableStream,
+  waitForAllReady,
   originalIndexHtml,
   domRootElementId,
   executor,
@@ -380,6 +386,7 @@ export async function renderReadableStream({
   envConsts?: Record<string, string | number | boolean | undefined>
   clientPoints: ClientPoints<any>
   renderer?: ReadableStreamRenderer
+  waitForAllReady?: boolean
   clientBundlePath?: string
   originalIndexHtml: string
   domRootElementId?: string
@@ -392,7 +399,16 @@ export async function renderReadableStream({
     envConsts,
     domRootElementId,
   })
-  return await getReadableStreamWithWrapper({ App, prefix, suffix, renderer, clientBundlePath, executor, clientPoints })
+  return await getReadableStreamWithWrapper({
+    App,
+    prefix,
+    suffix,
+    renderer,
+    waitForAllReady,
+    clientBundlePath,
+    executor,
+    clientPoints,
+  })
 }
 
 export async function renderAppAsReadableStream({
@@ -402,6 +418,7 @@ export async function renderAppAsReadableStream({
   pageLocation,
   clientPoints,
   redirectPolicy,
+  waitForAllReady,
   ...props
 }: {
   App: AppComponent
@@ -416,6 +433,7 @@ export async function renderAppAsReadableStream({
   originalIndexHtml: string
   domRootElementId?: string
   redirectPolicy: 'continue' | 'throw'
+  waitForAllReady?: boolean
 }): Promise<ReadableStream> {
   await executor.prefetchAppPagePointDeep({
     App,
@@ -430,5 +448,6 @@ export async function renderAppAsReadableStream({
     App,
     executor,
     clientPoints,
+    waitForAllReady,
   })
 }

@@ -257,7 +257,6 @@ import type {
   WithError,
 } from './types.js'
 import {
-  singletonize,
   blankDataTransformerExtended,
   generateId,
   getByPath,
@@ -277,6 +276,7 @@ import {
   parseMutationKey,
   parseQueryKey,
   setByPath,
+  singletonize,
   toExtendedTransformer,
   toKebabCase,
   windowScrollPositionGetter,
@@ -4793,6 +4793,11 @@ export class Point0<
           AssertResponseNotAllowed<InferLoaderFnOutput<TLoaderResponseFn>, ReadyPointTypeOrNever<TLetsReadyPointType>>, // AssertNotUnknownLoaderOutput<TNewServerLoaderOutput>
   ): NiceStagePoint<
     InferLoaderFnOutput<TLoaderResponseFn> extends Response ? 'clientStage' : 'serverStage',
+    // InferLoaderFnOutput<TLoaderResponseFn> extends Response
+    //   ? 'clientStage'
+    //   : InferLoaderFnOutput<TLoaderResponseFn> extends React.ReactElement
+    //     ? 'clientStage'
+    //     : 'serverStage',
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TError,
@@ -4815,7 +4820,9 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  loader(): NiceStagePoint<
+  loader(
+    ...args: TPointType extends 'clientStage' ? [AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>] : []
+  ): NiceStagePoint<
     'clientStage',
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
@@ -4839,8 +4846,21 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  loader(...args: [loaderFn?: LoaderFn<any, any, any, any, any, any, any, any, any, any, any, any> | undefined]) {
-    const loaderFn = args[0] ?? ((c: any) => c.data)
+  loader(...args: any[]) {
+    const loaderFn = (args[0] ?? ((c: any) => c.data)) as LoaderFn<
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any
+    >
     return this._continue({
       type: 'serverStage', // it should be clientStage if loader returns response, but we know it only by types, we do not know it in runtime, bu it is ok to have here for runtime serverStage. Not good, but ok.
       // _queryResultType: this._normalizeQueryResultType('query'),
@@ -8698,8 +8718,27 @@ export class Point0<
         return result
       }
 
+      // if (res.headers.get('Content-Type') === 'text/x-component' && res.body) {
+      //   const { createFromReadableStream } = await import('react-server-dom-bun/client.browser')
+      //   const data = createFromReadableStream(res.body)
+      //   const result = {
+      //     response: res,
+      //     data,
+      //     error: undefined,
+      //     redirect: undefined,
+      //     output: data,
+      //   } as Extract<FetchServerDetailedOutput<TServerLoaderOutput, TError>, { error: undefined }>
+      //   const eventData = {
+      //     ..._eventData,
+      //     ...result,
+      //   }
+      //   this._emit('pointFetchServerSettled', eventData)
+      //   this._emit('pointFetchServerSuccess', eventData)
+      //   return result
+      // }
+
       const json = await res.json()
-      const data = fetchOptions.transform ? (this._getTransformer().deserialize(json) ?? json) : json
+      const data: unknown = fetchOptions.transform ? (this._getTransformer().deserialize(json) ?? json) : json
       if (res.ok) {
         if (
           outputType === 'queryClientDehydratedState' &&
@@ -8719,7 +8758,7 @@ export class Point0<
           error: undefined,
           ...(res.headers.get('X-Point0-Redirect') === 'true'
             ? {
-                redirect: RedirectTask.from(data),
+                redirect: RedirectTask.from(data as never),
                 data: undefined,
                 output: undefined,
               }

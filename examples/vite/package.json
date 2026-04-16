@@ -61,11 +61,11 @@
     "ncp": "^2.0.0",
     "rimraf": "^6.0.1",
     "typescript": "catalog:",
-    "@vitejs/plugin-react": "^5.1.1",
-    "vite": "^7.2.2",
-    "vite-bundle-analyzer": "^1.2.3",
-    "vite-plugin-commonjs": "^0.10.4",
-    "vite-plugin-svgr": "^4.5.0",
-    "vite-tsconfig-paths": "^5.1.4"
+    "@vitejs/plugin-react": "catalog:",
+    "vite": "catalog:",
+    "vite-bundle-analyzer": "catalog:",
+    "vite-plugin-commonjs": "catalog:",
+    "vite-plugin-svgr": "catalog:",
+    "vite-tsconfig-paths": "catalog:"
   }
 }

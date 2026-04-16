@@ -1,4 +1,5 @@
 import * as flat0 from '@devp0nt/flat0'
+import * as React from 'react'
 import { Route0, type AnyLocation, type AnyRoute, type ExactLocation, type KnownLocation } from '@devp0nt/route0'
 import {
   _getSsItemsWithRestErrors,
@@ -46,6 +47,7 @@ import { Executor } from './executor.js'
 import type { ExecuteOptionsKnownInput } from './executor.js'
 import type { Publicdir } from './publicdir.js'
 import type { EngineServer } from './server.js'
+// import { renderToReadableStream } from 'react-dom/server'
 
 export class Fetcher<TError extends ErrorPoint0> {
   engine: Engine<RequiredCtx, TError, true>
@@ -700,6 +702,18 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
       }
 
+      if (React.isValidElement(executeResult.output)) {
+        throw new ErrorClass('RSC is not yet supported')
+        // const stream = await renderToReadableStream(executeResult.output)
+        // const response = new Response(stream, {
+        //   headers: { 'Content-Type': 'text/x-component' },
+        // })
+        // return {
+        //   ...partialResult,
+        //   response,
+        // }
+      }
+
       if (!executeResult.output) {
         const error = new ErrorClass('No output')
         const response = this.toJsonErrorResponse({
@@ -787,6 +801,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             pagePoint: point,
             pageLocation,
             redirectPolicy: 'throw',
+            waitForAllReady: true,
           })
           const response = new Response(readableStream, {
             headers: { 'Content-Type': 'text/html' },

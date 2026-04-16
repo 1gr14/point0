@@ -42,6 +42,7 @@ import {
   getViteRoot,
   isAsyncFn,
   normalizeAndValidateNodeEnv,
+  readableStreamToString,
   registerOnProcessExit,
 } from './utils.js'
 import type {
@@ -1101,11 +1102,13 @@ try {
     pagePoint,
     pageLocation,
     redirectPolicy,
+    waitForAllReady,
   }: {
     executor: Executor<RequiredCtx, any>
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
     redirectPolicy: 'continue' | 'throw'
+    waitForAllReady?: boolean
   }): Promise<ReadableStream> {
     if (!this.points) {
       throw new Error('Client points not provided, so we can not render app as readable stream')
@@ -1121,7 +1124,31 @@ try {
       originalIndexHtml: await this.getOriginalIndexHtml(pageLocation.href ?? pageLocation.hrefRel),
       domRootElementId: this.domRootElementId,
       redirectPolicy,
+      waitForAllReady,
     })
+  }
+
+  async renderAsString({
+    executor,
+    pagePoint,
+    pageLocation,
+    redirectPolicy,
+    waitForAllReady,
+  }: {
+    executor: Executor<RequiredCtx, any>
+    pagePoint: PagePoint | undefined
+    pageLocation: AnyLocation
+    redirectPolicy: 'continue' | 'throw'
+    waitForAllReady?: boolean
+  }): Promise<string> {
+    const readableStream = await this.renderAsReadableStream({
+      executor,
+      pagePoint,
+      pageLocation,
+      redirectPolicy,
+      waitForAllReady,
+    })
+    return await readableStreamToString(readableStream)
   }
 
   async prefetchAppPagePointDeep({
