@@ -200,13 +200,7 @@ export const toJsExtension = (path: string) => {
   return path.replace(/\.tsx?$/, '.js')
 }
 
-export const externalizeRollupModule = ({
-  external,
-  moduleId,
-}: {
-  external: unknown
-  moduleId: string
-}): unknown => {
+export const externalizeRollupModule = ({ external, moduleId }: { external: unknown; moduleId: string }): unknown => {
   if (!external) {
     return [moduleId]
   }
@@ -723,4 +717,33 @@ export const registerOnProcessExit = (fn: () => void): void => {
 
   process.on('beforeExit', triggerIfNotYet)
   process.on('exit', triggerIfNotYet)
+}
+
+export const parseGlobs = ({
+  cwd,
+  globs,
+}: {
+  cwd: string
+  globs: string[]
+}): {
+  patterns: string[]
+  includes: string[]
+  excludes: string[]
+  dir: string
+} => {
+  const patterns: string[] = []
+  const includes: string[] = []
+  const excludes: string[] = []
+  for (const glob of globs) {
+    const isExclude = glob.startsWith('!')
+    const pathMaybeRel = isExclude ? glob.slice(1) : glob
+    const pathAbs = nodePath.resolve(cwd, pathMaybeRel)
+    patterns.push(isExclude ? `!${pathAbs}` : pathAbs)
+    if (isExclude) {
+      excludes.push(pathAbs)
+    } else {
+      includes.push(pathAbs)
+    }
+  }
+  return { patterns, includes, excludes, dir: includes.length > 0 ? getDirByPaths({ paths: includes }) : cwd }
 }

@@ -131,6 +131,20 @@ describe('importer', () => {
       expect(options.map.deny['**/node_modules/react{,/**}']).toBe('deps/package.json:react')
       expect(options.map.deny['**/node_modules/lodash{,/**}']).toBe('deps/package.json:lodash')
     })
+
+    it('preserves include, exclude, include order for path globs', () => {
+      const cwd = nodePath.join(tempDir, crypto.randomUUID())
+      const options = parseImporterOptions({
+        cwd,
+        mock: ['./my/dir/**', '!./my/dir/special/**', './my/dir/special/also-included/**'],
+      })
+
+      expect(options.mock.ordered).toEqual([
+        { type: 'include', rule: nodePath.resolve(cwd, './my/dir/**') },
+        { type: 'exclude', rule: nodePath.resolve(cwd, './my/dir/special/**') },
+        { type: 'include', rule: nodePath.resolve(cwd, './my/dir/special/also-included/**') },
+      ])
+    })
   })
 
   describe('#resolveImporterRule', () => {
@@ -144,6 +158,10 @@ describe('importer', () => {
         rules: {
           include: [includeRule],
           exclude: ['**/node_modules/react-dom{,/**}'],
+          ordered: [
+            { type: 'include', rule: includeRule },
+            { type: 'exclude', rule: '**/node_modules/react-dom{,/**}' },
+          ],
         },
         path,
         cwd,
@@ -165,11 +183,59 @@ describe('importer', () => {
         rules: {
           include: [includeRule],
           exclude: [includeRule],
+          ordered: [
+            { type: 'include', rule: includeRule },
+            { type: 'exclude', rule: includeRule },
+          ],
         },
         path: '/repo/node_modules/react/index.js',
         cwd: '/repo',
         importer: '/repo/src/page.tsx',
         loc: { line: 1, column: 0 },
+      })
+
+      expect(result).toBeUndefined()
+    })
+
+    it('returns match when a later include re-includes after exclude', () => {
+      const cwd = nodePath.join(tempDir, crypto.randomUUID())
+      const options = parseImporterOptions({
+        cwd,
+        mock: ['./my/dir/**', '!./my/dir/special/**', './my/dir/special/also-included/**'],
+      })
+      const path = nodePath.join(cwd, 'my/dir/special/also-included/file.ts')
+
+      const result = resolveImporterRule({
+        map: options.map.mock,
+        rules: options.mock,
+        path,
+        cwd,
+        importer: nodePath.join(cwd, 'src/page.tsx'),
+        loc: { line: 5, column: 2 },
+      })
+
+      expect(result).toEqual({
+        shortPath: nodePath.join('my/dir/special/also-included/file.ts'),
+        shortRule: './my/dir/special/also-included/**',
+        shortImporter: `src${nodePath.sep}page.tsx:5:2`,
+      })
+    })
+
+    it('returns undefined when excluded path is not re-included', () => {
+      const cwd = nodePath.join(tempDir, crypto.randomUUID())
+      const options = parseImporterOptions({
+        cwd,
+        mock: ['./my/dir/**', '!./my/dir/special/**', './my/dir/special/also-included/**'],
+      })
+      const path = nodePath.join(cwd, 'my/dir/special/not-included/file.ts')
+
+      const result = resolveImporterRule({
+        map: options.map.mock,
+        rules: options.mock,
+        path,
+        cwd,
+        importer: nodePath.join(cwd, 'src/page.tsx'),
+        loc: { line: 7, column: 1 },
       })
 
       expect(result).toBeUndefined()

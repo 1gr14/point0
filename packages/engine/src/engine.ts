@@ -272,11 +272,9 @@ export class Engine<
 
           let processes = start()
           if (watch) {
-            const globInclude = watch.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(cwd, g))
-            const globExclude = watch.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(cwd, g.slice(1)))
             const watcher = FilesWatcher.create({
-              ignore: globExclude,
-              patterns: globInclude,
+              cwd,
+              patterns: watch,
             })
             await watcher.start({
               onEvent: async (event) => {
@@ -485,14 +483,12 @@ export class Engine<
     cwd?: string
   }): Promise<void> {
     const { watch, cwd = this.cwd, ...buildOptions } = options ?? {}
-    const glob = !watch || watch === true ? this.buildWatchGlob : Array.isArray(watch) ? watch : [watch]
-    if (glob.length === 0) {
+    const globs = !watch || watch === true ? this.buildWatchGlob : Array.isArray(watch) ? watch : [watch]
+    if (globs.length === 0) {
       throw new Error(
         'Build watch glob is not provided, please provide --watch <glob> or set buildWatchGlob in engine options',
       )
     }
-    const globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(cwd, g))
-    const globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(cwd, g.slice(1)))
     let currentBuildProcess: ReturnType<typeof Bun.spawn> | undefined
     const toCliBuildArgs = (): string[] => {
       const args = []
@@ -577,8 +573,8 @@ export class Engine<
         })
     }
     const watcher = FilesWatcher.create({
-      ignore: globExclude,
-      patterns: globInclude,
+      cwd,
+      patterns: globs,
     })
     try {
       this.log({

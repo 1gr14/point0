@@ -12,8 +12,16 @@ export type ImporterOptionsInput = {
 }
 
 export type ImporterOptionsParsed = {
-  mock: { include: Array<RegExp | string>; exclude: Array<RegExp | string> }
-  deny: { include: Array<RegExp | string>; exclude: Array<RegExp | string> }
+  mock: {
+    include: Array<RegExp | string>
+    exclude: Array<RegExp | string>
+    ordered: Array<{ type: 'include' | 'exclude'; rule: RegExp | string }>
+  }
+  deny: {
+    include: Array<RegExp | string>
+    exclude: Array<RegExp | string>
+    ordered: Array<{ type: 'include' | 'exclude'; rule: RegExp | string }>
+  }
   // full rule → short rule
   map: { mock: Record<string, string>; deny: Record<string, string> }
   cwd: string | undefined
@@ -117,10 +125,12 @@ export const parseImporterOptions = (options: ImporterOptionsInput): ImporterOpt
   ): {
     include: Array<RegExp | string>
     exclude: Array<RegExp | string>
+    ordered: Array<{ type: 'include' | 'exclude'; rule: RegExp | string }>
   } => {
     const include: Array<RegExp | string> = []
     const exclude: Array<RegExp | string> = []
-    if (!patterns) return { include, exclude }
+    const ordered: Array<{ type: 'include' | 'exclude'; rule: RegExp | string }> = []
+    if (!patterns) return { include, exclude, ordered }
     for (const pattern of patterns) {
       const hasExclamationMark = typeof pattern === 'string' && pattern.startsWith('!')
       const patternWithoutExclamationMark = hasExclamationMark ? pattern.slice(1) : pattern
@@ -134,9 +144,11 @@ export const parseImporterOptions = (options: ImporterOptionsInput): ImporterOpt
           const { short, full } = resolvePattern(moduleName)
           if (hasExclamationMark) {
             exclude.push(full)
+            ordered.push({ type: 'exclude', rule: full })
           } else {
             map[type][full] = `${packageJsonPath}:${short}`
             include.push(full)
+            ordered.push({ type: 'include', rule: full })
           }
         }
       } else {
@@ -144,18 +156,21 @@ export const parseImporterOptions = (options: ImporterOptionsInput): ImporterOpt
         if (typeof pattern === 'string') {
           if (hasExclamationMark) {
             exclude.push(full)
+            ordered.push({ type: 'exclude', rule: full })
           } else {
             map[type][full] = short
             include.push(full)
+            ordered.push({ type: 'include', rule: full })
           }
         } else {
           // we pass here original regex
           map[type][full] = short
           include.push(pattern)
+          ordered.push({ type: 'include', rule: pattern })
         }
       }
     }
-    return { include, exclude }
+    return { include, exclude, ordered }
   }
 
   return {
@@ -177,7 +192,11 @@ export const resolveImporterRule = ({
   loc,
 }: {
   map: Record<string, string>
-  rules: { include: Array<string | RegExp>; exclude: Array<string | RegExp> }
+  rules: {
+    include: Array<string | RegExp>
+    exclude: Array<string | RegExp>
+    ordered: Array<{ type: 'include' | 'exclude'; rule: RegExp | string }>
+  }
   path: string
   cwd: string | undefined
   importer: string
@@ -189,10 +208,22 @@ export const resolveImporterRule = ({
     }
     return rule.test(path)
   }
-  const matchIncludeRule = rules.include.find(isMatch)
-  if (!matchIncludeRule) return undefined
-  const matchExcludeRule = rules.exclude.find(isMatch)
-  if (matchExcludeRule) return undefined
+  const matchIncludeRule = (() => {
+    let foundIncludeRule = undefined as string | RegExp | undefined
+    for (const { type, rule } of rules.ordered) {
+      if (isMatch(rule)) {
+        if (type === 'include') {
+          foundIncludeRule = rule
+        } else {
+          foundIncludeRule = undefined
+        }
+      }
+    }
+    return foundIncludeRule
+  })()
+  if (!matchIncludeRule) {
+    return undefined
+  }
   const fullRuleString = matchIncludeRule.toString()
   const shortRuleString = map[fullRuleString] as string | undefined
   const shortPath = cwd ? nodePath.relative(cwd, path) : path

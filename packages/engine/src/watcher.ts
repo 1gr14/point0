@@ -2,7 +2,7 @@ import type { AsyncSubscription } from '@parcel/watcher'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import { getDirByPaths } from './utils.js'
+import { parseGlobs } from './utils.js'
 
 export type FilesWatcherEvent = {
   type: 'update' | 'delete'
@@ -17,24 +17,44 @@ export type FilesWatcherCallbacks = {
   onError?: (error: unknown) => Promise<void> | void
 }
 
-export type FilesWatcherOptions = {
-  watchDir?: string
-  ignore: string[]
-  patterns: string[]
-}
+export type FilesWatcherOptions =
+  | {
+      cwd: string
+      dir?: undefined
+      patterns: string[]
+      excludes?: undefined
+      includes?: undefined
+    }
+  | {
+      cwd?: undefined
+      dir: string
+      patterns: string[]
+      excludes: string[]
+      includes: string[]
+    }
 
 export class FilesWatcher {
   readonly watchDir: string
-  readonly ignore: string[]
+  readonly includes: string[]
+  readonly excludes: string[]
   readonly patterns: string[]
 
   private subscription: AsyncSubscription | undefined
   private callbacks: FilesWatcherCallbacks | undefined
 
   private constructor(options: FilesWatcherOptions) {
-    this.watchDir = options.watchDir || getDirByPaths({ paths: options.patterns })
-    this.ignore = options.ignore
-    this.patterns = options.patterns
+    if (options.dir !== undefined) {
+      this.watchDir = options.dir
+      this.includes = options.includes
+      this.excludes = options.excludes
+      this.patterns = options.patterns
+    } else {
+      const parsed = parseGlobs({ cwd: options.cwd, globs: options.patterns })
+      this.watchDir = parsed.dir
+      this.includes = parsed.includes
+      this.excludes = parsed.excludes
+      this.patterns = parsed.patterns
+    }
   }
 
   static create(options: FilesWatcherOptions) {
@@ -82,7 +102,7 @@ export class FilesWatcher {
         }
       },
       {
-        ignore: this.ignore,
+        ignore: this.excludes,
       },
     )
   }
@@ -102,7 +122,7 @@ export class FilesWatcher {
       const relativePattern = nodePath.relative(this.watchDir, resolvedPattern)
       return minimatch(relativePath, relativePattern, { dot: true }) || minimatch(path, resolvedPattern, { dot: true })
     })
-    const matchNegative = this.ignore.some((pattern) => {
+    const matchNegative = this.excludes.some((pattern) => {
       const resolvedPattern = nodePath.resolve(this.watchDir, pattern)
       const relativePattern = nodePath.relative(this.watchDir, resolvedPattern)
       return minimatch(relativePath, relativePattern, { dot: true }) || minimatch(path, resolvedPattern, { dot: true })

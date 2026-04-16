@@ -7,7 +7,7 @@ import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { EngineOptionsRoutes } from './config.js'
-import { getDirByPaths } from './utils.js'
+import { parseGlobs } from './utils.js'
 import { FilesWatcher } from './watcher.js'
 import type { PointsScope } from '@point0/core'
 
@@ -148,8 +148,9 @@ export type FileGeneratorProcessResult = ChangeCollectedPointsEvent & { written:
 
 export class FilesGenerator {
   readonly banner: string | undefined
-  readonly globInclude: string[]
-  readonly globExclude: string[]
+  readonly globIncludes: string[]
+  readonly globExcludes: string[]
+  readonly globPatterns: string[]
   readonly cwd: string
   readonly tempDir: string
   readonly tasks: FilesGeneratorTask[]
@@ -175,8 +176,6 @@ export class FilesGenerator {
     this.cwd = opts.cwd
     this.log = opts.log ?? log
     const glob = Array.isArray(opts.glob) ? opts.glob : [opts.glob]
-    this.globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g))
-    this.globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g.slice(1)))
     this.tempDir = resolveTempDirPath(['generator'])
     this.ssr = opts.ssr === undefined ? false : opts.ssr
 
@@ -205,16 +204,16 @@ export class FilesGenerator {
       return acc
     }, {})
     this.routes = {}
-    const watchDir = this.globInclude.length > 0 ? getDirByPaths({ paths: this.globInclude }) : process.cwd()
-    const watchIgnore = [...this.globExclude, ...this.tasks.map((t) => ('outfile' in t ? t.outfile : null))].flatMap(
-      (p) => p || [],
-    )
-    const watchPatterns = [...this.globInclude]
-    this.filesWatcher = FilesWatcher.create({
-      watchDir,
-      ignore: watchIgnore,
-      patterns: watchPatterns,
-    })
+    // const watchDir = this.globInclude.length > 0 ? getDirByPaths({ paths: this.globInclude }) : process.cwd()
+    // const watchIgnore = [...this.globExclude, ...this.tasks.map((t) => ('outfile' in t ? t.outfile : null))].flatMap(
+    //   (p) => p || [],
+    // )
+    // const watchPatterns = [...this.globInclude]
+    const parsedGlobs = parseGlobs({ cwd: this.cwd, globs: glob })
+    this.globIncludes = parsedGlobs.includes
+    this.globExcludes = parsedGlobs.excludes
+    this.globPatterns = parsedGlobs.patterns
+    this.filesWatcher = FilesWatcher.create(parsedGlobs)
   }
 
   static create(opts: FilesGeneratorOptions) {
@@ -242,14 +241,14 @@ export class FilesGenerator {
   // files
 
   private async collectFiles() {
-    for (const pattern of this.globInclude) {
+    for (const pattern of this.globIncludes) {
       // Convert absolute pattern to relative pattern for fast-glob
       const relativePattern = nodePath.relative(this.cwd, pattern)
       const entries = await fg([relativePattern], {
         cwd: this.cwd,
         absolute: true,
         onlyFiles: true,
-        ignore: this.globExclude,
+        ignore: this.globExcludes,
       })
       for (const absPath of entries.sort((a, b) => a.localeCompare(b))) {
         this.files.add(absPath)
@@ -271,10 +270,10 @@ export class FilesGenerator {
 
   isFileSuitableToGlob(fileAbs: string): boolean {
     return (
-      this.globInclude.some((g) => {
+      this.globIncludes.some((g) => {
         return minimatch(fileAbs, g, { dot: true })
       }) &&
-      !this.globExclude.some((g) => {
+      !this.globExcludes.some((g) => {
         return minimatch(fileAbs, g, { dot: true })
       })
     )
