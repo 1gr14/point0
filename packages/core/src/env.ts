@@ -678,11 +678,36 @@ const envBuild = Object.defineProperties(
 
 // final
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface EnvDefinition {
+  // module augmentation hook for consumers
+  // example:
+  // declare module '@point0/core' {
+  //   interface EnvDefinition {
+  //     vars: { API_URL: string }
+  //     scope: 'desktop' | 'web'
+  //     runtime: 'browser' | 'ios' | 'android'
+  //     os: 'mac' | 'windows' | 'linux'
+  //   }
+  // }
+}
+
+type EnvDefinitionVars = EnvDefinition extends { vars: infer TVars } ? TVars : any
+type EnvDefinitionScope = EnvDefinition extends { scope: infer TScope extends string } ? TScope : string
+type EnvDefinitionRuntime = EnvDefinition extends {
+  runtime: infer TRuntime extends EnvRuntimeName | undefined
+}
+  ? TRuntime
+  : EnvRuntimeName | undefined
+type EnvDefinitionOs = EnvDefinition extends { os: infer TOs extends EnvOsName | undefined }
+  ? TOs
+  : EnvOsName | undefined
+
 export type Env<
-  TVars = any,
-  TScope extends string = string,
-  TRuntime extends EnvRuntimeName | undefined = EnvRuntimeName | undefined,
-  TOs extends EnvOsName | undefined = EnvOsName | undefined,
+  TVars = EnvDefinitionVars,
+  TScope extends string = EnvDefinitionScope,
+  TRuntime extends EnvRuntimeName | undefined = EnvDefinitionRuntime,
+  TOs extends EnvOsName | undefined = EnvDefinitionOs,
 > = {
   readonly mode: EnvMode
   readonly runtime: EnvRuntime<IsAny<TRuntime> extends true ? EnvRuntimeName | undefined : TRuntime>

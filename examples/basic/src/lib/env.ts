@@ -1,6 +1,17 @@
 import { env } from '@point0/core'
 import { z } from 'zod'
 
+// we can define types to use later via env.vars.SERVER_URL
+declare module '@point0/core' {
+  interface EnvDefinition {
+    vars: { SERVER_URL: string }
+    // in case if we need to use different scopes, runtimes, etc
+    // scope: 'desktop' | 'web'
+    // runtime: 'browser' | 'ios' | 'android'
+    // os: 'mac' | 'windows' | 'linux'
+  }
+}
+
 export const clientEnv = {} as ReturnType<typeof validateClientEnv>
 
 export const serverEnv = {} as ReturnType<typeof validateServerEnv>
