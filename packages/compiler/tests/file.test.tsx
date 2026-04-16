@@ -1430,6 +1430,66 @@ describe('CompilerFile', () => {
       )
     })
 
+    describe('processEnvAliases', () => {
+      it.concurrent(
+        'replaces values for all provided aliases (identifier and string-literal access)',
+        helper(async ({ files: [file] }) => {
+          process.env.SERVER_ALIAS_VAR = 'server-alias-value'
+          process.env.CLIENT_ALIAS_VAR = 'client-alias-value'
+          const cf = await file.wrp(async () => {
+            // @ts-expect-error - testing with non-existent module
+            const { serverEnv, clientEnv } = await import('@some/other-package')
+            console.info(serverEnv.SERVER_ALIAS_VAR)
+            console.info(clientEnv['CLIENT_ALIAS_VAR'])
+          })
+          cf.shakeForEnv({
+            side: 'server',
+            scope: 'test',
+            mode: 'development',
+            consts: ['SERVER_ALIAS_VAR', 'CLIENT_ALIAS_VAR'],
+            processEnvAliases: ['serverEnv', 'clientEnv'],
+          })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { serverEnv, clientEnv } = await import('@some/other-package')
+              console.info('server-alias-value')
+              console.info('client-alias-value')
+              "
+            `,
+          )
+          delete process.env.SERVER_ALIAS_VAR
+          delete process.env.CLIENT_ALIAS_VAR
+        }),
+      )
+
+      it.concurrent(
+        'does not replace alias when it is not configured',
+        helper(async ({ files: [file] }) => {
+          process.env.UNCONFIGURED_ALIAS_VAR = 'unconfigured-alias-value'
+          const cf = await file.wrp(async () => {
+            // @ts-expect-error - testing with non-existent module
+            const { serverEnv } = await import('./custom-env.js')
+            console.info(serverEnv.UNCONFIGURED_ALIAS_VAR)
+          })
+          cf.shakeForEnv({
+            side: 'server',
+            scope: 'test',
+            mode: 'development',
+            consts: ['UNCONFIGURED_ALIAS_VAR'],
+            processEnvAliases: ['clientEnv'],
+          })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { serverEnv } = await import('./custom-env.js')
+              console.info(serverEnv.UNCONFIGURED_ALIAS_VAR)
+              "
+            `,
+          )
+          delete process.env.UNCONFIGURED_ALIAS_VAR
+        }),
+      )
+    })
+
     describe('env.mode', () => {
       it(
         'env.mode.name replaced with mode parameter',

@@ -30,7 +30,7 @@ export class Compiler {
   ssr: boolean
   importer: ImporterOptionsParsed
   tempDir: string | undefined
-
+  processEnvAliases: string[]
   /*
    * Match JS/TS and markdown-ish source files while excluding virtual/shim
    * module IDs and node_modules (except point0 packages).
@@ -58,6 +58,7 @@ export class Compiler {
     os,
     ssr,
     importer,
+    processEnvAliases,
   }: {
     filter: RegExp
     side: 'client' | 'server' | false
@@ -72,6 +73,7 @@ export class Compiler {
     os: EnvOsName | false
     ssr: boolean
     importer: ImporterOptionsParsed
+    processEnvAliases: string[]
   }) {
     this.filter = filter
     this.side = side
@@ -86,6 +88,7 @@ export class Compiler {
     this.os = os
     this.ssr = ssr
     this.importer = importer
+    this.processEnvAliases = processEnvAliases
   }
 
   static create(options: CompilerOptions) {
@@ -102,10 +105,20 @@ export class Compiler {
       os = false,
       ssr = false,
       importer: providedImporter,
+      processEnvAliases: providedProcessEnvAliases,
     } = options
     if (mode !== false && (!mode || !normalNodeEnvs.includes(mode as NormalizedNodeEnv))) {
       throw new Error(`Invalid mode (NODE_ENV): "${mode}". Allowed values: production, development, test`)
     }
+    const processEnvAliases = [
+      ...new Set(
+        !providedProcessEnvAliases
+          ? []
+          : Array.isArray(providedProcessEnvAliases)
+            ? providedProcessEnvAliases
+            : [providedProcessEnvAliases],
+      ),
+    ].filter((alias) => !!alias)
     return new Compiler({
       filter: filter ?? Compiler.defaultFilter,
       side,
@@ -120,6 +133,7 @@ export class Compiler {
       os,
       ssr,
       importer: parseImporterOptions(providedImporter ?? {}),
+      processEnvAliases,
     })
   }
 
@@ -194,6 +208,7 @@ export class Compiler {
     const runtime = this.runtime
     const os = this.os
     const ssr = this.ssr
+    const processEnvAliases = this.processEnvAliases
     const errors: unknown[] = []
     const collectResult = this.walker.collectPointsFromFile({ file, content })
     errors.push(...collectResult.errors)
@@ -217,7 +232,7 @@ export class Compiler {
         point.addHmrFix()
       }
     }
-    cf.shakeForEnv({ side, scope, consts, built, mode, runtime, os, ssr })
+    cf.shakeForEnv({ side, scope, consts, built, mode, runtime, os, ssr, processEnvAliases })
     if (built) {
       cf.shakeForBuiltEngine()
     }
@@ -555,6 +570,7 @@ export type CompilerOptions = {
   hmrFix?: boolean
   ssr?: boolean
   importer?: ImporterOptionsInput | undefined
+  processEnvAliases?: string[] | string
 }
 export type CompilerEnvConstsObject = { [key: string]: string | number | boolean | null | undefined }
 export type CompilerEnvConstsString = string

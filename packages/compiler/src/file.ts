@@ -529,6 +529,7 @@ export class CompilerFile<THasContent extends boolean> {
     runtime = false,
     os = false,
     ssr = false,
+    processEnvAliases = [],
   }: {
     side: 'client' | 'server' | false
     scope: string | false
@@ -538,6 +539,7 @@ export class CompilerFile<THasContent extends boolean> {
     consts?: CompilerEnvConsts | undefined
     built?: boolean | undefined
     ssr?: boolean | undefined
+    processEnvAliases?: string[] | undefined
   }): {
     side: 'client' | 'server' | false
     built: boolean
@@ -593,7 +595,13 @@ export class CompilerFile<THasContent extends boolean> {
       return this._shakeForEnv
     }
     try {
-      if (!this.content.includes('@point0/core') && !this.content.includes('_point0_env')) {
+      const hasKnownEnvUsages =
+        this.content.includes('@point0/core') ||
+        this.content.includes('_point0_env') ||
+        this.content.includes('process.env') ||
+        this.content.includes('import.meta.env') ||
+        processEnvAliases.some((alias) => this.content!.includes(alias))
+      if (!hasKnownEnvUsages) {
         const resultSide = side !== false ? side : 'client'
         const resultScope = scope !== false ? scope : ''
         const resultRuntime = runtime
@@ -630,6 +638,7 @@ export class CompilerFile<THasContent extends boolean> {
           t.blockStatement([t.throwStatement(t.newExpression(t.identifier('Error'), [t.stringLiteral(message)]))]),
           false,
         )
+      const processEnvAliasSet = new Set(processEnvAliases)
       const trustPoint0IdentifiersInMdxLikeFile = CompilerFile.isMdxLikePath(this.abs)
 
       const isPoint0CoreModuleLoadExpression = (node: Node | null | undefined): boolean => {
@@ -1074,6 +1083,19 @@ export class CompilerFile<THasContent extends boolean> {
               node.object.object.name === 'process' &&
               node.object.property.type === 'Identifier' &&
               node.object.property.name === 'env' &&
+              ((node.computed === false && node.property.type === 'Identifier') ||
+                (node.computed === true && node.property.type === 'StringLiteral'))
+            ) {
+              const varName = node.property.type === 'Identifier' ? node.property.name : node.property.value
+              const checkResult = checkReplaceVar(varName, process.env[varName])
+              if (checkResult.shouldReplace) {
+                replaceWithConst(p, checkResult.desiredValue)
+              }
+            }
+            // Handle alias.X where alias is configured as process env alias
+            else if (
+              node.object.type === 'Identifier' &&
+              processEnvAliasSet.has(node.object.name) &&
               ((node.computed === false && node.property.type === 'Identifier') ||
                 (node.computed === true && node.property.type === 'StringLiteral'))
             ) {
