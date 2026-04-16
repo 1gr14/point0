@@ -563,8 +563,9 @@ export class Fetcher<TError extends ErrorPoint0> {
       error: undefined,
     }
     const transformer = this.getTransformer({ scope: point.scope, point, transform })
-    const ErrorClass: ClassLikeError0<TError> =
-      client?.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
+    const ErrorClass = (client?.points?.manager.root._Error ??
+      this.server.points?.manager.root._Error ??
+      ErrorPoint0) as ClassLikeError0<TError>
 
     try {
       const input = await this.getPointInputFromEndpointRequest({ request, location, point, transform })

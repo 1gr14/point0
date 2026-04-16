@@ -2,11 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import type { ClientRuntime } from './env.types.js'
 import type { DataTransformer, DataTransformerExtended, PointsScope, RichFetchFn } from './types.js'
 import type { ClientPoints } from './client-points.js'
-import {
-  bindToGlobalThisToAvoidMultipleInstances,
-  blankDataTransformerExtended,
-  toExtendedTransformer,
-} from './utils.js'
+import { singletonize, blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
 const _point0_env = {
   vars: {
@@ -14,24 +10,15 @@ const _point0_env = {
   },
 }
 
-const __POINT0_SUPER_STORE_SERVER_STORAGE__ = bindToGlobalThisToAvoidMultipleInstances(
+const __POINT0_SUPER_STORE_SERVER_STORAGE__ = singletonize(
   '__POINT0_SUPER_STORE_SERVER_STORAGE__',
   _point0_env.vars.POINT0_SIDE === 'client' ? null : new AsyncLocalStorage<Record<string, unknown>>(),
 )
-const __POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ = bindToGlobalThisToAvoidMultipleInstances(
-  '__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__',
-  {},
-)
-const __POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ = bindToGlobalThisToAvoidMultipleInstances(
-  '__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__',
-  {},
-)
+const __POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ = singletonize('__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__', {})
+const __POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ = singletonize('__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__', {})
 
 export class SuperStore {
-  static instance: SuperStore = bindToGlobalThisToAvoidMultipleInstances(
-    '__POINT0_SUPER_STORE_INSTANCE__',
-    new SuperStore(),
-  )
+  static instance: SuperStore = singletonize('__POINT0_SUPER_STORE_INSTANCE__', new SuperStore())
 
   id = Math.random().toString(36).substring(2, 15)
 

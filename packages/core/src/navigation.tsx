@@ -20,7 +20,7 @@ import { log } from './logger.js'
 import { findRedirectTaskInQueryClientCache, removeRedirectsFromQueryClientCache } from './query-client.js'
 import type { RedirectTask } from './redirect.js'
 import type { IfAnyThenElse, PrefetchPagePolicy } from './types.js'
-import { bindToGlobalThisToAvoidMultipleInstances, generateId } from './utils.js'
+import { singletonize, generateId } from './utils.js'
 
 export type NavigationCallback<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> = (
   to: string,
@@ -197,7 +197,7 @@ export type NavigationPageState<TStatus extends 'success' | 'loading' | 'error' 
           : never
 >
 export type NavigationPageStateContextValue = NavigationPageState<any>
-export const NavigationPageStateContext = bindToGlobalThisToAvoidMultipleInstances(
+export const NavigationPageStateContext = singletonize(
   'NavigationPageStateContext',
   React.createContext<NavigationPageStateContextValue | null>(null),
 )
@@ -286,7 +286,7 @@ export type NavigationHelpersContextValue<
   setPageState: React.Dispatch<React.SetStateAction<NavigationPageState>>
   ErrorClass: ClassLikeError0<ErrorPoint0>
 }
-export const NavigationHelpersContext = bindToGlobalThisToAvoidMultipleInstances(
+export const NavigationHelpersContext = singletonize(
   'NavigationHelpersContext',
   React.createContext<NavigationHelpersContextValue | null>(null),
 )
@@ -310,7 +310,7 @@ export type NavigationTransitionStateContextValue = {
   status: NavigationStatus
   error: Error | undefined
 }
-export const NavigationTransitionStateContext = bindToGlobalThisToAvoidMultipleInstances(
+export const NavigationTransitionStateContext = singletonize(
   'NavigationTransitionStateContext',
   React.createContext<NavigationTransitionStateContextValue | null>(null),
 )
@@ -332,7 +332,7 @@ export type NavigationLocationContextValue = {
   currentLocation: AnyLocation
   addHashToLocation: boolean
 }
-export const NavigationLocationContext = bindToGlobalThisToAvoidMultipleInstances(
+export const NavigationLocationContext = singletonize(
   'NavigationLocationContext',
   React.createContext<NavigationLocationContextValue | null>(null),
 )

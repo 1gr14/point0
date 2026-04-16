@@ -124,7 +124,7 @@ export type ClassLikeError0<T extends ErrorPoint0 = ErrorPoint0> = {
     options?: {
       cause?: unknown
       status?: number
-      code?: string
+      code?: any
       redirect?: RedirectTask
       response?: Response
       headers?: Record<string, string | undefined>

@@ -23,7 +23,7 @@ export const ideaUpdateMutation = root.lets
       },
     })
     if (exIdea.userId !== me.user.id) {
-      throw new AppError('You are not the author of this idea')
+      throw new AppError('You are not the author of this idea', { code: 'FORBIDDEN' })
     }
     const imageBase64 = image ? Buffer.from(await image.arrayBuffer()).toString('base64') : undefined
     const idea = await prisma.idea.update({
@@ -48,7 +48,7 @@ export const ideaUpdatePage = generalLayout.lets
   .with(ideaViewQuery, ({ params: { id } }) => ({ id: +id }))
   .with(({ data, props: { me } }) => {
     if (data?.idea && data.idea.userId !== me.user.id) {
-      return new AppError('You are not the author of this idea')
+      return new AppError('You are not the author of this idea', { code: 'FORBIDDEN' })
     }
   })
   .head(({ data: { idea } }) => `Edit Idea: ${idea.title}`)

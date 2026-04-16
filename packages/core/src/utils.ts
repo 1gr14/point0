@@ -577,7 +577,7 @@ export const getMutationPredicate = (options: MutationPredicateOptions): ((mutat
   }
 }
 
-export const bindToGlobalThisToAvoidMultipleInstances = <T>(key: string, value: T): T => {
+export const singletonize = <T>(key: string, value: T): T => {
   const fixedKey = `__POINT0_AVOID_MULTIPLE_INSTANCES_${key}`
   const bindedValue = (globalThis as any)[fixedKey]
   if (bindedValue) {

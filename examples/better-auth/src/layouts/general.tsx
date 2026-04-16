@@ -14,7 +14,7 @@ export const generalLayout = root
         style={{ opacity: isNavigating ? 0.6 : 1 }}
       >
         <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-          <header className="mb-6 rounded-2xl border border-white/70 bg-white/80 p-5 shadow-sm backdrop-blur">
+          <header className="mb-6 rounded-2xl border border-white/70 bg-white/80 px-6 py-5 shadow-sm backdrop-blur">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
                 <NavLink className="hover:text-blue-700" exactClassName="pointer-events-none" route="home">

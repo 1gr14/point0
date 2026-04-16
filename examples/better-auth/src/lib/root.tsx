@@ -1,10 +1,10 @@
+import { authServer } from '@/lib/auth/core'
+import { AppError, ErrorComponent } from '@/lib/error'
 import { basicAuth } from '@point0/basic-auth'
-import { ClientOnly, Point0 } from '@point0/core'
+import { Point0 } from '@point0/core'
 import { zodSchemaHelper } from '@point0/core/schema/zod'
 import { openapi } from '@point0/openapi'
 import superjson from 'superjson'
-import { AppError } from '@/lib/error'
-import { authServer } from '@/lib/auth/core'
 
 export const root = Point0.lets
   .root()
@@ -44,21 +44,7 @@ export const root = Point0.lets
       </div>
     )
   })
-  .error(({ error }) => {
-    return (
-      <div className="mx-auto max-w-3xl space-y-4">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-900 shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-wide text-red-700">Something went wrong</p>
-          <p className="mt-2 text-base font-medium">Error: {error.message}</p>
-        </div>
-        <ClientOnly>
-          <pre className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-900 p-4 text-xs leading-relaxed text-slate-100">
-            <code>{error.stack}</code>
-          </pre>
-        </ClientOnly>
-      </div>
-    )
-  })
+  .error(({ error }) => <ErrorComponent error={error} />)
   // we can do this, to be able authClient, but I thing it is better has own queries and mutations and use authServer under the hood
   .middleware('/api/auth/*', async ({ request }) => await authServer.handler(request.original))
   .middleware(

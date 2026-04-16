@@ -1,5 +1,5 @@
 import type { AdapterNavigateOptions, SpecialNavigateOptions } from './navigation.js'
-import { bindToGlobalThisToAvoidMultipleInstances } from './utils.js'
+import { singletonize } from './utils.js'
 
 export type RedirectTaskSerialized<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> = {
   to: string
@@ -7,7 +7,7 @@ export type RedirectTaskSerialized<TAdapterNavigateOptions extends AdapterNaviga
   options?: TAdapterNavigateOptions & SpecialNavigateOptions<TAdapterNavigateOptions>
 }
 
-const redirectTaskSymbol = bindToGlobalThisToAvoidMultipleInstances('refirectTaskSymbol', Symbol('refirectTaskSymbol'))
+const redirectTaskSymbol = singletonize('refirectTaskSymbol', Symbol('refirectTaskSymbol'))
 
 export class RedirectTask<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> {
   readonly to: string

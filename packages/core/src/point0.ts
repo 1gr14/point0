@@ -257,7 +257,7 @@ import type {
   WithError,
 } from './types.js'
 import {
-  bindToGlobalThisToAvoidMultipleInstances,
+  singletonize,
   blankDataTransformerExtended,
   generateId,
   getByPath,
@@ -6873,7 +6873,7 @@ export class Point0<
 
   private _getProviderLikeProps() {
     return {
-      _ProviderReactContext: bindToGlobalThisToAvoidMultipleInstances(
+      _ProviderReactContext: singletonize(
         `__POINT0_PROVIDER_REACT_CONTEXT__${this.toString()}`,
         createContext<MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(null as never) as never,
       ),

@@ -1,9 +1,8 @@
 import { authClient, authServer } from '@/lib/auth/core'
-import { redirect } from '@/lib/navigate'
-import { root } from '@/lib/root'
-import { ErrorPoint0, Point0 } from '@point0/core'
-import { navigate } from '@/lib/navigate'
 import { AppError } from '@/lib/error'
+import { navigate, redirect } from '@/lib/navigate'
+import { root } from '@/lib/root'
+import { Point0 } from '@point0/core'
 
 // we can decalre global cache types for request0
 declare module '@point0/core/request0' {
@@ -49,13 +48,13 @@ export const authorizedOnlyPlugin = Point0.lets('plugin', 'authorizedOnly')
   .use(mePlugin)
   .ctx(({ ctx: { me } }) => {
     if (!me) {
-      throw new AppError('Only for authorized users')
+      throw new AppError('Only for authorized users', { code: 'UNAUTHORIZED' })
     }
     return { me }
   })
   .with(({ props: { me } }) => {
     if (!me) {
-      return new AppError('Only for authorized users')
+      return new AppError('Only for authorized users', { code: 'UNAUTHORIZED' })
     }
     return { me }
   })
