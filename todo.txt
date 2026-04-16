@@ -6,16 +6,14 @@
 ------
 
 
-expamples
+refactoring
+compiler
 
 devp0nt
 docs
 start0
 
-compiler
 finishing
-
-Бан плагин свгр как статья догонкадля увеличения просмотров и лайков
 
 🚀 launch
 
@@ -38,18 +36,11 @@ mcp as comments
 
 
 
-
-
-
-
-
-
-
-create-app
-
-
 REFACTOING 3000
+Разобраться с индекс хтмлом и инжектом кссосов в него
+Маппер можно использовать для дожидания кверей, проверить что оттуда можно вернуть ошибку или редирект или лоадинг, и что после него опять возможен виз
 ...(E|e)nv...0 should be parsed as env object, and rename base to env0 (better in compiler say what will works as process.env like serverEnv0 is also process.env)
+Разбирая подошёл ли под глоб, надо уважать переключения после исключения
 Дев вотч глоб должен генерейтед тоже следить, но только не мету
 Провайдеры тоже должны биндиться на глобал зыс
 allow ignore in dev mode await import in engine, so generator still will not break
@@ -88,7 +79,9 @@ pipeline
 examples has real versions, not just catalog, and odcker file is own only its code
 catalog versions scripts never use catalog in places, but just hardly replace versions with setted in catalog, also applies it to @point0/ packages to current version
 catalog versions in create-app/template should be replaced also with real versions
-In error0 import RedirectTask from "@point0/core/navigate"
+In error0 import RedirectTask from "@point0/core/navigate", and in examples use htis plugin
+examples normalize dockerfile
+Обновить зависимости
 
 
 
