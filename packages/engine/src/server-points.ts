@@ -34,6 +34,10 @@ export class ServerPoints<TError extends ErrorPoint0> {
   private readonly endpointsByDefinitionsByMethods = new Map<WideRequestMethod, Map<string, ReadyPoint>>()
   // <scope, <type, <name, point>>>
   private readonly pointsByNamesByTypesByScopes = new Map<PointsScope, Map<PointType, Map<PointName, ReadyPoint>>>()
+  // <scope, Routes0>
+  private readonly pagesRoutesByScopes = new Map<PointsScope, RoutesPretty>()
+  // <scope, <route.definition, page point>>
+  private readonly pagesByDefinitionsByScopes = new Map<PointsScope, Map<string, PagePoint>>()
   private indexGenerated = false
 
   private constructor({ manager }: { manager: PointsManager }) {
@@ -82,9 +86,33 @@ export class ServerPoints<TError extends ErrorPoint0> {
     this.endpointsRoutesByMethods.clear()
     this.endpointsByDefinitionsByMethods.clear()
     this.pointsByNamesByTypesByScopes.clear()
+    this.pagesRoutesByScopes.clear()
+    this.pagesByDefinitionsByScopes.clear()
     const routesByMethod = new Map<WideRequestMethod, Record<string, AnyRoute>>()
+    const pagesRoutesByScope = new Map<PointsScope, Record<string, AnyRoute>>()
     for (const { point } of this.manager.collection) {
       this.indexPoint(point)
+      if (point.type === 'page' && point.route) {
+        const existingPagesByDefinitions = this.pagesByDefinitionsByScopes.get(point.scope)
+        if (existingPagesByDefinitions) {
+          for (const existingPoint of existingPagesByDefinitions.values()) {
+            if (point.route.isConflict(existingPoint.route)) {
+              throw new Error(
+                `Conflicted page routes for scope "${point.scope}": ${point.toStringWithLocation()} conflicts with ${existingPoint.toStringWithLocation()}`,
+              )
+            }
+          }
+          existingPagesByDefinitions.set(point.route.definition, point)
+        } else {
+          this.pagesByDefinitionsByScopes.set(point.scope, new Map([[point.route.definition, point]]))
+        }
+        const pagesRoutes = pagesRoutesByScope.get(point.scope)
+        if (pagesRoutes) {
+          pagesRoutes[point.route.definition] = point.route
+        } else {
+          pagesRoutesByScope.set(point.scope, { [point.route.definition]: point.route })
+        }
+      }
       const endpoint = point._endpoint
       if (!endpoint) {
         continue
@@ -98,6 +126,9 @@ export class ServerPoints<TError extends ErrorPoint0> {
     }
     for (const [method, routes] of routesByMethod.entries()) {
       this.endpointsRoutesByMethods.set(method, Routes.create(routes))
+    }
+    for (const [scope, routes] of pagesRoutesByScope.entries()) {
+      this.pagesRoutesByScopes.set(scope, Routes.create(routes))
     }
     this.indexGenerated = true
   }
@@ -156,7 +187,7 @@ export class ServerPoints<TError extends ErrorPoint0> {
     }
   }
 
-  findExact = ({
+  findPoint = ({
     type,
     name,
     scope,
@@ -174,10 +205,11 @@ export class ServerPoints<TError extends ErrorPoint0> {
 
   findEndpoint = (
     options:
-      | { method: string; location: AnyLocation }
+      | { method: string; location: AnyLocation; url?: undefined }
       | {
           method: string
           url: string
+          location?: undefined
         },
   ):
     | {
@@ -194,7 +226,7 @@ export class ServerPoints<TError extends ErrorPoint0> {
     if (!routes) {
       return undefined
     }
-    const location = routes._.getLocation('location' in options ? options.location : options.url)
+    const location = routes._.getLocation(options.location ?? options.url)
     if (!location.route) {
       return undefined
     }
@@ -204,6 +236,45 @@ export class ServerPoints<TError extends ErrorPoint0> {
     }
     return {
       point: point as RequestableReadyPoint,
+      location,
+    }
+  }
+
+  findPage = (
+    options:
+      | { url: string | URL; scope?: PointsScope; location?: undefined }
+      | { location: AnyLocation; scope?: PointsScope; url?: undefined },
+  ): undefined | { point: PagePoint; location: ExactLocation } => {
+    this.throwIfNotReady()
+    if (!this.indexGenerated) {
+      this.generateIndex()
+    }
+    if (!options.scope && this.scopes.size > 1) {
+      throw new Error('Scope is required when multiple scopes exist')
+    }
+    const scope = options.scope ?? this.scopes.values().next().value
+    if (!scope) {
+      return undefined
+    }
+    const routes = this.pagesRoutesByScopes.get(scope)
+    if (!routes) {
+      return undefined
+    }
+    const pathname = options.location
+      ? options.location.pathname
+      : options.url instanceof URL
+        ? options.url.pathname
+        : new URL(options.url, 'http://localhost').pathname
+    const location = routes._.getLocation(pathname)
+    if (!location.route) {
+      return undefined
+    }
+    const point = this.pagesByDefinitionsByScopes.get(scope)?.get(location.route)
+    if (!point) {
+      return undefined
+    }
+    return {
+      point,
       location,
     }
   }

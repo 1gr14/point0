@@ -31,6 +31,7 @@ import type {
   UndefinedData,
   UndefinedLoaderOutput,
   UnknownCtx,
+  NiceServerPoints,
   UnknownData,
 } from '@point0/core'
 import { Effects } from '@point0/core/effects'
@@ -583,7 +584,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 ctx: { ...layers[0].ctx },
                 request: this.request,
                 set: effects.set,
-                points: this.engine.server.points?.collection ?? [],
+                points: this.engine.server.points as NiceServerPoints,
                 ...getParsed(),
               })
               if (RedirectTask.is(result)) {
@@ -608,7 +609,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 data: { ...layers[0].data },
                 request: this.request as never,
                 set: effects.set,
-                points: this.engine.server.points?.collection ?? [],
+                points: this.engine.server.points as NiceServerPoints,
                 ...getParsed(),
               })
               const result = (await (promise as any)) as
@@ -869,7 +870,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
 
       await Promise.all(
         suitableMarkers.map(async (suitableMarker) => {
-          const exactPoint = this.engine.server.points?.findExact({
+          const exactPoint = this.engine.server.points.findPoint({
             scope: suitableMarker.scope,
             type: suitableMarker.pointType,
             name: suitableMarker.pointName,

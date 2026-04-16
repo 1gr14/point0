@@ -89,7 +89,9 @@ export const openapi = <TOpenapiVersion extends string>(
         }
 
         if (requestType === 'json') {
-          const filterdPoints = points.filter(filter)
+          const filterdPoints = (
+            points.collection.filter((p) => p.point._endpoint) as AnyNiceRequestableReadyPoint[]
+          ).filter(filter)
           const schema = getOpenapiSchemaFromPoints(filterdPoints, { ...openapiOptions, cache: cacheKey } as never)
           return new Response(JSON.stringify(schema), {
             headers: {

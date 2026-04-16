@@ -366,7 +366,7 @@ const getOpenapiSchemaFromPoint = (
   }
   if (!operationSchema.operationId) {
     if (normalizedPoint.type === 'action') {
-      if (normalizedPoint.name !== `${normalizedPoint.method} ${normalizedPoint.route.definition}`) {
+      if (normalizedPoint.name !== `${normalizedPoint.method} ${normalizedPoint.route?.definition}`) {
         operationSchema.operationId = normalizedPoint.name
       }
     } else {

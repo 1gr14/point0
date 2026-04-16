@@ -424,7 +424,14 @@ export class Point0<
   private readonly _mountActions: MountAction[]
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
   readonly route: TRouteDefinition extends RouteDefinition
-    ? CallableRoute<TRouteDefinition, TSearchSchema extends InputSchema ? InputRaw<TSearchSchema> : UnknownSearchInput>
+    ? IfAnyThenElse<
+        TRouteDefinition,
+        AnyRoute | undefined,
+        CallableRoute<
+          TRouteDefinition,
+          TSearchSchema extends InputSchema ? InputRaw<TSearchSchema> : UnknownSearchInput
+        >
+      >
     : UndefinedRoute
   private readonly _page: PageSuccessComponentType<any, any, any, any, any, any, any> | UndefinedSuccessPageComponent
   private readonly _component:

@@ -48,8 +48,8 @@ import type {
 export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0> {
   scope: PointsScope
   cwd: string
-  points: TPrepared extends true ? ServerPoints<TError> | null : undefined
-  pointsProvided: PointsDefinitionSource<RequiredCtx, TError> | null
+  points: TPrepared extends true ? ServerPoints<TError> : undefined
+  pointsProvided: PointsDefinitionSource<RequiredCtx, TError>
   itWasBuilt: boolean
   engineFile: string | null
   cwdBeforeBuild: string
@@ -81,7 +81,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     prepared: TPrepared
     cwd: string
     scope: PointsScope
-    pointsProvided: PointsDefinitionSource<any, TError> | null
+    pointsProvided: PointsDefinitionSource<any, TError>
     itWasBuilt: boolean
     engineFile: string | null
     cwdBeforeBuild: string
@@ -145,7 +145,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   static create<TError extends ErrorPoint0>(input: {
     cwd: string
     scope: PointsScope
-    pointsProvided: PointsDefinitionSource<any, TError> | null
+    pointsProvided: PointsDefinitionSource<any, TError>
     engineFile: string | null
     cwdBeforeBuild: string
     itWasBuilt: boolean
@@ -313,13 +313,10 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     }
   }
 
-  async readServerPoints(): Promise<ServerPoints<TError> | null> {
-    if (!this.pointsProvided) {
-      return null
-    }
+  async readServerPoints(): Promise<ServerPoints<TError>> {
     const points = await ServerPoints.createFromSource(this.pointsProvided, { log: this.log })
     await points.load()
-    this.points = points as TPrepared extends true ? ServerPoints<TError> | null : undefined
+    this.points = points as TPrepared extends true ? ServerPoints<TError> : undefined
     return points
   }
 

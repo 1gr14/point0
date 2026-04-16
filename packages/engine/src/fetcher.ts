@@ -6,14 +6,15 @@ import {
   _ss,
   _ssRunWithServerStorageState,
   blankDataTransformerExtended,
-  ErrorPoint0,
   generateId,
+  serializeErrorsInDehydratedState,
 } from '@point0/core'
 import type {
   AnyPoint,
   ClassLikeError0,
   Data,
   DataTransformerExtended,
+  ErrorPoint0,
   FetcherFetchDetailedResult,
   FetcherFetchDetailedResultError,
   FetcherFetchDetailedResultGeneral,
@@ -22,6 +23,7 @@ import type {
   InputRawUnknown,
   MiddlewareFn,
   MiddlewareFnOptionsBase,
+  NiceServerPoints,
   PagePoint,
   PointsScope,
   ReadyPoint,
@@ -29,6 +31,7 @@ import type {
   SuperStoreInternalValuesOrErrors,
 } from '@point0/core'
 import { Effects } from '@point0/core/effects'
+import { RedirectTask } from '@point0/core/navigation'
 import { Request0 } from '@point0/core/request0'
 import type {
   RequestVariantEndpoint,
@@ -43,8 +46,6 @@ import { Executor } from './executor.js'
 import type { ExecuteOptionsKnownInput } from './executor.js'
 import type { Publicdir } from './publicdir.js'
 import type { EngineServer } from './server.js'
-import { RedirectTask } from '@point0/core/navigation'
-import { serializeErrorsInDehydratedState } from '@point0/core'
 
 export class Fetcher<TError extends ErrorPoint0> {
   engine: Engine<RequiredCtx, TError, true>
@@ -111,10 +112,9 @@ export class Fetcher<TError extends ErrorPoint0> {
     if (exTransformer) {
       return exTransformer
     }
-    const transformer =
-      this.server.points?.getTransformerByScope({
-        scope,
-      }) || blankDataTransformerExtended
+    const transformer = this.server.points.getTransformerByScope({
+      scope,
+    })
     this._transformers.set(scope, transformer)
     return transformer
   }
@@ -279,21 +279,21 @@ export class Fetcher<TError extends ErrorPoint0> {
               request,
               effects,
               middlewares:
-                this.server.points?.middlewares.get(publicdir.scope) ??
-                this.server.points?.middlewares.get(this.server.scope) ??
+                this.server.points.middlewares.get(publicdir.scope) ??
+                this.server.points.middlewares.get(this.server.scope) ??
                 [],
               middlewareOptions: {
                 request,
                 set: effects.set,
                 scope,
-                points: this.server.points?.collection ?? [],
+                points: this.server.points as NiceServerPoints,
               },
             }
           }
         }
       }
 
-      const endpoint = this.server.points?.findEndpoint({
+      const endpoint = this.server.points.findEndpoint({
         method: request.method,
         location: request.location,
       })
@@ -328,7 +328,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             request,
             set: effects.set,
             scope: endpoint.point.scope,
-            points: this.server.points?.collection ?? [],
+            points: this.server.points as NiceServerPoints,
           },
         }
       }
@@ -353,7 +353,7 @@ export class Fetcher<TError extends ErrorPoint0> {
               request,
               set: effects.set,
               scope: this.engine.server.scope,
-              points: this.server.points?.collection ?? [],
+              points: this.server.points as NiceServerPoints,
             },
           }
         }
@@ -402,7 +402,7 @@ export class Fetcher<TError extends ErrorPoint0> {
               request,
               set: effects.set,
               scope: foundExactPage.page.scope,
-              points: this.server.points?.collection ?? [],
+              points: this.server.points as NiceServerPoints,
             },
           }
         }
@@ -425,7 +425,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             request,
             set: effects.set,
             scope: foundExactPage.client.scope,
-            points: this.server.points?.collection ?? [],
+            points: this.server.points as NiceServerPoints,
           },
         }
       }
@@ -468,7 +468,7 @@ export class Fetcher<TError extends ErrorPoint0> {
               request,
               set: effects.set,
               scope: foundSuitableClient.scope,
-              points: this.server.points?.collection ?? [],
+              points: this.server.points as NiceServerPoints,
             },
           }
         }
@@ -491,7 +491,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             request,
             set: effects.set,
             scope: foundSuitableClient.scope,
-            points: this.server.points?.collection ?? [],
+            points: this.server.points as NiceServerPoints,
           },
         }
       }
@@ -504,16 +504,16 @@ export class Fetcher<TError extends ErrorPoint0> {
         scope: this.server.scope,
         request,
         effects,
-        middlewares: this.server.points?.middlewares.get(this.server.scope) ?? [],
+        middlewares: this.server.points.middlewares.get(this.server.scope) ?? [],
         middlewareOptions: {
           request,
           set: effects.set,
           scope: this.server.scope,
-          points: this.server.points?.collection ?? [],
+          points: this.server.points as NiceServerPoints,
         },
       }
     } catch (error) {
-      const ErrorClass = this.server.points?.manager.root._Error ?? ErrorPoint0
+      const ErrorClass = this.server.points.manager.root._Error
       const error0 = ErrorClass.from(error)
       const variant: RequestVariantError<TError> = { type: 'error', error: error0 }
       request.variant = variant
@@ -523,12 +523,12 @@ export class Fetcher<TError extends ErrorPoint0> {
         scope: this.server.scope,
         request,
         effects,
-        middlewares: this.server.points?.middlewares.get(this.server.scope) ?? [],
+        middlewares: this.server.points.middlewares.get(this.server.scope) ?? [],
         middlewareOptions: {
           request,
           set: effects.set,
           scope: this.server.scope,
-          points: this.server.points?.collection ?? [],
+          points: this.server.points as NiceServerPoints,
         },
       }
     }
@@ -563,9 +563,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       error: undefined,
     }
     const transformer = this.getTransformer({ scope: point.scope, point, transform })
-    const ErrorClass = (client?.points?.manager.root._Error ??
-      this.server.points?.manager.root._Error ??
-      ErrorPoint0) as ClassLikeError0<TError>
+    const ErrorClass = client?.points?.manager.root._Error ?? this.server.points.manager.root._Error
 
     try {
       const input = await this.getPointInputFromEndpointRequest({ request, location, point, transform })
@@ -771,7 +769,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       data: undefined,
       error: undefined,
     }
-    const ErrorClass = client.points?.manager.root._Error ?? this.server.points?.manager.root._Error ?? ErrorPoint0
+    const ErrorClass = client.points?.manager.root._Error ?? this.server.points.manager.root._Error
 
     try {
       const executor = await Executor.create<RequiredCtx, any>({
@@ -925,7 +923,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
       return result
     } catch (error) {
-      const ErrorClass = this.server.points?.manager.root._Error ?? ErrorPoint0
+      const ErrorClass = this.server.points.manager.root._Error
       const error0 = ErrorClass.from(error)
       const transformer = this.getTransformer({
         scope: baseOptions.scope,
@@ -995,7 +993,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       if (prepareFetchResult.variant.type === 'error') {
-        const ErrorClass = this.server.points?.manager.root._Error ?? ErrorPoint0
+        const ErrorClass = this.server.points.manager.root._Error
         return {
           request: prepareFetchResult.request,
           scope: prepareFetchResult.scope,
@@ -1040,7 +1038,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
       }
 
-      const ErrorClass = (this.server.points?.manager.root._Error ?? ErrorPoint0) as ClassLikeError0<TError>
+      const ErrorClass = this.server.points.manager.root._Error
       const error = new ErrorClass(`Not Found`, { status: 404 })
       return {
         request: prepareFetchResult.request,
@@ -1059,7 +1057,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         error,
       }
     } catch (error) {
-      const ErrorClass = (this.server.points?.manager.root._Error ?? ErrorPoint0) as ClassLikeError0<TError>
+      const ErrorClass = this.server.points.manager.root._Error
       const error0 = ErrorClass.from(error)
       return {
         request: prepareFetchResult.request,
@@ -1155,7 +1153,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
         return finalResult
       } catch (error) {
-        const ErrorClass = (this.server.points?.manager.root._Error ?? ErrorPoint0) as ClassLikeError0<TError>
+        const ErrorClass = this.server.points.manager.root._Error
         const error0 = ErrorClass.from(error) as TError
         const finalResult = {
           request: prepareFetchResult.request,

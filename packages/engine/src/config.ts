@@ -37,6 +37,7 @@ import type {
   EngineServerPluginsDefinition,
   EngineSharedPluginsDefinition,
 } from './utils.js'
+import { Point0 } from '@point0/core'
 
 export type EngineOptionsPublicdir =
   | string
@@ -261,7 +262,7 @@ export type EngineClientOptionsParsed = {
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
-  pointsProvided: PointsDefinitionSource<any, any> | null
+  pointsProvided: PointsDefinitionSource<any, any>
   banner: string | null
   generate: Array<FilesGeneratorTask>
   routesProvided: EngineOptionsRoutes | null
@@ -762,7 +763,7 @@ export const parseEngineServerOptions = ({
   ).map((g) => toAbsPath(generalOptionsParsed.cwd, g, true))
   return {
     scope: serverOptions.scope,
-    pointsProvided: serverOptions.points ?? null,
+    pointsProvided: serverOptions.points ?? [Point0.lets('root', serverOptions.scope).root()],
     port,
     hmrPort,
     outdir,

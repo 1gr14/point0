@@ -1464,6 +1464,30 @@ export type NormalizedPrefetchPagePolicy = Exclude<PrefetchPagePolicy, boolean>
 
 // middlewares
 
+export type NiceServerPoints = {
+  collection: AnyNiceReadyPoint[]
+  findPoint: (options: { type: PointType; name: PointName; scope: PointsScope }) => AnyNiceReadyPoint | undefined
+  findEndpoint: (
+    options:
+      | { method: string; location: AnyLocation; url?: undefined }
+      | {
+          method: string
+          url: string
+          location?: undefined
+        },
+  ) =>
+    | {
+        point: AnyNiceRequestableReadyPoint
+        location: ExactLocation
+      }
+    | undefined
+  findPage: (
+    options:
+      | { url: string | URL; scope?: PointsScope; location?: undefined }
+      | { location: AnyLocation; scope?: PointsScope; url?: undefined },
+  ) => undefined | { point: AnyNicePagePoint; location: ExactLocation }
+}
+
 export type UndefinedResponse = undefined
 export type UndefinedClientResponse = undefined
 export type UndefinedLastDataOrResponse = undefined
@@ -1543,7 +1567,7 @@ export type CtxFnOptions<
     set: ResponseEffectsSetHelper
     // execute: ServerExecuteFn
     ctx: TCtxPrev
-    points: ReadyPoint[]
+    points: NiceServerPoints
   } & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
 >
 export type CtxFn<
@@ -1624,7 +1648,7 @@ export type LoaderFnOptions<
     data: DataOrUndefinedData<TServerLoaderOutput>
     set: ResponseEffectsSetHelper
     ctx: TCtx
-    points: ReadyPoint[]
+    points: NiceServerPoints
   } & WithInputParsed<TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema, THeadersSchema, TCookiesSchema>
 >
 export type LoaderFn<
@@ -1957,7 +1981,7 @@ export type MiddlewareFnOptions<
   set: ResponseEffectsSetHelper
   scope: PointsScope
   next: MiddlewareNextFn<TError>
-  points: ReadyPoint[]
+  points: NiceServerPoints
 } & (TRouteDefinition extends RouteDefinition
   ? HasParams<TRouteDefinition> extends true
     ? { params: ParamsOutput<TRouteDefinition> }
@@ -4353,6 +4377,51 @@ export type NiceReadyPoint<
 
 export type AnyNiceReadyPoint<
   TPointType extends ReadyPointType = ReadyPointType,
+  TLetsReadyPointType extends UndefinedReadyPointType = UndefinedReadyPointType,
+  TError extends ErrorPoint0 = any,
+  TRequiredCtx extends RequiredCtx = any,
+  TCtx extends Ctx = any,
+  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = any,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TParamsSchema extends InputSchema | UndefinedInputSchema = any,
+  TSearchSchema extends InputSchema | UndefinedInputSchema = any,
+  TBodySchema extends InputSchema | UndefinedInputSchema = any,
+  THeadersSchema extends InputSchema | UndefinedInputSchema = any,
+  TCookiesSchema extends InputSchema | UndefinedInputSchema = any,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
+  TOuterProps extends Props = any,
+  TInnerProps extends Props = any,
+  TQueriesDefinitions extends QueriesDefinitions = any,
+> = NiceReadyPoint<
+  TPointType,
+  TLetsReadyPointType,
+  TRequiredCtx,
+  TError,
+  TCtx,
+  TCtxExposedKeys,
+  TServerLoaderOutput,
+  TClientLoaderOutput,
+  TMapperOutput,
+  TRouteDefinition,
+  TServerInputSchema,
+  TClientInputSchema,
+  TParamsSchema,
+  TSearchSchema,
+  TBodySchema,
+  THeadersSchema,
+  TCookiesSchema,
+  TQueryResultType,
+  TOuterProps,
+  TInnerProps,
+  TQueriesDefinitions
+>
+export type AnyNicePagePoint<
+  TPointType extends 'page' = 'page',
   TLetsReadyPointType extends UndefinedReadyPointType = UndefinedReadyPointType,
   TError extends ErrorPoint0 = any,
   TRequiredCtx extends RequiredCtx = any,
