@@ -401,6 +401,7 @@ export class Engine<
     server: { server: string[] | null; publicdir: string[] | null }
   }> {
     const startedAt = performance.now()
+    process.env.POINT0_LOG_MODE = 'nice'
     this.log({
       level: 'info',
       category: ['build'],
