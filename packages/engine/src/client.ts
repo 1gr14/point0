@@ -376,6 +376,12 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     if (!this.engineFile) {
       throw new Error(`Engine file path is not provided for client "${this.scope}"`)
     }
+    const startingAt = new Date().getTime().toString()
+    this.log({
+      level: 'info',
+      category: ['client'],
+      message: `Client starting...`,
+    })
     const tempDir = resolveTempDirPath(['client-bun-dev-server', `${this.scope}-${this.port}`])
     const ownPluginsStrings = await extractEngineClientDevPluginsStrings({
       cwd: this.cwd,
@@ -451,10 +457,18 @@ try {
   registerOnProcessExit(() => {
     bunServer.stop()
   })
+  const startingDurationMsMessage = (() => {
+    const startingAt = process.env.POINT0_CLIENT_${this.scope.toUpperCase()}_STARTING_AT
+    if (!startingAt) {
+      return ''
+    }
+    const startingDurationMs = Math.round(new Date().getTime() - parseInt(startingAt))
+    return \` in \${startingDurationMs}ms\`
+  })()
   engine.log({
     level: 'info',
     category: ['client'],
-    message: 'Client started http://localhost:${this.port}',
+    message: \`Client started http://localhost:${this.port}\${startingDurationMsMessage}\`,
   })
 } catch (error) {
   engine.log({
@@ -488,6 +502,7 @@ try {
           FORCE_COLOR: process.env.FORCE_COLOR ?? '1',
           ...(compilerOptions ? { POINT0_COMPILER_OPTIONS: JSON.stringify(compilerOptions) } : {}),
           NODE_ENV: process.env.NODE_ENV,
+          [`POINT0_CLIENT_${this.scope.toUpperCase()}_STARTING_AT`]: startingAt,
         },
       })
       return childProcess
@@ -553,6 +568,12 @@ try {
     if (!this.viteConfig) {
       throw new Error(`Vite config not found for client "${this.scope}"`)
     }
+    const startingAt = new Date().getTime().toString()
+    this.log({
+      level: 'info',
+      category: ['client'],
+      message: `Client starting...`,
+    })
     const viteDevServer = await createViteDevServer({
       viteConfig: this.viteConfig,
       scope: this.scope,
@@ -615,10 +636,12 @@ try {
     registerOnProcessExit(() => {
       void bunViteDevServer.stop()
     })
+    const startingDurationMs = Math.round(new Date().getTime() - parseInt(startingAt))
+    const startingDurationMsMessage = ` in ${startingDurationMs}ms`
     this.log({
       level: 'info',
       category: ['client'],
-      message: `Client started http://localhost:${this.port}`,
+      message: `Client started http://localhost:${this.port}${startingDurationMsMessage}`,
     })
     return { bunViteDevServer, viteDevServer }
   }

@@ -232,7 +232,7 @@ export class Engine<
     const isScopeServer = !scope || scope === this.server.scope
 
     if (generateFiles) {
-      await this.generate({ logOnNotWritten: false })
+      await this.generate({ logOnNotWritten: true })
     }
     const generatorWatchProcess = generateFiles && watch ? this.generateWatch() : null
     const withServer = isSideServer && isScopeServer && !!this.server.entry
@@ -248,6 +248,11 @@ export class Engine<
       }
       // here we run server entries which already serving server, but prevent multiple client dev servers, so we do not run it here
       const serverEntryProcesses: Array<Promise<any>> = await (async () => {
+        this.log({
+          level: 'info',
+          category: ['server'],
+          message: `Server starting...`,
+        })
         if (this.server.viteConfig) {
           process.env.POINT0_PREVENT_CLIENT_DEV_SERVER = 'true'
           await this.server.startViteDevServer()
@@ -262,6 +267,7 @@ export class Engine<
                   env: {
                     ...process.env,
                     POINT0_PREVENT_CLIENT_DEV_SERVER: 'true',
+                    POINT0_SERVER_STARTING_AT: new Date().getTime().toString(),
                   },
                   stdin: 'ignore',
                   stdout: 'inherit',
@@ -409,7 +415,7 @@ export class Engine<
     normalizeAndValidateNodeEnv('production')
 
     if (generate) {
-      await this.generator.sync({ logOnNotWritten: false })
+      await this.generator.sync({ logOnNotWritten: true })
     }
 
     const isSideServer = side === 'server' || !side

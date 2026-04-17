@@ -573,10 +573,18 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     registerOnProcessExit(() => {
       void this.bunServer?.stop()
     })
+    const startingDurationMsMessage = (() => {
+      const startingAt = process.env.POINT0_SERVER_STARTING_AT
+      if (!startingAt) {
+        return ''
+      }
+      const startingDurationMs = Math.round(new Date().getTime() - parseInt(startingAt))
+      return ` in ${startingDurationMs}ms`
+    })()
     this.log({
       level: 'info',
       category: ['server'],
-      message: `Server started http://localhost:${this.port}`,
+      message: `Server started http://localhost:${this.port}${startingDurationMsMessage}`,
     })
   }
 

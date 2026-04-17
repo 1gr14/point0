@@ -221,6 +221,7 @@ export class FilesGenerator {
   }
 
   async sync(options?: { logOnNotWritten?: boolean; silent?: boolean }): Promise<FileGeneratorProcessResult> {
+    const startedAt = performance.now()
     await this.collectFiles()
     const result = await this.process(undefined, { silent: options?.silent })
     if (options?.silent) {
@@ -230,10 +231,11 @@ export class FilesGenerator {
       return result
     }
     const [loggerMethod, emoji] = result.errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '']
+    const durationMs = Math.round(performance.now() - startedAt)
     this.log({
       level: loggerMethod,
       category: ['generator'],
-      message: [emoji, `${result.points.length} points processed`].filter(Boolean).join(' '),
+      message: [emoji, `${result.points.length} points processed in ${durationMs}ms`].filter(Boolean).join(' '),
     })
     return result
   }
