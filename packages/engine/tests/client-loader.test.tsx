@@ -126,6 +126,35 @@ describe('clientLoader', () => {
     })
   })
 
+  it('returns error in mutation', async () => {
+    const root = createRoot()
+    const page = root.lets('page', 'home', '/').page(() => {
+      const m = mutation.useMutation()
+      React.useEffect(() => {
+        m.mutate()
+      }, [])
+      return <div id="page">{m.isPending ? 'pending' : (m.error?.message ?? 'no error')}</div>
+    })
+    const mutation = root
+      .lets('mutation', 'test')
+      .clientLoader(() => {
+        return new ErrorPoint0('test error')
+      })
+      .mutation()
+    const { render } = await createTestThings({ ssr: true, points: [root, page, mutation] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /
+          #page: pending
+
+          #page: test error
+        "
+      `)
+    })
+  })
+
   it('overrides data', async () => {
     const root = createRoot()
     const page = root

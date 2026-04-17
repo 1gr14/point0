@@ -11,6 +11,7 @@ describe('ctx', () => {
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({
         retry: false,
+        retryOnMount: false,
         refetchOnMount: false,
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,
@@ -218,6 +219,48 @@ describe('ctx', () => {
     `)
   })
 
+  it('throws error', async () => {
+    const root = createRoot()
+    const page = root
+      .lets('page', 'home', '/')
+      .ctx(() => ({ x: 1 }))
+      .ctx(() => {
+        throw new Error('test error')
+      })
+      .loader(({ ctx }) => ctx)
+      .page(({ data }) => {
+        expectTypeOf(data).toEqualTypeOf<{ x: number }>()
+        return ymlify(data)
+      })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #error: test error
+      "
+    `)
+  })
+
+  it('returns error', async () => {
+    const root = createRoot()
+    const page = root
+      .lets('page', 'home', '/')
+      .ctx(() => ({ x: 1 }))
+      .ctx(() => {
+        return new Error('test error')
+      })
+      .loader(({ ctx }) => ctx)
+      .page(({ data }) => {
+        expectTypeOf(data).toEqualTypeOf<{ x: number }>()
+        return ymlify(data)
+      })
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #error: test error
+      "
+    `)
+  })
+
   it('forbids returning array as ctx', () => {
     const root = createRoot()
     const point = root.lets('page', 'home', '/')
@@ -299,7 +342,7 @@ describe('ctx', () => {
     const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
-      #loading: ...
+      #error: test error
       "
     `)
   })

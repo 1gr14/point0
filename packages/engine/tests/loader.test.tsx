@@ -95,13 +95,43 @@ describe('loader', () => {
     expect(response.status).toBe(201)
   })
 
-  it('returns error status code with page', async () => {
+  it('throws error status code with page', async () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
       .loader(() => {
         if (Math.random() + 1) {
           throw new ErrorPoint0('test error', { status: 410 })
+        }
+        return { x: 1 }
+      })
+      .page(({ data }) => {
+        expectTypeOf(data).toEqualTypeOf<{ x: number }>()
+        return ymlify(data)
+      })
+    const { render, fetchSsr } = await createTestThings({ ssr: true, points: [root, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#error')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /
+          #loading: ...
+
+          #error: test error
+        "
+      `)
+    })
+    const { response } = await fetchSsr(page)
+    expect(response.status).toBe(410)
+  })
+
+  it('returns error status code with page', async () => {
+    const root = createRoot()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(() => {
+        if (Math.random() + 1) {
+          return new ErrorPoint0('test error', { status: 410 })
         }
         return { x: 1 }
       })

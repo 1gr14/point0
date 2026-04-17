@@ -8273,6 +8273,9 @@ export class Point0<
           if (result instanceof Response) {
             currentClientResponse = result
             currentClientOutput = result
+          }
+          if (result instanceof Error) {
+            throw result
           } else {
             currentClientResponse = undefined
             currentClientData = result ?? {}

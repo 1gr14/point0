@@ -592,6 +592,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               if (RedirectTask.is(result)) {
                 throw result
               }
+              if (result instanceof Error) {
+                throw result
+              }
               const appendCtxExposedKeys = !serverExecuteAction.expose
                 ? []
                 : serverExecuteAction.expose === true
@@ -624,6 +627,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 if (RedirectTask.is(result[1])) {
                   throw result[1]
                 }
+                if (result[1] instanceof Error) {
+                  throw result[1]
+                }
                 effects.set.status(result[0])
                 if (result[1] instanceof Response) {
                   layers.forEach((layer) => {
@@ -638,6 +644,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 }
               } else {
                 if (RedirectTask.is(result)) {
+                  throw result
+                }
+                if (result instanceof Error) {
                   throw result
                 }
                 if (result instanceof Response) {

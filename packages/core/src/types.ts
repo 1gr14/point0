@@ -1598,7 +1598,7 @@ export type CtxFn<
     TRequestVariant,
     TError
   >,
-) => Promise<TCtxAppend> | TCtxAppend | Promise<RedirectTask> | RedirectTask | Promise<void> | void
+) => Promise<TCtxAppend> | TCtxAppend | Promise<RedirectTask> | RedirectTask | Error | Promise<void> | void
 
 export type ForbiddenCtxExposedKeys = 'request' | 'input' | 'inputRaw' | 'data' | 'set' | 'execute' | 'ctx'
 export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] extends [never]
@@ -1609,9 +1609,9 @@ export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] exten
       ? unknown
       : ShowError<`Forbidden to expose ctx keys: ${Extract<TExposedKeys, ForbiddenCtxExposedKeys> & string}`>
 export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any, any, any, any, any, any, any, any>> =
-  Exclude<Awaited<ReturnType<TCtxFn>>, undefined | void | RedirectTask> extends never
+  Exclude<Awaited<ReturnType<TCtxFn>>, undefined | void | RedirectTask | Error> extends never
     ? undefined
-    : NormalizeCtxLike<Exclude<Awaited<ReturnType<TCtxFn>>, RedirectTask>>
+    : NormalizeCtxLike<Exclude<Awaited<ReturnType<TCtxFn>>, RedirectTask | Error>>
 
 export type NormalizeCtxLike<T extends Record<string, any> | undefined> = [T] extends [undefined]
   ? Record<never, never> // strict empty object
@@ -1666,9 +1666,10 @@ export type LoaderFn<
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRequestVariant extends RequestVariantType = any,
   TError extends ErrorPoint0 = ErrorPoint0,
-  TNewServerLoaderOutput extends LoaderOutput | RedirectTask | undefined | void =
+  TNewServerLoaderOutput extends LoaderOutput | RedirectTask | Error | undefined | void =
     | LoaderOutput
     | RedirectTask
+    | Error
     | undefined
     | void,
 > = (
@@ -1694,19 +1695,19 @@ type InferLoaderFnOutputBase<
   TLoaderResponseFn extends LoaderFn<any, any, any, any, any, any, any, any, any, any, any, any>,
 > =
   Awaited<ReturnType<TLoaderResponseFn>> extends [number, infer TNewServerLoaderOutput]
-    ? TNewServerLoaderOutput extends LoaderOutput | RedirectTask | undefined | void
+    ? TNewServerLoaderOutput extends LoaderOutput | RedirectTask | Error | undefined | void
       ? TNewServerLoaderOutput
       : never
-    : Awaited<ReturnType<TLoaderResponseFn>> extends LoaderOutput | RedirectTask | undefined | void
+    : Awaited<ReturnType<TLoaderResponseFn>> extends LoaderOutput | RedirectTask | Error | undefined | void
       ? Awaited<ReturnType<TLoaderResponseFn>>
       : never
 
 export type InferLoaderFnOutput<
   TLoaderResponseFn extends LoaderFn<any, any, any, any, any, any, any, any, any, any, any, any>,
 > =
-  Exclude<InferLoaderFnOutputBase<TLoaderResponseFn>, undefined | void | RedirectTask> extends never
+  Exclude<InferLoaderFnOutputBase<TLoaderResponseFn>, undefined | void | RedirectTask | Error> extends never
     ? EmptyData
-    : Exclude<InferLoaderFnOutputBase<TLoaderResponseFn>, undefined | void | RedirectTask>
+    : Exclude<InferLoaderFnOutputBase<TLoaderResponseFn>, undefined | void | RedirectTask | Error>
 
 export type ServerExecuteAction<
   TType extends
@@ -1836,9 +1837,10 @@ export type ClientLoaderFn<
   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TNewClientLoaderOutput extends LoaderOutput | RedirectTask | undefined | void =
+  TNewClientLoaderOutput extends LoaderOutput | RedirectTask | Error | undefined | void =
     | LoaderOutput
     | RedirectTask
+    | Error
     | undefined
     | void,
 > = (
@@ -1852,9 +1854,9 @@ export type ClientLoaderFn<
 ) => Promise<TNewClientLoaderOutput> | TNewClientLoaderOutput
 
 export type InferClientLoaderFnOutput<TClientLoaderFn extends ClientLoaderFn<any, any, any, any, any, any>> =
-  Exclude<Awaited<ReturnType<TClientLoaderFn>>, undefined | void | RedirectTask> extends never
+  Exclude<Awaited<ReturnType<TClientLoaderFn>>, undefined | void | RedirectTask | Error> extends never
     ? EmptyData
-    : Exclude<Awaited<ReturnType<TClientLoaderFn>>, undefined | void | RedirectTask>
+    : Exclude<Awaited<ReturnType<TClientLoaderFn>>, undefined | void | RedirectTask | Error>
 
 export type FetchServerOutput<TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput> = TServerLoaderOutput
 export type FetchServerDetailedOutput<

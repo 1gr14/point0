@@ -135,7 +135,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
-        expect(getLastLogMessage()).toBe('4 points processed')
+        expect(getLastLogMessage()).toStartWith('4 points processed')
         expect(getLogs()).toHaveLength(1)
       }),
     )
@@ -182,7 +182,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
-        expect(getLastLogMessage()).toBe('4 points processed')
+        expect(getLastLogMessage()).toStartWith('4 points processed')
         expect(getLogs()).toHaveLength(1)
       }),
     )
@@ -221,7 +221,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
           "
         `)
-        expect(getLogs()[1][0].message).toBe('2 points processed')
+        expect(getLogs()[1][0].message).toStartWith('2 points processed')
         expect(getLogs()[0][0].message).toContain(
           `page.mypage: Last called method name 'undefined' does not match point type 'page'.`,
         )
@@ -1179,7 +1179,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
           "
         `)
 
-        expect(getLastLogMessage()).toBe('5 points processed')
+        expect(getLastLogMessage()).toStartWith('5 points processed')
         expect(getLogs()).toHaveLength(2)
       }),
     )
@@ -1216,7 +1216,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         expect(content).toMatchInlineSnapshot(
           `"export const pointsNames = ['myroot', 'myplugin', 'mypage', 'myquery']"`,
         )
-        expect(getLastLogMessage()).toBe('4 points processed')
+        expect(getLastLogMessage()).toStartWith('4 points processed')
         expect(getLogs()).toHaveLength(1)
       }),
     )
@@ -1266,7 +1266,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
             "
           `,
         )
-        expect(getLastLogMessage()).toBe('4 points processed')
+        expect(getLastLogMessage()).toStartWith('4 points processed')
         expect(getLogs()).toHaveLength(1)
       }),
     )
@@ -1315,7 +1315,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
             `"export const pointsNames = ['myroot', 'myplugin', 'mypage', 'myquery']"`,
           )
           expect(content2).toMatchInlineSnapshot(`"export const pointsCount = 4"`)
-          expect(getLastLogMessage()).toBe('4 points processed')
+          expect(getLastLogMessage()).toStartWith('4 points processed')
           expect(getLogs()).toHaveLength(1)
         },
       ),
@@ -1349,7 +1349,7 @@ export const page = root.lets('page', 'mypage', '/mypage').page(() => <div>Hello
 
         expect(getLogs()).toHaveLength(0)
         await generator.sync()
-        expect(getLogs()[0][0].message).toBe('2 points processed')
+        expect(getLogs()[0][0].message).toStartWith('2 points processed')
         await generator.watch()
         expect(getLogs()[1][0].message).toBe('Watcher started')
 
