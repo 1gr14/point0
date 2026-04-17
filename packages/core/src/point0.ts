@@ -275,6 +275,7 @@ import {
   mergeQueryOptions,
   parseMutationKey,
   parseQueryKey,
+  resolveQuery,
   setByPath,
   singletonize,
   toExtendedTransformer,
@@ -283,7 +284,7 @@ import {
   windowScrollPositionSetter,
   withLetsSugar,
 } from './utils.js'
-import type { FsLocation } from './utils.js'
+import type { FsLocation, ResolveQueryCallback } from './utils.js'
 
 export class Point0<
   in out TPointType extends PointType,
@@ -422,6 +423,7 @@ export class Point0<
   readonly _serverExecuteActions: ServerExecuteAction[]
   private readonly _clientExecuteActions: ClientExecuteAction[]
   private readonly _mountActions: MountAction[]
+  private readonly _wrappers: WrapperComponentType<any, any, any>[]
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
   readonly route: TRouteDefinition extends RouteDefinition
     ? IfAnyThenElse<
@@ -615,6 +617,7 @@ export class Point0<
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
     _mountActions?: MountAction[]
+    _wrappers?: WrapperComponentType<any, any, any>[]
     _ProviderReactContext?: Context<MountableSuccessData<TQueriesDefinitions, TMapperOutput>> | undefined
     _useValue?: any
     route?: TRouteDefinition extends RouteDefinition
@@ -686,6 +689,7 @@ export class Point0<
     this._serverExecuteActions = options._serverExecuteActions ?? []
     this._clientExecuteActions = options._clientExecuteActions ?? []
     this._mountActions = options._mountActions ?? []
+    this._wrappers = options._wrappers ?? []
     this._ProviderReactContext = options._ProviderReactContext ?? undefined
     this._useValue = options._useValue ? options._useValue.bind(this) : undefined
     this.route = (options.route ?? undefined) as TRouteDefinition extends RouteDefinition
@@ -797,6 +801,7 @@ export class Point0<
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
     _mountActions?: MountAction[]
+    _wrappers?: WrapperComponentType<any, any, any>[]
     _ProviderReactContext?: Context<MountableSuccessData<TQueriesDefinitions, TMapperOutput>> | undefined
     _useValue?: any
     route?: IfAnyThenElse<
@@ -922,6 +927,7 @@ export class Point0<
       _serverExecuteActions: set('_serverExecuteActions'),
       _clientExecuteActions: set('_clientExecuteActions'),
       _mountActions: set('_mountActions'),
+      _wrappers: set('_wrappers'),
       _ProviderReactContext: set('_ProviderReactContext') as never,
       _useValue: set('_useValue'),
       route: set('route'),
@@ -1278,6 +1284,7 @@ export class Point0<
     if (letsReadyPointType === 'component' || letsReadyPointType === 'provider') {
       mountActionsSuitable.push({ type: 'selfProps', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() })
     }
+    const wrappersSuitable = this.type === 'layout' ? [] : this._wrappers
 
     return this._continue({
       scope,
@@ -1285,6 +1292,7 @@ export class Point0<
       _serverExecuteActions: serverExecuteActionsSuitable,
       _clientExecuteActions: clientExecuteActionsSuitable,
       _mountActions: mountActionsSuitable,
+      _wrappers: wrappersSuitable,
       type: 'coreStage',
       _letsReadyPointType: letsReadyPointType,
       name: normalizedPointName,
@@ -3084,7 +3092,16 @@ export class Point0<
   // extra components
 
   error(
-    errorComponent: ErrorComponentType<any, TError>,
+    errorComponent: ErrorComponentType<
+      TLetsReadyPointType extends 'layout'
+        ? 'layout'
+        : TLetsReadyPointType extends 'component'
+          ? 'component'
+          : TLetsReadyPointType extends 'page' | 'provider'
+            ? 'page'
+            : 'page' | 'component' | 'layout',
+      TError
+    >,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -3153,7 +3170,7 @@ export class Point0<
   }
 
   layoutError(
-    layoutErrorComponent: ErrorComponentType<any, TError>,
+    layoutErrorComponent: ErrorComponentType<'layout', TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -3177,7 +3194,7 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  layoutError(layoutErrorComponent: ErrorComponentType<any, TError> | undefined) {
+  layoutError(layoutErrorComponent: ErrorComponentType<'layout', TError> | undefined) {
     return this._continue({
       _layoutErrorComponent: layoutErrorComponent,
       // _layoutErrorComponent: this._applyComponentDisplayName(layoutErrorComponent || (() => null), {
@@ -3187,7 +3204,7 @@ export class Point0<
   }
 
   pageError(
-    pageErrorComponent: ErrorComponentType<any, TError>,
+    pageErrorComponent: ErrorComponentType<'page', TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -3221,7 +3238,7 @@ export class Point0<
   }
 
   componentError(
-    componentErrorComponent: ErrorComponentType<any, TError>,
+    componentErrorComponent: ErrorComponentType<'component', TError>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -3245,7 +3262,7 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  componentError(componentErrorComponent: ErrorComponentType<any, TError> | undefined) {
+  componentError(componentErrorComponent: ErrorComponentType<'component', TError> | undefined) {
     return this._continue({
       _componentErrorComponent: componentErrorComponent,
       // _componentErrorComponent: this._applyComponentDisplayName(componentErrorComponent || (() => null), {
@@ -3255,7 +3272,7 @@ export class Point0<
   }
 
   layoutLoading(
-    layoutLoadingComponent: LoadingComponentType<any>,
+    layoutLoadingComponent: LoadingComponentType<'layout'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -3289,7 +3306,7 @@ export class Point0<
   }
 
   pageLoading(
-    pageLoadingComponent: LoadingComponentType<any>,
+    pageLoadingComponent: LoadingComponentType<'page'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -3313,7 +3330,7 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
-  pageLoading(pageLoadingComponent: LoadingComponentType<any> | undefined) {
+  pageLoading(pageLoadingComponent: LoadingComponentType<'page'> | undefined) {
     // this._applyComponentDisplayName(pageLoadingComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'PageLoading',
     // })
@@ -3323,7 +3340,7 @@ export class Point0<
   }
 
   componentLoading(
-    componentLoadingComponent: LoadingComponentType<any>,
+    componentLoadingComponent: LoadingComponentType<'component'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -3361,7 +3378,15 @@ export class Point0<
   }
 
   loading(
-    loadingComponent: LoadingComponentType<any>,
+    loadingComponent: LoadingComponentType<
+      TLetsReadyPointType extends 'layout'
+        ? 'layout'
+        : TLetsReadyPointType extends 'component'
+          ? 'component'
+          : TLetsReadyPointType extends 'page' | 'provider'
+            ? 'page'
+            : 'page' | 'component' | 'layout'
+    >,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -3433,23 +3458,7 @@ export class Point0<
   }
 
   wrapper(
-    wrapperComponent: WrapperComponentType<
-      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-      TParamsSchema,
-      TSearchSchema,
-      TClientInputSchema,
-      TInnerProps,
-      WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions,
-        TError
-      >,
-      TMapperOutput,
-      TError
-    >,
+    wrapperComponent: WrapperComponentType<TLetsReadyPointType, TRouteDefinition, TOuterProps>,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -3482,26 +3491,14 @@ export class Point0<
       TError
     >
   >
-  wrapper(wrapperComponent: WrapperComponentType<any, any, any, any, any, any, any, any> | undefined) {
+  wrapper(wrapperComponent: WrapperComponentType<any, any, any> | undefined) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
     return this._continue({
-      _mountActions: [
-        ...this._mountActions,
-        ...selfQueryAction,
-        ...(wrapperComponent
-          ? [
-              {
-                type: 'wrapper' as const,
-                Component: wrapperComponent,
-                unstableId: Point0._getNextUnstableId(),
-                ssr: this._getSsr(),
-              },
-            ]
-          : []),
-      ],
+      _mountActions: [...this._mountActions, ...selfQueryAction],
+      _wrappers: wrapperComponent ? [...this._wrappers, wrapperComponent] : this._wrappers,
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
   }
@@ -3511,6 +3508,7 @@ export class Point0<
       Infer: {
         IsInputOptional: boolean
         InputRawOrUndefined: any
+        InputRawOrUndefinedOrVoid: any
         UseQueryOptions: any
         QueryResultType: 'query' | 'infiniteQuery'
         QueriedData: any
@@ -3518,58 +3516,56 @@ export class Point0<
       }
     },
   >(
-    ...args: [
-      point: TPoint,
-      ...rest: TPoint['Infer']['IsInputOptional'] extends true
-        ? [
-            input?:
-              | TPoint['Infer']['InputRawOrUndefined']
-              | ((
-                  options: WithFnOptions<
-                    MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-                    TParamsSchema,
-                    TSearchSchema,
-                    TClientInputSchema,
-                    TInnerProps,
-                    WithSelfQueryIfShouldBeFinalized<
-                      TPointType,
-                      TLetsReadyPointType,
-                      TServerLoaderOutput,
-                      TClientLoaderOutput,
-                      TQueriesDefinitions,
-                      TError
-                    >,
-                    TMapperOutput,
+    point: TPoint,
+    ...args: TPoint['Infer']['IsInputOptional'] extends true
+      ? [
+          input?:
+            | TPoint['Infer']['InputRawOrUndefined']
+            | ((
+                options: WithFnOptions<
+                  MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TClientInputSchema,
+                  TInnerProps,
+                  WithSelfQueryIfShouldBeFinalized<
+                    TPointType,
+                    TLetsReadyPointType,
+                    TServerLoaderOutput,
+                    TClientLoaderOutput,
+                    TQueriesDefinitions,
                     TError
                   >,
-                ) => TPoint['Infer']['InputRawOrUndefined']),
-            queryOptions?: TPoint['Infer']['UseQueryOptions'],
-          ]
-        : [
-            input:
-              | TPoint['Infer']['InputRawOrUndefined']
-              | ((
-                  options: WithFnOptions<
-                    MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-                    TParamsSchema,
-                    TSearchSchema,
-                    TClientInputSchema,
-                    TInnerProps,
-                    WithSelfQueryIfShouldBeFinalized<
-                      TPointType,
-                      TLetsReadyPointType,
-                      TServerLoaderOutput,
-                      TClientLoaderOutput,
-                      TQueriesDefinitions,
-                      TError
-                    >,
-                    TMapperOutput,
+                  TMapperOutput,
+                  TError
+                >,
+              ) => TPoint['Infer']['InputRawOrUndefined']),
+          queryOptions?: TPoint['Infer']['UseQueryOptions'] | undefined,
+        ]
+      : [
+          input:
+            | TPoint['Infer']['InputRawOrUndefined']
+            | ((
+                options: WithFnOptions<
+                  MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TClientInputSchema,
+                  TInnerProps,
+                  WithSelfQueryIfShouldBeFinalized<
+                    TPointType,
+                    TLetsReadyPointType,
+                    TServerLoaderOutput,
+                    TClientLoaderOutput,
+                    TQueriesDefinitions,
                     TError
                   >,
-                ) => TPoint['Infer']['InputRawOrUndefined']),
-            queryOptions?: TPoint['Infer']['UseQueryOptions'],
-          ],
-    ] // : never
+                  TMapperOutput,
+                  TError
+                >,
+              ) => TPoint['Infer']['InputRawOrUndefined']),
+          queryOptions?: TPoint['Infer']['UseQueryOptions'] | undefined,
+        ]
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -3593,6 +3589,185 @@ export class Point0<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
+    [
+      ...WithSelfQueryIfShouldBeFinalized<
+        TPointType,
+        TLetsReadyPointType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TQueriesDefinitions,
+        TError
+      >,
+      {
+        type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
+        data: TPoint['Infer']['QueriedData']
+        error: TPoint['Infer']['Error']
+      },
+    ]
+  >
+  with<
+    TPoint extends {
+      Infer: {
+        IsInputOptional: boolean
+        InputRawOrUndefined: any
+        UseQueryOptions: any
+        QueryResultType: 'query' | 'infiniteQuery'
+        QueriedData: any
+        Error: any
+      }
+    },
+    TNewInnerProps extends Props | undefined = undefined,
+  >(
+    ...args: TPoint['Infer']['IsInputOptional'] extends true
+      ?
+          | [
+              point: TPoint,
+              input:
+                | TPoint['Infer']['InputRawOrUndefined']
+                | undefined
+                | ((
+                    options: WithFnOptions<
+                      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                      TParamsSchema,
+                      TSearchSchema,
+                      TClientInputSchema,
+                      TInnerProps,
+                      WithSelfQueryIfShouldBeFinalized<
+                        TPointType,
+                        TLetsReadyPointType,
+                        TServerLoaderOutput,
+                        TClientLoaderOutput,
+                        TQueriesDefinitions,
+                        TError
+                      >,
+                      TMapperOutput,
+                      TError
+                    >,
+                  ) => TPoint['Infer']['InputRawOrUndefined']),
+              queryOptions: TPoint['Infer']['UseQueryOptions'] | undefined,
+              resolve: ResolveQueryCallback<
+                TPoint['Infer']['QueryResultType'],
+                TPoint['Infer']['QueriedData'],
+                TPoint['Infer']['Error'],
+                TNewInnerProps
+              >,
+            ]
+          | [
+              point: TPoint,
+              input:
+                | TPoint['Infer']['InputRawOrUndefined']
+                | undefined
+                | ((
+                    options: WithFnOptions<
+                      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                      TParamsSchema,
+                      TSearchSchema,
+                      TClientInputSchema,
+                      TInnerProps,
+                      WithSelfQueryIfShouldBeFinalized<
+                        TPointType,
+                        TLetsReadyPointType,
+                        TServerLoaderOutput,
+                        TClientLoaderOutput,
+                        TQueriesDefinitions,
+                        TError
+                      >,
+                      TMapperOutput,
+                      TError
+                    >,
+                  ) => TPoint['Infer']['InputRawOrUndefined']),
+              resolve: ResolveQueryCallback<
+                TPoint['Infer']['QueryResultType'],
+                TPoint['Infer']['QueriedData'],
+                TPoint['Infer']['Error'],
+                TNewInnerProps
+              >,
+            ]
+      :
+          | [
+              point: TPoint,
+              input:
+                | TPoint['Infer']['InputRawOrUndefined']
+                | ((
+                    options: WithFnOptions<
+                      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                      TParamsSchema,
+                      TSearchSchema,
+                      TClientInputSchema,
+                      TInnerProps,
+                      WithSelfQueryIfShouldBeFinalized<
+                        TPointType,
+                        TLetsReadyPointType,
+                        TServerLoaderOutput,
+                        TClientLoaderOutput,
+                        TQueriesDefinitions,
+                        TError
+                      >,
+                      TMapperOutput,
+                      TError
+                    >,
+                  ) => TPoint['Infer']['InputRawOrUndefined']),
+              queryOptions: TPoint['Infer']['UseQueryOptions'] | undefined,
+              resolve: ResolveQueryCallback<
+                TPoint['Infer']['QueryResultType'],
+                TPoint['Infer']['QueriedData'],
+                TPoint['Infer']['Error'],
+                TNewInnerProps
+              >,
+            ]
+          | [
+              point: TPoint,
+              input:
+                | TPoint['Infer']['InputRawOrUndefined']
+                | ((
+                    options: WithFnOptions<
+                      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                      TParamsSchema,
+                      TSearchSchema,
+                      TClientInputSchema,
+                      TInnerProps,
+                      WithSelfQueryIfShouldBeFinalized<
+                        TPointType,
+                        TLetsReadyPointType,
+                        TServerLoaderOutput,
+                        TClientLoaderOutput,
+                        TQueriesDefinitions,
+                        TError
+                      >,
+                      TMapperOutput,
+                      TError
+                    >,
+                  ) => TPoint['Infer']['InputRawOrUndefined']),
+              resolve: ResolveQueryCallback<
+                TPoint['Infer']['QueryResultType'],
+                TPoint['Infer']['QueriedData'],
+                TPoint['Infer']['Error'],
+                TNewInnerProps
+              >,
+            ]
+  ): NiceStagePoint<
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
+      ? 'finalStage'
+      : StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
+    TOuterProps,
+    TNewInnerProps extends Props ? AppendProps<TInnerProps, TNewInnerProps> : TInnerProps,
     [
       ...WithSelfQueryIfShouldBeFinalized<
         TPointType,
@@ -3748,6 +3923,30 @@ export class Point0<
             >,
           ) => InputRaw,
           queryOptions?: ExtraUseQueryOptions | ExtraUseInfiniteQueryOptions<any, any, any, any, any, any> | undefined,
+          resolve?: ResolveQueryCallback<any, any, TError, Props | undefined>,
+        ]
+      | [
+          point?: AnyPoint | undefined,
+          input?: (
+            options: WithFnOptions<
+              MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+              TParamsSchema,
+              TSearchSchema,
+              TClientInputSchema,
+              TInnerProps,
+              WithSelfQueryIfShouldBeFinalized<
+                TPointType,
+                TLetsReadyPointType,
+                TServerLoaderOutput,
+                TClientLoaderOutput,
+                TQueriesDefinitions,
+                TError
+              >,
+              TMapperOutput,
+              TError
+            >,
+          ) => InputRaw,
+          resolve?: ResolveQueryCallback<any, any, TError, Props | undefined>,
         ]
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
@@ -3764,7 +3963,11 @@ export class Point0<
 
     // it is query injection
     if ('point' in _args[0]) {
-      const [{ point }, inputFnOrInput, queryOptions = {}] = _args
+      const [{ point }, inputFnOrInput, ...restArgs] = _args
+      const [queryOptions, resolveCallback] = (restArgs.length > 1 ? restArgs : [undefined, restArgs[0]]) as [
+        ExtraUseQueryOptions | ExtraUseInfiniteQueryOptions<any, any, any, any, any, any> | undefined,
+        ResolveQueryCallback<any, any, TError, Props> | undefined,
+      ]
       const getInputFn =
         typeof inputFnOrInput === 'function'
           ? inputFnOrInput
@@ -3772,13 +3975,18 @@ export class Point0<
             ? () => inputFnOrInput
             : () => ({})
       const withQueryFn = ((options) => {
-        const input = getInputFn(options as never)
+        const input = getInputFn(options)
         if (point._queryResultType === 'infiniteQuery') {
           return point.useInfiniteQuery(input, queryOptions as never)
         } else {
           return point.useQuery(input, queryOptions)
         }
       }) as WithQueryFn<any, any, any, any, any, any, any, any>
+      const withResolveFn = !resolveCallback
+        ? undefined
+        : ((({ queries, resolve }) => {
+            return resolve(queries.at(-1), resolveCallback)
+          }) as WithFn<any, any, any, any, any, any, any, any> | undefined)
       return this._continue({
         _mountActions: [
           ...this._mountActions,
@@ -3790,9 +3998,20 @@ export class Point0<
             unstableId: Point0._getNextUnstableId(),
             ssr: this._getSsr(),
           },
+          ...(withResolveFn
+            ? [
+                {
+                  type: 'with' as const,
+                  fn: withResolveFn,
+                  unstableId: Point0._getNextUnstableId(),
+                  ssr: this._getSsr(),
+                },
+              ]
+            : []),
         ],
         ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
       }) as never
+      // }
     }
 
     // it is with fn
@@ -7263,6 +7482,7 @@ export class Point0<
         ...point._mountActions,
         ...pluginEndMountAction,
       ],
+      _wrappers: [...this._wrappers, ...point._wrappers],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
       // _ProviderReactContext: point._ProviderReactContext,
       // _useValue: point._useValue,
@@ -11482,6 +11702,28 @@ export class Point0<
     return inputRaw
   }
 
+  private readonly _applyWrappers = (
+    children: Exclude<React.ReactNode, Promise<any>>,
+    {
+      location,
+      outerProps,
+    }: {
+      location?: AnyLocation
+      outerProps: Props
+    },
+  ) => {
+    if (this._wrappers.length === 0) {
+      return children
+    }
+    return this._wrappers.reduceRight((children, wrapper) => {
+      return React.createElement(wrapper, {
+        children,
+        location,
+        props: outerProps,
+      } as never)
+    }, children)
+  }
+
   private readonly _Mountable = (props: {
     mountComponent:
       | LayoutSuccessComponentType<any, any, any, any, any, any, any>
@@ -11916,16 +12158,14 @@ export class Point0<
             })
           }
         }
-        case 'wrapper': {
-          return React.createElement(action.Component, {
+        case 'with': {
+          const result = action.fn({
             ...mountState,
+            resolve: resolveQuery,
             children: React.createElement(this._Mountable, _nextMountableProps),
             LoadingComponent,
             ErrorComponent,
           })
-        }
-        case 'with': {
-          const result = action.fn(mountState)
           const isQueryResult = (result: any): result is UseQueryOrInfiniteQueryResult => {
             return (
               typeof result === 'object' &&
@@ -11964,6 +12204,7 @@ export class Point0<
               ? ((result as any).redirect as RedirectTask)
               : undefined
           if (redirectTask) {
+            // redirect
             const Redirect = getNavigationHelpers().Redirect
             return React.createElement(Redirect, {
               task: redirectTask,
@@ -11971,13 +12212,19 @@ export class Point0<
                 removeRedirectsFromQueryClientCache(_ss.__POINT0_QUERY_CLIENT__.get(), redirectTask.to)
               },
             })
+          } else if (React.isValidElement(result)) {
+            // custom element
+            return result
           } else if (result === 'loading') {
+            // loading
             return React.createElement(LoadingComponent)
           } else if (result instanceof Error) {
+            // error
             return React.createElement(ErrorComponent, {
               error: this._Error.from(result),
             })
           } else {
+            // new props or undefined
             return React.createElement(this._Mountable, {
               ..._nextMountableProps,
               layers: _nextLayers.map((layer) => ({
@@ -12121,13 +12368,13 @@ export class Point0<
       CurrentRouteDefinition<TRouteDefinition>
     >
 
-    const { inputRaw, restProps } = React.useMemo<{
+    const { inputRaw, outerProps } = React.useMemo<{
       inputRaw: InputRaw
-      restProps: TOuterProps
+      outerProps: TOuterProps
     }>(() => {
-      const { input: providedInput, ...restProps } = props as any
+      const { input: providedInput, ...outerProps } = props as any
       const inputRaw = providedInput ?? { ...this._getUnsafeInputRawByLocation(location) }
-      return { inputRaw, restProps }
+      return { inputRaw, outerProps }
     }, [props, location])
 
     const { prevLocation, status } = useNavigationTransitionState()
@@ -12169,19 +12416,22 @@ export class Point0<
       }
     }, [this.name, inputRaw, prevLocation, status])
 
-    return this._Mountable({
-      location,
-      layers: [
-        {
-          inputRaw,
-          outerProps: restProps,
+    return this._applyWrappers(
+      this._Mountable({
+        location,
+        layers: [
+          {
+            inputRaw,
+            outerProps,
+          },
+        ],
+        extraProps: () => {
+          return { location }
         },
-      ],
-      extraProps: () => {
-        return { location }
-      },
-      mountComponent: this._page as never,
-    })
+        mountComponent: this._page as never,
+      }),
+      { location, outerProps },
+    )
   }
 
   Component = (
@@ -12198,27 +12448,30 @@ export class Point0<
       TMapperOutput
     >,
   ): React.ReactNode => {
-    const { inputRaw, restProps } = React.useMemo<{
+    const { inputRaw, outerProps } = React.useMemo<{
       inputRaw: InputRaw
-      restProps: TOuterProps
+      outerProps: TOuterProps
     }>(() => {
-      const { input: providedInput = {}, ...restProps } = props as any
+      const { input: providedInput = {}, ...outerProps } = props as any
       const inputRaw = { ...providedInput }
-      return { inputRaw, restProps }
+      return { inputRaw, outerProps }
     }, [props])
 
-    return this._Mountable({
-      layers: [
-        {
-          inputRaw,
-          outerProps: restProps,
+    return this._applyWrappers(
+      this._Mountable({
+        layers: [
+          {
+            inputRaw,
+            outerProps,
+          },
+        ],
+        extraProps: () => {
+          return {}
         },
-      ],
-      extraProps: () => {
-        return {}
-      },
-      mountComponent: this._component as never,
-    })
+        mountComponent: this._component as never,
+      }),
+      { outerProps },
+    )
   }
 
   Layout = (
@@ -12238,41 +12491,44 @@ export class Point0<
   ): React.ReactNode => {
     const location = useLocation() as WeakAncestorLocation<CurrentRouteDefinition<TRouteDefinition>>
 
-    const { inputRaw, children, restProps } = React.useMemo<{
+    const { inputRaw, children, outerProps } = React.useMemo<{
       inputRaw: InputRaw
       children: React.ReactNode
-      restProps: TOuterProps
+      outerProps: TOuterProps
     }>(() => {
-      const { input: providedInput, children, ...restProps } = props as any
+      const { input: providedInput, children, ...outerProps } = props as any
       const inputRaw = providedInput ?? { ...this._getUnsafeInputRawByLocation(location) }
-      return { inputRaw, children, restProps }
+      return { inputRaw, children, outerProps }
     }, [props, location])
 
-    return this._Mountable({
-      location,
-      layers: [
-        {
-          inputRaw,
-          outerProps: restProps,
+    return this._applyWrappers(
+      this._Mountable({
+        location,
+        layers: [
+          {
+            inputRaw,
+            outerProps,
+          },
+        ],
+        extraProps: (mountableState: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>) => {
+          if (!this._ProviderReactContext) {
+            throw new Error(`ProviderReactContext not found on point ${this.toStringWithLocation()}`)
+          }
+          if (mountableState.data) {
+            superstore.setValue(this.getSsProviderValueKey(inputRaw), mountableState.data, 'clientServerIsolated')
+            superstore.setValue(this.getSsProviderValueKey(), mountableState.data, 'clientServerIsolated')
+          }
+          return {
+            children: React.createElement(this._ProviderReactContext.Provider, {
+              value: mountableState.data,
+              children,
+            }),
+          }
         },
-      ],
-      extraProps: (mountableState: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>) => {
-        if (!this._ProviderReactContext) {
-          throw new Error(`ProviderReactContext not found on point ${this.toStringWithLocation()}`)
-        }
-        if (mountableState.data) {
-          superstore.setValue(this.getSsProviderValueKey(inputRaw), mountableState.data, 'clientServerIsolated')
-          superstore.setValue(this.getSsProviderValueKey(), mountableState.data, 'clientServerIsolated')
-        }
-        return {
-          children: React.createElement(this._ProviderReactContext.Provider, {
-            value: mountableState.data,
-            children,
-          }),
-        }
-      },
-      mountComponent: this._layout as never,
-    })
+        mountComponent: this._layout as never,
+      }),
+      { location, outerProps },
+    )
   }
 
   // provider
@@ -12337,40 +12593,43 @@ export class Point0<
       TMapperOutput
     >,
   ): React.ReactNode => {
-    const { inputRaw, children, restProps } = React.useMemo<{
+    const { inputRaw, children, outerProps } = React.useMemo<{
       inputRaw: InputRaw
       children: React.ReactNode
-      restProps: TOuterProps
+      outerProps: TOuterProps
     }>(() => {
-      const { input: providedInput = {}, children, ...restProps } = props as any
+      const { input: providedInput = {}, children, ...outerProps } = props as any
       const inputRaw = { ...providedInput }
-      return { inputRaw, children, restProps }
+      return { inputRaw, children, outerProps }
     }, [props])
 
-    return this._Mountable({
-      layers: [
-        {
-          inputRaw,
-          outerProps: restProps,
+    return this._applyWrappers(
+      this._Mountable({
+        layers: [
+          {
+            inputRaw,
+            outerProps,
+          },
+        ],
+        extraProps: (mountableState: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>) => {
+          if (!this._ProviderReactContext) {
+            throw new Error(`ProviderReactContext not found on point ${this.toStringWithLocation()}`)
+          }
+          if (mountableState.data) {
+            superstore.setValue(this.getSsProviderValueKey(inputRaw), mountableState.data, 'clientServerIsolated')
+            superstore.setValue(this.getSsProviderValueKey(), mountableState.data, 'clientServerIsolated')
+          }
+          return {
+            children: React.createElement(this._ProviderReactContext.Provider, {
+              value: mountableState.data,
+              children,
+            }),
+          }
         },
-      ],
-      extraProps: (mountableState: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>) => {
-        if (!this._ProviderReactContext) {
-          throw new Error(`ProviderReactContext not found on point ${this.toStringWithLocation()}`)
-        }
-        if (mountableState.data) {
-          superstore.setValue(this.getSsProviderValueKey(inputRaw), mountableState.data, 'clientServerIsolated')
-          superstore.setValue(this.getSsProviderValueKey(), mountableState.data, 'clientServerIsolated')
-        }
-        return {
-          children: React.createElement(this._ProviderReactContext.Provider, {
-            value: mountableState.data,
-            children,
-          }),
-        }
-      },
-      mountComponent: 'children',
-    })
+        mountComponent: 'children',
+      }),
+      { outerProps },
+    )
   }
 
   useValue<K extends keyof MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(

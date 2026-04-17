@@ -39,6 +39,7 @@ import type {
   UndefinedReadyPointType,
   UndefinedRouteDefinition,
 } from './types.js'
+import type { ResolveQueryFn } from './utils.js'
 
 export type Props = Record<string, any>
 export type UndefinedProps = undefined
@@ -174,6 +175,74 @@ export type SuccessQueriesDefinitions<TQueriesDefinitions extends QueriesDefinit
 export type QuerySuccess<TQuery extends UseQueryOrInfiniteQueryResult> = Extract<TQuery, { status: 'success' }>
 export type QueryError<TQuery extends UseQueryOrInfiniteQueryResult> = Extract<TQuery, { status: 'error' }>
 export type QueryPending<TQuery extends UseQueryOrInfiniteQueryResult> = Extract<TQuery, { status: 'pending' }>
+
+// export type SuccessQueriesDatas<TQueries extends UseQueryOrInfiniteQueryResult[]> = IfAnyThenElse<
+//   TQueries,
+//   any[],
+//   TQueries extends [infer Q1, infer Q2, infer Q3, infer Q4, infer Q5]
+//     ? [
+//         Q1 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q1>> : never,
+//         Q2 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q2>> : never,
+//         Q3 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q3>> : never,
+//         Q4 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q4>> : never,
+//         Q5 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q5>> : never,
+//       ]
+//     : TQueries extends [infer Q1, infer Q2, infer Q3, infer Q4]
+//       ? [
+//           Q1 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q1>> : never,
+//           Q2 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q2>> : never,
+//           Q3 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q3>> : never,
+//           Q4 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q4>> : never,
+//         ]
+//       : TQueries extends [infer Q1, infer Q2, infer Q3]
+//         ? [
+//             Q1 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q1>> : never,
+//             Q2 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q2>> : never,
+//             Q3 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q3>> : never,
+//           ]
+//         : TQueries extends [infer Q1, infer Q2]
+//           ? [
+//               Q1 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q1>> : never,
+//               Q2 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q2>> : never,
+//             ]
+//           : TQueries extends [infer Q1]
+//             ? [Q1 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q1>> : never]
+//             : []
+// >
+
+export type SuccessQueriesResults<TQueries extends UseQueryOrInfiniteQueryResult[]> = IfAnyThenElse<
+  TQueries,
+  any[],
+  TQueries extends [infer Q1, infer Q2, infer Q3, infer Q4, infer Q5]
+    ? [
+        Q1 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q1> : never,
+        Q2 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q2> : never,
+        Q3 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q3> : never,
+        Q4 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q4> : never,
+        Q5 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q5> : never,
+      ]
+    : TQueries extends [infer Q1, infer Q2, infer Q3, infer Q4]
+      ? [
+          Q1 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q1> : never,
+          Q2 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q2> : never,
+          Q3 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q3> : never,
+          Q4 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q4> : never,
+        ]
+      : TQueries extends [infer Q1, infer Q2, infer Q3]
+        ? [
+            Q1 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q1> : never,
+            Q2 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q2> : never,
+            Q3 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q3> : never,
+          ]
+        : TQueries extends [infer Q1, infer Q2]
+          ? [
+              Q1 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q1> : never,
+              Q2 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q2> : never,
+            ]
+          : TQueries extends [infer Q1]
+            ? [Q1 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q1> : never]
+            : []
+>
 
 type CleanQueryData<TData> =
   Exclude<TData, undefined> extends infer TClean
@@ -464,48 +533,28 @@ export type MapperFn<
 ) => TNewMapperOutput
 
 export type WrapperComponentProps<
-  TLocation extends AnyLocation | undefined,
-  TParamsSchema extends InputSchema | UndefinedInputSchema,
-  TSearchSchema extends InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props,
-  TQueriesDefinitions extends QueriesDefinitions,
-  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TError extends ErrorPoint0,
-> = MountableState<
-  any,
-  TLocation,
-  TParamsSchema,
-  TSearchSchema,
-  TClientInputSchema,
-  TInnerProps,
-  TQueriesDefinitions,
-  TMapperOutput,
-  TError
-> & {
+  TPointType extends PointType | undefined,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TOuterProps extends Props,
+  // > = {
+  //   children: Exclude<React.ReactNode, Promise<any>> | undefined
+  // } & IfAnyThenElse<
+  //   TPointType | TOuterProps | TRouteDefinition,
+  //   { location: AnyLocation | undefined; props: Props },
+  //   (IsEmptyObject<TOuterProps> extends true ? unknown : { props: TOuterProps }) &
+  //     (TPointType extends 'page' | 'layout' ? { location: MountableLocation<TPointType, TRouteDefinition> } : unknown)
+  // >
+> = {
   children: Exclude<React.ReactNode, Promise<any>> | undefined
-} & WithErrorAndLoadingComponents
+} & (IsEmptyObject<TOuterProps> extends true ? unknown : { props: TOuterProps }) &
+  (TPointType extends 'page' | 'layout' ? { location: MountableLocation<TPointType, TRouteDefinition> } : unknown)
 
 export type WrapperComponentType<
-  TLocation extends AnyLocation | undefined,
-  TParamsSchema extends InputSchema | UndefinedInputSchema,
-  TSearchSchema extends InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props,
-  TQueriesDefinitions extends QueriesDefinitions,
-  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TError extends ErrorPoint0,
+  TPointType extends PointType | undefined,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TOuterProps extends Props,
 > = (
-  options: WrapperComponentProps<
-    TLocation,
-    TParamsSchema,
-    TSearchSchema,
-    TClientInputSchema,
-    TInnerProps,
-    TQueriesDefinitions,
-    TMapperOutput,
-    TError
-  >,
+  options: WrapperComponentProps<TPointType, TRouteDefinition, TOuterProps>,
 ) => Exclude<React.ReactNode, Promise<any>>
 
 export type WithFnOptions<
@@ -527,7 +576,10 @@ export type WithFnOptions<
   TQueriesDefinitions,
   TMapperOutput,
   TError
->
+> & {
+  resolve: ResolveQueryFn
+  children: Exclude<React.ReactNode, Promise<any>>
+} & WithErrorAndLoadingComponents
 
 export type WithFn<
   TLocation extends AnyLocation | undefined = AnyLocation | undefined,
@@ -550,11 +602,11 @@ export type WithFn<
     TMapperOutput,
     TError
   >,
-) => TNewInnerProps | Error | 'loading' | undefined | void
+) => TNewInnerProps | React.ReactElement | Error | 'loading' | undefined | void
 export type InferWithFnOutputNewInnerProps<TWithFn extends WithFn<any, any, any, any, any, any, any, any, any>> =
-  Exclude<ReturnType<TWithFn>, undefined | void | Error | RedirectTask | 'loading'> extends never
+  Exclude<ReturnType<TWithFn>, undefined | void | Error | RedirectTask | 'loading' | React.ReactElement> extends never
     ? undefined
-    : NormalizeCtxLike<Exclude<ReturnType<TWithFn>, Error | 'loading' | RedirectTask>>
+    : NormalizeCtxLike<Exclude<ReturnType<TWithFn>, Error | 'loading' | RedirectTask | React.ReactElement>>
 
 export type ClientOnlyFallbackComponentProps<
   TLocation extends AnyLocation | undefined,
@@ -1313,7 +1365,6 @@ export type MountAction<
     | 'input'
     | 'params'
     | 'search'
-    | 'wrapper'
     | 'with'
     | 'mapper'
     | 'head'
@@ -1329,7 +1380,6 @@ export type MountAction<
     | 'input'
     | 'params'
     | 'search'
-    | 'wrapper'
     | 'with'
     | 'mapper'
     | 'head'
@@ -1363,49 +1413,42 @@ export type MountAction<
           ? { type: 'params'; schema: InputSchema; unstableId: number }
           : TType extends 'search'
             ? { type: 'search'; schema: InputSchema; unstableId: number }
-            : TType extends 'wrapper'
-              ? {
-                  type: 'wrapper'
-                  Component: WrapperComponentType<any, any, any, any, any, any, any, ErrorPoint0>
-                  unstableId: number
-                  ssr: boolean
-                }
-              : TType extends 'with'
-                ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number; ssr: boolean }
-                : TType extends 'mapper'
-                  ? {
-                      type: 'mapper'
-                      fn: MapperFn<any, any, any, any, any, any, any, any>
-                      unstableId: number
-                      ssr: boolean
-                    }
-                  : TType extends 'selfProps'
-                    ? { type: 'selfProps'; unstableId: number; ssr: boolean }
-                    : TType extends 'head'
-                      ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number; ssr: boolean }
-                      : TType extends 'globalHead'
-                        ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number; ssr: boolean }
-                        : TType extends 'errorComponent'
+            : TType extends 'with'
+              ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number; ssr: boolean }
+              : TType extends 'mapper'
+                ? {
+                    type: 'mapper'
+                    fn: MapperFn<any, any, any, any, any, any, any, any>
+                    unstableId: number
+                    ssr: boolean
+                  }
+                : TType extends 'selfProps'
+                  ? { type: 'selfProps'; unstableId: number; ssr: boolean }
+                  : TType extends 'head'
+                    ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number; ssr: boolean }
+                    : TType extends 'globalHead'
+                      ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number; ssr: boolean }
+                      : TType extends 'errorComponent'
+                        ? {
+                            type: 'errorComponent'
+                            Component: ErrorComponentType<any, ErrorPoint0>
+                            variant: DestinationComponentVariant | undefined
+                            unstableId: number
+                            ssr: boolean
+                          }
+                        : TType extends 'loadingComponent'
                           ? {
-                              type: 'errorComponent'
-                              Component: ErrorComponentType<any, ErrorPoint0>
+                              type: 'loadingComponent'
+                              Component: LoadingComponentType<any>
                               variant: DestinationComponentVariant | undefined
                               unstableId: number
                               ssr: boolean
                             }
-                          : TType extends 'loadingComponent'
-                            ? {
-                                type: 'loadingComponent'
-                                Component: LoadingComponentType<any>
-                                variant: DestinationComponentVariant | undefined
-                                unstableId: number
-                                ssr: boolean
-                              }
-                            : TType extends 'pluginStart'
-                              ? { type: 'pluginStart'; name: string; unstableId: number; ssr: boolean }
-                              : TType extends 'pluginEnd'
-                                ? { type: 'pluginEnd'; name: string; unstableId: number; ssr: boolean }
-                                : never
+                          : TType extends 'pluginStart'
+                            ? { type: 'pluginStart'; name: string; unstableId: number; ssr: boolean }
+                            : TType extends 'pluginEnd'
+                              ? { type: 'pluginEnd'; name: string; unstableId: number; ssr: boolean }
+                              : never
 
 export type IsQueryShouldBeFinalized<
   TPointType extends PointType,

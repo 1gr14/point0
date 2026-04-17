@@ -8,6 +8,7 @@ export default defineConfig([
   {
     ignores: [
       '**/node_modules/**',
+      '**/.bak/**',
       '**/engine/tests/template/**',
       '**/dist/**',
       '**/temp/**',

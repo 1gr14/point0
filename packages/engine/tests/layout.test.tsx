@@ -354,10 +354,9 @@ describe('layout', () => {
     const layout = root
       .lets('layout', 'app', '/:id')
       .loader(({ params }) => ({ x: params.id }))
-      .wrapper(({ children, queries, location }) => (
+      .wrapper(({ children, location }) => (
         <div id="wrapper">
           <div id="input">{location.params.id}</div>
-          <div id="query-status">{queries.map((q) => q.status).join(', ') || 'undefined'}</div>
           {children}
         </div>
       ))
@@ -377,12 +376,10 @@ describe('layout', () => {
         /zxc/page
           #wrapper:
             #input: zxc
-            #query-status: pending
             #loading: ...
 
           #wrapper:
             #input: zxc
-            #query-status: success
             #layout:
               #layout-input: x=zxc
               #page: x=nothing
@@ -398,7 +395,6 @@ describe('layout', () => {
       "
       #wrapper:
         #input: zxc
-        #query-status: success
         #layout:
           #layout-input: x=zxc
           #page: x=nothing

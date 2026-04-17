@@ -9,7 +9,7 @@ export const engine = Engine.create({
     importer: {
       mock: ['react-native', 'expo-router'],
     },
-    port: 3000,
+    port: process.env.SERVER_PORT,
     entry: { main: './index.server.ts' },
     generate: { points: './generated/point0/points.server.ts' },
     points: async () => await import('./generated/point0/points.server'),

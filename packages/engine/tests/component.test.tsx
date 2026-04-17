@@ -279,19 +279,19 @@ describe('component', () => {
   it.concurrent('wrapper', async () => {
     const root = createRoot()
     const component = root
-      .lets('component', 'stats')
+      .lets<{ x: number }>('component', 'stats')
       .sharedInput<{ id: string }>()
       .loader(({ input }) => ({ x: input.id }))
-      .wrapper(({ children, queries }) => (
+      .wrapper(({ children, props }) => (
         <div id="wrapper">
-          <div id="query-status">{queries.map((q) => q.status).join(', ') || 'undefined'}</div>
+          <div id="x">x={props.x}</div>
           {children}
         </div>
       ))
       .component(({ data }) => <div id="component">x={data.x}</div>)
     const page = root.lets('page', 'home', '/').page(() => (
       <div id="page">
-        <component.X input={{ id: 'zxc' }} />
+        <component.X input={{ id: 'zxc' }} x={1} />
       </div>
     ))
 
@@ -303,12 +303,12 @@ describe('component', () => {
         /
           #page:
             #wrapper:
-              #query-status: pending
+              #x: x=1
               #loading: ...
 
           #page:
             #wrapper:
-              #query-status: success
+              #x: x=1
               #component: x=zxc
         "
       `)
@@ -322,7 +322,7 @@ describe('component', () => {
       "
       #page:
         #wrapper:
-          #query-status: success
+          #x: x=1
           #component: x=zxc
       "
     `)

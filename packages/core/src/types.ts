@@ -1613,10 +1613,12 @@ export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any, a
     ? undefined
     : NormalizeCtxLike<Exclude<Awaited<ReturnType<TCtxFn>>, RedirectTask | Error>>
 
-export type NormalizeCtxLike<T extends Record<string, any> | undefined> = [T] extends [undefined]
+export type NormalizeCtxLike<T extends Record<string, any> | undefined, TExclude = undefined> = [T] extends [
+  undefined | TExclude,
+]
   ? Record<never, never> // strict empty object
   : {
-        [K in keyof Exclude<T, undefined>]: Exclude<T, undefined> extends infer U
+        [K in keyof Exclude<T, undefined | TExclude>]: Exclude<T, undefined | TExclude> extends infer U
           ? U extends any
             ? K extends keyof U
               ? U[K]

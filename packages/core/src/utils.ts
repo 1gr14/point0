@@ -1,7 +1,9 @@
-import type { DehydratedState, Mutation, Query } from '@tanstack/react-query'
+import type { DehydratedState, Mutation, Query, UseInfiniteQueryResult, UseQueryResult } from '@tanstack/react-query'
 import { stringify } from 'safe-stable-stringify'
 import type { ErrorPoint0 } from './error.js'
+import type { Props, QuerySuccess, SuccessQueriesResults, UseQueryOrInfiniteQueryResult } from './mountable.js'
 import type {
+  Data,
   DataTransformer,
   DataTransformerExtended,
   ExtraUseInfiniteQueryOptions,
@@ -16,6 +18,7 @@ import type {
   PointType,
   QueryKey,
   QueryMode,
+  QueryResultType,
   ScrollPositionGetter,
   ScrollPositionSetter,
   UseInfiniteQueryOptions,
@@ -585,4 +588,51 @@ export const singletonize = <T>(key: string, value: T): T => {
   }
   ;(globalThis as any)[fixedKey] = value
   return value
+}
+
+export type ResolveQueryCallback<
+  TQueryResultType extends QueryResultType,
+  TQueriedData extends Data,
+  TError extends Error,
+  TMapped extends Props | undefined,
+> = (
+  success: TQueryResultType extends 'query'
+    ? QuerySuccess<UseQueryResult<TQueriedData, TError>>
+    : TQueryResultType extends 'infiniteQuery'
+      ? QuerySuccess<UseInfiniteQueryResult<TQueriedData, TError>>
+      : never,
+) => TMapped
+// export type ResolveQueryCallback<
+//   TQueryResultType extends QueryResultType,
+//   TQueriedData extends Data,
+//   TError extends Error,
+//   TMapped extends Props | undefined,
+// > = (success: number) => TMapped
+
+export type ResolveQueryFn = <
+  TQuery extends UseQueryOrInfiniteQueryResult | Array<UseQueryOrInfiniteQueryResult>,
+  TMapped = undefined,
+>(
+  query: TQuery,
+  resolver?: (
+    success: TQuery extends UseQueryOrInfiniteQueryResult
+      ? QuerySuccess<TQuery>
+      : TQuery extends Array<UseQueryOrInfiniteQueryResult>
+        ? SuccessQueriesResults<TQuery>
+        : never,
+  ) => TMapped,
+) => TMapped | Error | 'loading'
+
+export const resolveQuery: ResolveQueryFn = (query, resolver) => {
+  const isArray = Array.isArray(query)
+  const queries = isArray ? query : [query]
+  const isLoading = queries.some((query) => query.isLoading)
+  if (isLoading) {
+    return 'loading'
+  }
+  const error = queries.find((query) => query.error)?.error
+  if (error) {
+    return error
+  }
+  return resolver?.(isArray ? queries : queries[0])
 }

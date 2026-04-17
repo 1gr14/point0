@@ -1,12 +1,13 @@
+import { Routes } from '@devp0nt/route0'
 import { ErrorPoint0, Point0 } from '@point0/core'
 import type { EmptyObject } from '@point0/core'
+import { createNavigation } from '@point0/react-dom/router'
 import type { InfiniteData, InfiniteQueryObserverSuccessResult, QueryObserverSuccessResult } from '@tanstack/query-core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { createTestThings } from './utils/internal-testing.js'
-import { createNavigation } from '@point0/react-dom/router'
-import { Routes } from '@devp0nt/route0'
+import type { EmptyProps } from '@point0/core'
 
 describe('with', () => {
   const items: Array<{ id: number; name: string }> = [
@@ -246,9 +247,14 @@ describe('with', () => {
     const page = root
       .lets('page', 'home', '/home')
       .with(query)
-      .page(({ data }) => {
+      .page(({ data, props }) => {
+        expectTypeOf<typeof props>().toEqualTypeOf<EmptyProps>()
         expectTypeOf<typeof data>().toEqualTypeOf<{ x: number }>()
-        return <div id="page">x={data.x}</div>
+        return (
+          <div id="page">
+            x={data.x}, props.length={Object.keys(props).length}
+          </div>
+        )
       })
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, page, query] })
@@ -259,7 +265,7 @@ describe('with', () => {
         /home
           #loading: ...
 
-          #page: x=1
+          #page: x=1, props.length=0
         "
       `)
     })
@@ -270,7 +276,359 @@ describe('with', () => {
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
-      #page: x=1
+      #page: x=1, props.length=0
+      "
+    `)
+  })
+
+  it('with blocking component', async () => {
+    const root = createRoot()
+    const query1 = root
+      .lets('query', 'test1')
+      .loader(() => ({ x: 1 }))
+      .query()
+    const query2 = root
+      .lets('query', 'test2')
+      .loader(() => ({ y: 2 }))
+      .query()
+
+    const page = root
+      .lets('page', 'home', '/home')
+      .with(query1)
+      .with(({ queries }) => <div id="blocked">{queries.length}</div>)
+      .with(query2)
+      .page(({ data, props }) => {
+        expectTypeOf<typeof props>().toEqualTypeOf<EmptyProps>()
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number }>()
+        return (
+          <div id="page">
+            x={data.x}, props.length={Object.keys(props).length}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
+      points: [root, page, query1, query2],
+    })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#blocked')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /home
+          #blocked: 1
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      query.test1 (client) < {}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #blocked: 1
+      "
+    `)
+  })
+
+  it('with wrapping component', async () => {
+    const root = createRoot()
+    const query1 = root
+      .lets('query', 'test1')
+      .loader(() => ({ x: 1 }))
+      .query()
+    const query2 = root
+      .lets('query', 'test2')
+      .loader(() => ({ y: 2 }))
+      .query()
+
+    const page = root
+      .lets('page', 'home', '/home')
+      .with(query1)
+      .with(({ queries, children }) => (
+        <div id="wrapper1">
+          <div id="queries1">{queries.length}</div>
+          {children}
+        </div>
+      ))
+      .with(query2)
+      .with(({ queries, children }) => (
+        <div id="wrapper2">
+          <div id="queries2">{queries.length}</div>
+          {children}
+        </div>
+      ))
+      .page(({ data, props }) => {
+        expectTypeOf<typeof props>().toEqualTypeOf<EmptyProps>()
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number }>()
+        return (
+          <div id="page">
+            x={data.x}, props.length={Object.keys(props).length}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
+      points: [root, page, query1, query2],
+    })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /home
+          #wrapper1:
+            #queries1: 1
+            #wrapper2:
+              #queries2: 2
+              #loading: ...
+
+          #wrapper1:
+            #queries1: 1
+            #wrapper2:
+              #queries2: 2
+              #page: x=1, props.length=0
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      query.test2 (client) < {}
+      query.test1 (client) < {}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #wrapper1:
+        #queries1: 1
+        #wrapper2:
+          #queries2: 2
+          #page: x=1, props.length=0
+      "
+    `)
+  })
+
+  it('with query sequential, by resolve helper', async () => {
+    const root = createRoot()
+    const query1 = root
+      .lets('query', 'test1')
+      .loader(() => ({ x: 1 }))
+      .query()
+    const query2 = root
+      .lets('query', 'test2')
+      .loader(() => ({ y: 2 }))
+      .query()
+
+    const page = root
+      .lets('page', 'home', '/home')
+      .with(query1)
+      .with(({ queries, resolve }) => {
+        return resolve(queries, ([{ data }]) => data)
+      })
+      .with(query2)
+      .page(({ data, queries: [q1, q2], props }) => {
+        expect(data).toBe(q1.data)
+        expect(data.x).toBe(props.x)
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number }>()
+        expectTypeOf<typeof q1>().toEqualTypeOf<QueryObserverSuccessResult<{ x: number }, ErrorPoint0>>()
+        expectTypeOf<typeof q2>().toEqualTypeOf<QueryObserverSuccessResult<{ y: number }, ErrorPoint0>>()
+        return (
+          <div id="page">
+            x={q1.data.x} y={q2.data.y}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
+      points: [root, page, query1, query2],
+    })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /home
+          #loading: ...
+
+          #page: x=1 y=2
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      query.test1 (client) < {}
+      query.test2 (client) < {}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page: x=1 y=2
+      "
+    `)
+  })
+
+  it('with query sequential, by fourth arg of with fn', async () => {
+    const root = createRoot()
+    const query1 = root
+      .lets('query', 'test1')
+      .loader(() => ({ x: 1 }))
+      .query()
+    const query2 = root
+      .lets('query', 'test2')
+      .loader(() => ({ y: 2 }))
+      .query()
+
+    const page = root
+      .lets('page', 'home', '/home')
+      .with(query1, undefined, undefined, ({ data }) => data)
+      .with(query2)
+      .page(({ data, queries: [q1, q2] }) => {
+        expect(data).toBe(q1.data)
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number }>()
+        expectTypeOf<typeof q1>().toEqualTypeOf<QueryObserverSuccessResult<{ x: number }, ErrorPoint0>>()
+        expectTypeOf<typeof q2>().toEqualTypeOf<QueryObserverSuccessResult<{ y: number }, ErrorPoint0>>()
+        return (
+          <div id="page">
+            x={q1.data.x} y={q2.data.y}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
+      points: [root, page, query1, query2],
+    })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /home
+          #loading: ...
+
+          #page: x=1 y=2
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      query.test1 (client) < {}
+      query.test2 (client) < {}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page: x=1 y=2
+      "
+    `)
+  })
+
+  it('with query sequential, by thrid arg of with fn', async () => {
+    const root = createRoot()
+    const query1 = root
+      .lets('query', 'test1')
+      .loader(() => ({ x: 1 }))
+      .query()
+    const query2 = root
+      .lets('query', 'test2')
+      .loader(() => ({ y: 2 }))
+      .query()
+
+    const page = root
+      .lets('page', 'home', '/home')
+      .with(query1, undefined, undefined, ({ data }) => data)
+      .with(query2)
+      .page(({ data, queries: [q1, q2] }) => {
+        expect(data).toBe(q1.data)
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number }>()
+        expectTypeOf<typeof q1>().toEqualTypeOf<QueryObserverSuccessResult<{ x: number }, ErrorPoint0>>()
+        expectTypeOf<typeof q2>().toEqualTypeOf<QueryObserverSuccessResult<{ y: number }, ErrorPoint0>>()
+        return (
+          <div id="page">
+            x={q1.data.x} y={q2.data.y}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
+      points: [root, page, query1, query2],
+    })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /home
+          #loading: ...
+
+          #page: x=1 y=2
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      query.test1 (client) < {}
+      query.test2 (client) < {}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page: x=1 y=2
+      "
+    `)
+  })
+
+  it('with query sequential, by thrid arg of with fn', async () => {
+    const root = createRoot()
+    const query1 = root
+      .lets('query', 'test1')
+      .loader(() => ({ x: 1 }))
+      .query()
+    const query2 = root
+      .lets('query', 'test2')
+      .loader(() => ({ y: 2 }))
+      .query()
+
+    const page = root
+      .lets('page', 'home', '/home')
+      .with(query1, undefined, undefined, ({ data }) => data)
+      .with(query2)
+      .page(({ data, queries: [q1, q2] }) => {
+        expect(data).toBe(q1.data)
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number }>()
+        expectTypeOf<typeof q1>().toEqualTypeOf<QueryObserverSuccessResult<{ x: number }, ErrorPoint0>>()
+        expectTypeOf<typeof q2>().toEqualTypeOf<QueryObserverSuccessResult<{ y: number }, ErrorPoint0>>()
+        return (
+          <div id="page">
+            x={q1.data.x} y={q2.data.y}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
+      points: [root, page, query1, query2],
+    })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /home
+          #loading: ...
+
+          #page: x=1 y=2
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      query.test1 (client) < {}
+      query.test2 (client) < {}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page: x=1 y=2
       "
     `)
   })
@@ -285,7 +643,6 @@ describe('with', () => {
     const page = root
       .lets('page', 'home', '/:y')
       .with(query, ({ params }) => ({ y: +params.y }))
-      // .with(query)
       .page(({ data, location }) => {
         expectTypeOf<typeof data>().toEqualTypeOf<{ x: number }>()
         return (
@@ -315,6 +672,50 @@ describe('with', () => {
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
       "
       #page: x=246 y=123
+      "
+    `)
+  })
+
+  it('forbid by types not provide query input', async () => {
+    const root = createRoot()
+    const query = root
+      .lets('query', 'test')
+      .input(z.object({ y: z.number() }))
+      .loader(({ input }) => ({ x: input.y * 2 }))
+      .query()
+    const page = root
+      .lets('page', 'home', '/:y')
+      // @ts-expect-error -- not provide with query input
+      .with(query)
+      .page(({ data, location }) => {
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number }>()
+        return (
+          <div id="page">
+            x={data.x} y={location.params.y}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, page, query] })
+    await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
+      await waitContent('#error')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /123
+          #loading: ...
+
+          #error: y: Invalid input: expected number, received undefined
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      query.test (client) < {}
+      "
+    `)
+    expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
+      "
+      #loading: ...
       "
     `)
   })
@@ -948,5 +1349,119 @@ describe('with', () => {
       // @ts-expect-error -- string is forbidden to return as data
       .with(() => 'zxc')
       .page()
+  })
+
+  it('with chaos', async () => {
+    const root = createRoot()
+    const query1 = root
+      .lets('query', 'test1')
+      .loader(() => ({ x: 1 }))
+      .query()
+    const query2 = root
+      .lets('query', 'test2')
+      .loader(() => ({ y: 2 }))
+      .query()
+    const query3 = root
+      .lets('query', 'test3')
+      .input(z.object({ mul: z.number() }))
+      .loader(({ input: { mul } }) => ({ z: 3 * mul }))
+      .query()
+
+    const page = root
+      .lets('page', 'home', '/home')
+      .with(query1)
+      .with(({ queries, children }) => (
+        <div id="wrapper1">
+          <div id="queries1">{queries.length}</div>
+          {children}
+        </div>
+      ))
+      .with(query2, undefined, ({ data }) => ({ mul: data.y }))
+      .with(({ queries, children }) => {
+        const [ready, setReady] = useState(false)
+        useEffect(() => {
+          setTimeout(() => {
+            setReady(true)
+          }, 50)
+        }, [])
+        if (!ready) {
+          return <div>I AM NOT READY</div>
+        }
+        return (
+          <div id="wrapper2">
+            <div id="queries2">{queries.length}</div>
+            {children}
+          </div>
+        )
+      })
+      .with(query3, ({ props: { mul } }) => ({ mul }))
+      .page(({ data, props, queries: [q1, q2, q3] }) => {
+        expectTypeOf<typeof props>().toEqualTypeOf<{ mul: number }>()
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number }>()
+        expectTypeOf<typeof q1>().toEqualTypeOf<QueryObserverSuccessResult<{ x: number }, ErrorPoint0>>()
+        expectTypeOf<typeof q2>().toEqualTypeOf<QueryObserverSuccessResult<{ y: number }, ErrorPoint0>>()
+        expectTypeOf<typeof q3>().toEqualTypeOf<QueryObserverSuccessResult<{ z: number }, ErrorPoint0>>()
+        expect(data.x).toBe(q1.data.x)
+        return (
+          <div id="page">
+            x={data.x}, y={q2.data.y}, z={q3.data.z}, mul={props.mul}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale, fetchRecorder } = await createTestThings({
+      ssr: true,
+      points: [root, page, query1, query2, query3],
+    })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /home
+          #wrapper1:
+            #queries1: 1
+            #loading: ...
+
+          #wrapper1:
+            #queries1: 1
+            div: I AM NOT READY
+
+          #wrapper1:
+            #queries1: 1
+            #wrapper2:
+              #queries2: 2
+              #loading: ...
+
+          #wrapper1:
+            #queries1: 1
+            #wrapper2:
+              #queries2: 2
+              #page: x=1, y=2, z=6, mul=2
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      query.test2 (client) < {}
+      query.test1 (client) < {}
+      query.test3 (client) < {"mul":2}
+      "
+    `)
+
+    fetchRecorder.prune()
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #wrapper1:
+        #queries1: 1
+        div: I AM NOT READY
+      "
+    `)
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      page.home (client) (page) < {}
+      query.test1 (server) < {}
+      query.test2 (server) < {}
+      "
+    `)
   })
 })

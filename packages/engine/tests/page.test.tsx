@@ -716,10 +716,9 @@ describe('page', () => {
     const page = root
       .lets('page', 'home', '/:id')
       .loader(({ params }) => ({ x: params.id }))
-      .wrapper(({ children, queries, location }) => (
+      .wrapper(({ children, location }) => (
         <div id="wrapper">
           <div id="params">{location.params.id}</div>
-          <div id="query-status">{queries.map((q) => q.status).join(', ') || 'undefined'}</div>
           {children}
         </div>
       ))
@@ -733,12 +732,10 @@ describe('page', () => {
         /zxc
           #wrapper:
             #params: zxc
-            #query-status: pending
             #loading: ...
 
           #wrapper:
             #params: zxc
-            #query-status: success
             #page: x=zxc
         "
       `)
@@ -752,7 +749,6 @@ describe('page', () => {
       "
       #wrapper:
         #params: zxc
-        #query-status: success
         #page: x=zxc
       "
     `)
@@ -1109,7 +1105,7 @@ describe('page', () => {
         </div>
       ))
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, page, query] })
+    const { render, fetchPreview } = await createTestThings({ ssr: true, points: [root, page, query] })
     await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -1121,12 +1117,6 @@ describe('page', () => {
         "
       `)
     })
-    expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "
-      query.test (client) < {"y":123}
-      page.home (client) < {"y":"123"}
-      "
-    `)
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
       "
       #page: x=246 y=123 z=3
@@ -1186,7 +1176,7 @@ describe('page', () => {
         </div>
       ))
 
-    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, page, query] })
+    const { render, fetchPreview } = await createTestThings({ ssr: true, points: [root, page, query] })
     await render(page.route({ y: 123 }), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -1198,12 +1188,6 @@ describe('page', () => {
         "
       `)
     })
-    expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "
-      query.test (client) < {"y":123}
-      page.home (client) < {"y":"123"}
-      "
-    `)
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
       "
       #page: x=246 y=123 z=3
@@ -1223,20 +1207,16 @@ describe('page', () => {
       })
       .with(() => ({ y: 1 }))
       .loader(({ params }) => ({ x: params.id }))
-      .wrapper(({ children, queries, props }) => (
+      .wrapper(({ children, location }) => (
         <div id="wrapper1">
-          <div id="props">y={props.y}</div>
-          <div id="query-status">{queries.map((q) => q.status).join(', ') || 'undefined'}</div>
+          <div id="params">id={location.params.id}</div>
           {children}
         </div>
       ))
       .with(() => ({ z: 1 }))
-      .wrapper(({ children, queries, props }) => (
+      .wrapper(({ children, location }) => (
         <div id="wrapper2">
-          <div id="props">
-            y={props.y} z={props.z}
-          </div>
-          <div id="query-status">{queries.map((q) => q.status).join(', ') || 'undefined'}</div>
+          <div id="params">id={location.params.id}</div>
           {children}
         </div>
       ))
@@ -1254,20 +1234,16 @@ describe('page', () => {
         /zxc
           #wrapper:
             #wrapper1:
-              #props: y=1
-              #query-status: pending
+              #params: id=zxc
               #wrapper2:
-                #props: y=1 z=1
-                #query-status: pending
+                #params: id=zxc
                 #loading: ...
 
           #wrapper:
             #wrapper1:
-              #props: y=1
-              #query-status: success
+              #params: id=zxc
               #wrapper2:
-                #props: y=1 z=1
-                #query-status: success
+                #params: id=zxc
                 #page: x=zxc y=1 z=1
         "
       `)
@@ -1281,11 +1257,9 @@ describe('page', () => {
       "
       #wrapper:
         #wrapper1:
-          #props: y=1
-          #query-status: success
+          #params: id=zxc
           #wrapper2:
-            #props: y=1 z=1
-            #query-status: success
+            #params: id=zxc
             #page: x=zxc y=1 z=1
       "
     `)

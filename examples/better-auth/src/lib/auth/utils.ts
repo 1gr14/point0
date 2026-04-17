@@ -17,30 +17,32 @@ declare module '@point0/core/request0' {
 
 export const mePlugin = Point0.lets('plugin', 'me')
   .ctx(async ({ request }) => {
-    if (request.cache.me) {
-      // we do not dedupe plugins, but we can do it manually
-      // we do not dedupe it on purpose, becouse it may be needed to really trigger twice
-      // but not here
-      return { me: request.cache.me }
-    }
-    const me = await authServer.api.getSession({ headers: request.original.headers })
-    request.cache.me = me
+    // we do not dedupe plugins, but we can do it manually
+    // we do not dedupe it on purpose, becouse it may be needed to really trigger twice
+    // but not here
     // we have request.state for one request
     // and we also have request.cache, which will be applied to all ssr requests during one inital request. Read more in docs
+    const me = request.cache.me ?? (await authServer.api.getSession({ headers: request.original.headers }))
+    request.cache.me ??= me
     return { me }
   })
-  .with(() => {
-    // I can do just return getMeQuery.useQuery(), but then it will come to queries, but I wnat it come only to props
-    // so I need to add it here. I think later add helper withQueryAsPorps(useQuery(), (data) => ({me: data}))
-    const query = getMeQuery.useQuery()
-    if (query.isError) {
-      return query.error
-    }
-    if (query.isLoading || !query.data) {
-      return 'loading'
-    }
-    const me = query.data.me
-    return { me }
+  .with(({ resolve }) => {
+    // I can do just return getMeQuery.useQuery(), but then it will come to queries,
+    // but I wnat it come only to props, so I return it from with fn
+
+    // we can do this
+    // const query = getMeQuery.useQuery()
+    // if (query.isError) {
+    //   return query.error
+    // }
+    // if (query.isLoading || !query.data) {
+    //   return 'loading'
+    // }
+    // const me = query.data.me
+    // return { me }
+
+    // or this, it is same
+    return resolve(getMeQuery.useQuery(), ({ data }) => ({ me: data.me }))
   })
   .plugin()
 
