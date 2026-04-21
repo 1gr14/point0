@@ -35,7 +35,6 @@ mcp as comments
 
 REFACTOING 3000
 
-
 FINISH
 Проверка под линукс и виндоус
 pipeline

@@ -371,7 +371,10 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     return extractedBunPlugins
   }
 
-  async loadBunPlugins({ built, extraPlugins = [] }: { built: boolean; extraPlugins?: BunPlugin[] }): Promise<void> {
+  async loadBunPlugins({
+    built,
+    extraPlugins = [],
+  }: { built?: boolean; extraPlugins?: BunPlugin[] } = {}): Promise<void> {
     if (this.bunPluginsLoaded) {
       return
     }
