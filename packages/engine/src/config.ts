@@ -346,6 +346,23 @@ const parseEnv = (input: EngineOptionsEnvWide | EngineOptionsEnvStrict): EngineO
   return result
 }
 
+export const throwOnEmptyStringOrAsteriskEnv = (
+  env: EngineOptionsEnvWide | EngineOptionsEnvStrict,
+  errorSuffix: string,
+): void => {
+  if (typeof env === 'string') {
+    if (env === '' || env === '*') {
+      throw new Error(`Environment variable "${env}" is not allowed for ${errorSuffix}`)
+    }
+  }
+  if (!Array.isArray(env)) {
+    return
+  }
+  for (const item of env) {
+    throwOnEmptyStringOrAsteriskEnv(item, errorSuffix)
+  }
+}
+
 const isFileURL = (str: string): boolean => {
   try {
     // Check if it starts with a URL scheme (file://, http://, https://, etc.)
@@ -930,6 +947,8 @@ const parseEngineClientOptions = ({
     : Array.isArray(providedGenerate)
       ? providedGenerate
       : FilesGenerator.simpleClientConfigToTasks({ config: providedGenerate, scope: clientOptions.scope })
+  throwOnEmptyStringOrAsteriskEnv(clientOptions.env?.vars ?? {}, 'client env vars config')
+  throwOnEmptyStringOrAsteriskEnv(clientOptions.env?.consts ?? {}, 'client env consts config')
   return {
     scope: clientOptions.scope,
     compiler,

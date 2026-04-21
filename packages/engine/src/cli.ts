@@ -103,6 +103,14 @@ program
   )
 
 program
+  .command('prune')
+  .description('Prune temporary directories')
+  .action(async () => {
+    const { engine } = await Engine.findAndImportSelf({ cwd: process.cwd() })
+    await engine.prune()
+  })
+
+program
   .command('build')
   .description('Build server and clients')
   .option('--engine <path>', dictionary.enginePath)

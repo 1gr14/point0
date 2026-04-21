@@ -1,3 +1,4 @@
+import { resolveTempDirPath } from '@point0/compiler'
 import {
   __POINT0_QUERY_CLIENT__,
   _getSsItemsWithRestErrors,
@@ -16,6 +17,7 @@ import {
 import type { RichFetchFn } from '@point0/core'
 import type { Serve } from 'bun'
 import nodeFs from 'node:fs'
+import nodeFsPromises from 'node:fs/promises'
 import nodePath from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { EngineClient } from './client.js'
@@ -387,6 +389,26 @@ export class Engine<
 
   async clean(): Promise<void> {
     await Promise.all([...this.clients.map(async (client) => await client.clean()), this.server.clean()])
+  }
+
+  async prune(): Promise<void> {
+    const removeDirAsync = async (dir: string) => {
+      await nodeFsPromises.rm(dir, { recursive: true }).catch(() => {
+        /* ignore */
+      })
+    }
+    // const generator = resolveTempDirPath(['generator'])
+    // const compilerVirtual = resolveTempDirPath(['compiler-virtual'])
+    // const clientBunDevServer = resolveTempDirPath(['client-bun-dev-server'])
+    // const compilerCache = resolveTempDirPath(['compiler-cache'])
+    // await Promise.all([
+    //   removeDirAsync(generator),
+    //   removeDirAsync(compilerVirtual),
+    //   removeDirAsync(clientBunDevServer),
+    //   removeDirAsync(compilerCache),
+    // ])
+    const cacheDir = resolveTempDirPath()
+    await removeDirAsync(cacheDir)
   }
 
   async build(options?: {
