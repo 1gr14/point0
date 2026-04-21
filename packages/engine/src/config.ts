@@ -88,6 +88,7 @@ export type EngineOptionsCompilerGeneral = {
   consts?: CompilerEnvConsts
   filter?: RegExp
   ssr?: boolean
+  cache?: boolean
 }
 // export type EngineOptionsCompilerGeneralParsed = {
 //   side: boolean
@@ -109,6 +110,7 @@ export type EngineOptionsCompilerSpecific = {
   filter?: RegExp
   ssr?: boolean
   importer?: ImporterOptionsInput | undefined
+  cache?: boolean
 }
 export type EngineOptionsCompilerSpecificParsed = {
   side: boolean
@@ -120,6 +122,7 @@ export type EngineOptionsCompilerSpecificParsed = {
   filter: RegExp | undefined
   ssr: boolean
   importer: ImporterOptionsInput
+  cache: boolean
 }
 
 export type EngineOptionsServing = boolean | string | ((options: { request: Request0 }) => boolean)
@@ -445,6 +448,7 @@ const parseEngineGeneralOptions = ({
         : generalOptions.compiler === true
           ? true
           : {
+              ...(generalOptions.compiler.cache !== undefined ? { cache: generalOptions.compiler.cache } : {}),
               ...(generalOptions.compiler.consts ? { consts: generalOptions.compiler.consts } : {}),
               ...(generalOptions.compiler.filter ? { filter: generalOptions.compiler.filter } : {}),
               ...(generalOptions.compiler.mode !== undefined ? { mode: generalOptions.compiler.mode } : {}),
@@ -691,6 +695,7 @@ export const parseEngineServerOptions = ({
     ...serverOptionsCompilerRecord,
     runtime:
       generalOptionsParsedCompilerRecord.runtime === false ? false : (serverOptionsCompilerRecord.runtime ?? false),
+    cache: serverOptionsCompilerRecord.cache ?? generalOptionsParsedCompilerRecord.cache ?? true,
     os: generalOptionsParsedCompilerRecord.os === false ? false : (serverOptionsCompilerRecord.os ?? false),
     consts: [
       ...(generalOptionsParsedCompilerRecord.consts
@@ -739,6 +744,7 @@ export const parseEngineServerOptions = ({
             filter: mergedCompilerRecord.filter,
             ssr: mergedCompilerRecord.ssr,
             importer: mergedCompilerRecord.importer,
+            cache: mergedCompilerRecord.cache,
           }
         : serverOptions.compiler !== undefined
           ? mergedCompilerRecord
@@ -860,6 +866,7 @@ const parseEngineClientOptions = ({
     runtime:
       generalOptionsParsedCompilerRecord.runtime === false ? false : (clientOptionsCompilerRecord.runtime ?? false),
     os: generalOptionsParsedCompilerRecord.os === false ? false : (clientOptionsCompilerRecord.os ?? false),
+    cache: clientOptionsCompilerRecord.cache ?? generalOptionsParsedCompilerRecord.cache ?? true,
     consts: [
       ...(generalOptionsParsedCompilerRecord.consts
         ? Array.isArray(generalOptionsParsedCompilerRecord.consts)
@@ -907,6 +914,7 @@ const parseEngineClientOptions = ({
             filter: mergedCompilerRecord.filter,
             ssr: mergedCompilerRecord.ssr,
             importer: mergedCompilerRecord.importer,
+            cache: mergedCompilerRecord.cache,
           }
         : clientOptions.compiler !== undefined
           ? mergedCompilerRecord

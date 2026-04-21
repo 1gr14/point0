@@ -11,7 +11,9 @@ import { compileSync } from '@mdx-js/mdx'
 import type { EnvOsName, EnvRuntimeName, NormalizedNodeEnv } from '@point0/core'
 import minifyDeadCodeEliminationModule from 'babel-plugin-minify-dead-code-elimination'
 import minifyGuardedExpressionsModule from 'babel-plugin-minify-guarded-expressions'
+import fg from 'fast-glob'
 import * as nodeFsSync from 'node:fs'
+import * as nodeFsAsync from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import prettier from 'prettier'
 import remarkFrontmatter from 'remark-frontmatter'
@@ -19,7 +21,7 @@ import type { Compiler, CompilerEnvConsts } from './compiler.js'
 import { resolveImporterRule, writeOrCreateVirtualModulePath, type ImporterOptionsParsed } from './importer.js'
 import { CompilerPoint, POINT_METHOD_TO_TYPE_MAP } from './point.js'
 import { FileResolver } from './resolver.js'
-import { normalizeEnvConsts } from './utils.js'
+import { getHash, normalizeEnvConsts } from './utils.js'
 import type { Walker } from './walker.js'
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
@@ -177,8 +179,18 @@ export class CompilerFile<THasContent extends boolean> {
   //   return await CompilerFile.create({ walker, file }).readAsync(fresh)
   // }
 
-  static readSync({ walker, file, fresh }: { walker: Walker; file: string; fresh: boolean }): CompilerFile<true> {
-    return CompilerFile.create({ walker, file }).readSync(fresh)
+  static readSync({
+    walker,
+    file,
+    fresh,
+    stats,
+  }: {
+    walker: Walker
+    file: string
+    fresh: boolean
+    stats?: nodeFsSync.Stats
+  }): CompilerFile<true> {
+    return CompilerFile.create({ walker, file }).readSync(fresh, stats)
   }
 
   hasContent(): this is CompilerFile<true> {
@@ -195,11 +207,11 @@ export class CompilerFile<THasContent extends boolean> {
     }
   }
 
-  readSync(fresh: boolean): CompilerFile<true> {
+  readSync(fresh: boolean, stats?: nodeFsSync.Stats): CompilerFile<true> {
     if (this.content !== undefined && !fresh) {
       return this as CompilerFile<true>
     }
-    const stats = nodeFsSync.statSync(this.abs)
+    stats ??= nodeFsSync.statSync(this.abs)
     if (stats.mtimeMs === this.mtime && this.content !== undefined) {
       return this as CompilerFile<true>
     }
@@ -2031,6 +2043,151 @@ export class CompilerFile<THasContent extends boolean> {
     }
     importItem.virtualPath = virtualPath
     this.modified ||= astModified
+  }
+
+  private _pathHash: string | undefined
+  get pathHash(): string {
+    if (this._pathHash) {
+      return this._pathHash
+    }
+    this._pathHash = getHash(this.abs)
+    return this._pathHash
+  }
+
+  getCacheFilePath({
+    mtime,
+    compiler,
+    map,
+    hmrFix,
+  }: {
+    mtime: number
+    compiler: Compiler
+    map: boolean
+    hmrFix: boolean
+  }): string {
+    return nodePath.resolve(compiler.getCacheDir({ map, hmrFix }), this.pathHash + '.' + mtime)
+  }
+
+  getCache({ map, hmrFix, compiler }: { map: boolean; hmrFix: boolean; compiler: Compiler }): {
+    stats: nodeFsSync.Stats | undefined
+    result:
+      | undefined
+      | {
+          code: string
+          map: GeneratorResult['map']
+          modified: boolean
+        }
+  } {
+    const stats = (() => {
+      try {
+        return nodeFsSync.statSync(this.abs)
+      } catch {
+        return undefined
+      }
+    })()
+    if (!stats?.mtimeMs) {
+      return {
+        stats,
+        result: undefined,
+      }
+    }
+    const cacheFilePath = this.getCacheFilePath({ mtime: stats.mtimeMs, compiler, map, hmrFix })
+    const cacheFileContent = (() => {
+      try {
+        return nodeFsSync.readFileSync(cacheFilePath, 'utf8')
+      } catch {
+        return undefined
+      }
+    })()
+    if (!cacheFileContent) {
+      return {
+        stats,
+        result: undefined,
+      }
+    }
+    const result = (() => {
+      try {
+        return JSON.parse(cacheFileContent) as {
+          code: string
+          map: GeneratorResult['map']
+          modified: boolean
+        }
+      } catch {
+        return undefined
+      }
+    })()
+    if (!result) {
+      try {
+        nodeFsSync.unlinkSync(cacheFilePath)
+      } catch {}
+      return {
+        stats,
+        result: undefined,
+      }
+    }
+    return {
+      stats,
+      result: {
+        code: result.code,
+        map: result.map,
+        modified: result.modified,
+      },
+    }
+  }
+
+  writeCache({
+    map,
+    hmrFix,
+    compiler,
+    mtime,
+    result,
+  }: {
+    map: boolean
+    hmrFix: boolean
+    compiler: Compiler
+    mtime: number
+    result: {
+      code: string
+      map: GeneratorResult['map']
+      modified: boolean
+    }
+  }): void {
+    const cacheFilePath = this.getCacheFilePath({ mtime, compiler, map, hmrFix })
+    nodeFsSync.writeFileSync(
+      cacheFilePath,
+      JSON.stringify({
+        code: result.code,
+        map: result.map,
+        modified: result.modified,
+      }),
+      'utf8',
+    )
+    void this.removeStaleCacheAsync({ map, hmrFix, compiler, exclude: cacheFilePath })
+  }
+
+  async removeStaleCacheAsync({
+    map,
+    hmrFix,
+    compiler,
+    exclude,
+  }: {
+    map: boolean
+    hmrFix: boolean
+    compiler: Compiler
+    exclude: string
+  }): Promise<void> {
+    const cacheDir = compiler.getCacheDir({ map, hmrFix })
+    const pathHash = this.pathHash
+    const staleCacheFilesGlob = nodePath.join(cacheDir, `${pathHash}.*`)
+    const files = await fg(staleCacheFilesGlob, { dot: true })
+    await Promise.all(
+      files.map((file) => {
+        if (file === exclude) {
+          return
+        }
+        return nodeFsAsync.unlink(file)
+      }),
+    )
   }
 }
 

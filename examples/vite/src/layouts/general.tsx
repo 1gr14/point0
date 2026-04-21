@@ -49,7 +49,7 @@ export const generalLayout = root.lets('layout', 'generalLayout').layout(({ chil
                 <li>
                   <NavLink
                     exactClassName="pointer-events-none text-slate-300!"
-                    className="rounded-md px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+                    className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
                     route="ideaCreate"
                   >
                     Create Idea

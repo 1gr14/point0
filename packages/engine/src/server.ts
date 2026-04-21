@@ -335,6 +335,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       ssr: this.compiler.ssr,
       importer: { ...this.compiler.importer, onDeny: onDeny !== undefined ? onDeny : this.compiler.importer.onDeny },
       built,
+      cache: this.compiler.cache,
     }
   }
 

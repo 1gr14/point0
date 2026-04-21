@@ -1,7 +1,7 @@
 import type { GeneratorResult } from '@babel/generator'
 import type { RoutesPretty } from '@devp0nt/route0'
 import { normalNodeEnvs, type EnvOsName, type EnvRuntimeName, type NormalizedNodeEnv } from '@point0/core'
-import type { CompilerFile } from './file.js'
+import { CompilerFile } from './file.js'
 import {
   createVirtualModuleCode,
   virtualModulePathRegex,
@@ -10,10 +10,12 @@ import {
 } from './importer.js'
 import { parseImporterOptions } from './importer.js'
 import { CompilerPoint } from './point.js'
-import { parseVirtualModulePath, resolveTempDirPath } from './index.js'
+import { getHash, parseVirtualModulePath, resolveTempDirPath } from './index.js'
 import { Walker } from './walker.js'
 import nodePath from 'node:path'
 import { CriticalCompilerError } from './error.js'
+import { stringify } from 'safe-stable-stringify'
+import { normalizeEnvConsts } from './utils.js'
 
 export class Compiler {
   filter: RegExp
@@ -28,8 +30,9 @@ export class Compiler {
   walker: Walker
   routes: Record<string, RoutesPretty> | undefined
   ssr: boolean
+  cache: boolean
   importer: ImporterOptionsParsed
-  tempDir: string | undefined
+  virtualDir: string | undefined
   processEnvAliases: string[]
   /*
    * Match JS/TS and markdown-ish source files while excluding virtual/shim
@@ -59,6 +62,7 @@ export class Compiler {
     ssr,
     importer,
     processEnvAliases,
+    cache,
   }: {
     filter: RegExp
     side: 'client' | 'server' | false
@@ -74,6 +78,7 @@ export class Compiler {
     ssr: boolean
     importer: ImporterOptionsParsed
     processEnvAliases: string[]
+    cache: boolean
   }) {
     this.filter = filter
     this.side = side
@@ -89,6 +94,7 @@ export class Compiler {
     this.ssr = ssr
     this.importer = importer
     this.processEnvAliases = processEnvAliases
+    this.cache = cache
   }
 
   static create(options: CompilerOptions) {
@@ -106,6 +112,7 @@ export class Compiler {
       ssr = false,
       importer: providedImporter,
       processEnvAliases: providedProcessEnvAliases,
+      cache = true,
     } = options
     if (mode !== false && (!mode || !normalNodeEnvs.includes(mode as NormalizedNodeEnv))) {
       throw new Error(`Invalid mode (NODE_ENV): "${mode}". Allowed values: production, development, test`)
@@ -134,12 +141,13 @@ export class Compiler {
       ssr,
       importer: parseImporterOptions(providedImporter ?? {}),
       processEnvAliases,
+      cache,
     })
   }
 
   compile({
     content,
-    file,
+    file: providedFile,
     tryIndex = 0,
     map: sourceMaps = false,
     pruneWalker = !this.built,
@@ -161,18 +169,18 @@ export class Compiler {
     file: CompilerFile<true> | undefined
     code: string
     map: GeneratorResult['map']
-    points: CompilerPoint[]
+    points: CompilerPoint[] | undefined // in case of cached result
     errors: unknown[]
     modified: boolean
     tryIndex: number
   } {
-    if (writeVirtual && !this.tempDir) {
-      this.tempDir = resolveTempDirPath(['compiler-bun-plugin'])
+    if (writeVirtual && !this.virtualDir) {
+      this.virtualDir = resolveTempDirPath(['compiler-virtual'])
     }
     pruneWalkerPoints = pruneWalkerPoints !== undefined ? pruneWalkerPoints : pruneWalker
     pruneWalkerFiles = pruneWalkerFiles !== undefined ? pruneWalkerFiles : pruneWalker
-    if (virtualModulePathRegex.test(file)) {
-      const virtualOptions = parseVirtualModulePath(file)
+    if (virtualModulePathRegex.test(providedFile)) {
+      const virtualOptions = parseVirtualModulePath(providedFile)
       const { code, error } = createVirtualModuleCode(virtualOptions)
       if (error) {
         if (this.importer.onDeny === 'throw') {
@@ -192,7 +200,7 @@ export class Compiler {
       }
     }
 
-    file = file.split('?', 1)[0]
+    const providedFilePath = providedFile.split('?', 1)[0]
     if (pruneWalkerPoints) {
       this.walker.prunePoints()
     }
@@ -209,8 +217,25 @@ export class Compiler {
     const os = this.os
     const ssr = this.ssr
     const processEnvAliases = this.processEnvAliases
+    const initialCf = CompilerFile.create({
+      walker: this.walker,
+      file: providedFilePath,
+      content,
+    })
+    const initialCfCache = this.cache ? initialCf.getCache({ map: sourceMaps, hmrFix, compiler: this }) : undefined
+    if (initialCfCache?.result) {
+      return {
+        file: undefined,
+        code: initialCfCache.result.code,
+        map: initialCfCache.result.map,
+        points: undefined,
+        errors: [],
+        modified: initialCfCache.result.modified,
+        tryIndex,
+      }
+    }
     const errors: unknown[] = []
-    const collectResult = this.walker.collectPointsFromFile({ file, content })
+    const collectResult = this.walker.collectPointsFromFile({ file: initialCf, content, stats: initialCfCache?.stats })
     errors.push(...collectResult.errors)
     if (!collectResult.ok) {
       return {
@@ -232,7 +257,17 @@ export class Compiler {
         point.addHmrFix()
       }
     }
-    cf.shakeForEnv({ side, scope, consts, built, mode, runtime, os, ssr, processEnvAliases })
+    cf.shakeForEnv({
+      side,
+      scope,
+      consts,
+      built,
+      mode,
+      runtime,
+      os,
+      ssr,
+      processEnvAliases,
+    })
     if (built) {
       cf.shakeForBuiltEngine()
     }
@@ -243,7 +278,7 @@ export class Compiler {
         importer: this.importer,
         scope: scope || undefined,
         side,
-        writeVirtual: writeVirtual ? this.tempDir : false,
+        writeVirtual: writeVirtual ? this.virtualDir : false,
         compiler: this,
       })
     }
@@ -254,7 +289,7 @@ export class Compiler {
       }
       return this.compile({
         content,
-        file,
+        file: providedFile,
         tryIndex: tryIndex + 1,
         map: sourceMaps,
         // pruneWalkerPoints: false,
@@ -267,7 +302,7 @@ export class Compiler {
       }
       return { code: cf.content, map: null }
     })()
-    return {
+    const result = {
       file: cf,
       code: code,
       map: map,
@@ -276,6 +311,10 @@ export class Compiler {
       modified: cf.modified,
       tryIndex,
     }
+    if (this.cache) {
+      cf.writeCache({ map: sourceMaps, hmrFix, compiler: this, mtime: cf.mtime, result })
+    }
+    return result
   }
 
   private traceByMemory({
@@ -541,6 +580,82 @@ export class Compiler {
 
     return this.traceByMemory({ target, includeTarget, cwd })
   }
+
+  private _settingHash: Record<string, string> = {}
+  getSettingsHash({ map, hmrFix }: { map: boolean; hmrFix: boolean }): string {
+    const key = JSON.stringify({ map, hmrFix })
+    const result = this._settingHash[key]
+    if (result) {
+      return result
+    }
+    const stringified = stringify({
+      filter: this.filter,
+      scope: this.scope,
+      built: this.built,
+      mode: this.mode,
+      runtime: this.runtime,
+      os: this.os,
+      side: this.side,
+      consts: this.consts,
+      hmrFix: this.hmrFix,
+      walker: this.walker,
+      routes: this.routes,
+      ssr: this.ssr,
+      importer: this.importer,
+      processEnvAliases: this.processEnvAliases,
+      fixedConsts: this.fixedConsts,
+    })
+    if (!stringified) {
+      throw new Error('Failed to generate settings hash')
+    }
+    const hash = getHash(stringified)
+    this._settingHash[key] = hash
+    return hash
+  }
+
+  private _cacheDir: Record<string, string> = {}
+  getCacheDir({ map, hmrFix }: { map: boolean; hmrFix: boolean }): string {
+    const key = JSON.stringify({ map, hmrFix })
+    const result = this._cacheDir[key]
+    if (result) {
+      return result
+    }
+    const dir = resolveTempDirPath(['compiler-cache', this.getSettingsHash({ map, hmrFix })])
+    this._cacheDir[key] = dir
+    return dir
+  }
+
+  _fixedConsts: CompilerEnvConstsObject | undefined
+  get fixedConsts(): CompilerEnvConstsObject {
+    if (this._fixedConsts) {
+      return this._fixedConsts
+    }
+
+    const normalizedConsts = [...normalizeEnvConsts(this.consts)].reverse()
+    const fixedConsts: CompilerEnvConstsObject = {}
+    for (const constPattern of normalizedConsts) {
+      if (typeof constPattern === 'string') {
+        if (constPattern.endsWith('*')) {
+          const prefix = constPattern.slice(0, -1)
+          for (const [envName, envValue] of Object.entries(process.env)) {
+            if (envName.startsWith(prefix) && !(envName in fixedConsts)) {
+              fixedConsts[envName] = envValue
+            }
+          }
+        } else if (!(constPattern in fixedConsts)) {
+          fixedConsts[constPattern] = process.env[constPattern]
+        }
+        continue
+      }
+      for (const [envName, desiredValue] of Object.entries(constPattern)) {
+        if (!(envName in fixedConsts)) {
+          fixedConsts[envName] = desiredValue
+        }
+      }
+    }
+    this._fixedConsts = fixedConsts
+    return this._fixedConsts
+  }
 }
 
 export type ImportsTraceResult = {
@@ -571,6 +686,7 @@ export type CompilerOptions = {
   ssr?: boolean
   importer?: ImporterOptionsInput | undefined
   processEnvAliases?: string[] | string
+  cache?: boolean
 }
 export type CompilerEnvConstsObject = { [key: string]: string | number | boolean | null | undefined }
 export type CompilerEnvConstsString = string

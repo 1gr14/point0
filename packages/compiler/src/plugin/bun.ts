@@ -13,8 +13,6 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
       : Compiler.create({
           ...options,
         })
-  const tempDir = resolveTempDirPath(['compiler-bun-plugin'])
-  nodeFs.mkdirSync(tempDir, { recursive: true })
 
   return {
     name: 'point0-compiler',

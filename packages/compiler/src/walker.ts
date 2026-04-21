@@ -5,6 +5,7 @@ import type { Node } from '@babel/types'
 import type { AnyRoute, RoutesPretty } from '@devp0nt/route0'
 import type { ReadyPointType } from '@point0/core'
 import type { CompilerFileImport } from './file.js'
+import type * as nodeFsSync from 'node:fs'
 import { CompilerFile } from './file.js'
 import { ACTION_METHODS, CompilerPoint, END_POINT_TYPES } from './point.js'
 import { FileResolver } from './resolver.js'
@@ -159,7 +160,15 @@ export class Walker {
     this.pruneFiles()
   }
 
-  collectPointsFromFile({ file: providedFile, content }: { file: string | CompilerFile<true>; content?: string }):
+  collectPointsFromFile({
+    file: providedFile,
+    content,
+    stats,
+  }: {
+    file: string | CompilerFile<true>
+    content?: string
+    stats?: nodeFsSync.Stats
+  }):
     | {
         points: CompilerPoint[]
         errors: unknown[]
@@ -181,7 +190,7 @@ export class Walker {
     })
 
     try {
-      const file = fileIdle.readSync(!content) // we do not read fresh file if content was provided to not loose modifications
+      const file = fileIdle.readSync(!content, stats) // we do not read fresh file if content was provided to not loose modifications
 
       if (file.allPointsWasCollected) {
         return { points: file.getCollectedPoints(), errors, file, ok: true }
