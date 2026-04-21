@@ -1089,12 +1089,65 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     }
   }
 
+  private shakeMethodsForAnotherScope(): void {
+    for (const method of this.getSelfRichMethods()) {
+      switch (method.name) {
+        // server like things
+        case 'input':
+        case 'loader':
+        case 'action':
+        case 'headers':
+        case 'cookies':
+        case 'body':
+        case 'ctx':
+        case 'serverOn':
+        case 'middleware':
+        case 'response':
+        case 'description':
+        case 'openapi':
+        case 'params':
+        case 'search':
+        // client like things
+        case 'clientLoader':
+        case 'clientInput':
+        case 'clientOn':
+        case 'scrollPosition':
+        case 'scrollRestore':
+        case 'onPrefetchPage':
+        case 'prefetchPageOnNavigate':
+        case 'prefetchPageOnLinkHover':
+        case 'error':
+        case 'layoutError':
+        case 'pageError':
+        case 'componentError':
+        case 'layoutLoading':
+        case 'pageLoading':
+        case 'componentLoading':
+        case 'loading':
+        case 'wrapper':
+        case 'with':
+        case 'mapper':
+        case 'component':
+        case 'provider':
+        case 'layout':
+        case 'page':
+        case 'head': {
+          this.removeMethodArgs({ nodePath: method.nodePath })
+          break
+        }
+      }
+    }
+  }
+
   private _shake = false
-  shakeMethods({ side }: { side: 'client' | 'server' }): void {
+  shakeMethods({ side, scope }: { side: 'client' | 'server'; scope: string | false }): void {
     if (this._shake) {
       return
     }
-    if (side === 'client') {
+    const isParentOrSelfScope = !scope ? true : this.scopes.includes(scope)
+    if (!isParentOrSelfScope) {
+      this.shakeMethodsForAnotherScope()
+    } else if (side === 'client') {
       this.shakeMethodsForClient()
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (side === 'server') {

@@ -879,7 +879,7 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).root()
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.shakeMethods({ side: 'client' })
+          point.shakeMethods({ side: 'client', scope: 'root' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').ctx().root()
@@ -896,7 +896,7 @@ export const root = Point0.lets('root', 'root').loader(() => ({ b: 2 })).root()
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.shakeMethods({ side: 'client' })
+          point.shakeMethods({ side: 'client', scope: 'root' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').loader().root()
@@ -913,7 +913,7 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() 
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.shakeMethods({ side: 'client' })
+          point.shakeMethods({ side: 'client', scope: 'root' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').ctx().loader().root()
@@ -930,7 +930,7 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).ctx(() => 
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.shakeMethods({ side: 'client' })
+          point.shakeMethods({ side: 'client', scope: 'root' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').ctx().ctx().root()
@@ -948,7 +948,7 @@ export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.shakeMethods({ side: 'client' })
+          point.shakeMethods({ side: 'client', scope: 'root' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').root()
@@ -973,7 +973,7 @@ export const root = Point0.lets('root', 'root')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.shakeMethods({ side: 'client' })
+          point.shakeMethods({ side: 'client', scope: 'root' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root')
@@ -999,7 +999,7 @@ export const page = root.lets('page', 'page', '/')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.shakeMethods({ side: 'client' })
+          point.shakeMethods({ side: 'client', scope: 'root' })
           expect(point.chainMethods.map((m) => `${m.name}: underSsr=${m.underSsr ? 'true' : 'false'}`))
             .toMatchInlineSnapshot(`
             [
@@ -1028,7 +1028,7 @@ export const page = root.lets('page', 'page', '/')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.shakeMethods({ side: 'client' })
+          point.shakeMethods({ side: 'client', scope: 'root' })
           expect(point.chainMethods.map((m) => `${m.name}: underSsr=${m.underSsr ? 'true' : 'false'}`))
             .toMatchInlineSnapshot(`
             [
@@ -1108,7 +1108,7 @@ export const page = root.lets('page', 'page', '/')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.shakeMethods({ side: 'client' })
+          point.shakeMethods({ side: 'client', scope: 'root' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').clientLoader(true).root()
@@ -1202,9 +1202,9 @@ export const page = root.lets('page', 'page', '/')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point1 = result.points[1]
-          point1.shakeMethods({ side: 'client' })
+          point1.shakeMethods({ side: 'client', scope: 'root' })
           const point2 = result.points[2]
-          point2.shakeMethods({ side: 'client' })
+          point2.shakeMethods({ side: 'client', scope: 'root' })
           expect(await point1.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').clientLoader(true).root()
@@ -1229,6 +1229,141 @@ export const page = root.lets('page', 'page', '/')
               .response()
               .openapi()
               .action()
+            "
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'correcttly prune rest for client of another scope',
+        helper({ ssr: true }, async ({ files: [file], walker }) => {
+          await file.write(`import {Point0} from '@point0/core'
+              export const root = Point0.lets('root', 'root').clientLoader(true).root()
+              export const subRoot1 = root.lets('root', 'subRoot1').clientLoader(true).root()
+              export const subRoot2 = root.lets('root', 'subRoot2').clientLoader(true).root()
+              export const page = subRoot1.lets('page', 'page', '/')
+              .description(() => console.info('fake'))
+              .tag(() => console.info('fake'))
+              .serverurl(() => console.info('fake'))
+              .basepath(() => console.info('fake'))
+              .clientOnly()
+              .mutationOptions(() => console.info('fake'))
+              .queryOptions(() => console.info('fake'))
+              .infiniteQueryOptions(() => console.info('fake'))
+              .pageQueryOptions(() => console.info('fake'))
+              .componentQueryOptions(() => console.info('fake'))
+              .providerQueryOptions(() => console.info('fake'))
+              .layoutQueryOptions(() => console.info('fake'))
+              .fetchOptions(() => console.info('fake'))
+              .error(() => console.info('fake'))
+              .layoutError(() => console.info('fake'))
+              .pageError(() => console.info('fake'))
+              .componentError(() => console.info('fake'))
+              .layoutLoading(() => console.info('fake'))
+              .pageLoading(() => console.info('fake'))
+              .componentLoading(() => console.info('fake'))
+              .loading(() => console.info('fake'))
+              .wrapper(() => console.info('fake'))
+              .with(() => console.info('fake'))
+              .mapper(() => console.info('fake'))
+              .scrollPosition(() => console.info('fake'))
+              .scrollRestore(() => console.info('fake'))
+              .onPrefetchPage(() => console.info('fake'))
+              .prefetchPageOnNavigate(() => console.info('fake'))
+              .prefetchPageOnLinkHover(() => console.info('fake'))
+              .transformer(() => console.info('fake'))
+              .ctx(() => console.info('fake'))
+              .loader(() => console.info('fake'))
+              .clientLoader(() => console.info('fake'))
+              .head(() => console.info('fake'))
+              .input(() => console.info('fake'))
+              .clientInput(() => console.info('fake'))
+              .sharedInput(() => console.info('fake'))
+              .params(() => console.info('fake'))
+              .search(() => console.info('fake'))
+              .body(() => console.info('fake'))
+              .headers(() => console.info('fake'))
+              .cookies(() => console.info('fake'))
+              .response(() => console.info('fake'))
+              .openapi({ summary: 'fake' })
+              .action(() => console.info('fake'))
+              .root(() => console.info('fake'))
+              .base(() => console.info('fake'))
+              .page(() => console.info('fake'))
+              .component(() => console.info('fake'))
+              .layout(() => console.info('fake'))
+              .provider(() => console.info('fake'))
+              .query(() => console.info('fake'))
+              .infiniteQuery(() => console.info('fake'))
+              .mutation(() => console.info('fake'))
+              .page()
+
+        `)
+          const result = walker.collectPointsFromFile({ file: file.path })
+          const point = result.points[3]
+          point.shakeMethods({ side: 'client', scope: 'subRoot2' })
+          expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').clientLoader(true).root()
+            export const subRoot1 = root.lets('root', 'subRoot1').clientLoader(true).root()
+            export const subRoot2 = root.lets('root', 'subRoot2').clientLoader(true).root()
+            export const page = subRoot1
+              .lets('page', 'page', '/')
+              .description()
+              .tag(() => console.info('fake'))
+              .serverurl(() => console.info('fake'))
+              .basepath(() => console.info('fake'))
+              .clientOnly()
+              .mutationOptions(() => console.info('fake'))
+              .queryOptions(() => console.info('fake'))
+              .infiniteQueryOptions(() => console.info('fake'))
+              .pageQueryOptions(() => console.info('fake'))
+              .componentQueryOptions(() => console.info('fake'))
+              .providerQueryOptions(() => console.info('fake'))
+              .layoutQueryOptions(() => console.info('fake'))
+              .fetchOptions(() => console.info('fake'))
+              .error()
+              .layoutError()
+              .pageError()
+              .componentError()
+              .layoutLoading()
+              .pageLoading()
+              .componentLoading()
+              .loading()
+              .wrapper()
+              .with()
+              .mapper()
+              .scrollPosition()
+              .scrollRestore()
+              .onPrefetchPage()
+              .prefetchPageOnNavigate()
+              .prefetchPageOnLinkHover()
+              .transformer(() => console.info('fake'))
+              .ctx()
+              .loader()
+              .clientLoader()
+              .head()
+              .input()
+              .clientInput()
+              .sharedInput(() => console.info('fake'))
+              .params()
+              .search()
+              .body()
+              .headers()
+              .cookies()
+              .response()
+              .openapi()
+              .action()
+              .root(() => console.info('fake'))
+              .base(() => console.info('fake'))
+              .page()
+              .component()
+              .layout()
+              .provider()
+              .query(() => console.info('fake'))
+              .infiniteQuery(() => console.info('fake'))
+              .mutation(() => console.info('fake'))
+              .page()
             "
           `)
         }),
@@ -1301,7 +1436,7 @@ export const page = root.lets('page', 'page', '/')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.shakeMethods({ side: 'server' })
+          point.shakeMethods({ side: 'server', scope: 'root' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root')
@@ -1431,7 +1566,7 @@ export const page = root.lets('page', 'page', '/')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.shakeMethods({ side: 'server' })
+          point.shakeMethods({ side: 'server', scope: 'root' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').clientLoader(true).root()
@@ -1550,7 +1685,7 @@ export const page = root.lets('page', 'page', '/')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.shakeMethods({ side: 'server' })
+          point.shakeMethods({ side: 'server', scope: 'root' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root').clientLoader(true).root()
@@ -1619,7 +1754,7 @@ export const root = Point0.lets('root', 'root')
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.shakeMethods({ side: 'server' })
+          point.shakeMethods({ side: 'server', scope: 'root' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root')

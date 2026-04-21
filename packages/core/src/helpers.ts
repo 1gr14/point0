@@ -18,10 +18,16 @@ export const setStatus = (status: number): void => {
 
 export const useSetStatus = setStatus
 
-const nativeFetch: RichFetchFn = async (...args) => await fetch(...args)
+export const nativeFetch: RichFetchFn = async (...args) => await fetch(...args)
 
-export const getFetch = (): RichFetchFn => {
+export const getFetch = ({ scope }: { scope?: string | string[] } = {}): RichFetchFn => {
   if (_point0_env.side.is.server) {
+    if (
+      scope &&
+      (typeof scope === 'string' ? scope !== _point0_env.scope.name : !scope.includes(_point0_env.scope.name))
+    ) {
+      return nativeFetch
+    }
     const __POINT0_FETCH_FN__ = superstore.getItem('__POINT0_FETCH_FN__')?.getWeak() as RichFetchFn | undefined
     if (!__POINT0_FETCH_FN__) {
       throw new Error(
@@ -33,9 +39,9 @@ export const getFetch = (): RichFetchFn => {
   return superstore.getFakeClient()?.fetch ?? nativeFetch
 }
 
-export const getFetchWeak = (): RichFetchFn | undefined => {
+export const getFetchWeak = ({ scope }: { scope?: string | string[] } = {}): RichFetchFn | undefined => {
   try {
-    return getFetch()
+    return getFetch({ scope })
   } catch {
     return undefined
   }

@@ -6,8 +6,6 @@
 ------
 
 
-refactoring
-
 devp0nt
 docs
 start0
@@ -36,9 +34,6 @@ mcp as comments
 
 
 REFACTOING 3000
-? Добавить экзамплыэкшен хелс
-Вырезать всё из инородных скоупов (методы должны мочь оп итогу быть без аругментов)
-electrobun example
 
 
 FINISH

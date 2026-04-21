@@ -344,17 +344,17 @@ describe('env', () => {
   describe('env.scope', () => {
     describe('detection', () => {
       it('should have scope.is object', async () => {
-        const env = await init({ side: 'server', scope: 'test-scope' })
+        const env = await init({ side: 'server', scope: 'root' })
         expect(typeof env.scope.is).toBe('object')
       })
 
       it('should have scope.define function', async () => {
-        const env = await init({ side: 'server', scope: 'test-scope' })
+        const env = await init({ side: 'server', scope: 'root' })
         expect(typeof env.scope.define).toBe('function')
       })
 
       it('should have scope.define.unsafe', async () => {
-        const env = await init({ side: 'server', scope: 'test-scope' })
+        const env = await init({ side: 'server', scope: 'root' })
         expect(typeof env.scope.define.unsafe).toBe('object')
       })
     })
@@ -898,7 +898,7 @@ describe('env', () => {
 
   describe('env object structure', () => {
     it('should export env object with all required properties', async () => {
-      const env = await init({ side: 'server', scope: 'test-scope' })
+      const env = await init({ side: 'server', scope: 'root' })
       expect(env).toBeDefined()
       expect(env.mode).toBeDefined()
       expect(env.vars).toBeDefined()

@@ -251,7 +251,7 @@ export class Compiler {
     const cf = collectResult.file
     for (const point of collectResult.points) {
       if (side) {
-        point.shakeMethods({ side })
+        point.shakeMethods({ side, scope })
       }
       if (hmrFix) {
         point.addHmrFix()

@@ -8909,7 +8909,7 @@ export class Point0<
         fetchOptions: _fetchOptions,
         outputType,
       })
-      const fetchFn = getFetch()
+      const fetchFn = getFetch({ scope: this.scopes })
       const fetchRequest = this.modifyFetchRequestForServerIfRequired(fetchOptions)
       this._emit('pointFetchServerStart', _eventData)
       res = await fetchFn(fetchRequest)

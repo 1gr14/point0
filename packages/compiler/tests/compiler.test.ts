@@ -46,7 +46,7 @@ describe('Compiler', () => {
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(1)
@@ -64,7 +64,7 @@ export const ideaPage = mainRoot.lets.page('/idea/:id').page(() => <div>Hello</d
 export const ideaLayout = mainRoot.lets.layout('/idea').layout()
 export const saveAction = mainRoot.lets.action('POST', '/save').loader(() => ({ ok: true })).action()
         `)
-        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'main' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(4)
@@ -109,7 +109,7 @@ export const ideaPage = mainRoot.lets.page()
 export const ideaLayout = mainRoot.lets.layout('/idea')
 export const saveAction = mainRoot.lets.action('POST')
         `)
-        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'main' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(4)
@@ -137,7 +137,7 @@ export const root = Point0.lets.root().ctx({x: 1}).ctx({y: 2}).root()
 export default root.lets.page('/idea').loader(() => ({ ok: true })).page(() => <div>Hello</div>)
           `,
           )
-          const compiler = Compiler.create({ side: 'server', scope: 'test' })
+          const compiler = Compiler.create({ side: 'server', scope: 'root' })
           const result = compiler.compile({ file: filePath })
           expect(result.errors).toHaveLength(0)
           expect(result.points).toHaveLength(2)
@@ -180,7 +180,7 @@ export const layout = root.lets.layout('/layout').layout()
 export const ideasQuery = root.lets.infiniteQuery().infiniteQuery()
           `,
           )
-          const compiler = Compiler.create({ side: 'client', scope: 'test' })
+          const compiler = Compiler.create({ side: 'client', scope: 'root' })
           const result = compiler.compile({ file: filePath })
           expect(result.errors).toHaveLength(0)
           expect(result.points).toHaveLength(4)
@@ -222,7 +222,7 @@ function PageLetsSugarFallbacks() {
       'respects side option - client',
       helper(async ({ files: [file] }) => {
         await file.write(`const {env}=require('@point0/core'); if (env.side.is.client) console.info('client')`)
-        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain(`console.info('client')`)
@@ -233,7 +233,7 @@ function PageLetsSugarFallbacks() {
       'respects side option - server',
       helper(async ({ files: [file] }) => {
         await file.write(`const {env}=require('@point0/core'); if (env.side.is.server) console.info('server')`)
-        const compiler = Compiler.create({ side: 'server', scope: 'test' })
+        const compiler = Compiler.create({ side: 'server', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain(`console.info('server')`)
@@ -244,7 +244,7 @@ function PageLetsSugarFallbacks() {
       'removes dead guarded expression for false && branch',
       helper(async ({ files: [file] }) => {
         await file.write(`const {env}=require('@point0/core'); env.side.is.server && console.info('server')`)
-        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).not.toContain(`console.info('server')`)
@@ -255,7 +255,7 @@ function PageLetsSugarFallbacks() {
       'removes dead guarded expression for true || branch',
       helper(async ({ files: [file] }) => {
         await file.write(`const {env}=require('@point0/core'); env.side.is.client || console.info('client')`)
-        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).not.toContain(`console.info('client')`)
@@ -266,7 +266,7 @@ function PageLetsSugarFallbacks() {
       'removes dead if block for false condition',
       helper(async ({ files: [file] }) => {
         await file.write(`const {env}=require('@point0/core'); if (env.side.is.client) { console.info('client') }`)
-        const compiler = Compiler.create({ side: 'server', scope: 'test' })
+        const compiler = Compiler.create({ side: 'server', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).not.toContain(`console.info('client')`)
@@ -278,7 +278,7 @@ function PageLetsSugarFallbacks() {
       helper(async ({ files: [file] }) => {
         await file.write(`import { prisma } from './lib/prisma'
 const {env}=require('@point0/core'); env.side.is.server && prisma.idea.findMany()`)
-        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).not.toContain(`from './lib/prisma'`)
@@ -297,7 +297,7 @@ export const ideasQuery = root
     return { ideas }
   })
   .query()`)
-        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain(`from './lib/root'`)
@@ -311,7 +311,7 @@ export const ideasQuery = root
         await file.write(`import './lib/setup'
 import { prisma } from './lib/prisma'
 const {env}=require('@point0/core'); env.side.is.server && prisma.idea.findMany()`)
-        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain(`import './lib/setup'`)
@@ -329,7 +329,7 @@ console.info(
     <MyClientComponent />
   </ClientOnly>,
 )`)
-        const compiler = Compiler.create({ side: 'server', scope: 'test' })
+        const compiler = Compiler.create({ side: 'server', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         console.info(result.code)
         expect(result.errors).toHaveLength(0)
@@ -343,7 +343,7 @@ console.info(
       helper(async ({ files: [file] }) => {
         await file.write(`import { env } from 'somewhere-else'
 if (env.side.is.server) console.info('server')`)
-        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain(`env.side.is.server`)
@@ -358,7 +358,7 @@ if (env.side.is.server) console.info('server')`)
   const { env } = await import('@point0/core')
   if (env.side.is.server) console.info('server')
 })()`)
-        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).not.toContain(`env.side.is.server`)
@@ -373,7 +373,7 @@ if (env.side.is.server) console.info('server')`)
   const { env } = await import('somewhere-else')
   if (env.side.is.server) console.info('server')
 })()`)
-        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain(`env.side.is.server`)
@@ -387,7 +387,7 @@ if (env.side.is.server) console.info('server')`)
         await file.write(`import { env as renamedEnv } from 'somewhere-else'
 const _point0_env = renamedEnv
 if (_point0_env.side.is.server) console.info('server')`)
-        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).not.toContain(`console.info('server')`)
@@ -404,7 +404,7 @@ console.info(
     <MyClientComponent />
   </ClientOnly>,
 )`)
-        const compiler = Compiler.create({ side: 'server', scope: 'test' })
+        const compiler = Compiler.create({ side: 'server', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain(`my-client-component`)
@@ -426,7 +426,7 @@ console.info(
       'respects consts option',
       helper(async ({ files: [file] }) => {
         await file.write(`const {env}=require('@point0/core'); if (env.vars.TEST_VAR) console.info('test')`)
-        const compiler = Compiler.create({ side: 'client', scope: 'test', consts: [{ TEST_VAR: true }] })
+        const compiler = Compiler.create({ side: 'client', scope: 'root', consts: [{ TEST_VAR: true }] })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain(`console.info('test')`)
@@ -437,7 +437,7 @@ console.info(
       'replaces process.env bracket access using consts',
       helper(async ({ files: [file] }) => {
         await file.write(`import { env } from '@point0/core'; if (process.env['TEST_VAR']) console.info('test')`)
-        const compiler = Compiler.create({ side: 'client', scope: 'test', consts: [{ TEST_VAR: false }] })
+        const compiler = Compiler.create({ side: 'client', scope: 'root', consts: [{ TEST_VAR: false }] })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).not.toContain(`console.info('test')`)
@@ -448,7 +448,7 @@ console.info(
       'replaces import.meta.env bracket access using consts',
       helper(async ({ files: [file] }) => {
         await file.write(`import { env } from '@point0/core'; if (import.meta.env['TEST_VAR']) console.info('test')`)
-        const compiler = Compiler.create({ side: 'client', scope: 'test', consts: [{ TEST_VAR: false }] })
+        const compiler = Compiler.create({ side: 'client', scope: 'root', consts: [{ TEST_VAR: false }] })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).not.toContain(`console.info('test')`)
@@ -461,7 +461,7 @@ console.info(
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ side: 'client', scope: 'test', hmrFix: true })
+        const compiler = Compiler.create({ side: 'client', scope: 'root', hmrFix: true })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('._tail(function')
@@ -474,7 +474,7 @@ export const root = Point0.lets('root', 'root').root()
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ side: 'client', scope: 'test', hmrFix: false })
+        const compiler = Compiler.create({ side: 'client', scope: 'root', hmrFix: false })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).not.toContain('._tail')
@@ -485,7 +485,7 @@ export const root = Point0.lets('root', 'root').root()
       'handles file with no points',
       helper(async ({ files: [file] }) => {
         await file.write(`console.info('hello')`)
-        const compiler = Compiler.create({ side: 'client', scope: 'test' })
+        const compiler = Compiler.create({ side: 'client', scope: 'root' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(0)
@@ -500,7 +500,7 @@ export const root = Point0.lets('root', 'root').root()
 console.info(ClientOnly)`)
         const compiler = Compiler.create({
           side: 'server',
-          scope: 'test',
+          scope: 'root',
           importer: {
             cwd: nodePath.dirname(file.path),
           },
@@ -527,7 +527,7 @@ console.info(ClientOnly)`)
 console.info(ServerOnly)`)
         const compiler = Compiler.create({
           side: 'client',
-          scope: 'test',
+          scope: 'root',
           importer: {
             cwd: nodePath.dirname(file.path),
           },
@@ -557,7 +557,7 @@ console.info(ServerOnly)`)
     console.info(x)`)
         const compiler = Compiler.create({
           side: 'server',
-          scope: 'test',
+          scope: 'root',
           importer: {
             cwd: nodePath.dirname(file1.path),
             onDeny: 'throw',
@@ -582,7 +582,7 @@ export const x = 1
 console.info(x)`)
         const compiler = Compiler.create({
           side: 'server',
-          scope: 'test',
+          scope: 'root',
           importer: {
             cwd: nodePath.dirname(file2.path),
             onDeny: 'log',
@@ -614,7 +614,7 @@ console.info(a)`)
 
         const compiler = Compiler.create({
           side: 'client',
-          scope: 'test',
+          scope: 'root',
           importer: { cwd: nodePath.dirname(fileA.path) },
         })
         compiler.compile({ file: fileA.path, pruneWalker: false })
@@ -631,12 +631,8 @@ console.info(a)`)
         expect(result.items[0]?.pathOriginal).toBe('react-native')
         expect(result.items[1]?.importer).toBe(fileB.path)
         expect(result.trace).toHaveLength(2)
-        expect(result.trace[0]).toBe(
-          `${result.items[0]?.importer}:${result.items[0]?.line}:${result.items[0]?.column}`,
-        )
-        expect(result.trace[1]).toBe(
-          `${result.items[1]?.importer}:${result.items[1]?.line}:${result.items[1]?.column}`,
-        )
+        expect(result.trace[0]).toBe(`${result.items[0]?.importer}:${result.items[0]?.line}:${result.items[0]?.column}`)
+        expect(result.trace[1]).toBe(`${result.items[1]?.importer}:${result.items[1]?.line}:${result.items[1]?.column}`)
 
         const resultWithTarget = compiler.trace({
           target: 'react-native',
@@ -657,7 +653,7 @@ console.info(a)`)
 
         const compiler = Compiler.create({
           side: 'client',
-          scope: 'test',
+          scope: 'root',
           importer: { cwd: nodePath.dirname(fileA.path) },
         })
 
@@ -673,12 +669,8 @@ console.info(a)`)
         expect(result.items[0]?.pathOriginal).toBe('react-native')
         expect(result.items[1]?.importer).toBe(fileB.path)
         expect(result.trace).toHaveLength(2)
-        expect(result.trace[0]).toBe(
-          `${result.items[0]?.importer}:${result.items[0]?.line}:${result.items[0]?.column}`,
-        )
-        expect(result.trace[1]).toBe(
-          `${result.items[1]?.importer}:${result.items[1]?.line}:${result.items[1]?.column}`,
-        )
+        expect(result.trace[0]).toBe(`${result.items[0]?.importer}:${result.items[0]?.line}:${result.items[0]?.column}`)
+        expect(result.trace[1]).toBe(`${result.items[1]?.importer}:${result.items[1]?.line}:${result.items[1]?.column}`)
       }),
     )
 
@@ -699,7 +691,7 @@ export const e = d + 1`)
 
         const compiler = Compiler.create({
           side: 'client',
-          scope: 'test',
+          scope: 'root',
           importer: { cwd: nodePath.dirname(fileA.path) },
         })
         compiler.compile({ file: fileA.path, pruneWalker: false })
