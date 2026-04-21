@@ -2391,7 +2391,7 @@ describe('CompilerFile', () => {
           import def, { usedA, usedB as aliasB, unusedC } from '${fileB.importpath}'
           console.info(usedA, aliasB, def)
         `)
-        const result = cf.collectImports()
+        const result = cf.collectImports({ includeExportNames: true })
         const normalized = normalizeImports(result.imports)
         expect(result.ok).toBe(true)
         expect(normalized).toEqual(
@@ -2415,7 +2415,7 @@ describe('CompilerFile', () => {
           console.info(mod['beta'])
           console.info(mod.default)
         `)
-        const result = cf.collectImports()
+        const result = cf.collectImports({ includeExportNames: true })
         const normalized = normalizeImports(result.imports)
         expect(result.ok).toBe(true)
         expect(normalized).toEqual(
@@ -2438,7 +2438,7 @@ describe('CompilerFile', () => {
           const mod = await import('${fileC.importpath}')
           console.info(one, localTwo, ignoredDefault, mod.three, mod['four'], mod.default)
         `)
-        const result = cf.collectImports()
+        const result = cf.collectImports({ includeExportNames: true })
         const normalized = normalizeImports(result.imports)
         expect(result.ok).toBe(true)
         expect(normalized).toEqual(
@@ -2469,7 +2469,7 @@ describe('CompilerFile', () => {
           console.info(require('${fileD.importpath}')['r6'])
           console.info(r1)
         `)
-        const result = cf.collectImports()
+        const result = cf.collectImports({ includeExportNames: true })
         const normalized = normalizeImports(result.imports)
         expect(result.ok).toBe(true)
         expect(normalized).toEqual(
@@ -2502,7 +2502,7 @@ describe('CompilerFile', () => {
           import { UnusedA, UnusedB } from '${fileC.importpath}'
           console.info('ok')
         `)
-        const result = cf.collectImports()
+        const result = cf.collectImports({ includeExportNames: true })
         const normalized = normalizeImports(result.imports)
         expect(result.ok).toBe(true)
         expect(normalized).toEqual(
@@ -2532,7 +2532,7 @@ describe('CompilerFile', () => {
           const { c } = await import('${fileB.importpath}')
           console.info(a, ns.b, req.d, ns.b, c)
         `)
-        const result = cf.collectImports()
+        const result = cf.collectImports({ includeExportNames: true })
         const normalized = normalizeImports(result.imports)
         expect(result.ok).toBe(true)
         expect(normalized).toEqual(

@@ -38,7 +38,6 @@ mcp as comments
 
 
 COMPILER
-? Не нужно искать экспортнеймы для импортов которые не участвуют в рулах
 
 loadenv by dotenv-cli in dev mode and reload on .env changes
 config dev: { watch: 'glob', hot: boolean, dir: 'current' | 'external'}

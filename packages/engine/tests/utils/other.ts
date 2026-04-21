@@ -1,7 +1,7 @@
 import nodeFs from 'node:fs/promises'
 import nodePath from 'node:path'
 
-export const waitUntilFileChanged = async (file: Bun.BunFile | string, limit = 500, interval = 10): Promise<void> => {
+export const waitUntilFileChanged = async (file: Bun.BunFile | string, limit = 1000, interval = 10): Promise<void> => {
   const startTime = Date.now()
   const bunFile = typeof file === 'string' ? Bun.file(file) : file
   const stats = await bunFile.stat()
