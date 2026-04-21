@@ -57,3 +57,24 @@ export const extractJsonSchemaBySchemasHelpers = (
     }
   }
 }
+
+export const hasFileOrBlobBySchemasHelpers = (schema: unknown, schemaHelpers: SchemaHelper[] | undefined): boolean => {
+  try {
+    const schemaHelper = getSutableSchemaHelper(schema, schemaHelpers)
+    return schemaHelper?.hasFileOrBlob?.(schema) ?? false
+  } catch {
+    return false
+  }
+}
+
+export const isAllItemsOptionalBySchemasHelpers = (
+  schema: unknown,
+  schemaHelpers: SchemaHelper[] | undefined,
+): boolean => {
+  try {
+    const schemaHelper = getSutableSchemaHelper(schema, schemaHelpers)
+    return schemaHelper?.isAllItemsOptional?.(schema) ?? false
+  } catch {
+    return false
+  }
+}

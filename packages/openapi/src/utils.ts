@@ -1,6 +1,10 @@
 import { toCamelCase } from '@point0/core'
 import type { InputSchema, ReadyPoint, RecordValidationSchema, ResponseContentType, SchemaHelper } from '@point0/core'
-import { extractJsonSchemaBySchemasHelpers } from '@point0/core/schema/utils'
+import {
+  extractJsonSchemaBySchemasHelpers,
+  hasFileOrBlobBySchemasHelpers,
+  isAllItemsOptionalBySchemasHelpers,
+} from '@point0/core/schema/utils'
 import type { OpenAPIV3, OpenAPIV3_1 } from 'openapi-types'
 import stringify from 'safe-stable-stringify'
 
@@ -36,9 +40,13 @@ export type PointServerInputJsonSchemas = {
   params: JsonSchema | undefined
   search: JsonSchema | undefined
   body: JsonSchema | undefined
+  bodyHasFileOrBlob: boolean
+  bodyAllItemsOptional: boolean
   headers: JsonSchema | undefined
   cookies: JsonSchema | undefined
   input: JsonSchema | undefined // queries and mutations have no body, search, params, they have input, which is body
+  inputHasFileOrBlob: boolean
+  inputAllItemsOptional: boolean
   response: OpenAPIV3.ResponsesObject | undefined
 }
 
@@ -188,13 +196,19 @@ const getJsonSchemasFromPoint = (
     params: undefined,
     search: undefined,
     body: undefined,
+    bodyHasFileOrBlob: false,
+    bodyAllItemsOptional: true,
     headers: undefined,
     cookies: undefined,
     input: undefined,
+    inputHasFileOrBlob: false,
+    inputAllItemsOptional: true,
     response: undefined,
   }
   for (const action of normalizedPoint._serverExecuteActions) {
     if (action.type === 'input') {
+      schemas.inputHasFileOrBlob ||= hasFileOrBlobBySchemasHelpers(action.schema, schemasHelpers)
+      schemas.inputAllItemsOptional &&= isAllItemsOptionalBySchemasHelpers(action.schema, schemasHelpers)
       schemas.input = appendJsonShemaByValidatorSchema({
         jsonSchema: schemas.input,
         validatorSchema: action.schema,
@@ -202,6 +216,8 @@ const getJsonSchemasFromPoint = (
       })
     }
     if (action.type === 'body') {
+      schemas.bodyHasFileOrBlob ||= hasFileOrBlobBySchemasHelpers(action.schema, schemasHelpers)
+      schemas.bodyAllItemsOptional &&= isAllItemsOptionalBySchemasHelpers(action.schema, schemasHelpers)
       schemas.body = appendJsonShemaByValidatorSchema({
         jsonSchema: schemas.body,
         validatorSchema: action.schema,
@@ -340,6 +356,9 @@ const getOpenapiSchemaFromPoint = (
     })
   }
   const bodySchema = jsonSchemas.body ?? jsonSchemas.input
+  const bodyHasFileOrBlob = jsonSchemas.body ? jsonSchemas.bodyHasFileOrBlob : jsonSchemas.inputHasFileOrBlob
+  const bodyAllItemsOptional = jsonSchemas.body ? jsonSchemas.bodyAllItemsOptional : jsonSchemas.inputAllItemsOptional
+  const bodyContentType = bodyHasFileOrBlob ? 'multipart/form-data' : 'application/json'
   const operationSchema: OpenAPIV3.OperationObject = {
     ...(normalizedPoint._openapiSchema ?? {}),
     parameters,
@@ -351,9 +370,9 @@ const getOpenapiSchemaFromPoint = (
   }
   if (bodySchema) {
     operationSchema.requestBody = {
-      required: true,
+      required: !bodyAllItemsOptional,
       content: {
-        'application/json': {
+        [bodyContentType]: {
           schema: bodySchema,
         },
       },

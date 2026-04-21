@@ -483,4 +483,105 @@ describe('openapi', () => {
       }
     `)
   })
+
+  it('uses multipart/form-data for file body schema', async () => {
+    const root = Point0.lets('root', 'root')
+      .transformer(superjson)
+      .middleware(
+        openapi({
+          cache: false,
+          route: '/openapi.json',
+          filter: 'all',
+          info: {
+            title: 'Test API',
+            version: '1.0.0',
+          },
+        }),
+      )
+      .schemaHelper(zodSchemaHelper())
+      .root()
+
+    const uploadAction = root
+      .lets('action', 'upload', 'POST', '/api/upload')
+      .body(
+        z.object({
+          file: z.file(),
+        }),
+      )
+      .action(() => {
+        return { ok: true }
+      })
+
+    const { fetch } = await createTestThings({ points: [root, uploadAction], ssr: true })
+    const response = await fetch('http://localhost:3000/openapi.json')
+    expect(response.status).toBe(200)
+    const json = await response.json()
+    const requestBody = json.paths?.['/api/upload']?.post?.requestBody
+
+    expect(requestBody?.content?.['multipart/form-data']?.schema).toEqual({
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          contentEncoding: 'binary',
+        },
+      },
+      additionalProperties: false,
+    })
+    expect(requestBody?.content?.['application/json']).toBeUndefined()
+  })
+
+  it('sets request body required to false when all body items are optional', async () => {
+    const root = Point0.lets('root', 'root')
+      .transformer(superjson)
+      .middleware(
+        openapi({
+          cache: false,
+          route: '/openapi.json',
+          filter: 'all',
+          info: {
+            title: 'Test API',
+            version: '1.0.0',
+          },
+        }),
+      )
+      .schemaHelper(zodSchemaHelper())
+      .root()
+
+    const optionalBodyAction = root
+      .lets('action', 'optional-body', 'POST', '/api/optional-body')
+      .body(
+        z.object({
+          id: z.string().optional(),
+          age: z.number().default(1),
+        }),
+      )
+      .action(() => {
+        return { ok: true }
+      })
+
+    const { fetch } = await createTestThings({ points: [root, optionalBodyAction], ssr: true })
+    const response = await fetch('http://localhost:3000/openapi.json')
+    expect(response.status).toBe(200)
+    const json = await response.json()
+    const requestBody = json.paths?.['/api/optional-body']?.post?.requestBody
+
+    expect(requestBody?.required).toBe(false)
+    expect(requestBody?.content?.['application/json']?.schema).toEqual({
+      type: 'object',
+      required: ['age'],
+      properties: {
+        id: {
+          type: 'string',
+        },
+        age: {
+          type: 'number',
+          default: 1,
+        },
+      },
+      additionalProperties: false,
+    })
+  })
 })

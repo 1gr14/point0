@@ -460,6 +460,7 @@ try {
   })
   const startingDurationMsMessage = (() => {
     const startingAt = process.env.POINT0_CLIENT_${this.scope.toUpperCase()}_STARTING_AT
+    process.env.POINT0_CLIENT_${this.scope.toUpperCase()}_STARTING_AT = undefined
     if (!startingAt) {
       return ''
     }

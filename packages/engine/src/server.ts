@@ -576,6 +576,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     })
     const startingDurationMsMessage = (() => {
       const startingAt = process.env.POINT0_SERVER_STARTING_AT
+      process.env.POINT0_SERVER_STARTING_AT = undefined
       if (!startingAt) {
         return ''
       }

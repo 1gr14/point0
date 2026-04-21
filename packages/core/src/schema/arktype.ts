@@ -59,5 +59,53 @@ export const arktypeSchemaHelper = (options?: { jsonSchema?: Parameters<Type['to
         return undefined
       }
     },
+    hasFileOrBlob: (schema: unknown) => {
+      const seen = new WeakSet<object>()
+      const walk = (value: unknown): boolean => {
+        if (value === 'File' || value === 'Blob') {
+          return true
+        }
+        if (typeof value !== 'object' || value === null) {
+          return false
+        }
+        if (seen.has(value)) {
+          return false
+        }
+        seen.add(value)
+        if (Array.isArray(value)) {
+          for (const item of value) {
+            if (walk(item)) {
+              return true
+            }
+          }
+          return false
+        }
+        for (const nested of Object.values(value as Record<string, unknown>)) {
+          if (walk(nested)) {
+            return true
+          }
+        }
+        return false
+      }
+      try {
+        if (typeof schema !== 'function' && (typeof schema !== 'object' || schema === null)) {
+          return false
+        }
+        const typed = schema as { json?: unknown }
+        return walk(typed.json)
+      } catch {
+        return false
+      }
+    },
+    isAllItemsOptional: (schema: unknown) => {
+      try {
+        if (!isArktypeObjectSchema(schema)) {
+          return false
+        }
+        return (schema.json?.required?.length ?? 0) === 0
+      } catch {
+        return false
+      }
+    },
   }
 }

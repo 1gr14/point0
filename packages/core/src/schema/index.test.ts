@@ -1,14 +1,26 @@
 import { Type } from '@sinclair/typebox'
 import { type } from 'arktype'
 import { describe, expect, it } from 'bun:test'
-import { number as ssNumber, object as ssObject, optional as ssOptional, string as ssString } from 'superstruct'
+import {
+  defaulted as ssDefaulted,
+  define as ssDefine,
+  number as ssNumber,
+  object as ssObject,
+  optional as ssOptional,
+  string as ssString,
+} from 'superstruct'
 import * as v from 'valibot'
 import * as yup from 'yup'
 import { z } from 'zod'
 import { arktypeSchemaHelper } from './arktype.js'
 import { superstructSchemaHelper } from './superstruct.js'
 import { typeboxSchemaHelper } from './typebox.js'
-import { extractJsonSchemaBySchemasHelpers, extractKeysBySchemasHelpers } from './utils.js'
+import {
+  extractJsonSchemaBySchemasHelpers,
+  extractKeysBySchemasHelpers,
+  hasFileOrBlobBySchemasHelpers,
+  isAllItemsOptionalBySchemasHelpers,
+} from './utils.js'
 import { valibotSchemaHelper } from './valibot.js'
 import { yupSchemaHelper } from './yup.js'
 import { zodSchemaHelper } from './zod.js'
@@ -219,6 +231,230 @@ describe('schema helpers', () => {
           age: 'number',
         })
         expect(extractKeysBySchemasHelpers(schema, mixedSchemaHelpers)).toEqual(['age', 'id'])
+      })
+    })
+  })
+
+  describe('hasFileOrBlob', () => {
+    describe('zod', () => {
+      it('returns true for object schema with file or blob', () => {
+        const schema = z.object({
+          payload: z.object({
+            file: z.file(),
+          }),
+        })
+        expect(hasFileOrBlobBySchemasHelpers(schema, [zodSchemaHelper()])).toBe(true)
+      })
+
+      it('returns false for object schema without file or blob', () => {
+        const schema = z.object({
+          id: z.string(),
+        })
+        expect(hasFileOrBlobBySchemasHelpers(schema, [zodSchemaHelper()])).toBe(false)
+      })
+    })
+
+    describe('typebox', () => {
+      it('returns true for object schema with file or blob', () => {
+        const schema = Type.Object({
+          payload: Type.Object({
+            file: Type.String({ format: 'binary' }),
+          }),
+        })
+        expect(hasFileOrBlobBySchemasHelpers(schema, [typeboxSchemaHelper()])).toBe(true)
+      })
+
+      it('returns false for object schema without file or blob', () => {
+        const schema = Type.Object({
+          id: Type.String(),
+        })
+        expect(hasFileOrBlobBySchemasHelpers(schema, [typeboxSchemaHelper()])).toBe(false)
+      })
+    })
+
+    describe('valibot', () => {
+      it('returns true for object schema with file or blob', () => {
+        const schema = v.object({
+          payload: v.object({
+            file: v.file(),
+          }),
+        })
+        expect(hasFileOrBlobBySchemasHelpers(schema, [valibotSchemaHelper()])).toBe(true)
+      })
+
+      it('returns false for object schema without file or blob', () => {
+        const schema = v.object({
+          id: v.string(),
+        })
+        expect(hasFileOrBlobBySchemasHelpers(schema, [valibotSchemaHelper()])).toBe(false)
+      })
+    })
+
+    describe('yup', () => {
+      it('returns true for object schema with file or blob', () => {
+        const schema = yup.object({
+          payload: yup.object({
+            file: yup
+              .mixed<File | Blob>()
+              .test('file-or-blob', 'must be file or blob', (value) => value instanceof File || value instanceof Blob),
+          }),
+        })
+        expect(hasFileOrBlobBySchemasHelpers(schema, [yupSchemaHelper()])).toBe(true)
+      })
+
+      it('returns false for object schema without file or blob', () => {
+        const schema = yup.object({
+          id: yup.string(),
+        })
+        expect(hasFileOrBlobBySchemasHelpers(schema, [yupSchemaHelper()])).toBe(false)
+      })
+    })
+
+    describe('superstruct', () => {
+      const ssFileOrBlob = ssDefine('file', (value) => value instanceof File || value instanceof Blob)
+
+      it('returns true for object schema with file or blob', () => {
+        const schema = ssObject({
+          payload: ssObject({
+            file: ssFileOrBlob,
+          }),
+        })
+        expect(hasFileOrBlobBySchemasHelpers(schema, [superstructSchemaHelper()])).toBe(true)
+      })
+
+      it('returns false for object schema without file or blob', () => {
+        const schema = ssObject({
+          id: ssString(),
+        })
+        expect(hasFileOrBlobBySchemasHelpers(schema, [superstructSchemaHelper()])).toBe(false)
+      })
+    })
+
+    describe('arktype', () => {
+      it('returns true for object schema with file or blob', () => {
+        const schema = type({
+          payload: {
+            file: 'File',
+          },
+        })
+        expect(hasFileOrBlobBySchemasHelpers(schema, [arktypeSchemaHelper()])).toBe(true)
+      })
+
+      it('returns false for object schema without file or blob', () => {
+        const schema = type({
+          id: 'string',
+        })
+        expect(hasFileOrBlobBySchemasHelpers(schema, [arktypeSchemaHelper()])).toBe(false)
+      })
+    })
+  })
+
+  describe('isAllItemsOptional', () => {
+    describe('zod', () => {
+      it('returns true for object schema with all items optional', () => {
+        const schema = z.object({
+          id: z.string().optional(),
+          age: z.number().default(1),
+        })
+        expect(isAllItemsOptionalBySchemasHelpers(schema, [zodSchemaHelper()])).toBe(true)
+      })
+
+      it('returns false for object schema with all items required', () => {
+        const schema = z.object({
+          id: z.string(),
+          age: z.number().optional(),
+        })
+        expect(isAllItemsOptionalBySchemasHelpers(schema, [zodSchemaHelper()])).toBe(false)
+      })
+    })
+
+    describe('typebox', () => {
+      it('returns true for object schema with all items optional', () => {
+        const schema = Type.Object({
+          id: Type.Optional(Type.String()),
+          age: Type.Number({ default: 1 }),
+        })
+        expect(isAllItemsOptionalBySchemasHelpers(schema, [typeboxSchemaHelper()])).toBe(true)
+      })
+
+      it('returns false for object schema with all items required', () => {
+        const schema = Type.Object({
+          id: Type.String(),
+          age: Type.Number({ default: 1 }),
+        })
+        expect(isAllItemsOptionalBySchemasHelpers(schema, [typeboxSchemaHelper()])).toBe(false)
+      })
+    })
+
+    describe('valibot', () => {
+      it('returns true for object schema with all items optional', () => {
+        const schema = v.object({
+          id: v.optional(v.string()),
+          age: v.fallback(v.number(), 1),
+        })
+        expect(isAllItemsOptionalBySchemasHelpers(schema, [valibotSchemaHelper()])).toBe(true)
+      })
+
+      it('returns false for object schema with all items required', () => {
+        const schema = v.object({
+          id: v.string(),
+          age: v.optional(v.number()),
+        })
+        expect(isAllItemsOptionalBySchemasHelpers(schema, [valibotSchemaHelper()])).toBe(false)
+      })
+    })
+
+    describe('yup', () => {
+      it('returns true for object schema with all items optional', () => {
+        const schema = yup.object({
+          id: yup.string().optional(),
+          age: yup.number().default(1),
+        })
+        expect(isAllItemsOptionalBySchemasHelpers(schema, [yupSchemaHelper()])).toBe(true)
+      })
+
+      it('returns false for object schema with all items required', () => {
+        const schema = yup.object({
+          id: yup.string().required(),
+          age: yup.number().default(1),
+        })
+        expect(isAllItemsOptionalBySchemasHelpers(schema, [yupSchemaHelper()])).toBe(false)
+      })
+    })
+
+    describe('superstruct', () => {
+      it('returns true for object schema with all items optional', () => {
+        const schema = ssObject({
+          id: ssOptional(ssString()),
+          age: ssDefaulted(ssNumber(), 1),
+        })
+        expect(isAllItemsOptionalBySchemasHelpers(schema, [superstructSchemaHelper()])).toBe(true)
+      })
+
+      it('returns false for object schema with all items required', () => {
+        const schema = ssObject({
+          id: ssString(),
+          age: ssOptional(ssNumber()),
+        })
+        expect(isAllItemsOptionalBySchemasHelpers(schema, [superstructSchemaHelper()])).toBe(false)
+      })
+    })
+
+    describe('arktype', () => {
+      it('returns true for object schema with all items optional', () => {
+        const schema = type({
+          id: 'string?',
+          age: 'number = 1',
+        })
+        expect(isAllItemsOptionalBySchemasHelpers(schema, [arktypeSchemaHelper()])).toBe(true)
+      })
+
+      it('returns false for object schema with all items required', () => {
+        const schema = type({
+          id: 'string',
+          age: 'number?',
+        })
+        expect(isAllItemsOptionalBySchemasHelpers(schema, [arktypeSchemaHelper()])).toBe(false)
       })
     })
   })

@@ -1,4 +1,5 @@
 import type { SchemaHelper } from '../types.js'
+import { create as superstructCreate } from 'superstruct'
 
 const isSuperstructObjectSchema = (
   schema: unknown,
@@ -34,6 +35,58 @@ export const superstructSchemaHelper = (): SchemaHelper => {
         return superstructToJsonSchema(schema as Struct<any, any>)
       } catch {
         return undefined
+      }
+    },
+    hasFileOrBlob: (schema: unknown) => {
+      const seen = new WeakSet<object>()
+      const walk = (value: unknown): boolean => {
+        if (typeof value !== 'object' || value === null) {
+          return false
+        }
+        if (seen.has(value)) {
+          return false
+        }
+        seen.add(value)
+        const typed = value as { type?: unknown; schema?: unknown }
+        if (typed.type === 'file' || typed.type === 'blob') {
+          return true
+        }
+        if (Array.isArray(typed.schema)) {
+          for (const item of typed.schema) {
+            if (walk(item)) {
+              return true
+            }
+          }
+        } else if (typeof typed.schema === 'object' && typed.schema !== null) {
+          for (const nested of Object.values(typed.schema as Record<string, unknown>)) {
+            if (walk(nested)) {
+              return true
+            }
+          }
+        }
+        return false
+      }
+      try {
+        return walk(schema)
+      } catch {
+        return false
+      }
+    },
+    isAllItemsOptional: (schema: unknown) => {
+      try {
+        if (!isSuperstructObjectSchema(schema)) {
+          return false
+        }
+        return Object.entries(schema.schema).every(([key, value]) => {
+          try {
+            superstructCreate({}, { ...schema, schema: { [key]: value } } as Struct<any, any>)
+            return true
+          } catch {
+            return false
+          }
+        })
+      } catch {
+        return false
       }
     },
   }

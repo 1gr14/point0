@@ -793,6 +793,8 @@ export type NormalizedEndpoindOpenapiSchema = Omit<
 export type SchemaHelper = {
   isSuitable: ((schema: unknown) => boolean) | string // if string, then just pick by standard schema vendor
   extractKeys?: (schema: unknown) => string[] | undefined
+  hasFileOrBlob?: (schema: unknown) => boolean
+  isAllItemsOptional?: (schema: unknown) => boolean
   toJson?: (schema: unknown) => object | undefined
 }
 
