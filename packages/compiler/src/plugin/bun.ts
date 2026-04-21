@@ -2,9 +2,8 @@ import type { BunPlugin, OnLoadResult } from 'bun'
 import nodeFs from 'node:fs'
 import { Compiler } from '../compiler.js'
 import type { CompilerOptions } from '../compiler.js'
-import { virtualModulePathRegex } from '../importer.js'
-import { resolveTempDirPath } from '../utils.js'
 import { CriticalCompilerError } from '../error.js'
+import { virtualModulePathRegex } from '../importer.js'
 
 export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugin {
   const compiler =

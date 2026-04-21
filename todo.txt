@@ -39,13 +39,14 @@ mcp as comments
 
 COMPILER
 
-loadenv by dotenv-cli in dev mode and reload on .env changes
-config dev: { watch: 'glob', hot: boolean, dir: 'current' | 'external'}
 
 Компилер вэнввх может хранить опции в зависимости от сайда
 Получается нужно 2 разных бан статика один для сервера другой для клиента
 Можно же и бэкенд вынести в отдельную папку со своим банфиг томлом, и тогда хмр заработает ведь можно будет поинты поинты не динамическим импортом загружать
 Настройка сервера и клиента позволяет указать директорию, в которой будет развёрнут дев сервер, там и появится банфиг томл
+
+loadenv by dotenv-cli in dev mode and reload on .env changes
+config dev: { watch: 'glob', hot: boolean, dir: 'current' | 'external'}
 
 example bun-static
 example bun-dynamic
