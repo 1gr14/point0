@@ -12345,6 +12345,8 @@ export class Point0<
       return React.createElement(mountComponent as never, {
         ...mountState,
         ...extraProps(mountState),
+        ErrorComponent,
+        LoadingComponent,
       })
     }
   }
