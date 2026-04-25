@@ -63,6 +63,8 @@
     "ncp": "^2.0.0",
     "rimraf": "^6.0.1",
     "typescript": "catalog:",
+    "prettier": "catalog:",
+    "@typescript/native-preview": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "vite": "catalog:",
     "vite-bundle-analyzer": "catalog:",

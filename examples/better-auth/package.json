@@ -23,16 +23,9 @@
     "prepare": "bun run prisma:migrate:deploy && bun run prisma:generate && point0 generate && bun run seed"
   },
   "dependencies": {
-    "bun-plugin-tailwind": "^0.1.2",
-    "tailwindcss": "^4.2.2",
     "@devp0nt/error0": "catalog:",
-    "@devp0nt/route0": "catalog:",
     "@devp0nt/flat0": "catalog:",
-    "wouter": "catalog:",
-    "@tanstack/react-query": "catalog:",
-    "@unhead/react": "catalog:",
-    "unhead": "catalog:",
-    "openapi-types": "catalog:",
+    "@devp0nt/route0": "catalog:",
     "@point0/basic-auth": "workspace:*",
     "@point0/compiler": "workspace:*",
     "@point0/cookies-store": "workspace:*",
@@ -42,11 +35,19 @@
     "@point0/react-dom": "workspace:*",
     "@prisma/adapter-libsql": "^7.5.0",
     "@prisma/client": "^7.5.0",
+    "@tanstack/react-query": "catalog:",
+    "@unhead/react": "catalog:",
+    "better-auth": "^1.6.9",
+    "bun-plugin-tailwind": "^0.1.2",
     "dotenv": "^17.4.2",
+    "openapi-types": "catalog:",
     "prisma": "^7.5.0",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "superjson": "catalog:"
+    "superjson": "catalog:",
+    "tailwindcss": "^4.2.2",
+    "unhead": "catalog:",
+    "wouter": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",

@@ -47,7 +47,7 @@
     "typesgo": "tsgo --noEmit -p tsconfig.build.json",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "pack:dist": "rimraf ../../packages-dist-npm && bun ../../scripts/transform-package-for-publish.ts && mkdir -p ../../packages-dist-npm/wouter && npm pack --pack-destination ../../packages-dist-npm/wouter --silent && (cd ../../packages-dist-npm/wouter && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz) && bun ../../scripts/restore-package.ts",
+    "pack:dist": "rimraf ../../packages-dist-npm && bun ../../scripts/transform-package-for-publish.ts && mkdir -p ../../packages-dist-npm/basic-auth && npm pack --pack-destination ../../packages-dist-npm/basic-auth --silent && (cd ../../packages-dist-npm/basic-auth && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz) && bun ../../scripts/restore-package.ts",
     "prepublishOnly": "bun ../../scripts/transform-package-for-publish.ts",
     "postpublish": "bun ../../scripts/restore-package.ts"
   },

@@ -264,6 +264,9 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   }
 
   getScopes(): PointsScope[] {
+    if (this.type === 'plugin') {
+      return ['plugin']
+    }
     const scopes: PointsScope[] = []
     for (const point of [this, ...this.parents]) {
       if (point.type === 'root') {
@@ -1144,8 +1147,8 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     if (this._shake) {
       return
     }
-    const isParentOrSelfScope = !scope ? true : this.scopes.includes(scope)
-    if (!isParentOrSelfScope) {
+    const isParentOrSelfOrPluginScope = !scope ? true : this.scopes.includes(scope) || this.type === 'plugin'
+    if (!isParentOrSelfOrPluginScope) {
       this.shakeMethodsForAnotherScope()
     } else if (side === 'client') {
       this.shakeMethodsForClient()

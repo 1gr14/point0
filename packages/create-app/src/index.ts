@@ -12,6 +12,7 @@ type CliOptions = {
   vite?: boolean
   install?: boolean
   interactive?: boolean
+  override?: boolean
 }
 
 const VITE_CONFIG_LINE = "viteConfig: '../vite.config.ts',"
@@ -31,6 +32,8 @@ program
   .option('--no-vite', 'Do not use Vite for client bundling')
   .option('--install', 'Install dependencies after scaffolding')
   .option('--no-install', 'Skip dependency installation after scaffolding')
+  .option('-O, --override', 'Override existing files if the target directory is not empty')
+  .option('--no-override', 'Do not override existing files if the target directory is not empty')
   .option('-I, --no-interactive', 'Disable interactive prompts')
   .action(async (name: string | undefined, options: CliOptions) => {
     intro('point0-create-app')
@@ -40,11 +43,18 @@ program
       return
     }
 
+    try {
+      await ensureTargetDirectoryIsReady(appName, options.override, interactive)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      cancel(message)
+      process.exit(1)
+    }
+
     const useVite = await resolveUseViteFlag(options.vite, interactive)
     const shouldInstall = await resolveInstallFlag(options.install, interactive)
 
     try {
-      await ensureTargetDirectoryIsReady(appName)
       await ensureBun(interactive)
       await copyTemplate(appName)
       await patchTemplate(appName, useVite)
@@ -139,32 +149,71 @@ async function resolveInstallFlag(installFlag: boolean | undefined, interactive:
   return response
 }
 
-async function ensureTargetDirectoryIsReady(appName: string) {
+async function ensureTargetDirectoryIsReady(
+  appName: string,
+  overrideFlag: boolean | undefined,
+  interactive: boolean,
+) {
   const projectPath = resolve(process.cwd(), appName)
 
+  let pathStat: Awaited<ReturnType<typeof stat>> | undefined
   try {
-    const pathStat = await stat(projectPath)
-    if (!pathStat.isDirectory()) {
-      throw new Error(`Target path exists and is not a directory: ${projectPath}`)
-    }
-
-    const entries = await readdir(projectPath)
-    if (entries.length > 0) {
-      throw new Error(`Target directory is not empty: ${projectPath}`)
-    }
+    pathStat = await stat(projectPath)
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code
     if (code !== 'ENOENT') {
       throw error
     }
-    await mkdir(projectPath, { recursive: true })
   }
+
+  if (!pathStat) {
+    await mkdir(projectPath, { recursive: true })
+    return
+  }
+
+  if (!pathStat.isDirectory()) {
+    throw new Error(`Target path exists and is not a directory: ${projectPath}`)
+  }
+
+  const entries = await readdir(projectPath)
+  if (entries.length === 0) {
+    return
+  }
+
+  const shouldOverride = await resolveOverrideFlag(projectPath, overrideFlag, interactive)
+  if (!shouldOverride) {
+    throw new Error(`Target directory is not empty: ${projectPath}`)
+  }
+}
+
+async function resolveOverrideFlag(
+  projectPath: string,
+  overrideFlag: boolean | undefined,
+  interactive: boolean,
+) {
+  if (typeof overrideFlag === 'boolean') {
+    return overrideFlag
+  }
+
+  if (!interactive) {
+    return false
+  }
+
+  const response = await confirm({
+    message: `Target directory is not empty: ${projectPath}. Override existing files?`,
+    initialValue: false,
+  })
+  if (isCancel(response)) {
+    cancel('Operation cancelled.')
+    process.exit(0)
+  }
+  return response
 }
 
 async function copyTemplate(appName: string) {
   const sourceTemplatePath = resolveTemplateDir()
   const targetPath = resolve(process.cwd(), appName)
-  await cp(sourceTemplatePath, targetPath, { recursive: true, force: false, errorOnExist: true })
+  await cp(sourceTemplatePath, targetPath, { recursive: true, force: true })
 }
 
 async function patchTemplate(appName: string, useVite: boolean) {
@@ -173,11 +222,19 @@ async function patchTemplate(appName: string, useVite: boolean) {
   const enginePath = resolve(appRoot, 'src/engine.ts')
   const indexHtmlPath = resolve(appRoot, 'src/index.html')
   const viteConfigPath = resolve(appRoot, 'vite.config.ts')
+  const gitignorePath = resolve(appRoot, '.gitignore')
 
   await patchPackageJson(packageJsonPath, useVite)
   await patchEngine(enginePath, useVite)
   await patchIndexHtml(indexHtmlPath, useVite)
   await patchViteConfig(viteConfigPath, useVite)
+  await patchGitignore(gitignorePath)
+}
+
+async function patchGitignore(gitignorePath: string) {
+  const current = await readFile(gitignorePath, 'utf8')
+  const next = current.replace(/^### /gm, '')
+  await writeFile(gitignorePath, next, 'utf8')
 }
 
 async function patchPackageJson(packageJsonPath: string, useVite: boolean) {

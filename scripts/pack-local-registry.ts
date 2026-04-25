@@ -10,7 +10,17 @@ const __dirname = dirname(__filename)
 const rootDir = resolve(__dirname, '..')
 const outputRoot = resolve(rootDir, '..', 'point0-npm')
 
-const publishablePackages = ['core', 'compiler', 'engine', 'react-dom', 'wouter', 'cookies-store', 'cors']
+const publishablePackages = [
+  'core',
+  'compiler',
+  'engine',
+  'react-dom',
+  'cookies-store',
+  'cors',
+  'openapi',
+  'basic-auth',
+  'create-app',
+]
 
 const run = async (command: string, args: string[], cwd: string) => {
   const result = await execa(command, args, { cwd })

@@ -34,6 +34,13 @@ mcp as comments
 
 
 REFACTOING 3000
+index.html on changes and reload should be getted new
+allow throw error from with and throw 'loading' and trhow redirect()
+В эррор0 добавить символ по которому мы сверяемся, что это эррор0, тогда можно будет создать например анэкспектед эррор от сновной эррор. Вероятно стоит ввести тчк дефаулт
+Страницам разрешить принимать пост запросы и прокидывать боди в квери самой страницы
+Мсп должен всегда читать свежую мета
+in example rename file navigate to navigation
+resolve without arg, should just resolve to data, resolve with false, should just wait for loading
 
 FINISH
 Проверка под линукс и виндоус
@@ -149,6 +156,8 @@ test onPrefetchPage and other prefetchModes
 ? html transformer not regex hack
 ? При обнаружении поинта, который при своей инициализации не наблюдает над собой компилера судя по процесс енв, он должен сделать консоль варн что мол компилер забыли включить или импортнули его в энжине незаконно без асунк импорта, это можно отключить
 ? В поинтах сделать проверку в момент летс или криэйт, либо энжина должна быть инициализирована, либо это должен быть клиент
+
+? А при создании пейджа от лэйоута не должны ли мы и кткс грохнуть? (а не должны, если не так не удобно, используйте .layout(layout), тем более скорее всего там в ктксе то ничего и не будет у пейджей и лэйоутов кром авторизационных штук, которые нужны)
 Remove comments, unusde code, unused types (except core/point0.ts and core/types.ts)
 Разобраться с эррор баундари для фронта
 try for input have void type or undefined, than we can avoid using ...args IsInputOptional...

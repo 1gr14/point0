@@ -1,3 +1,10 @@
+# general
+### .DS_Store
+### .idea
+### .vscode
+### .cursor
+
+# custom
 .env*
 src/generated/point0/meta.ts
 src/generated/prisma

@@ -45,7 +45,6 @@ export const root = Point0.lets
     )
   })
   .error(({ error }) => <ErrorComponent error={error} />)
-  // we can do this, to be able authClient, but I thing it is better has own queries and mutations and use authServer under the hood
   .middleware('/api/auth/*', async ({ request }) => await authServer.handler(request.original))
   .middleware(
     openapi({
