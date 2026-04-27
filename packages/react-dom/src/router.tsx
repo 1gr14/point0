@@ -599,9 +599,8 @@ export const createNavLink = <
             : finalTo === currentLocation.hrefRel
         ) {
           return { type: 'exact', exact: true, same: false, ancestor: false, descendant: false, unmatched: false }
-        } else {
-          return { type: 'same', exact: false, same: true, ancestor: false, descendant: false, unmatched: false }
         }
+        return { type: 'same', exact: false, same: true, ancestor: false, descendant: false, unmatched: false }
       }
       if (relation.ancestor) {
         return { type: 'ancestor', exact: false, same: false, ancestor: true, descendant: false, unmatched: false }

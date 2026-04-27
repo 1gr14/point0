@@ -8,6 +8,8 @@
 
 devp0nt
 docs
+
+refactoring
 start0
 
 finishing
@@ -34,7 +36,13 @@ mcp as comments
 
 
 REFACTOING 3000
+vite 8
+Эвентер кромедата пусть возвращает и Джейсон который логировать удобно
+trace is now terrible for client-only mark, it has starnge ./ in suggestons, also camn not find trace at all (so just not rename @point0/core-client-only, show as is)
+Пейдж поинт вместе стегами должен быть доступен в юз пейдж стейт
+Опробовать параллельные тесты бана
 index.html on changes and reload should be getted new
+Вайт по умолчанию в криэйт апп
 allow throw error from with and throw 'loading' and trhow redirect()
 В эррор0 добавить символ по которому мы сверяемся, что это эррор0, тогда можно будет создать например анэкспектед эррор от сновной эррор. Вероятно стоит ввести тчк дефаулт
 Страницам разрешить принимать пост запросы и прокидывать боди в квери самой страницы
@@ -58,6 +66,9 @@ create-app test
 Убрать из экзамплов не нужные зависимости
 Обновить зависимости
 Зазвать подписчиков на стрим-созвон и там обсудить как мне вести канал (за миг до запуска)
+
+BUN-ISSUE
+В бан написать, что клиент не обновляется при создании новых файлов
 
 
 

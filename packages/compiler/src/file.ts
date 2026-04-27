@@ -202,7 +202,7 @@ export class CompilerFile<THasContent extends boolean> {
   }
 
   assertHasContent(): asserts this is CompilerFile<true> {
-    if (!this.content) {
+    if (this.content === undefined) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
   }
@@ -585,7 +585,7 @@ export class CompilerFile<THasContent extends boolean> {
     }
     consts.unshift({ POINT0_SSR: ssr ? 'true' : 'false' })
     let modified = false
-    if (!this.content) {
+    if (this.content === undefined) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
     if (this._shakeForEnv) {
