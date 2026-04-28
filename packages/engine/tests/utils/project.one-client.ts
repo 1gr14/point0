@@ -111,7 +111,7 @@ export class TestProjectOneClient {
     if (this.vite) {
       await this.replace(this.files.engine, `// viteConfig: '../vite.config.ts',`, `viteConfig: '../vite.config.ts',`)
       await this.replace(this.files.packageJson, './dist/server/index.server.js', './dist/server/main.js')
-      await this.replace(this.files.indexHtml, '"./index.client.ts"', '"/index.client.ts"')
+      await this.replace(this.files.indexHtml, '"./index.client.tsx"', '"/index.client.tsx"')
     }
     return this
   }
@@ -131,7 +131,7 @@ export class TestProjectOneClient {
       pointsServer: this.resolve('src', 'lib', 'points.server.ts'),
       app: this.resolve('src', 'app.tsx'),
       engine: this.resolve('src', 'engine.ts'),
-      indexClient: this.resolve('src', 'index.client.ts'),
+      indexClient: this.resolve('src', 'index.client.tsx'),
       indexServer: this.resolve('src', 'index.server.ts'),
       indexHtml: this.resolve('src', 'index.html'),
       packageJson: this.resolve('package.json'),

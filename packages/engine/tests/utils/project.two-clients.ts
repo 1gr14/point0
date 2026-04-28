@@ -203,11 +203,11 @@ export class TestProjectTwoClient {
     }
     if (this.vite1) {
       await this.replace(this.files.engine, `// viteConfig1: '../vite.config.ts',`, `viteConfig: '../vite.config.ts',`)
-      await this.replace(this.files.indexHtml1, '"./index1.ts"', '"/index1.ts"')
+      await this.replace(this.files.indexHtml1, '"./index1.tsx"', '"/index1.tsx"')
     }
     if (this.vite2) {
       await this.replace(this.files.engine, `// viteConfig2: '../vite.config.ts',`, `viteConfig: '../vite.config.ts',`)
-      await this.replace(this.files.indexHtml2, '"./index2.ts"', '"/index2.ts"')
+      await this.replace(this.files.indexHtml2, '"./index2.tsx"', '"/index2.tsx"')
     }
     return this
   }
@@ -231,8 +231,8 @@ export class TestProjectTwoClient {
       pointsServer: this.resolve('src', 'lib', 'points.server.ts'),
       app: this.resolve('src', 'app.tsx'),
       engine: this.resolve('src', 'engine.ts'),
-      indexClient1: this.resolve('src', 'index1.ts'),
-      indexClient2: this.resolve('src', 'index2.ts'),
+      indexClient1: this.resolve('src', 'index1.tsx'),
+      indexClient2: this.resolve('src', 'index2.tsx'),
       indexServer: this.resolve('src', 'index.server.ts'),
       indexHtml1: this.resolve('src', 'index1.html'),
       indexHtml2: this.resolve('src', 'index2.html'),

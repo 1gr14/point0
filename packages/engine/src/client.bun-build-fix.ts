@@ -14,7 +14,7 @@ type BunMetafile = {
  *
  * Bun's HTML bundling can occasionally produce `dist/index.html` that points to
  * a *valid* JS chunk that is not the intended client bootstrap module
- * (for example, a route/layout chunk instead of `index.client.ts` output).
+ * (for example, a route/layout chunk instead of `index.client.tsx` output).
  *
  * Result in browser:
  * - SSR HTML is visible (server output is correct)

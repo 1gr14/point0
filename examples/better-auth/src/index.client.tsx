@@ -5,7 +5,7 @@ import { validateClientEnv } from '@/lib/env'
 import '@/styles/index.css'
 
 validateClientEnv()
-mount(App, points)
+mount(<App />, points)
 
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 if (import.meta.hot) {

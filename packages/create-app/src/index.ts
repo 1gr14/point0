@@ -18,8 +18,8 @@ type CliOptions = {
 const VITE_CONFIG_LINE = "viteConfig: '../vite.config.ts',"
 const TAILWIND_LINK_COMMENT = '<!-- <link rel="stylesheet" href="/styles/index.css" /> -->'
 const TAILWIND_LINK = '<link rel="stylesheet" href="/styles/index.css" />'
-const HTML_CLIENT_SRC_DOT = './index.client.ts'
-const HTML_CLIENT_SRC_ROOT = '/index.client.ts'
+const HTML_CLIENT_SRC_DOT = './index.client.tsx'
+const HTML_CLIENT_SRC_ROOT = '/index.client.tsx'
 const DEFAULT_APP_NAME = 'my-app'
 
 const program = new Command()
@@ -149,11 +149,7 @@ async function resolveInstallFlag(installFlag: boolean | undefined, interactive:
   return response
 }
 
-async function ensureTargetDirectoryIsReady(
-  appName: string,
-  overrideFlag: boolean | undefined,
-  interactive: boolean,
-) {
+async function ensureTargetDirectoryIsReady(appName: string, overrideFlag: boolean | undefined, interactive: boolean) {
   const projectPath = resolve(process.cwd(), appName)
 
   let pathStat: Awaited<ReturnType<typeof stat>> | undefined
@@ -186,11 +182,7 @@ async function ensureTargetDirectoryIsReady(
   }
 }
 
-async function resolveOverrideFlag(
-  projectPath: string,
-  overrideFlag: boolean | undefined,
-  interactive: boolean,
-) {
+async function resolveOverrideFlag(projectPath: string, overrideFlag: boolean | undefined, interactive: boolean) {
   if (typeof overrideFlag === 'boolean') {
     return overrideFlag
   }
