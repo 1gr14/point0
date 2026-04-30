@@ -885,7 +885,12 @@ export const createRouter = <
       const [wouterSearchParams] = useWouterSearchParams()
       const pathnameWithSearchParams = [wouterLocation, wouterSearchParams.toString()].filter(Boolean).join('?')
       const hash = options?.addHash ? (typeof window !== 'undefined' ? window.location.hash : '') : ''
-      return routes._.getLocation(pathnameWithSearchParams + hash)
+      const origin = env.side.is.server
+        ? ssrLocation?.origin
+        : typeof window !== 'undefined'
+          ? window.location.origin
+          : undefined
+      return routes._.getLocation(origin + pathnameWithSearchParams + hash)
     }, [])
 
     const aroundNav = useCallback<AroundNavHandler>((navigate, to, options) => {

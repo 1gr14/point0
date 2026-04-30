@@ -36,9 +36,15 @@ mcp as comments
 
 
 REFACTOING 3000
-vite 8
+vite 8 (server updates failed, )
 Эвентер кромедата пусть возвращает и Джейсон который логировать удобно
 trace is now terrible for client-only mark, it has starnge ./ in suggestons, also camn not find trace at all (so just not rename @point0/core-client-only, show as is)
+Попробовать перезапускать бан процесс без пересоздания а через сигнал
+Моунтаблы (компонент и провайдердер точно) должны работать и без икса
+Убедиться, что виз всегда вызывает врапер, ведь есть риск, что сначала эрор, а потом не эрор, а дальше хук, и будут проблемы
+bun dev, on Could not resolve: "@/components/form/hook"., if it can be resolved restart processes
+В префетч экзамплов по умолчанию сделать просто клиент энд сервер
+Убедиться что дев сервера и клиента в разных вкладках работает
 Пейдж поинт вместе стегами должен быть доступен в юз пейдж стейт
 Опробовать параллельные тесты бана
 index.html on changes and reload should be getted new
@@ -48,7 +54,9 @@ allow throw error from with and throw 'loading' and trhow redirect()
 Страницам разрешить принимать пост запросы и прокидывать боди в квери самой страницы
 Мсп должен всегда читать свежую мета
 in example rename file navigate to navigation
+? exactClassName → activeClassName
 resolve without arg, should just resolve to data, resolve with false, should just wait for loading
+vite config as fn should accept also compilerPlugin so we can place it in correct place
 
 FINISH
 Проверка под линукс и виндоус
@@ -74,6 +82,8 @@ BUN-ISSUE
 
 
 === LATER ===
+https://tsrx.dev/getting-started
+
 ---
 ? Сет кукис и кукис надо синхронизировать
 merge engines and have shared server and fetch functions

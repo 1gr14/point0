@@ -267,6 +267,7 @@ export class CookiesStore {
       CookiesStore.serverCookieSetter(cookieOptionsInput)
     } else {
       CookiesStore.clientCookieSetter(cookieOptionsInput)
+      CookiesStore.refresh(cookieOptionsInput.name)
     }
   }
 
@@ -278,13 +279,16 @@ export class CookiesStore {
     }
   }) as CookiesStoreGetter
 
-  static refresh(): void {
+  static refresh(name?: string): void {
     if (env.side.is.server) {
       return
       // lets not throw to be able fullstack tests
       // throw new Error('refresh() is only available on the client')
     }
     CookiesStore.items.forEach((item) => {
+      if (name && item.name !== name) {
+        return
+      }
       // Skip httpOnly cookies as they are server-only
       if (!item.isHttpOnly()) {
         item.refresh()
@@ -299,6 +303,9 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
   private readonly transformerPolicy: 'auto' | boolean
   private readonly transformer: DataTransformerExtended
   private readonly refreshCallbacks = new Set<() => void>()
+  get name(): string {
+    return this.cookieDefineOptions.name
+  }
 
   constructor({
     cookieDefineOptions,
@@ -330,9 +337,12 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
         `Cannot set cookie "${this.cookieDefineOptions.name}" from client: httpOnly cookies are server-only`,
       )
     }
+
     if (value === undefined) {
       this.delete()
+      return
     }
+
     const stringified = (() => {
       if (this.transformerPolicy === false) {
         return String(value)

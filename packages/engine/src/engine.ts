@@ -243,11 +243,6 @@ export class Engine<
         ? entries.map((entry) => this.toEntryPath({ entry, cwd }))
         : Object.values(this.server.entry || {})
     if (withServer) {
-      if (watch && watch.length === 0) {
-        throw new Error(
-          'Watch glob is not provided, please provide --watch <glob> or set devWatchGlob in server engine options',
-        )
-      }
       // here we run server entries which already serving server, but prevent multiple client dev servers, so we do not run it here
       const serverEntryProcesses: Array<Promise<any>> = await (async () => {
         this.log({
@@ -260,6 +255,11 @@ export class Engine<
           await this.server.startViteDevServer()
           return [this.server.loadViteDevEntries({ watch: !!watch, entriesFiles })]
         } else {
+          if (watch && watch.length === 0) {
+            throw new Error(
+              'Watch glob is not provided, please provide --watch <glob> or set devWatchGlob in server engine options, it is required only for bun, vite works wothout it',
+            )
+          }
           const start = () => {
             return Object.values(this.server.entry || [])
               .filter((entryFile) => entriesFiles.includes(entryFile))

@@ -242,6 +242,12 @@ export class Fetcher<TError extends ErrorPoint0> {
         if (process.env.NODE_ENV === 'production') {
           return undefined
         }
+        if (process.env.POINT0_PREVENT_REDIRECT_TO_DEV_CLIENT === 'true') {
+          return undefined
+        }
+        if (request.location.hostname !== 'localhost') {
+          return undefined
+        }
         const thatClient = this.server.clients.find((c) => c.scope === scope)
         if (!thatClient) {
           return undefined
