@@ -145,6 +145,7 @@ program
       env?: string[]
     }) => {
       process.env.NODE_ENV ??= 'production'
+      process.env.LOG_MODE = 'pretty'
       const { engine } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd: process.cwd() })
       for (const env of options.env ?? []) {
         const [name, ...valueParts] = env.split('=')
@@ -172,6 +173,7 @@ program
         })
       } else {
         await engine.build(buildOptions)
+        process.exit(0)
       }
     },
   )

@@ -86,6 +86,7 @@ export class Engine<
   static create<TRequiredCtx extends RequiredCtx = RequiredCtx, TError extends ErrorPoint0 = ErrorPoint0>(
     options: EngineOptions<TRequiredCtx, TError>,
   ): Engine<TRequiredCtx, TError, false> {
+    process.env.POINT0_ENGINE_CWD = options.file
     const parsedOptions = parseEngineOptions(options)
 
     _ssServerLog.set(parsedOptions.general.log)
@@ -257,7 +258,7 @@ export class Engine<
         } else {
           if (watch && watch.length === 0) {
             throw new Error(
-              'Watch glob is not provided, please provide --watch <glob> or set devWatchGlob in server engine options, it is required only for bun, vite works wothout it',
+              'Watch glob is not provided, please provide --watch <glob> or set devWatchGlob in server engine options, it is required only for bun, vite works without it',
             )
           }
           const start = () => {
@@ -427,7 +428,6 @@ export class Engine<
     server: { server: string[] | null; publicdir: string[] | null }
   }> {
     const startedAt = performance.now()
-    process.env.POINT0_LOG_MODE = 'nice'
     this.log({
       level: 'info',
       category: ['build'],

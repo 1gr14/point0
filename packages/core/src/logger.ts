@@ -10,13 +10,13 @@ export type LogOptions = {
 }
 export type LogFn = (options: LogOptions) => void
 export const _defaultLogFn: LogFn = (options: LogOptions) => {
-  const valideModes = ['json', 'nice'] as const
+  const valideModes = ['json', 'pretty'] as const
   type ValidMode = (typeof valideModes)[number]
   const modeByProcessEnv =
-    process.env.POINT0_LOG_MODE && valideModes.includes(process.env.POINT0_LOG_MODE as ValidMode)
-      ? (process.env.POINT0_LOG_MODE as ValidMode)
+    process.env.LOG_MODE && valideModes.includes(process.env.LOG_MODE as ValidMode)
+      ? (process.env.LOG_MODE as ValidMode)
       : undefined
-  const mode: ValidMode = modeByProcessEnv ?? (_point0_env.mode.is.production ? 'json' : 'nice')
+  const mode: ValidMode = modeByProcessEnv ?? (_point0_env.mode.is.production ? 'json' : 'pretty')
   if (mode === 'json') {
     const serializedError = (() => {
       try {
