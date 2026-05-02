@@ -142,12 +142,12 @@ const _resolveFinalTo = <TRoutes extends RoutesPretty>({
   providedTo?: string
   providedHref?: string
   componentName: 'Link' | 'NavLink' | 'Redirect'
-}): string => {
+}): { tohref: string } & ({ to: string; href: undefined } | { to: undefined; href: string }) => {
   if (providedTo !== undefined) {
-    return providedTo
+    return { tohref: providedTo, to: providedTo, href: undefined }
   }
   if (providedHref !== undefined) {
-    return providedHref
+    return { tohref: providedHref, to: undefined, href: providedHref }
   }
   if (routeName === undefined) {
     log({
@@ -155,14 +155,15 @@ const _resolveFinalTo = <TRoutes extends RoutesPretty>({
       category: ['wouter'],
       message: `routeName is required for ${componentName} without to or href`,
     })
-    return '#'
+    return { tohref: '#', to: '#', href: undefined }
   }
   const route = routes[routeName]
   if (!route) {
     log({ level: 'error', category: ['wouter'], message: `Route "${routeName}" not found` })
-    return '#'
+    return { tohref: '#', to: '#', href: undefined }
   }
-  return route.get(input)
+  const ginalTo = route.get(input)
+  return { tohref: ginalTo, to: ginalTo, href: undefined }
 }
 
 const _useFinalTo = <TRoutes extends RoutesPretty>({
@@ -179,7 +180,7 @@ const _useFinalTo = <TRoutes extends RoutesPretty>({
   providedTo?: string
   providedHref?: string
   componentName: 'Link' | 'NavLink' | 'Redirect'
-}): string => {
+}): { tohref: string } & ({ to: string; href: undefined } | { to: undefined; href: string }) => {
   return useMemo(
     () => _resolveFinalTo({ routes, routeName, input, providedTo, providedHref, componentName }),
     [routes, routeName, JSON.stringify(input), providedTo, providedHref, componentName],
@@ -187,10 +188,10 @@ const _useFinalTo = <TRoutes extends RoutesPretty>({
 }
 
 const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = BrowserLocationHook>(
-  props: LinkProps<TBaseLocationHook>,
+  props: LinkProps<TBaseLocationHook> & { tohref: string },
 ): {
   wouterLinkProps: LinkProps
-  to: string
+  tohref: string
   pointWithLocation:
     | { point: NormalizedLazyPointsCollectionRecord | ReadyPointsCollectionRecord; location: AnyLocation }
     | undefined
@@ -198,6 +199,7 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
   const {
     to,
     href,
+    tohref,
     onMouseEnter: providedOnMouseEnter,
     onMouseLeave: providedOnMouseLeave,
     prefetchOnNavigate,
@@ -206,13 +208,11 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
     before,
     after,
     ...rest
-  } = props as LinkProps<any> &
-    SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>> & {
+  } = props as LinkProps<any> & { tohref: string } & SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>> & {
       onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => void
       onMouseLeave?: (e: React.MouseEvent<HTMLAnchorElement>) => void
     }
   const clientPoints = getClientPoints()
-  const finalTo = to || href || '#'
   const prefetchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const { pointWithLocation, providedPolh, defaultPolh, polhEnabled } = useMemo<
     | {
@@ -240,10 +240,10 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
         polhEnabled: false
       }
   >(() => {
-    if (!finalTo || finalTo.startsWith('#')) {
+    if (!tohref || tohref.startsWith('#')) {
       return { pointWithLocation: undefined, providedPolh: undefined, defaultPolh: undefined, polhEnabled: false }
     }
-    const pointWithLocation = clientPoints._getPageByHref(finalTo)
+    const pointWithLocation = clientPoints._getPageByHref(tohref)
     if (!pointWithLocation) {
       return { pointWithLocation: undefined, providedPolh: undefined, defaultPolh: undefined, polhEnabled: false }
     }
@@ -257,7 +257,7 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
       defaultPolh,
       polhEnabled: polhEnabled as true,
     }
-  }, [finalTo, prefetchOnHover, prefetch])
+  }, [tohref, prefetchOnHover, prefetch])
   const onMouseEnter = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
       if (polhEnabled) {
@@ -293,13 +293,14 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
     [prefetchTimeoutRef],
   )
   return {
-    to: finalTo,
+    tohref,
     pointWithLocation,
     wouterLinkProps: {
       ...rest,
       onMouseEnter,
       onMouseLeave,
-      to: finalTo,
+      to,
+      href,
       [specialNavigationOptionsSymbols.prefetchOnHover]: prefetchOnHover,
       [specialNavigationOptionsSymbols.prefetch]: prefetchOnNavigate !== undefined ? prefetchOnNavigate : prefetch,
       [specialNavigationOptionsSymbols.prefetchOnNavigate]: prefetchOnNavigate,
@@ -502,7 +503,7 @@ export const createLink = <
       componentName: 'Link',
     })
 
-    const { wouterLinkProps } = _getWouterLinkProps({ ...rest, to: finalTo })
+    const { wouterLinkProps } = _getWouterLinkProps({ ...rest, ...finalTo })
     return <NativeWouterLink {...wouterLinkProps} />
   }
   return Link
@@ -570,7 +571,7 @@ export const createNavLink = <
     })
     const { pointWithLocation, wouterLinkProps } = _getWouterLinkProps<TBaseLocationHook>({
       ...rest,
-      to: finalTo,
+      ...finalTo,
     })
     const currentLocation = useLocation()
     const route = pointWithLocation?.point.route
@@ -595,8 +596,9 @@ export const createNavLink = <
       if (relation.exact) {
         if (
           currentLocation.origin
-            ? Route0.toAbsLocation(Route0.getLocation(finalTo), currentLocation.origin).href === currentLocation.href
-            : finalTo === currentLocation.hrefRel
+            ? Route0.toAbsLocation(Route0.getLocation(finalTo.tohref), currentLocation.origin).href ===
+              currentLocation.href
+            : finalTo.tohref === currentLocation.hrefRel
         ) {
           return { type: 'exact', exact: true, same: false, ancestor: false, descendant: false, unmatched: false }
         }
@@ -711,7 +713,8 @@ export const createRedirectComponent = <
         ? statusByTaskOrProvided
         : undefined
 
-    const finalTo = _useFinalTo({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { tohref, ...finalTo } = _useFinalTo({
       routes,
       routeName,
       input,
@@ -734,7 +737,7 @@ export const createRedirectComponent = <
           before: beforeByTaskOrProvided,
           after: afterByTaskOrProvided,
         }}
-        to={finalTo}
+        {...finalTo}
       />
     )
   }
