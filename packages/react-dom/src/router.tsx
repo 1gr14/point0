@@ -166,26 +166,40 @@ const _resolveFinalTo = <TRoutes extends RoutesPretty>({
   return { tohref: ginalTo, to: ginalTo, href: undefined }
 }
 
-const _useFinalTo = <TRoutes extends RoutesPretty>({
-  routes,
-  routeName,
-  input,
-  providedTo,
-  providedHref,
-  componentName,
-}: {
-  routes: TRoutes
-  routeName?: string
-  input: Record<string, unknown>
-  providedTo?: string
-  providedHref?: string
-  componentName: 'Link' | 'NavLink' | 'Redirect'
-}): { tohref: string } & ({ to: string; href: undefined } | { to: undefined; href: string }) => {
-  return useMemo(
-    () => _resolveFinalTo({ routes, routeName, input, providedTo, providedHref, componentName }),
-    [routes, routeName, JSON.stringify(input), providedTo, providedHref, componentName],
-  )
+const _getNativeAnchorProps = (props: Record<string, any>): React.ComponentProps<'a'> => {
+  const nativeProps = Object.assign({}, props)
+  delete nativeProps.state
+  delete nativeProps.replace
+  delete nativeProps.tohref
+  delete nativeProps.prefetchOnHover
+  delete nativeProps.prefetch
+  delete nativeProps.prefetchOnNavigate
+  delete nativeProps.before
+  delete nativeProps.after
+  delete nativeProps.status
+  return nativeProps
 }
+
+// const _useFinalTo = <TRoutes extends RoutesPretty>({
+//   routes,
+//   routeName,
+//   input,
+//   providedTo,
+//   providedHref,
+//   componentName,
+// }: {
+//   routes: TRoutes
+//   routeName?: string
+//   input: Record<string, unknown>
+//   providedTo?: string
+//   providedHref?: string
+//   componentName: 'Link' | 'NavLink' | 'Redirect'
+// }): { tohref: string } & ({ to: string; href: undefined } | { to: undefined; href: string }) => {
+//   return useMemo(
+//     () => _resolveFinalTo({ routes, routeName, input, providedTo, providedHref, componentName }),
+//     [routes, routeName, JSON.stringify(input), providedTo, providedHref, componentName],
+//   )
+// }
 
 const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = BrowserLocationHook>(
   props: LinkProps<TBaseLocationHook> & { tohref: string },
@@ -494,7 +508,7 @@ export const createLink = <
       href: providedHref,
       ...rest
     } = props as typeof props & { input?: Record<string, unknown>; to?: string; href?: string }
-    const finalTo = _useFinalTo({
+    const finalTo = _resolveFinalTo({
       routes,
       routeName,
       input,
@@ -503,8 +517,12 @@ export const createLink = <
       componentName: 'Link',
     })
 
-    const { wouterLinkProps } = _getWouterLinkProps({ ...rest, ...finalTo })
-    return <NativeWouterLink {...wouterLinkProps} />
+    if (finalTo.to) {
+      const { wouterLinkProps } = _getWouterLinkProps({ ...rest, ...finalTo })
+      return <NativeWouterLink {...wouterLinkProps} />
+    } else {
+      return <a {..._getNativeAnchorProps(rest)} href={finalTo.tohref} />
+    }
   }
   return Link
 }
@@ -561,7 +579,7 @@ export const createNavLink = <
         to?: string
         href?: string
       }
-    const finalTo = _useFinalTo({
+    const finalTo = _resolveFinalTo({
       routes,
       routeName,
       input,
@@ -648,7 +666,11 @@ export const createNavLink = <
       }
       return { ...wouterLinkProps, className: resolvedClassName }
     }, [wouterLinkProps, resolvedClassName])
-    return <NativeWouterLink {...finalWouterLinkProps} />
+    if (finalTo.to) {
+      return <NativeWouterLink {...finalWouterLinkProps} />
+    } else {
+      return <a {..._getNativeAnchorProps(finalWouterLinkProps)} href={finalTo.tohref} />
+    }
   }
   return NavLink
 }
@@ -714,7 +736,7 @@ export const createRedirectComponent = <
         : undefined
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { tohref, ...finalTo } = _useFinalTo({
+    const { tohref, ...finalTo } = _resolveFinalTo({
       routes,
       routeName,
       input,
