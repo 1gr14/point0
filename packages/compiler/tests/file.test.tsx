@@ -2726,5 +2726,30 @@ describe('CompilerFile', () => {
       expect(result.modified).toBe(true)
       expect(result.code).toContain('react/jsx-dev-runtime')
     })
+
+    // MARKDOWN
+    it('exports frontmatter from mdc files', () => {
+      const compiler = Compiler.create({
+        side: 'client',
+        scope: 'root',
+        mode: 'development',
+      })
+      const result = compiler.compile({
+        file: '/virtual/page.mdc',
+        content: `---
+zxc: 123
+abc: Hello
+---
+
+# Hello from mdc`,
+      })
+
+      expect(result.errors).toEqual([])
+      expect(result.modified).toBe(true)
+      expect(result.code).toContain('export const frontmatter')
+      expect(result.code).toContain('"zxc": 123')
+      expect(result.code).toContain('"abc": "Hello"')
+      expect(result.code).not.toContain('zxc: 123')
+    })
   })
 })

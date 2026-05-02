@@ -1,9 +1,8 @@
 ---
+index: 200
 title: Getting Started
 description: How to create your first Point0 application
 ---
-
-# Getting Started
 
 Run `bunx @point0/create-app@latest my-app` to create a new Point0 application.
 

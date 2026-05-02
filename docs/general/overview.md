@@ -1,9 +1,8 @@
 ---
+index: 100
 title: Overview
 description: Overview of Point0
 ---
-
-# Point0 Overview
 
 Point0 is a framework for building web applications.
 

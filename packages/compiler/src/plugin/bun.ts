@@ -84,6 +84,11 @@ function guessLoader(path: string): Bun.Loader {
   if (filename.endsWith('.toml')) return 'toml'
   if (filename.endsWith('.yaml') || filename.endsWith('.yml')) return 'yaml'
 
+  // MARKDOWN
+  if (filename.endsWith('.md') || filename.endsWith('.mdx') || filename.endsWith('.mdc')) {
+    return 'js'
+  }
+
   if (filename.endsWith('.node')) return 'napi'
   if (filename.endsWith('.wasm')) return 'wasm'
   if (filename.endsWith('.css')) return 'css'
@@ -92,7 +97,6 @@ function guessLoader(path: string): Bun.Loader {
   // Common text-like assets.
   if (
     filename.endsWith('.txt') ||
-    filename.endsWith('.md') ||
     filename.endsWith('.csv') ||
     filename.endsWith('.xml') ||
     filename.endsWith('.svg')

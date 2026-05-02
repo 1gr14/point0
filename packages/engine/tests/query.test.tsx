@@ -3,6 +3,7 @@ import { getQueryPredicate, Point0 } from '@point0/core'
 import { QueryClient } from '@tanstack/react-query'
 import z from 'zod'
 import { createTestThings, waitReturn } from './utils/internal-testing.js'
+import { useState, useEffect } from 'react'
 
 describe('query', () => {
   const createRoot = () =>
@@ -322,6 +323,68 @@ describe('query', () => {
       expect(await fetchPreview(page)).toMatchInlineSnapshot(`
         "
         #page: x=nothing
+        "
+      `)
+    },
+    { retry: 3 },
+  )
+
+  it.concurrent(
+    'can be not enabled',
+    async () => {
+      const root = createRoot()
+      const q = root
+        .lets('query', 'test')
+        .input(z.object({ x: z.number() }))
+        .loader(({ input }) => ({ y: input.x * 2 }))
+        .query()
+      const page = root.lets('page', 'home', '/').page(() => {
+        const [x, setX] = useState<number>(0)
+        useEffect(() => {
+          setTimeout(() => {
+            setX(123)
+          }, 100)
+        }, [])
+        const query = q.useQuery({ x }, { enabled: !!x })
+        return (
+          <div id="page">
+            x={x}, y={query.data?.y ?? 'nothing'}
+          </div>
+        )
+      })
+
+      const { render, fetchPreview, fetchesTale, fetchRecorder } = await createTestThings({
+        ssr: true,
+        points: [root, q, page],
+      })
+      await render(page.route(), async ({ waitContent, tale }) => {
+        await waitContent('#page')
+        expect(await tale()).toMatchInlineSnapshot(`
+          "
+          /
+            #page: x=0, y=nothing
+
+            #page: x=123, y=nothing
+
+            #page: x=123, y=246
+          "
+        `)
+      })
+      expect(await fetchesTale()).toMatchInlineSnapshot(`
+        "
+        query.test (client) < {"x":123}
+        "
+      `)
+
+      fetchRecorder.prune()
+      expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+        "
+        #page: x=0, y=nothing
+        "
+      `)
+      expect(await fetchesTale()).toMatchInlineSnapshot(`
+        "
+        page.home (client) (page) < {}
         "
       `)
     },

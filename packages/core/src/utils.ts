@@ -636,3 +636,12 @@ export const resolveQuery: ResolveQueryFn = (query, resolver) => {
   }
   return resolver?.(isArray ? queries : queries[0])
 }
+
+export const isAbsoluteUrl = (value: string): boolean => {
+  try {
+    new URL(value)
+    return true
+  } catch {
+    return false
+  }
+}

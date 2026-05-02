@@ -859,6 +859,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
 
       const queryClientState = _ss.__POINT0_QUERY_CLIENT__.get().getQueryCache().findAll()
       const suitableMarkers = queryClientState.flatMap((query) => {
+        // it is exists runtime, but types in react query is wrong
+        if ((query.options as any).enabled === false) {
+          return []
+        }
         const parsedQueryKey = Executor.parseQueryKey({
           queryKey: query.queryKey,
           transformer: clientPoints.transformer,

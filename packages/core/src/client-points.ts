@@ -30,6 +30,7 @@ import type {
   ReadyPoint,
   ReadyPointType,
 } from './types.js'
+import { isAbsoluteUrl } from './utils.js'
 
 export class ClientPoints<TError extends ErrorPoint0> {
   manager: PointsManager
@@ -501,7 +502,13 @@ export class ClientPoints<TError extends ErrorPoint0> {
   ):
     | { point: ReadyPointsCollectionRecord | NormalizedLazyPointsCollectionRecord; location: ExactLocation }
     | undefined => {
-    const location = this.routes._.getLocation(href)
+    const hrefNonRel =
+      isAbsoluteUrl(href) || href.startsWith('/')
+        ? href
+        : typeof window !== 'undefined'
+          ? window.location.pathname.split('/').slice(0, -1).join('/') + '/' + href
+          : href
+    const location = this.routes._.getLocation(hrefNonRel)
     if (!location.route) {
       return undefined
     }

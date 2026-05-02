@@ -7065,7 +7065,9 @@ export class Point0<
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
       : []
     if (this._letsReadyPointType === 'layout') {
-      const [layout = () => null] = args as [LayoutSuccessComponentType<any, any, any, any, any, any, any> | undefined]
+      const [layout = ({ children }) => children] = args as [
+        LayoutSuccessComponentType<any, any, any, any, any, any, any> | undefined,
+      ]
       // this._applyComponentDisplayName(layout as React.ComponentType<any>, { suffix: 'LayoutInner' })
       const point = this._continue({
         type: 'layout',

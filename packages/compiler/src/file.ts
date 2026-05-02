@@ -17,6 +17,7 @@ import * as nodeFsAsync from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import prettier from 'prettier'
 import remarkFrontmatter from 'remark-frontmatter'
+import remarkMdxFrontmatter from 'remark-mdx-frontmatter'
 import type { Compiler, CompilerEnvConsts } from './compiler.js'
 import { resolveImporterRule, writeOrCreateVirtualModulePath, type ImporterOptionsParsed } from './importer.js'
 import { CompilerPoint, POINT_METHOD_TO_TYPE_MAP } from './point.js'
@@ -247,7 +248,8 @@ export class CompilerFile<THasContent extends boolean> {
             jsx: false,
             outputFormat: 'program',
             development: true,
-            remarkPlugins: [remarkFrontmatter],
+            // MARKDOWN
+            remarkPlugins: [remarkFrontmatter, [remarkMdxFrontmatter, { name: 'frontmatter' }]],
           })
           const nextContent = String(compiled) as THasContent extends true ? string : undefined
           if (!nextContent) {
