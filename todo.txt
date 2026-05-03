@@ -40,6 +40,8 @@ mcp as comments
 
 
 REFACTOING 3000
+Лоадер только один разрешить
+Дата возвращённая может быть не только объектомно и массивом и чем угодно
 mardown {enabled, options}
 maekdown test that loaders still cutted on client
 Флэт0 должен ли энкодить скобки в серч параметрах?
@@ -51,6 +53,7 @@ maekdown test that loaders still cutted on client
 remove props form related query if not exists
 revert flow of data, it should be clockwisde, so we see latest first
 allow related query in plugins, and just location there
+nor x.x.x bub x:x:x prepaering to pagena names can contain .
 vite 8 (server updates failed, )
 Эвентер кромедата пусть возвращает и Джейсон который логировать удобно
 trace is now terrible for client-only mark, it has starnge ./ in suggestons, also camn not find trace at all (so just not rename @point0/core-client-only, show as is)
@@ -62,6 +65,9 @@ bun dev, on Could not resolve: "@/components/form/hook"., if it can be resolved 
 Убедиться что дев сервера и клиента в разных вкладках работает
 Пейдж поинт вместе стегами должен быть доступен в юз пейдж стейт
 Опробовать параллельные тесты бана
+Добавить рантайм ошибки для запрещённых методов поинтов
+Респонс эффекты и реквест тоже сделать проксифайнутыми и засунуть их в энв
+клинет дев логи всё же выводить с припиской [client:dev]
 index.html on changes and reload should be getted new
 Вайт по умолчанию в криэйт апп
 allow throw error from with and throw 'loading' and trhow redirect()
@@ -74,8 +80,10 @@ resolve without arg, should just resolve to data, resolve with false, should jus
 vite config as fn should accept also compilerPlugin so we can place it in correct place
 В роут0 добавить возможность выбора конкретной строки в параметр
 ? Релейтед квери должна мочь быть какой-то комбайнед квери (мы можем передать туда кастомню кверю, и она должна подхватиться)
+? fix order in create-app of env validation
 
 FINISH
+Зафиксировать версии в старт0 и девпонте
 Проверка под линукс и виндоус
 pipeline
 types.ts file thet reexport only needed types

@@ -12392,7 +12392,7 @@ export class Point0<
           p.name === this.name &&
           this._getTransformer().stringify(p.input) === this._getTransformer().stringify(inputRaw),
       )
-      if (scrollPositionRestorePolicy !== false) {
+      if (scrollPositionRestorePolicy !== false && prevLocation) {
         if (scrollPositionRestorePolicy === null) {
           this._getScrollPositionSetter()({ x: 0, y: 0 })
         }
