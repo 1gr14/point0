@@ -52,9 +52,9 @@
     "postpublish": "bun ../../scripts/restore-package.ts"
   },
   "peerDependencies": {
-    "@point0/core": "workspace:*",
-    "@point0/engine": "workspace:*",
-    "safe-stable-stringify": "catalog:"
+    "@point0/core": "file:/Users/iserdmi/cc/opensource/devp0nt/point0-npm/core/package.tgz",
+    "@point0/engine": "file:/Users/iserdmi/cc/opensource/devp0nt/point0-npm/engine/package.tgz",
+    "safe-stable-stringify": "^2.5.0"
   },
   "devDependencies": {
     "@scalar/types": "^0.7.6",
@@ -62,7 +62,7 @@
     "@types/node": "^20.0.0",
     "esbuild-fix-imports-plugin": "^1.0.22",
     "tsup": "^8.0.0",
-    "typescript": "catalog:"
+    "typescript": "^5.9.3"
   },
   "publishConfig": {
     "access": "restricted"

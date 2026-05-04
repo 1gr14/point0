@@ -4331,7 +4331,7 @@ export class Point0<
     }) as never
   }
 
-  private static readonly _prevPageScrollPositions: Array<{ name: PointName; input: InputRaw; x: number; y: number }> =
+  private static readonly _prevPageScrollPositions: Array<{ name: PointName; pathname: string; x: number; y: number }> =
     []
 
   // middlewares
@@ -12382,17 +12382,22 @@ export class Point0<
     }, [props, location])
 
     const { prevLocation, status } = useNavigationTransitionState()
+    const pathname = location.pathname
+    const prevPathname = React.useRef<string | null>(null)
     React.useEffect(() => {
       if (status !== 'idle') {
         return
       }
       const scrollPositionRestorePolicy = this._getScrollPositionRestorePolicy()({ prevLocation })
       const prevPageScrollPosition = Point0._prevPageScrollPositions.find(
-        (p) =>
-          p.name === this.name &&
-          this._getTransformer().stringify(p.input) === this._getTransformer().stringify(inputRaw),
+        (p) => p.name === this.name && p.pathname === pathname,
       )
-      if (scrollPositionRestorePolicy !== false && prevLocation) {
+      if (
+        scrollPositionRestorePolicy !== false &&
+        prevLocation &&
+        prevLocation.pathname !== pathname &&
+        prevPathname.current !== pathname
+      ) {
         if (scrollPositionRestorePolicy === null) {
           this._getScrollPositionSetter()({ x: 0, y: 0 })
         }
@@ -12404,6 +12409,7 @@ export class Point0<
           }
         }
       }
+      prevPathname.current = pathname
       return () => {
         const currentPageScrollPosition = this._getScrollPositionGetter()()
         if (prevPageScrollPosition) {
@@ -12412,13 +12418,13 @@ export class Point0<
         } else {
           Point0._prevPageScrollPositions.push({
             name: this.name,
-            input: inputRaw,
+            pathname,
             x: currentPageScrollPosition?.x ?? 0,
             y: currentPageScrollPosition?.y ?? 0,
           })
         }
       }
-    }, [this.name, inputRaw, prevLocation, status])
+    }, [this.name, pathname, prevLocation, status, prevPathname])
 
     return this._applyWrappers(
       this._Mountable({

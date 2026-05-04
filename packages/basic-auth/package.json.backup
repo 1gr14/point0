@@ -1,5 +1,5 @@
 {
-  "name": "@point0/openapi",
+  "name": "@point0/basic-auth",
   "version": "0.1.0",
   "license": "MIT",
   "author": {
@@ -10,7 +10,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/devp0nt/point0.git",
-    "directory": "packages/openapi"
+    "directory": "packages/basic-auth"
   },
   "bugs": {
     "url": "https://github.com/devp0nt/point0/issues"
@@ -47,28 +47,22 @@
     "typesgo": "tsgo --noEmit -p tsconfig.build.json",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "pack:dist": "rimraf ../../packages-dist-npm && bun ../../scripts/transform-package-for-publish.ts && mkdir -p ../../packages-dist-npm/openapi && npm pack --pack-destination ../../packages-dist-npm/openapi --silent && (cd ../../packages-dist-npm/openapi && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz) && bun ../../scripts/restore-package.ts",
+    "pack:dist": "rimraf ../../packages-dist-npm && bun ../../scripts/transform-package-for-publish.ts && mkdir -p ../../packages-dist-npm/basic-auth && npm pack --pack-destination ../../packages-dist-npm/basic-auth --silent && (cd ../../packages-dist-npm/basic-auth && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz) && bun ../../scripts/restore-package.ts",
     "prepublishOnly": "bun ../../scripts/transform-package-for-publish.ts",
     "postpublish": "bun ../../scripts/restore-package.ts"
   },
   "peerDependencies": {
-    "@point0/core": "file:/Users/iserdmi/cc/opensource/devp0nt/point0-npm/core/package.tgz",
-    "@point0/engine": "file:/Users/iserdmi/cc/opensource/devp0nt/point0-npm/engine/package.tgz",
-    "openapi-types": "^12.0.0",
-    "safe-stable-stringify": "^2.5.0",
-    "@scalar/types": "^0.7.6",
-    "@types/swagger-ui": "^5.32.0"
+    "@point0/core": "workspace:*",
+    "@point0/engine": "workspace:*",
+    "safe-stable-stringify": "catalog:"
   },
   "devDependencies": {
     "@scalar/types": "^0.7.6",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
-    "@types/swagger-ui": "^5.32.0",
-    "@point0/basic-auth": "file:/Users/iserdmi/cc/opensource/devp0nt/point0-npm/basic-auth/package.tgz",
     "esbuild-fix-imports-plugin": "^1.0.22",
-    "openapi-types": "^12.0.0",
     "tsup": "^8.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "catalog:"
   },
   "publishConfig": {
     "access": "restricted"

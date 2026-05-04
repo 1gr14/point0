@@ -57,14 +57,14 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.2.0",
-    "commander": "catalog:"
+    "commander": "^14.0.2"
   },
   "devDependencies": {
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
     "esbuild-fix-imports-plugin": "^1.0.22",
     "tsup": "^8.0.0",
-    "typescript": "catalog:"
+    "typescript": "^5.9.3"
   },
   "publishConfig": {
     "access": "restricted"

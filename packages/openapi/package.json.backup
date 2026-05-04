@@ -52,10 +52,10 @@
     "postpublish": "bun ../../scripts/restore-package.ts"
   },
   "peerDependencies": {
-    "@point0/core": "file:/Users/iserdmi/cc/opensource/devp0nt/point0-npm/core/package.tgz",
-    "@point0/engine": "file:/Users/iserdmi/cc/opensource/devp0nt/point0-npm/engine/package.tgz",
-    "openapi-types": "^12.0.0",
-    "safe-stable-stringify": "^2.5.0",
+    "@point0/core": "workspace:*",
+    "@point0/engine": "workspace:*",
+    "openapi-types": "catalog:",
+    "safe-stable-stringify": "catalog:",
     "@scalar/types": "^0.7.6",
     "@types/swagger-ui": "^5.32.0"
   },
@@ -64,11 +64,11 @@
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
     "@types/swagger-ui": "^5.32.0",
-    "@point0/basic-auth": "file:/Users/iserdmi/cc/opensource/devp0nt/point0-npm/basic-auth/package.tgz",
+    "@point0/basic-auth": "workspace:*",
     "esbuild-fix-imports-plugin": "^1.0.22",
-    "openapi-types": "^12.0.0",
+    "openapi-types": "catalog:",
     "tsup": "^8.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "catalog:"
   },
   "publishConfig": {
     "access": "restricted"

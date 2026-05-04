@@ -8,7 +8,7 @@ Point0 is a framework for building web applications, but more importantly it is 
 
 The core idea is simple: use one opinionated foundation, keep your primitives explicit, and make the happy path fast enough that people avoid ad-hoc workarounds. Over time this pays off in the places that matter most, like onboarding new developers, debugging production issues, and shipping features that touch multiple layers of the stack. You can start small with only a couple of routes and a tiny API, then scale the same project into a larger system without introducing a second framework just to fill gaps.
 
-Or right now you can [createa new Point0 project](./getting-started) and start building your application.
+Or right now you can [createa new Point0 project](getting-started) and start building your application.
 
 ## Features
 
