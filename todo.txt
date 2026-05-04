@@ -40,6 +40,7 @@ mcp as comments
 
 
 REFACTOING 3000
+normalize scroll restoration (it is trash now)
 Лоадер только один разрешить
 Дата возвращённая может быть не только объектомно и массивом и чем угодно
 Запретить комбайнед квери

@@ -65,27 +65,27 @@
     "postpublish": "bun ../../scripts/restore-package.ts"
   },
   "peerDependencies": {
-    "@devp0nt/route0": "^1.0.1",
-    "@point0/core": "file:/Users/iserdmi/cc/opensource/devp0nt/point0-npm/core/package.tgz",
-    "react": "^19.2.2",
-    "react-dom": "^19.2.2",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2",
-    "wouter": "^3.7.1"
+    "@devp0nt/route0": "catalog:",
+    "@point0/core": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "wouter": "catalog:"
   },
   "devDependencies": {
-    "react": "^19.2.2",
-    "react-dom": "^19.2.2",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2",
-    "@devp0nt/route0": "^1.0.1",
-    "@point0/core": "file:/Users/iserdmi/cc/opensource/devp0nt/point0-npm/core/package.tgz",
-    "wouter": "^3.7.1",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@devp0nt/route0": "catalog:",
+    "@point0/core": "workspace:*",
+    "wouter": "catalog:",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
     "esbuild-fix-imports-plugin": "^1.0.22",
     "tsup": "^8.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "catalog:"
   },
   "publishConfig": {
     "access": "restricted"
