@@ -6,14 +6,8 @@ remarkplugins
 ------
 
 
-devp0nt
-docs
-
 refactoring
-start0
-
 finishing
-
 🚀 launch
 
 Sponsors
@@ -84,6 +78,7 @@ allow throw error from with and throw 'loading' and trhow redirect()
 Мсп должен всегда читать свежую мета
 В вайт сср сразу добавить фикс эррор тру
 in example rename file navigate to navigation
+Респонс тоже может вернуть форм дата если там бинари и всё такое
 ? exactClassName → activeClassName
 resolve without arg, should just resolve to data, resolve with false, should just wait for loading
 vite config as fn should accept also compilerPlugin so we can place it in correct place
