@@ -43,6 +43,12 @@ normalize scroll restoration (it is trash now)
 Криэйт квери клиент должен сразу принимать нужные опции а не функцию возвращающую объект
 Резолв пусть принимает эни квери лайк штуку
 allowBabelPlugins in compiler
+fix superstore clientServerTransferredSsr for custom values (maybe have simplified SsrStore?)
+respect two client names in logs
+SsrStore (or even usual store), on change items we still should continue rernder untill nothing in ssr store changed
+layout Page404 allow elemnt not component
+useNavLink should return state of path
+usePageLoader → return same as useQuery for page, needed to get page data in layout
 add babel-plugin-react-compiler to all examples
 mardown {enabled, options}
 maekdown test that loaders still cutted on client
@@ -112,7 +118,6 @@ BUN-ISSUE
 
 
 === LATER ===
-https://tsrx.dev/getting-started
 
 ---
 ? Сет кукис и кукис надо синхронизировать
@@ -121,6 +126,7 @@ fetchOptions также принимают fetchFn
 when electrobun allow passing replaceFetch to point
 ? mirror generator
 ? queryKey: and do not stringify input
+? https://tsrx.dev/getting-started
 
 
 

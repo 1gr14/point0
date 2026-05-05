@@ -111,5 +111,21 @@ describe('ClientPoints', () => {
         },
       ])
     })
+
+    it('layout route regex includes nested pages', () => {
+      const base = Point0.lets('root', 'base').root()
+      const layout1 = base.lets('layout', 'layout1', '/layout1').layout(getFC())
+      const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(getFC())
+      const points = ClientPoints.createFromDefintion([
+        base,
+        layout1.lets('page', 'layout-page', '/layout-page').page(getFC()),
+        layout2.lets('page', 'nested-page', '/nested-page').page(getFC()),
+      ])
+
+      const layoutRecord = points.pagesTree[0]
+
+      expect(layoutRecord.pagesRoutesRegex.test('/layout1/layout-page')).toBe(true)
+      expect(layoutRecord.pagesRoutesRegex.test('/layout1/layout2/nested-page')).toBe(true)
+    })
   })
 })

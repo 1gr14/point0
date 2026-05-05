@@ -292,16 +292,22 @@ export class ClientPoints<TError extends ErrorPoint0> {
   }): PagesTree => {
     const pointsCollection = points
     const pagesTree: PagesTree = []
+    const getNestedPageNames = (record: PagesTreeSourceRecord): string[] => [
+      ...record.pages,
+      ...(record.nested?.flatMap(getNestedPageNames) ?? []),
+    ]
     for (const pagesTreeSourceRecord of pagesTreeSource) {
       const layoutRecord = pointsCollection.find((l) => l.type === 'layout' && l.name === pagesTreeSourceRecord.layout)
       const pagesRecords = pointsCollection.filter(
         (p) => p.type === 'page' && pagesTreeSourceRecord.pages.includes(p.name),
       )
-      const pagesRoutesRegexStrings = pagesRecords.map((p) => {
+      const pageNamesDeep = getNestedPageNames(pagesTreeSourceRecord)
+      const pagesRecordsDeep = pointsCollection.filter((p) => p.type === 'page' && pageNamesDeep.includes(p.name))
+      const pagesRoutesRegexStrings = pagesRecordsDeep.map((p) => {
         const route = p.route as AnyRoute
-        return `(?:${route.regexBaseString})(?=/|$)`
+        return `(?:${route.regexBaseString})`
       })
-      const pagesRoutesRegex = new RegExp(`^(?:${pagesRoutesRegexStrings.join('|')})`)
+      const pagesRoutesRegex = new RegExp(`^(?:${pagesRoutesRegexStrings.join('|')})$`)
       const pagesTreeRecord: PagesTreeRecord = {
         Layout: layoutRecord?.FC as React.ComponentType<{ children: React.ReactNode }> | undefined,
         layoutName: layoutRecord?.name,

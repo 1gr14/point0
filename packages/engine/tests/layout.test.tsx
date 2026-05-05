@@ -279,6 +279,88 @@ describe('layout', () => {
     `)
   })
 
+  it('pages without layout not breaks pages with layout (corner case)', async () => {
+    const root = createRoot()
+    const layout1 = root.lets('layout', 'layout1').layout(({ children }) => {
+      return <div id="layout1">{children}</div>
+    })
+    const layout2 = layout1
+      .lets('layout', 'layout2', '/deep/:id')
+      .loader(({ params }) => ({ x: params.id }))
+      .layout(({ data, children, location }) => {
+        return (
+          <div id="layout2">
+            <div id="layout-route">{location.route}</div>
+            <div id="layout-href">{location.hrefRel}</div>
+            <div id="layout-params">{ymlifyline(location.params)}</div>
+            <div id="layout-input">x={data.x}</div>
+            {children}
+          </div>
+        )
+      })
+    const page = layout2.lets('page', 'home', '/').page(({ location }) => {
+      const value = layout2.useValue()
+      return (
+        <div id="page">
+          <div id="page-route">{location.route}</div>
+          <div id="page-href">{location.hrefRel}</div>
+          <div id="page-params">{ymlifyline(location.params)}</div>
+          <div id="layout-value">x={value.x}</div>
+        </div>
+      )
+    })
+    const pageNoLayout = root.lets('page', 'bad', '/deep').page(() => {
+      return <div id="page-no-layout" />
+    })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({
+      ssr: true,
+      points: [root, layout1, layout2, page, pageNoLayout],
+    })
+    await render(page.route({ id: 'zxc' }), async ({ tale, waitContent }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /deep/zxc
+          #layout1:
+            #loading: ...
+
+          #layout1:
+            #layout2:
+              #layout-route: /deep/:id
+              #layout-href: /deep/zxc
+              #layout-params: id: zxc
+              #layout-input: x=zxc
+              #page:
+                #page-route: /deep/:id
+                #page-href: /deep/zxc
+                #page-params: id: zxc
+                #layout-value: x=zxc
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      layout.layout2 (client) < {"id":"zxc"}
+      "
+    `)
+    expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
+      "
+      #layout1:
+        #layout2:
+          #layout-route: /deep/:id
+          #layout-href: /deep/zxc
+          #layout-params: id: zxc
+          #layout-input: x=zxc
+          #page:
+            #page-route: /deep/:id
+            #page-href: /deep/zxc
+            #page-params: id: zxc
+            #layout-value: x=zxc
+      "
+    `)
+  })
+
   it('weak layout input by route includes page params', async () => {
     const root = createRoot()
     const layout = root
