@@ -34,6 +34,10 @@ mcp as comments
 
 
 REFACTOING 3000
+compiler babel plugins
+И добавить хелпер сетСертч, котрый и так есть и из пейджа ещё возвращается тпизированный
+Добавить хелпер гет локейшен
+Компилер настройки вырезать из энжины после билда
 normalize scroll restoration (it is trash now)
 Лоадер только один разрешить
 Дата возвращённая может быть не только объектомно и массивом и чем угодно
@@ -43,14 +47,21 @@ normalize scroll restoration (it is trash now)
 Криэйт квери клиент должен сразу принимать нужные опции а не функцию возвращающую объект
 Резолв пусть принимает эни квери лайк штуку
 allowBabelPlugins in compiler
+.infiniteQuery({}) should have nice autocompletion, ow it is never until correct, (В Инфинити скрол опции ошибку можно добавить как реквайред поле с эрором)
 fix superstore clientServerTransferredSsr for custom values (maybe have simplified SsrStore?)
 respect two client names in logs
-SsrStore (or even usual store), on change items we still should continue rernder untill nothing in ssr store changed
+SsrStore (or even usual store), on change items we still should continue rernder untill nothing in ssr store changed, and also on change it will be applied as value only on next render, И когда респонс кукисы меняются тоже делаем ререндер, !!!ССР стор это кукистор с максэйдж 0!!!
 layout Page404 allow elemnt not component
 useNavLink should return state of path
+falt0 empty strings also should be omited
+ensure navigate to not navigate to same url twice
+usePageState should also give us layouts list as string, and give us page name as string, so we can customize error page absed on this info
 usePageLoader → return same as useQuery for page, needed to get page data in layout
 add babel-plugin-react-compiler to all examples
 mardown {enabled, options}
+blue|green|current server dev port
+Из компилера не учитывать импорты в которых только тайп при импорт протекшене
+allow link accept children as react node array
 maekdown test that loaders still cutted on client
 Флэт0 должен ли энкодить скобки в серч параметрах?
 Компилер должен просить только мдыкс файлы, а обычные мд не должен
@@ -91,6 +102,8 @@ vite config as fn should accept also compilerPlugin so we can place it in correc
 В роут0 добавить возможность выбора конкретной строки в параметр
 ? Релейтед квери должна мочь быть какой-то комбайнед квери (мы можем передать туда кастомню кверю, и она должна подхватиться)
 ? fix order in create-app of env validation
+? Шема мержер хелпер (но у нас инпут постоянно вырезается, лучше его отдельно держать)
+? В энжин добавить онДиспоз
 
 FINISH
 Зафиксировать версии в старт0 и девпонте

@@ -204,6 +204,13 @@ export const toKebabCase = (str: string): string => {
   return words.map((w) => w.toLowerCase()).join('-')
 }
 
+export const toHumanCase = (str: string): string => {
+  const words = splitWords(str)
+  if (words.length === 0) return ''
+
+  return words.map((w) => toCapitalized(w.toLowerCase())).join(' ')
+}
+
 export const generateId = (): string => {
   try {
     // for server and modern clients

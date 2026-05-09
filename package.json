@@ -29,7 +29,7 @@
       "superjson": "^2.2.5",
       "@devp0nt/error0": "^1.0.0",
       "@devp0nt/route0": "^1.0.1",
-      "@devp0nt/flat0": "^1.1.3",
+      "@devp0nt/flat0": "^1.1.5",
       "arktype": "^2.2.0",
       "wouter": "^3.7.1",
       "@types/bun": "^1.3.12",

@@ -43,8 +43,19 @@ import {
   useRouter as useWouterRouter,
   useSearchParams as useWouterSearchParams,
 } from 'wouter'
-import type { AroundNavHandler, BaseLocationHook, HookNavigationOptions, NavigationalProps, SsrContext } from 'wouter'
-import { navigate as browserNavigate, useBrowserLocation } from 'wouter/use-browser-location'
+import type {
+  AroundNavHandler,
+  BaseLocationHook,
+  BaseSearchHook,
+  HookNavigationOptions,
+  NavigationalProps,
+  SsrContext,
+} from 'wouter'
+import {
+  navigate as browserNavigate,
+  useBrowserLocation,
+  useSearch as useBrowserSearch,
+} from 'wouter/use-browser-location'
 import type { BrowserLocationHook } from 'wouter/use-browser-location'
 
 type AsChildProps<ComponentProps, DefaultElementProps> =
@@ -134,7 +145,6 @@ const _resolveFinalTo = <TRoutes extends RoutesPretty>({
   input,
   providedTo,
   providedHref,
-  componentName,
 }: {
   routes: TRoutes
   routeName?: string
@@ -150,16 +160,11 @@ const _resolveFinalTo = <TRoutes extends RoutesPretty>({
     return { tohref: providedHref, to: undefined, href: providedHref }
   }
   if (routeName === undefined) {
-    log({
-      level: 'error',
-      category: ['wouter'],
-      message: `routeName is required for ${componentName} without to or href`,
-    })
     return { tohref: '#', to: '#', href: undefined }
   }
   const route = routes[routeName]
   if (!route) {
-    log({ level: 'error', category: ['wouter'], message: `Route "${routeName}" not found` })
+    log({ level: 'error', category: ['wouter'], error: new Error(`Route "${routeName}" not found`) })
     return { tohref: '#', to: '#', href: undefined }
   }
   const ginalTo = route.get(input)
@@ -488,10 +493,10 @@ export const createLink = <
   function Link(
     props:
       | LinkRouteProps
-      | ({ to: string } & LinkAsChildProps &
+      | ({ to?: string; href?: undefined } & LinkAsChildProps &
           HookNavigationOptions<TBaseLocationHook> &
           SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>>)
-      | ({ href: string } & LinkAsChildProps &
+      | ({ href?: string; to?: undefined } & LinkAsChildProps &
           HookNavigationOptions<TBaseLocationHook> &
           SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>>),
   ): React.ReactElement
@@ -501,13 +506,7 @@ export const createLink = <
     route?: string
     input?: Record<string, unknown>
   }): React.ReactElement {
-    const {
-      route: routeName,
-      input = {},
-      to: providedTo,
-      href: providedHref,
-      ...rest
-    } = props as typeof props & { input?: Record<string, unknown>; to?: string; href?: string }
+    const { route: routeName, input = {}, to: providedTo, href: providedHref, ...rest } = props
     const finalTo = _resolveFinalTo({
       routes,
       routeName,
@@ -832,6 +831,7 @@ export const createRouter = <
   pagesTree,
   layouts,
   hook = useBrowserLocation,
+  searchHook = hook.searchHook ?? useBrowserSearch,
   navigate: adapterNavigate = browserNavigate,
   ErrorClass,
   forceRerender,
@@ -848,6 +848,7 @@ export const createRouter = <
   pagesTree?: PagesTree
   layouts?: ClientPointsLayouts
   hook?: BaseLocationHook
+  searchHook?: BaseSearchHook
   navigate?: AdapterNavigateFn
   ErrorClass?: ClassLikeError0<ErrorPoint0>
   forceRerender?: boolean
@@ -952,7 +953,13 @@ export const createRouter = <
         }, [])
 
     return (
-      <NativeWouterRouter {...wouterSsrProps} hook={hook} aroundNav={aroundNav} ssrContext={ssrContext}>
+      <NativeWouterRouter
+        {...wouterSsrProps}
+        hook={hook}
+        searchHook={searchHook}
+        aroundNav={aroundNav}
+        ssrContext={ssrContext}
+      >
         <NavigationContextProvider
           useAdapterLocation={useAdapterLocation}
           ssrLocation={ssrLocation}
@@ -1029,6 +1036,7 @@ export const createNavigation = <
   pagesTree,
   layouts,
   hook = useBrowserLocation as TBaseLocationHook,
+  searchHook = hook.searchHook ?? useBrowserSearch,
   ErrorClass = ErrorPoint0 as unknown as TErrorClass,
   navigate: adapterNavigate = browserNavigate as TAdapterNavigateFn,
   forceRerender = false,
@@ -1042,6 +1050,7 @@ export const createNavigation = <
   pagesTree?: PagesTree
   layouts?: ClientPointsLayouts
   hook?: TBaseLocationHook
+  searchHook?: BaseSearchHook
   ErrorClass?: TErrorClass
   navigate?: TAdapterNavigateFn
   forceRerender?: boolean
@@ -1064,6 +1073,7 @@ export const createNavigation = <
       pagesTree,
       layouts,
       hook,
+      searchHook,
       navigate: adapterNavigate,
       ErrorClass,
       forceRerender,

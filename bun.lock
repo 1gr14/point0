@@ -594,7 +594,7 @@
   },
   "catalog": {
     "@devp0nt/error0": "^1.0.0",
-    "@devp0nt/flat0": "^1.1.3",
+    "@devp0nt/flat0": "^1.1.5",
     "@devp0nt/route0": "^1.0.1",
     "@sinclair/typebox": "^0.34.48",
     "@tanstack/query-core": "^5.0.0",
@@ -889,7 +889,7 @@
 
     "@devp0nt/error0": ["@devp0nt/error0@1.0.0", "", {}, "sha512-PODfADkTC1zIDg+M9koAKnaZaRTUOhHOZBWYuPiYgSi/+nACDwZmMnh15C/EgD7T0Zt7c2brXvc5FlK2JrYCbA=="],
 
-    "@devp0nt/flat0": ["@devp0nt/flat0@1.1.3", "", {}, "sha512-yL2mbro3JSuGNxCRf/6+pGIl/kXRjLFppy0EBM1lFbcdXIjimXDiHJOz4tySCCipX10i/QEnFB5lGr7iZvoVkw=="],
+    "@devp0nt/flat0": ["@devp0nt/flat0@1.1.5", "", {}, "sha512-yiv0jnwp2h7ZODhCw1HQFEE/+WPVKecPTeNw5aO/GAgPZXdWjNLWp1nSu/ulADABSJF0ByFO/c7cvCUDssDv7Q=="],
 
     "@devp0nt/route0": ["@devp0nt/route0@1.0.1", "", { "peerDependencies": { "@devp0nt/flat0": "^1.1.1", "@standard-schema/spec": "^1.0.0" }, "optionalPeers": ["@standard-schema/spec"] }, "sha512-q28qdh1KbzbNQH56znf5cxA7CuKuPKtTjoyzRSxq8mwqvNqElBMIFALYa4WGvBrdWReTGJJtbDnFtN1NYv+7ow=="],
 
