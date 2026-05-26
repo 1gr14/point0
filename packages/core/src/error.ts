@@ -1,3 +1,4 @@
+import { _point0_env } from './env.js'
 import { RedirectTask } from './redirect.js'
 
 export class ErrorPoint0 extends Error {
@@ -44,7 +45,7 @@ export class ErrorPoint0 extends Error {
       configurable: false,
     })
     if (
-      process.env.NODE_ENV !== 'production' &&
+      !_point0_env.build.was &&
       typeof (globalThis as unknown as Record<string, unknown>).__ERROR0_FIX_STACKTRACE__ === 'function'
     ) {
       try {
@@ -59,7 +60,7 @@ export class ErrorPoint0 extends Error {
       return error
     }
     if (
-      process.env.NODE_ENV !== 'production' &&
+      !_point0_env.build.was &&
       typeof (globalThis as unknown as Record<string, unknown>).__ERROR0_FIX_STACKTRACE__ === 'function'
     ) {
       try {

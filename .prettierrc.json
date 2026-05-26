@@ -1,10 +1,14 @@
 {
+  "plugins": ["prettier-plugin-jsdoc"],
   "$schema": "https://json.schemastore.org/prettierrc",
   "singleQuote": true,
   "semi": false,
   "printWidth": 120,
   "trailingComma": "all",
   "arrowParens": "always",
+  "proseWrap": "always",
+  "jsdocCapitalizeDescription": false,
+  "jsdocKeepUnParseAbleExampleIndent": true,
   "overrides": [
     {
       "files": ["*.jsonc", "*.json"],

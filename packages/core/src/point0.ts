@@ -10228,6 +10228,19 @@ export class Point0<
         input,
         error: undefined,
         output: undefined,
+        redirect: undefined,
+      }
+      const handleRedirect = async (redirect: RedirectTask) => {
+        const redirectEventData = {
+          ...eventData,
+          error: undefined,
+          output: undefined,
+          redirect,
+        }
+        this._emit('pointMutationSettled', redirectEventData)
+        this._emit('pointMutationSuccess', redirectEventData)
+        await getNavigationHelpers().navigate.to(redirect.to, redirect.options)
+        return redirect as never as FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
       }
       this._emit('pointMutationStart', eventData)
       try {
@@ -10242,6 +10255,9 @@ export class Point0<
           }
           return undefined
         })()
+        if (serverFetchResult?.redirect) {
+          return await handleRedirect(serverFetchResult.redirect)
+        }
         if (serverFetchResult?.error) {
           throw serverFetchResult.error
         }
@@ -10266,6 +10282,9 @@ export class Point0<
         return serverFetchResult.output as never as FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
       } catch (error) {
         const error0 = this._Error.from(error)
+        if (error0.redirect) {
+          return await handleRedirect(error0.redirect)
+        }
         this._emit('pointMutationSettled', { ...eventData, error: error0 })
         this._emit('pointMutationError', { ...eventData, error: error0 })
         throw error0

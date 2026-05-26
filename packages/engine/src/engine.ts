@@ -29,6 +29,7 @@ import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
 import { FilesWatcher } from './watcher.js'
+import type { PointsDefinitionSource } from '@point0/core'
 
 export class Engine<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -45,6 +46,7 @@ export class Engine<
   buildWatchGlob: string[]
   serverDevWatchGlob: string[]
   cwd: string
+  wasBuilt: boolean
 
   private readonly __POINT0_ENGINE__ = true as const
 
@@ -59,6 +61,7 @@ export class Engine<
     buildWatchGlob: string[]
     serverDevWatchGlob: string[]
     cwd: string
+    wasBuilt: boolean
   }) {
     this.clients = input.clients as TPrepared extends true
       ? Array<EngineClient<true, TError>>
@@ -74,6 +77,7 @@ export class Engine<
     this.buildWatchGlob = input.buildWatchGlob
     this.serverDevWatchGlob = input.serverDevWatchGlob
     this.cwd = input.cwd
+    this.wasBuilt = input.wasBuilt
   }
 
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
@@ -144,6 +148,7 @@ export class Engine<
       buildWatchGlob: parsedOptions.general.buildWatchGlob,
       serverDevWatchGlob: parsedOptions.server.devWatchGlob,
       cwd: parsedOptions.general.cwd,
+      wasBuilt: parsedOptions.general.itWasBuilt,
     })
   }
 
@@ -266,7 +271,7 @@ export class Engine<
               .filter((entryFile) => entriesFiles.includes(entryFile))
               .map((entryFile) => {
                 return Bun.spawn({
-                  cmd: ['bun', 'run', ...(watch ? ['--watch'] : []), ...bunRunArgs, entryFile],
+                  cmd: ['bun', 'run', '--no-orphans', ...(watch ? ['--watch'] : []), ...bunRunArgs, entryFile],
                   env: {
                     ...process.env,
                     POINT0_PREVENT_CLIENT_DEV_SERVER: 'true',
@@ -326,11 +331,13 @@ export class Engine<
       ? [
           options?: {
             requiredCtx?: TRequiredCtx
+            points?: PointsDefinitionSource<TRequiredCtx, TError>
           } & Partial<Serve.Options<any, any>>,
         ]
       : [
           options: {
             requiredCtx: TRequiredCtx
+            points?: PointsDefinitionSource<TRequiredCtx, TError>
           } & Partial<Serve.Options<any, any>>,
         ]
   ): Promise<void> {

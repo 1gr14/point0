@@ -487,13 +487,26 @@ export const getLocation = <TRouteDefinition extends AnyRouteOrDefinition = AnyR
   return location as ExactLocation<TRouteDefinition> | UnknownLocation
 }
 
+const isSameNavigationLocation = (left: AnyLocation, right: AnyLocation) => {
+  return left.href && right.href ? left.href === right.href : left.hrefRel === right.hrefRel
+}
+
 export const useOnNavigate = (fn: UseOnNavigateFn) => {
   const ctx = useNavigationTransitionState()
 
   const prevLocationRef = useRef(ctx.currentLocation)
-  const nextLocationRef = useRef(ctx.nextLocation)
+  const activeNextLocationRef = useRef<AnyLocation | null>(null)
   const cleanupFnRef = useRef<(() => void) | null>(null)
-  const [isNavigating, setIsNavigating] = useState(false)
+
+  const cleanupActiveNavigation = ({ commitNextLocation }: { commitNextLocation: boolean }) => {
+    const activeNextLocation = activeNextLocationRef.current
+    cleanupFnRef.current?.()
+    cleanupFnRef.current = null
+    activeNextLocationRef.current = null
+    if (commitNextLocation && activeNextLocation) {
+      prevLocationRef.current = activeNextLocation
+    }
+  }
 
   useEffect(() => {
     if (!ctx.nextLocation) {
@@ -502,31 +515,30 @@ export const useOnNavigate = (fn: UseOnNavigateFn) => {
 
     const prevLocation = prevLocationRef.current
     const nextLocation = ctx.nextLocation
-    if (
-      prevLocation.href && nextLocation.href
-        ? prevLocation.href === nextLocation.href
-        : prevLocation.hrefRel === nextLocation.hrefRel
-    ) {
+    const activeNextLocation = activeNextLocationRef.current
+    if (isSameNavigationLocation(prevLocation, nextLocation)) {
+      return
+    }
+    if (activeNextLocation && isSameNavigationLocation(activeNextLocation, nextLocation)) {
       return
     }
 
+    cleanupActiveNavigation({ commitNextLocation: false })
     const cleanup = fn({ prevLocation, nextLocation })
     cleanupFnRef.current = typeof cleanup === 'function' ? cleanup : null
-    nextLocationRef.current = nextLocation
-    setIsNavigating(true)
+    activeNextLocationRef.current = nextLocation
   }, [ctx.nextLocation])
 
   useEffect(() => {
-    if (!isNavigating || !nextLocationRef.current) {
+    if (ctx.status !== 'idle' || !activeNextLocationRef.current) {
       return
     }
-    if (ctx.status === 'idle') {
-      cleanupFnRef.current?.()
-      setIsNavigating(false)
-      cleanupFnRef.current = null
-      prevLocationRef.current = nextLocationRef.current
-    }
-  }, [ctx.status, isNavigating])
+    cleanupActiveNavigation({ commitNextLocation: true })
+  }, [ctx.status])
+
+  useEffect(() => () => {
+    cleanupActiveNavigation({ commitNextLocation: false })
+  }, [])
 }
 
 export const useIsNavigating = (): boolean => {

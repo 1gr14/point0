@@ -31,7 +31,7 @@ export const getFetch = ({ scope }: { scope?: string | string[] } = {}): RichFet
     const __POINT0_FETCH_FN__ = superstore.getItem('__POINT0_FETCH_FN__')?.getWeak() as RichFetchFn | undefined
     if (!__POINT0_FETCH_FN__) {
       throw new Error(
-        `Fetch function in server available only inside loaders, components, etc, do not use it in top level. Or use FakeClient`,
+        `Fetch function in server available only inside loaders, components, etc, do not use it in top level. Or use FakeClient. Or Use engine.withFetch(() => your fetch fn)`,
       )
     }
     return __POINT0_FETCH_FN__

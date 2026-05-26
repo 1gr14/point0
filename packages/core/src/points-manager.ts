@@ -167,47 +167,54 @@ export class PointsManager<
   static toNormalizedPointsCollection(
     points: MixedPointsCollection | PointsDefinition<any, any>,
   ): NormalizedPointsCollection {
-    return points.map((p) => {
-      // const sourcePoint = record.point
-      const point = 'point' in p && 'point' in p.point ? p.point.point : undefined
-      const record = 'type' in p && !('point' in p && 'point' in p.point) ? p : undefined
-      const source = point ?? (record as Exclude<typeof record, undefined>)
-      const pointSource = point ?? source.point
-      return {
-        type: source.type,
-        name: source.name,
-        route: source.route ? Route0.from(source.route) : undefined,
-        polh: !!source.polh,
-        point: point ?? source.point,
-        layouts: record ? (record.layouts ?? []) : point ? point._layouts.map((l) => l.name) : [],
-        FC:
-          source.type === 'layout'
-            ? typeof pointSource === 'function'
-              ? React.lazy(async () => ({
-                  default: await pointSource().then((p) => p.point.Layout),
-                }))
-              : pointSource.point.Layout
-            : source.type === 'page'
-              ? typeof pointSource === 'function'
-                ? React.lazy(async () => ({
-                    default: await pointSource().then((p) => p.point.Page),
-                  }))
-                : pointSource.point.Page
-              : source.type === 'component'
+    return points
+      .map((p, index) => {
+        // const sourcePoint = record.point
+        try {
+          const point = 'point' in p && 'point' in p.point ? p.point.point : undefined
+          const record = 'type' in p && !('point' in p && 'point' in p.point) ? p : undefined
+          const source = point ?? (record as Exclude<typeof record, undefined>)
+          const pointSource = point ?? source.point
+          return {
+            type: source.type,
+            name: source.name,
+            route: source.route ? Route0.from(source.route) : undefined,
+            polh: !!source.polh,
+            point: point ?? source.point,
+            layouts: record ? (record.layouts ?? []) : point ? point._layouts.map((l) => l.name) : [],
+            FC:
+              source.type === 'layout'
                 ? typeof pointSource === 'function'
                   ? React.lazy(async () => ({
-                      default: await pointSource().then((p) => p.point.Component),
+                      default: await pointSource().then((p) => p.point.Layout),
                     }))
-                  : pointSource.point.Component
-                : source.type === 'provider'
+                  : pointSource.point.Layout
+                : source.type === 'page'
                   ? typeof pointSource === 'function'
                     ? React.lazy(async () => ({
-                        default: await pointSource().then((p) => p.point.Provider),
+                        default: await pointSource().then((p) => p.point.Page),
                       }))
-                    : pointSource.point.Provider
-                  : undefined,
-      }
-    })
+                    : pointSource.point.Page
+                  : source.type === 'component'
+                    ? typeof pointSource === 'function'
+                      ? React.lazy(async () => ({
+                          default: await pointSource().then((p) => p.point.Component),
+                        }))
+                      : pointSource.point.Component
+                    : source.type === 'provider'
+                      ? typeof pointSource === 'function'
+                        ? React.lazy(async () => ({
+                            default: await pointSource().then((p) => p.point.Provider),
+                          }))
+                        : pointSource.point.Provider
+                      : undefined,
+          }
+        } catch (error) {
+          log({ level: 'error', category: ['points'], message: `Error creating point at index ${index}`, error })
+          return undefined as never
+        }
+      })
+      .filter(Boolean)
   }
 
   private static rawPointsCollectionToReadyPointsCollection(points: ReadyPoint[]): ReadyPointsCollection {

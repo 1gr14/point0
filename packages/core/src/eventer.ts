@@ -116,10 +116,17 @@ export type EventerEventPointMutationSettled<TError extends ErrorPoint0> = Event
     | {
         output: LoaderOutput
         error: undefined
+        redirect: undefined
       }
     | {
         output: undefined
         error: TError
+        redirect: undefined
+      }
+    | {
+        output: undefined
+        error: undefined
+        redirect: RedirectTask
       }
   )
 >
@@ -129,9 +136,17 @@ export type EventerEventPointMutationSuccess = EventerEvent<
   {
     point: AnyNiceReadyPoint
     input: InputRaw
-    output: LoaderOutput
     error: undefined
-  }
+  } & (
+    | {
+        output: LoaderOutput
+        redirect: undefined
+      }
+    | {
+        output: undefined
+        redirect: RedirectTask
+      }
+  )
 >
 export type EventerEventPointMutationError<TError extends ErrorPoint0> = EventerEvent<
   'client' | 'server',
@@ -141,6 +156,7 @@ export type EventerEventPointMutationError<TError extends ErrorPoint0> = Eventer
     input: InputRaw
     error: TError
     output: undefined
+    redirect: undefined
   }
 >
 

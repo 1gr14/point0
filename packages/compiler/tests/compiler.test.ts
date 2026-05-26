@@ -55,6 +55,35 @@ export const root = Point0.lets('root', 'root').root()
       }),
     )
 
+    // we have disabled typescript pruning
+    //     it.concurrent(
+    //       'strips TypeScript syntax from emitted code',
+    //       helper(async ({ files: [file] }) => {
+    //         await file.write(`import type { ReactNode } from 'react'
+    // type Props = { label: string; children?: ReactNode }
+    // interface InternalProps { id: string }
+    // const props: Props = { label: 'Hello' }
+    // export const value = props.label as string
+    // export const view = <div>{props.label satisfies string}</div>
+    //         `)
+    //         const compiler = Compiler.create({ side: 'client', scope: 'root' })
+    //         const result = compiler.compile({ file: file.path })
+    //         const code = await toText(result.code)
+
+    //         expect(result.errors).toHaveLength(0)
+    //         expect(result.modified).toBe(true)
+    //         expect(code).not.toContain('import type')
+    //         expect(code).not.toContain('type Props')
+    //         expect(code).not.toContain('interface InternalProps')
+    //         expect(code).not.toContain(': Props')
+    //         expect(code).not.toContain(' as string')
+    //         expect(code).not.toContain(' satisfies string')
+    //         expect(code).toContain("label: 'Hello'")
+    //         expect(code).toContain('export const value = props.label')
+    //         expect(code).toContain('export const view = <div>{props.label}</div>')
+    //       }),
+    //     )
+
     it.concurrent(
       'desugars lets.<type>() syntax before point processing',
       helper(async ({ files: [file] }) => {
@@ -63,11 +92,12 @@ export const mainRoot = Point0.lets.root().root()
 export const ideaPage = mainRoot.lets.page('/idea/:id').page(() => <div>Hello</div>)
 export const ideaLayout = mainRoot.lets.layout('/idea').layout()
 export const saveAction = mainRoot.lets.action('POST', '/save').loader(() => ({ ok: true })).action()
+export const myPlugin = Point0.lets.plugin().plugin()
         `)
         const compiler = Compiler.create({ side: 'client', scope: 'main' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.points).toHaveLength(4)
+        expect(result.points).toHaveLength(5)
         expect(result.modified).toBe(true)
         expect(await toText(result.code)).toMatchInlineSnapshot(`
 "import { Point0 } from '@point0/core'
@@ -89,6 +119,11 @@ export const saveAction = mainRoot
   .lets('action', 'save', 'POST', '/save')
   .loader()
   .action()
+  ._tail(function X() {
+    return null
+  })
+export const myPlugin = Point0.lets('plugin', 'my')
+  .plugin()
   ._tail(function X() {
     return null
   })

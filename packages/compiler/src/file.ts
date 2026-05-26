@@ -2,6 +2,7 @@ import { transformFromAstSync } from '@babel/core'
 import generatorModule from '@babel/generator'
 import type { GeneratorResult } from '@babel/generator'
 import babel from '@babel/parser'
+import presetTypescriptModule from '@babel/preset-typescript'
 import traverseModule from '@babel/traverse'
 import type traverseType from '@babel/traverse'
 import type { NodePath } from '@babel/traverse'
@@ -39,6 +40,8 @@ const minifyGuardedExpressions = ((minifyGuardedExpressionsModule as any).defaul
   minifyGuardedExpressionsModule) as typeof minifyGuardedExpressionsModule
 const minifyDeadCodeElimination = ((minifyDeadCodeEliminationModule as any).default ??
   minifyDeadCodeEliminationModule) as typeof minifyDeadCodeEliminationModule
+const presetTypescript = ((presetTypescriptModule as any).default ??
+  presetTypescriptModule) as typeof presetTypescriptModule
 
 export class CompilerFile<THasContent extends boolean> {
   readonly abs: string
@@ -131,6 +134,7 @@ export class CompilerFile<THasContent extends boolean> {
     })
     cloned._parse = this._parse
     cloned._mayContainPoints = this._mayContainPoints
+    cloned._hasTypescriptSyntax = this._hasTypescriptSyntax
     cloned._isIdentifierExists = this._isIdentifierExists
     cloned._shakeForEnv = this._shakeForEnv
     return cloned
@@ -145,6 +149,7 @@ export class CompilerFile<THasContent extends boolean> {
     this.points = new Set()
     this._parse = undefined
     this._mayContainPoints = undefined
+    this._hasTypescriptSyntax = undefined
     this._isIdentifierExists = {}
     this._shakeForEnv = undefined
     this.allPointsWasCollected = false
@@ -296,6 +301,88 @@ export class CompilerFile<THasContent extends boolean> {
 
   static isMdxLikePath(path: string): boolean {
     return /\.(md|mdx|mdc)$/.test(path)
+  }
+
+  static isTypescriptLikePath(path: string): boolean {
+    return /\.[cm]?tsx?$/.test(path)
+  }
+
+  private _hasTypescriptSyntax: boolean | undefined = undefined
+  hasTypescriptSyntax(): boolean {
+    if (!CompilerFile.isTypescriptLikePath(this.abs)) {
+      return false
+    }
+    if (this._hasTypescriptSyntax !== undefined) {
+      return this._hasTypescriptSyntax
+    }
+    let hasTypescriptSyntax = false
+    traverse(this.ast, {
+      enter: (path) => {
+        const node = path.node
+        if (node.type.startsWith('TS')) {
+          hasTypescriptSyntax = true
+          path.stop()
+          return
+        }
+        if (
+          (t.isImportDeclaration(node) && node.importKind === 'type') ||
+          (t.isExportNamedDeclaration(node) && node.exportKind === 'type') ||
+          (t.isExportAllDeclaration(node) && node.exportKind === 'type')
+        ) {
+          hasTypescriptSyntax = true
+          path.stop()
+        }
+      },
+    })
+    this._hasTypescriptSyntax = hasTypescriptSyntax
+    return this._hasTypescriptSyntax
+  }
+
+  shouldStripTypescript(): boolean {
+    return false
+    // looks like we never should trim typescript syntax
+    // return this.hasTypescriptSyntax()
+  }
+
+  pruneTypescriptSyntax(): { ok: boolean; errors: unknown[]; modified: boolean } {
+    const errors: unknown[] = []
+    let modified = false
+    if (this.content === undefined) {
+      throw new Error(`File ${this.abs} is not read yet`)
+    }
+    try {
+      if (!this.shouldStripTypescript()) {
+        return { ok: true, errors, modified }
+      }
+      const result = transformFromAstSync(this.ast, this.content, {
+        ast: true,
+        code: false,
+        configFile: false,
+        babelrc: false,
+        presets: [
+          [
+            presetTypescript,
+            {
+              allowNamespaces: true,
+              allExtensions: true,
+              isTSX: /\.[cm]?tsx$/.test(this.abs),
+            },
+          ],
+        ],
+      })
+      if (!result?.ast) {
+        return { ok: true, errors, modified }
+      }
+      this.ast.program = result.ast.program
+      this._hasTypescriptSyntax = false
+      this._isIdentifierExists = {}
+      modified = true
+      this.modified = true
+      return { ok: true, errors, modified }
+    } catch (e) {
+      errors.push(e)
+      return { ok: false, errors, modified }
+    }
   }
 
   get ast(): babel.ParseResult<File> {

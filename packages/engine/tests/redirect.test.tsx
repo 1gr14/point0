@@ -930,4 +930,119 @@ describe('redirect', () => {
       `)
     })
   })
+
+  describe('by mutation', () => {
+    it('route params and search from server response', async () => {
+      const root = createRoot()
+      const mutation = root
+        .lets('mutation', 'go')
+        .loader(() => {
+          throw redirect('page2', { id: '222', '?': { q: 'qwe' } })
+        })
+        .mutation()
+      const page1 = root.lets('page', 'page1', '/x').page(() => {
+        const go = mutation.useMutation()
+        return (
+          <div id="page1">
+            <button id="mutate" onClick={() => go.mutate()}>
+              Mutate
+            </button>
+          </div>
+        )
+      })
+      const page2 = root.lets('page', 'page2', '/y/:id').page(({ params, location }) => (
+        <div id="page2">
+          {params.id}, {location.search.q as string}
+        </div>
+      ))
+      const routes = Routes.create({
+        page1: '/x',
+        page2: '/y/:id',
+      })
+      const { render, fetchesTale, redirect } = await createTestThings({
+        ssr: true,
+        routes,
+        points: [root, mutation, page1, page2],
+      })
+      await render(page1.route(), async ({ waitContent, tale, click }) => {
+        await waitContent('#page1')
+        await click('#mutate')
+        await waitContent('#page2')
+        expect(await tale()).toMatchInlineSnapshot(`
+          "
+          /x
+            #page1:
+              #mutate: Mutate
+
+          /y/222?q=qwe
+            #page2: 222, qwe
+          "
+        `)
+      })
+      expect(await fetchesTale()).toMatchInlineSnapshot(`
+        "
+        mutation.go (client) < {}
+        "
+      `)
+    })
+
+    it('respects redirect navigation options', async () => {
+      const events: string[] = []
+      const root = createRoot()
+      const mutation = root
+        .lets('mutation', 'go')
+        .clientLoader(() => {
+          throw redirect.to('/2', {
+            before: () => {
+              events.push('before')
+            },
+            after: () => {
+              events.push('after')
+            },
+          })
+        })
+        .mutation()
+      const page1 = root.lets('page', 'page1', '/1').page(() => {
+        const go = mutation.useMutation()
+        return (
+          <div id="page1">
+            <button id="mutate" onClick={() => go.mutate()}>
+              Mutate
+            </button>
+          </div>
+        )
+      })
+      const page2 = root.lets('page', 'page2', '/2').page(() => <div id="page2">content</div>)
+      const routes = Routes.create({
+        page1: '/1',
+        page2: '/2',
+      })
+      const { render, fetchesTale, redirect } = await createTestThings({
+        ssr: true,
+        routes,
+        points: [root, mutation, page1, page2],
+      })
+      await render(page1.route(), async ({ waitContent, tale, click }) => {
+        await waitContent('#page1')
+        await click('#mutate')
+        await waitContent('#page2')
+        expect(events).toEqual(['before', 'after'])
+        expect(await tale()).toMatchInlineSnapshot(`
+          "
+          /1
+            #page1:
+              #mutate: Mutate
+
+          /2
+            #page2: content
+          "
+        `)
+      })
+      expect(await fetchesTale()).toMatchInlineSnapshot(`
+        "
+
+        "
+      `)
+    })
+  })
 })

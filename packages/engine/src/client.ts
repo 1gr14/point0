@@ -264,12 +264,12 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     this.setEnvVars({ nodeEnvFallback: undefined })
 
     const [{ bunViteDevServer, viteDevServer }, bunNativeDevServer] = await Promise.all([
-      this.viteConfig && process.env.NODE_ENV !== 'production'
+      this.viteConfig && !_point0_env.build.was
         ? preventDevServer
           ? { bunViteDevServer: true as const, viteDevServer: true as const }
           : this.startBunViteDevServer()
         : { bunViteDevServer: null, viteDevServer: null },
-      this.indexHtml && !this.viteConfig && process.env.NODE_ENV !== 'production'
+      this.indexHtml && !this.viteConfig && !_point0_env.build.was
         ? preventDevServer
           ? (true as const)
           : this.startBunNativeDevServer()
@@ -279,7 +279,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     this.viteDevServer = viteDevServer
     this.bunNativeDevServer = bunNativeDevServer
 
-    const points = await this.readClientPoints()
+    const points = await this.readPoints()
 
     this.basepath = points?.basepath
 
@@ -289,8 +289,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
       await this.publicdir.prepare()
     }
 
-    this.distIndexHtmlContent =
-      process.env.NODE_ENV === 'production' && this.indexHtml ? await Bun.file(this.indexHtml).text() : null
+    this.distIndexHtmlContent = _point0_env.build.was && this.indexHtml ? await Bun.file(this.indexHtml).text() : null
     this.prepared = true as never
     return this as EngineClient<true, TError>
   }
@@ -299,7 +298,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     return !!this.prepared
   }
 
-  async readClientPoints(): Promise<ClientPoints<TError> | null> {
+  async readPoints(): Promise<ClientPoints<TError> | null> {
     if (!this.pointsProvided) {
       return null
     }
@@ -344,10 +343,8 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
 
   async startDevServer(): Promise<void> {
     await Promise.all([
-      this.viteConfig && process.env.NODE_ENV !== 'production' ? this.startBunViteDevServer() : null,
-      this.indexHtml && !this.viteConfig && process.env.NODE_ENV !== 'production'
-        ? this.startBunNativeDevServer()
-        : null,
+      this.viteConfig && !_point0_env.build.was ? this.startBunViteDevServer() : null,
+      this.indexHtml && !this.viteConfig && !_point0_env.build.was ? this.startBunNativeDevServer() : null,
     ])
   }
 
@@ -494,7 +491,7 @@ try {
 
     let childProcess: Bun.Subprocess<'ignore', 'pipe', 'pipe'>
     const startChildProcess = () => {
-      childProcess = Bun.spawn(['bun', 'run', scriptPath], {
+      childProcess = Bun.spawn(['bun', 'run', '--no-orphans', scriptPath], {
         cwd: tempDir,
         stdout: 'pipe',
         stderr: 'pipe',
@@ -802,7 +799,7 @@ try {
     if (!this.indexHtml) {
       throw new Error(`indexHtml not found for client "${this.scope}"`)
     }
-    if (process.env.NODE_ENV !== 'production') {
+    if (!_point0_env.build.was) {
       if (this.viteDevServer) {
         return await fetch(`http://localhost:${this.port}/index.html`).then(async (response) => await response.text())
       } else if (this.bunNativeDevServer) {

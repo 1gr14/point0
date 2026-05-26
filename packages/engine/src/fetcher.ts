@@ -79,6 +79,9 @@ export class Fetcher<TError extends ErrorPoint0> {
     if (process.env.NODE_ENV === 'production') {
       return undefined
     }
+    if (_point0_env.build.was) {
+      return undefined
+    }
     const allowedPrefix = process.env.POINT0_UNSAFE_FIX_BUN_STATIC_SERVE
     if (!allowedPrefix) {
       return undefined
@@ -242,6 +245,9 @@ export class Fetcher<TError extends ErrorPoint0> {
         if (process.env.NODE_ENV === 'production') {
           return undefined
         }
+        if (_point0_env.build.was) {
+          return undefined
+        }
         if (process.env.POINT0_PREVENT_REDIRECT_TO_DEV_CLIENT === 'true') {
           return undefined
         }
@@ -341,7 +347,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
       }
 
-      if (process.env.NODE_ENV !== 'production') {
+      if (!this.server.itWasBuilt) {
         const responseFromAbsFilePath = await Fetcher.fetchAbsFilePathOnDevServer({ request })
         if (responseFromAbsFilePath) {
           const variant: RequestVariantPublicdir<undefined> = {
@@ -1107,9 +1113,9 @@ export class Fetcher<TError extends ErrorPoint0> {
     requiredCtx: RequiredCtx
     bunServer?: Bun.Server<unknown>
   }): Promise<FetcherFetchDetailedResult<TError>> {
-    if (!_point0_env.mode.is.production) {
+    if (!this.server.itWasBuilt) {
       // Keep it. Vite server updates will not work for points without it.
-      await this.server.readServerPoints()
+      await this.server.readPoints()
     }
     const prepareFetchResult = await this.prepareFetch({
       originalRequest: request,

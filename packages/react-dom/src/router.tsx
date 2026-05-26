@@ -164,7 +164,8 @@ const _resolveFinalTo = <TRoutes extends RoutesPretty>({
   }
   const route = routes[routeName]
   if (!route) {
-    log({ level: 'error', category: ['wouter'], error: new Error(`Route "${routeName}" not found`) })
+    const error = new Error(`Route "${routeName}" not found`)
+    log({ level: 'error', category: ['wouter'], error, message: error.message })
     return { tohref: '#', to: '#', href: undefined }
   }
   const ginalTo = route.get(input)

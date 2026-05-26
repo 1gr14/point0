@@ -240,7 +240,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   }
 
   private installViteSsrStacktraceFixer(): void {
-    if (process.env.NODE_ENV === 'production' || !this.viteDevServer) {
+    if (this.itWasBuilt || !this.viteDevServer) {
       return
     }
     ;(globalThis as any).__ERROR0_FIX_STACKTRACE__ = (value: unknown) => {
@@ -249,7 +249,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   }
 
   private uninstallViteSsrStacktraceFixer(): void {
-    if (process.env.NODE_ENV === 'production' || !this.viteDevServer) {
+    if (this.itWasBuilt || !this.viteDevServer) {
       return
     }
     ;(globalThis as any).__ERROR0_FIX_STACKTRACE__ = undefined
@@ -289,7 +289,9 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     }
     this.setEnvVars({ assignToProcessEnv: true, nodeEnvFallback: undefined })
     await Promise.all([
-      this.loadBunPlugins({ built: _point0_env.build.was }).then(async () => await this.readServerPoints()),
+      (engine.wasBuilt ? Promise.resolve() : this.loadBunPlugins({ built: _point0_env.build.was })).then(
+        async () => await this.readPoints(),
+      ),
       this.publicdir ? this.publicdir.prepare() : Promise.resolve(),
     ])
     this.prepared = true as never
@@ -313,11 +315,16 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     }
   }
 
-  async readServerPoints(): Promise<ServerPoints<TError>> {
+  async readPoints(): Promise<ServerPoints<TError>> {
     const points = await ServerPoints.createFromSource(this.pointsProvided, { log: this.log })
     await points.load()
     this.points = points as TPrepared extends true ? ServerPoints<TError> : undefined
     return points
+  }
+
+  async setPoints(points: PointsDefinitionSource<RequiredCtx, TError>): Promise<ServerPoints<TError>> {
+    this.pointsProvided = points
+    return await this.readPoints()
   }
 
   getCompilerOptions({ built, onDeny }: { built?: boolean; onDeny?: 'throw' | 'log' } = {}): CompilerOptions | false {
@@ -473,7 +480,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     request: Request
     bunServer?: Bun.Server<unknown>
   }): Promise<{ response: Response | undefined } | undefined> => {
-    if (process.env.NODE_ENV === 'production') {
+    if (this.itWasBuilt) {
       return undefined
     }
     const forwardedFromClientScope = request.headers.get('X-Point0-Forwarded-From-Dev-Client')
@@ -506,14 +513,20 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
 
   async serve({
     requiredCtx,
+    points,
     ..._providedServeConfig
-  }: { requiredCtx: RequiredCtx } & Partial<Serve.Options<any, any>>): Promise<void> {
+  }: { requiredCtx: RequiredCtx; points?: PointsDefinitionSource<RequiredCtx, TError> } & Partial<
+    Serve.Options<any, any>
+  >): Promise<void> {
     if (!this.isPrepared()) {
       throw new Error('Server is not prepared')
     }
 
     if (this.bunServer) {
       throw new Error('Server is already running')
+    }
+    if (points) {
+      await this.setPoints(points)
     }
 
     const customServeConfig = ((this.bunServeConfig as unknown) ?? {}) as Record<string, unknown>
@@ -691,6 +704,8 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       POINT0_BUILT: 'true',
     }
     const injectedEnvs = {
+      'process.env.POINT0_PREVENT_REDIRECT_TO_DEV_CLIENT': JSON.stringify('true'),
+      'process.env.POINT0_PREVENT_CLIENT_DEV_SERVER': JSON.stringify('true'),
       'process.env.POINT0_ENGINE_WAS_BUILT': JSON.stringify('true'),
       ...(POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED
         ? { 'process.env.POINT0_ENGINE_CWD_BEFORE_BUILD': JSON.stringify(POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED) }

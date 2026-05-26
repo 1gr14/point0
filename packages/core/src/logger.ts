@@ -4,17 +4,10 @@ import { superstore } from './super-store.js'
 export type LogOptions = {
   level: 'info' | 'error' | 'warn' | 'debug'
   category: string[]
+  message: string
+  error?: unknown
   meta?: Record<string, unknown>
-} & (
-  | {
-      message: string
-      error?: unknown
-    }
-  | {
-      message?: string
-      error: Error
-    }
-)
+}
 export type LogFn = (options: LogOptions) => void
 export const _defaultLogFn: LogFn = (options: LogOptions) => {
   const valideModes = ['json', 'pretty'] as const

@@ -1,4 +1,4 @@
-remarkplugins
+
 
 
 ------
@@ -10,10 +10,7 @@ refactoring
 finishing
 🚀 launch
 
-Sponsors
-
-https://resend.com/insiders#apply
-
+guide0
 mcp as comments
 идеаник
 витрина-своя
@@ -32,78 +29,166 @@ mcp as comments
 ------
 
 
-
-REFACTOING 3000
-compiler babel plugins
-И добавить хелпер сетСертч, котрый и так есть и из пейджа ещё возвращается тпизированный
+# Navigation
+Infer for Link, getLinkProps({route, to href}), useLinkProps?({route, to href})
+Link should have all <a> props
+figure out how ot pass Link props to other ui componets so it works nice
+Навигецт и редирект абсолютного пути не в той оригине должен использовать виндоу, и вообще иметь хук для открытия сторонних ссылок, а также пропсу для открытия в новой вкладке
+Серч и сет серч нужно возвращать прямо из пейджа, чтобы они работали мгновенно
+setSearch как отдельная доступная утилита вне useSearchParams, но и useSearchParams 
+routes should not conflict /users/impersonate/:id? | /users/:sn
+allos /:x?/:y?
+route.abs()
 Добавить хелпер гет локейшен
-Компилер настройки вырезать из энжины после билда
-normalize scroll restoration (it is trash now)
-Лоадер только один разрешить
-Дата возвращённая может быть не только объектомно и массивом и чем угодно
-Запретить комбайнед квери
-В компмле добавить флаг билт для просмотра как оно выглядит после билда
-Эз форм дата тру фалс авто влияет и на опенапи и аозмовозможность вообще отправить другое
-Криэйт квери клиент должен сразу принимать нужные опции а не функцию возвращающую объект
-Резолв пусть принимает эни квери лайк штуку
-allowBabelPlugins in compiler
-.infiniteQuery({}) should have nice autocompletion, ow it is never until correct, (В Инфинити скрол опции ошибку можно добавить как реквайред поле с эрором)
-fix superstore clientServerTransferredSsr for custom values (maybe have simplified SsrStore?)
-respect two client names in logs
-SsrStore (or even usual store), on change items we still should continue rernder untill nothing in ssr store changed, and also on change it will be applied as value only on next render, И когда респонс кукисы меняются тоже делаем ререндер, !!!ССР стор это кукистор с максэйдж 0!!!
 layout Page404 allow elemnt not component
 useNavLink should return state of path
-falt0 empty strings also should be omited
 ensure navigate to not navigate to same url twice
-usePageState should also give us layouts list as string, and give us page name as string, so we can customize error page absed on this info
-usePageLoader → return same as useQuery for page, needed to get page data in layout
+? exactClassName → activeClassName
+usePageData → return same as useQuery for page, needed to get page data in layout (mabye just usePageState and data also there?)
+Пейдж поинт вместе стегами должен быть доступен в юз пейдж стейт
+
+normalize scroll restoration (it is trash now)
+Скрол ресторейшен пусть будет в самом роутере
+Редирект при не квери дегидрейтед Стейт пути должен не переходить дальше на страницу а сразу сровить редирект
+В роутах генерить роутв с серч парамсами
+Флэт0 должен ли энкодить скобки в серч параметрах? (allow prevent encoding)
+
+
+
+# Runtime
+? Сет поинтс должна принимать уже загруженные поинты
+? Вообще отказаться от дев команды, пусть используется голсы бан или голый вайт ???
+--no-orphans for dev script so it will kill bad guys auto (try just use usual bun)
+генерировать комиплер настройки в энв файл, чтобы мочь запускать бан прямо из прелоад скрипта, и тогда вообще не нуно будет эвэйт импорты всякие делать
+Но как-то надо ещё и апп доимпортить, а то походу ему тоже будет плохо в энжине и эвэйт импортом (тоже что ли setApp)
+Серв дев серверы клиентов надо делать не в препеар скрипте (вообще это буто бы разделить надо)
+Индекс клиент пусть и занимается сервом клиента, а у него там уже и поинты сами по себе есть if (server) engine.clients[0].serve()
+И этот индекс клиента это энтри в ап конфиге
+Сделать шортхенд клиент и для энжин конфига и для энжины самой, просто берём или ставим первого клиента
+allow bun client just run client in place using reload script static
+Генерейт клиент поинтс пусть имеет настройку, которая просто прямо в одном файле сгенерит все лэзи и реди поинты в зависимости от прод это или не прод
+Надо просто поинтсы вынести из энжины и передавать их туда на этапе сервиса или препар и тогда не будет проблем с недобором конфига (проврка)
+Индекс сервер просто должен вызвать энжин препаре, и экспортнуть эту энжину, а апп сервер должен просто использовать эту энжину (поправить экзамплы и темплейты)
+Пусть будет app.server.ts engine.server.ts (в ней и шутдаун будет) а index.server.ts не нужен (поправить экзамплы и темплейты)
+Рут клиента если тот сср должен попадать в поинтсы сервера, чтобы мы из них могли добыть клиентские поинтсы, от клинет поинтсов в энжине надо избавляться
+client points get form server points, do not needed to provide it to client, needed helper serverPoints.toClientPoints()
+Добиться, чтобы команду дев можно было не использовать, а использовать нативную бан команду (vite and bun)
+А бейзпас короче это просто через сервинг переменную определяется и всё
+vite 8 (server updates failed)
+vite config as fn should accept also compilerPlugin so we can place it in correct place
+В вайт сср сразу добавить фикс эррор тру
+allow engine serve in one server have server and client in one time
+
+
+
+# Compiler
+? Тайпскрипт только при билде не вырезать, а так вырезать
+remarkplugins
+Компилер настройки вырезать из энжины после билда
+compiler babel plugins
+react-compiler
 add babel-plugin-react-compiler to all examples
+Попробовать не убирать тайпскрипт, а отменить экспериментальное сохранение синтаксиса
+inline source maps for bun, do not hmr fix for server builds
+no such file or directory, unlink '/Users/iserdmi/cc/projects/devp0nt/node_modules/.cache/@point0/compiler-cache/372021e986f6d398e1e690ac244f6d07941a138e3e8b041daed88922c007135c/81e0d93e0b5054f558084e026ac211ee17a9a57bb8652a312fa90c1418af0b25.1778940241763.491
+navigate.back()
+В cli компмле добавить флаг билт для просмотра как оно выглядит после билда
 mardown {enabled, options}
-blue|green|current server dev port
 Из компилера не учитывать импорты в которых только тайп при импорт протекшене
 allow link accept children as react node array
 maekdown test that loaders still cutted on client
-Флэт0 должен ли энкодить скобки в серч параметрах?
 Компилер должен просить только мдыкс файлы, а обычные мд не должен
-Если энжин воз билд, тогда также запрещать бан дев фикс
-Пейдж стейт хранит в себе в дата прокси объект, который нормально собирает из обычного квери клиента, и тогда ничего синхронизировать не надо
-Юз серч парамс и там сет серч парамс, надо учесть типизированность, вероятно дать передать роут, дать зафорсить стринг
-Удаляя кверю из Кеша, нужно удалять и все связанные с ней пейдж квери
-remove props form related query if not exists
-revert flow of data, it should be clockwisde, so we see latest first
+trace is now terrible for client-only mark, it has starnge ./ in suggestons, also camn not find trace at all (so just not rename @point0/core-client-only, show as is)
+
+
+
+# Micro
+Из инпута в квери Кее надо удалять андефайнеды
+Резолв хелпер пусть может и массив тупле резолвить
+Резолв фалс дождётся, но не будет в пропсы, а тру просто всю дата в пропсы, и по умолчанию тру
+Резолв пусть принимает эни квери лайк штуку
+resolve without arg, should just resolve to data, resolve with false, should just wait for loading
+Cделать красивый вывод в виртуал модуле
+В самом поинт0 тоже разделить мсп проджект и мсп докс
+engine config log → logger { log }
+engine config log, also should be able to accept async () => import; return logFn
+Куки стор в единственно числе
+serverurl → serverUrl
+Из маунтобла убрать подписку на пейдж стейт а то ререндерит
+Глобал хед в отдельном компоненте рядом в провайдере анхеда выводить, а не сувать его во все пейджи (вероятно)
+expose id form points, also queryPredicate shoudl accpet id
+Мапер должен использовать юзмемо для результата исходя из входных штук
+В дефолтную эррор добавить мету
+with query, }>(point: TPoint, ...args: TPoint['Infer']['IsInputOptional'] extends true ? [ →to overrides, becouse with incorrect input it miss value
+Эз форм дата тру фалс авто влияет и на опенапи и аозмовозможность вообще отправить другое
+Криэйт квери клиент должен сразу принимать нужные опции а не функцию возвращающую объект
+.infiniteQuery({}) should have nice autocompletion, ow it is never until correct, (В Инфинити скрол опции ошибку можно добавить как реквайред поле с эрором)
+? remove props form related query if not exists
 allow related query in plugins, and just location there
 nor x.x.x bub x:x:x prepaering to pagena names can contain .
-vite 8 (server updates failed, )
 Эвентер кромедата пусть возвращает и Джейсон который логировать удобно
-trace is now terrible for client-only mark, it has starnge ./ in suggestons, also camn not find trace at all (so just not rename @point0/core-client-only, show as is)
-Попробовать перезапускать бан процесс без пересоздания а через сигнал
 Моунтаблы (компонент и провайдердер точно) должны работать и без икса
 Убедиться, что виз всегда вызывает врапер, ведь есть риск, что сначала эрор, а потом не эрор, а дальше хук, и будут проблемы
-bun dev, on Could not resolve: "@/components/form/hook"., if it can be resolved restart processes
-В префетч экзамплов по умолчанию сделать просто клиент энд сервер
-Убедиться что дев сервера и клиента в разных вкладках работает
-Пейдж поинт вместе стегами должен быть доступен в юз пейдж стейт
-Опробовать параллельные тесты бана
-Добавить рантайм ошибки для запрещённых методов поинтов
-Респонс эффекты и реквест тоже сделать проксифайнутыми и засунуть их в энв
-клинет дев логи всё же выводить с припиской [client:dev]
-index.html on changes and reload should be getted new
-Вайт по умолчанию в криэйт апп
-allow throw error from with and throw 'loading' and trhow redirect()
-В эррор0 добавить символ по которому мы сверяемся, что это эррор0, тогда можно будет создать например анэкспектед эррор от сновной эррор. Вероятно стоит ввести тчк дефаулт
-Страницам разрешить принимать пост запросы и прокидывать боди в квери самой страницы
 Мсп должен всегда читать свежую мета
-В вайт сср сразу добавить фикс эррор тру
 in example rename file navigate to navigation
-Респонс тоже может вернуть форм дата если там бинари и всё такое
-? exactClassName → activeClassName
-resolve without arg, should just resolve to data, resolve with false, should just wait for loading
-vite config as fn should accept also compilerPlugin so we can place it in correct place
-В роут0 добавить возможность выбора конкретной строки в параметр
+
+
+# Additional
+??? revert flow of data, it should be clockwisde, so we see latest first
+Пейдж стейт хранит в себе в дата прокси объект, который нормально собирает из обычного квери клиента, и тогда ничего синхронизировать не надо
+Лоадер только один разрешить
+Дата возвращённая может быть не только объектомно и массивом и чем угодно
+Запретить комбайнед квери
+SSrStore. ССР стор и куки стор одинааковый стиль
+Опенапи пер поинт с суффиксом . Опенапи
+
+
+# Later
+? usePageState should also give us layouts list as string, and give us page name as string, so we can customize error page absed on this info
+? Сразу реализовать бан сервер через дист папку опционально, банДевСтратеджи
+? Бан дев в конфиге отдельным свойством и там: вотч, оутдир, стратеджи
+? preventLoadBunPlugins, default: env.build.was === true
+? Виз квери, виз врапер, виз пропс, иначе хаос какой-то (но просто виз тоже оставить)
+? engine.waitForServer()
+? invalidateQuery(true) to invalidate all queries (predicate enough)
+? Полиси не префетч квери дегидрейтед стейт, а просто сср стор дегидрейтед стейт, там и кастомные сср сторики будут
+? Тэррор можно хранить в генетике поинта и тогда во всех аргументах по цепочке мочь показывать эту ошибку (по крайней мере когда в виз передаём квери в которой ошибка этот виз должен светиться верной ошибкой)
+? В компилере разрешить не вырезать инпуты, и дать получать шему через .inputSchema, .paramsSchema, .searchSchema, .bodySchema, .headersSchema, .cookiesSchema, .finalInputSchema
+? respect two client names in logs
+? blue|green|current server dev port
+? Удаляя кверю из Кеша, нужно удалять и все связанные с ней пейдж квери
+? Попробовать перезапускать бан процесс без пересоздания а через сигнал
+? bun dev, on Could not resolve: "@/components/form/hook"., if it can be resolved restart processes
+? В префетч экзамплов по умолчанию сделать просто клиент энд сервер
+? Убедиться что дев сервера и клиента в разных вкладках работает
+? Респонс эффекты и реквест тоже сделать проксифайнутыми и засунуть их в энв
+? index.html on changes and reload should be getted new
+? Вайт по умолчанию в криэйт апп
+? allow throw error from with and throw 'loading' and trhow redirect()
+? Респонс тоже может вернуть форм дата если там бинари и всё такое
 ? Релейтед квери должна мочь быть какой-то комбайнед квери (мы можем передать туда кастомню кверю, и она должна подхватиться)
 ? fix order in create-app of env validation
 ? Шема мержер хелпер (но у нас инпут постоянно вырезается, лучше его отдельно держать)
 ? В энжин добавить онДиспоз
+В роут0 добавить возможность выбора конкретной строки в параметр
+Страницам разрешить принимать пост запросы и прокидывать боди в квери самой страницы
+клинет дев логи всё же выводить с припиской [client:dev]
+Добавить рантайм ошибки для запрещённых методов поинтов
+Опробовать параллельные тесты бана
+Во время энжин препары можно и заассайнить на все сервер поинты эндинифетч фн
+В генераторе пусть также собираются все файлы и информация об их экспортах чтобы можно было что угодно нагенерить
+Скрипт для синхронизации файлов экзамплов вайт бан и вайт классик
+
+# Docs
+docs should be available via local mcp
+
+
+
+
+REFACTOING 3000
+
+
+
 
 FINISH
 Зафиксировать версии в старт0 и девпонте
@@ -140,6 +225,8 @@ when electrobun allow passing replaceFetch to point
 ? mirror generator
 ? queryKey: and do not stringify input
 ? https://tsrx.dev/getting-started
+
+У экстеншенов и плагинов разрешить указывать сервронли и клиент онли флагс
 
 
 

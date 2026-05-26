@@ -191,6 +191,11 @@ export class Walker {
 
     try {
       const file = fileIdle.readSync(!content, stats) // we do not read fresh file if content was provided to not loose modifications
+      const pruneTypescriptResult = file.pruneTypescriptSyntax()
+      errors.push(...pruneTypescriptResult.errors)
+      if (!pruneTypescriptResult.ok) {
+        return { points, errors, file, ok: false }
+      }
 
       if (file.allPointsWasCollected) {
         return { points: file.getCollectedPoints(), errors, file, ok: true }
