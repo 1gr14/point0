@@ -70,9 +70,6 @@ describe('build', () => {
     it(
       'build and start ssr server',
       wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
-        if (bundler === 'bun') {
-          return
-        }
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
@@ -90,7 +87,7 @@ describe('build', () => {
         tp.spawn(['bun', 'run', 'start'])
         expect(engine.server.port).toBeNumber()
         expect(engine.clients[0].port).toBeNumber()
-        await tp.waitStarted()
+        await tp.waitStarted(engine.server.port)
         const response = await tp.fetchServer('/')
         expect(response).toBeDefined()
         const html = await response.text()
@@ -135,7 +132,7 @@ describe('build', () => {
         tp.spawn(['bun', 'run', 'start'])
         expect(engine.server.port).toBeNumber()
         expect(engine.clients[0].port).toBeNumber()
-        await tp.waitStarted()
+        await tp.waitStarted(engine.server.port)
         const response = await tp.fetchServer('/')
         const html = await response.text()
         expect(html).toContain('__POINT0_ENV_VARS__')
@@ -247,7 +244,7 @@ describe('build', () => {
         tp.spawn(['bun', 'run', 'start'])
         expect(engine.server.port).toBeNumber()
         expect(engine.clients[0].port).toBeNumber()
-        await tp.waitStarted()
+        await tp.waitStarted(engine.server.port)
         const response = await tp.fetchServer('/4')
         const html = await response.text()
         expect(html).toContain('__POINT0_ENV_VARS__')
@@ -468,7 +465,7 @@ return (
         const bp = tp.spawn(['bun', 'run', 'build'])
         await bp.exited
         tp.spawn(['bun', 'run', 'start'])
-        await tp.waitStarted()
+        await tp.waitStarted(engine.server.port)
         const response = await tp.fetchServer('/')
         const html = await response.text()
         expect(html).toContain('I am server module')
@@ -524,7 +521,7 @@ return (
         const bp = tp.spawn(['bun', 'run', 'build'])
         await bp.exited
         tp.spawn(['bun', 'run', 'start'])
-        await tp.waitStarted()
+        await tp.waitStarted(engine.server.port)
         const response = await tp.fetchServer('/')
         const html = await response.text()
         expect(html).not.toContain('I am client module')
@@ -581,7 +578,7 @@ return (
       tp.spawn(['bun', 'run', 'start'])
       expect(engine.server.port).toBeNumber()
       expect(engine.clients[0].port).toBeNumber()
-      await tp.waitStarted()
+      await tp.waitStarted(engine.server.port)
       const page = await tp.gotoServer('/')
       await page.stable
       expect(page.tale).toMatchInlineSnapshot(`

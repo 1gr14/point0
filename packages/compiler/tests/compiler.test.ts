@@ -749,4 +749,227 @@ export const e = d + 1`)
       }),
     )
   })
+
+  describe('#collectImportsDeep', () => {
+    it.concurrent(
+      'collects single direct import',
+      helper(async ({ files: [fileA, fileB] }) => {
+        await fileA.write(`export const a = 1`)
+        await fileB.write(`import { a } from '${fileA.importpath}'
+export const b = a + 1`)
+
+        const compiler = Compiler.create({
+          side: 'client',
+          scope: 'root',
+          importer: { cwd: nodePath.dirname(fileA.path) },
+        })
+
+        const result = compiler.collectImportsDeep({ target: fileB.path })
+
+        expect(result).toHaveLength(1)
+        expect(result[0]?.importer).toBe(fileB.path)
+        expect(result[0]?.pathResolved).toBe(fileA.path)
+      }),
+    )
+
+    it.concurrent(
+      'recursively collects transitive imports across multiple files',
+      helper(async ({ files: [fileA, fileB, fileC, fileD] }) => {
+        await fileA.write(`export const a = 1`)
+        await fileB.write(`import { a } from '${fileA.importpath}'
+export const b = a + 1`)
+        await fileC.write(`import { b } from '${fileB.importpath}'
+export const c = b + 1`)
+        await fileD.write(`import { c } from '${fileC.importpath}'
+export const d = c + 1`)
+
+        const compiler = Compiler.create({
+          side: 'client',
+          scope: 'root',
+          importer: { cwd: nodePath.dirname(fileA.path) },
+        })
+
+        const result = compiler.collectImportsDeep({ target: fileD.path })
+        const resolvedPaths = result.map((item) => item.pathResolved).sort()
+
+        expect(result).toHaveLength(3)
+        expect(resolvedPaths).toEqual([fileA.path, fileB.path, fileC.path].sort())
+      }),
+    )
+
+    it.concurrent(
+      'still walks the graph when the on-disk compile cache is warm',
+      helper(async ({ files: [fileA, fileB, fileC] }) => {
+        await fileA.write(`export const a = 1`)
+        await fileB.write(`import { a } from '${fileA.importpath}'
+export const b = a + 1`)
+        await fileC.write(`import { b } from '${fileB.importpath}'
+export const c = b + 1`)
+
+        // First compiler instance — populates disk cache.
+        const warmer = Compiler.create({
+          side: 'client',
+          scope: 'root',
+          importer: { cwd: nodePath.dirname(fileA.path) },
+        })
+        warmer.compile({ file: fileA.path, pruneWalker: false })
+        warmer.compile({ file: fileB.path, pruneWalker: false })
+        warmer.compile({ file: fileC.path, pruneWalker: false })
+
+        // Fresh compiler — its walker is empty; only the disk cache is warm.
+        const compiler = Compiler.create({
+          side: 'client',
+          scope: 'root',
+          importer: { cwd: nodePath.dirname(fileA.path) },
+        })
+
+        const result = compiler.collectImportsDeep({ target: fileC.path })
+        const resolvedPaths = result.map((item) => item.pathResolved).sort()
+
+        expect(result).toHaveLength(2)
+        expect(resolvedPaths).toEqual([fileA.path, fileB.path].sort())
+      }),
+    )
+
+    it.concurrent(
+      'omits imports inside env.side.define dead branches after shaking',
+      helper(async ({ files: [entry, clientOnly, serverOnly] }) => {
+        await clientOnly.write(`export const c = 'client'`)
+        await serverOnly.write(`export const s = 'server'`)
+        await entry.write(`import { env } from '@point0/core'
+import { c } from '${clientOnly.importpath}'
+import { s } from '${serverOnly.importpath}'
+export const value = env.side.define({ client: c, server: s })`)
+
+        const compiler = Compiler.create({
+          side: 'client',
+          scope: 'root',
+          importer: { cwd: nodePath.dirname(entry.path) },
+        })
+
+        const result = compiler.collectImportsDeep({ target: entry.path })
+        const resolvedPaths = result.map((item) => item.pathResolved)
+
+        expect(resolvedPaths).toContain(clientOnly.path)
+        expect(resolvedPaths).not.toContain(serverOnly.path)
+      }),
+    )
+
+    it.concurrent(
+      'handles circular dependencies without infinite recursion',
+      helper(async ({ files: [fileA, fileB, fileC] }) => {
+        await fileA.write(`import { c } from '${fileC.importpath}'
+export const a = c + 1`)
+        await fileB.write(`import { a } from '${fileA.importpath}'
+export const b = a + 1`)
+        await fileC.write(`import { b } from '${fileB.importpath}'
+export const c = b + 1`)
+
+        const compiler = Compiler.create({
+          side: 'client',
+          scope: 'root',
+          importer: { cwd: nodePath.dirname(fileA.path) },
+        })
+
+        const result = compiler.collectImportsDeep({ target: fileA.path })
+        const resolvedPaths = new Set(result.map((item) => item.pathResolved))
+
+        expect(resolvedPaths.has(fileA.path)).toBe(true)
+        expect(resolvedPaths.has(fileB.path)).toBe(true)
+        expect(resolvedPaths.has(fileC.path)).toBe(true)
+      }),
+    )
+
+    it.concurrent(
+      'skip predicate prunes branches',
+      helper(async ({ files: [fileA, fileB, fileC] }) => {
+        await fileA.write(`export const a = 1`)
+        await fileB.write(`import { a } from '${fileA.importpath}'
+export const b = a + 1`)
+        await fileC.write(`import { b } from '${fileB.importpath}'
+export const c = b + 1`)
+
+        const compiler = Compiler.create({
+          side: 'client',
+          scope: 'root',
+          importer: { cwd: nodePath.dirname(fileA.path) },
+        })
+
+        const result = compiler.collectImportsDeep({
+          target: fileC.path,
+          skip: (resolved) => resolved.pathResolved === fileB.path,
+        })
+
+        const resolvedPaths = result.map((item) => item.pathResolved)
+        expect(resolvedPaths).not.toContain(fileB.path)
+        expect(resolvedPaths).not.toContain(fileA.path)
+      }),
+    )
+
+    it.concurrent(
+      'collects branching imports from a single entry',
+      helper(async ({ files: [entry, leaf1, leaf2, leaf3] }) => {
+        await leaf1.write(`export const x = 1`)
+        await leaf2.write(`export const y = 2`)
+        await leaf3.write(`export const z = 3`)
+        await entry.write(`import { x } from '${leaf1.importpath}'
+import { y } from '${leaf2.importpath}'
+import { z } from '${leaf3.importpath}'
+export const e = x + y + z`)
+
+        const compiler = Compiler.create({
+          side: 'client',
+          scope: 'root',
+          importer: { cwd: nodePath.dirname(entry.path) },
+        })
+
+        const result = compiler.collectImportsDeep({ target: entry.path })
+        const resolvedPaths = result.map((item) => item.pathResolved).sort()
+
+        expect(result).toHaveLength(3)
+        expect(resolvedPaths).toEqual([leaf1.path, leaf2.path, leaf3.path].sort())
+      }),
+    )
+
+    it.concurrent(
+      'works without "side" configuration',
+      helper(async ({ files: [fileA, fileB] }) => {
+        await fileA.write(`export const a = 1`)
+        await fileB.write(`import { a } from '${fileA.importpath}'
+export const b = a + 1`)
+
+        const compiler = Compiler.create({
+          side: false,
+          scope: false,
+          importer: { cwd: nodePath.dirname(fileA.path) },
+        })
+
+        const result = compiler.collectImportsDeep({ target: fileB.path })
+        expect(result).toHaveLength(1)
+        expect(result[0]?.pathResolved).toBe(fileA.path)
+      }),
+    )
+
+    it.concurrent(
+      'does not recurse into bare package specifiers',
+      helper(async ({ files: [fileA, fileB] }) => {
+        await fileA.write(`import 'react-native'
+export const a = 1`)
+        await fileB.write(`import { a } from '${fileA.importpath}'
+export const b = a + 1`)
+
+        const compiler = Compiler.create({
+          side: 'client',
+          scope: 'root',
+          importer: { cwd: nodePath.dirname(fileA.path) },
+        })
+
+        const result = compiler.collectImportsDeep({ target: fileB.path })
+        const originals = result.map((item) => item.pathOriginal)
+
+        expect(originals).toContain('react-native')
+        expect(result.some((item) => item.pathResolved === fileA.path)).toBe(true)
+      }),
+    )
+  })
 })

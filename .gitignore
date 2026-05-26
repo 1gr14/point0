@@ -72,3 +72,6 @@ secrets/
 
 # Expo
 .bak/
+
+# Claude/Cursor
+.claude/settings.local.json

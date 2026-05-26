@@ -1,4 +1,5 @@
 import { resolveTempDirPath } from '@point0/compiler'
+import type { PointsDefinitionSource, RichFetchFn } from '@point0/core'
 import {
   __POINT0_QUERY_CLIENT__,
   _getSsItemsWithRestErrors,
@@ -14,22 +15,20 @@ import {
   type RequiredCtx,
   type UndefinedCtx,
 } from '@point0/core'
-import type { RichFetchFn } from '@point0/core'
 import type { Serve } from 'bun'
 import nodeFs from 'node:fs'
 import nodeFsPromises from 'node:fs/promises'
 import nodePath from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { EngineClient } from './client.js'
-import { parseEngineOptions } from './config.js'
 import type { EngineOptions } from './config.js'
-import { FilesGenerator } from './generator.js'
+import { parseEngineOptions } from './config.js'
 import type { FileGeneratorProcessResult } from './generator.js'
+import { FilesGenerator } from './generator.js'
 import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
-import { normalizeAndValidateNodeEnv } from './utils.js'
+import { killSubprocessOnExit, normalizeAndValidateNodeEnv } from './utils.js'
 import { FilesWatcher } from './watcher.js'
-import type { PointsDefinitionSource } from '@point0/core'
 
 export class Engine<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -37,6 +36,13 @@ export class Engine<
   TPrepared extends boolean = boolean,
 > {
   clients: TPrepared extends true ? Array<EngineClient<true, TError>> : EngineClient<false, TError>[]
+  get client(): TPrepared extends true ? EngineClient<true, TError> : EngineClient<false, TError> {
+    const first = this.clients.at(0)
+    if (!first) {
+      throw new Error('No clients available in engine. Define at least one client in engine options')
+    }
+    return first as TPrepared extends true ? EngineClient<true, TError> : EngineClient<false, TError>
+  }
   server: TPrepared extends true ? EngineServer<true, TError> : EngineServer<false, TError>
   publicdirs: TPrepared extends true ? Array<Publicdir<true, TError>> : Array<Publicdir<false, TError>>
   log: LogFn
@@ -152,33 +158,44 @@ export class Engine<
     })
   }
 
-  // async prepare(): Promise<Engine<true>> {
-  async prepare(options?: {
-    side?: 'server' | 'client' | undefined
-    scope?: PointsScope | undefined
-  }): Promise<Engine<TRequiredCtx, TError, true>> {
-    const { side, scope } = options ?? {}
-    const isServerSide = !side || side === 'server'
-    const isScopeServer = !scope || scope === this.server.scope
-    const isClientSide = !side ? process.env.POINT0_PREVENT_CLIENT_DEV_SERVER !== 'true' : side === 'client'
-    const isScopeClient = (clientScope: PointsScope) => !scope || clientScope === scope
+  /**
+   * Minimal setup run right after the engine is created and before it loads any user modules (points, app, generated
+   * files). Applies env vars and installs bun plugins so the upcoming module loads pass through the right transformer
+   * chain. No points, no app, no publicdirs, no dev servers — those are `prepare`.
+   */
+  async preload(): Promise<void> {
+    await this.server.preload()
+  }
 
-    if (isServerSide && isScopeServer) {
-      await this.server.prepare({ engine: this as Engine<TRequiredCtx, TError, true> })
+  /**
+   * Full engine setup: prepares the server and every serving client. Idempotent. Run before `serve()`, before answering
+   * any request, or before invoking server logic in tests. `dev()` calls this implicitly for the relevant sides;
+   * explicit users (CLI, custom entries) call it.
+   */
+  async prepare(): Promise<Engine<TRequiredCtx, TError, true>> {
+    if (this.prepared) {
+      return this as Engine<TRequiredCtx, TError, true>
     }
+    await this.server.prepare({ engine: this as Engine<TRequiredCtx, TError, true> })
     await Promise.all(
       this.clients.map(async (client) => {
         if (client.serving === false) {
           return
         }
-        return await client.prepare({
-          preventDevServer: !isClientSide || !isScopeClient(client.scope),
-        })
+        return await client.prepare()
       }),
     )
     this.prepared = true as never
 
     return this as Engine<TRequiredCtx, TError, true>
+  }
+
+  /**
+   * Eager-load every publicdir's file index. Run after `prepare` when you need static file serving ready before the
+   * first request (e.g. tests, smoke checks). `serve()` already does this implicitly.
+   */
+  async preparePublicdirs(): Promise<void> {
+    await Promise.all(this.publicdirs.map((publicdir) => publicdir.prepare()))
   }
 
   async serveClientDevServers({ scopes }: { scopes?: PointsScope[] | undefined } = {}): Promise<void> {
@@ -226,13 +243,15 @@ export class Engine<
       cwd = process.cwd(),
     } = options ?? {}
     const watch =
-      watchProvided === true || watchProvided === undefined
-        ? this.serverDevWatchGlob
-        : watchProvided === false
-          ? false
-          : Array.isArray(watchProvided)
-            ? watchProvided
-            : [watchProvided]
+      watchProvided === true
+        ? true
+        : watchProvided === undefined
+          ? this.serverDevWatchGlob
+          : watchProvided === false
+            ? false
+            : Array.isArray(watchProvided)
+              ? watchProvided
+              : [watchProvided]
 
     normalizeAndValidateNodeEnv('development')
     const isSideServer = !side || side === 'server'
@@ -248,8 +267,12 @@ export class Engine<
       entries && entries.length > 0
         ? entries.map((entry) => this.toEntryPath({ entry, cwd }))
         : Object.values(this.server.entry || {})
+    // client dev servers always run as a single instance in this (the engine.dev) process.
+    // server entries (subprocesses for bun-native, in-process for vite) just proxy to them.
+    const clientsDevServers = isSideClient
+      ? this.serveClientDevServers({ scopes: scope ? [scope] : undefined })
+      : Promise.resolve()
     if (withServer) {
-      // here we run server entries which already serving server, but prevent multiple client dev servers, so we do not run it here
       const serverEntryProcesses: Array<Promise<any>> = await (async () => {
         this.log({
           level: 'info',
@@ -257,72 +280,16 @@ export class Engine<
           message: `Server starting...`,
         })
         if (this.server.viteConfig) {
-          process.env.POINT0_PREVENT_CLIENT_DEV_SERVER = 'true'
           await this.server.startViteDevServer()
           return [this.server.loadViteDevEntries({ watch: !!watch, entriesFiles })]
         } else {
-          if (watch && watch.length === 0) {
-            throw new Error(
-              'Watch glob is not provided, please provide --watch <glob> or set devWatchGlob in server engine options, it is required only for bun, vite works without it',
-            )
-          }
-          const start = () => {
-            return Object.values(this.server.entry || [])
-              .filter((entryFile) => entriesFiles.includes(entryFile))
-              .map((entryFile) => {
-                return Bun.spawn({
-                  cmd: ['bun', 'run', '--no-orphans', ...(watch ? ['--watch'] : []), ...bunRunArgs, entryFile],
-                  env: {
-                    ...process.env,
-                    POINT0_PREVENT_CLIENT_DEV_SERVER: 'true',
-                    POINT0_SERVER_STARTING_AT: new Date().getTime().toString(),
-                  },
-                  stdin: 'ignore',
-                  stdout: 'inherit',
-                  stderr: 'inherit',
-                })
-              })
-          }
-
-          let processes = start()
-          if (watch) {
-            const watcher = FilesWatcher.create({
-              cwd,
-              patterns: watch,
-            })
-            await watcher.start({
-              onEvent: async (event) => {
-                this.log({
-                  level: 'info',
-                  category: ['server'],
-                  message: `Server restarting... Changed: ${nodePath.relative(this.cwd, event.path)}`,
-                })
-                processes.forEach((p) => {
-                  p.kill('SIGKILL')
-                })
-                processes = start()
-              },
-              onError: async (error) => {
-                this.log({
-                  level: 'error',
-                  category: ['dev', 'watch'],
-                  message: 'Watcher error. Still watching for changes...',
-                  error,
-                })
-              },
-            })
-          }
+          await this.server.startBunDevProcess({ entriesFiles, bunRunArgs, watch, cwd })
           return []
         }
       })()
-      // and here we run one instance of client dev servers per each client
-      const clientsDevSevers = isSideClient
-        ? this.serveClientDevServers({ scopes: scope ? [scope] : undefined })
-        : Promise.resolve()
-      await Promise.all([generatorWatchProcess, ...serverEntryProcesses, clientsDevSevers])
+      await Promise.all([generatorWatchProcess, ...serverEntryProcesses, clientsDevServers])
     } else {
-      // when we prepare, we create and also start clientDevServers
-      await Promise.all([generatorWatchProcess, this.prepare()])
+      await Promise.all([generatorWatchProcess, this.prepare(), clientsDevServers])
     }
   }
 
@@ -331,19 +298,18 @@ export class Engine<
       ? [
           options?: {
             requiredCtx?: TRequiredCtx
-            points?: PointsDefinitionSource<TRequiredCtx, TError>
           } & Partial<Serve.Options<any, any>>,
         ]
       : [
           options: {
             requiredCtx: TRequiredCtx
-            points?: PointsDefinitionSource<TRequiredCtx, TError>
           } & Partial<Serve.Options<any, any>>,
         ]
   ): Promise<void> {
     const options = args[0] ?? {}
     await this.prepare()
-    await this.server.serve(options as never)
+    await this.preparePublicdirs()
+    await this.server.serve(options)
   }
 
   async dispose(): Promise<void> {
@@ -525,6 +491,7 @@ export class Engine<
       )
     }
     let currentBuildProcess: ReturnType<typeof Bun.spawn> | undefined
+    killSubprocessOnExit(() => currentBuildProcess)
     const toCliBuildArgs = (): string[] => {
       const args = []
       if (buildOptions.scope) {

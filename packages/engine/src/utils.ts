@@ -5,6 +5,7 @@ import { plugin } from 'bun'
 import type { BuildConfig, BunPlugin } from 'bun'
 import * as nodeFsSync from 'node:fs'
 import * as nodePath from 'node:path'
+import { fileURLToPath } from 'node:url'
 import pRetry from 'p-retry'
 import type { Options as RetryOptions } from 'p-retry'
 import type { ViteDevServer } from 'vite'
@@ -14,6 +15,79 @@ import type {
   ExtractedViteConfig,
   ExtractViteConfigFn,
 } from './config.js'
+
+/**
+ * True when the current Bun process was started with the engine's own CLI (`point0` or `point0-mcp`)
+ * as its entry. Used by preload to skip user-code transformer plugins — the CLI talks to the engine
+ * via its public API, so installing plugins is wasted work and can interfere with module loading.
+ *
+ * Resolves siblings of *this* file via `import.meta.url`, so it correctly tracks both `src` (point0
+ * monorepo dev) and `dist/esm` (installed package) layouts without string-matching package paths.
+ */
+const engineCliEntryPaths = ((): Set<string> => {
+  const selfDir = nodePath.dirname(fileURLToPath(import.meta.url))
+  const names = ['cli', 'mcp']
+  const exts = ['js', 'ts', 'mjs', 'cjs', 'mts', 'cts']
+  const paths = new Set<string>()
+  for (const name of names) {
+    for (const ext of exts) {
+      paths.add(nodePath.resolve(selfDir, `${name}.${ext}`))
+    }
+  }
+  return paths
+})()
+
+export const isBunMainEngineCli = (): boolean => {
+  return !!Bun.main && engineCliEntryPaths.has(Bun.main)
+}
+
+export const stripTerminalClearSequences = (text: string): string =>
+  text
+    .replace(/\x1bc/g, '')
+    .replace(/\x1b\[\?1049[hl]/g, '')
+    .replace(/\x1b\[\?1047[hl]/g, '')
+    .replace(/\x1b\[\?47[hl]/g, '')
+    .replace(/\x1b\[(?:[0-3]?J|2K|K|H|1;1H)/g, '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+
+export const pipeStreamStripped = ({
+  stream,
+  target,
+  onChunk,
+}: {
+  stream: ReadableStream<Uint8Array> | null
+  target: NodeJS.WriteStream
+  onChunk?: (rawText: string) => void
+}): void => {
+  if (!stream) {
+    return
+  }
+  const decoder = new TextDecoder()
+  void stream
+    .pipeTo(
+      new WritableStream({
+        write(chunk) {
+          const text = decoder.decode(chunk, { stream: true })
+          const cleaned = stripTerminalClearSequences(text)
+          if (cleaned.length > 0) {
+            target.write(cleaned)
+          }
+          onChunk?.(text)
+        },
+        close() {
+          const flushed = decoder.decode()
+          const cleaned = stripTerminalClearSequences(flushed)
+          if (cleaned.length > 0) {
+            target.write(cleaned)
+          }
+        },
+      }),
+    )
+    .catch(() => {
+      // Process streams can close abruptly during normal shutdown.
+    })
+}
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
   if (!path) {
@@ -130,7 +204,7 @@ export const getDirByPaths = ({
     return p
   }
 
-  const exts = ['.ts', '.tsx', '.js', '.mjs', '.cjs']
+  // const exts = ['.ts', '.tsx', '.js', '.mjs', '.cjs']
   function isFile(path: string): boolean {
     if (pathsHasFiles === false) {
       return false
@@ -138,7 +212,8 @@ export const getDirByPaths = ({
     if (pathsHasDirs === false && pathsHasFiles === true) {
       return true
     }
-    return exts.some((ext) => path.endsWith(ext))
+    // return exts.some((ext) => path.endsWith(ext))
+    return nodePath.extname(path) !== ''
   }
 
   // Strip glob parts first
@@ -689,9 +764,14 @@ export const isAsyncFn = (fn: unknown): fn is (...args: any[]) => Promise<any> =
 export const registerOnProcessExit = (fn: () => void): void => {
   let triggered = false
   const triggerIfNotYet = (): void => {
-    if (!triggered) {
-      triggered = true
+    if (triggered) {
+      return
+    }
+    triggered = true
+    try {
       fn()
+    } catch {
+      // Cleanup failures must not block other handlers from running.
     }
   }
 
@@ -717,6 +797,38 @@ export const registerOnProcessExit = (fn: () => void): void => {
 
   process.on('beforeExit', triggerIfNotYet)
   process.on('exit', triggerIfNotYet)
+  process.on('uncaughtException', triggerIfNotYet)
+  process.on('unhandledRejection', triggerIfNotYet)
+}
+
+type AnySubprocess = Bun.Subprocess<any, any, any>
+type SubprocessRef = AnySubprocess | null | undefined
+
+const killSubprocessIfAlive = (child: SubprocessRef): void => {
+  if (!child || child.exitCode !== null) {
+    return
+  }
+  try {
+    child.kill('SIGKILL')
+  } catch {
+    // Already dead or detached.
+  }
+}
+
+export const killSubprocessOnExit = (getChild: () => SubprocessRef | Iterable<SubprocessRef>): void => {
+  registerOnProcessExit(() => {
+    const value = getChild()
+    if (!value) {
+      return
+    }
+    if (Symbol.iterator in Object(value)) {
+      for (const child of value as Iterable<SubprocessRef>) {
+        killSubprocessIfAlive(child)
+      }
+      return
+    }
+    killSubprocessIfAlive(value as SubprocessRef)
+  })
 }
 
 export const parseGlobs = ({

@@ -1,5 +1,4 @@
-import type { CompilerOptions } from '@point0/compiler'
-import { _point0_env, _ssServerLog, prependAndDeappendSlash } from '@point0/core'
+import { Compiler, type CompilerOptions } from '@point0/compiler'
 import type {
   ErrorPoint0,
   FetcherFetchDetailedResult,
@@ -9,6 +8,7 @@ import type {
   PointsScope,
   RequiredCtx,
 } from '@point0/core'
+import { _point0_env, _ssServerLog, prependAndDeappendSlash } from '@point0/core'
 import type { BunPlugin, Serve } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -23,27 +23,31 @@ import type {
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
 import { killPort } from './port.js'
-import { Publicdir } from './publicdir.js'
 import type { PublicdirDefinition } from './publicdir.js'
+import { Publicdir } from './publicdir.js'
 import { ServerPoints } from './server-points.js'
-import {
-  createViteDevServer,
-  externalizeRollupModule,
-  executeEngineServerBuildConfig,
-  extractEngineServerPlugins,
-  extractViteConfig,
-  getDirByPaths,
-  getViteRoot,
-  loadBunPlugins,
-  normalizeAndValidateNodeEnv,
-  registerOnProcessExit,
-  validateEntrypoints,
-} from './utils.js'
 import type {
   EngineServerBuildConfigDefinition,
   EngineServerPluginsDefinition,
   EngineSharedPluginsDefinition,
 } from './utils.js'
+import {
+  createViteDevServer,
+  executeEngineServerBuildConfig,
+  externalizeRollupModule,
+  extractEngineServerPlugins,
+  extractViteConfig,
+  getDirByPaths,
+  getViteRoot,
+  isBunMainEngineCli,
+  killSubprocessOnExit,
+  loadBunPlugins,
+  normalizeAndValidateNodeEnv,
+  pipeStreamStripped,
+  registerOnProcessExit,
+  validateEntrypoints,
+} from './utils.js'
+import { FilesWatcher } from './watcher.js'
 
 export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0> {
   scope: PointsScope
@@ -67,6 +71,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   generalBunPlugins: EngineSharedPluginsDefinition
   prepared: TPrepared
   bunPluginsLoaded = false
+  envVarsApplied = false
   bunServer: Bun.Server<undefined> | undefined
   viteConfig: EngineOptionsViteConfig | null
   viteDevServer: ViteDevServer | null
@@ -255,6 +260,12 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     ;(globalThis as any).__ERROR0_FIX_STACKTRACE__ = undefined
   }
 
+  /**
+   * Resolve env constants (NODE_ENV, POINT0_*) from server config and optionally write them onto `process.env` /
+   * `import.meta.env`. The actual write is guarded by `envVarsApplied`, so calling this repeatedly never re-applies —
+   * only the first call with `assignToProcessEnv: true` mutates. `this.envConsts` is always refreshed, since callers
+   * read the return value.
+   */
   private setEnvVars({
     nodeEnvFallback,
     assignToProcessEnv,
@@ -270,7 +281,8 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     this.envConsts.POINT0_SCOPE = POINT0_SCOPE
     this.envConsts.POINT0_SIDE = POINT0_SIDE
     this.envConsts.POINT0_SSR = POINT0_SSR
-    if (assignToProcessEnv) {
+    if (assignToProcessEnv && !this.envVarsApplied) {
+      this.envVarsApplied = true
       for (const [envVarKey, envVarValue] of Object.entries({ ...this.envVars, ...this.envConsts })) {
         process.env[envVarKey] = envVarValue
         try {
@@ -283,17 +295,46 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR }
   }
 
+  isFileUnderOutdir(file: string): boolean {
+    if (!this.outdir) {
+      return false
+    }
+    return !nodePath.relative(this.outdir, file).startsWith('..')
+  }
+
+  /**
+   * Minimal setup run after the engine module loads but before it touches any user code (points, app components,
+   * generated modules). Applies env vars and installs bun plugins so every subsequent module load goes through the
+   * right transformer chain. Skips heavy work (points reading, fetcher, dev servers) — that's `prepare`'s job.
+   *
+   * When the current Bun process is the engine CLI itself (`point0` / `point0-mcp`), plugin install is skipped: the CLI
+   * consumes the engine via its public API, not by importing user modules through the transformer chain.
+   */
+  async preload(): Promise<void> {
+    if (isBunMainEngineCli()) {
+      return
+    }
+    if (this.isFileUnderOutdir(Bun.main)) {
+      return
+    }
+    if (_point0_env.build.was) {
+      return
+    }
+    this.setEnvVars({ assignToProcessEnv: true, nodeEnvFallback: undefined })
+    await this.loadBunPlugins({ built: false })
+  }
+
+  /**
+   * Full setup before the server can serve requests: env vars, bun plugins, points definitions, root-point logger
+   * override, and the fetcher. Idempotent — re-entry returns the same instance. Called by `engine.prepare()` and
+   * indirectly by `engine.serve()`.
+   */
   async prepare({ engine }: { engine: Engine<RequiredCtx, TError, true> }): Promise<EngineServer<true, TError>> {
     if (this.isPrepared()) {
       return this as EngineServer<true, TError>
     }
-    this.setEnvVars({ assignToProcessEnv: true, nodeEnvFallback: undefined })
-    await Promise.all([
-      (engine.wasBuilt ? Promise.resolve() : this.loadBunPlugins({ built: _point0_env.build.was })).then(
-        async () => await this.readPoints(),
-      ),
-      this.publicdir ? this.publicdir.prepare() : Promise.resolve(),
-    ])
+    await this.preload()
+    await this.readPoints()
     this.prepared = true as never
     this._applyRootLogger()
     this.fetcher = Fetcher.create({ engine, server: this as EngineServer<true, TError> }) as TPrepared extends true
@@ -513,20 +554,14 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
 
   async serve({
     requiredCtx,
-    points,
     ..._providedServeConfig
-  }: { requiredCtx: RequiredCtx; points?: PointsDefinitionSource<RequiredCtx, TError> } & Partial<
-    Serve.Options<any, any>
-  >): Promise<void> {
+  }: { requiredCtx?: RequiredCtx } & Partial<Serve.Options<any, any>> = {}): Promise<void> {
     if (!this.isPrepared()) {
       throw new Error('Server is not prepared')
     }
 
     if (this.bunServer) {
       throw new Error('Server is already running')
-    }
-    if (points) {
-      await this.setPoints(points)
     }
 
     const customServeConfig = ((this.bunServeConfig as unknown) ?? {}) as Record<string, unknown>
@@ -590,19 +625,10 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     registerOnProcessExit(() => {
       void this.bunServer?.stop()
     })
-    const startingDurationMsMessage = (() => {
-      const startingAt = process.env.POINT0_SERVER_STARTING_AT
-      process.env.POINT0_SERVER_STARTING_AT = undefined
-      if (!startingAt) {
-        return ''
-      }
-      const startingDurationMs = Math.round(new Date().getTime() - parseInt(startingAt))
-      return ` in ${startingDurationMs}ms`
-    })()
     this.log({
       level: 'info',
       category: ['server'],
-      message: `Server started http://localhost:${this.port}${startingDurationMsMessage}`,
+      message: `Server started http://localhost:${this.port} in ${Math.ceil(process.uptime() * 1000)}ms`,
     })
   }
 
@@ -619,6 +645,131 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       await this.viteDevServer.close()
     }
     this.uninstallViteSsrStacktraceFixer()
+  }
+
+  async startBunDevProcess({
+    entriesFiles,
+    bunRunArgs = [],
+    watch,
+    cwd,
+  }: {
+    entriesFiles: string[]
+    bunRunArgs?: string[]
+    watch: string[] | boolean
+    cwd: string
+  }): Promise<void> {
+    // Two restart strategies:
+    // - touch  (POINT0_DEV_SERVER_TOUCH_ON_WATCH=true): child runs with `bun --watch`; on import change
+    //   we rewrite the entry file's bytes so bun's content-hash watcher restarts the child itself.
+    // - respawn (default): child runs without `--watch`; on import change we SIGKILL that child and spawn a new one.
+    const useTouch = process.env.POINT0_DEV_SERVER_TOUCH_ON_WATCH === 'true'
+
+    const activeEntries = Object.values(this.entry || []).filter((entryFile) => entriesFiles.includes(entryFile))
+
+    const allChildren = new Set<Bun.Subprocess<'ignore', 'pipe', 'pipe'>>()
+    killSubprocessOnExit(() => allChildren)
+
+    const spawnEntry = (entryFile: string): Bun.Subprocess<'ignore', 'pipe', 'pipe'> => {
+      const child = Bun.spawn({
+        cmd: ['bun', 'run', '--no-orphans', ...(watch ? ['--watch'] : []), ...bunRunArgs, entryFile],
+        env: {
+          ...process.env,
+        },
+        stdin: 'ignore',
+        stdout: 'pipe',
+        stderr: 'pipe',
+      })
+      allChildren.add(child)
+      void child.exited.finally(() => allChildren.delete(child))
+      pipeStreamStripped({ stream: child.stdout, target: process.stdout })
+      pipeStreamStripped({ stream: child.stderr, target: process.stderr })
+      return child
+    }
+
+    const childByEntry = new Map<string, Bun.Subprocess<'ignore', 'pipe', 'pipe'>>()
+    for (const entryFile of activeEntries) {
+      childByEntry.set(entryFile, spawnEntry(entryFile))
+    }
+
+    if (!watch) {
+      return
+    }
+
+    const compilerOptions = this.getCompilerOptions()
+    const compiler = compilerOptions ? Compiler.create(compilerOptions) : undefined
+    const skipImport = (resolved: { pathResolved: string | undefined }) =>
+      resolved.pathResolved === undefined || resolved.pathResolved.includes('/node_modules/')
+    const userPatterns = Array.isArray(watch) ? watch : []
+
+    const collectEntryPatterns = (entryFile: string): string[] => {
+      const importFiles = new Set<string>()
+      if (compiler) {
+        const deepImports = compiler.collectImportsDeep({ target: entryFile, skip: skipImport })
+        for (const item of deepImports) {
+          if (item.pathResolved) {
+            importFiles.add(item.pathResolved)
+          }
+        }
+      }
+      return [...userPatterns, ...importFiles]
+    }
+
+    const touchEntry = async (entryFile: string): Promise<void> => {
+      const original = await nodeFs.readFile(entryFile)
+      await nodeFs.writeFile(entryFile, Buffer.concat([original, Buffer.from('\n')]))
+      await nodeFs.writeFile(entryFile, original)
+    }
+
+    const respawnEntry = async (entryFile: string): Promise<void> => {
+      const old = childByEntry.get(entryFile)
+      if (old) {
+        try {
+          old.kill('SIGKILL')
+          await old.exited
+        } catch {
+          // Already dead or detached.
+        }
+      }
+      childByEntry.set(entryFile, spawnEntry(entryFile))
+    }
+
+    const restartEntry = useTouch ? touchEntry : respawnEntry
+
+    for (const entryFile of activeEntries) {
+      const initialPatterns = collectEntryPatterns(entryFile)
+      if (initialPatterns.length === 0) {
+        continue
+      }
+      const watcher = FilesWatcher.create({ cwd, patterns: initialPatterns })
+      await watcher.start({
+        onEvent: async (event) => {
+          this.log({
+            level: 'info',
+            category: ['server'],
+            message: `Server restarting... (changed: ${nodePath.relative(this.cwd, event.path)})`,
+          })
+          try {
+            await restartEntry(entryFile)
+          } catch (error) {
+            this.log({
+              level: 'error',
+              category: ['server'],
+              message: `Failed to restart entry ${nodePath.relative(this.cwd, entryFile)}`,
+              error,
+            })
+          }
+          await watcher.restart({ cwd, patterns: collectEntryPatterns(entryFile) })
+        },
+        onError: async (error) => {
+          this.log({
+            level: 'error',
+            category: ['dev', 'watch'],
+            message: 'Watcher error. Still watching for changes...',
+            error,
+          })
+        },
+      })
+    }
   }
 
   getBuildPaths(): {
@@ -705,7 +856,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     }
     const injectedEnvs = {
       'process.env.POINT0_PREVENT_REDIRECT_TO_DEV_CLIENT': JSON.stringify('true'),
-      'process.env.POINT0_PREVENT_CLIENT_DEV_SERVER': JSON.stringify('true'),
       'process.env.POINT0_ENGINE_WAS_BUILT': JSON.stringify('true'),
       ...(POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED
         ? { 'process.env.POINT0_ENGINE_CWD_BEFORE_BUILD': JSON.stringify(POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED) }

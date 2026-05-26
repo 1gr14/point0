@@ -39,6 +39,7 @@ setSearch как отдельная доступная утилита вне use
 routes should not conflict /users/impersonate/:id? | /users/:sn
 allos /:x?/:y?
 route.abs()
+navigate.back()
 Добавить хелпер гет локейшен
 layout Page404 allow elemnt not component
 useNavLink should return state of path
@@ -58,22 +59,11 @@ normalize scroll restoration (it is trash now)
 # Runtime
 ? Сет поинтс должна принимать уже загруженные поинты
 ? Вообще отказаться от дев команды, пусть используется голсы бан или голый вайт ???
---no-orphans for dev script so it will kill bad guys auto (try just use usual bun)
-генерировать комиплер настройки в энв файл, чтобы мочь запускать бан прямо из прелоад скрипта, и тогда вообще не нуно будет эвэйт импорты всякие делать
-Но как-то надо ещё и апп доимпортить, а то походу ему тоже будет плохо в энжине и эвэйт импортом (тоже что ли setApp)
-Серв дев серверы клиентов надо делать не в препеар скрипте (вообще это буто бы разделить надо)
-Индекс клиент пусть и занимается сервом клиента, а у него там уже и поинты сами по себе есть if (server) engine.clients[0].serve()
-И этот индекс клиента это энтри в ап конфиге
-Сделать шортхенд клиент и для энжин конфига и для энжины самой, просто берём или ставим первого клиента
-allow bun client just run client in place using reload script static
-Генерейт клиент поинтс пусть имеет настройку, которая просто прямо в одном файле сгенерит все лэзи и реди поинты в зависимости от прод это или не прод
-Надо просто поинтсы вынести из энжины и передавать их туда на этапе сервиса или препар и тогда не будет проблем с недобором конфига (проврка)
-Индекс сервер просто должен вызвать энжин препаре, и экспортнуть эту энжину, а апп сервер должен просто использовать эту энжину (поправить экзамплы и темплейты)
-Пусть будет app.server.ts engine.server.ts (в ней и шутдаун будет) а index.server.ts не нужен (поправить экзамплы и темплейты)
-Рут клиента если тот сср должен попадать в поинтсы сервера, чтобы мы из них могли добыть клиентские поинтсы, от клинет поинтсов в энжине надо избавляться
-client points get form server points, do not needed to provide it to client, needed helper serverPoints.toClientPoints()
-Добиться, чтобы команду дев можно было не использовать, а использовать нативную бан команду (vite and bun)
-А бейзпас короче это просто через сервинг переменную определяется и всё
+? А бейзпас короче это просто через сервинг переменную определяется и всё
+
+пофиксить экзамплы
+прогнать тесты
+
 vite 8 (server updates failed)
 vite config as fn should accept also compilerPlugin so we can place it in correct place
 В вайт сср сразу добавить фикс эррор тру
@@ -90,8 +80,6 @@ react-compiler
 add babel-plugin-react-compiler to all examples
 Попробовать не убирать тайпскрипт, а отменить экспериментальное сохранение синтаксиса
 inline source maps for bun, do not hmr fix for server builds
-no such file or directory, unlink '/Users/iserdmi/cc/projects/devp0nt/node_modules/.cache/@point0/compiler-cache/372021e986f6d398e1e690ac244f6d07941a138e3e8b041daed88922c007135c/81e0d93e0b5054f558084e026ac211ee17a9a57bb8652a312fa90c1418af0b25.1778940241763.491
-navigate.back()
 В cli компмле добавить флаг билт для просмотра как оно выглядит после билда
 mardown {enabled, options}
 Из компилера не учитывать импорты в которых только тайп при импорт протекшене
@@ -209,6 +197,9 @@ create-app test
 Зазвать подписчиков на стрим-созвон и там обсудить как мне вести канал (за миг до запуска)
 
 BUN-ISSUE
+https://github.com/oven-sh/bun/issues/6173
+https://github.com/oven-sh/bun/issues/5844
+https://github.com/oven-sh/bun/issues/7337
 В бан написать, что клиент не обновляется при создании новых файлов
 Попросить в рантайм плагине дать получать соурсмапы
 

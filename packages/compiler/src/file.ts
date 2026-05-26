@@ -1,13 +1,13 @@
 import { transformFromAstSync } from '@babel/core'
-import generatorModule from '@babel/generator'
 import type { GeneratorResult } from '@babel/generator'
+import generatorModule from '@babel/generator'
 import babel from '@babel/parser'
 import presetTypescriptModule from '@babel/preset-typescript'
-import traverseModule from '@babel/traverse'
 import type traverseType from '@babel/traverse'
 import type { NodePath } from '@babel/traverse'
-import * as t from '@babel/types'
+import traverseModule from '@babel/traverse'
 import type { File, Node, ObjectExpression, ObjectMethod, ObjectProperty, SpreadElement } from '@babel/types'
+import * as t from '@babel/types'
 import { compileSync } from '@mdx-js/mdx'
 import type { EnvOsName, EnvRuntimeName, NormalizedNodeEnv } from '@point0/core'
 import minifyDeadCodeEliminationModule from 'babel-plugin-minify-dead-code-elimination'
@@ -19,7 +19,7 @@ import * as nodePath from 'node:path'
 import prettier from 'prettier'
 import remarkFrontmatter from 'remark-frontmatter'
 import remarkMdxFrontmatter from 'remark-mdx-frontmatter'
-import type { Compiler, CompilerEnvConsts } from './compiler.js'
+import type { Compiler, CompilerEnvConsts, ImportsTraceResult } from './compiler.js'
 import { resolveImporterRule, writeOrCreateVirtualModulePath, type ImporterOptionsParsed } from './importer.js'
 import { CompilerPoint, POINT_METHOD_TO_TYPE_MAP } from './point.js'
 import { FileResolver } from './resolver.js'
@@ -1705,13 +1705,12 @@ export class CompilerFile<THasContent extends boolean> {
           importer: this.abs,
           existsing: false,
         })
-        const normalizedPathResolved = pathResolved ?? pathOriginal
-        const key = `${pathOriginal}\n${normalizedPathResolved}`
+        const key = `${pathOriginal}\n${pathResolved ?? ''}`
         const existing = importsByPath.get(key)
         if (!existing) {
           const next: CompilerFileImport = {
             pathOriginal,
-            pathResolved: normalizedPathResolved,
+            pathResolved,
             exportNames: [],
             virtualPath: undefined,
             loc: resolveImportLoc(sourceNodePath),
@@ -2057,10 +2056,11 @@ export class CompilerFile<THasContent extends boolean> {
           continue
         }
 
+        const matchablePath = importItem.pathResolved ?? importItem.pathOriginal
         const denyResolved = resolveImporterRule({
           map: importer.map.deny,
           rules: importer.deny,
-          path: importItem.pathResolved,
+          path: matchablePath,
           importer: this.abs,
           cwd: importer.cwd,
           loc: importItem.loc,
@@ -2068,7 +2068,7 @@ export class CompilerFile<THasContent extends boolean> {
         if (denyResolved) {
           const exportNames = this.collectExportNamesForImport(importItem)
           const trace = compiler.trace({
-            target: importItem.pathResolved,
+            target: matchablePath,
             policy: 'memory',
             cwd: importer.cwd,
           })
@@ -2095,7 +2095,7 @@ export class CompilerFile<THasContent extends boolean> {
         const mockResolved = resolveImporterRule({
           map: importer.map.mock,
           rules: importer.mock,
-          path: importItem.pathResolved,
+          path: matchablePath,
           importer: this.abs,
           cwd: importer.cwd,
           loc: importItem.loc,
@@ -2185,6 +2185,7 @@ export class CompilerFile<THasContent extends boolean> {
           code: string
           map: GeneratorResult['map']
           modified: boolean
+          imports: ImportsTraceResult['items']
         }
   } {
     const stats = (() => {
@@ -2220,6 +2221,7 @@ export class CompilerFile<THasContent extends boolean> {
           code: string
           map: GeneratorResult['map']
           modified: boolean
+          imports: ImportsTraceResult['items']
         }
       } catch {
         return undefined
@@ -2240,6 +2242,7 @@ export class CompilerFile<THasContent extends boolean> {
         code: result.code,
         map: result.map,
         modified: result.modified,
+        imports: result.imports,
       },
     }
   }
@@ -2259,6 +2262,7 @@ export class CompilerFile<THasContent extends boolean> {
       code: string
       map: GeneratorResult['map']
       modified: boolean
+      imports: ImportsTraceResult['items']
     }
   }): void {
     const cacheFilePath = this.getCacheFilePath({ mtime, compiler, map, hmrFix })
@@ -2268,6 +2272,7 @@ export class CompilerFile<THasContent extends boolean> {
         code: result.code,
         map: result.map,
         modified: result.modified,
+        imports: result.imports,
       }),
       'utf8',
     )
@@ -2290,11 +2295,16 @@ export class CompilerFile<THasContent extends boolean> {
     const staleCacheFilesGlob = nodePath.join(cacheDir, `${pathHash}.*`)
     const files = await fg(staleCacheFilesGlob, { dot: true })
     await Promise.all(
-      files.map((file) => {
+      files.map(async (file) => {
         if (file === exclude) {
           return
         }
-        return nodeFsAsync.unlink(file)
+        // return nodeFsAsync.unlink(file)
+        try {
+          await nodeFsAsync.unlink(file)
+        } catch {
+          /* ignore */
+        }
       }),
     )
   }
@@ -2302,7 +2312,7 @@ export class CompilerFile<THasContent extends boolean> {
 
 export type CompilerFileImport = {
   pathOriginal: string
-  pathResolved: string
+  pathResolved: string | undefined
   exportNames: string[]
   virtualPath: string | undefined
   loc: { line: number; column: number }

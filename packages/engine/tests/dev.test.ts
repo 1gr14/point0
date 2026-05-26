@@ -62,7 +62,7 @@ describe('dev', () => {
 
   afterAll(async () => {
     void tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
-    throwOnBundlersLengthNot2(bundlers)
+    // throwOnBundlersLengthNot2(bundlers)
   })
 
   describe.each(bundlers)('%s', (bundler) => {

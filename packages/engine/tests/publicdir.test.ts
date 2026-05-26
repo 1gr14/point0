@@ -17,10 +17,9 @@ type ItFn = (done: (err?: unknown) => void) => void | Promise<void>
 type ProcessMode = 'dev' | 'build'
 type Bundler = 'bun' | 'vite'
 
-// it does not matter which bundler for pblicdirs
-// const bundlers: Bundler[] = ['bun', 'vite']
+const bundlers: Bundler[] = ['bun', 'vite']
 const processModes: ProcessMode[] = ['dev', 'build']
-const bundler = 'bun' as Bundler
+// const bundler = 'bun' as Bundler
 
 const clientPublicdirLine = `      publicdir: { source: '../public', outdir: '../dist/client' },`
 const serverPublicdirLine = `    // publicdir: server,`
@@ -67,8 +66,9 @@ async function startProject(tp: TestProjectOneClient, processMode: ProcessMode):
     await tp.generate()
     const bp = tp.spawn(['bun', 'run', 'build'])
     await bp.exited
+    const engine = await tp.importEngine()
     tp.spawn(['bun', 'run', 'start'])
-    await tp.waitStarted()
+    await tp.waitStarted(engine.server.port)
   }
 }
 
@@ -106,48 +106,48 @@ describe('publicdir', () => {
     // throwOnBundlersLengthNot2(bundlers)
   })
 
-  // describe.each(bundlers)('%s', (bundler) => {
-  describe.each(processModes)('%s', (processMode) => {
-    it(
-      'serves server publicdir from string source',
-      wrp({ vite: bundler === 'vite' }, async ({ tp }) => {
-        await tp.write('public/server-string.txt', 'server-string')
-        await tp.write('public/server-data.json', '{"ok":true}')
-        await tp.write('public/server-style.css', 'body{color:red}')
-        await tp.write('public/server-page.html', '<!doctype html><title>publicdir</title>')
-        await tp.write('public/server-script.js', 'console.info("publicdir")')
-        await tp.write(
-          'public/server-icon.svg',
-          `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1"/></svg>`,
-        )
-        await configureServerPublicdir(tp, `'../public'`)
-        await startProject(tp, processMode)
+  describe.each(bundlers)('%s', (bundler) => {
+    describe.each(processModes)('%s', (processMode) => {
+      it(
+        'serves server publicdir from string source',
+        wrp({ vite: bundler === 'vite' }, async ({ tp }) => {
+          await tp.write('public/server-string.txt', 'server-string')
+          await tp.write('public/server-data.json', '{"ok":true}')
+          await tp.write('public/server-style.css', 'body{color:red}')
+          await tp.write('public/server-page.html', '<!doctype html><title>publicdir</title>')
+          await tp.write('public/server-script.js', 'console.info("publicdir")')
+          await tp.write(
+            'public/server-icon.svg',
+            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1"/></svg>`,
+          )
+          await configureServerPublicdir(tp, `'../public'`)
+          await startProject(tp, processMode)
 
-        await expectServerTextAndType(tp, '/hello.txt', 'Hi!', 'text/plain')
-        await expectServerTextAndType(tp, '/server-string.txt', 'server-string', 'text/plain')
-        await expectServerTextAndType(tp, '/server-data.json', '{"ok":true}', 'application/json')
-        await expectServerTextAndType(tp, '/server-style.css', 'body{color:red}', 'text/css')
-        await expectServerTextAndType(tp, '/server-page.html', '<!doctype html><title>publicdir</title>', 'text/html')
-        await expectServerTextAndType(tp, '/server-script.js', 'console.info("publicdir")', [
-          'application/javascript',
-          'text/javascript',
-        ])
-        await expectServerTextAndType(
-          tp,
-          '/server-icon.svg',
-          `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1"/></svg>`,
-          'image/svg+xml',
-        )
-      }),
-    )
+          await expectServerTextAndType(tp, '/hello.txt', 'Hi!', 'text/plain')
+          await expectServerTextAndType(tp, '/server-string.txt', 'server-string', 'text/plain')
+          await expectServerTextAndType(tp, '/server-data.json', '{"ok":true}', 'application/json')
+          await expectServerTextAndType(tp, '/server-style.css', 'body{color:red}', 'text/css')
+          await expectServerTextAndType(tp, '/server-page.html', '<!doctype html><title>publicdir</title>', 'text/html')
+          await expectServerTextAndType(tp, '/server-script.js', 'console.info("publicdir")', [
+            'application/javascript',
+            'text/javascript',
+          ])
+          await expectServerTextAndType(
+            tp,
+            '/server-icon.svg',
+            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1"/></svg>`,
+            'image/svg+xml',
+          )
+        }),
+      )
 
-    it(
-      'serves server publicdir from mixed array source',
-      wrp({ vite: bundler === 'vite' }, async ({ tp }) => {
-        await tp.write('public/server-array-string.txt', 'server-array-string')
-        await configureServerPublicdir(
-          tp,
-          `[
+      it(
+        'serves server publicdir from mixed array source',
+        wrp({ vite: bundler === 'vite' }, async ({ tp }) => {
+          await tp.write('public/server-array-string.txt', 'server-array-string')
+          await configureServerPublicdir(
+            tp,
+            `[
       '../public',
       {
         '/server-array-response.json': () => '{"via":"array-response"}',
@@ -164,26 +164,31 @@ describe('publicdir', () => {
         },
       ],
     ]`,
-        )
-        await startProject(tp, processMode)
+          )
+          await startProject(tp, processMode)
 
-        await expectServerTextAndType(tp, '/hello.txt', 'Hi!', 'text/plain')
-        await expectServerTextAndType(tp, '/server-array-string.txt', 'server-array-string', 'text/plain')
-        await expectServerTextAndType(tp, '/server-array-response.json', '{"via":"array-response"}', 'application/json')
-        await expectServerTextAndType(tp, '/server-array-function.css', 'body{--from:array-function}', 'text/css')
-        await expectServerTextAndType(tp, '/server-array-async-function.js', 'console.info("array-async-function")', [
-          'application/javascript',
-          'text/javascript',
-        ])
-      }),
-    )
+          await expectServerTextAndType(tp, '/hello.txt', 'Hi!', 'text/plain')
+          await expectServerTextAndType(tp, '/server-array-string.txt', 'server-array-string', 'text/plain')
+          await expectServerTextAndType(
+            tp,
+            '/server-array-response.json',
+            '{"via":"array-response"}',
+            'application/json',
+          )
+          await expectServerTextAndType(tp, '/server-array-function.css', 'body{--from:array-function}', 'text/css')
+          await expectServerTextAndType(tp, '/server-array-async-function.js', 'console.info("array-async-function")', [
+            'application/javascript',
+            'text/javascript',
+          ])
+        }),
+      )
 
-    it(
-      'serves server publicdir from object with string-producing functions',
-      wrp({ vite: bundler === 'vite' }, async ({ tp }) => {
-        await configureServerPublicdir(
-          tp,
-          `{
+      it(
+        'serves server publicdir from object with string-producing functions',
+        wrp({ vite: bundler === 'vite' }, async ({ tp }) => {
+          await configureServerPublicdir(
+            tp,
+            `{
       '/server-object-response.html': () => '<h1>object-response</h1>',
       '/server-object-function.svg': () =>
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><circle cx="0.5" cy="0.5" r="0.5"/></svg>',
@@ -192,42 +197,43 @@ describe('publicdir', () => {
         return '{"via":"object-async-function"}'
       },
     }`,
-        )
-        await startProject(tp, processMode)
+          )
+          await startProject(tp, processMode)
 
-        await expectServerTextAndType(tp, '/server-object-response.html', '<h1>object-response</h1>', 'text/html')
-        await expectServerTextAndType(
-          tp,
-          '/server-object-function.svg',
-          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><circle cx="0.5" cy="0.5" r="0.5"/></svg>',
-          'image/svg+xml',
-        )
-        await expectServerTextAndType(
-          tp,
-          '/server-object-async-function.json',
-          '{"via":"object-async-function"}',
-          'application/json',
-        )
-      }),
-    )
+          await expectServerTextAndType(tp, '/server-object-response.html', '<h1>object-response</h1>', 'text/html')
+          await expectServerTextAndType(
+            tp,
+            '/server-object-function.svg',
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><circle cx="0.5" cy="0.5" r="0.5"/></svg>',
+            'image/svg+xml',
+          )
+          await expectServerTextAndType(
+            tp,
+            '/server-object-async-function.json',
+            '{"via":"object-async-function"}',
+            'application/json',
+          )
+        }),
+      )
 
-    it(
-      'merges multiple record string directory definitions',
-      wrp({ vite: bundler === 'vite' }, async ({ tp }) => {
-        await tp.write('public-a/one.txt', 'from-a')
-        await tp.write('public-b/two.json', '{"from":"b"}')
-        await configureServerPublicdir(
-          tp,
-          `[
+      it(
+        'merges multiple record string directory definitions',
+        wrp({ vite: bundler === 'vite' }, async ({ tp }) => {
+          await tp.write('public-a/one.txt', 'from-a')
+          await tp.write('public-b/two.json', '{"from":"b"}')
+          await configureServerPublicdir(
+            tp,
+            `[
       { '/a': '../public-a' },
       { '/b': '../public-b' },
     ]`,
-        )
-        await startProject(tp, processMode)
+          )
+          await startProject(tp, processMode)
 
-        await expectServerTextAndType(tp, '/a/one.txt', 'from-a', 'text/plain')
-        await expectServerTextAndType(tp, '/b/two.json', '{"from":"b"}', 'application/json')
-      }),
-    )
+          await expectServerTextAndType(tp, '/a/one.txt', 'from-a', 'text/plain')
+          await expectServerTextAndType(tp, '/b/two.json', '{"from":"b"}', 'application/json')
+        }),
+      )
+    })
   })
 })

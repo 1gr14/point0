@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "point0": {
-      "command": "bun",
-      "args": ["run", "mcp"]
-    }
-  }
-}

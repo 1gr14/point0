@@ -345,7 +345,6 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
   app: appProvided,
   globals = getFakeBrowserGlobals(),
   engineOptions,
-  preventClientDevServers = true,
   Page404,
   layout404,
   routes,
@@ -356,7 +355,6 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
   app?: AppComponent
   globals?: Record<string, any>
   engineOptions?: Partial<EngineOptions>
-  preventClientDevServers?: boolean
   Page404?: React.ComponentType
   layout404?: Layout404Type
   routes?: TRoutes
@@ -400,7 +398,7 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
     clients: [{ scope: 'root', points, indexHtml: '__POINT0_TEST_INDEX_HTML__', app }],
     ssr,
     ...engineOptions,
-  }).prepare({ side: preventClientDevServers ? 'server' : undefined })
+  }).prepare()
   const client = FakeClient.create<TestThingsState, any>({
     engine,
     scope: 'root',

@@ -417,7 +417,13 @@ export class TestProjectTwoClient {
   }
 
   async waitStarted(port?: number) {
-    await this.waitOutput([`started http://localhost:${port ?? this.serverPort}`, '!Failed to start server'], 10000)
+    if (port) {
+      await this.waitOutput([`started http://localhost:${port}`, '!Failed to start server'], 10000)
+    } else {
+      await this.waitOutput([`started http://localhost:${this.serverPort}`, '!Failed to start server'], 10000)
+      await this.waitOutput([`started http://localhost:${this.client1Port}`, '!Failed to start client1'], 10000)
+      await this.waitOutput([`started http://localhost:${this.client2Port}`, '!Failed to start client2'], 10000)
+    }
   }
 
   // async waitWSReady(timeout = 2000) {

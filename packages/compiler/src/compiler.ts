@@ -155,6 +155,7 @@ export class Compiler {
     pruneWalkerPoints,
     pruneWalkerFiles,
     writeVirtual,
+    cache: cacheOpt,
   }: {
     content?: string
     file: string
@@ -165,6 +166,7 @@ export class Compiler {
     pruneWalkerPoints?: boolean
     pruneWalkerFiles?: boolean
     writeVirtual?: boolean
+    cache?: boolean
   }): {
     file: CompilerFile<true> | undefined
     code: string
@@ -173,6 +175,7 @@ export class Compiler {
     errors: unknown[]
     modified: boolean
     tryIndex: number
+    imports: ImportsTraceResult['items']
   } {
     if (writeVirtual && !this.virtualDir) {
       this.virtualDir = resolveTempDirPath(['compiler-virtual'])
@@ -197,6 +200,7 @@ export class Compiler {
         errors: [],
         modified: true,
         tryIndex,
+        imports: [],
       }
     }
 
@@ -222,7 +226,8 @@ export class Compiler {
       file: providedFilePath,
       content,
     })
-    const initialCfCache = this.cache ? initialCf.getCache({ map: sourceMaps, hmrFix, compiler: this }) : undefined
+    const useCache = cacheOpt !== false && this.cache
+    const initialCfCache = useCache ? initialCf.getCache({ map: sourceMaps, hmrFix, compiler: this }) : undefined
     if (initialCfCache?.result) {
       return {
         file: undefined,
@@ -232,6 +237,7 @@ export class Compiler {
         errors: [],
         modified: initialCfCache.result.modified,
         tryIndex,
+        imports: initialCfCache.result.imports,
       }
     }
     const errors: unknown[] = []
@@ -246,6 +252,7 @@ export class Compiler {
         errors,
         modified: false,
         tryIndex,
+        imports: [],
       }
     }
     const cf = collectResult.file
@@ -281,6 +288,8 @@ export class Compiler {
         writeVirtual: writeVirtual ? this.virtualDir : false,
         compiler: this,
       })
+    } else {
+      cf.collectImports({ includeExportNames: false })
     }
     const isSomeStale = CompilerPoint.isSomeStale(collectResult.points)
     if (isSomeStale) {
@@ -310,11 +319,77 @@ export class Compiler {
       errors,
       modified: cf.modified,
       tryIndex,
+      imports: cf.imports.map((importItem) => ({
+        importer: cf.abs,
+        pathOriginal: importItem.pathOriginal,
+        pathResolved: importItem.pathResolved,
+        line: importItem.loc.line,
+        column: importItem.loc.column,
+      })),
     }
-    if (this.cache) {
+    if (useCache) {
       cf.writeCache({ map: sourceMaps, hmrFix, compiler: this, mtime: cf.mtime, result })
     }
     return result
+  }
+
+  collectImportsDeep({
+    target,
+    skip,
+  }: {
+    target: CompilerFile<any> | string
+    skip?: (resolved: ImportsTraceResult['items'][number]) => boolean
+  }): Array<ImportsTraceResult['items'][number]> {
+    const normalizePath = (value: string): string => value.split('?', 1)[0] as string
+    const targetPath = normalizePath(typeof target === 'string' ? target : target.abs)
+    const collected = new Map<string, ImportsTraceResult['items'][number]>()
+    const visited = new Set<string>()
+
+    const walk = (currentPath: string): void => {
+      const normalized = normalizePath(currentPath)
+      if (visited.has(normalized)) {
+        return
+      }
+      visited.add(normalized)
+
+      if (!this.filter.test(normalized)) {
+        return
+      }
+
+      let imports = [] as ImportsTraceResult['items']
+      try {
+        const result = this.compile({ file: normalized, pruneWalker: false })
+        imports = result.imports
+      } catch {
+        return
+      }
+      if (!imports.length) {
+        return
+      }
+
+      for (const importItem of imports) {
+        const resolved = {
+          importer: importItem.importer,
+          pathOriginal: importItem.pathOriginal,
+          pathResolved: importItem.pathResolved,
+          line: importItem.line,
+          column: importItem.column,
+        }
+        if (skip?.(resolved)) {
+          continue
+        }
+        const key = `${resolved.importer}\n${resolved.pathOriginal}\n${resolved.pathResolved ?? ''}`
+        if (!collected.has(key)) {
+          collected.set(key, resolved)
+        }
+        if (importItem.pathResolved) {
+          walk(importItem.pathResolved)
+        }
+      }
+    }
+
+    walk(targetPath)
+    return [...collected.values()]
   }
 
   private traceByMemory({
@@ -353,7 +428,7 @@ export class Compiler {
       target,
     }: {
       importPathOriginal: string
-      importPathResolved: string
+      importPathResolved: string | undefined
       target: string
     }): boolean => {
       const targetNormalized = normalizePath(target)
@@ -361,7 +436,7 @@ export class Compiler {
         importPathOriginal === target ||
         importPathResolved === target ||
         normalizePath(importPathOriginal) === targetNormalized ||
-        normalizePath(importPathResolved) === targetNormalized
+        (importPathResolved !== undefined && normalizePath(importPathResolved) === targetNormalized)
       )
     }
 
@@ -452,7 +527,7 @@ export class Compiler {
       target,
     }: {
       importPathOriginal: string
-      importPathResolved: string
+      importPathResolved: string | undefined
       target: string
     }): boolean => {
       const targetNormalized = normalizePath(target)
@@ -460,7 +535,7 @@ export class Compiler {
         importPathOriginal === target ||
         importPathResolved === target ||
         normalizePath(importPathOriginal) === targetNormalized ||
-        normalizePath(importPathResolved) === targetNormalized
+        (importPathResolved !== undefined && normalizePath(importPathResolved) === targetNormalized)
       )
     }
 
@@ -507,13 +582,13 @@ export class Compiler {
         }
 
         for (const importItem of file.imports) {
-          const nextPath = normalizePath(importItem.pathResolved)
+          const nextPath = importItem.pathResolved === undefined ? undefined : normalizePath(importItem.pathResolved)
           const isTarget = isImportMatch({
             importPathOriginal: importItem.pathOriginal,
             importPathResolved: importItem.pathResolved,
             target: targetInput,
           })
-          const shouldFollow = isTarget || this.filter.test(nextPath)
+          const shouldFollow = isTarget || (nextPath !== undefined && this.filter.test(nextPath))
           if (!shouldFollow) {
             continue
           }
@@ -529,6 +604,9 @@ export class Compiler {
           ]
           if (isTarget) {
             return nextItems
+          }
+          if (nextPath === undefined) {
+            continue
           }
           const foundItems = walk({ currentPath: nextPath, currentItems: nextItems })
           if (foundItems) {
@@ -582,7 +660,7 @@ export class Compiler {
   }
 
   private _settingHash: Record<string, string> = {}
-  getSettingsHash({ map, hmrFix }: { map: boolean; hmrFix: boolean }): string {
+  getSettingsHash({ map, hmrFix }: { map: boolean | null; hmrFix: boolean | null }): string {
     const key = JSON.stringify({ map, hmrFix })
     const result = this._settingHash[key]
     if (result) {
@@ -614,7 +692,7 @@ export class Compiler {
   }
 
   private _cacheDir: Record<string, string> = {}
-  getCacheDir({ map, hmrFix }: { map: boolean; hmrFix: boolean }): string {
+  getCacheDir({ map, hmrFix }: { map: boolean | null; hmrFix: boolean | null }): string {
     const key = JSON.stringify({ map, hmrFix })
     const result = this._cacheDir[key]
     if (result) {
@@ -662,7 +740,7 @@ export type ImportsTraceResult = {
   items: Array<{
     importer: string
     pathOriginal: string
-    pathResolved: string
+    pathResolved: string | undefined
     line: number
     column: number
   }>

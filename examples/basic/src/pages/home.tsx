@@ -2,6 +2,7 @@ import { generalLayout } from '@/layouts/general.js'
 import { Link } from '@/lib/navigate'
 import { prisma } from '@/lib/prisma'
 import { root } from '@/lib/root'
+import { x, y } from '@/lib/x123'
 
 export const ideaBestComponent = root.lets
   .component<{ cta: string }>()
@@ -32,6 +33,15 @@ export const ideaBestComponent = root.lets
     )
   })
 
+export const randomMutation = root.lets
+  .mutation()
+  .loader(async () => {
+    return {
+      random: 123,
+    }
+  })
+  .mutation()
+
 export default generalLayout
   .lets('page', 'home', '/')
   .head({
@@ -42,7 +52,12 @@ export default generalLayout
     return (
       <div className="mx-auto  space-y-6">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome to IdeaNick!</h1>
+          <h1
+            className="text-3xl font-bold tracking-tight text-slate-900"
+            onClick={() => randomMutation.fetchMutation().then((res) => console.log(res))}
+          >
+            Welcome to IdeaNick{x()}!{y}
+          </h1>
           <p className="text-slate-600">
             Read about this project{' '}
             <Link className="font-medium text-blue-700 hover:text-blue-600" route="about">

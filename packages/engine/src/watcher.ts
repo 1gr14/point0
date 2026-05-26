@@ -2,7 +2,7 @@ import type { AsyncSubscription } from '@parcel/watcher'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import { parseGlobs } from './utils.js'
+import { parseGlobs, registerOnProcessExit } from './utils.js'
 
 export type FilesWatcherEvent = {
   type: 'update' | 'delete'
@@ -34,37 +34,60 @@ export type FilesWatcherOptions =
     }
 
 export class FilesWatcher {
-  readonly watchDir: string
-  readonly includes: string[]
-  readonly excludes: string[]
-  readonly patterns: string[]
+  watchDir: string
+  includes: string[]
+  excludes: string[]
+  patterns: string[]
 
   private subscription: AsyncSubscription | undefined
   private callbacks: FilesWatcherCallbacks | undefined
+  private exitHookRegistered = false
 
   private constructor(options: FilesWatcherOptions) {
-    if (options.dir !== undefined) {
-      this.watchDir = options.dir
-      this.includes = options.includes
-      this.excludes = options.excludes
-      this.patterns = options.patterns
-    } else {
-      const parsed = parseGlobs({ cwd: options.cwd, globs: options.patterns })
-      this.watchDir = parsed.dir
-      this.includes = parsed.includes
-      this.excludes = parsed.excludes
-      this.patterns = parsed.patterns
-    }
+    const parsed = FilesWatcher.parseOptions(options)
+    this.watchDir = parsed.watchDir
+    this.includes = parsed.includes
+    this.excludes = parsed.excludes
+    this.patterns = parsed.patterns
   }
 
   static create(options: FilesWatcherOptions) {
     return new FilesWatcher(options)
   }
 
+  private static parseOptions(options: FilesWatcherOptions): {
+    watchDir: string
+    includes: string[]
+    excludes: string[]
+    patterns: string[]
+  } {
+    if (options.dir !== undefined) {
+      return {
+        watchDir: options.dir,
+        includes: options.includes,
+        excludes: options.excludes,
+        patterns: options.patterns,
+      }
+    }
+    const parsed = parseGlobs({ cwd: options.cwd, globs: options.patterns })
+    return {
+      watchDir: parsed.dir,
+      includes: parsed.includes,
+      excludes: parsed.excludes,
+      patterns: parsed.patterns,
+    }
+  }
+
   async start(callbacks: FilesWatcherCallbacks): Promise<void> {
     this.callbacks = callbacks
     if (this.subscription) {
       await this.stop()
+    }
+    if (!this.exitHookRegistered) {
+      this.exitHookRegistered = true
+      registerOnProcessExit(() => {
+        void this.stop()
+      })
     }
     const { subscribe } = await import('@parcel/watcher')
     this.subscription = await subscribe(
@@ -105,6 +128,19 @@ export class FilesWatcher {
         ignore: this.excludes,
       },
     )
+  }
+
+  async restart(options: FilesWatcherOptions, callbacks?: FilesWatcherCallbacks) {
+    const parsed = FilesWatcher.parseOptions(options)
+    this.watchDir = parsed.watchDir
+    this.includes = parsed.includes
+    this.excludes = parsed.excludes
+    this.patterns = parsed.patterns
+    const callbacksResolved = callbacks ?? this.callbacks
+    if (!callbacksResolved) {
+      throw new Error('Callbacks are not set')
+    }
+    await this.start(callbacksResolved)
   }
 
   async stop(): Promise<void> {

@@ -2373,15 +2373,17 @@ describe('CompilerFile', () => {
 
   describe('#collectImports', () => {
     const normalizeImports = (
-      imports: Array<{ pathOriginal: string; pathResolved: string; exportNames: string[] }>,
-    ): Array<{ pathOriginal: string; pathResolved: string; exportNames: string[] }> => {
+      imports: Array<{ pathOriginal: string; pathResolved: string | undefined; exportNames: string[] }>,
+    ): Array<{ pathOriginal: string; pathResolved: string | undefined; exportNames: string[] }> => {
       return [...imports]
         .map((entry) => ({
           pathOriginal: entry.pathOriginal,
           pathResolved: entry.pathResolved,
           exportNames: [...entry.exportNames].sort(),
         }))
-        .sort((a, b) => `${a.pathOriginal}::${a.pathResolved}`.localeCompare(`${b.pathOriginal}::${b.pathResolved}`))
+        .sort((a, b) =>
+          `${a.pathOriginal}::${a.pathResolved ?? ''}`.localeCompare(`${b.pathOriginal}::${b.pathResolved ?? ''}`),
+        )
     }
 
     it.concurrent(

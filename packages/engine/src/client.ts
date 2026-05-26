@@ -1,6 +1,6 @@
 import { type AnyLocation, Route0 } from '@devp0nt/route0'
 import type { AnyRoute } from '@devp0nt/route0'
-import { resolveTempDirPath } from '@point0/compiler'
+import { FileResolver, resolveTempDirPath } from '@point0/compiler'
 import type { CompilerOptions } from '@point0/compiler'
 import { _point0_env, ClientPoints } from '@point0/core'
 import type {
@@ -41,9 +41,12 @@ import {
   extractViteConfig,
   getViteRoot,
   isAsyncFn,
+  killSubprocessOnExit,
   normalizeAndValidateNodeEnv,
+  pipeStreamStripped,
   readableStreamToString,
   registerOnProcessExit,
+  stripTerminalClearSequences,
 } from './utils.js'
 import type {
   EngineClientBuildConfigDefinition,
@@ -88,6 +91,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
   bunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
   bunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
   prepared: TPrepared
+  envVarsApplied = false
 
   private constructor(input: {
     scope: PointsScope
@@ -235,6 +239,12 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     return client
   }
 
+  /**
+   * Resolve env constants (NODE_ENV, POINT0_*) from this client's config and refresh `this.envConsts`. The
+   * `process.env.POINT0_STATIC_COMPILER_OPTIONS` write — which is consumed by spawned bun children to mirror our
+   * compiler options — is guarded by `envVarsApplied` so it's done exactly once per client instance. Callers still get
+   * the resolved values via the return.
+   */
   private setEnvVars({ nodeEnvFallback }: { nodeEnvFallback: NormalizedNodeEnv | undefined }): {
     NODE_ENV: NormalizedNodeEnv
     POINT0_SCOPE: PointsScope
@@ -249,45 +259,37 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     this.envConsts.POINT0_SCOPE = POINT0_SCOPE
     this.envConsts.POINT0_SIDE = POINT0_SIDE
     this.envConsts.POINT0_SSR = POINT0_SSR
+    if (!this.envVarsApplied) {
+      this.envVarsApplied = true
+      process.env.POINT0_STATIC_COMPILER_OPTIONS = JSON.stringify(
+        this.getCompilerOptions({ built: _point0_env.build.was }),
+      )
+    }
     return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR }
   }
 
-  async prepare({
-    preventDevServer = process.env.POINT0_PREVENT_CLIENT_DEV_SERVER === 'true',
-  }: {
-    // if we run server entries separately, then we we will run in another processes client dev server once
-    preventDevServer?: boolean
-  }): Promise<EngineClient<true, TError>> {
+  /**
+   * Full setup before the client can render or serve dev assets: env vars, dev-server placeholders (filled in later by
+   * `startDevServer`), points definitions, app component, and the prebuilt `index.html` when running after a production
+   * build. Idempotent.
+   */
+  async prepare(): Promise<EngineClient<true, TError>> {
     if (this.isPrepared()) {
       return this as EngineClient<true, TError>
     }
     this.setEnvVars({ nodeEnvFallback: undefined })
 
-    const [{ bunViteDevServer, viteDevServer }, bunNativeDevServer] = await Promise.all([
-      this.viteConfig && !_point0_env.build.was
-        ? preventDevServer
-          ? { bunViteDevServer: true as const, viteDevServer: true as const }
-          : this.startBunViteDevServer()
-        : { bunViteDevServer: null, viteDevServer: null },
-      this.indexHtml && !this.viteConfig && !_point0_env.build.was
-        ? preventDevServer
-          ? (true as const)
-          : this.startBunNativeDevServer()
-        : null,
-    ])
-    this.bunViteDevServer = bunViteDevServer
-    this.viteDevServer = viteDevServer
-    this.bunNativeDevServer = bunNativeDevServer
+    if (this.viteConfig && !_point0_env.build.was) {
+      this.bunViteDevServer = true
+      this.viteDevServer = true
+    }
+    if (this.indexHtml && !this.viteConfig && !_point0_env.build.was) {
+      this.bunNativeDevServer = true
+    }
 
     const points = await this.readPoints()
-
     this.basepath = points?.basepath
-
     await this.readAppComponent()
-
-    if (this.publicdir) {
-      await this.publicdir.prepare()
-    }
 
     this.distIndexHtmlContent = _point0_env.build.was && this.indexHtml ? await Bun.file(this.indexHtml).text() : null
     this.prepared = true as never
@@ -374,7 +376,6 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     if (!this.engineFile) {
       throw new Error(`Engine file path is not provided for client "${this.scope}"`)
     }
-    const startingAt = new Date().getTime().toString()
     this.log({
       level: 'info',
       category: ['client'],
@@ -455,19 +456,10 @@ try {
   registerOnProcessExit(() => {
     bunServer.stop()
   })
-  const startingDurationMsMessage = (() => {
-    const startingAt = process.env.POINT0_CLIENT_${this.scope.toUpperCase()}_STARTING_AT
-    process.env.POINT0_CLIENT_${this.scope.toUpperCase()}_STARTING_AT = undefined
-    if (!startingAt) {
-      return ''
-    }
-    const startingDurationMs = Math.round(new Date().getTime() - parseInt(startingAt))
-    return \` in \${startingDurationMs}ms\`
-  })()
   engine.log({
     level: 'info',
     category: ['client'],
-    message: \`Client started http://localhost:${this.port}\${startingDurationMsMessage}\`,
+    message: \`Client started http://localhost:${this.port} in \${Math.ceil(process.uptime() * 1000)}ms\`,
   })
 } catch (error) {
   engine.log({
@@ -489,34 +481,72 @@ try {
       throw new Error('Client dev server is already running')
     }
 
-    let childProcess: Bun.Subprocess<'ignore', 'pipe', 'pipe'>
-    const startChildProcess = () => {
-      childProcess = Bun.spawn(['bun', 'run', '--no-orphans', scriptPath], {
-        cwd: tempDir,
-        stdout: 'pipe',
-        stderr: 'pipe',
-        stdin: 'ignore',
-        env: {
-          ...process.env,
-          FORCE_COLOR: process.env.FORCE_COLOR ?? '1',
-          ...(compilerOptions ? { POINT0_COMPILER_OPTIONS: JSON.stringify(compilerOptions) } : {}),
-          NODE_ENV: process.env.NODE_ENV,
-          [`POINT0_CLIENT_${this.scope.toUpperCase()}_STARTING_AT`]: startingAt,
-        },
-      })
-      return childProcess
-    }
-    childProcess = startChildProcess()
+    const stripAnsiColors = (text: string): string => text.replace(/\x1b\[[0-9;]*m/g, '')
 
-    const stripTerminalClearSequences = (text: string): string =>
-      text
-        .replace(/\x1bc/g, '')
-        .replace(/\x1b\[\?1049[hl]/g, '')
-        .replace(/\x1b\[\?1047[hl]/g, '')
-        .replace(/\x1b\[\?47[hl]/g, '')
-        .replace(/\x1b\[(?:[0-3]?J|2K|K|H|1;1H)/g, '')
-        .replace(/\r\n/g, '\n')
-        .replace(/\r/g, '\n')
+    let restarting = false
+    // Bun's HTMLBundle bundler does not re-scan for newly created files via HMR —
+    // an import that failed to resolve at the previous build stays failed even
+    // after the missing file appears on disk. When we see `Could not resolve` in
+    // the child's piped output and FileResolver confirms the import now resolves,
+    // we kill and respawn the child so its bundler does a fresh scan.
+    const handleBundlerError = (rawText: string): void => {
+      if (restarting) {
+        return
+      }
+      if (!rawText.includes('Could not resolve')) {
+        return
+      }
+      const text = stripAnsiColors(stripTerminalClearSequences(rawText))
+      const lines = text.split('\n')
+      for (let i = 0; i < lines.length; i++) {
+        const match = lines[i].match(/error:\s*Could not resolve:\s*"([^"]+)"/)
+        if (!match) {
+          continue
+        }
+        const importPath = match[1]
+        let importerAbs: string | undefined
+
+        // `    at /abs/path/to/file.tsx:line:col` line AFTER the error
+        for (let j = i + 1; j <= Math.min(lines.length - 1, i + 6); j++) {
+          const atMatch = lines[j].match(/^\s*at\s+(.+?):\d+:\d+\s*$/)
+          if (atMatch) {
+            importerAbs = atMatch[1]
+            break
+          }
+        }
+
+        // Fallback: relative path line BEFORE the error (Bun "X Build Error" format)
+        if (!importerAbs) {
+          for (let j = i - 1; j >= Math.max(0, i - 6); j--) {
+            const candidate = lines[j].trim()
+            if (!candidate || /^\d+\s+Build Error/.test(candidate)) {
+              continue
+            }
+            if (/\.(?:tsx?|jsx?|mdx?|cjs|mjs|css)$/.test(candidate) && !candidate.startsWith('import ')) {
+              importerAbs = nodePath.isAbsolute(candidate) ? candidate : nodePath.resolve(this.cwd, candidate)
+              break
+            }
+          }
+        }
+
+        if (!importerAbs) {
+          continue
+        }
+
+        const resolved = FileResolver.resolveFilePath({
+          importer: importerAbs,
+          path: importPath,
+        })
+        if (!resolved) {
+          continue
+        }
+        void restartChildOnNewFile(resolved)
+        return
+      }
+    }
+
+    let currentChild: Bun.Subprocess<'ignore', 'pipe', 'pipe'>
+    killSubprocessOnExit(() => currentChild)
 
     const pipeFilteredLogs = ({
       stream,
@@ -525,39 +555,55 @@ try {
       stream: ReadableStream<Uint8Array> | null
       target: NodeJS.WriteStream
     }): void => {
-      if (!stream) {
-        return
-      }
-      const decoder = new TextDecoder()
-      void stream
-        .pipeTo(
-          new WritableStream({
-            write(chunk) {
-              const text = decoder.decode(chunk, { stream: true })
-              const cleaned = stripTerminalClearSequences(text)
-              if (cleaned.length > 0) {
-                target.write(cleaned)
-              }
-            },
-            close() {
-              const flushed = decoder.decode()
-              const cleaned = stripTerminalClearSequences(flushed)
-              if (cleaned.length > 0) {
-                target.write(cleaned)
-              }
-            },
-          }),
-        )
-        .catch(() => {
-          // Process streams can close abruptly during normal shutdown.
-        })
+      pipeStreamStripped({ stream, target, onChunk: handleBundlerError })
     }
 
-    pipeFilteredLogs({ stream: childProcess.stdout, target: process.stdout })
-    pipeFilteredLogs({ stream: childProcess.stderr, target: process.stderr })
+    const spawnChild = (): Bun.Subprocess<'ignore', 'pipe', 'pipe'> => {
+      const child = Bun.spawn(['bun', 'run', '--no-orphans', scriptPath], {
+        cwd: tempDir,
+        stdout: 'pipe',
+        stderr: 'pipe',
+        stdin: 'ignore',
+        env: {
+          ...process.env,
+          FORCE_COLOR: process.env.FORCE_COLOR ?? '1',
+          ...(compilerOptions ? { POINT0_STATIC_COMPILER_OPTIONS: JSON.stringify(compilerOptions) } : {}),
+          NODE_ENV: process.env.NODE_ENV,
+        },
+      })
+      pipeFilteredLogs({ stream: child.stdout, target: process.stdout })
+      pipeFilteredLogs({ stream: child.stderr, target: process.stderr })
+      return child
+    }
 
-    this.bunNativeDevServer = childProcess
-    return childProcess
+    const restartChildOnNewFile = async (resolvedFile: string): Promise<void> => {
+      if (restarting) {
+        return
+      }
+      restarting = true
+      const oldChild = currentChild
+      this.log({
+        level: 'info',
+        category: ['client'],
+        message: `New file "${nodePath.relative(this.cwd, resolvedFile)}" detected — restarting client...`,
+      })
+      try {
+        oldChild.kill()
+        await oldChild.exited
+      } catch {
+        // ignore
+      }
+      try {
+        currentChild = spawnChild()
+        this.bunNativeDevServer = currentChild
+      } finally {
+        restarting = false
+      }
+    }
+
+    currentChild = spawnChild()
+    this.bunNativeDevServer = currentChild
+    return currentChild
   }
 
   async startBunViteDevServer(): Promise<{

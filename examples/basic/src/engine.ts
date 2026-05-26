@@ -8,11 +8,11 @@ export const engine = Engine.create({
   server: {
     scope: 'root',
     port: process.env.SERVER_PORT,
-    entry: { main: './index.server.ts' },
+    entry: { main: './app.server.ts' },
     points: async () => await import('./generated/point0/points.server'),
     generate: { points: './generated/point0/points.server.ts' },
     outdir: '../dist/server',
-    devWatchGlob: ['**/*.{ts,tsx,mdx}', '!generated/point0/meta.ts'],
+    // devWatchGlob: ['**/*.{ts,tsx,mdx}', '!generated/point0/meta.ts'],
   },
   clients: [
     {
@@ -21,7 +21,10 @@ export const engine = Engine.create({
       indexHtml: './index.html',
       app: async () => await import('./app.client'),
       points: async () => await import('./generated/point0/points.client'),
-      generate: { points: './generated/point0/points.client.ts', routes: './generated/point0/routes.ts' },
+      generate: {
+        points: { outfile: './generated/point0/points.client.ts', lazy: false },
+        routes: './generated/point0/routes.ts',
+      },
       importer: {
         deny: ['**/prisma.*'],
       },
