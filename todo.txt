@@ -61,13 +61,9 @@ normalize scroll restoration (it is trash now)
 ? Вообще отказаться от дев команды, пусть используется голсы бан или голый вайт ???
 ? А бейзпас короче это просто через сервинг переменную определяется и всё
 
-пофиксить экзамплы
-прогнать тесты
-
 vite 8 (server updates failed)
 vite config as fn should accept also compilerPlugin so we can place it in correct place
 В вайт сср сразу добавить фикс эррор тру
-allow engine serve in one server have server and client in one time
 
 
 
@@ -129,6 +125,7 @@ in example rename file navigate to navigation
 Запретить комбайнед квери
 SSrStore. ССР стор и куки стор одинааковый стиль
 Опенапи пер поинт с суффиксом . Опенапи
+пофиксить экзамплы
 
 
 # Later
