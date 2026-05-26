@@ -1,0 +1,41 @@
+import { Link } from '@/lib/navigate'
+import { routes } from '@/lib/routes'
+import { root } from '@/lib/root'
+import { AppError } from '@/lib/error'
+import { prisma } from '@/lib/prisma'
+import { generalLayout } from '@/layouts/general'
+
+export const page = generalLayout
+  .lets('page', 'about', '/about')
+  .loader(async () => {
+    const lastIdea = await prisma.idea.findFirst({
+      orderBy: {
+        id: 'desc',
+      },
+    })
+    if (!lastIdea) {
+      throw new AppError('Last Idea Not Found :–(')
+    }
+    return {
+      lastIdea: {
+        id: lastIdea.id,
+        title: lastIdea.title,
+      },
+    }
+  })
+  .head('About')
+  .page((props) => (
+    <div className="prose">
+      <MDXContent {...props} />
+    </div>
+  ))
+
+# About IdeaNick
+
+IdeaNick is a platform for creating and sharing ideas.
+
+You can create ideas and add news updates to each one.
+
+Fresh idea: <Link route="ideaView" input={{ id: props.data.lastIdea.id }}>{props.data.lastIdea.title}</Link>
+
+<Link route="home">Start Creating Ideas</Link>
