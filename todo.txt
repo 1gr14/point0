@@ -67,13 +67,10 @@ normalize scroll restoration (it is trash now)
 ? Попробовать не убирать тайпскрипт, а отменить экспериментальное сохранение синтаксиса
 ? Тайпскрипт только при билде не вырезать, а так вырезать
 
-check if our hmr fix preserve source maps
-figure out iwth source maps
-
-trace is now terrible for client-only mark, it has starnge ./ in suggestons, also camn not find trace at all (so just not rename @point0/core-client-only, show as is)
-
 move to babel8
 
+
+# esm only
 bun build:watch do better
 
 

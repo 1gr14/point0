@@ -226,21 +226,15 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   //   }
   // }
 
+  // Fix a single Error's `.stack` in place using vite's SSR module-graph mappings.
+  // Single-error contract: callers (ErrorPoint0 / Error0) are responsible for walking their
+  // own `cause` chains and invoking the hook per link. Keeps the hook composable and the
+  // walk policy (seen-set, depth cap, what counts as a cause) close to the error class.
   fixViteSsrStacktrace(error: unknown): void {
     if (!this.viteDevServer || !(error instanceof Error)) {
       return
     }
-    const seen = new Set<object>()
-    const maxDepth = 100
-    let depth = 0
-    seen.add(error)
     this.viteDevServer.ssrFixStacktrace(error)
-    let cause = (error as Error & { cause?: unknown }).cause
-    while (cause instanceof Error && !seen.has(cause) && depth < maxDepth) {
-      this.viteDevServer.ssrFixStacktrace(cause)
-      cause = (cause as Error & { cause?: unknown }).cause
-      depth++
-    }
   }
 
   private installViteSsrStacktraceFixer(): void {

@@ -254,6 +254,24 @@ export type VirtualModuleOptions =
       trace: undefined
     }
 
+// Format a path/specifier as a CLI argument for `point0 trace`/`point0 compile`.
+//
+// The CLI accepts both bare specifiers (`@point0/core/client-only`, `lodash/fp`) and file
+// paths. For relative file paths without an explicit `./` prefix (the shape produced by
+// `nodePath.relative(cwd, abs)` — e.g. `src/lib/prisma.ts`), we add `./` so the shell
+// quoting + the CLI's path detection both behave. For everything else (absolute paths,
+// already-prefixed relative paths, scoped packages) we leave it alone — adding `./` to
+// `@point0/core/client-only` would yield `./@point0/...` which breaks both the trace lookup
+// (it matches against `pathOriginal === '@point0/core/client-only'`) and is just wrong-looking.
+const formatPathForCliArg = (path: string): string => {
+  if (nodePath.isAbsolute(path)) return path
+  if (path.startsWith('./') || path.startsWith('../')) return path
+  // Scoped package specifier (always starts with `@`).
+  if (path.startsWith('@')) return path
+  // Everything else looks like a relative file path produced by `nodePath.relative`.
+  return `./${path}`
+}
+
 export const createVirtualModuleCode = ({
   exportNames,
   importer,
@@ -271,11 +289,12 @@ export const createVirtualModuleCode = ({
     if (!deny) {
       return { denyMessage: undefined, denyThrower: '' }
     }
+    const cliPathArg = formatPathForCliArg(pathResolved)
     const traceMessage = trace
       ? `Trace:
 ${trace.map((item) => `  ${item}`).join('\n')}`
       : `To know trace of imports to target "${pathOriginal}" from source <source-file-path> run in terminal:
-point0 trace --side ${side} --scope ${scope || '<scope>'} "./${pathResolved}" "<source-file-path>"`
+point0 trace --side ${side} --scope ${scope || '<scope>'} "${cliPathArg}" "<source-file-path>"`
     const denyMessage = `
 Import denied on side "${side}"${scope ? ` for scope "${scope}"` : ''}
   Rule: ${deny}
@@ -285,7 +304,7 @@ Import denied on side "${side}"${scope ? ` for scope "${scope}"` : ''}
 
 ${traceMessage}
 
-Suggestions:${!trace ? '' : `\n  - To see better trace run in terminal: point0 trace --side ${side} --scope ${scope || '<scope>'} "./${pathResolved}" "<source-file-path>"`}
+Suggestions:${!trace ? '' : `\n  - To see better trace run in terminal: point0 trace --side ${side} --scope ${scope || '<scope>'} "${cliPathArg}" "<source-file-path>"`}
   - To see how <source-file-path> looks after compiling without ${side === 'server' ? 'client' : 'server'} code, run in terminal: point0 compile --side ${side} --scope ${scope || '<scope>'} "<source-file-path>"
   `
     const denyThrower = `throw new Error(${JSON.stringify(denyMessage)})`

@@ -630,6 +630,109 @@ console.info(x)`)
         expect(virtualResult.code).toContain('Rule: @point0/core/client-only')
       }),
     )
+
+    // Helper for the suite below: unescape the deny-message that's been wrapped in
+    // `throw new Error(JSON.stringify(...))`. Returns the human-readable message text so the
+    // assertions can check for literal substrings without worrying about JSON quoting.
+    const extractDenyMessage = (code: string): string => {
+      const match = code.match(/throw new Error\((?<json>"(?:\\.|[^"\\])*")\)/)
+      if (!match?.groups?.json) {
+        throw new Error('Could not find throw new Error(...) in virtual module code')
+      }
+      return JSON.parse(match.groups.json) as string
+    }
+
+    it.concurrent(
+      'CLI suggestion for @point0/core/client-only has NO "./" prefix on the specifier',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import { ClientOnly } from '@point0/core/client-only'
+export const x = ClientOnly`)
+        const compiler = Compiler.create({
+          side: 'server',
+          scope: 'root',
+          importer: { cwd: nodePath.dirname(file.path) },
+        })
+        const result = compiler.compile({ file: file.path, pruneWalker: false })
+        const virtualPath = result.file?.imports[0]?.virtualPath
+        expect(virtualPath).toBeDefined()
+        const virtualResult = compiler.compile({ file: virtualPath as string })
+        const message = extractDenyMessage(virtualResult.code)
+
+        // The suggestion must show the bare specifier exactly as it appears in source —
+        // never prefixed with "./" (that would both look wrong AND wouldn't match in
+        // `point0 trace`, which compares against pathOriginal === '@point0/core/client-only').
+        expect(message).toContain('"@point0/core/client-only" "<source-file-path>"')
+        expect(message).not.toContain('"./@point0/core/client-only"')
+      }),
+    )
+
+    it.concurrent(
+      'CLI suggestion for @point0/core/server-only has NO "./" prefix on the specifier',
+      helper(async ({ files: [file] }) => {
+        await file.write(`import { ServerOnly } from '@point0/core/server-only'
+export const x = ServerOnly`)
+        const compiler = Compiler.create({
+          side: 'client',
+          scope: 'root',
+          importer: { cwd: nodePath.dirname(file.path) },
+        })
+        const result = compiler.compile({ file: file.path, pruneWalker: false })
+        const virtualPath = result.file?.imports[0]?.virtualPath
+        expect(virtualPath).toBeDefined()
+        const virtualResult = compiler.compile({ file: virtualPath as string })
+        const message = extractDenyMessage(virtualResult.code)
+        expect(message).toContain('"@point0/core/server-only" "<source-file-path>"')
+        expect(message).not.toContain('"./@point0/core/server-only"')
+      }),
+    )
+
+    it.concurrent(
+      'CLI suggestion for relative file deny still gets "./" prefix',
+      helper(async ({ files: [denied, source] }) => {
+        await denied.write(`export const prisma = {}`)
+        await source.write(`import { prisma } from '${denied.importpath}'
+export const useIt = prisma`)
+        const compiler = Compiler.create({
+          side: 'client',
+          scope: 'root',
+          importer: {
+            cwd: nodePath.dirname(source.path),
+            deny: [`**/${denied.basename}.*`],
+          },
+        })
+        const result = compiler.compile({ file: source.path, pruneWalker: false })
+        const virtualPath = result.file?.imports[0]?.virtualPath
+        expect(virtualPath).toBeDefined()
+        const virtualResult = compiler.compile({ file: virtualPath as string })
+        const message = extractDenyMessage(virtualResult.code)
+
+        // For relative file paths (produced by nodePath.relative(cwd, abs)), the suggestion
+        // adds "./" so the shell + CLI both recognize it as a path.
+        expect(message).toMatch(/"\.\/[^"]*\.tsx?" "<source-file-path>"/)
+        // No double-prefix like "././…".
+        expect(message).not.toContain('"././')
+      }),
+    )
+
+    it.concurrent(
+      'CLI suggestion preserves an already-./-prefixed specifier as-is (no "././")',
+      helper(async ({ files: [file] }) => {
+        // Force the deny path to land on a value that starts with "./" already by using
+        // a specifier-style deny on the bare import string. Stress-tests the formatter.
+        await file.write(`import { ClientOnly } from '@point0/core/client-only'
+export const x = ClientOnly`)
+        const compiler = Compiler.create({
+          side: 'server',
+          scope: 'root',
+          importer: { cwd: nodePath.dirname(file.path) },
+        })
+        const result = compiler.compile({ file: file.path, pruneWalker: false })
+        const virtualPath = result.file?.imports[0]?.virtualPath
+        const virtualResult = compiler.compile({ file: virtualPath as string })
+        const message = extractDenyMessage(virtualResult.code)
+        expect(message).not.toContain('"././')
+      }),
+    )
   })
 
   describe('#trace', () => {

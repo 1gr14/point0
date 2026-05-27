@@ -1,6 +1,28 @@
 import { _point0_env } from './env.js'
 import { RedirectTask } from './redirect.js'
 
+// Walk an error and its `cause` chain, invoking the global stacktrace-fixer hook on each link.
+// The hook (installed by @point0/engine when running under vite dev) follows the single-error
+// contract — it remaps one Error's `.stack` in place. We walk causes here so every error in
+// the chain gets its stack remapped. Idempotent and safe for circular chains (seen-set).
+const fixStackChain = (start: unknown): void => {
+  if (_point0_env.build.was) return
+  const hook = (globalThis as unknown as Record<string, unknown>).__ERROR0_FIX_STACKTRACE__
+  if (typeof hook !== 'function') return
+  const seen = new Set<unknown>()
+  const maxDepth = 99
+  let next: unknown = start
+  let depth = 0
+  while (next && depth < maxDepth && !seen.has(next)) {
+    seen.add(next)
+    try {
+      ;(hook as (v: unknown) => void)(next)
+    } catch {}
+    next = (next as { cause?: unknown }).cause
+    depth += 1
+  }
+}
+
 export class ErrorPoint0 extends Error {
   status?: number
   code?: string
@@ -44,14 +66,9 @@ export class ErrorPoint0 extends Error {
       enumerable: false,
       configurable: false,
     })
-    if (
-      !_point0_env.build.was &&
-      typeof (globalThis as unknown as Record<string, unknown>).__ERROR0_FIX_STACKTRACE__ === 'function'
-    ) {
-      try {
-        ;(globalThis as any).__ERROR0_FIX_STACKTRACE__(this) as void
-      } catch {}
-    }
+    // Walk `this` and the cause chain so every link's stack is remapped (when the engine
+    // installed the hook under vite dev).
+    fixStackChain(this)
     // this.meta = options.meta
   }
 
@@ -59,14 +76,9 @@ export class ErrorPoint0 extends Error {
     if (error instanceof ErrorPoint0) {
       return error
     }
-    if (
-      !_point0_env.build.was &&
-      typeof (globalThis as unknown as Record<string, unknown>).__ERROR0_FIX_STACKTRACE__ === 'function'
-    ) {
-      try {
-        ;(globalThis as any).__ERROR0_FIX_STACKTRACE__(error) as void
-      } catch {}
-    }
+    // Mutate the original error's `.stack` chain in place before we wrap it — that way the
+    // wrapped `cause` (which IS the original error) keeps a meaningful stack downstream.
+    fixStackChain(error)
     const record = typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {}
     const redirect = RedirectTask.is(error)
       ? error
