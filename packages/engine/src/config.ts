@@ -62,6 +62,7 @@ export type ExtractViteConfigOptions = {
   side: 'client' | 'server'
   mode: NormalizedNodeEnv
   scope: PointsScope
+  plugins: import('vite').Plugin[]
 }
 export type ExtractViteConfigFn = (
   options: ExtractViteConfigOptions,
@@ -1022,10 +1023,7 @@ export const parseEngineOptions = (options: EngineOptions<any, any>): EngineOpti
     clients: clientsOptionsRaw,
     ...generalOptions
   } = options
-  const clientsOptions = [
-    ...(clientOptionShorthand ? [clientOptionShorthand] : []),
-    ...(clientsOptionsRaw ?? []),
-  ]
+  const clientsOptions = [...(clientOptionShorthand ? [clientOptionShorthand] : []), ...(clientsOptionsRaw ?? [])]
   const generalOptionsParsed = parseEngineGeneralOptions({
     generalOptions,
     serverOptions,

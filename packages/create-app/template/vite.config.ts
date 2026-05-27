@@ -5,17 +5,17 @@ import svgr from 'vite-plugin-svgr'
 import tailwindcss from '@tailwindcss/vite'
 // import { analyzer } from 'vite-bundle-analyzer'
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default defineViteConfig((options) => {
+export default defineViteConfig(({ plugins }) => {
   return {
     resolve: {
       tsconfigPaths: true,
     },
     plugins: [
+      ...plugins,
       react({ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }),
       svgr(),
       tailwindcss(),
-      // options.side === 'client' ? analyzer() : null,
+      // side === 'client' ? analyzer() : null,
     ] as PluginOption[],
   }
 })

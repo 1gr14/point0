@@ -1,13 +1,13 @@
+import { defineViteConfig } from '@point0/engine/utils'
 import react from '@vitejs/plugin-react'
 import svgr from 'vite-plugin-svgr'
-import { ExtractViteConfigOptions } from '@point0/engine/config'
 
-export default (options: ExtractViteConfigOptions) => {
+export default defineViteConfig(({ plugins }) => {
   return {
     resolve: {
       tsconfigPaths: true,
     },
-    plugins: [react(), svgr()],
+    plugins: [...plugins, react(), svgr()],
     root: 'src',
   }
-}
+})

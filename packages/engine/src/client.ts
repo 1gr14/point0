@@ -1003,12 +1003,18 @@ try {
         await this.cleanClient()
       }
 
+      const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
+      const compilerPlugin = compilerOptions
+        ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
+        : []
+
       const loadedViteConfig = await extractViteConfig({
         viteConfig: this.viteConfig,
         command: 'build',
         side: 'client',
         mode: NODE_ENV,
         scope: this.scope,
+        plugins: compilerPlugin,
       })
 
       if (!(await Bun.file(buildPaths.indexHtml).exists())) {
@@ -1030,11 +1036,6 @@ try {
       const fixedExistingRolldownOptionsOutput = Array.isArray(existingRolldownOptionsOutput)
         ? [rolldownOptionsOutput, ...existingRolldownOptionsOutput.slice(1)]
         : rolldownOptionsOutput
-
-      const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
-      const compilerPlugin = compilerOptions
-        ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
-        : []
 
       const envConstsWithBuilt = {
         ...this.envConsts,
@@ -1060,7 +1061,6 @@ try {
 
       const config: ExtractedViteConfig = {
         ...loadedViteConfig,
-        plugins: [...compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
         root: getViteRoot({ viteConfig: this.viteConfig, loadedViteConfig, engineFile: this.engineFile }),
         build: {
           ...loadedViteConfig.build,

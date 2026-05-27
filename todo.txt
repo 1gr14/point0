@@ -58,7 +58,6 @@ normalize scroll restoration (it is trash now)
 
 
 # Runtime
-vite config as fn should accept also plugins[] so we can place it in correct place
 Вайт контроллер экзампл
 
 
@@ -173,6 +172,7 @@ REFACTOING 3000
 
 
 FINISH
+update deps
 Зафиксировать версии в старт0 и девпонте
 Проверка под линукс и виндоус
 pipeline

@@ -1,14 +1,13 @@
 import type { CompilerOptions } from '@point0/compiler'
-import { env } from '@point0/core'
 import type { NormalizedNodeEnv, PointsScope } from '@point0/core'
-import { plugin } from 'bun'
+import { env } from '@point0/core'
 import type { BuildConfig, BunPlugin } from 'bun'
+import { plugin } from 'bun'
 import * as nodeFsSync from 'node:fs'
 import * as nodePath from 'node:path'
-import { fileURLToPath } from 'node:url'
-import pRetry from 'p-retry'
 import type { Options as RetryOptions } from 'p-retry'
-import type { ViteDevServer } from 'vite'
+import pRetry from 'p-retry'
+import type { Plugin, ViteDevServer } from 'vite'
 import type {
   EngineOptionsEnvParsed,
   EngineOptionsViteConfig,
@@ -550,26 +549,33 @@ export const extractViteConfig = async ({
   side,
   mode,
   scope,
+  plugins,
 }: {
   viteConfig: EngineOptionsViteConfig
   command: 'serve' | 'build'
   side: 'client' | 'server'
   mode: NormalizedNodeEnv
   scope: PointsScope
+  plugins: Plugin[]
 }): Promise<ExtractedViteConfig> => {
-  return typeof viteConfig === 'function'
-    ? await viteConfig({ mode, command, side, scope })
-    : typeof viteConfig === 'string'
-      ? await (async () => {
-          const importedViteConfig = await import(/* @vite-ignore */ viteConfig).then(
-            (module) => module.default || module,
-          )
-          if (typeof importedViteConfig === 'function') {
-            return await importedViteConfig({ mode, command, side, scope })
-          }
-          return importedViteConfig
-        })()
-      : viteConfig
+  // Function-form: hand `plugins` to the user and trust their placement. Object/string-form:
+  // user has no way to receive `plugins`, so we still prepend them ourselves.
+  const opts = { mode, command, side, scope, plugins }
+  const mergePluginsIntoObject = (config: ExtractedViteConfig): ExtractedViteConfig => ({
+    ...config,
+    plugins: [...plugins, ...(config.plugins ?? [])],
+  })
+  if (typeof viteConfig === 'function') {
+    return await viteConfig(opts)
+  }
+  if (typeof viteConfig === 'string') {
+    const imported = await import(/* @vite-ignore */ viteConfig).then((module) => module.default || module)
+    if (typeof imported === 'function') {
+      return await imported(opts)
+    }
+    return mergePluginsIntoObject(imported)
+  }
+  return mergePluginsIntoObject(viteConfig)
 }
 
 export const getViteRoot = ({
@@ -623,17 +629,19 @@ export const createViteDevServer = async ({
       throw new Error(`Vite config not found for client "${scope}"`)
     }
     const createServer = await import('vite').then((module) => module.createServer)
+
+    const compilerPlugin: Plugin[] = compilerOptions
+      ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
+      : []
+
     const loadedViteConfig: ExtractedViteConfig = await extractViteConfig({
       viteConfig,
       command: 'serve',
       side,
       mode,
       scope,
+      plugins: compilerPlugin,
     })
-
-    const compilerPlugin = compilerOptions
-      ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
-      : []
 
     const hmr =
       loadedViteConfig.server?.hmr === false
@@ -646,7 +654,7 @@ export const createViteDevServer = async ({
             }
     return await createServer({
       ...loadedViteConfig,
-      plugins: [...compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
+      plugins: loadedViteConfig.plugins,
       configFile: false,
       clearScreen: loadedViteConfig.clearScreen ?? false,
       appType: 'custom',

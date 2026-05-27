@@ -8,12 +8,13 @@ export const engine = Engine.create({
   ssr: true,
   pointsGlob: '**/*.{ts,tsx,mdx}',
   generate: { meta: './generated/point0/meta.ts' },
-  viteConfig: () => {
+  viteConfig: ({ plugins }) => {
     return {
       resolve: {
         tsconfigPaths: true,
       },
       plugins: [
+        ...plugins,
         react({ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }),
         svgr(),
         tailwindcss(),
