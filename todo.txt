@@ -58,25 +58,27 @@ normalize scroll restoration (it is trash now)
 
 
 # Runtime
-Вайт контроллер экзампл
+? build: {watch}, dev: {watch}, generate: {watch}
 
 
 
 # Compiler
+? Попробовать не убирать тайпскрипт, а отменить экспериментальное сохранение синтаксиса
 ? Тайпскрипт только при билде не вырезать, а так вырезать
+? Компилер настройки вырезать из энжины после билда
+babelplugins
 remarkplugins
-Компилер настройки вырезать из энжины после билда
-compiler babel plugins
-mdx file after build not working nor bun, nor vite
 react-compiler
 add babel-plugin-react-compiler to all examples
-Попробовать не убирать тайпскрипт, а отменить экспериментальное сохранение синтаксиса
-inline source maps for bun, do not hmr fix for server builds
-В cli компмле добавить флаг билт для просмотра как оно выглядит после билда
-mardown {enabled, options}
-Из компилера не учитывать импорты в которых только тайп при импорт протекшене
-maekdown test that loaders still cutted on client
+
+mdx file after build not working nor bun, nor vite
 Компилер должен просить только мдыкс файлы, а обычные мд не должен
+mardown {enabled, options}
+maekdown test that loaders still cutted on client
+
+inline source maps for bun, do not hmr fix for server builds (check if now we provide source map for bun on build)
+В cli компмле добавить флаг билт для просмотра как оно выглядит после билда
+Из компилера не учитывать импорты в которых только тайп при импорт протекшене
 trace is now terrible for client-only mark, it has starnge ./ in suggestons, also camn not find trace at all (so just not rename @point0/core-client-only, show as is)
 
 

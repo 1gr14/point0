@@ -543,6 +543,16 @@ export const loadBunPlugins = async ({ extractedBunPlugins }: { extractedBunPlug
 
 // vite
 
+/**
+ * Module-level flag set while we're inside `extractViteConfig` calling the user's `viteConfig` function (incl. the
+ * string-form pointing at `vite.config.ts`). `Engine.getViteConfig` checks it to short-circuit: when the user's
+ * `vite.config.ts` calls `engine.getViteConfig(env)`, we must NOT recursively re-enter extraction — instead return the
+ * engine's bare contribution (compiler plugin + root) so the user's mergeConfig still produces a complete config
+ * without infinite recursion.
+ */
+let viteConfigExtractionDepth = 0
+export const isExtractingViteConfig = (): boolean => viteConfigExtractionDepth > 0
+
 export const extractViteConfig = async ({
   viteConfig,
   command,
@@ -559,23 +569,31 @@ export const extractViteConfig = async ({
   plugins: Plugin[]
 }): Promise<ExtractedViteConfig> => {
   // Function-form: hand `plugins` to the user and trust their placement. Object/string-form:
-  // user has no way to receive `plugins`, so we still prepend them ourselves.
-  const opts = { mode, command, side, scope, plugins }
+  // user has no way to receive `plugins`, so we still prepend them ourselves. `isSsrBuild` and
+  // `isPreview` are spread in so a native `defineConfig(env => ...)` callback in the user's
+  // `vite.config.ts` sees the standard `ConfigEnv` shape — `side`/`scope`/`plugins` are extra
+  // engine-provided fields.
+  const opts = { mode, command, side, scope, plugins, isSsrBuild: side === 'server', isPreview: false }
   const mergePluginsIntoObject = (config: ExtractedViteConfig): ExtractedViteConfig => ({
     ...config,
     plugins: [...plugins, ...(config.plugins ?? [])],
   })
-  if (typeof viteConfig === 'function') {
-    return await viteConfig(opts)
-  }
-  if (typeof viteConfig === 'string') {
-    const imported = await import(/* @vite-ignore */ viteConfig).then((module) => module.default || module)
-    if (typeof imported === 'function') {
-      return await imported(opts)
+  viteConfigExtractionDepth++
+  try {
+    if (typeof viteConfig === 'function') {
+      return await viteConfig(opts)
     }
-    return mergePluginsIntoObject(imported)
+    if (typeof viteConfig === 'string') {
+      const imported = await import(/* @vite-ignore */ viteConfig).then((module) => module.default || module)
+      if (typeof imported === 'function') {
+        return await imported(opts)
+      }
+      return mergePluginsIntoObject(imported)
+    }
+    return mergePluginsIntoObject(viteConfig)
+  } finally {
+    viteConfigExtractionDepth--
   }
-  return mergePluginsIntoObject(viteConfig)
 }
 
 export const getViteRoot = ({
@@ -603,7 +621,12 @@ export const defineViteConfig = (definition: ExtractViteConfigFn): ExtractViteCo
   return definition
 }
 
-export const createViteDevServer = async ({
+/**
+ * Build the full vite UserConfig used by {@link createViteDevServer} (and therefore by both server SSR dev and client
+ * dev). Extracted as a standalone function so the same config can be returned by {@link Engine.getViteConfig} without
+ * going through createServer.
+ */
+export const getViteConfigForDev = async ({
   viteConfig,
   scope,
   side,
@@ -617,66 +640,78 @@ export const createViteDevServer = async ({
   scope: PointsScope
   side: 'client' | 'server'
   hmrPort: number | false
-  envConsts?: EngineOptionsEnvParsed | EngineOptionsEnvParsed
+  envConsts?: EngineOptionsEnvParsed
+  mode: NormalizedNodeEnv
+  engineFile: string | null
+  compilerOptions: CompilerOptions | false
+}): Promise<ExtractedViteConfig> => {
+  if (env.build.was) {
+    throw new Error('You can not serve by dev client with built engine')
+  }
+  if (!viteConfig) {
+    throw new Error(`Vite config not found for client "${scope}"`)
+  }
+
+  const compilerPlugin: Plugin[] = compilerOptions
+    ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
+    : []
+
+  const loadedViteConfig: ExtractedViteConfig = await extractViteConfig({
+    viteConfig,
+    command: 'serve',
+    side,
+    mode,
+    scope,
+    plugins: compilerPlugin,
+  })
+
+  const hmr =
+    loadedViteConfig.server?.hmr === false
+      ? false
+      : hmrPort === false
+        ? false
+        : {
+            ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
+            port: hmrPort,
+          }
+
+  return {
+    ...loadedViteConfig,
+    plugins: loadedViteConfig.plugins,
+    clearScreen: loadedViteConfig.clearScreen ?? false,
+    appType: 'custom',
+    server: {
+      ...loadedViteConfig.server,
+      middlewareMode: true,
+      ws: !hmr ? false : loadedViteConfig.server?.ws,
+      hmr,
+    },
+    root: getViteRoot({ viteConfig, loadedViteConfig, engineFile }),
+    define: {
+      ...(side === 'client' ? { 'process.env': `window.process.env` } : {}),
+      ...loadedViteConfig.define,
+      ...Object.fromEntries(
+        Object.entries(envConsts ?? {}).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+      ),
+    },
+  }
+}
+
+export const createViteDevServer = async (options: {
+  viteConfig: EngineOptionsViteConfig | null
+  scope: PointsScope
+  side: 'client' | 'server'
+  hmrPort: number | false
+  envConsts?: EngineOptionsEnvParsed
   mode: NormalizedNodeEnv
   engineFile: string | null
   compilerOptions: CompilerOptions | false
 }): Promise<ViteDevServer> => {
-  if (env.build.was) {
-    throw new Error('You can not serve by dev client with built engine')
-  } else {
-    if (!viteConfig) {
-      throw new Error(`Vite config not found for client "${scope}"`)
-    }
-    const createServer = await import('vite').then((module) => module.createServer)
-
-    const compilerPlugin: Plugin[] = compilerOptions
-      ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
-      : []
-
-    const loadedViteConfig: ExtractedViteConfig = await extractViteConfig({
-      viteConfig,
-      command: 'serve',
-      side,
-      mode,
-      scope,
-      plugins: compilerPlugin,
-    })
-
-    const hmr =
-      loadedViteConfig.server?.hmr === false
-        ? false
-        : hmrPort === false
-          ? false
-          : {
-              ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
-              port: hmrPort,
-            }
-    return await createServer({
-      ...loadedViteConfig,
-      plugins: loadedViteConfig.plugins,
-      configFile: false,
-      clearScreen: loadedViteConfig.clearScreen ?? false,
-      appType: 'custom',
-      server: {
-        ...loadedViteConfig.server,
-        middlewareMode: true,
-        ws: !hmr ? false : loadedViteConfig.server?.ws,
-        hmr,
-      },
-      root: getViteRoot({ viteConfig, loadedViteConfig, engineFile }),
-      define: {
-        ...(side === 'client' ? { 'process.env': `window.process.env` } : {}),
-        ...loadedViteConfig.define,
-        ...Object.fromEntries(
-          Object.entries(envConsts ?? {}).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
-        ),
-        // ...Object.fromEntries(
-        //   Object.entries(envConsts ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
-        // ),
-      },
-    })
-  }
+  const config = await getViteConfigForDev(options)
+  const createServer = await import('vite').then((module) => module.createServer)
+  // `configFile: false` is vite-runtime-only (not part of UserConfig) — set here so the engine
+  // never lets vite recurse into a real vite.config.ts at server start.
+  return await createServer({ ...config, configFile: false })
 }
 
 // export const getDevPathInsideImportFn = (

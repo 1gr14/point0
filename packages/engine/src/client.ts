@@ -980,11 +980,93 @@ try {
     }
   }
 
+  /**
+   * Returns the full vite UserConfig that {@link buildByVite} would pass to `vite.build` for this client. Single source
+   * of truth — used both internally by `buildByVite` and from {@link Engine.getViteConfig} when the user's
+   * `vite.config.ts` asks for it.
+   */
+  async getViteConfigForBuild(): Promise<ExtractedViteConfig> {
+    if (_point0_env.build.was) {
+      throw new Error('You can not build by built engine')
+    }
+    if (!this.viteConfig) {
+      throw new Error(`viteConfig not provided for client "${this.scope}"`)
+    }
+    const { NODE_ENV } = this.setEnvVars({ nodeEnvFallback: 'production' })
+    const buildPaths = this.getBuildPaths()
+    if (!buildPaths.indexHtml || !buildPaths.outdir) {
+      throw new Error(`indexHtml / outdir not provided for client "${this.scope}"`)
+    }
+
+    const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
+    const compilerPlugin = compilerOptions
+      ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
+      : []
+
+    const loadedViteConfig = await extractViteConfig({
+      viteConfig: this.viteConfig,
+      command: 'build',
+      side: 'client',
+      mode: NODE_ENV,
+      scope: this.scope,
+      plugins: compilerPlugin,
+    })
+
+    const existingRolldownOptionsOutput = loadedViteConfig.build?.rolldownOptions?.output
+    const normalizedExistingRolldownOptionsOutput =
+      (Array.isArray(existingRolldownOptionsOutput)
+        ? existingRolldownOptionsOutput[0]
+        : existingRolldownOptionsOutput) || {}
+    const rolldownOptionsOutput: Extract<
+      NonNullable<NonNullable<ExtractedViteConfig['build']>['rolldownOptions']>['output'],
+      object
+    > = {
+      ...normalizedExistingRolldownOptionsOutput,
+    }
+    const fixedExistingRolldownOptionsOutput = Array.isArray(existingRolldownOptionsOutput)
+      ? [rolldownOptionsOutput, ...existingRolldownOptionsOutput.slice(1)]
+      : rolldownOptionsOutput
+
+    const envConstsWithBuilt = { ...this.envConsts, POINT0_BUILT: 'true' }
+    const envVarsWithBuild = { ...this.envVars, POINT0_BUILT: 'true' }
+    const define = {
+      'process.env': `window.process.env`,
+      ...loadedViteConfig.define,
+      ...Object.fromEntries(
+        Object.entries(envVarsWithBuild).map(([key]) => [
+          `process.env.${key}`,
+          `globalThis.__POINT0_ENV_VARS__.${key}`,
+        ]),
+      ),
+      ...Object.fromEntries(
+        Object.entries(envConstsWithBuilt).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+      ),
+    }
+
+    return {
+      ...loadedViteConfig,
+      root: getViteRoot({ viteConfig: this.viteConfig, loadedViteConfig, engineFile: this.engineFile }),
+      build: {
+        ...loadedViteConfig.build,
+        outDir: buildPaths.outdir,
+        minify: NODE_ENV === 'production' ? (loadedViteConfig.build?.minify ?? 'esbuild') : false,
+        sourcemap: loadedViteConfig.build?.sourcemap ?? true,
+        rolldownOptions: {
+          ...loadedViteConfig.build?.rolldownOptions,
+          input: buildPaths.indexHtml,
+          output: fixedExistingRolldownOptionsOutput,
+        },
+        copyPublicDir: false,
+        emptyOutDir: false,
+      },
+      define,
+    }
+  }
+
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
     if (_point0_env.build.was) {
       throw new Error('You can not build by built engine')
     } else {
-      const { NODE_ENV } = this.setEnvVars({ nodeEnvFallback: 'production' })
       if (!this.viteConfig) {
         throw new Error(`viteConfig not provided for client "${this.scope}"`)
       }
@@ -1003,82 +1085,13 @@ try {
         await this.cleanClient()
       }
 
-      const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
-      const compilerPlugin = compilerOptions
-        ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
-        : []
-
-      const loadedViteConfig = await extractViteConfig({
-        viteConfig: this.viteConfig,
-        command: 'build',
-        side: 'client',
-        mode: NODE_ENV,
-        scope: this.scope,
-        plugins: compilerPlugin,
-      })
-
       if (!(await Bun.file(buildPaths.indexHtml).exists())) {
         throw new Error(`Input file does not exist: ${buildPaths.indexHtml} for client "${this.scope}"`)
       }
 
-      const existingRolldownOptionsOutput = loadedViteConfig.build?.rolldownOptions?.output
-      const normalizedExistingRolldownOptionsOutput =
-        (Array.isArray(existingRolldownOptionsOutput)
-          ? existingRolldownOptionsOutput[0]
-          : existingRolldownOptionsOutput) || {}
-      const rolldownOptionsOutput: Extract<
-        NonNullable<NonNullable<ExtractedViteConfig['build']>['rolldownOptions']>['output'],
-        object
-      > = {
-        ...normalizedExistingRolldownOptionsOutput,
-        // may be we will later add something here
-      }
-      const fixedExistingRolldownOptionsOutput = Array.isArray(existingRolldownOptionsOutput)
-        ? [rolldownOptionsOutput, ...existingRolldownOptionsOutput.slice(1)]
-        : rolldownOptionsOutput
-
-      const envConstsWithBuilt = {
-        ...this.envConsts,
-        POINT0_BUILT: 'true',
-      }
-      const envVarsWithBuild = {
-        ...this.envVars,
-        POINT0_BUILT: 'true',
-      }
-      const define = {
-        'process.env': `window.process.env`,
-        ...loadedViteConfig.define,
-        ...Object.fromEntries(
-          Object.entries(envVarsWithBuild).map(([key]) => [
-            `process.env.${key}`,
-            `globalThis.__POINT0_ENV_VARS__.${key}`,
-          ]),
-        ),
-        ...Object.fromEntries(
-          Object.entries(envConstsWithBuilt).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
-        ),
-      }
-
-      const config: ExtractedViteConfig = {
-        ...loadedViteConfig,
-        root: getViteRoot({ viteConfig: this.viteConfig, loadedViteConfig, engineFile: this.engineFile }),
-        build: {
-          ...loadedViteConfig.build,
-          outDir: buildPaths.outdir,
-          minify: NODE_ENV === 'production' ? (loadedViteConfig.build?.minify ?? 'esbuild') : false,
-          sourcemap: loadedViteConfig.build?.sourcemap ?? true,
-          rolldownOptions: {
-            ...loadedViteConfig.build?.rolldownOptions,
-            input: buildPaths.indexHtml,
-            output: fixedExistingRolldownOptionsOutput,
-          },
-          copyPublicDir: false,
-          emptyOutDir: false,
-        },
-        define,
-      }
-
+      const config = await this.getViteConfigForBuild()
       const buildResult = await viteBuild(config)
+      const envConstsWithBuilt = { ...this.envConsts, POINT0_BUILT: 'true' }
       await this.injectBuildEnvConstsToDistIndexHtml({
         indexHtml: buildPaths.indexHtml,
         outdir: buildPaths.outdir,

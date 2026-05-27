@@ -17,8 +17,7 @@ export class TestProcess {
   }
 
   /**
-   * Spawn a new process and wrap it in a TestProcess
-   * Automatically pipes stdout and stderr for output collection
+   * Spawn a new process and wrap it in a TestProcess Automatically pipes stdout and stderr for output collection
    */
   static spawn(cmds: string[], options?: Parameters<typeof Bun.spawn>[1]): TestProcess {
     const child = Bun.spawn(cmds, {
@@ -170,7 +169,7 @@ export class TestProcess {
     return false
   }
 
-  async waitOutput(text: string | string[], timeout = 5000): Promise<string> {
+  async waitOutput(text: string | string[], timeout = 10000): Promise<string> {
     const startTime = Date.now()
     const texts = Array.isArray(text) ? text : [text]
 

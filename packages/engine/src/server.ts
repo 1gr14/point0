@@ -921,11 +921,107 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     return buildOutput.outputs.map((output) => output.path)
   }
 
+  /**
+   * Returns the full vite UserConfig that {@link buildByVite} would pass to `vite.build` for this server. Used both
+   * internally by `buildByVite` (so there's only one source of truth for the server build config) and from
+   * {@link Engine.getViteConfig} when the user's `vite.config.ts` asks for it.
+   */
+  async getViteConfigForBuild(): Promise<ExtractedViteConfig> {
+    if (_point0_env.build.was) {
+      throw new Error('You can not build by built engine')
+    }
+    if (!this.viteConfig) {
+      throw new Error(`viteConfig not provided for server`)
+    }
+    const { NODE_ENV } = this.setEnvVars({ assignToProcessEnv: false, nodeEnvFallback: 'production' })
+    const buildPaths = this.getBuildPaths()
+    if (!buildPaths.entrypointsExists || !buildPaths.outdir) {
+      throw new Error(`No server entrypoints / outdir to build`)
+    }
+    this.envConsts.NODE_ENV = NODE_ENV
+
+    const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
+    const compilerPlugin = compilerOptions
+      ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
+      : []
+
+    const loadedViteConfig = await extractViteConfig({
+      viteConfig: this.viteConfig,
+      command: 'build',
+      side: 'server',
+      mode: NODE_ENV,
+      scope: this.scope,
+      plugins: compilerPlugin,
+    })
+
+    const { injectedEnvs, injectEnvsScript } = this.getBuildInjectedEnvs()
+
+    const existingRolldownOptionsOutput = loadedViteConfig.build?.rolldownOptions?.output
+    const normalizedExistingRolldownOptionsOutput =
+      (Array.isArray(existingRolldownOptionsOutput)
+        ? existingRolldownOptionsOutput[0]
+        : existingRolldownOptionsOutput) || {}
+
+    // Vite 8 / Rolldown's default `chunkFileNames` is `assets/[name]-[hash].js`, which nests
+    // shared chunks under `<outdir>/assets/`. With multiple SSR entries that share modules,
+    // the user's `engine.ts` (the one calling `Engine.create({ file: import.meta.url, … })`)
+    // gets hoisted into one such shared chunk. At runtime `import.meta.url` then resolves to
+    // `<outdir>/assets/engine-<hash>.js`, and the runtime check
+    //   `dirname(engineFile).endsWith(POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED)`
+    // in `config.ts` (parseEngineGeneralOptions) fails — `/dist/server/assets` does not end
+    // with `/dist/server`.
+    //
+    // Flatten chunk output so chunks live next to entries (no `assets/` prefix). The chunk
+    // that actually contains `engine.ts`'s code then sits at `<outdir>/engine-<hash>.js`,
+    // `dirname(...) === <outdir>`, and the invariant holds. SSR builds don't emit real assets
+    // (images/CSS) so collapsing `assetsDir` is safe here.
+    const rolldownOptionsOutput: Extract<
+      NonNullable<NonNullable<ExtractedViteConfig['build']>['rolldownOptions']>['output'],
+      object
+    > = {
+      ...normalizedExistingRolldownOptionsOutput,
+      banner: [injectEnvsScript, normalizedExistingRolldownOptionsOutput.banner].filter(Boolean).join('\n'),
+      chunkFileNames: normalizedExistingRolldownOptionsOutput.chunkFileNames ?? '[name]-[hash].js',
+    }
+    const fixedExistingRolldownOptionsOutput = Array.isArray(existingRolldownOptionsOutput)
+      ? [rolldownOptionsOutput, ...existingRolldownOptionsOutput.slice(1)]
+      : rolldownOptionsOutput
+
+    return {
+      ...loadedViteConfig,
+      root: getViteRoot({ viteConfig: this.viteConfig, loadedViteConfig, engineFile: this.engineFile }),
+      build: {
+        ...loadedViteConfig.build,
+        outDir: buildPaths.outdir,
+        minify: loadedViteConfig.build?.minify ?? true,
+        sourcemap: loadedViteConfig.build?.sourcemap ?? true,
+        ssr: true,
+        rolldownOptions: {
+          ...loadedViteConfig.build?.rolldownOptions,
+          input: {
+            ...this.entry,
+            ...(this.engineFile ? { engine: this.engineFile } : {}),
+          },
+          external: externalizeRollupModule({
+            external: loadedViteConfig.build?.rolldownOptions?.external,
+            moduleId: 'bun',
+          }) as never,
+          output: fixedExistingRolldownOptionsOutput,
+        },
+        copyPublicDir: false,
+        emptyOutDir: false,
+      },
+      define: {
+        ...loadedViteConfig.define,
+        ...injectedEnvs,
+      },
+    }
+  }
+
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
     if (_point0_env.build.was) {
       throw new Error('You can not build by built engine')
     } else {
-      const { NODE_ENV } = this.setEnvVars({ assignToProcessEnv: false, nodeEnvFallback: 'production' })
       if (!this.viteConfig) {
         throw new Error(`viteConfig not provided for server`)
       }
@@ -944,84 +1040,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         await this.cleanServer()
       }
 
-      this.envConsts.NODE_ENV = NODE_ENV
-
-      const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
-      const compilerPlugin = compilerOptions
-        ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
-        : []
-
-      const loadedViteConfig = await extractViteConfig({
-        viteConfig: this.viteConfig,
-        command: 'build',
-        side: 'server',
-        mode: NODE_ENV,
-        scope: this.scope,
-        plugins: compilerPlugin,
-      })
-
-      const { injectedEnvs, injectEnvsScript } = this.getBuildInjectedEnvs()
-
-      const existingRolldownOptionsOutput = loadedViteConfig.build?.rolldownOptions?.output
-      const normalizedExistingRolldownOptionsOutput =
-        (Array.isArray(existingRolldownOptionsOutput)
-          ? existingRolldownOptionsOutput[0]
-          : existingRolldownOptionsOutput) || {}
-
-      // Vite 8 / Rolldown's default `chunkFileNames` is `assets/[name]-[hash].js`, which nests
-      // shared chunks under `<outdir>/assets/`. With multiple SSR entries that share modules,
-      // the user's `engine.ts` (the one calling `Engine.create({ file: import.meta.url, … })`)
-      // gets hoisted into one such shared chunk. At runtime `import.meta.url` then resolves to
-      // `<outdir>/assets/engine-<hash>.js`, and the runtime check
-      //   `dirname(engineFile).endsWith(POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED)`
-      // in `config.ts` (parseEngineGeneralOptions) fails — `/dist/server/assets` does not end
-      // with `/dist/server`.
-      //
-      // Flatten chunk output so chunks live next to entries (no `assets/` prefix). The chunk
-      // that actually contains `engine.ts`'s code then sits at `<outdir>/engine-<hash>.js`,
-      // `dirname(...) === <outdir>`, and the invariant holds. SSR builds don't emit real assets
-      // (images/CSS) so collapsing `assetsDir` is safe here.
-      const rolldownOptionsOutput: Extract<
-        NonNullable<NonNullable<ExtractedViteConfig['build']>['rolldownOptions']>['output'],
-        object
-      > = {
-        ...normalizedExistingRolldownOptionsOutput,
-        banner: [injectEnvsScript, normalizedExistingRolldownOptionsOutput.banner].filter(Boolean).join('\n'),
-        chunkFileNames: normalizedExistingRolldownOptionsOutput.chunkFileNames ?? '[name]-[hash].js',
-      }
-      const fixedExistingRolldownOptionsOutput = Array.isArray(existingRolldownOptionsOutput)
-        ? [rolldownOptionsOutput, ...existingRolldownOptionsOutput.slice(1)]
-        : rolldownOptionsOutput
-
-      const config: ExtractedViteConfig = {
-        ...loadedViteConfig,
-        root: getViteRoot({ viteConfig: this.viteConfig, loadedViteConfig, engineFile: this.engineFile }),
-        build: {
-          ...loadedViteConfig.build,
-          outDir: buildPaths.outdir,
-          minify: loadedViteConfig.build?.minify ?? true,
-          sourcemap: loadedViteConfig.build?.sourcemap ?? true,
-          ssr: true,
-          rolldownOptions: {
-            ...loadedViteConfig.build?.rolldownOptions,
-            input: {
-              ...this.entry,
-              ...(this.engineFile ? { engine: this.engineFile } : {}),
-            },
-            external: externalizeRollupModule({
-              external: loadedViteConfig.build?.rolldownOptions?.external,
-              moduleId: 'bun',
-            }) as never,
-            output: fixedExistingRolldownOptionsOutput,
-          },
-          copyPublicDir: false,
-          emptyOutDir: false,
-        },
-        define: {
-          ...loadedViteConfig.define,
-          ...injectedEnvs,
-        },
-      }
+      const config = await this.getViteConfigForBuild()
       const buildResult = await viteBuild(config)
 
       const rollupOutputs = Array.isArray(buildResult) ? buildResult : [buildResult]

@@ -27,7 +27,12 @@ import type { FileGeneratorProcessResult } from './generator.js'
 import { FilesGenerator } from './generator.js'
 import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
-import { killSubprocessOnExit, normalizeAndValidateNodeEnv } from './utils.js'
+import {
+  getViteConfigForDev,
+  isExtractingViteConfig,
+  killSubprocessOnExit,
+  normalizeAndValidateNodeEnv,
+} from './utils.js'
 import { FilesWatcher } from './watcher.js'
 import type { NormalizedNodeEnv } from '@point0/core'
 
@@ -301,6 +306,120 @@ export class Engine<
     } else {
       await Promise.all([generatorWatchProcess, this.prepare(), clientsDevServers])
     }
+  }
+
+  /**
+   * Return the engine's contribution to a vite `UserConfig` — currently the point0 compiler plugin (when enabled) and
+   * the right `root`. Intended for use from a project's native `vite.config.ts`:
+   *
+   * ```ts
+   * import { defineConfig, mergeConfig } from 'vite'
+   * import { engine } from './src/engine'
+   *
+   * export default defineConfig(async (env) => {
+   *   const base = await engine.getViteConfig(env)
+   *   return mergeConfig(base, { plugins: [react()] })
+   * })
+   * ```
+   *
+   * `env` is native vite `ConfigEnv` (`{ command, mode, isSsrBuild, isPreview }`); the engine may also pass `side` and
+   * `scope` when it loads this config itself (`engine.dev` / `engine.build`). When neither is present (e.g. vitest
+   * loads the file), defaults are used — `side` follows `isSsrBuild`, `scope` falls back to the first available client
+   * (or the server scope).
+   */
+  /**
+   * Returns the FULL vite config the engine would use for the given side/command. This is the single source of truth —
+   * internally `client.buildByVite`, `server.buildByVite`, and the dev-server setup all derive from the same
+   * `getViteConfigFor{Dev,Build}` helpers — so what the user gets here is bit-for-bit what the engine itself would run
+   * with.
+   *
+   * Two callers, two paths:
+   *
+   * 1. The user's `vite.config.ts` calls `engine.getViteConfig(env)` to compose with their own overrides via
+   *    `mergeConfig`. When this happens DURING the engine's own extraction (i.e. `engine.dev()` / `engine.build()` is
+   *    loading that same `vite.config.ts` via the `viteConfig: '../vite.config.ts'` string form), we'd otherwise
+   *    recurse forever. The {@link isExtractingViteConfig} guard short-circuits that case and returns just the engine's
+   *    bare contribution (compiler plugin + root + the `plugins` already passed in via `env.plugins`) — enough for the
+   *    user's `mergeConfig` to produce a valid config, and the engine's outer extraction will still produce the full
+   *    config after the user function returns.
+   * 2. Vitest / raw `vite` / IDE introspection loads `vite.config.ts` directly, with no extraction in progress. We
+   *    dispatch to the matching `getViteConfigFor{Dev,Build}` and return the FULL config (plugins, root, define,
+   *    build.rolldownOptions, etc.).
+   */
+  async getViteConfig(
+    env: {
+      command?: 'serve' | 'build'
+      mode?: string
+      isSsrBuild?: boolean
+      isPreview?: boolean
+      side?: 'server' | 'client'
+      scope?: PointsScope
+      plugins?: import('vite').Plugin[]
+    } = {},
+  ): Promise<import('vite').UserConfig> {
+    // `side`/`scope` resolution order:
+    //   1. explicit arg from the caller (engine internally passes these)
+    //   2. `POINT0_SIDE` / `POINT0_SCOPE` env vars — handy when the same `vite.config.ts` is
+    //      invoked by a tool (vitest, raw `vite`) and you want to control which target it sees
+    //      without editing the file (e.g. `POINT0_SIDE=server vitest`)
+    //   3. inferred fallback (`isSsrBuild` for side, first client / server scope for scope)
+    const envVarSide =
+      process.env.POINT0_SIDE === 'server' || process.env.POINT0_SIDE === 'client' ? process.env.POINT0_SIDE : undefined
+    const envVarScope = process.env.POINT0_SCOPE ? (process.env.POINT0_SCOPE as PointsScope) : undefined
+    const side: 'server' | 'client' = env.side ?? envVarSide ?? (env.isSsrBuild ? 'server' : 'client')
+    const command: 'serve' | 'build' = env.command ?? 'serve'
+
+    // Recursion guard — see jsdoc above.
+    if (isExtractingViteConfig()) {
+      const root = nodePath.dirname(this.file)
+      if (env.plugins !== undefined) {
+        return { plugins: env.plugins, root }
+      }
+      const target =
+        side === 'server'
+          ? this.server
+          : (this.clients.find((c) => c.scope === (env.scope ?? envVarScope ?? this.clients.at(0)?.scope)) ??
+            this.clients.at(0))
+      if (!target) return { root }
+      const compilerOptions = target.getCompilerOptions({ built: command === 'build' })
+      if (!compilerOptions) return { root }
+      const { compilerVitePlugin } = await import('@point0/compiler/plugin/vite')
+      return { plugins: [compilerVitePlugin(compilerOptions)], root }
+    }
+
+    // Full-config path: dispatch to the same helpers the engine uses internally.
+    if (side === 'server') {
+      if (command === 'build') {
+        return await this.server.getViteConfigForBuild()
+      }
+      return await getViteConfigForDev({
+        viteConfig: this.server.viteConfig,
+        scope: this.server.scope,
+        side: 'server',
+        hmrPort: this.server.hmrPort,
+        mode: (env.mode as NormalizedNodeEnv | undefined) ?? normalizeAndValidateNodeEnv('development'),
+        envConsts: this.server.envConsts,
+        engineFile: this.server.engineFile,
+        compilerOptions: this.server.getCompilerOptions({ built: false }),
+      })
+    }
+
+    const scope = env.scope ?? envVarScope ?? this.clients.at(0)?.scope
+    const client = this.clients.find((c) => c.scope === scope) ?? this.clients.at(0)
+    if (!client) return {}
+    if (command === 'build') {
+      return await client.getViteConfigForBuild()
+    }
+    return await getViteConfigForDev({
+      viteConfig: client.viteConfig,
+      scope: client.scope,
+      side: 'client',
+      hmrPort: client.hmrPort,
+      mode: (env.mode as NormalizedNodeEnv | undefined) ?? normalizeAndValidateNodeEnv('development'),
+      envConsts: client.envConsts,
+      engineFile: client.engineFile,
+      compilerOptions: client.getCompilerOptions({ built: false }),
+    })
   }
 
   async serve(
