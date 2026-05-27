@@ -2,4 +2,7 @@ import { engine } from './engine.js'
 
 await engine.serve()
 
-export const dispose = () => engine.dispose()
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => engine.dispose())
+  import.meta.hot.accept()
+}

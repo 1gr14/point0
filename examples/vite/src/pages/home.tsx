@@ -37,7 +37,7 @@ export const randomMutation = root.lets
   .mutation()
   .loader(async () => {
     return {
-      random: 14,
+      random: 143,
     }
   })
   .mutation()
@@ -56,7 +56,7 @@ export default generalLayout
             className="text-3xl font-bold tracking-tight text-slate-900"
             onClick={() => randomMutation.fetchMutation().then((res) => console.log(res, 444))}
           >
-            Welcome to IdeaNickOOO{y}!{x()}
+            Welcome to IdeaNick{y}!{x()}
           </h1>
           <p className="text-slate-600">
             Read about this project{' '}

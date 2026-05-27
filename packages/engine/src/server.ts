@@ -12,7 +12,7 @@ import { _point0_env, _ssServerLog, prependAndDeappendSlash } from '@point0/core
 import type { BunPlugin, Serve } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import type { ViteDevServer } from 'vite'
+import { isRunnableDevEnvironment, type ViteDevServer } from 'vite'
 import type { EngineClient } from './client.js'
 import type {
   EngineOptionsCompilerSpecificParsed,
@@ -444,68 +444,37 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     return viteDevServer
   }
 
-  async loadViteDevEntry(options: { watch?: boolean; entryFile: string; viteDevServer?: ViteDevServer }): Promise<any> {
-    const { watch, entryFile, viteDevServer = this.viteDevServer } = options
-    if (!this.viteConfig) {
-      throw new Error(`Vite config not found for server`)
-    }
-    if (!viteDevServer) {
-      throw new Error(`Vite dev server not started for server`)
-    }
-    // const loadedModule = await this.viteDevServer.ssrLoadModule(entryPath)
-    if (!watch) {
-      await viteDevServer.ssrLoadModule(entryFile, { fixStacktrace: true })
-      return
-    }
-
-    let serverModule: any
-    let dispose: (() => Promise<void>) | undefined
-    const load = async () => {
-      try {
-        // await new Promise((resolve) => setTimeout(resolve, 1000))
-        if (dispose) {
-          await dispose()
-          dispose = undefined
-        }
-        serverModule = await viteDevServer.ssrLoadModule(entryFile, { fixStacktrace: true })
-        dispose = serverModule.dispose
-        if (!dispose) {
-          throw new Error(`Dispose function not exported from server entry point "${entryFile}": ${entryFile}`)
-        }
-      } catch (error) {
-        this.fixViteSsrStacktrace(error)
-        // this.logger.error(`Error loading entry point "${entryFile}"`, error)
-        this.log({
-          level: 'error',
-          category: ['server'],
-          message: `Failed to load entry point "${entryFile}"`,
-          error,
-        })
+  async loadViteDevEntry(options: { entryFile: string; viteDevServer?: ViteDevServer }): Promise<any> {
+    if (_point0_env.build.was) {
+      throw new Error('You can not load vite dev entry after build')
+    } else {
+      const { entryFile, viteDevServer = this.viteDevServer } = options
+      if (!this.viteConfig) {
+        throw new Error(`Vite config not found for server`)
       }
-    }
-    await load()
-    viteDevServer.watcher.on('change', (file) => {
-      if (file.includes('/src/')) {
-        void load()
+      if (!viteDevServer) {
+        throw new Error(`Vite dev server not started for server`)
       }
-    })
+      // Vite 8: load via the ModuleRunner. Dispose/accept HMR boilerplate is injected into
+      // entries by the `point0:server-entry-hmr` plugin (see createViteDevServer), so vite's
+      // own HMR pipeline handles re-execution — no manual watcher needed here.
+      const ssrEnv = viteDevServer.environments.ssr
+      if (!isRunnableDevEnvironment(ssrEnv)) {
+        throw new Error(`Vite SSR environment is not runnable (cannot import server entry in-process)`)
+      }
+      return await ssrEnv.runner.import(entryFile)
+    }
   }
 
-  async loadViteDevEntries(options?: {
-    watch?: boolean
-    entriesFiles?: string[]
-    viteDevServer?: ViteDevServer
-  }): Promise<void> {
+  async loadViteDevEntries(options?: { entriesFiles?: string[]; viteDevServer?: ViteDevServer }): Promise<void> {
     if (!this.viteConfig) {
       throw new Error(`Vite config not found for server`)
     }
-    const { watch, entriesFiles = Object.values(this.entry || {}), viteDevServer = this.viteDevServer } = options ?? {}
+    const { entriesFiles = Object.values(this.entry || {}), viteDevServer = this.viteDevServer } = options ?? {}
     if (!viteDevServer) {
       throw new Error(`Vite dev server not started for server`)
     }
-    await Promise.all(
-      entriesFiles.map(async (entryFile) => await this.loadViteDevEntry({ watch, entryFile, viteDevServer })),
-    )
+    await Promise.all(entriesFiles.map(async (entryFile) => await this.loadViteDevEntry({ entryFile, viteDevServer })))
   }
 
   private readonly fetchDevClientsProxy = async ({

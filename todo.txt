@@ -58,8 +58,7 @@ normalize scroll restoration (it is trash now)
 
 
 # Runtime
-? vite 8 (server updates failed)
-vite config as fn should accept also compilerPlugin so we can place it in correct place
+vite config as fn should accept also plugins[] so we can place it in correct place
 Вайт контроллер экзампл
 
 
@@ -118,11 +117,12 @@ in example rename file navigate to navigation
 ??? revert flow of data, it should be clockwisde, so we see latest first
 Пейдж стейт хранит в себе в дата прокси объект, который нормально собирает из обычного квери клиента, и тогда ничего синхронизировать не надо
 Лоадер только один разрешить
-Дата возвращённая может быть не только объектомно и массивом и чем угодно
 Запретить комбайнед квери
+Дата возвращённая может быть не только объектомно и массивом и чем угодно
 SSrStore. ССР стор и куки стор одинааковый стиль
 Опенапи пер поинт с суффиксом . Опенапи
 пофиксить экзамплы
+пофиксить криэйт апп
 
 
 # Later

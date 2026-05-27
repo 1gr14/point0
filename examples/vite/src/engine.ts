@@ -1,11 +1,26 @@
 import { Engine } from '@point0/engine'
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+import svgr from 'vite-plugin-svgr'
 
 export const engine = Engine.create({
   file: import.meta.url,
   ssr: true,
   pointsGlob: '**/*.{ts,tsx,mdx}',
   generate: { meta: './generated/point0/meta.ts' },
-  viteConfig: '../vite.config.ts',
+  viteConfig: () => {
+    return {
+      resolve: {
+        tsconfigPaths: true,
+      },
+      plugins: [
+        react({ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }),
+        svgr(),
+        tailwindcss(),
+        // options.side === 'client' ? analyzer() : null,
+      ],
+    }
+  },
   server: {
     scope: 'root',
     port: process.env.SERVER_PORT,

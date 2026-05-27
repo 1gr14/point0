@@ -1113,9 +1113,9 @@ export class Fetcher<TError extends ErrorPoint0> {
     requiredCtx: RequiredCtx
     bunServer?: Bun.Server<unknown>
   }): Promise<FetcherFetchDetailedResult<TError>> {
-    if (!this.server.itWasBuilt) {
+    if (!this.server.itWasBuilt && this.server.viteConfig) {
       // Keep it. Vite server updates will not work for points without it.
-      await this.server.readPoints()
+      await this.engine.readEverything()
     }
     const prepareFetchResult = await this.prepareFetch({
       originalRequest: request,

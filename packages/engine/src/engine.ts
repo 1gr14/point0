@@ -291,7 +291,7 @@ export class Engine<
         if (this.server.viteConfig) {
           await this.server.preload({ nodeEnvFallback: 'development', preventLoadBunPlugins: true })
           await this.server.startViteDevServer()
-          return [this.server.loadViteDevEntries({ watch: !!watch, entriesFiles })]
+          return [this.server.loadViteDevEntries({ entriesFiles })]
         } else {
           await this.server.startBunDevProcess({ entriesFiles, bunRunArgs, watch, cwd })
           return []
@@ -836,5 +836,13 @@ export class Engine<
   isFileInEngineDir(file: string = Bun.main): boolean {
     const engineFileDir = nodePath.dirname(this.file)
     return !nodePath.relative(engineFileDir, file).startsWith('..')
+  }
+
+  async readEverything(): Promise<void> {
+    await this.server.readPoints()
+    await Promise.all([
+      ...this.clients.flatMap((client) => [client.readPoints(), client.readAppComponent()]),
+      this.server.readPoints(),
+    ])
   }
 }
