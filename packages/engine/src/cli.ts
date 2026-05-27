@@ -195,25 +195,62 @@ program
 program
   .command('compile <file>')
   .description('Show compiled code for file')
+  // Reassign help to `--help` only so `-h` is free for `--hmr` below. Long-form `--help` still works.
+  .helpOption('--help', 'display help for command')
   .option('--engine <path>', dictionary.enginePath)
-  .option('--side <side>', "Trace side: 'server' or 'client'")
-  .option('--scope <scope>', 'Trace scope (optional, inferred from side when omitted)')
-  .option('--hmr', 'Do not omit hmr fix')
+  .option('--side <side>', "Compile side: 'server' or 'client'")
+  .option('-c, --client', 'Shorthand for --side client')
+  .option('-s, --server', 'Shorthand for --side server')
+  .option('--scope <scope>', 'Compile scope (optional, inferred from side when omitted)')
+  .option('--mode <mode>', "NODE_ENV mode: 'production' | 'development' | 'test' (else current NODE_ENV)")
+  .option('-b, --built', `Treat the engine as built (else POINT0_BUILT === 'true')`)
+  .option('-p, --production', 'Shorthand for --mode production')
+  .option('-d, --development', 'Shorthand for --mode development')
+  .option('-t, --test', 'Shorthand for --mode test')
+  .option('-B, --no-babel', 'Strip babel plugins from compiler options')
+  // Paired --hmr / --no-hmr: separate shorts, same key. If neither flag is passed, the value
+  // is left unset and we inherit the engine-config hmrFix.
+  .option('-h, --hmr', 'Force hmrFix: true')
+  .option('-H, --no-hmr', 'Force hmrFix: false (else use engine config value)')
   .action(
     async (
       file: string,
       options: {
-        hmr?: boolean
         engine?: string
         side?: string
+        client?: boolean
+        server?: boolean
         scope?: PointsScope
+        mode?: string
+        production?: boolean
+        development?: boolean
+        test?: boolean
+        built?: boolean
+        // Commander negates `--no-*` into the positive key, defaulting to `true`. The flag is
+        // present (i.e. user passed `-B`/`-H`) when the value is `false`.
+        babel?: boolean
+        hmr?: boolean
       },
     ) => {
       const cwd = process.cwd()
+      // Resolve --mode (shorthand > --mode > current NODE_ENV). Set NODE_ENV before the engine
+      // module loads, since downstream code reads it at evaluation time.
+      const resolvedMode = options.production
+        ? 'production'
+        : options.development
+          ? 'development'
+          : options.test
+            ? 'test'
+            : options.mode
+      if (resolvedMode) {
+        process.env.NODE_ENV = resolvedMode
+      }
       normalizeAndValidateNodeEnv('development')
       const { engine } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd })
+      // Resolve side: -c / -s shorthand wins over --side.
+      const sideArg = options.client ? 'client' : options.server ? 'server' : options.side
       const { side: compileSide, scope: compileScope } = engine.guessSideAndScope({
-        side: options.side,
+        side: sideArg,
         scope: options.scope,
       })
       const runtime =
@@ -221,16 +258,22 @@ program
       if (!runtime) {
         throw new Error(`Can not find ${compileSide} runtime for scope "${compileScope}"`)
       }
-      const compilerOptions = runtime.getCompilerOptions({
-        built: process.env.POINT0_BUILT === 'true',
-      })
+      // Resolve --built: explicit flag wins, else env var.
+      const built = options.built === true || process.env.POINT0_BUILT === 'true'
+      const compilerOptions = runtime.getCompilerOptions({ built })
       if (!compilerOptions) {
         throw new Error(`Compiler is disabled for ${compileSide} scope "${compileScope}"`)
       }
+      // --no-babel (-B): drop babel plugins so we see point0-only transforms.
+      const babelOverride = options.babel === false ? { babel: [] } : {}
+      // --hmr (-h) → force true; --no-hmr (-H) → force false; absent → leave engine-config value.
+      // (commander resolves to last-wins if both are passed)
+      const hmrOverride =
+        options.hmr === true ? { hmrFix: true } : options.hmr === false ? { hmrFix: false } : {}
       const compiler = Compiler.create({
         ...compilerOptions,
-        // Keep output readable by default; enable with --hmr.
-        hmrFix: options.hmr === true,
+        ...babelOverride,
+        ...hmrOverride,
       })
       const resolvedFile = path.isAbsolute(file) ? file : path.resolve(cwd, file)
       const result = compiler.compile({ file: resolvedFile })

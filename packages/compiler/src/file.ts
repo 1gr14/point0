@@ -1,4 +1,4 @@
-import { transformFromAstSync } from '@babel/core'
+import { transformFromAstSync, type PluginItem } from '@babel/core'
 import type { GeneratorResult } from '@babel/generator'
 import generatorModule from '@babel/generator'
 import babel from '@babel/parser'
@@ -8,7 +8,14 @@ import type { NodePath } from '@babel/traverse'
 import traverseModule from '@babel/traverse'
 import type { File, Node, ObjectExpression, ObjectMethod, ObjectProperty, SpreadElement } from '@babel/types'
 import * as t from '@babel/types'
-import { compileSync } from '@mdx-js/mdx'
+import remappingModule from '@jridgewell/remapping'
+import { compileSync, type CompileOptions } from '@mdx-js/mdx'
+
+const remapping = ((remappingModule as any).default ?? remappingModule) as typeof remappingModule extends {
+  default: infer T
+}
+  ? T
+  : typeof remappingModule
 import type { EnvOsName, EnvRuntimeName, NormalizedNodeEnv } from '@point0/core'
 import minifyDeadCodeEliminationModule from 'babel-plugin-minify-dead-code-elimination'
 import minifyGuardedExpressionsModule from 'babel-plugin-minify-guarded-expressions'
@@ -249,13 +256,7 @@ export class CompilerFile<THasContent extends boolean> {
       // Precompile them into JS program text before parsing.
       if (CompilerFile.isMdxLikePath(this.abs)) {
         try {
-          const compiled = compileSync(this.content, {
-            jsx: false,
-            outputFormat: 'program',
-            development: true,
-            // MARKDOWN
-            remarkPlugins: [remarkFrontmatter, [remarkMdxFrontmatter, { name: 'frontmatter' }]],
-          })
+          const compiled = compileSync(this.content, this.walker.markdown ?? CompilerFile.getDefaultMarkdownOptions())
           const nextContent = String(compiled) as THasContent extends true ? string : undefined
           if (!nextContent) {
             errors.push(new Error(`Failed to compile MDX/MDC file ${this.abs}, empty content`))
@@ -275,10 +276,12 @@ export class CompilerFile<THasContent extends boolean> {
       const ast = babel.parse(this.content, {
         sourceType: 'module',
         errorRecovery: true,
+        // tokens + createParenthesizedExpressions are required by
+        // experimental_preserveFormat in babelGenerator. They keep the original source
+        // spans + paren nodes so the generator can re-emit unmodified subtrees verbatim
+        // (including comment placement that vite's @vite-ignore detector relies on).
         tokens: true,
         createParenthesizedExpressions: true,
-        retainLines: true,
-        ...({ experimental_preserveFormat: true } as any),
         plugins: [
           'typescript',
           'jsx',
@@ -301,6 +304,16 @@ export class CompilerFile<THasContent extends boolean> {
 
   static isMdxLikePath(path: string): boolean {
     return /\.(md|mdx|mdc)$/.test(path)
+  }
+
+  static getDefaultMarkdownOptions(): CompileOptions {
+    return {
+      jsx: false,
+      outputFormat: 'program',
+      format: 'mdx',
+      development: false,
+      remarkPlugins: [remarkFrontmatter, [remarkMdxFrontmatter, { name: 'frontmatter' }]],
+    }
   }
 
   static isTypescriptLikePath(path: string): boolean {
@@ -487,22 +500,39 @@ export class CompilerFile<THasContent extends boolean> {
     if (this.content === undefined) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
+    // When user babel plugins ran, this.content is the intermediate (regenerated) text and
+    // this.ast positions refer to that text. We generate map2 against a SYNTHETIC source label
+    // for the intermediate, then chain it with the previously captured map1
+    // (intermediate → original) so the inline source map ends up mapping final → original.
+    const generatorSourceLabel = this._preUserBabelMap ? this.intermediateSourceLabel : this.abs
+    // experimental_preserveFormat keeps original whitespace/comment placement by re-using
+    // spans of the source text for unmodified nodes — critical for things like
+    // `import(/* @vite-ignore */ x)` where vite's import-analysis only suppresses its warning
+    // when the comment is positioned exactly inside the parens with no extra reformatting.
+    //
+    // We disable it ONLY when applyUserBabelPlugins regenerated the AST: in that path the
+    // ast's loc info refers to intermediate text that may no longer be valid for the
+    // format-preserving codepath (e.g. react-compiler-emitted TS type members can come out
+    // syntactically broken with the flag on).
+    const canPreserveFormat = !this._preUserBabelMap
     const { code, map } = babelGenerator(
       this.ast,
       {
-        sourceFileName: this.abs,
-        retainLines: true,
-        tokens: true,
-        createParenthesizedExpressions: true,
-        ...({ experimental_preserveFormat: true } as any),
+        sourceFileName: generatorSourceLabel,
         ...(sourceMaps ? { sourceMaps: true } : {}),
+        ...(canPreserveFormat
+          ? ({ retainLines: true, experimental_preserveFormat: true } as unknown as Record<string, unknown>)
+          : {}),
       },
       this.content,
     )
-    return {
-      code,
-      map,
+    if (!sourceMaps || !map || !this._preUserBabelMap) {
+      return { code, map }
     }
+    const preUserBabelMap = this._preUserBabelMap
+    const intermediateLabel = this.intermediateSourceLabel
+    const chained = remapping(map as any, (file) => (file === intermediateLabel ? (preUserBabelMap as any) : null))
+    return { code, map: chained as unknown as GeneratorResult['map'] }
   }
 
   optimizeGuardedExpressions(): { ok: boolean; errors: unknown[]; modified: boolean } {
@@ -512,17 +542,7 @@ export class CompilerFile<THasContent extends boolean> {
       throw new Error(`File ${this.abs} is not read yet`)
     }
     try {
-      const beforeCode = babelGenerator(
-        this.ast,
-        {
-          sourceFileName: this.abs,
-          retainLines: true,
-          tokens: true,
-          createParenthesizedExpressions: true,
-          ...({ experimental_preserveFormat: true } as any),
-        },
-        this.content,
-      ).code
+      const beforeCode = babelGenerator(this.ast, { sourceFileName: this.abs }, this.content).code
       const result = transformFromAstSync(this.ast, this.content, {
         ast: true,
         code: false,
@@ -537,17 +557,7 @@ export class CompilerFile<THasContent extends boolean> {
         return { ok: true, errors, modified }
       }
       this.pruneUnusedImports({ ast: result.ast })
-      const afterCode = babelGenerator(
-        result.ast,
-        {
-          sourceFileName: this.abs,
-          retainLines: true,
-          tokens: true,
-          createParenthesizedExpressions: true,
-          ...({ experimental_preserveFormat: true } as any),
-        },
-        this.content,
-      ).code
+      const afterCode = babelGenerator(result.ast, { sourceFileName: this.abs }, this.content).code
       if (afterCode !== beforeCode) {
         this.ast.program = result.ast.program
         modified = true
@@ -557,6 +567,159 @@ export class CompilerFile<THasContent extends boolean> {
     } catch (e) {
       errors.push(e)
       return { ok: false, errors, modified }
+    }
+  }
+
+  // Chain methods that produce React components and so are eligible for the
+  // `"use memo"` directive. Other chain methods (loader, mutation, query, etc.)
+  // are server-side or non-component code and must not be marked.
+  private static readonly CHAIN_CALLBACK_USE_MEMO_METHODS: ReadonlySet<string> = new Set([
+    'page',
+    'layout',
+    'component',
+    'provider',
+    'wrapper',
+    'with',
+  ])
+
+  injectUseMemoOnChainCallbacks(): { ok: boolean; errors: unknown[]; modified: boolean } {
+    const errors: unknown[] = []
+    let modified = false
+    try {
+      traverse(this.ast, {
+        CallExpression: (path) => {
+          const callee = path.node.callee
+          if (!t.isMemberExpression(callee)) return
+          if (!t.isIdentifier(callee.property)) return
+          if (!CompilerFile.CHAIN_CALLBACK_USE_MEMO_METHODS.has(callee.property.name)) return
+          for (const arg of path.node.arguments) {
+            if (!t.isArrowFunctionExpression(arg) && !t.isFunctionExpression(arg)) continue
+            // If the body is already a block and already has "use memo", skip without mutating —
+            // don't reshape expression-bodied arrows when there's nothing to actually inject.
+            if (
+              t.isBlockStatement(arg.body) &&
+              arg.body.directives.some((d) => d.value.value === 'use memo')
+            ) {
+              break
+            }
+            // Convert expression-bodied arrows into block bodies so we can attach a directive.
+            if (!t.isBlockStatement(arg.body)) {
+              arg.body = t.blockStatement([t.returnStatement(arg.body)])
+            }
+            const block = arg.body
+            const hasUseMemo = block.directives.some((d) => d.value.value === 'use memo')
+            if (!hasUseMemo) {
+              block.directives.unshift(t.directive(t.directiveLiteral('use memo')))
+              modified = true
+              this.modified = true
+            }
+            break
+          }
+        },
+      })
+      return { ok: true, errors, modified }
+    } catch (e) {
+      errors.push(e)
+      return { ok: false, errors, modified }
+    }
+  }
+
+  // When applyUserBabelPlugins runs, it regenerates code from the current AST and re-parses
+  // it before handing off to user plugins. That means subsequent generator output's positions
+  // refer to the intermediate (post-regenerate) text, not the original file. We keep map1
+  // (intermediate → original) here and chain it in toCode() so the final source map walks all
+  // the way back to the real source on disk.
+  private _preUserBabelMap: GeneratorResult['map'] | undefined = undefined
+  // A synthetic label distinct from this.abs, used as the intermediate file's identity in
+  // map2's `sources` array. Remapping uses this to know when to recurse into map1.
+  // We use a `\0`-prefixed scheme so downstream source-map consumers (Vite, bun, devtools)
+  // treat it as an opaque identifier rather than a file path: anything that tries to URL-
+  // decode, normalize, or resolve the path will leave a `\0`-prefixed string alone.
+  private get intermediateSourceLabel(): string {
+    return `\0point0-pre-user-babel:${this.abs}`
+  }
+
+  private _applyUserBabelPlugins: { ok: boolean; errors: unknown[]; modified: boolean } | undefined = undefined
+  applyUserBabelPlugins({ plugins, presets }: { plugins: PluginItem[]; presets: PluginItem[] }): {
+    ok: boolean
+    errors: unknown[]
+    modified: boolean
+  } {
+    if (this._applyUserBabelPlugins) {
+      return this._applyUserBabelPlugins
+    }
+    const errors: unknown[] = []
+    let modified = false
+    if (this.content === undefined) {
+      throw new Error(`File ${this.abs} is not read yet`)
+    }
+    if (plugins.length === 0 && presets.length === 0) {
+      this._applyUserBabelPlugins = { ok: true, errors, modified }
+      return this._applyUserBabelPlugins
+    }
+    try {
+      // Regenerate code from the current AST and re-parse before running user babel plugins.
+      // Earlier passes (shakeForEnv, optimizeGuardedExpressions, etc.) mutate the AST in place,
+      // which leaves scope bindings stale. Plugins that rely on accurate scope information
+      // (e.g. react-compiler) silently bail on a mutated AST. A clean parse here gives them
+      // the structure they expect.
+      //
+      // We deliberately do NOT pass experimental_preserveFormat here: that flag preserves
+      // original whitespace by keeping fragments from the source string, but on an AST that
+      // has been mutated it can emit syntactically broken text (especially around TS types).
+      //
+      // Collect a source map for this regenerate step so toCode() can chain it.
+      const preUserBabelResult = babelGenerator(
+        this.ast,
+        { sourceFileName: this.abs, sourceMaps: true },
+        this.content,
+      )
+      const regeneratedCode = preUserBabelResult.code
+      // Mirror the primary parse()'s syntax plugin list so we can re-parse files that use
+      // decorators / class private fields / etc. without throwing. We deliberately omit
+      // `tokens` and `createParenthesizedExpressions` here: those exist to support
+      // experimental_preserveFormat in toCode(), which we explicitly disable for files that
+      // have been through this regenerate step (see _preUserBabelMap gating). Some plugins
+      // (notably babel-plugin-react-compiler) bail when paren nodes are present in the AST,
+      // so we want them OFF for this re-parse path.
+      const reparsedAst = babel.parse(regeneratedCode, {
+        sourceType: 'module',
+        errorRecovery: true,
+        plugins: [
+          'typescript',
+          'jsx',
+          'decorators-legacy',
+          'classProperties',
+          'classPrivateProperties',
+          'classPrivateMethods',
+          'throwExpressions',
+        ],
+      })
+      const result = transformFromAstSync(reparsedAst, regeneratedCode, {
+        ast: true,
+        code: false,
+        configFile: false,
+        babelrc: false,
+        filename: this.abs,
+        plugins,
+        presets,
+      })
+      if (!result?.ast) {
+        this._applyUserBabelPlugins = { ok: true, errors, modified }
+        return this._applyUserBabelPlugins
+      }
+      this.ast.program = result.ast.program
+      this.content = regeneratedCode as THasContent extends true ? string : undefined
+      this._preUserBabelMap = preUserBabelResult.map
+      this._isIdentifierExists = {}
+      modified = true
+      this.modified = true
+      this._applyUserBabelPlugins = { ok: true, errors, modified }
+      return this._applyUserBabelPlugins
+    } catch (e) {
+      errors.push(e)
+      this._applyUserBabelPlugins = { ok: false, errors, modified }
+      return this._applyUserBabelPlugins
     }
   }
 
@@ -1602,6 +1765,11 @@ export class CompilerFile<THasContent extends boolean> {
           { name: 'viteConfig', value: makeObjectExpression() },
           { name: 'bunBuildConfig', value: makeObjectExpression() },
           { name: 'bunPlugins', value: makeArrayExpression() },
+          // The compiler config (markdown/babel plugins, importer fns, consts, etc.) is only
+          // consulted at build/dev time via getCompilerOptions(). A built engine never compiles
+          // sources at runtime, so dropping it avoids bundling babel/remark plugin closures into
+          // the production bundle. `false` is the canonical "no compiler" sentinel.
+          { name: 'compiler', value: t.booleanLiteral(false) },
         ]
 
         // Process properties in this object

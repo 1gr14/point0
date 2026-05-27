@@ -1,6 +1,13 @@
 import type { RoutesPretty } from '@devp0nt/route0'
 import { normalizeEnvConsts } from '@point0/compiler'
-import type { CompilerEnvConsts, CompilerEnvConstsNormalized, ImporterOptionsInput } from '@point0/compiler'
+import type {
+  CompilerBabelOptions,
+  CompilerBabelOptionsNormalized,
+  CompilerEnvConsts,
+  CompilerEnvConstsNormalized,
+  CompilerMarkdownOptions,
+  ImporterOptionsInput,
+} from '@point0/compiler'
 import { _defaultLogFn, prependAndDeappendSlash } from '@point0/core'
 import type {
   AppComponent,
@@ -90,6 +97,8 @@ export type EngineOptionsCompilerGeneral = {
   filter?: RegExp
   ssr?: boolean
   cache?: boolean
+  markdown?: CompilerMarkdownOptions
+  babel?: CompilerBabelOptions
 }
 // export type EngineOptionsCompilerGeneralParsed = {
 //   side: boolean
@@ -112,6 +121,8 @@ export type EngineOptionsCompilerSpecific = {
   ssr?: boolean
   importer?: ImporterOptionsInput | undefined
   cache?: boolean
+  markdown?: CompilerMarkdownOptions
+  babel?: CompilerBabelOptions
 }
 export type EngineOptionsCompilerSpecificParsed = {
   side: boolean
@@ -124,6 +135,8 @@ export type EngineOptionsCompilerSpecificParsed = {
   ssr: boolean
   importer: ImporterOptionsInput
   cache: boolean
+  markdown: CompilerMarkdownOptions | undefined
+  babel: CompilerBabelOptionsNormalized | undefined
 }
 
 export type EngineOptionsServing = boolean | string | ((options: { request: Request0 }) => boolean)
@@ -298,6 +311,41 @@ export type EngineOptionsParsed = {
   server: EngineServerOptionsParsed
   clients: EngineClientOptionsParsed[]
   routes: Record<string, RoutesPretty | EngineOptionsRoutes | null>
+}
+
+const mergeMarkdownOptions = (
+  general: CompilerMarkdownOptions | undefined,
+  specific: CompilerMarkdownOptions | undefined,
+): CompilerMarkdownOptions | undefined => {
+  if (!general && !specific) return undefined
+  const g = general ?? {}
+  const s = specific ?? {}
+  return {
+    ...g,
+    ...s,
+    remarkPlugins: [...(g.remarkPlugins ?? []), ...(s.remarkPlugins ?? [])],
+    rehypePlugins: [...(g.rehypePlugins ?? []), ...(s.rehypePlugins ?? [])],
+    recmaPlugins: [...(g.recmaPlugins ?? []), ...(s.recmaPlugins ?? [])],
+  }
+}
+
+const normalizeBabelOptions = (input: CompilerBabelOptions | undefined): CompilerBabelOptionsNormalized => {
+  if (!input) return { plugins: [], presets: [] }
+  if (Array.isArray(input)) return { plugins: input, presets: [] }
+  return { plugins: input.plugins ?? [], presets: input.presets ?? [] }
+}
+
+const mergeBabelOptions = (
+  general: CompilerBabelOptions | undefined,
+  specific: CompilerBabelOptions | undefined,
+): CompilerBabelOptionsNormalized | undefined => {
+  if (!general && !specific) return undefined
+  const g = normalizeBabelOptions(general)
+  const s = normalizeBabelOptions(specific)
+  return {
+    plugins: [...(g.plugins ?? []), ...(s.plugins ?? [])],
+    presets: [...(g.presets ?? []), ...(s.presets ?? [])],
+  }
 }
 
 const parsePublicdir = (input: EngineOptionsPublicdir, cwd: string): EngineOptionsPublicdirParsed => {
@@ -475,6 +523,10 @@ const parseEngineGeneralOptions = ({
               ...(generalOptions.compiler.os !== undefined ? { os: generalOptions.compiler.os } : {}),
               ...(generalOptions.compiler.scope !== undefined ? { scope: generalOptions.compiler.scope } : {}),
               ...(generalOptions.compiler.side !== undefined ? { side: generalOptions.compiler.side } : {}),
+              ...(generalOptions.compiler.markdown !== undefined
+                ? { markdown: generalOptions.compiler.markdown }
+                : {}),
+              ...(generalOptions.compiler.babel !== undefined ? { babel: generalOptions.compiler.babel } : {}),
               ...(generalOptions.compiler.ssr !== undefined
                 ? { ssr: generalOptions.compiler.ssr }
                 : ssr !== undefined
@@ -728,6 +780,8 @@ export const parseEngineServerOptions = ({
           : [serverOptionsCompilerRecord.consts]
         : []),
     ],
+    markdown: mergeMarkdownOptions(generalOptionsParsedCompilerRecord.markdown, serverOptionsCompilerRecord.markdown),
+    babel: mergeBabelOptions(generalOptionsParsedCompilerRecord.babel, serverOptionsCompilerRecord.babel),
     ssr:
       serverOptionsCompilerRecord.ssr !== undefined
         ? serverOptionsCompilerRecord.ssr
@@ -764,6 +818,8 @@ export const parseEngineServerOptions = ({
             ssr: mergedCompilerRecord.ssr,
             importer: mergedCompilerRecord.importer,
             cache: mergedCompilerRecord.cache,
+            markdown: mergedCompilerRecord.markdown,
+            babel: mergedCompilerRecord.babel,
           }
         : serverOptions.compiler !== undefined
           ? mergedCompilerRecord
@@ -898,6 +954,8 @@ const parseEngineClientOptions = ({
           : [clientOptionsCompilerRecord.consts]
         : []),
     ],
+    markdown: mergeMarkdownOptions(generalOptionsParsedCompilerRecord.markdown, clientOptionsCompilerRecord.markdown),
+    babel: mergeBabelOptions(generalOptionsParsedCompilerRecord.babel, clientOptionsCompilerRecord.babel),
     ssr:
       clientOptionsCompilerRecord.ssr !== undefined
         ? clientOptionsCompilerRecord.ssr
@@ -934,6 +992,8 @@ const parseEngineClientOptions = ({
             ssr: mergedCompilerRecord.ssr,
             importer: mergedCompilerRecord.importer,
             cache: mergedCompilerRecord.cache,
+            markdown: mergedCompilerRecord.markdown,
+            babel: mergedCompilerRecord.babel,
           }
         : clientOptions.compiler !== undefined
           ? mergedCompilerRecord

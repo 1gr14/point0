@@ -378,6 +378,8 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       importer: { ...this.compiler.importer, onDeny: onDeny !== undefined ? onDeny : this.compiler.importer.onDeny },
       built,
       cache: this.compiler.cache,
+      markdown: this.compiler.markdown,
+      babel: this.compiler.babel,
     }
   }
 

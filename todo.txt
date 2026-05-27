@@ -59,27 +59,22 @@ normalize scroll restoration (it is trash now)
 
 # Runtime
 ? build: {watch}, dev: {watch}, generate: {watch}
+? Из компилера не учитывать импорты в которых только тайп при импорт протекшене (они сами удалятся)
 
 
 
 # Compiler
 ? Попробовать не убирать тайпскрипт, а отменить экспериментальное сохранение синтаксиса
 ? Тайпскрипт только при билде не вырезать, а так вырезать
-? Компилер настройки вырезать из энжины после билда
-babelplugins
-remarkplugins
-react-compiler
-add babel-plugin-react-compiler to all examples
 
-mdx file after build not working nor bun, nor vite
-Компилер должен просить только мдыкс файлы, а обычные мд не должен
-mardown {enabled, options}
-maekdown test that loaders still cutted on client
+check if our hmr fix preserve source maps
+figure out iwth source maps
 
-inline source maps for bun, do not hmr fix for server builds (check if now we provide source map for bun on build)
-В cli компмле добавить флаг билт для просмотра как оно выглядит после билда
-Из компилера не учитывать импорты в которых только тайп при импорт протекшене
 trace is now terrible for client-only mark, it has starnge ./ in suggestons, also camn not find trace at all (so just not rename @point0/core-client-only, show as is)
+
+move to babel8
+
+bun build:watch do better
 
 
 
@@ -90,6 +85,7 @@ trace is now terrible for client-only mark, it has starnge ./ in suggestons, als
 Резолв пусть принимает эни квери лайк штуку
 resolve without arg, should just resolve to data, resolve with false, should just wait for loading
 Cделать красивый вывод в виртуал модуле
+error0 allow empty args, empty message
 В самом поинт0 тоже разделить мсп проджект и мсп докс
 engine config log → logger { log }
 engine config log, also should be able to accept async () => import; return logFn

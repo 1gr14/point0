@@ -14,6 +14,7 @@ export const engine = Engine.create({
         tsconfigPaths: true,
       },
       plugins: [
+        // we just have point0 vite compiler plugin here inside ...plugins, and we can place it where we want
         ...plugins,
         react({ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }),
         svgr(),
@@ -32,6 +33,9 @@ export const engine = Engine.create({
     devWatchGlob: ['**/*.{ts,tsx,mdx}', '!generated/point0/meta.ts'],
   },
   client: {
+    compiler: {
+      babel: ['babel-plugin-react-compiler'],
+    },
     scope: 'root',
     port: process.env.CLIENT_PORT,
     indexHtml: './index.html',

@@ -2174,7 +2174,7 @@ describe('CompilerFile', () => {
     it.concurrent(
       'replaces bunPlugins with empty array',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(` 
+        const cf = await file.wrp(`
           const { Engine } = await import('@point0/engine')
           Engine.create({
             server: {
@@ -2190,6 +2190,38 @@ describe('CompilerFile', () => {
             server: {
               bunPlugins: [],
             },
+          })
+          "
+        `,
+        )
+      }),
+    )
+
+    it.concurrent(
+      'replaces compiler with false (server/client/root)',
+      helper(async ({ files: [file] }) => {
+        const cf = await file.wrp(`
+          const { Engine } = await import('@point0/engine')
+          Engine.create({
+            compiler: { babel: ['babel-plugin-react-compiler'] },
+            server: {
+              compiler: { markdown: { format: 'md' } },
+            },
+            clients: [
+              { compiler: { babel: ['react-compiler'] } },
+            ],
+          })
+        `)
+        cf.shakeForBuiltEngine()
+        expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+          `
+          "const { Engine } = await import('@point0/engine')
+          Engine.create({
+            compiler: false,
+            server: {
+              compiler: false,
+            },
+            clients: [{ compiler: false }],
           })
           "
         `,
@@ -2751,6 +2783,9 @@ describe('CompilerFile', () => {
       expect(result.modified).toBe(true)
       expect(result.code).toContain('react/jsx-dev-runtime')
       expect(result.code).toContain('_jsxDEV(ClientOnly')
+      // experimental_preserveFormat keeps original whitespace where it can; the substituted
+      // `null` lands without space because the original `children: _jsxDEV(...)` arg got
+      // replaced in-place using its own token span.
       expect(result.code).toContain('children:null')
       expect(result.code).not.toContain('client-only-content')
     })
@@ -2769,6 +2804,64 @@ describe('CompilerFile', () => {
       expect(result.errors).toEqual([])
       expect(result.modified).toBe(true)
       expect(result.code).toContain('react/jsx-dev-runtime')
+    })
+
+    it('emits production jsx-runtime when compiled for a build (built: true)', () => {
+      const compiler = Compiler.create({
+        side: 'client',
+        scope: 'root',
+        mode: 'development',
+        built: true,
+      })
+      const result = compiler.compile({
+        file: '/virtual/page.mdx',
+        content: '# Hello',
+      })
+
+      expect(result.errors).toEqual([])
+      expect(result.modified).toBe(true)
+      expect(result.code).toContain('react/jsx-runtime')
+      expect(result.code).not.toContain('react/jsx-dev-runtime')
+    })
+
+    it('resolves a remark plugin passed as a string path', () => {
+      const pluginPath = nodePath.resolve(__dirname, 'fixtures/test-remark-plugin.cjs')
+      const compiler = Compiler.create({
+        side: 'client',
+        scope: 'root',
+        mode: 'development',
+        markdown: {
+          remarkPlugins: [pluginPath as unknown as never],
+        },
+      })
+      const result = compiler.compile({
+        file: '/virtual/page.mdx',
+        content: '# Hello',
+      })
+
+      expect(result.errors).toEqual([])
+      expect(result.modified).toBe(true)
+      // The fixture plugin prepends a paragraph with the marker text.
+      expect(result.code).toContain('REMARK_PLUGIN_RAN')
+    })
+
+    it('resolves a remark plugin passed as a [string, options] tuple', () => {
+      const pluginPath = nodePath.resolve(__dirname, 'fixtures/test-remark-plugin.cjs')
+      const compiler = Compiler.create({
+        side: 'client',
+        scope: 'root',
+        mode: 'development',
+        markdown: {
+          remarkPlugins: [[pluginPath, {}] as unknown as never],
+        },
+      })
+      const result = compiler.compile({
+        file: '/virtual/page.mdx',
+        content: '# Hello',
+      })
+
+      expect(result.errors).toEqual([])
+      expect(result.code).toContain('REMARK_PLUGIN_RAN')
     })
 
     // MARKDOWN
@@ -2794,6 +2887,209 @@ abc: Hello
       expect(result.code).toContain('"zxc": 123')
       expect(result.code).toContain('"abc": "Hello"')
       expect(result.code).not.toContain('zxc: 123')
+    })
+  })
+
+  describe('babel plugins', () => {
+    it('runs user-provided babel plugin (react-compiler) on a tsx component', () => {
+      const compiler = Compiler.create({
+        side: 'client',
+        scope: 'root',
+        mode: 'development',
+        babel: ['babel-plugin-react-compiler'],
+      })
+      const result = compiler.compile({
+        file: '/virtual/Counter.tsx',
+        content: `
+import { useState } from 'react'
+
+export function Counter() {
+  const [count, setCount] = useState(0)
+  return <button onClick={() => setCount((c) => c + 1)}>{count}</button>
+}
+`,
+      })
+
+      expect(result.errors).toEqual([])
+      expect(result.modified).toBe(true)
+      // react-compiler injects an import from react/compiler-runtime
+      // and rewrites the component to call its memo-cache helper.
+      expect(result.code).toContain('react/compiler-runtime')
+    })
+
+    it('skips the babel pass entirely when no plugins/presets are configured', () => {
+      const compiler = Compiler.create({
+        side: 'client',
+        scope: 'root',
+        mode: 'development',
+      })
+      const result = compiler.compile({
+        file: '/virtual/plain.tsx',
+        content: `
+import { useState } from 'react'
+
+export function Counter() {
+  const [count, setCount] = useState(0)
+  return <button onClick={() => setCount((c) => c + 1)}>{count}</button>
+}
+`,
+      })
+
+      expect(result.errors).toEqual([])
+      expect(result.code).not.toContain('react/compiler-runtime')
+    })
+  })
+
+  describe('chain-callback use-memo injection', () => {
+    const pointSource = `
+import { Point0 } from '@point0/core'
+import { useState } from 'react'
+
+const root = Point0.scope('root')
+
+export const widget = root.lets
+  .component<{ cta: string }>()
+  .wrapper(({ children }) => {
+    return <div>{children}</div>
+  })
+  .component(({ props }) => {
+    const [count, setCount] = useState(0)
+    return <button onClick={() => setCount(count + 1)}>{props.cta} {count}</button>
+  })
+
+export default root.lets
+  .page('home', '/')
+  .loader(async () => ({ value: 1 }))
+  .page(({ data }) => {
+    const [count, setCount] = useState(0)
+    return <div onClick={() => setCount(count + 1)}>{data.value}/{count}</div>
+  })
+`
+
+    it('injects "use memo" into chain callbacks when react-compiler is in babel (infer/default)', () => {
+      const compiler = Compiler.create({
+        side: 'client',
+        scope: 'root',
+        mode: 'development',
+        babel: ['babel-plugin-react-compiler'],
+      })
+      expect(compiler.chainCallbackUseMemo).toBe(true)
+      const result = compiler.compile({
+        file: '/virtual/widget.tsx',
+        content: pointSource,
+      })
+      expect(result.errors).toEqual([])
+      // Plugin is kept and runs — generated bundle imports compiler-runtime.
+      expect(result.code).toContain('react/compiler-runtime')
+      // Chain callbacks for component-producing methods get the directive applied;
+      // react-compiler then rewrites them, which leaves _c() / cache slots in the output.
+      // (We assert behaviorally rather than searching for the literal string,
+      // since react-compiler consumes the directive.)
+      expect(result.code).toContain('_c')
+    })
+
+    it('strips the react-compiler plugin but still injects the directive when compilationMode is "point0"', () => {
+      const compiler = Compiler.create({
+        side: 'client',
+        scope: 'root',
+        mode: 'development',
+        babel: [['babel-plugin-react-compiler', { compilationMode: 'point0' }]],
+      })
+      expect(compiler.chainCallbackUseMemo).toBe(true)
+      // Plugin must be stripped from the actual babel list.
+      expect(compiler.babel.plugins).toEqual([])
+      const result = compiler.compile({
+        file: '/virtual/widget.tsx',
+        content: pointSource,
+      })
+      expect(result.errors).toEqual([])
+      // Plugin is gone, so no compiler-runtime import.
+      expect(result.code).not.toContain('react/compiler-runtime')
+      // But the directives are present on the chain callbacks.
+      expect(result.code).toContain('"use memo"')
+    })
+
+    it('does not inject when compilationMode is "all" (plugin compiles everything itself)', () => {
+      const compiler = Compiler.create({
+        side: 'client',
+        scope: 'root',
+        mode: 'development',
+        babel: [['babel-plugin-react-compiler', { compilationMode: 'all' }]],
+      })
+      expect(compiler.chainCallbackUseMemo).toBe(false)
+      const result = compiler.compile({
+        file: '/virtual/widget.tsx',
+        content: pointSource,
+      })
+      expect(result.errors).toEqual([])
+      expect(result.code).not.toContain('"use memo"')
+    })
+
+    it('does not inject when react-compiler is absent from babel', () => {
+      const compiler = Compiler.create({
+        side: 'client',
+        scope: 'root',
+        mode: 'development',
+      })
+      expect(compiler.chainCallbackUseMemo).toBe(false)
+      const result = compiler.compile({
+        file: '/virtual/widget.tsx',
+        content: pointSource,
+      })
+      expect(result.errors).toEqual([])
+      expect(result.code).not.toContain('"use memo"')
+    })
+
+    it('does not touch non-component chain methods (loader, mutation, query)', () => {
+      const compiler = Compiler.create({
+        side: 'server',
+        scope: 'root',
+        mode: 'development',
+        babel: [['babel-plugin-react-compiler', { compilationMode: 'point0' }]],
+      })
+      const result = compiler.compile({
+        file: '/virtual/api.ts',
+        content: `
+import { Point0 } from '@point0/core'
+
+const root = Point0.scope('root')
+
+export const action = root.lets
+  .mutation('doThing')
+  .loader(async () => {
+    return { ok: true }
+  })
+  .mutation(async () => {
+    return { ok: true }
+  })
+`,
+      })
+      expect(result.errors).toEqual([])
+      // None of loader / mutation should receive the directive — it's only for
+      // component-producing methods.
+      expect(result.code).not.toContain('"use memo"')
+    })
+
+    it('accepts "Point0" (mixed case) as the sentinel value', () => {
+      const compiler = Compiler.create({
+        side: 'client',
+        scope: 'root',
+        mode: 'development',
+        babel: [['babel-plugin-react-compiler', { compilationMode: 'Point0' }]],
+      })
+      expect(compiler.chainCallbackUseMemo).toBe(true)
+      expect(compiler.babel.plugins).toEqual([])
+    })
+
+    it('also matches the babel short-name form "react-compiler"', () => {
+      const compiler = Compiler.create({
+        side: 'client',
+        scope: 'root',
+        mode: 'development',
+        babel: [['react-compiler', { compilationMode: 'point0' }]],
+      })
+      expect(compiler.chainCallbackUseMemo).toBe(true)
+      expect(compiler.babel.plugins).toEqual([])
     })
   })
 })

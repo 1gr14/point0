@@ -365,6 +365,8 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
       ssr: this.compiler.ssr,
       importer: { ...this.compiler.importer, onDeny: onDeny !== undefined ? onDeny : this.compiler.importer.onDeny },
       cache: this.compiler.cache,
+      markdown: this.compiler.markdown,
+      babel: this.compiler.babel,
       built,
     }
   }

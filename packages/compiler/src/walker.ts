@@ -4,6 +4,7 @@ import type { NodePath } from '@babel/traverse'
 import type { Node } from '@babel/types'
 import type { AnyRoute, RoutesPretty } from '@devp0nt/route0'
 import type { ReadyPointType } from '@point0/core'
+import type { CompileOptions as MdxCompileOptions } from '@mdx-js/mdx'
 import type { CompilerFileImport } from './file.js'
 import type * as nodeFsSync from 'node:fs'
 import { CompilerFile } from './file.js'
@@ -133,10 +134,20 @@ export class Walker {
   readonly routes: Record<string, RoutesPretty>
   // <strpos, point>
   readonly points = new Map<string, CompilerPoint>()
+  readonly markdown: MdxCompileOptions | undefined
 
-  constructor({ routes, ssr }: { routes: Record<string, RoutesPretty> | undefined; ssr?: boolean }) {
+  constructor({
+    routes,
+    ssr,
+    markdown,
+  }: {
+    routes: Record<string, RoutesPretty> | undefined
+    ssr?: boolean
+    markdown?: MdxCompileOptions
+  }) {
     this.routes = routes ?? {}
     this.ssr = ssr === undefined ? false : ssr
+    this.markdown = markdown
   }
 
   getRoutesByScope(scope: string): RoutesPretty | undefined {

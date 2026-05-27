@@ -1,5 +1,7 @@
+import type { PluginItem } from '@babel/core'
 import type { GeneratorResult } from '@babel/generator'
 import type { RoutesPretty } from '@devp0nt/route0'
+import type { CompileOptions as MdxCompileOptions } from '@mdx-js/mdx'
 import { normalNodeEnvs, type EnvOsName, type EnvRuntimeName, type NormalizedNodeEnv } from '@point0/core'
 import { CompilerFile } from './file.js'
 import {
@@ -13,9 +15,100 @@ import { CompilerPoint } from './point.js'
 import { getHash, parseVirtualModulePath, resolveTempDirPath } from './index.js'
 import { Walker } from './walker.js'
 import nodePath from 'node:path'
+import { createRequire } from 'node:module'
 import { CriticalCompilerError } from './error.js'
 import { stringify } from 'safe-stable-stringify'
 import { normalizeEnvConsts } from './utils.js'
+
+const requireFromCompiler = createRequire(import.meta.url)
+
+function resolvePluginRef(ref: unknown): unknown {
+  if (typeof ref === 'string') {
+    const mod = requireFromCompiler(ref) as { default?: unknown }
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    return mod?.default ?? mod
+  }
+  if (Array.isArray(ref) && typeof ref[0] === 'string') {
+    const mod = requireFromCompiler(ref[0]) as { default?: unknown }
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    return [mod?.default ?? mod, ...ref.slice(1)]
+  }
+  return ref
+}
+
+function resolvePluginList<T>(list: T[] | undefined): T[] | undefined {
+  if (!list) return list
+  return list.map((item) => resolvePluginRef(item) as T)
+}
+
+// Detects entries that name the React Compiler babel plugin.
+// Matches the canonical package name and the babel short-name form.
+const REACT_COMPILER_PLUGIN_NAMES = new Set(['babel-plugin-react-compiler', 'react-compiler'])
+function isReactCompilerPluginRef(ref: unknown): boolean {
+  if (typeof ref === 'string') {
+    return REACT_COMPILER_PLUGIN_NAMES.has(ref)
+  }
+  if (Array.isArray(ref) && typeof ref[0] === 'string') {
+    return REACT_COMPILER_PLUGIN_NAMES.has(ref[0])
+  }
+  return false
+}
+function getReactCompilerOptionsFromRef(ref: unknown): Record<string, unknown> | undefined {
+  if (Array.isArray(ref) && typeof ref[1] === 'object' && ref[1] !== null) {
+    return ref[1] as Record<string, unknown>
+  }
+  return undefined
+}
+
+export type ChainCallbackUseMemoDecision = {
+  inject: boolean
+  // When true, the react-compiler plugin entry is dropped from the babel list
+  // because the user runs it elsewhere (e.g. via Vite) and only wants point0
+  // to mark chain callbacks with the directive.
+  stripReactCompiler: boolean
+}
+
+// Decide whether to inject `"use memo"` directives into point0 chain callbacks
+// (page/layout/component/provider/wrapper), based on what's in user babel config.
+//
+// Trigger: presence of `babel-plugin-react-compiler` in the babel list.
+// Behavior driven by its `compilationMode`:
+//   'infer' | 'syntax' | unset  → keep plugin, inject directive
+//   'all'                       → keep plugin, no directive (plugin compiles everything anyway)
+//   'point0' | 'Point0' (sentinel) → strip plugin, inject directive
+function decideChainCallbackUseMemo(plugins: PluginItem[]): {
+  decision: ChainCallbackUseMemoDecision
+  filteredPlugins: PluginItem[]
+} {
+  let inject = false
+  let stripReactCompiler = false
+  const filteredPlugins: PluginItem[] = []
+  for (const plugin of plugins) {
+    if (!isReactCompilerPluginRef(plugin)) {
+      filteredPlugins.push(plugin)
+      continue
+    }
+    const opts = getReactCompilerOptionsFromRef(plugin)
+    const compilationMode = opts?.compilationMode
+    const normalizedMode = typeof compilationMode === 'string' ? compilationMode.toLowerCase() : undefined
+    if (normalizedMode === 'point0') {
+      inject = true
+      stripReactCompiler = true
+      // Drop the plugin entry — user runs the real react-compiler elsewhere.
+      continue
+    }
+    if (normalizedMode === 'all') {
+      // Plugin will compile everything; the directive is redundant.
+      filteredPlugins.push(plugin)
+      continue
+    }
+    // infer / syntax / undefined: keep the plugin AND inject the directive so
+    // chain callbacks (which don't look like top-level components) get compiled.
+    inject = true
+    filteredPlugins.push(plugin)
+  }
+  return { decision: { inject, stripReactCompiler }, filteredPlugins }
+}
 
 export class Compiler {
   filter: RegExp
@@ -34,6 +127,9 @@ export class Compiler {
   importer: ImporterOptionsParsed
   virtualDir: string | undefined
   processEnvAliases: string[]
+  markdown: MdxCompileOptions
+  babel: { plugins: PluginItem[]; presets: PluginItem[] }
+  chainCallbackUseMemo: boolean
   /*
    * Match JS/TS and markdown-ish source files while excluding virtual/shim
    * module IDs and node_modules (except point0 packages).
@@ -46,6 +142,25 @@ export class Compiler {
    * $                                     -> anchor at end
    */
   static defaultFilter = /^(?!.*(?:shim:|virtual:))(?!.*node_modules\/(?!.*point0)).*\.(?:[cm]?[jt]sx?|md|mdx|mdc)$/
+
+  static buildMarkdownOptions({
+    built,
+    markdown,
+  }: {
+    built: boolean
+    markdown: CompilerMarkdownOptions | undefined
+  }): MdxCompileOptions {
+    const defaults = CompilerFile.getDefaultMarkdownOptions()
+    const user = markdown ?? {}
+    return {
+      ...defaults,
+      ...user,
+      development: !built,
+      remarkPlugins: resolvePluginList([...(defaults.remarkPlugins ?? []), ...(user.remarkPlugins ?? [])]),
+      rehypePlugins: resolvePluginList([...(defaults.rehypePlugins ?? []), ...(user.rehypePlugins ?? [])]),
+      recmaPlugins: resolvePluginList([...(defaults.recmaPlugins ?? []), ...(user.recmaPlugins ?? [])]),
+    } as MdxCompileOptions
+  }
 
   constructor({
     filter,
@@ -63,6 +178,9 @@ export class Compiler {
     importer,
     processEnvAliases,
     cache,
+    markdown,
+    babel,
+    chainCallbackUseMemo,
   }: {
     filter: RegExp
     side: 'client' | 'server' | false
@@ -79,6 +197,9 @@ export class Compiler {
     importer: ImporterOptionsParsed
     processEnvAliases: string[]
     cache: boolean
+    markdown: MdxCompileOptions
+    babel: { plugins: PluginItem[]; presets: PluginItem[] }
+    chainCallbackUseMemo: boolean
   }) {
     this.filter = filter
     this.side = side
@@ -95,6 +216,9 @@ export class Compiler {
     this.importer = importer
     this.processEnvAliases = processEnvAliases
     this.cache = cache
+    this.markdown = markdown
+    this.babel = babel
+    this.chainCallbackUseMemo = chainCallbackUseMemo
   }
 
   static create(options: CompilerOptions) {
@@ -113,6 +237,8 @@ export class Compiler {
       importer: providedImporter,
       processEnvAliases: providedProcessEnvAliases,
       cache = true,
+      markdown: providedMarkdown,
+      babel: providedBabel,
     } = options
     if (mode !== false && (!mode || !normalNodeEnvs.includes(mode as NormalizedNodeEnv))) {
       throw new Error(`Invalid mode (NODE_ENV): "${mode}". Allowed values: production, development, test`)
@@ -126,22 +252,45 @@ export class Compiler {
             : [providedProcessEnvAliases],
       ),
     ].filter((alias) => !!alias)
+    const babelRaw: { plugins: PluginItem[]; presets: PluginItem[] } = (() => {
+      if (!providedBabel) {
+        return { plugins: [], presets: [] }
+      }
+      if (Array.isArray(providedBabel)) {
+        return { plugins: providedBabel, presets: [] }
+      }
+      return {
+        plugins: providedBabel.plugins ?? [],
+        presets: providedBabel.presets ?? [],
+      }
+    })()
+    const { decision: chainCallbackDecision, filteredPlugins } = decideChainCallbackUseMemo(babelRaw.plugins)
+    const babel: { plugins: PluginItem[]; presets: PluginItem[] } = {
+      plugins: filteredPlugins,
+      presets: babelRaw.presets,
+    }
+    const normalizedMode = mode as NormalizedNodeEnv | false
+    const normalizedBuilt = built ?? false
+    const markdown = Compiler.buildMarkdownOptions({ built: normalizedBuilt, markdown: providedMarkdown })
     return new Compiler({
       filter: filter ?? Compiler.defaultFilter,
       side,
       scope,
       consts,
       hmrFix: hmrFix ?? (side === 'server' ? false : true),
-      walker: new Walker({ routes, ssr }),
+      walker: new Walker({ routes, ssr, markdown }),
       routes,
-      built: built ?? false,
-      mode: mode as NormalizedNodeEnv | false,
+      built: normalizedBuilt,
+      mode: normalizedMode,
       runtime,
       os,
       ssr,
       importer: parseImporterOptions(providedImporter ?? {}),
       processEnvAliases,
       cache,
+      markdown,
+      babel,
+      chainCallbackUseMemo: chainCallbackDecision.inject,
     })
   }
 
@@ -280,6 +429,12 @@ export class Compiler {
     }
     const optimizeResult = cf.optimizeGuardedExpressions()
     errors.push(...optimizeResult.errors)
+    if (this.chainCallbackUseMemo) {
+      const useMemoResult = cf.injectUseMemoOnChainCallbacks()
+      errors.push(...useMemoResult.errors)
+    }
+    const userBabelResult = cf.applyUserBabelPlugins(this.babel)
+    errors.push(...userBabelResult.errors)
     if (side) {
       cf.applyImporter({
         importer: this.importer,
@@ -666,23 +821,35 @@ export class Compiler {
     if (result) {
       return result
     }
-    const stringified = stringify({
-      filter: this.filter,
-      scope: this.scope,
-      built: this.built,
-      mode: this.mode,
-      runtime: this.runtime,
-      os: this.os,
-      side: this.side,
-      consts: this.consts,
-      hmrFix: this.hmrFix,
-      walker: this.walker,
-      routes: this.routes,
-      ssr: this.ssr,
-      importer: this.importer,
-      processEnvAliases: this.processEnvAliases,
-      fixedConsts: this.fixedConsts,
-    })
+    const fnReplacer = (_key: string, value: unknown) => {
+      if (typeof value === 'function') {
+        return { __fn: Function.prototype.toString.call(value) }
+      }
+      return value
+    }
+    const stringified = stringify(
+      {
+        filter: this.filter,
+        scope: this.scope,
+        built: this.built,
+        mode: this.mode,
+        runtime: this.runtime,
+        os: this.os,
+        side: this.side,
+        consts: this.consts,
+        hmrFix: this.hmrFix,
+        walker: this.walker,
+        routes: this.routes,
+        ssr: this.ssr,
+        importer: this.importer,
+        processEnvAliases: this.processEnvAliases,
+        fixedConsts: this.fixedConsts,
+        markdown: this.markdown,
+        babel: this.babel,
+        chainCallbackUseMemo: this.chainCallbackUseMemo,
+      },
+      fnReplacer,
+    )
     if (!stringified) {
       throw new Error('Failed to generate settings hash')
     }
@@ -765,7 +932,17 @@ export type CompilerOptions = {
   importer?: ImporterOptionsInput | undefined
   processEnvAliases?: string[] | string
   cache?: boolean
+  markdown?: CompilerMarkdownOptions
+  babel?: CompilerBabelOptions
 }
+export type CompilerMarkdownPluginRef = NonNullable<MdxCompileOptions['remarkPlugins']>[number] | string | [string, ...unknown[]]
+export type CompilerMarkdownOptions = Omit<MdxCompileOptions, 'remarkPlugins' | 'rehypePlugins' | 'recmaPlugins'> & {
+  remarkPlugins?: CompilerMarkdownPluginRef[]
+  rehypePlugins?: CompilerMarkdownPluginRef[]
+  recmaPlugins?: CompilerMarkdownPluginRef[]
+}
+export type CompilerBabelOptions = PluginItem[] | CompilerBabelOptionsNormalized
+export type CompilerBabelOptionsNormalized = { plugins?: PluginItem[]; presets?: PluginItem[] }
 export type CompilerEnvConstsObject = { [key: string]: string | number | boolean | null | undefined }
 export type CompilerEnvConstsString = string
 export type CompilerEnvConstsItem = CompilerEnvConstsString | CompilerEnvConstsObject

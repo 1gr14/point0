@@ -316,7 +316,7 @@ export class TestProjectOneClient {
     if (this._engine && !fresh) {
       return this._engine
     }
-    const { engine } = await import(this.paths.engine + '?random=' + Math.random())
+    const { engine } = await import(/* @vite-ignore */ this.paths.engine + '?random=' + Math.random())
     this._engine = engine
     return engine
   }

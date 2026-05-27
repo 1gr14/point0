@@ -15,6 +15,9 @@ export const engine = Engine.create({
     // devWatchGlob: ['**/*.{ts,tsx,mdx}', '!generated/point0/meta.ts'],
   },
   client: {
+    compiler: {
+      babel: ['babel-plugin-react-compiler'],
+    },
     scope: 'root',
     port: process.env.CLIENT_PORT,
     indexHtml: './index.html',

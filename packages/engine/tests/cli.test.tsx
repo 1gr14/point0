@@ -105,6 +105,55 @@ describe('point0 CLI', () => {
     }
   })
 
+  it('compile -s shorthand selects server side', async () => {
+    const tp = await setupCliProject()
+    try {
+      const target = tp.resolve('src/cli.points.tsx')
+      const engineFile = tp.resolve('src/engine.ts')
+      const short = await runCli({
+        tp,
+        args: ['compile', target, '--engine', engineFile, '-s'],
+      })
+      expect(short.exitCode).toBe(0)
+      // Server-side compilation keeps the action body (action runs on the server).
+      expect(short.output).toContain('cliPage')
+      expect(short.output).toContain('cliAction')
+      expect(short.output).toContain('ok:true')
+    } finally {
+      await tp.cleanup({ files: true, ports: true, processes: true })
+    }
+  })
+
+  it('compile combined shorts -cb parse without error', async () => {
+    // Verifies commander accepts -c (client) + -b (built) when chained.
+    const tp = await setupCliProject()
+    try {
+      const result = await runCli({
+        tp,
+        args: ['compile', tp.resolve('src/cli.points.tsx'), '--engine', tp.resolve('src/engine.ts'), '-cb'],
+      })
+      expect(result.exitCode).toBe(0)
+      expect(result.output).toContain('cliPage')
+    } finally {
+      await tp.cleanup({ files: true, ports: true, processes: true })
+    }
+  })
+
+  it('compile --no-babel runs without crash even when no babel configured', async () => {
+    // The template engine has no compiler.babel set, so -B is a no-op — but it must not throw.
+    const tp = await setupCliProject()
+    try {
+      const result = await runCli({
+        tp,
+        args: ['compile', tp.resolve('src/cli.points.tsx'), '--engine', tp.resolve('src/engine.ts'), '-sB'],
+      })
+      expect(result.exitCode).toBe(0)
+      expect(result.output).toContain('cliPage')
+    } finally {
+      await tp.cleanup({ files: true, ports: true, processes: true })
+    }
+  })
+
   it('trace prints import chain', async () => {
     const tp = await setupCliProject()
     try {
