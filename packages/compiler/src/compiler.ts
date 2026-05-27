@@ -131,7 +131,7 @@ export class Compiler {
       side,
       scope,
       consts,
-      hmrFix: hmrFix ?? true,
+      hmrFix: hmrFix ?? (side === 'server' ? false : true),
       walker: new Walker({ routes, ssr }),
       routes,
       built: built ?? false,

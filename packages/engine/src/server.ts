@@ -39,7 +39,6 @@ import {
   extractViteConfig,
   getDirByPaths,
   getViteRoot,
-  isBunMainEngineCli,
   killSubprocessOnExit,
   loadBunPlugins,
   normalizeAndValidateNodeEnv,
@@ -260,13 +259,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     ;(globalThis as any).__ERROR0_FIX_STACKTRACE__ = undefined
   }
 
-  /**
-   * Resolve env constants (NODE_ENV, POINT0_*) from server config and optionally write them onto `process.env` /
-   * `import.meta.env`. The actual write is guarded by `envVarsApplied`, so calling this repeatedly never re-applies —
-   * only the first call with `assignToProcessEnv: true` mutates. `this.envConsts` is always refreshed, since callers
-   * read the return value.
-   */
-  private setEnvVars({
+  setEnvVars({
     nodeEnvFallback,
     assignToProcessEnv,
   }: {
@@ -285,55 +278,56 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       this.envVarsApplied = true
       for (const [envVarKey, envVarValue] of Object.entries({ ...this.envVars, ...this.envConsts })) {
         process.env[envVarKey] = envVarValue
-        try {
-          import.meta.env[envVarKey] = envVarValue
-        } catch {
-          // ignore
-        }
+        // try {
+        //   import.meta.env[envVarKey] = envVarValue
+        // } catch {
+        //   // ignore
+        // }
       }
     }
     return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR }
   }
 
-  isFileUnderOutdir(file: string): boolean {
+  isFileInOutdir(file: string = Bun.main): boolean {
     if (!this.outdir) {
       return false
     }
     return !nodePath.relative(this.outdir, file).startsWith('..')
   }
 
-  /**
-   * Minimal setup run after the engine module loads but before it touches any user code (points, app components,
-   * generated modules). Applies env vars and installs bun plugins so every subsequent module load goes through the
-   * right transformer chain. Skips heavy work (points reading, fetcher, dev servers) — that's `prepare`'s job.
-   *
-   * When the current Bun process is the engine CLI itself (`point0` / `point0-mcp`), plugin install is skipped: the CLI
-   * consumes the engine via its public API, not by importing user modules through the transformer chain.
-   */
-  async preload(): Promise<void> {
-    if (isBunMainEngineCli()) {
-      return
+  async preload({
+    preventSetEnvVars = false,
+    nodeEnvFallback = undefined,
+    preventLoadBunPlugins = false,
+  }: {
+    preventSetEnvVars?: boolean
+    nodeEnvFallback?: NormalizedNodeEnv
+    preventLoadBunPlugins?: boolean
+  } = {}): Promise<void> {
+    // if (process.env.POINT0_PREVENT_ENGINE_PRELOAD === 'true') {
+    //   return
+    // }
+    // if (isBunMainEngineCli()) {
+    //   return
+    // }
+    // if (this.isFileInOutdir(Bun.main) && process.env.POINT0_PREVENT_ENGINE_PRELOAD !== 'false') {
+    //   return
+    // }
+    // if (_point0_env.build.was && process.env.POINT0_PREVENT_ENGINE_PRELOAD !== 'false') {
+    //   return
+    // }
+    if (!preventSetEnvVars) {
+      this.setEnvVars({ assignToProcessEnv: true, nodeEnvFallback })
     }
-    if (this.isFileUnderOutdir(Bun.main)) {
-      return
+    if (!preventLoadBunPlugins) {
+      await this.loadBunPlugins({ built: false })
     }
-    if (_point0_env.build.was) {
-      return
-    }
-    this.setEnvVars({ assignToProcessEnv: true, nodeEnvFallback: undefined })
-    await this.loadBunPlugins({ built: false })
   }
 
-  /**
-   * Full setup before the server can serve requests: env vars, bun plugins, points definitions, root-point logger
-   * override, and the fetcher. Idempotent — re-entry returns the same instance. Called by `engine.prepare()` and
-   * indirectly by `engine.serve()`.
-   */
   async prepare({ engine }: { engine: Engine<RequiredCtx, TError, true> }): Promise<EngineServer<true, TError>> {
     if (this.isPrepared()) {
       return this as EngineServer<true, TError>
     }
-    await this.preload()
     await this.readPoints()
     this.prepared = true as never
     this._applyRootLogger()
@@ -460,7 +454,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     }
     // const loadedModule = await this.viteDevServer.ssrLoadModule(entryPath)
     if (!watch) {
-      await viteDevServer.ssrLoadModule(entryFile)
+      await viteDevServer.ssrLoadModule(entryFile, { fixStacktrace: true })
       return
     }
 
@@ -473,7 +467,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
           await dispose()
           dispose = undefined
         }
-        serverModule = await viteDevServer.ssrLoadModule(entryFile)
+        serverModule = await viteDevServer.ssrLoadModule(entryFile, { fixStacktrace: true })
         dispose = serverModule.dispose
         if (!dispose) {
           throw new Error(`Dispose function not exported from server entry point "${entryFile}": ${entryFile}`)
@@ -625,11 +619,17 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     registerOnProcessExit(() => {
       void this.bunServer?.stop()
     })
+    const inMessage = !process.env.POINT0_SERVER_REGISTERED_PROCESS_UPTIME
+      ? ` in ${Math.ceil(process.uptime() * 1000)}ms`
+      : ''
     this.log({
       level: 'info',
       category: ['server'],
-      message: `Server started http://localhost:${this.port} in ${Math.ceil(process.uptime() * 1000)}ms`,
+      message: `Server started http://localhost:${this.port}${inMessage}`,
     })
+    if (!process.env.POINT0_SERVER_REGISTERED_PROCESS_UPTIME) {
+      process.env.POINT0_SERVER_REGISTERED_PROCESS_UPTIME = process.uptime().toString()
+    }
   }
 
   async dispose(options?: { closeViteDevServer?: boolean }): Promise<void> {
@@ -866,9 +866,9 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       ...Object.fromEntries(
         Object.entries(envConstsWithBuilt).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
       ),
-      ...Object.fromEntries(
-        Object.entries(envConstsWithBuilt).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
-      ),
+      // ...Object.fromEntries(
+      //   Object.entries(envConstsWithBuilt).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+      // ),
     }
     const injectEnvsScript =
       Object.entries(injectedEnvs)
@@ -987,21 +987,36 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
 
       const { injectedEnvs, injectEnvsScript } = this.getBuildInjectedEnvs()
 
-      const existingRollupOptionsOutput = loadedViteConfig.build?.rollupOptions?.output
-      const normalizedExistsingRollupOptionsOutput =
-        (Array.isArray(existingRollupOptionsOutput) ? existingRollupOptionsOutput[0] : existingRollupOptionsOutput) ||
-        {}
+      const existingRolldownOptionsOutput = loadedViteConfig.build?.rolldownOptions?.output
+      const normalizedExistingRolldownOptionsOutput =
+        (Array.isArray(existingRolldownOptionsOutput)
+          ? existingRolldownOptionsOutput[0]
+          : existingRolldownOptionsOutput) || {}
 
-      const rollupOptionsOutput: Extract<
-        NonNullable<NonNullable<ExtractedViteConfig['build']>['rollupOptions']>['output'],
+      // Vite 8 / Rolldown's default `chunkFileNames` is `assets/[name]-[hash].js`, which nests
+      // shared chunks under `<outdir>/assets/`. With multiple SSR entries that share modules,
+      // the user's `engine.ts` (the one calling `Engine.create({ file: import.meta.url, … })`)
+      // gets hoisted into one such shared chunk. At runtime `import.meta.url` then resolves to
+      // `<outdir>/assets/engine-<hash>.js`, and the runtime check
+      //   `dirname(engineFile).endsWith(POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED)`
+      // in `config.ts` (parseEngineGeneralOptions) fails — `/dist/server/assets` does not end
+      // with `/dist/server`.
+      //
+      // Flatten chunk output so chunks live next to entries (no `assets/` prefix). The chunk
+      // that actually contains `engine.ts`'s code then sits at `<outdir>/engine-<hash>.js`,
+      // `dirname(...) === <outdir>`, and the invariant holds. SSR builds don't emit real assets
+      // (images/CSS) so collapsing `assetsDir` is safe here.
+      const rolldownOptionsOutput: Extract<
+        NonNullable<NonNullable<ExtractedViteConfig['build']>['rolldownOptions']>['output'],
         object
       > = {
-        ...normalizedExistsingRollupOptionsOutput,
-        banner: [injectEnvsScript, normalizedExistsingRollupOptionsOutput.banner].filter(Boolean).join('\n'),
+        ...normalizedExistingRolldownOptionsOutput,
+        banner: [injectEnvsScript, normalizedExistingRolldownOptionsOutput.banner].filter(Boolean).join('\n'),
+        chunkFileNames: normalizedExistingRolldownOptionsOutput.chunkFileNames ?? '[name]-[hash].js',
       }
-      const fixedExistingRollupOptionsOutput = Array.isArray(existingRollupOptionsOutput)
-        ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
-        : rollupOptionsOutput
+      const fixedExistingRolldownOptionsOutput = Array.isArray(existingRolldownOptionsOutput)
+        ? [rolldownOptionsOutput, ...existingRolldownOptionsOutput.slice(1)]
+        : rolldownOptionsOutput
 
       const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
       const compilerPlugin = compilerOptions
@@ -1018,17 +1033,17 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
           minify: loadedViteConfig.build?.minify ?? true,
           sourcemap: loadedViteConfig.build?.sourcemap ?? true,
           ssr: true,
-          rollupOptions: {
-            ...loadedViteConfig.build?.rollupOptions,
+          rolldownOptions: {
+            ...loadedViteConfig.build?.rolldownOptions,
             input: {
               ...this.entry,
               ...(this.engineFile ? { engine: this.engineFile } : {}),
             },
             external: externalizeRollupModule({
-              external: loadedViteConfig.build?.rollupOptions?.external,
+              external: loadedViteConfig.build?.rolldownOptions?.external,
               moduleId: 'bun',
             }) as never,
-            output: fixedExistingRollupOptionsOutput,
+            output: fixedExistingRolldownOptionsOutput,
           },
           copyPublicDir: false,
           emptyOutDir: false,

@@ -1,3 +1,5 @@
 import { engine } from '@/engine'
 
-await engine.preload()
+if (engine.isFileInEngineDir()) {
+  await engine.preload({ nodeEnvFallback: 'development' })
+}

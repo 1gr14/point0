@@ -44,6 +44,7 @@ navigate.back()
 layout Page404 allow elemnt not component
 useNavLink should return state of path
 ensure navigate to not navigate to same url twice
+allow link accept children as react node array
 ? exactClassName → activeClassName
 usePageData → return same as useQuery for page, needed to get page data in layout (mabye just usePageState and data also there?)
 Пейдж поинт вместе стегами должен быть доступен в юз пейдж стейт
@@ -57,13 +58,9 @@ normalize scroll restoration (it is trash now)
 
 
 # Runtime
-? Сет поинтс должна принимать уже загруженные поинты
-? Вообще отказаться от дев команды, пусть используется голсы бан или голый вайт ???
-? А бейзпас короче это просто через сервинг переменную определяется и всё
-
-vite 8 (server updates failed)
+? vite 8 (server updates failed)
 vite config as fn should accept also compilerPlugin so we can place it in correct place
-В вайт сср сразу добавить фикс эррор тру
+Вайт контроллер экзампл
 
 
 
@@ -72,6 +69,7 @@ vite config as fn should accept also compilerPlugin so we can place it in correc
 remarkplugins
 Компилер настройки вырезать из энжины после билда
 compiler babel plugins
+mdx file after build not working nor bun, nor vite
 react-compiler
 add babel-plugin-react-compiler to all examples
 Попробовать не убирать тайпскрипт, а отменить экспериментальное сохранение синтаксиса
@@ -79,7 +77,6 @@ inline source maps for bun, do not hmr fix for server builds
 В cli компмле добавить флаг билт для просмотра как оно выглядит после билда
 mardown {enabled, options}
 Из компилера не учитывать импорты в которых только тайп при импорт протекшене
-allow link accept children as react node array
 maekdown test that loaders still cutted on client
 Компилер должен просить только мдыкс файлы, а обычные мд не должен
 trace is now terrible for client-only mark, it has starnge ./ in suggestons, also camn not find trace at all (so just not rename @point0/core-client-only, show as is)

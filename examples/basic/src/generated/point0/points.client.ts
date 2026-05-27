@@ -1,22 +1,73 @@
 import type { PointsDefinition } from '@point0/core'
 import { root as root_0 } from '../../lib/root.js'
-import { default as unnamed_1 } from '../../pages/home.js'
-import { page as page_2 } from '../../pages/about.mdx'
-import { ideaListPage as ideaListPage_3 } from '../../pages/idea-list.js'
-import { ideaCreatePage as ideaCreatePage_4, ideaUpdatePage as ideaUpdatePage_6 } from '../../pages/idea-create-update.js'
-import { ideaViewPage as ideaViewPage_5 } from '../../pages/idea-view.js'
-import { ideaNewsPage as ideaNewsPage_7 } from '../../pages/idea-news.js'
-import { generalLayout as generalLayout_8 } from '../../layouts/general.js'
-import { ideaLayout as ideaLayout_9 } from '../../layouts/idea.js'
 export default [
   root_0,
-  unnamed_1,
-  page_2,
-  ideaListPage_3,
-  ideaCreatePage_4,
-  ideaViewPage_5,
-  ideaUpdatePage_6,
-  ideaNewsPage_7,
-  generalLayout_8,
-  ideaLayout_9,
+  {
+    type: 'page',
+    name: 'home',
+    route: '/',
+    polh: true,
+    layouts: ['generalLayout'],
+    point: async () => (await import('../../pages/home.js')).default,
+  },
+  {
+    type: 'page',
+    name: 'about',
+    route: '/about',
+    polh: true,
+    layouts: ['generalLayout'],
+    point: async () => (await import('../../pages/about.mdx')).page,
+  },
+  {
+    type: 'page',
+    name: 'ideaList',
+    route: '/ideas',
+    polh: true,
+    layouts: ['generalLayout'],
+    point: async () => (await import('../../pages/idea-list.js')).ideaListPage,
+  },
+  {
+    type: 'page',
+    name: 'ideaCreate',
+    route: '/ideas/new',
+    polh: true,
+    layouts: ['generalLayout'],
+    point: async () => (await import('../../pages/idea-create-update.js')).ideaCreatePage,
+  },
+  {
+    type: 'page',
+    name: 'ideaView',
+    route: '/ideas/:id',
+    polh: true,
+    layouts: ['generalLayout', 'idea'],
+    point: async () => (await import('../../pages/idea-view.js')).ideaViewPage,
+  },
+  {
+    type: 'page',
+    name: 'ideaUpdate',
+    route: '/ideas/:id/edit',
+    polh: true,
+    layouts: ['generalLayout'],
+    point: async () => (await import('../../pages/idea-create-update.js')).ideaUpdatePage,
+  },
+  {
+    type: 'page',
+    name: 'ideaNews',
+    route: '/ideas/:id/news',
+    polh: true,
+    layouts: ['generalLayout', 'idea'],
+    point: async () => (await import('../../pages/idea-news.js')).ideaNewsPage,
+  },
+  {
+    type: 'layout',
+    name: 'generalLayout',
+    route: '/',
+    point: async () => (await import('../../layouts/general.js')).generalLayout,
+  },
+  {
+    type: 'layout',
+    name: 'idea',
+    route: '/ideas/:id',
+    point: async () => (await import('../../layouts/idea.js')).ideaLayout,
+  },
 ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>

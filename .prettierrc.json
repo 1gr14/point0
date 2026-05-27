@@ -9,6 +9,7 @@
   "proseWrap": "always",
   "jsdocCapitalizeDescription": false,
   "jsdocKeepUnParseAbleExampleIndent": true,
+  "jsdocCommentLineStrategy": "keep",
   "overrides": [
     {
       "files": ["*.jsonc", "*.json"],

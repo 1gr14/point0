@@ -19,24 +19,22 @@ export const engine = Engine.create({
     // hmrPort: server,
     // viteConfig: '../vite.config.ts',
   },
-  clients: [
-    {
-      scope: 'root',
-      app: async () => await import('./app.js'),
-      points: async () => await import('./lib/points.client.js'),
-      routes: async () => await import('./lib/routes.js'),
-      generate: { points: './lib/points.client.ts', routes: './lib/routes.ts' },
-      indexHtml: './index.html',
-      outdir: '../dist/client',
-      publicdir: { source: '../public', outdir: '../dist/client' },
-      env: { vars: ['MY_ENV_FILE_VARIABLE'], consts: ['MY_ENV_FILE_CONSTANT'] },
-      importer: {
-        // client importer
-      },
-      // serving: client,
-      // port: client,
-      // hmrPort: client,
-      // viteConfig: '../vite.config.ts',
+  client: {
+    scope: 'root',
+    app: async () => await import('./app.js'),
+    points: async () => await import('./lib/points.client.js'),
+    routes: async () => await import('./lib/routes.js'),
+    generate: { points: './lib/points.client.ts', routes: './lib/routes.ts' },
+    indexHtml: './index.html',
+    outdir: '../dist/client',
+    publicdir: { source: '../public', outdir: '../dist/client' },
+    env: { vars: ['MY_ENV_FILE_VARIABLE'], consts: ['MY_ENV_FILE_CONSTANT'] },
+    importer: {
+      // client importer
     },
-  ],
+    // serving: client,
+    // port: client,
+    // hmrPort: client,
+    // viteConfig: '../vite.config.ts',
+  },
 })

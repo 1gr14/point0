@@ -395,10 +395,10 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
     compiler: false,
     file: nodePath.resolve(__dirname, '../temp/never'),
     server: { scope: 'root', points },
-    clients: [{ scope: 'root', points, indexHtml: '__POINT0_TEST_INDEX_HTML__', app }],
+    client: { scope: 'root', points, indexHtml: '__POINT0_TEST_INDEX_HTML__', app },
     ssr,
     ...engineOptions,
-  }).prepare()
+  }).preload({ prepare: true })
   const client = FakeClient.create<TestThingsState, any>({
     engine,
     scope: 'root',

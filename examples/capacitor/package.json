@@ -9,7 +9,7 @@
     "prisma:generate": "bunx prisma generate",
     "prisma:push": "bunx prisma db push",
     "build": "point0 build",
-    "start": "cross-env NODE_ENV=production bun run ./dist/server/index.server.js",
+    "start": "cross-env NODE_ENV=production bun run ./dist/server/app.server.js",
     "clean": "rimraf dist",
     "types": "tsc --noEmit",
     "typesgo": "tsgo --noEmit",

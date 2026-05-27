@@ -10,7 +10,7 @@
     "generate": "point0 generate",
     "dev:wrong": "concurrently \"bun run dev:server\" \"bun run dev:client\" \"bun run generate --watch\" --raw",
     "build": "point0 build",
-    "start": "cross-env NODE_ENV=production bun run ./dist/server/index.server.js",
+    "start": "cross-env NODE_ENV=production bun run ./dist/server/app.server.js",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down",

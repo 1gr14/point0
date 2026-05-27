@@ -2228,7 +2228,7 @@ describe('CompilerFile', () => {
     )
 
     it.concurrent(
-      'handles properties in client config',
+      'handles properties in client (many) config',
       helper(async ({ files: [file] }) => {
         const cf = await file.wrp(` 
           const { Engine } = await import('@point0/engine')
@@ -2252,6 +2252,34 @@ describe('CompilerFile', () => {
                 viteConfig: {},
               },
             ],
+          })
+          "
+        `,
+        )
+      }),
+    )
+
+    it.concurrent(
+      'handles properties in client (one) config',
+      helper(async ({ files: [file] }) => {
+        const cf = await file.wrp(` 
+          const { Engine } = await import('@point0/engine')
+          Engine.create({
+            client: {
+              port: 3000,
+              viteConfig: '../vite.config.ts',
+            },
+          })
+        `)
+        cf.shakeForBuiltEngine()
+        expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+          `
+          "const { Engine } = await import('@point0/engine')
+          Engine.create({
+            client: {
+              port: 3000,
+              viteConfig: {},
+            },
           })
           "
         `,
@@ -2340,8 +2368,15 @@ describe('CompilerFile', () => {
                 port: 4000,
                 hmrPort: 4001,
                 viteConfig: '../vite.config.client.ts',
+                bunPlugins: [() => {}],
               },
             ],
+            client: {
+              port: 5000,
+              hmrPort: 5001,
+              viteConfig: '../vite.config.client.ts',
+              bunPlugins: [() => {}],
+            },
           })
         `)
         cf.shakeForBuiltEngine()
@@ -2361,8 +2396,15 @@ describe('CompilerFile', () => {
                 port: 4000,
                 hmrPort: 4001,
                 viteConfig: {},
+                bunPlugins: [],
               },
             ],
+            client: {
+              port: 5000,
+              hmrPort: 5001,
+              viteConfig: {},
+              bunPlugins: [],
+            },
           })
           "
         `,

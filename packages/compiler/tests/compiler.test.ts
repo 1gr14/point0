@@ -183,16 +183,10 @@ export const root = Point0.lets('root', 'root')
   .ctx({ x: 1 })
   .ctx({ y: 2 })
   .root()
-  ._tail(function X() {
-    return null
-  })
 export default root
   .lets('page', 'lets-sugar-default', '/idea')
   .loader(() => ({ ok: true }))
   .page()
-  ._tail(function X() {
-    return null
-  })
 "
 `)
         } finally {

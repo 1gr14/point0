@@ -76,7 +76,7 @@ describe('template', () => {
       await tp.init()
       const engine = await tp.importEngine()
       expect(engine.server.port).toBe(4)
-      expect(engine.clients[0].port).toBe(5)
+      expect(engine.client.port).toBe(5)
     }),
     {
       retry: 3,

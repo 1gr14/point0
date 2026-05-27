@@ -37,7 +37,7 @@ export const randomMutation = root.lets
   .mutation()
   .loader(async () => {
     return {
-      random: 123,
+      random: 1238,
     }
   })
   .mutation()

@@ -103,8 +103,8 @@ function prependHeadElement({
 }
 
 /**
- * Extracts all script tags from HTML while preserving their order and location
- * Returns an object with scripts from head and body separately
+ * Extracts all script tags from HTML while preserving their order and location Returns an object with scripts from head
+ * and body separately
  */
 function extractScripts(html: string): {
   headScripts: Array<{ tag: string; placeholder: string }>
@@ -245,13 +245,14 @@ window.__POINT0_ENV_CONSTS__ = __POINT0_ENV_CONSTS__;
 window.__POINT0_ENV_EXTEND_FN__ = function(values) {
   window.process = window.process || {};
   window.process.env = { ...(window.process.env || {}), ...values };
-  window.import = window.import || {};
-  window.import.meta = window.import.meta || {};
-  window.import.meta.env = { ...(window.import.meta.env || {}), ...values };
 }
 window.__POINT0_ENV_EXTEND_FN__(__POINT0_ENV_CONSTS__);`,
   })
 }
+
+// window.import = window.import || {};
+// window.import.meta = window.import.meta || {};
+// window.import.meta.env = { ...(window.import.meta.env || {}), ...values };
 
 export async function overrideDocumentHtml<TContent extends string | undefined = undefined>({
   originalIndexHtml,

@@ -1,18 +1,18 @@
-import { type AnyLocation, Route0 } from '@devp0nt/route0'
 import type { AnyRoute } from '@devp0nt/route0'
-import { FileResolver, resolveTempDirPath } from '@point0/compiler'
+import { type AnyLocation, Route0 } from '@devp0nt/route0'
 import type { CompilerOptions } from '@point0/compiler'
-import { _point0_env, ClientPoints } from '@point0/core'
+import { FileResolver, resolveTempDirPath } from '@point0/compiler'
 import type {
   AppComponent,
   ErrorPoint0,
   LogFn,
   NormalizedNodeEnv,
-  PagePoint,
   PointsDefinitionSource,
   PointsScope,
   RequiredCtx,
+  PagePoint,
 } from '@point0/core'
+import { _point0_env, ClientPoints } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import * as nodeFs from 'node:fs/promises'
@@ -30,10 +30,15 @@ import type {
 } from './config.js'
 import type { Executor } from './executor.js'
 import { killPort } from './port.js'
-import { Publicdir } from './publicdir.js'
 import type { PublicdirDefinition } from './publicdir.js'
+import { Publicdir } from './publicdir.js'
 import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
 import type { EngineServer } from './server.js'
+import type {
+  EngineClientBuildConfigDefinition,
+  EngineClientPluginsDefinition,
+  EngineSharedPluginsDefinition,
+} from './utils.js'
 import {
   createViteDevServer,
   extractEngineClientBuildConfig,
@@ -47,11 +52,6 @@ import {
   readableStreamToString,
   registerOnProcessExit,
   stripTerminalClearSequences,
-} from './utils.js'
-import type {
-  EngineClientBuildConfigDefinition,
-  EngineClientPluginsDefinition,
-  EngineSharedPluginsDefinition,
 } from './utils.js'
 
 export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0> {
@@ -1015,20 +1015,21 @@ try {
         throw new Error(`Input file does not exist: ${buildPaths.indexHtml} for client "${this.scope}"`)
       }
 
-      const existingRollupOptionsOutput = loadedViteConfig.build?.rollupOptions?.output
-      const normalizedExistsingRollupOptionsOutput =
-        (Array.isArray(existingRollupOptionsOutput) ? existingRollupOptionsOutput[0] : existingRollupOptionsOutput) ||
-        {}
-      const rollupOptionsOutput: Extract<
-        NonNullable<NonNullable<ExtractedViteConfig['build']>['rollupOptions']>['output'],
+      const existingRolldownOptionsOutput = loadedViteConfig.build?.rolldownOptions?.output
+      const normalizedExistingRolldownOptionsOutput =
+        (Array.isArray(existingRolldownOptionsOutput)
+          ? existingRolldownOptionsOutput[0]
+          : existingRolldownOptionsOutput) || {}
+      const rolldownOptionsOutput: Extract<
+        NonNullable<NonNullable<ExtractedViteConfig['build']>['rolldownOptions']>['output'],
         object
       > = {
-        ...normalizedExistsingRollupOptionsOutput,
+        ...normalizedExistingRolldownOptionsOutput,
         // may be we will later add something here
       }
-      const fixedExistingRollupOptionsOutput = Array.isArray(existingRollupOptionsOutput)
-        ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
-        : rollupOptionsOutput
+      const fixedExistingRolldownOptionsOutput = Array.isArray(existingRolldownOptionsOutput)
+        ? [rolldownOptionsOutput, ...existingRolldownOptionsOutput.slice(1)]
+        : rolldownOptionsOutput
 
       const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
       const compilerPlugin = compilerOptions
@@ -1043,6 +1044,20 @@ try {
         ...this.envVars,
         POINT0_BUILT: 'true',
       }
+      const define = {
+        'process.env': `window.process.env`,
+        ...loadedViteConfig.define,
+        ...Object.fromEntries(
+          Object.entries(envVarsWithBuild).map(([key]) => [
+            `process.env.${key}`,
+            `globalThis.__POINT0_ENV_VARS__.${key}`,
+          ]),
+        ),
+        ...Object.fromEntries(
+          Object.entries(envConstsWithBuilt).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+        ),
+      }
+
       const config: ExtractedViteConfig = {
         ...loadedViteConfig,
         plugins: [...compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
@@ -1052,26 +1067,15 @@ try {
           outDir: buildPaths.outdir,
           minify: NODE_ENV === 'production' ? (loadedViteConfig.build?.minify ?? 'esbuild') : false,
           sourcemap: loadedViteConfig.build?.sourcemap ?? true,
-          rollupOptions: {
-            ...loadedViteConfig.build?.rollupOptions,
+          rolldownOptions: {
+            ...loadedViteConfig.build?.rolldownOptions,
             input: buildPaths.indexHtml,
-            output: fixedExistingRollupOptionsOutput,
+            output: fixedExistingRolldownOptionsOutput,
           },
           copyPublicDir: false,
           emptyOutDir: false,
         },
-        define: {
-          ...loadedViteConfig.define,
-          ...Object.fromEntries(
-            Object.entries(envVarsWithBuild).map(([key]) => [
-              `process.env.${key}`,
-              `globalThis.__POINT0_ENV_VARS__.${key}`,
-            ]),
-          ),
-          ...Object.fromEntries(
-            Object.entries(envConstsWithBuilt).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
-          ),
-        },
+        define,
       }
 
       const buildResult = await viteBuild(config)

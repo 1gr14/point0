@@ -12,6 +12,7 @@ export const validateClientEnv = env.side.define.unsafe.client(() => {
     })
     .safeParse(process.env)
   if (!result.success) {
+    setTimeout(() => {}, 1000)
     throw new Error('Invalid client environment variables', { cause: result.error })
   }
   Object.assign(clientEnv, result.data)

@@ -21,8 +21,8 @@ const bundlers: Bundler[] = ['bun', 'vite']
 const processModes: ProcessMode[] = ['dev', 'build']
 // const bundler = 'bun' as Bundler
 
-const clientPublicdirLine = `      publicdir: { source: '../public', outdir: '../dist/client' },`
-const serverPublicdirLine = `    // publicdir: server,`
+const clientPublicdirLine = `    publicdir: { source: '../public', outdir: '../dist/client' },`
+const serverPublicdirLine = `   // publicdir: server,`
 
 let preventFinalFilesCleanup = false
 function wrp(

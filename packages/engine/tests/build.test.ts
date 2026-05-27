@@ -270,9 +270,6 @@ describe('build', () => {
       'has correct sourcemap for loader error',
       wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp }) => {
         await tp.waitPortsFree()
-        if (bundler !== 'vite') {
-          return
-        }
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
@@ -321,13 +318,29 @@ return (
         expect(mapFiles.length > 0).toBe(true)
 
         let checked = false
+
+        /** Vite sets `file` on source maps; Bun linked maps omit it — derive from `.js.map` basename. */
+        function getGeneratedFileNameFromMap(mapFile: string, mapJson: { file?: string }): string | undefined {
+          if (mapJson.file) {
+            return mapJson.file
+          }
+          const base = nodePath.basename(mapFile)
+          if (base.endsWith('.map')) {
+            return base.slice(0, -'.map'.length)
+          }
+          return undefined
+        }
+
         for (const mapFile of mapFiles) {
           const mapText = await Bun.file(mapFile).text()
           const mapJson = JSON.parse(mapText) as {
             sources?: string[]
             file?: string
           }
-          const generatedFileName = mapJson.file
+          if (!mapJson.sources?.some((source) => source.includes('page.tsx'))) {
+            continue
+          }
+          const generatedFileName = getGeneratedFileNameFromMap(mapFile, mapJson)
           if (!generatedFileName) {
             continue
           }
@@ -555,14 +568,16 @@ return (
         `
         import react from '@vitejs/plugin-react'
         import svgr from 'vite-plugin-svgr'
-        import tsconfigPaths from 'vite-tsconfig-paths'
       `,
       )
       await tp.replace(
         tp.files.engine,
         `viteConfig: '../vite.config.ts'`,
         `viteConfig: {
-            plugins: [react(), svgr(), tsconfigPaths()],
+            resolve: {
+              tsconfigPaths: true,
+            },
+            plugins: [react(), svgr()],
             define: {
               I_WILL_BE_REMOVED_ON_BUILD_STAGE_FORM_HERE: JSON.stringify('I_WILL_BE_REMOVED_ON_BUILD_STAGE_FORM_HERE'),
             },

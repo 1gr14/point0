@@ -16,30 +16,30 @@ import type {
   ExtractViteConfigFn,
 } from './config.js'
 
-/**
- * True when the current Bun process was started with the engine's own CLI (`point0` or `point0-mcp`)
- * as its entry. Used by preload to skip user-code transformer plugins — the CLI talks to the engine
- * via its public API, so installing plugins is wasted work and can interfere with module loading.
- *
- * Resolves siblings of *this* file via `import.meta.url`, so it correctly tracks both `src` (point0
- * monorepo dev) and `dist/esm` (installed package) layouts without string-matching package paths.
- */
-const engineCliEntryPaths = ((): Set<string> => {
-  const selfDir = nodePath.dirname(fileURLToPath(import.meta.url))
-  const names = ['cli', 'mcp']
-  const exts = ['js', 'ts', 'mjs', 'cjs', 'mts', 'cts']
-  const paths = new Set<string>()
-  for (const name of names) {
-    for (const ext of exts) {
-      paths.add(nodePath.resolve(selfDir, `${name}.${ext}`))
-    }
-  }
-  return paths
-})()
+// /**
+//  * True when the current Bun process was started with the engine's own CLI (`point0` or `point0-mcp`)
+//  * as its entry. Used by preload to skip user-code transformer plugins — the CLI talks to the engine
+//  * via its public API, so installing plugins is wasted work and can interfere with module loading.
+//  *
+//  * Resolves siblings of *this* file via `import.meta.url`, so it correctly tracks both `src` (point0
+//  * monorepo dev) and `dist/esm` (installed package) layouts without string-matching package paths.
+//  */
+// const engineCliEntryPaths = ((): Set<string> => {
+//   const selfDir = nodePath.dirname(fileURLToPath(import.meta.url))
+//   const names = ['cli', 'mcp']
+//   const exts = ['js', 'ts', 'mjs', 'cjs', 'mts', 'cts']
+//   const paths = new Set<string>()
+//   for (const name of names) {
+//     for (const ext of exts) {
+//       paths.add(nodePath.resolve(selfDir, `${name}.${ext}`))
+//     }
+//   }
+//   return paths
+// })()
 
-export const isBunMainEngineCli = (): boolean => {
-  return !!Bun.main && engineCliEntryPaths.has(Bun.main)
-}
+// export const isBunMainEngineCli = (): boolean => {
+//   return !!Bun.main && engineCliEntryPaths.has(Bun.main)
+// }
 
 export const stripTerminalClearSequences = (text: string): string =>
   text
@@ -658,13 +658,14 @@ export const createViteDevServer = async ({
       },
       root: getViteRoot({ viteConfig, loadedViteConfig, engineFile }),
       define: {
+        ...(side === 'client' ? { 'process.env': `window.process.env` } : {}),
         ...loadedViteConfig.define,
         ...Object.fromEntries(
           Object.entries(envConsts ?? {}).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
         ),
-        ...Object.fromEntries(
-          Object.entries(envConsts ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
-        ),
+        // ...Object.fromEntries(
+        //   Object.entries(envConsts ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+        // ),
       },
     })
   }

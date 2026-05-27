@@ -29,6 +29,7 @@ import type { Publicdir } from './publicdir.js'
 import { EngineServer } from './server.js'
 import { killSubprocessOnExit, normalizeAndValidateNodeEnv } from './utils.js'
 import { FilesWatcher } from './watcher.js'
+import type { NormalizedNodeEnv } from '@point0/core'
 
 export class Engine<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -53,6 +54,7 @@ export class Engine<
   serverDevWatchGlob: string[]
   cwd: string
   wasBuilt: boolean
+  file: string
 
   private readonly __POINT0_ENGINE__ = true as const
 
@@ -68,6 +70,7 @@ export class Engine<
     serverDevWatchGlob: string[]
     cwd: string
     wasBuilt: boolean
+    file: string
   }) {
     this.clients = input.clients as TPrepared extends true
       ? Array<EngineClient<true, TError>>
@@ -84,6 +87,7 @@ export class Engine<
     this.serverDevWatchGlob = input.serverDevWatchGlob
     this.cwd = input.cwd
     this.wasBuilt = input.wasBuilt
+    this.file = input.file
   }
 
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
@@ -155,23 +159,28 @@ export class Engine<
       serverDevWatchGlob: parsedOptions.server.devWatchGlob,
       cwd: parsedOptions.general.cwd,
       wasBuilt: parsedOptions.general.itWasBuilt,
+      file: parsedOptions.general.engineFile,
     })
   }
 
-  /**
-   * Minimal setup run right after the engine is created and before it loads any user modules (points, app, generated
-   * files). Applies env vars and installs bun plugins so the upcoming module loads pass through the right transformer
-   * chain. No points, no app, no publicdirs, no dev servers — those are `prepare`.
-   */
-  async preload(): Promise<void> {
-    await this.server.preload()
+  async preload<TPrepare extends boolean = false>({
+    preventSetEnvVars,
+    nodeEnvFallback,
+    preventLoadBunPlugins,
+    prepare = false as TPrepare,
+  }: {
+    preventSetEnvVars?: boolean
+    nodeEnvFallback?: NormalizedNodeEnv
+    preventLoadBunPlugins?: boolean
+    prepare?: TPrepare
+  } = {}): Promise<TPrepare extends true ? Engine<TRequiredCtx, TError, true> : typeof this> {
+    await this.server.preload({ preventSetEnvVars, nodeEnvFallback, preventLoadBunPlugins })
+    if (prepare) {
+      await this.prepare()
+    }
+    return this as TPrepare extends true ? Engine<TRequiredCtx, TError, true> : typeof this
   }
 
-  /**
-   * Full engine setup: prepares the server and every serving client. Idempotent. Run before `serve()`, before answering
-   * any request, or before invoking server logic in tests. `dev()` calls this implicitly for the relevant sides;
-   * explicit users (CLI, custom entries) call it.
-   */
   async prepare(): Promise<Engine<TRequiredCtx, TError, true>> {
     if (this.prepared) {
       return this as Engine<TRequiredCtx, TError, true>
@@ -280,6 +289,7 @@ export class Engine<
           message: `Server starting...`,
         })
         if (this.server.viteConfig) {
+          await this.server.preload({ nodeEnvFallback: 'development', preventLoadBunPlugins: true })
           await this.server.startViteDevServer()
           return [this.server.loadViteDevEntries({ watch: !!watch, entriesFiles })]
         } else {
@@ -821,5 +831,10 @@ export class Engine<
       return root._emit.bind(root) as EventerEmitFn<TError>
     }
     return undefined
+  }
+
+  isFileInEngineDir(file: string = Bun.main): boolean {
+    const engineFileDir = nodePath.dirname(this.file)
+    return !nodePath.relative(engineFileDir, file).startsWith('..')
   }
 }

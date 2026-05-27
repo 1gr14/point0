@@ -14,33 +14,31 @@ export const engine = Engine.create({
     outdir: '../dist/server',
     // devWatchGlob: ['**/*.{ts,tsx,mdx}', '!generated/point0/meta.ts'],
   },
-  clients: [
-    {
-      scope: 'root',
-      port: process.env.CLIENT_PORT,
-      indexHtml: './index.html',
-      app: async () => await import('./app.client'),
-      points: async () => await import('./generated/point0/points.client'),
-      generate: {
-        points: { outfile: './generated/point0/points.client.ts', lazy: false },
-        routes: './generated/point0/routes.ts',
-      },
-      importer: {
-        deny: ['**/prisma.*'],
-      },
-      bunPlugins: ['bun-plugin-tailwind'],
-      env: { vars: ['SERVER_URL'] },
-      publicdir: {
-        source: [
-          '../public',
-          {
-            '.well-known/appspecific/com.chrome.devtools.json': () => '{}',
-            'robots.txt': () => 'User-agent: *\nDisallow: /',
-          },
-        ],
-        outdir: '../dist/client',
-      },
+  client: {
+    scope: 'root',
+    port: process.env.CLIENT_PORT,
+    indexHtml: './index.html',
+    app: async () => await import('./app.client'),
+    points: async () => await import('./generated/point0/points.client'),
+    generate: {
+      points: './generated/point0/points.client.ts',
+      routes: './generated/point0/routes.ts',
+    },
+    importer: {
+      deny: ['**/prisma.*'],
+    },
+    bunPlugins: ['bun-plugin-tailwind'],
+    env: { vars: ['SERVER_URL'] },
+    publicdir: {
+      source: [
+        '../public',
+        {
+          '.well-known/appspecific/com.chrome.devtools.json': () => '{}',
+          'robots.txt': () => 'User-agent: *\nDisallow: /',
+        },
+      ],
       outdir: '../dist/client',
     },
-  ],
+    outdir: '../dist/client',
+  },
 })
