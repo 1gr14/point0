@@ -1,4 +1,4 @@
-import { CookiesStore } from '@point0/cookies-store'
+import { CookieStore } from '@point0/cookie-store'
 import { createQueryClient, isQueryClientDehydratedStateQuery } from '@point0/core'
 import type {
   AnyNiceRequestableReadyPoint,
@@ -418,8 +418,8 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
       state._unmount?.()
       state._unmount = undefined
     },
-    cookieGetter: CookiesStore.clientDocumentCookieGetter,
-    cookieSetter: CookiesStore.clientDocumentCookieSetter,
+    cookieGetter: CookieStore.clientDocumentCookieGetter,
+    cookieSetter: CookieStore.clientDocumentCookieSetter,
   })
   async function render<TResult = undefined>(callback?: (state: TestThingsState) => TResult): Promise<TResult>
   async function render<TResult = undefined>(

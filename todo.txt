@@ -73,30 +73,39 @@ optimize compiler more, do it faster
 
 
 # Micro
-engine config log → logger { log }
-engine config log, also should be able to accept async () => import; return logFn
+? Криэйт квери клиент должен сразу принимать нужные опции а не функцию возвращающую объект
+? Эз форм дата тру фалс авто влияет и на опенапи и аозмовозможность вообще отправить другое
+? remove props form related query if not exists
+? Cделать красивый вывод в виртуал модуле
+
 Куки стор в единственно числе
 serverurl → serverUrl
-Из маунтобла убрать подписку на пейдж стейт а то ререндерит
-Глобал хед в отдельном компоненте рядом в провайдере анхеда выводить, а не сувать его во все пейджи (вероятно)
-expose id form points, also queryPredicate shoudl accpet id
-Мапер должен использовать юзмемо для результата исходя из входных штук
-В дефолтную эррор добавить мету
-with query, }>(point: TPoint, ...args: TPoint['Infer']['IsInputOptional'] extends true ? [ →to overrides, becouse with incorrect input it miss value
-Эз форм дата тру фалс авто влияет и на опенапи и аозмовозможность вообще отправить другое
-Криэйт квери клиент должен сразу принимать нужные опции а не функцию возвращающую объект
-.infiniteQuery({}) should have nice autocompletion, ow it is never until correct, (В Инфинити скрол опции ошибку можно добавить как реквайред поле с эрором)
-? remove props form related query if not exists
-allow related query in plugins, and just location there
-nor x.x.x bub x:x:x prepaering to pagena names can contain .
-Эвентер кромедата пусть возвращает и Джейсон который логировать удобно
-Моунтаблы (компонент и провайдердер точно) должны работать и без икса
-Убедиться, что виз всегда вызывает врапер, ведь есть риск, что сначала эрор, а потом не эрор, а дальше хук, и будут проблемы
-Мсп должен всегда читать свежую мета
 in example rename file navigate to navigation
 
+Из маунтобла убрать подписку на пейдж стейт а то ререндерит
+Глобал хед в отдельном компоненте рядом в провайдере анхеда выводить, а не сувать его во все пейджи (вероятно)
+Мапер должен использовать юзмемо для результата исходя из входных штук
+
+Моунтаблы (компонент и провайдердер точно) должны работать и без икса
+
+expose id form points, also queryPredicate shoudl accpet id
+nor x.x.x bub x:x:x prepaering to pagena names can contain .
+
+В дефолтную эррор добавить мету
+
+with query, }>(point: TPoint, ...args: TPoint['Infer']['IsInputOptional'] extends true ? [ →to overrides, becouse with incorrect input it miss value
+
+.infiniteQuery({}) should have nice autocompletion, ow it is never until correct, (В Инфинити скрол опции ошибку можно добавить как реквайред поле с эрором)
+
+allow related query in plugins, and just location there
+
+Эвентер кромедата пусть возвращает и Джейсон который логировать удобно
+
+Убедиться, что виз всегда вызывает врапер, ведь есть риск, что сначала эрор, а потом не эрор, а дальше хук, и будут проблемы
+
+Мсп должен всегда читать свежую мета
+
 error0 allow empty args, empty message
-Cделать красивый вывод в виртуал модуле
 
 
 # Additional

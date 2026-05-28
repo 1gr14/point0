@@ -1,5 +1,5 @@
 {
-  "name": "@point0/cookies-store",
+  "name": "@point0/cookie-store",
   "version": "0.1.0",
   "license": "MIT",
   "author": {
@@ -10,7 +10,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/devp0nt/point0.git",
-    "directory": "packages/cookies-store"
+    "directory": "packages/cookie-store"
   },
   "bugs": {
     "url": "https://github.com/devp0nt/point0/issues"
@@ -45,7 +45,7 @@
     "typesgo": "tsgo --noEmit -p tsconfig.build.json",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "pack:dist": "rimraf ../../packages-dist-npm && bun ../../scripts/transform-package-for-publish.ts && mkdir -p ../../packages-dist-npm/cookies-store && npm pack --pack-destination ../../packages-dist-npm/cookies-store --silent && (cd ../../packages-dist-npm/cookies-store && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz) && bun ../../scripts/restore-package.ts",
+    "pack:dist": "rimraf ../../packages-dist-npm && bun ../../scripts/transform-package-for-publish.ts && mkdir -p ../../packages-dist-npm/cookie-store && npm pack --pack-destination ../../packages-dist-npm/cookie-store --silent && (cd ../../packages-dist-npm/cookie-store && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz) && bun ../../scripts/restore-package.ts",
     "prepublishOnly": "bun ../../scripts/transform-package-for-publish.ts",
     "postpublish": "bun ../../scripts/restore-package.ts"
   },

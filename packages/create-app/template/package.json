@@ -38,7 +38,7 @@
     "openapi-types": "catalog:",
     "@point0/basic-auth": "workspace:*",
     "@point0/compiler": "workspace:*",
-    "@point0/cookies-store": "workspace:*",
+    "@point0/cookie-store": "workspace:*",
     "@point0/core": "workspace:*",
     "@point0/engine": "workspace:*",
     "@point0/openapi": "workspace:*",

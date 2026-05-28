@@ -7,8 +7,8 @@ import type { EngineClient } from './client.js'
 import type { Engine } from './engine.js'
 import type { ErrorPoint0 } from '@point0/core'
 
-type CookiesStoreSetter = (options: CookieOptionsInput) => void
-type CookiesStoreGetter = {
+type CookieStoreSetter = (options: CookieOptionsInput) => void
+type CookieStoreGetter = {
   (name: string): string | undefined
   (): Record<string, string>
 }
@@ -112,8 +112,8 @@ export class FakeClient<TState extends FakeClientState, TError extends ErrorPoin
   state: TState
   jar: CookieJar
   fetch: RichFetchFn
-  cookieSetter: CookiesStoreSetter | undefined
-  cookieGetter: CookiesStoreGetter | undefined
+  cookieSetter: CookieStoreSetter | undefined
+  cookieGetter: CookieStoreGetter | undefined
   onRunStartOutside: FakeClientCallback<TState> | undefined
   onRunStartInside: FakeClientCallback<TState> | undefined
   onRunEndOutside: FakeClientCallback<TState> | undefined
@@ -155,8 +155,8 @@ export class FakeClient<TState extends FakeClientState, TError extends ErrorPoin
     onRunEndInside: FakeClientCallback<TState> | undefined
     onDestroyOutside: FakeClientCallback<TState> | undefined
     onDestroyInside: FakeClientCallback<TState> | undefined
-    cookieSetter: CookiesStoreSetter | undefined
-    cookieGetter: CookiesStoreGetter | undefined
+    cookieSetter: CookieStoreSetter | undefined
+    cookieGetter: CookieStoreGetter | undefined
   }) {
     this.engine = engine
     this.client = client
@@ -202,8 +202,8 @@ export class FakeClient<TState extends FakeClientState, TError extends ErrorPoin
     onRunEndInside?: FakeClientCallback<TState> | undefined
     onDestroyOutside?: FakeClientCallback<TState> | undefined
     onDestroyInside?: FakeClientCallback<TState> | undefined
-    cookieSetter?: CookiesStoreSetter | undefined
-    cookieGetter?: CookiesStoreGetter | undefined
+    cookieSetter?: CookieStoreSetter | undefined
+    cookieGetter?: CookieStoreGetter | undefined
     state?: TState | undefined
   }): FakeClient<TState, TError> {
     if (!engine.prepared) {

@@ -200,7 +200,7 @@
     "@types/react": "catalog:",
     "@tanstack/query-core": "catalog:",
     "safe-stable-stringify": "catalog:",
-    "@point0/cookies-store": "workspace:*",
+    "@point0/cookie-store": "workspace:*",
     "@point0/docs": "workspace:*",
     "@testing-library/react": "^16.3.1",
     "@types/bun": "^1.2.22",

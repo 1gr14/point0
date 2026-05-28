@@ -60,7 +60,7 @@ export type CookieDefineOptions<
   fallback?: TFallback
 }
 
-export class CookiesStore {
+export class CookieStore {
   private static getClientDocumentCookieMap(): Record<string, string> {
     if (typeof document === 'undefined' || !document.cookie) {
       return {}
@@ -80,15 +80,15 @@ export class CookiesStore {
     return cookies
   }
 
-  static clientDocumentCookieGetter: CookiesStoreGetter = ((name?: string) => {
-    const cookies = CookiesStore.getClientDocumentCookieMap()
+  static clientDocumentCookieGetter: CookieStoreGetter = ((name?: string) => {
+    const cookies = CookieStore.getClientDocumentCookieMap()
     if (name === undefined) {
       return cookies
     }
     return cookies[name]
-  }) as CookiesStoreGetter
+  }) as CookieStoreGetter
 
-  static clientDocumentCookieSetter: CookiesStoreSetter = (options) => {
+  static clientDocumentCookieSetter: CookieStoreSetter = (options) => {
     if (typeof document !== 'undefined') {
       const attributes: Record<string, string | number | boolean | Date | undefined> = {
         path: options.path ?? '/',
@@ -136,33 +136,33 @@ export class CookiesStore {
   }
 
   static transformer: DataTransformerExtended = blankDataTransformerExtended
-  static clientCookieGetter: CookiesStoreGetter = CookiesStore.clientDocumentCookieGetter
-  static clientCookieSetter: CookiesStoreSetter = CookiesStore.clientDocumentCookieSetter
-  static readonly items = new Set<CookiesStoreItem<unknown, unknown, boolean>>()
+  static clientCookieGetter: CookieStoreGetter = CookieStore.clientDocumentCookieGetter
+  static clientCookieSetter: CookieStoreSetter = CookieStore.clientDocumentCookieSetter
+  static readonly items = new Set<CookieStoreItem<unknown, unknown, boolean>>()
 
   static configure(options?: {
-    clientCookieGetter?: CookiesStoreGetter
-    clientCookieSetter?: CookiesStoreSetter
+    clientCookieGetter?: CookieStoreGetter
+    clientCookieSetter?: CookieStoreSetter
     transformer?: DataTransformer | undefined
   }): void {
-    CookiesStore.transformer = options?.transformer
+    CookieStore.transformer = options?.transformer
       ? toExtendedTransformer(options.transformer)
-      : CookiesStore.transformer
-    CookiesStore.clientCookieGetter = options?.clientCookieGetter ?? CookiesStore.clientCookieGetter
-    CookiesStore.clientCookieSetter = options?.clientCookieSetter ?? CookiesStore.clientCookieSetter
+      : CookieStore.transformer
+    CookieStore.clientCookieGetter = options?.clientCookieGetter ?? CookieStore.clientCookieGetter
+    CookieStore.clientCookieSetter = options?.clientCookieSetter ?? CookieStore.clientCookieSetter
   }
 
   static plugin = (options?: {
-    clientCookieGetter?: CookiesStoreGetter
-    clientCookieSetter?: CookiesStoreSetter
+    clientCookieGetter?: CookieStoreGetter
+    clientCookieSetter?: CookieStoreSetter
     transformer?: DataTransformer | undefined
   }) => {
     if (options) {
-      CookiesStore.configure(options)
+      CookieStore.configure(options)
     }
-    return Point0.lets('plugin', 'cookies-store')
+    return Point0.lets('plugin', 'cookie-store')
       .on('pointFetchServerSettled', () => {
-        CookiesStore.refresh()
+        CookieStore.refresh()
       })
       .plugin()
   }
@@ -170,42 +170,42 @@ export class CookiesStore {
   // string, httpOnly=false, fallback=undefined
   static define<TValue extends string = string>(
     options: CookieDefineOptions<false, DataTransformer | 'auto' | boolean, undefined> | string,
-  ): CookiesStoreItem<TValue, undefined, false>
+  ): CookieStoreItem<TValue, undefined, false>
 
   // string, httpOnly=false, fallback=TValue
   static define<TValue extends string = string>(
     options: CookieDefineOptions<false, DataTransformer | 'auto' | boolean, TValue>,
-  ): CookiesStoreItem<TValue, undefined, false>
+  ): CookieStoreItem<TValue, undefined, false>
 
   // string, httpOnly=true, fallback=undefined
   static define<TValue extends string = string>(
     options: CookieDefineOptions<true, DataTransformer | 'auto' | boolean, undefined>,
-  ): Omit<CookiesStoreItem<TValue, undefined, true>, 'use' | 'refresh'>
+  ): Omit<CookieStoreItem<TValue, undefined, true>, 'use' | 'refresh'>
 
   // string, httpOnly=true, fallback=TValue
   static define<TValue extends string = string>(
     options: CookieDefineOptions<true, DataTransformer | 'auto' | boolean, TValue>,
-  ): Omit<CookiesStoreItem<TValue, undefined, true>, 'use' | 'refresh'>
+  ): Omit<CookieStoreItem<TValue, undefined, true>, 'use' | 'refresh'>
 
   // custom, httpOnly=false, fallback=undefined
   static define<TValue>(
     options: CookieDefineOptions<false, DataTransformer | 'auto' | true, undefined> | string,
-  ): CookiesStoreItem<TValue, undefined, false>
+  ): CookieStoreItem<TValue, undefined, false>
 
   // custom, httpOnly=false, fallback=TValue
   static define<TValue>(
     options: CookieDefineOptions<false, DataTransformer | 'auto' | true, TValue>,
-  ): CookiesStoreItem<TValue, undefined, false>
+  ): CookieStoreItem<TValue, undefined, false>
 
   // custom, httpOnly=true, fallback=undefined
   static define<TValue>(
     options: CookieDefineOptions<true, DataTransformer | 'auto' | true, undefined>,
-  ): Omit<CookiesStoreItem<TValue, undefined, true>, 'use' | 'refresh'>
+  ): Omit<CookieStoreItem<TValue, undefined, true>, 'use' | 'refresh'>
 
   // custom, httpOnly=true, fallback=TValue
   static define<TValue>(
     options: CookieDefineOptions<true, DataTransformer | 'auto' | true, TValue>,
-  ): Omit<CookiesStoreItem<TValue, undefined, true>, 'use' | 'refresh'>
+  ): Omit<CookieStoreItem<TValue, undefined, true>, 'use' | 'refresh'>
 
   // implementation
   static define(options: CookieDefineOptions<boolean, DataTransformer | 'auto' | boolean, unknown> | string) {
@@ -223,23 +223,23 @@ export class CookiesStore {
                 : true
     const transformer =
       typeof options === 'string'
-        ? CookiesStore.transformer
+        ? CookieStore.transformer
         : isDataTransformerLike(options.transformer)
           ? toExtendedTransformer(options.transformer)
-          : CookiesStore.transformer
+          : CookieStore.transformer
     const cookieDefineOptions = typeof options === 'string' ? { name: options } : options
     const fallback = typeof options === 'string' ? undefined : options.fallback
-    const item = new CookiesStoreItem({
+    const item = new CookieStoreItem({
       cookieDefineOptions,
       transformerPolicy,
       transformer,
       fallback,
     })
-    CookiesStore.items.add(item)
+    CookieStore.items.add(item)
     return item as never
   }
 
-  static readonly serverCookieGetter: CookiesStoreGetter = ((...args: [name: string] | []) => {
+  static readonly serverCookieGetter: CookieStoreGetter = ((...args: [name: string] | []) => {
     if (env.side.is.server) {
       const request0 = getRequest()
       if (args.length === 0) {
@@ -248,9 +248,9 @@ export class CookiesStore {
       return request0.cookies[args[0]]
     }
     throw new Error('serverCookieGetter is only available on the server')
-  }) as CookiesStoreGetter
+  }) as CookieStoreGetter
 
-  static readonly serverCookieSetter: CookiesStoreSetter = (cookieOptionsInput) => {
+  static readonly serverCookieSetter: CookieStoreSetter = (cookieOptionsInput) => {
     if (env.side.is.server) {
       const effects = getEffects()
       effects.set.cookies(cookieOptionsInput)
@@ -259,25 +259,25 @@ export class CookiesStore {
     throw new Error('serverCookieSetter is only available on the server')
   }
 
-  static set: CookiesStoreSetter = (cookieOptionsInput) => {
+  static set: CookieStoreSetter = (cookieOptionsInput) => {
     if (!env.side.is.server && cookieOptionsInput.httpOnly) {
       throw new Error(`Cannot set cookie "${cookieOptionsInput.name}" from client: httpOnly cookies are server-only`)
     }
     if (env.side.is.server) {
-      CookiesStore.serverCookieSetter(cookieOptionsInput)
+      CookieStore.serverCookieSetter(cookieOptionsInput)
     } else {
-      CookiesStore.clientCookieSetter(cookieOptionsInput)
-      CookiesStore.refresh(cookieOptionsInput.name)
+      CookieStore.clientCookieSetter(cookieOptionsInput)
+      CookieStore.refresh(cookieOptionsInput.name)
     }
   }
 
-  static get: CookiesStoreGetter = ((...args: [name: string] | []) => {
+  static get: CookieStoreGetter = ((...args: [name: string] | []) => {
     if (env.side.is.server) {
-      return args.length === 0 ? CookiesStore.serverCookieGetter() : CookiesStore.serverCookieGetter(...args)
+      return args.length === 0 ? CookieStore.serverCookieGetter() : CookieStore.serverCookieGetter(...args)
     } else {
-      return args.length === 0 ? CookiesStore.clientCookieGetter() : CookiesStore.clientCookieGetter(...args)
+      return args.length === 0 ? CookieStore.clientCookieGetter() : CookieStore.clientCookieGetter(...args)
     }
-  }) as CookiesStoreGetter
+  }) as CookieStoreGetter
 
   static refresh(name?: string): void {
     if (env.side.is.server) {
@@ -285,7 +285,7 @@ export class CookiesStore {
       // lets not throw to be able fullstack tests
       // throw new Error('refresh() is only available on the client')
     }
-    CookiesStore.items.forEach((item) => {
+    CookieStore.items.forEach((item) => {
       if (name && item.name !== name) {
         return
       }
@@ -297,7 +297,7 @@ export class CookiesStore {
   }
 }
 
-class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
+class CookieStoreItem<TValue, TFallback, THttpOnly extends boolean> {
   private readonly cookieDefineOptions: CookieDefineOptions<THttpOnly, DataTransformer | 'auto' | boolean, TFallback>
   private readonly fallback: TFallback
   private readonly transformerPolicy: 'auto' | boolean
@@ -352,7 +352,7 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
       }
       return typeof value === 'string' ? value : (this.transformer.stringify(value) ?? String(value))
     })()
-    CookiesStore.set({ ...this.cookieDefineOptions, value: stringified })
+    CookieStore.set({ ...this.cookieDefineOptions, value: stringified })
   }
 
   delete() {
@@ -361,7 +361,7 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
         `Cannot delete cookie "${this.cookieDefineOptions.name}" from client: httpOnly cookies are server-only`,
       )
     }
-    CookiesStore.set({ ...this.cookieDefineOptions, value: '', expires: new Date(0) })
+    CookieStore.set({ ...this.cookieDefineOptions, value: '', expires: new Date(0) })
   }
 
   get(): TValue | TFallback {
@@ -370,7 +370,7 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
         `Cannot get cookie "${this.cookieDefineOptions.name}" from client: httpOnly cookies are server-only`,
       )
     }
-    const stringified = CookiesStore.get(this.cookieDefineOptions.name)
+    const stringified = CookieStore.get(this.cookieDefineOptions.name)
     if (stringified === undefined) {
       return this.fallback
     }
@@ -441,7 +441,7 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
     }
 
     const getStringifiedValue = (): string | undefined => {
-      return CookiesStore.get(this.cookieDefineOptions.name)
+      return CookieStore.get(this.cookieDefineOptions.name)
     }
 
     const initialValue = this.get()
@@ -483,8 +483,8 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
   }
 }
 
-export type CookiesStoreGetter = {
+export type CookieStoreGetter = {
   (name: string): string | undefined
   (): Record<string, string>
 }
-export type CookiesStoreSetter = (options: CookieOptionsInput) => void
+export type CookieStoreSetter = (options: CookieOptionsInput) => void

@@ -15,7 +15,7 @@ const publishablePackages = [
   'compiler',
   'engine',
   'react-dom',
-  'cookies-store',
+  'cookie-store',
   'cors',
   'openapi',
   'basic-auth',

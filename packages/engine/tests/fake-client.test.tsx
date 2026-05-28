@@ -1,4 +1,4 @@
-import { CookiesStore } from '@point0/cookies-store'
+import { CookieStore } from '@point0/cookie-store'
 import { env, Point0, createQueryClient } from '@point0/core'
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import assert from 'node:assert'
@@ -167,7 +167,7 @@ describe('FakeClient', () => {
       .lets('page', 'page', '/page')
       .loader(() => ({ serverLoaderSideName: env.side.name }))
       .page(({ data }) => <div>Hello from {data.serverLoaderSideName}</div>)
-    const cooka = CookiesStore.define({ name: 'z' })
+    const cooka = CookieStore.define({ name: 'z' })
     const mutation = root
       .lets('mutation', 'mutation')
       .loader(({ set, request }) => {
@@ -190,12 +190,12 @@ describe('FakeClient', () => {
       engine,
       scope: 'root',
       globals: getFakeBrowserGlobals(),
-      cookieGetter: CookiesStore.clientDocumentCookieGetter,
+      cookieGetter: CookieStore.clientDocumentCookieGetter,
       cookieSetter: (options) => {
         if (options.httpOnly) {
           return
         }
-        CookiesStore.clientDocumentCookieSetter(options)
+        CookieStore.clientDocumentCookieSetter(options)
       },
     })
     await client.run(async () => {
@@ -403,8 +403,8 @@ describe('FakeClient', () => {
       engine,
       scope: 'root',
       globals: getFakeBrowserGlobals(),
-      cookieGetter: CookiesStore.clientDocumentCookieGetter,
-      cookieSetter: CookiesStore.clientDocumentCookieSetter,
+      cookieGetter: CookieStore.clientDocumentCookieGetter,
+      cookieSetter: CookieStore.clientDocumentCookieSetter,
     })
     await client.run(async () => {
       const result = await mutation.fetchServerDetailed()

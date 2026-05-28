@@ -3,9 +3,9 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test
 import superjson from 'superjson'
 import * as z from 'zod'
 import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
-import { CookiesStore, type CookiesStoreGetter } from '../src/index.js'
+import { CookieStore, type CookieStoreGetter } from '../src/index.js'
 
-describe('cookies-store', () => {
+describe('cookie-store', () => {
   let fakeClient: Awaited<ReturnType<typeof createTestThings>>['client']
   const inClient = (fn: () => void | Promise<void>) => {
     return async () => {
@@ -69,7 +69,7 @@ describe('cookies-store', () => {
       'serialize cookie once with encoded values and sanitized attributes',
       inClient(() => {
         const writtenCookie = captureDocumentCookieWrite(() => {
-          CookiesStore.clientDocumentCookieSetter({
+          CookieStore.clientDocumentCookieSetter({
             name: 'user name',
             value: 'hello world',
             path: '/app;bad=true',
@@ -92,7 +92,7 @@ describe('cookies-store', () => {
       'normalize invalid sameSite to lax in document setter',
       inClient(() => {
         const writtenCookie = captureDocumentCookieWrite(() => {
-          CookiesStore.clientDocumentCookieSetter({
+          CookieStore.clientDocumentCookieSetter({
             name: 'x',
             value: '1',
             sameSite: 'weird' as never,
@@ -106,7 +106,7 @@ describe('cookies-store', () => {
       'read decoded value for encoded cookie name',
       inClient(() => {
         const value = withDocumentCookieString('user%20name=hello%20world; plain=value', () => {
-          return CookiesStore.clientDocumentCookieGetter('user name')
+          return CookieStore.clientDocumentCookieGetter('user name')
         })
         expect(value).toBe('hello world')
       }),
@@ -116,7 +116,7 @@ describe('cookies-store', () => {
       'return cookie map when called without name',
       inClient(() => {
         const result = withDocumentCookieString('user%20name=hello%20world; plain=value', () => {
-          return CookiesStore.clientDocumentCookieGetter()
+          return CookieStore.clientDocumentCookieGetter()
         })
         expect(result).toEqual({
           'user name': 'hello world',
@@ -128,9 +128,9 @@ describe('cookies-store', () => {
 
   describe('define unit possibilities', () => {
     // const originalPoint0Side = process.env.POINT0_SIDE
-    const originalClientGetter = CookiesStore.clientCookieGetter
-    const originalClientSetter = CookiesStore.clientCookieSetter
-    const originalTransformer = CookiesStore.transformer
+    const originalClientGetter = CookieStore.clientCookieGetter
+    const originalClientSetter = CookieStore.clientCookieSetter
+    const originalTransformer = CookieStore.transformer
     // const originalDocument = globalThis.document
     // const originalWindow = globalThis.window
     // const originalNavigator = globalThis.navigator
@@ -143,14 +143,14 @@ describe('cookies-store', () => {
       // ;(globalThis as any).document = {}
       // ;(globalThis as any).navigator = {}
       cookieState = {}
-      CookiesStore.items.clear()
-      CookiesStore.configure({
+      CookieStore.items.clear()
+      CookieStore.configure({
         clientCookieGetter: ((name?: string) => {
           if (name === undefined) {
             return { ...cookieState }
           }
           return cookieState[name]
-        }) as CookiesStoreGetter | undefined,
+        }) as CookieStoreGetter | undefined,
         clientCookieSetter: (options) => {
           cookieState[options.name] = options.value
         },
@@ -170,16 +170,16 @@ describe('cookies-store', () => {
       // ;(globalThis as any).document = originalDocument
       // ;(globalThis as any).window = originalWindow
       // ;(globalThis as any).navigator = originalNavigator
-      CookiesStore.items.clear()
-      CookiesStore.clientCookieGetter = originalClientGetter
-      CookiesStore.clientCookieSetter = originalClientSetter
-      CookiesStore.transformer = originalTransformer
+      CookieStore.items.clear()
+      CookieStore.clientCookieGetter = originalClientGetter
+      CookieStore.clientCookieSetter = originalClientSetter
+      CookieStore.transformer = originalTransformer
     })
 
     it(
       'define with string uses auto transformer and keeps string values',
       inClient(() => {
-        const nick = CookiesStore.define('nick')
+        const nick = CookieStore.define('nick')
         nick.set('m1xer')
         expect(cookieState.nick).toBe('m1xer')
         expect(nick.get()).toBe('m1xer')
@@ -189,7 +189,7 @@ describe('cookies-store', () => {
     it(
       'define with fallback returns fallback when cookie is missing',
       inClient(() => {
-        const nick = CookiesStore.define<string>({ name: 'nick', fallback: 'guest' })
+        const nick = CookieStore.define<string>({ name: 'nick', fallback: 'guest' })
         expect(nick.get()).toBe('guest')
       }),
     )
@@ -197,7 +197,7 @@ describe('cookies-store', () => {
     it(
       'define with transformer=false keeps raw string values',
       inClient(() => {
-        const data = CookiesStore.define<string>({ name: 'data', transformer: false })
+        const data = CookieStore.define<string>({ name: 'data', transformer: false })
         data.set('raw-string')
         expect(cookieState.data).toBe('raw-string')
         cookieState.data = '{"role":"user"}'
@@ -208,7 +208,7 @@ describe('cookies-store', () => {
     it(
       'define with transformer=true always uses configured transformer',
       inClient(() => {
-        const data = CookiesStore.define<{ role: string }>({ name: 'data', transformer: true })
+        const data = CookieStore.define<{ role: string }>({ name: 'data', transformer: true })
         data.set({ role: 'admin' })
         expect(cookieState.data).toBe('{"role":"admin"}')
         expect(data.get()).toEqual({ role: 'admin' })
@@ -218,7 +218,7 @@ describe('cookies-store', () => {
     it(
       'define with transformer="auto" parses non-string values and keeps strings',
       inClient(() => {
-        const data = CookiesStore.define<{ role: string } | string>({ name: 'data', transformer: 'auto' })
+        const data = CookieStore.define<{ role: string } | string>({ name: 'data', transformer: 'auto' })
         data.set('raw-string')
         expect(cookieState.data).toBe('raw-string')
         expect(data.get()).toBe('raw-string')
@@ -232,7 +232,7 @@ describe('cookies-store', () => {
     it(
       'define with default auto policy parses string cookies that look like json',
       inClient(() => {
-        const data = CookiesStore.define<{ role: string } | string>('data')
+        const data = CookieStore.define<{ role: string } | string>('data')
         data.set('{"role":"admin"}')
         expect(cookieState.data).toBe('{"role":"admin"}')
         expect(data.get()).toEqual({ role: 'admin' })
@@ -242,7 +242,7 @@ describe('cookies-store', () => {
     it(
       'define without default auto policy not parses string cookies that look like json',
       inClient(() => {
-        const data = CookiesStore.define<string>({ name: 'data', transformer: false })
+        const data = CookieStore.define<string>({ name: 'data', transformer: false })
         data.set('{"role":"admin"}')
         expect(cookieState.data).toBe('{"role":"admin"}')
         expect(data.get()).toBe('{"role":"admin"}')
@@ -252,7 +252,7 @@ describe('cookies-store', () => {
     it(
       'define with custom transformer object uses that transformer',
       inClient(() => {
-        const data = CookiesStore.define<{ role: string }>({
+        const data = CookieStore.define<{ role: string }>({
           name: 'data',
           transformer: {
             serialize: (value) => ({ wrapped: value }),
@@ -268,7 +268,7 @@ describe('cookies-store', () => {
     it(
       'define with superjson supports richer values',
       inClient(() => {
-        const session = CookiesStore.define<{ createdAt: Date }>({
+        const session = CookieStore.define<{ createdAt: Date }>({
           name: 'session',
           transformer: superjson,
         })
@@ -288,7 +288,7 @@ describe('cookies-store', () => {
     it(
       'define with httpOnly=true blocks client read/write/delete',
       inClient(() => {
-        const secret = CookiesStore.define<string>({ name: 'secret', httpOnly: true })
+        const secret = CookieStore.define<string>({ name: 'secret', httpOnly: true })
         expect(() => secret.set('token')).toThrow('httpOnly cookies are server-only')
         expect(() => secret.get()).toThrow('httpOnly cookies are server-only')
         expect(() => secret.delete()).toThrow('httpOnly cookies are server-only')
@@ -384,8 +384,8 @@ describe('cookies-store', () => {
     })
 
     it('with', async () => {
-      const root = Point0.lets('root', 'root').use(CookiesStore.plugin()).root()
-      const nickCookie = CookiesStore.define('nick')
+      const root = Point0.lets('root', 'root').use(CookieStore.plugin()).root()
+      const nickCookie = CookieStore.define('nick')
       const login = root
         .lets('mutation', 'authorize')
         .input(z.object({ nick: z.string() }))
@@ -473,8 +473,8 @@ describe('cookies-store', () => {
     })
 
     it('use', async () => {
-      const root = Point0.lets('root', 'root').use(CookiesStore.plugin()).root()
-      const nickCookie = CookiesStore.define('nick')
+      const root = Point0.lets('root', 'root').use(CookieStore.plugin()).root()
+      const nickCookie = CookieStore.define('nick')
       const login = root
         .lets('mutation', 'authorize')
         .input(z.object({ nick: z.string() }))

@@ -22,7 +22,7 @@ packages/
   react-dom/    React/DOM bindings on top of core.
   openapi/      OpenAPI generation from points.
   basic-auth/   basic-auth helper points.
-  cookies-store/ cookie-backed store integration.
+  cookie-store/ cookie-backed store integration.
   cors/         CORS helper.
   create-app/   scaffolding CLI (`create-point0-app`-style).
 examples/
