@@ -1,0 +1,20 @@
+import { defineConfig } from 'tsdown'
+
+export default defineConfig({
+  entry: ['src/mount.ts', 'src/router.tsx', 'src/testing.ts'],
+  format: 'esm',
+  platform: 'node',
+  target: 'es2022',
+  outDir: 'dist',
+  clean: true,
+  dts: { resolver: 'tsc' },
+  sourcemap: false,
+  unbundle: true,
+  treeshake: false,
+  outExtensions: () => ({ js: '.js' }),
+  tsconfig: './tsconfig.build.json',
+  deps: {
+    skipNodeModulesBundle: true,
+    neverBundle: ['bun', /^@types\//],
+  },
+})

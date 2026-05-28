@@ -496,7 +496,7 @@ export const extractBunPlugins = async ({
   return await Promise.all(
     bunPluginsArray.map(async (p) => {
       if (typeof p === 'string') {
-        return await import(/* @vite-ignore */ p).then((module) => module.default || module)
+        return await import(/* @preserve */ /* @vite-ignore */ p).then((module) => module.default || module)
       }
       return p
     }),
@@ -584,7 +584,9 @@ export const extractViteConfig = async ({
       return await viteConfig(opts)
     }
     if (typeof viteConfig === 'string') {
-      const imported = await import(/* @vite-ignore */ viteConfig).then((module) => module.default || module)
+      const imported = await import(/* @preserve */ /* @vite-ignore */ viteConfig).then(
+        (module) => module.default || module,
+      )
       if (typeof imported === 'function') {
         return await imported(opts)
       }

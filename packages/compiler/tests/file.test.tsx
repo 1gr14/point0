@@ -2221,7 +2221,11 @@ describe('CompilerFile', () => {
             server: {
               compiler: false,
             },
-            clients: [{ compiler: false }],
+            clients: [
+              {
+                compiler: false,
+              },
+            ],
           })
           "
         `,
@@ -2786,7 +2790,7 @@ describe('CompilerFile', () => {
       // experimental_preserveFormat keeps original whitespace where it can; the substituted
       // `null` lands without space because the original `children: _jsxDEV(...)` arg got
       // replaced in-place using its own token span.
-      expect(result.code).toContain('children:null')
+      expect(result.code).toContain('children: null')
       expect(result.code).not.toContain('client-only-content')
     })
 

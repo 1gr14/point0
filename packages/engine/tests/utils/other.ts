@@ -121,12 +121,6 @@ export const throwOnHelperLogFnCalling = () => {
   }
 }
 
-export const throwOnBundlersLengthNot2 = (bundlers: string[]) => {
-  if (bundlers.length !== 2) {
-    throw new Error('bundlers length is not 2. Forgot uncommenting bundlers in the test file?')
-  }
-}
-
 export const getDirFilesContent = async (dir: string): Promise<string> => {
   const files = await nodeFs.readdir(dir, { recursive: true })
   const isMapFile = (file: string) => file.endsWith('.map')

@@ -16,34 +16,32 @@
     "url": "https://github.com/devp0nt/point0/issues"
   },
   "type": "module",
+  "sideEffects": false,
   "typesVersions": {
     "*": {
       "mount": [
-        "./dist/esm/mount.d.ts"
+        "./dist/mount.d.ts"
       ],
       "router": [
-        "./dist/esm/router.d.ts"
+        "./dist/router.d.ts"
       ],
       "testing": [
-        "./dist/esm/testing.d.ts"
+        "./dist/testing.d.ts"
       ]
     }
   },
   "exports": {
     "./mount": {
-      "types": "./dist/esm/mount.d.ts",
-      "require": "./dist/cjs/mount.cjs",
-      "import": "./dist/esm/mount.js"
+      "types": "./dist/mount.d.ts",
+      "import": "./dist/mount.js"
     },
     "./router": {
-      "types": "./dist/esm/router.d.ts",
-      "require": "./dist/cjs/router.cjs",
-      "import": "./dist/esm/router.js"
+      "types": "./dist/router.d.ts",
+      "import": "./dist/router.js"
     },
     "./testing": {
-      "types": "./dist/esm/testing.d.ts",
-      "require": "./dist/cjs/testing.cjs",
-      "import": "./dist/esm/testing.js"
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
     }
   },
   "files": [
@@ -52,8 +50,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup",
-    "build:watch": "tsup --watch",
+    "build": "tsdown",
+    "build:watch": "tsdown --watch",
     "test": "bun test ./tests",
     "test:watch": "bun test --watch ./tests",
     "types": "tsc --noEmit -p tsconfig.build.json",
@@ -83,8 +81,7 @@
     "wouter": "catalog:",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
-    "esbuild-fix-imports-plugin": "^1.0.22",
-    "tsup": "^8.0.0",
+    "tsdown": "catalog:",
     "typescript": "catalog:"
   },
   "publishConfig": {

@@ -16,21 +16,19 @@
     "url": "https://github.com/devp0nt/point0/issues"
   },
   "type": "module",
-  "types": "./dist/esm/index.d.ts",
-  "main": "./dist/cjs/index.cjs",
-  "module": "./dist/esm/index.js",
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
       "": [
-        "./dist/esm/index.d.ts"
+        "./dist/index.d.ts"
       ]
     }
   },
   "exports": {
     ".": {
-      "types": "./dist/esm/index.d.ts",
-      "require": "./dist/cjs/index.cjs",
-      "import": "./dist/esm/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
@@ -39,8 +37,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup",
-    "build:watch": "tsup --watch",
+    "build": "tsdown",
+    "build:watch": "tsdown --watch",
     "test": "bun test ./tests",
     "test:watch": "bun test --watch ./tests",
     "types": "tsc --noEmit -p tsconfig.build.json",
@@ -60,8 +58,7 @@
     "@scalar/types": "^0.7.6",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
-    "esbuild-fix-imports-plugin": "^1.0.22",
-    "tsup": "^8.0.0",
+    "tsdown": "catalog:",
     "typescript": "catalog:"
   },
   "publishConfig": {

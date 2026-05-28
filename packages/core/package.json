@@ -16,133 +16,117 @@
     "url": "https://github.com/devp0nt/point0/issues"
   },
   "type": "module",
-  "types": "./dist/esm/index.d.ts",
-  "main": "./dist/cjs/index.cjs",
-  "module": "./dist/esm/index.js",
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
       "": [
-        "./dist/esm/index.d.ts"
+        "./dist/index.d.ts"
       ],
       "client-only": [
-        "./dist/esm/client-only.d.ts"
+        "./dist/client-only.d.ts"
       ],
       "server-only": [
-        "./dist/esm/server-only.d.ts"
+        "./dist/server-only.d.ts"
       ],
       "virtual": [
-        "./dist/esm/virtual.d.ts"
+        "./dist/virtual.d.ts"
       ],
       "effects": [
-        "./dist/esm/effects.d.ts"
+        "./dist/effects.d.ts"
       ],
       "request0": [
-        "./dist/esm/request0.d.ts"
+        "./dist/request0.d.ts"
       ],
       "navigation": [
-        "./dist/esm/navigation.d.ts"
+        "./dist/navigation.d.ts"
       ],
       "unhead": [
-        "./dist/esm/unhead.d.ts"
+        "./dist/unhead.d.ts"
       ],
       "schema/utils": [
-        "./dist/esm/schema/utils.d.ts"
+        "./dist/schema/utils.d.ts"
       ],
       "schema/arktype": [
-        "./dist/esm/schema/arktype.d.ts"
+        "./dist/schema/arktype.d.ts"
       ],
       "schema/typebox": [
-        "./dist/esm/schema/typebox.d.ts"
+        "./dist/schema/typebox.d.ts"
       ],
       "schema/valibot": [
-        "./dist/esm/schema/valibot.d.ts"
+        "./dist/schema/valibot.d.ts"
       ],
       "schema/yup": [
-        "./dist/esm/schema/yup.d.ts"
+        "./dist/schema/yup.d.ts"
       ],
       "schema/zod": [
-        "./dist/esm/schema/zod.d.ts"
+        "./dist/schema/zod.d.ts"
       ],
       "schema/superstruct": [
-        "./dist/esm/schema/superstruct.d.ts"
+        "./dist/schema/superstruct.d.ts"
       ]
     }
   },
   "exports": {
     ".": {
-      "types": "./dist/esm/index.d.ts",
-      "require": "./dist/cjs/index.cjs",
-      "import": "./dist/esm/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./client-only": {
-      "types": "./dist/esm/client-only.d.ts",
-      "require": "./dist/cjs/client-only.cjs",
-      "import": "./dist/esm/client-only.js"
+      "types": "./dist/client-only.d.ts",
+      "import": "./dist/client-only.js"
     },
     "./server-only": {
-      "types": "./dist/esm/server-only.d.ts",
-      "require": "./dist/cjs/server-only.cjs",
-      "import": "./dist/esm/server-only.js"
+      "types": "./dist/server-only.d.ts",
+      "import": "./dist/server-only.js"
     },
     "./virtual": {
-      "types": "./dist/esm/virtual.d.ts",
-      "require": "./dist/cjs/virtual.cjs",
-      "import": "./dist/esm/virtual.js"
+      "types": "./dist/virtual.d.ts",
+      "import": "./dist/virtual.js"
     },
     "./effects": {
-      "types": "./dist/esm/effects.d.ts",
-      "require": "./dist/cjs/effects.cjs",
-      "import": "./dist/esm/effects.js"
+      "types": "./dist/effects.d.ts",
+      "import": "./dist/effects.js"
     },
     "./request0": {
-      "types": "./dist/esm/request0.d.ts",
-      "require": "./dist/cjs/request0.cjs",
-      "import": "./dist/esm/request0.js"
+      "types": "./dist/request0.d.ts",
+      "import": "./dist/request0.js"
     },
     "./navigation": {
-      "types": "./dist/esm/navigation.d.ts",
-      "require": "./dist/cjs/navigation.cjs",
-      "import": "./dist/esm/navigation.js"
+      "types": "./dist/navigation.d.ts",
+      "import": "./dist/navigation.js"
     },
     "./unhead": {
-      "types": "./dist/esm/unhead.d.ts",
-      "require": "./dist/cjs/unhead.cjs",
-      "import": "./dist/esm/unhead.js"
+      "types": "./dist/unhead.d.ts",
+      "import": "./dist/unhead.js"
     },
     "./schema/utils": {
-      "types": "./dist/esm/schema/utils.d.ts",
-      "require": "./dist/cjs/schema/utils.cjs",
-      "import": "./dist/esm/schema/utils.js"
+      "types": "./dist/schema/utils.d.ts",
+      "import": "./dist/schema/utils.js"
     },
     "./schema/arktype": {
-      "types": "./dist/esm/schema/arktype.d.ts",
-      "require": "./dist/cjs/schema/arktype.cjs",
-      "import": "./dist/esm/schema/arktype.js"
+      "types": "./dist/schema/arktype.d.ts",
+      "import": "./dist/schema/arktype.js"
     },
     "./schema/typebox": {
-      "types": "./dist/esm/schema/typebox.d.ts",
-      "require": "./dist/cjs/schema/typebox.cjs",
-      "import": "./dist/esm/schema/typebox.js"
+      "types": "./dist/schema/typebox.d.ts",
+      "import": "./dist/schema/typebox.js"
     },
     "./schema/valibot": {
-      "types": "./dist/esm/schema/valibot.d.ts",
-      "require": "./dist/cjs/schema/valibot.cjs",
-      "import": "./dist/esm/schema/valibot.js"
+      "types": "./dist/schema/valibot.d.ts",
+      "import": "./dist/schema/valibot.js"
     },
     "./schema/yup": {
-      "types": "./dist/esm/schema/yup.d.ts",
-      "require": "./dist/cjs/schema/yup.cjs",
-      "import": "./dist/esm/schema/yup.js"
+      "types": "./dist/schema/yup.d.ts",
+      "import": "./dist/schema/yup.js"
     },
     "./schema/zod": {
-      "types": "./dist/esm/schema/zod.d.ts",
-      "require": "./dist/cjs/schema/zod.cjs",
-      "import": "./dist/esm/schema/zod.js"
+      "types": "./dist/schema/zod.d.ts",
+      "import": "./dist/schema/zod.js"
     },
     "./schema/superstruct": {
-      "types": "./dist/esm/schema/superstruct.d.ts",
-      "require": "./dist/cjs/schema/superstruct.cjs",
-      "import": "./dist/esm/schema/superstruct.js"
+      "types": "./dist/schema/superstruct.d.ts",
+      "import": "./dist/schema/superstruct.js"
     }
   },
   "files": [
@@ -151,8 +135,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup",
-    "build:watch": "tsup --watch",
+    "build": "tsdown",
+    "build:watch": "tsdown --watch",
     "test": "bun test ./tests",
     "test:watch": "bun test --watch ./tests",
     "types": "tsc --noEmit -p tsconfig.build.json",
@@ -188,11 +172,10 @@
     "@unhead/react": "catalog:",
     "@valibot/to-json-schema": "^1.6.0",
     "arktype": "catalog:",
-    "esbuild-fix-imports-plugin": "^1.0.22",
     "react": "catalog:",
     "superjson": "^2.2.6",
     "superstruct": "catalog:",
-    "tsup": "^8.0.0",
+    "tsdown": "catalog:",
     "typescript": "catalog:",
     "unhead": "catalog:",
     "valibot": "catalog:",

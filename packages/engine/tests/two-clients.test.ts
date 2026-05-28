@@ -1,11 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { Engine } from '../src/engine.js'
+import { bundlers } from './utils/focus.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
-import { TestProjectTwoClientFactory } from './utils/project.two-clients.js'
 import type {
-  TestProjectTwoClientFactoryCreateProjectOptions,
   TestProjectTwoClient,
+  TestProjectTwoClientFactoryCreateProjectOptions,
 } from './utils/project.two-clients.js'
+import { TestProjectTwoClientFactory } from './utils/project.two-clients.js'
 
 setDefaultTimeout(20000)
 
@@ -40,8 +41,6 @@ function wrp(
   }
 }
 
-const bundlers = ['bun', 'vite']
-
 describe('two-clients', () => {
   beforeAll(async () => {
     await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
@@ -50,10 +49,9 @@ describe('two-clients', () => {
 
   afterAll(async () => {
     void tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
-    // throwOnBundlersLengthNot2(bundlers)
   })
 
-  describe.each(bundlers as ['bun', 'vite'])('%s', (bundler) => {
+  describe.each(bundlers)('%s', (bundler) => {
     const vites =
       bundler === 'vite'
         ? {

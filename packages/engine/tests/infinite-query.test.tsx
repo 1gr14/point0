@@ -26,7 +26,7 @@ describe('infinityQuery', () => {
       })
       .root()
 
-  it.concurrent('simple', async () => {
+  it('simple', async () => {
     const root = createRoot()
     const q = root
       .lets('infiniteQuery', 'test')
@@ -133,7 +133,7 @@ describe('infinityQuery', () => {
       `)
   })
 
-  it.concurrent('with loader and clientLoader', async () => {
+  it('with loader and clientLoader', async () => {
     const root = createRoot()
     const q = root
       .lets('infiniteQuery', 'test')
@@ -238,7 +238,7 @@ describe('infinityQuery', () => {
       `)
   })
 
-  it.concurrent('with page loader and query loader', async () => {
+  it('with page loader and query loader', async () => {
     const root = createRoot()
     const q = root
       .lets('query', 'test')
@@ -283,7 +283,7 @@ describe('infinityQuery', () => {
       `)
   })
 
-  it.concurrent('with clientLoader', async () => {
+  it('with clientLoader', async () => {
     const root = createRoot()
     const q = root
       .lets('query', 'test')
@@ -318,7 +318,7 @@ describe('infinityQuery', () => {
       `)
   })
 
-  it.concurrent('with loader and clientLoader', async () => {
+  it('with loader and clientLoader', async () => {
     const root = createRoot()
     const q = root
       .lets('query', 'test')
@@ -358,7 +358,7 @@ describe('infinityQuery', () => {
       `)
   })
 
-  it.concurrent('with input and loader', async () => {
+  it('with input and loader', async () => {
     const root = createRoot()
     const q = root
       .lets('query', 'test')
@@ -394,7 +394,7 @@ describe('infinityQuery', () => {
       `)
   })
 
-  it.concurrent('with input and clientLoader', async () => {
+  it('with input and clientLoader', async () => {
     const root = createRoot()
     const q = root
       .lets('query', 'test')
@@ -430,7 +430,7 @@ describe('infinityQuery', () => {
       `)
   })
 
-  it.concurrent('with input and clientLoader and loader', async () => {
+  it('with input and clientLoader and loader', async () => {
     const root = createRoot()
     const q = root
       .lets('query', 'test')
@@ -468,7 +468,7 @@ describe('infinityQuery', () => {
   })
 
   describe('helpers', () => {
-    it.concurrent('infinite query helper methods', async () => {
+    it('infinite query helper methods', async () => {
       const root = createRoot()
       const q = root
         .lets('infiniteQuery', 'helpers')

@@ -5,6 +5,7 @@ import type {
   TestProjectOneClient,
   TestProjectOneClientFactoryCreateProjectOptions,
 } from './utils/project.one-client.js'
+import { bundlers } from './utils/focus.js'
 
 setDefaultTimeout(20000)
 
@@ -15,9 +16,7 @@ const tpf = TestProjectOneClientFactory.create({
 
 type ItFn = (done: (err?: unknown) => void) => void | Promise<void>
 type ProcessMode = 'dev' | 'build'
-type Bundler = 'bun' | 'vite'
 
-const bundlers: Bundler[] = ['bun', 'vite']
 const processModes: ProcessMode[] = ['dev', 'build']
 // const bundler = 'bun' as Bundler
 
@@ -103,7 +102,6 @@ describe('publicdir', () => {
 
   afterAll(async () => {
     void tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: false })
-    // throwOnBundlersLengthNot2(bundlers)
   })
 
   describe.each(bundlers)('%s', (bundler) => {

@@ -139,6 +139,65 @@ export type NavLinkStateOptions =
       unmatched: true
     }
 
+export type LinkRouteProps<
+  TRoutes extends RoutesPretty,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+> = {
+  [TRouteName in ExtractRoutesKeys<TRoutes>]: {
+    route: TRouteName
+  } & (IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
+    ? { input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }
+    : { input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }) &
+    LinkAsChildProps &
+    HookNavigationOptions<TBaseLocationHook> &
+    SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>>
+}[ExtractRoutesKeys<TRoutes>]
+
+export type LinkComponentProps<
+  TRoutes extends RoutesPretty,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+> =
+  | LinkRouteProps<TRoutes, TBaseLocationHook>
+  | ({ to?: string; href?: undefined } & LinkAsChildProps &
+      HookNavigationOptions<TBaseLocationHook> &
+      SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>>)
+  | ({ href?: string; to?: undefined } & LinkAsChildProps &
+      HookNavigationOptions<TBaseLocationHook> &
+      SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>>)
+
+export type CreatedLink<
+  TRoutes extends RoutesPretty,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+> = (props: LinkComponentProps<TRoutes, TBaseLocationHook>) => React.ReactElement
+
+export type NavLinkRouteProps<
+  TRoutes extends RoutesPretty,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+> = {
+  [TRouteName in ExtractRoutesKeys<TRoutes>]: {
+    route: TRouteName
+  } & (IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
+    ? { input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }
+    : { input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }) &
+    NavLinkAsChildProps &
+    HookNavigationOptions<TBaseLocationHook> &
+    NavLinkClassNameProps &
+    SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>>
+}[ExtractRoutesKeys<TRoutes>]
+
+export type NavLinkComponentProps<
+  TRoutes extends RoutesPretty,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+> =
+  | NavLinkRouteProps<TRoutes, TBaseLocationHook>
+  | ({ to: string } & NavLinkProps<TBaseLocationHook>)
+  | ({ href: string } & NavLinkProps<TBaseLocationHook>)
+
+export type CreatedNavLink<
+  TRoutes extends RoutesPretty,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+> = (props: NavLinkComponentProps<TRoutes, TBaseLocationHook>) => React.ReactElement
+
 const _resolveFinalTo = <TRoutes extends RoutesPretty>({
   routes,
   routeName,
@@ -480,27 +539,8 @@ export const createLink = <
 }: {
   routes: TRoutes
   hook?: TBaseLocationHook
-}) => {
-  type LinkRouteProps = {
-    [TRouteName in ExtractRoutesKeys<TRoutes>]: {
-      route: TRouteName
-    } & (IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
-      ? { input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }
-      : { input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }) &
-      LinkAsChildProps &
-      HookNavigationOptions<TBaseLocationHook> &
-      SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>>
-  }[ExtractRoutesKeys<TRoutes>]
-  function Link(
-    props:
-      | LinkRouteProps
-      | ({ to?: string; href?: undefined } & LinkAsChildProps &
-          HookNavigationOptions<TBaseLocationHook> &
-          SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>>)
-      | ({ href?: string; to?: undefined } & LinkAsChildProps &
-          HookNavigationOptions<TBaseLocationHook> &
-          SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>>),
-  ): React.ReactElement
+}): CreatedLink<TRoutes, TBaseLocationHook> => {
+  function Link(props: LinkComponentProps<TRoutes, TBaseLocationHook>): React.ReactElement
   function Link(props: {
     to?: string
     href?: string
@@ -537,24 +577,8 @@ export const createNavLink = <
 }: {
   routes: TRoutes
   hook?: TBaseLocationHook
-}) => {
-  type NavLinkRouteProps = {
-    [TRouteName in ExtractRoutesKeys<TRoutes>]: {
-      route: TRouteName
-    } & (IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
-      ? { input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }
-      : { input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }) &
-      NavLinkAsChildProps &
-      HookNavigationOptions<TBaseLocationHook> &
-      NavLinkClassNameProps &
-      SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>>
-  }[ExtractRoutesKeys<TRoutes>]
-  function NavLink(
-    props:
-      | NavLinkRouteProps
-      | ({ to: string } & NavLinkProps<TBaseLocationHook>)
-      | ({ href: string } & NavLinkProps<TBaseLocationHook>),
-  ): React.ReactElement
+}): CreatedNavLink<TRoutes, TBaseLocationHook> => {
+  function NavLink(props: NavLinkComponentProps<TRoutes, TBaseLocationHook>): React.ReactElement
   function NavLink(props: {
     to?: string
     href?: string

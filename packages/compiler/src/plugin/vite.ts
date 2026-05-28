@@ -54,6 +54,10 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
           map: true,
         })
 
+        if (compiler.side === 'client' && normalizedId.includes('super-store')) {
+          console.log('AAAAA', result.code)
+        }
+
         if (!result.modified) return null
 
         return {

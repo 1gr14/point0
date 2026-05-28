@@ -180,12 +180,18 @@ export default root.lets.page('/idea').loader(() => ({ ok: true })).page(() => <
           expect(await toText(result.code)).toMatchInlineSnapshot(`
 "import { Point0 } from '@point0/core'
 export const root = Point0.lets('root', 'root')
-  .ctx({ x: 1 })
-  .ctx({ y: 2 })
+  .ctx({
+    x: 1,
+  })
+  .ctx({
+    y: 2,
+  })
   .root()
 export default root
   .lets('page', 'lets-sugar-default', '/idea')
-  .loader(() => ({ ok: true }))
+  .loader(() => ({
+    ok: true,
+  }))
   .page()
 "
 `)

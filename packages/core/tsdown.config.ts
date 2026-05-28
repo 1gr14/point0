@@ -1,7 +1,6 @@
-import { fixImportsPlugin } from 'esbuild-fix-imports-plugin'
-import { defineConfig, type Options } from 'tsup'
+import { defineConfig } from 'tsdown'
 
-const general = {
+export default defineConfig({
   entry: [
     'src/schema/arktype.ts',
     'src/schema/typebox.ts',
@@ -35,30 +34,19 @@ const general = {
     'src/utils.ts',
     'src/virtual.ts',
   ],
-  clean: false,
-  dts: true,
-  sourcemap: false,
-  splitting: false,
-  minify: false,
-  target: 'es2022',
-  external: ['bun:test'],
-  treeshake: true,
-  bundle: false,
-  outExtension: ({ format }) => ({ js: format === 'cjs' ? '.cjs' : '.js' }),
-  esbuildPlugins: [fixImportsPlugin()],
+  format: 'esm',
   platform: 'node',
+  target: 'es2022',
+  outDir: 'dist',
+  clean: true,
+  dts: { resolver: 'tsc' },
+  sourcemap: false,
+  unbundle: true,
+  treeshake: true,
+  outExtensions: () => ({ js: '.js' }),
   tsconfig: './tsconfig.build.json',
-} satisfies Options
-
-export default defineConfig([
-  {
-    ...general,
-    format: 'esm',
-    outDir: 'dist/esm',
+  deps: {
+    skipNodeModulesBundle: true,
+    neverBundle: ['bun', /^@types\//],
   },
-  {
-    ...general,
-    format: 'cjs',
-    outDir: 'dist/cjs',
-  },
-])
+})

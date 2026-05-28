@@ -58,20 +58,17 @@ normalize scroll restoration (it is trash now)
 
 
 # Runtime
+---
 ? build: {watch}, dev: {watch}, generate: {watch}
 ? Из компилера не учитывать импорты в которых только тайп при импорт протекшене (они сами удалятся)
+optimize compiler more, do it faster
 
 
 
 # Compiler
+---
 ? Попробовать не убирать тайпскрипт, а отменить экспериментальное сохранение синтаксиса
 ? Тайпскрипт только при билде не вырезать, а так вырезать
-
-move to babel8
-
-
-# esm only
-bun build:watch do better
 
 
 
@@ -822,7 +819,6 @@ parallel fake client tests (problem here with testing libraries itself)
 Передавать рендер функцию в энжину, чтобы ртл не воряала, и использовать в рендер файле
 В тестах рендер по умолчанию ждёт пока в квериклиенте не будет не разрезолвленных кверей
 bun run test-no-log (trhow error if any .logSomething exists)
-throwOnBundlersLengthNot2 → to eslintplugin
 @point0/react-dom/testing для всех
 Кли тесты команд с названиями реальных команд, а отдельно тесты на билд также сделать через сам скрипт
 ? В элемент вьюер добавить не урл а экшон и туда может прописать

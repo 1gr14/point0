@@ -52,7 +52,8 @@
       "vite-plugin-commonjs": "^0.10.4",
       "vite-plugin-svgr": "^5.2.0",
       "vite-tsconfig-paths": "^6.1.1",
-      "babel-plugin-react-compiler": "^1.0.0"
+      "babel-plugin-react-compiler": "^1.0.0",
+      "tsdown": "^0.22.0"
     }
   },
   "files": [
@@ -67,8 +68,8 @@
   },
   "scripts": {
     "dev": "bun run build:watch",
-    "build": "bun --filter '@point0/core' build && bun --filter '@point0/compiler' build && bun --filter '@point0/engine' build && bun --filter '@point0/react-dom' build && bun --filter '@point0/cookies-store' build && bun --filter '@point0/cors' build && bun --filter '@point0/openapi' build && bun --filter '@point0/basic-auth' build && bun --filter '@point0/create-app' build",
-    "build:watch": "bun run --parallel --if-present --filter '@point0/*' build:watch",
+    "build": "bun --filter './packages/*' build",
+    "build:watch": "bun run --parallel --if-present --filter './packages/*' build:watch",
     "testa": "bun run scripts/test-parallel.ts",
     "testap": "cross-env SLOW_TESTS_NOT_SLOW=1 bun run scripts/test-parallel.ts",
     "tests": "cross-env SLOW_TESTS_ONLY=1 bun run scripts/test-parallel.ts",
@@ -118,6 +119,6 @@
   },
   "engines": {
     "bun": ">=1.0.0",
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

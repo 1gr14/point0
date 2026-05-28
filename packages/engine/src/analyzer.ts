@@ -172,7 +172,7 @@ export class Analyzer {
           return await source()
         }
         if (typeof source === 'string') {
-          const imported = await import(/* @vite-ignore */ source)
+          const imported = await import(/* @preserve */ /* @vite-ignore */ source)
           if (imported.default) {
             return imported.default
           }

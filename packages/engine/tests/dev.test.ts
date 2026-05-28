@@ -1,13 +1,13 @@
+import assert from 'assert'
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { Engine } from '../src/engine.js'
-import { throwOnBundlersLengthNot2 } from './utils/other.js'
+import { bundlers } from './utils/focus.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
 import type {
   TestProjectOneClient,
   TestProjectOneClientFactoryCreateProjectOptions,
 } from './utils/project.one-client.js'
 import { TestProjectOneClientFactory } from './utils/project.one-client.js'
-import assert from 'assert'
 
 setDefaultTimeout(20000)
 
@@ -52,8 +52,6 @@ function wrp(
   }
 }
 
-const bundlers = ['bun', 'vite']
-
 describe('dev', () => {
   beforeAll(async () => {
     await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
@@ -62,7 +60,6 @@ describe('dev', () => {
 
   afterAll(async () => {
     void tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
-    // throwOnBundlersLengthNot2(bundlers)
   })
 
   describe.each(bundlers)('%s', (bundler) => {
@@ -368,7 +365,8 @@ describe('dev', () => {
       },
     )
 
-    it(
+    // https://github.com/oven-sh/bun/issues/6173
+    it.if(bundler !== 'bun')(
       'keeps error stack',
       wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp }) => {
         await tp.waitPortsFree()

@@ -20,7 +20,7 @@ describe('query', () => {
       })
       .root()
 
-  it.concurrent(
+  it(
     'simple',
     async () => {
       const root = createRoot()
@@ -76,7 +76,7 @@ describe('query', () => {
     { retry: 3 },
   )
 
-  it.concurrent(
+  it(
     'with page loader and query loader',
     async () => {
       const root = createRoot()
@@ -125,7 +125,7 @@ describe('query', () => {
     { retry: 3 },
   )
 
-  it.concurrent(
+  it(
     'with clientLoader',
     async () => {
       const root = createRoot()
@@ -164,7 +164,7 @@ describe('query', () => {
     { retry: 3 },
   )
 
-  it.concurrent(
+  it(
     'with loader and clientLoader',
     async () => {
       const root = createRoot()
@@ -208,7 +208,7 @@ describe('query', () => {
     { retry: 3 },
   )
 
-  it.concurrent(
+  it(
     'with input and loader',
     async () => {
       const root = createRoot()
@@ -248,7 +248,7 @@ describe('query', () => {
     { retry: 3 },
   )
 
-  it.concurrent(
+  it(
     'with input and clientLoader',
     async () => {
       const root = createRoot()
@@ -288,7 +288,7 @@ describe('query', () => {
     { retry: 3 },
   )
 
-  it.concurrent(
+  it(
     'with input and clientLoader and loader',
     async () => {
       const root = createRoot()
@@ -329,7 +329,7 @@ describe('query', () => {
     { retry: 3 },
   )
 
-  it.concurrent(
+  it(
     'can be not enabled',
     async () => {
       const root = createRoot()
@@ -427,7 +427,7 @@ describe('query', () => {
   )
 
   describe('helpers', () => {
-    it.concurrent('query helper methods', async () => {
+    it('query helper methods', async () => {
       const root = createRoot()
       const q = root
         .lets('query', 'helpers')
@@ -469,7 +469,7 @@ describe('query', () => {
       expect(q.getQueriesCache(true, options)).toEqual([])
     })
 
-    it.concurrent('getQueryPredicate filters query cache by tags', async () => {
+    it('getQueryPredicate filters query cache by tags', async () => {
       const root = createRoot()
       const qa = root
         .lets('query', 'helpers-tag-a')

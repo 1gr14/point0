@@ -16,151 +16,134 @@
     "url": "https://github.com/devp0nt/point0/issues"
   },
   "type": "module",
+  "sideEffects": false,
   "bin": {
-    "point0": "./dist/esm/cli.js",
-    "point0-mcp": "./dist/esm/mcp.js"
+    "point0": "./dist/cli.js",
+    "point0-mcp": "./dist/mcp.js"
   },
-  "types": "./dist/esm/index.d.ts",
-  "main": "./dist/cjs/index.cjs",
-  "module": "./dist/esm/index.js",
+  "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
       "": [
-        "./dist/esm/index.d.ts"
+        "./dist/index.d.ts"
       ],
       "analyzer": [
-        "./dist/esm/analyzer.d.ts"
+        "./dist/analyzer.d.ts"
       ],
       "cli": [
-        "./dist/esm/cli.d.ts"
+        "./dist/cli.d.ts"
       ],
       "client": [
-        "./dist/esm/client.d.ts"
+        "./dist/client.d.ts"
       ],
       "config": [
-        "./dist/esm/config.d.ts"
+        "./dist/config.d.ts"
       ],
       "executor": [
-        "./dist/esm/executor.d.ts"
+        "./dist/executor.d.ts"
       ],
       "fake-client": [
-        "./dist/esm/fake-client.d.ts"
+        "./dist/fake-client.d.ts"
       ],
       "fetcher": [
-        "./dist/esm/fetcher.d.ts"
+        "./dist/fetcher.d.ts"
       ],
       "generator": [
-        "./dist/esm/generator.d.ts"
+        "./dist/generator.d.ts"
       ],
       "mcp": [
-        "./dist/esm/mcp.d.ts"
+        "./dist/mcp.d.ts"
       ],
       "port": [
-        "./dist/esm/port.d.ts"
+        "./dist/port.d.ts"
       ],
       "meta": [
-        "./dist/esm/meta.d.ts"
+        "./dist/meta.d.ts"
       ],
       "publicdir": [
-        "./dist/esm/publicdir.d.ts"
+        "./dist/publicdir.d.ts"
       ],
       "render": [
-        "./dist/esm/render.d.ts"
+        "./dist/render.d.ts"
       ],
       "server-points": [
-        "./dist/esm/server-points.d.ts"
+        "./dist/server-points.d.ts"
       ],
       "server": [
-        "./dist/esm/server.d.ts"
+        "./dist/server.d.ts"
       ],
       "utils": [
-        "./dist/esm/utils.d.ts"
+        "./dist/utils.d.ts"
       ],
       "watcher": [
-        "./dist/esm/watcher.d.ts"
+        "./dist/watcher.d.ts"
       ]
     }
   },
   "exports": {
     ".": {
-      "types": "./dist/esm/index.d.ts",
-      "require": "./dist/cjs/index.cjs",
-      "import": "./dist/esm/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./analyzer": {
-      "types": "./dist/esm/analyzer.d.ts",
-      "require": "./dist/cjs/analyzer.cjs",
-      "import": "./dist/esm/analyzer.js"
+      "types": "./dist/analyzer.d.ts",
+      "import": "./dist/analyzer.js"
     },
     "./client": {
-      "types": "./dist/esm/client.d.ts",
-      "require": "./dist/cjs/client.cjs",
-      "import": "./dist/esm/client.js"
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js"
     },
     "./config": {
-      "types": "./dist/esm/config.d.ts",
-      "require": "./dist/cjs/config.cjs",
-      "import": "./dist/esm/config.js"
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
     },
     "./executor": {
-      "types": "./dist/esm/executor.d.ts",
-      "require": "./dist/cjs/executor.cjs",
-      "import": "./dist/esm/executor.js"
+      "types": "./dist/executor.d.ts",
+      "import": "./dist/executor.js"
     },
     "./fake-client": {
-      "types": "./dist/esm/fake-client.d.ts",
-      "require": "./dist/cjs/fake-client.cjs",
-      "import": "./dist/esm/fake-client.js"
+      "types": "./dist/fake-client.d.ts",
+      "import": "./dist/fake-client.js"
     },
     "./fetcher": {
-      "types": "./dist/esm/fetcher.d.ts",
-      "require": "./dist/cjs/fetcher.cjs",
-      "import": "./dist/esm/fetcher.js"
+      "types": "./dist/fetcher.d.ts",
+      "import": "./dist/fetcher.js"
     },
     "./generator": {
-      "types": "./dist/esm/generator.d.ts",
-      "require": "./dist/cjs/generator.cjs",
-      "import": "./dist/esm/generator.js"
+      "types": "./dist/generator.d.ts",
+      "import": "./dist/generator.js"
     },
     "./port": {
-      "types": "./dist/esm/port.d.ts",
-      "require": "./dist/cjs/port.cjs",
-      "import": "./dist/esm/port.js"
+      "types": "./dist/port.d.ts",
+      "import": "./dist/port.js"
     },
     "./meta": {
-      "types": "./dist/esm/meta.d.ts",
-      "require": "./dist/cjs/meta.cjs",
-      "import": "./dist/esm/meta.js"
+      "types": "./dist/meta.d.ts",
+      "import": "./dist/meta.js"
     },
     "./publicdir": {
-      "types": "./dist/esm/publicdir.d.ts",
-      "require": "./dist/cjs/publicdir.cjs",
-      "import": "./dist/esm/publicdir.js"
+      "types": "./dist/publicdir.d.ts",
+      "import": "./dist/publicdir.js"
     },
     "./render": {
-      "types": "./dist/esm/render.d.ts",
-      "require": "./dist/cjs/render.cjs",
-      "import": "./dist/esm/render.js"
+      "types": "./dist/render.d.ts",
+      "import": "./dist/render.js"
     },
     "./server-points": {
-      "types": "./dist/esm/server-points.d.ts",
-      "require": "./dist/cjs/server-points.cjs",
-      "import": "./dist/esm/server-points.js"
+      "types": "./dist/server-points.d.ts",
+      "import": "./dist/server-points.js"
     },
     "./server": {
-      "types": "./dist/esm/server.d.ts",
-      "require": "./dist/cjs/server.cjs",
-      "import": "./dist/esm/server.js"
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
     },
     "./utils": {
-      "types": "./dist/esm/utils.d.ts",
-      "require": "./dist/cjs/utils.cjs",
-      "import": "./dist/esm/utils.js"
+      "types": "./dist/utils.d.ts",
+      "import": "./dist/utils.js"
     },
     "./watcher": {
-      "types": "./dist/esm/watcher.d.ts",
-      "require": "./dist/cjs/watcher.cjs",
-      "import": "./dist/esm/watcher.js"
+      "types": "./dist/watcher.d.ts",
+      "import": "./dist/watcher.js"
     }
   },
   "files": [
@@ -169,8 +152,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup",
-    "build:watch": "tsup --watch",
+    "build": "tsdown",
+    "build:watch": "tsdown --watch",
     "test": "bun test ./tests",
     "test:watch": "bun test --watch ./tests",
     "types": "tsc --noEmit -p tsconfig.build.json",
@@ -224,11 +207,10 @@
     "@types/minimatch": "^6.0.0",
     "@types/node": "^20.0.0",
     "@types/qs": "^6.14.0",
-    "esbuild-fix-imports-plugin": "^1.0.22",
     "happy-dom": "20.3.0",
     "lodash": "^4.17.21",
     "playwright": "^1.57.0",
-    "tsup": "^8.0.0",
+    "tsdown": "catalog:",
     "typescript": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "vite": "catalog:",

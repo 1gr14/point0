@@ -47,6 +47,14 @@ const minifyGuardedExpressions = ((minifyGuardedExpressionsModule as any).defaul
   minifyGuardedExpressionsModule) as typeof minifyGuardedExpressionsModule
 const minifyDeadCodeElimination = ((minifyDeadCodeEliminationModule as any).default ??
   minifyDeadCodeEliminationModule) as typeof minifyDeadCodeEliminationModule
+
+// Matches third-party (node_modules) and framework-compiled workspace output (packages/<pkg>/dist/).
+// User babel plugins like react-compiler should never touch these — they're either published
+// packages or already-emitted framework code, and re-transforming risks breaking the output shape.
+
+// const nonUserCodePathRegex = /(?:[\\/]node_modules[\\/]|[\\/]packages[\\/][^\\/]+[\\/]dist[\\/])/
+// const isNonUserCodePath = (abs: string): boolean => nonUserCodePathRegex.test(abs)
+
 const presetTypescript = ((presetTypescriptModule as any).default ??
   presetTypescriptModule) as typeof presetTypescriptModule
 
@@ -505,24 +513,23 @@ export class CompilerFile<THasContent extends boolean> {
     // for the intermediate, then chain it with the previously captured map1
     // (intermediate → original) so the inline source map ends up mapping final → original.
     const generatorSourceLabel = this._preUserBabelMap ? this.intermediateSourceLabel : this.abs
-    // experimental_preserveFormat keeps original whitespace/comment placement by re-using
-    // spans of the source text for unmodified nodes — critical for things like
-    // `import(/* @vite-ignore */ x)` where vite's import-analysis only suppresses its warning
-    // when the comment is positioned exactly inside the parens with no extra reformatting.
-    //
-    // We disable it ONLY when applyUserBabelPlugins regenerated the AST: in that path the
-    // ast's loc info refers to intermediate text that may no longer be valid for the
-    // format-preserving codepath (e.g. react-compiler-emitted TS type members can come out
-    // syntactically broken with the flag on).
-    const canPreserveFormat = !this._preUserBabelMap
+    // We disable it whenever the AST has been mutated (user babel plugins OR any of our own
+    // shake/optimize passes): once nodes are added or replaced, their loc info no longer maps
+    // cleanly into the source text, and preserveFormat can emit syntactically broken JS — e.g.
+    // collapsing `}); else return` into `})else return` after rolldown-style brace elision is
+    // shaken or react-compiler-emitted TS type members come out invalid.
+    // const canPreserveFormat = !this._preUserBabelMap && !this.modified
+
     const { code, map } = babelGenerator(
       this.ast,
       {
         sourceFileName: generatorSourceLabel,
         ...(sourceMaps ? { sourceMaps: true } : {}),
-        ...(canPreserveFormat
-          ? ({ retainLines: true, experimental_preserveFormat: true } as unknown as Record<string, unknown>)
-          : {}),
+        // https://github.com/oven-sh/bun/issues/6173
+        // ...({ experimental_preserveFormat: true, retainLines: true } as unknown as Record<string, unknown>),
+        // ...(canPreserveFormat
+        //   ? ({ retainLines: true, experimental_preserveFormat: true } as unknown as Record<string, unknown>)
+        //   : { compact: false, concise: false, minified: false, retainLines: false }),
       },
       this.content,
     )
@@ -598,7 +605,7 @@ export class CompilerFile<THasContent extends boolean> {
             // don't reshape expression-bodied arrows when there's nothing to actually inject.
             if (
               t.isBlockStatement(arg.body) &&
-              arg.body.directives.some((d) => d.value.value === 'use memo')
+              arg.body.directives.some((d) => d.value.value === 'use memo' || d.value.value === 'no memo')
             ) {
               break
             }
@@ -607,7 +614,7 @@ export class CompilerFile<THasContent extends boolean> {
               arg.body = t.blockStatement([t.returnStatement(arg.body)])
             }
             const block = arg.body
-            const hasUseMemo = block.directives.some((d) => d.value.value === 'use memo')
+            const hasUseMemo = block.directives.some((d) => d.value.value === 'use memo' || d.value.value === 'no memo')
             if (!hasUseMemo) {
               block.directives.unshift(t.directive(t.directiveLiteral('use memo')))
               modified = true
@@ -657,6 +664,16 @@ export class CompilerFile<THasContent extends boolean> {
       this._applyUserBabelPlugins = { ok: true, errors, modified }
       return this._applyUserBabelPlugins
     }
+
+    // Don't run user babel plugins (e.g. react-compiler) on third-party or framework-compiled
+    // code: node_modules contains already-published packages, and packages/<pkg>/dist/ is
+    // workspace framework output. Re-transforming them is wasted work and risks breaking
+    // already-emitted code shapes (e.g. rolldown's brace-elided if/else).
+    // if (isNonUserCodePath(this.abs)) {
+    //   this._applyUserBabelPlugins = { ok: true, errors, modified }
+    //   return this._applyUserBabelPlugins
+    // }
+
     try {
       // Regenerate code from the current AST and re-parse before running user babel plugins.
       // Earlier passes (shakeForEnv, optimizeGuardedExpressions, etc.) mutate the AST in place,
@@ -669,11 +686,7 @@ export class CompilerFile<THasContent extends boolean> {
       // has been mutated it can emit syntactically broken text (especially around TS types).
       //
       // Collect a source map for this regenerate step so toCode() can chain it.
-      const preUserBabelResult = babelGenerator(
-        this.ast,
-        { sourceFileName: this.abs, sourceMaps: true },
-        this.content,
-      )
+      const preUserBabelResult = babelGenerator(this.ast, { sourceFileName: this.abs, sourceMaps: true }, this.content)
       const regeneratedCode = preUserBabelResult.code
       // Mirror the primary parse()'s syntax plugin list so we can re-parse files that use
       // decorators / class private fields / etc. without throwing. We deliberately omit

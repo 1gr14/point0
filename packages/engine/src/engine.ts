@@ -815,7 +815,7 @@ export class Engine<
 
     try {
       const engineUrl = pathToFileURL(engineFile).href
-      const module = await import(/* @vite-ignore */ engineUrl)
+      const module = await import(/* @preserve */ /* @vite-ignore */ engineUrl)
 
       // Try named export first, then default
       const engine = module.engine ?? module.default

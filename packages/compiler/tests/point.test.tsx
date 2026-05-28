@@ -1487,7 +1487,9 @@ export const page = root.lets('page', 'page', '/')
               .headers(() => console.info('fake'))
               .cookies(() => console.info('fake'))
               .response(() => console.info('fake'))
-              .openapi({ summary: 'fake' })
+              .openapi({
+                summary: 'fake',
+              })
               .action(() => console.info('fake'))
               .root(() => console.info('fake'))
               .base(() => console.info('fake'))
@@ -1726,11 +1728,18 @@ export const page = root.lets('page', 'page', '/')
               .clientInput(() => ({}))
               .sharedInput(() => console.info('fake'))
               .response(() => console.info('fake'))
-              .openapi({ summary: 'fake' })
+              .openapi({
+                summary: 'fake',
+              })
               .root(() => console.info('fake'))
               .base(() => console.info('fake'))
               .page(() => console.info('fake'))
-              .page({ title: 'Fake' }, () => console.info('fake'))
+              .page(
+                {
+                  title: 'Fake',
+                },
+                () => console.info('fake'),
+              )
               .component(() => console.info('fake'))
               .layout(() => console.info('fake'))
               .provider(() => console.info('fake'))
@@ -2071,8 +2080,12 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() 
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core'
             export const root = Point0.lets('root', 'root')
-              .ctx(() => ({ a: 1 }))
-              .loader(() => ({ b: 2 }))
+              .ctx(() => ({
+                a: 1,
+              }))
+              .loader(() => ({
+                b: 2,
+              }))
               .root()
               ._tail(function X() {
                 return null

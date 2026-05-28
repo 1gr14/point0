@@ -16,53 +16,47 @@
     "url": "https://github.com/devp0nt/point0/issues"
   },
   "type": "module",
-  "types": "./dist/esm/index.d.ts",
-  "main": "./dist/cjs/index.cjs",
-  "module": "./dist/esm/index.js",
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
       "": [
-        "./dist/esm/index.d.ts"
+        "./dist/index.d.ts"
       ],
       "plugin/vite": [
-        "./dist/esm/plugin/vite.d.ts"
+        "./dist/plugin/vite.d.ts"
       ],
       "plugin/bun": [
-        "./dist/esm/plugin/bun.d.ts"
+        "./dist/plugin/bun.d.ts"
       ],
       "plugin/bun-static": [
-        "./dist/esm/plugin/bun-static.d.ts"
+        "./dist/plugin/bun-static.d.ts"
       ],
       "plugin/babel": [
-        "./dist/esm/plugin/babel.d.ts"
+        "./dist/plugin/babel.d.ts"
       ]
     }
   },
   "exports": {
     ".": {
-      "types": "./dist/esm/index.d.ts",
-      "require": "./dist/cjs/index.cjs",
-      "import": "./dist/esm/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./plugin/vite": {
-      "types": "./dist/esm/plugin/vite.d.ts",
-      "require": "./dist/cjs/plugin/vite.cjs",
-      "import": "./dist/esm/plugin/vite.js"
+      "types": "./dist/plugin/vite.d.ts",
+      "import": "./dist/plugin/vite.js"
     },
     "./plugin/bun": {
-      "types": "./dist/esm/plugin/bun.d.ts",
-      "require": "./dist/cjs/plugin/bun.cjs",
-      "import": "./dist/esm/plugin/bun.js"
+      "types": "./dist/plugin/bun.d.ts",
+      "import": "./dist/plugin/bun.js"
     },
     "./plugin/bun-static": {
-      "types": "./dist/esm/plugin/bun-static.d.ts",
-      "require": "./dist/cjs/plugin/bun-static.cjs",
-      "import": "./dist/esm/plugin/bun-static.js"
+      "types": "./dist/plugin/bun-static.d.ts",
+      "import": "./dist/plugin/bun-static.js"
     },
     "./plugin/babel": {
-      "types": "./dist/esm/plugin/babel.d.ts",
-      "require": "./dist/cjs/plugin/babel.cjs",
-      "import": "./dist/esm/plugin/babel.js"
+      "types": "./dist/plugin/babel.d.ts",
+      "import": "./dist/plugin/babel.js"
     }
   },
   "files": [
@@ -71,8 +65,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup",
-    "build:watch": "tsup --watch",
+    "build": "tsdown",
+    "build:watch": "tsdown --watch",
     "test": "bun test ./tests",
     "test:watch": "bun test --watch ./tests",
     "types": "tsc --noEmit -p tsconfig.build.json",
@@ -111,9 +105,8 @@
     "@types/node": "^20.0.0",
     "@devp0nt/flat0": "catalog:",
     "dedent": "^1.7.1",
-    "esbuild-fix-imports-plugin": "^1.0.22",
     "babel-plugin-react-compiler": "catalog:",
-    "tsup": "^8.0.0",
+    "tsdown": "catalog:",
     "typescript": "catalog:"
   },
   "publishConfig": {

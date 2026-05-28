@@ -935,7 +935,10 @@ export type CompilerOptions = {
   markdown?: CompilerMarkdownOptions
   babel?: CompilerBabelOptions
 }
-export type CompilerMarkdownPluginRef = NonNullable<MdxCompileOptions['remarkPlugins']>[number] | string | [string, ...unknown[]]
+export type CompilerMarkdownPluginRef =
+  | NonNullable<MdxCompileOptions['remarkPlugins']>[number]
+  | string
+  | [string, ...unknown[]]
 export type CompilerMarkdownOptions = Omit<MdxCompileOptions, 'remarkPlugins' | 'rehypePlugins' | 'recmaPlugins'> & {
   remarkPlugins?: CompilerMarkdownPluginRef[]
   rehypePlugins?: CompilerMarkdownPluginRef[]

@@ -1,18 +1,13 @@
-import { AsyncLocalStorage } from 'node:async_hooks'
+import { AsyncLocalStorage as AsyncLocalStorage } from 'node:async_hooks'
+import type { AsyncLocalStorage as AsyncLocalStorageType } from 'node:async_hooks'
 import type { ClientRuntime } from './env.types.js'
 import type { DataTransformer, DataTransformerExtended, PointsScope, RichFetchFn } from './types.js'
 import type { ClientPoints } from './client-points.js'
 import { singletonize, blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
-const _point0_env = {
-  vars: {
-    POINT0_SIDE: process.env.POINT0_SIDE,
-  },
-}
-
 const __POINT0_SUPER_STORE_SERVER_STORAGE__ = singletonize(
   '__POINT0_SUPER_STORE_SERVER_STORAGE__',
-  _point0_env.vars.POINT0_SIDE === 'client' ? null : new AsyncLocalStorage<Record<string, unknown>>(),
+  process.env.POINT0_SIDE === 'client' ? null : new AsyncLocalStorage<Record<string, unknown>>(),
 )
 const __POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ = singletonize('__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__', {})
 const __POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ = singletonize('__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__', {})
@@ -706,7 +701,7 @@ export type SuperStoreItemPolicy =
   | 'serverOnlyStorage'
   | 'serverOnlyGlobal'
 
-export type SuperStoreServerStorage = AsyncLocalStorage<SuperStoreState>
+export type SuperStoreServerStorage = AsyncLocalStorageType<SuperStoreState>
 
 export type SuperStoreState = { [key: string]: unknown }
 

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { Engine } from '../src/engine.js'
-import { throwOnBundlersLengthNot2 } from './utils/other.js'
+import { bundlers } from './utils/focus.js'
 import type {
   TestProjectOneClient,
   TestProjectOneClientFactoryCreateProjectOptions,
@@ -53,8 +53,6 @@ function wrp(
   }
 }
 
-const bundlers = ['bun', 'vite']
-
 describe('build', () => {
   beforeAll(async () => {
     await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
@@ -63,7 +61,6 @@ describe('build', () => {
 
   afterAll(async () => {
     void tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
-    throwOnBundlersLengthNot2(bundlers)
   })
 
   describe.each(bundlers)('%s', (bundler) => {
@@ -266,7 +263,8 @@ describe('build', () => {
       },
     )
 
-    it(
+    // https://github.com/oven-sh/bun/issues/6173
+    it.if(bundler !== 'bun')(
       'has correct sourcemap for loader error',
       wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp }) => {
         await tp.waitPortsFree()

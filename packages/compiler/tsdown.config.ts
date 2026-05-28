@@ -1,0 +1,34 @@
+import { defineConfig } from 'tsdown'
+
+export default defineConfig({
+  entry: [
+    'src/plugin/bun-static.ts',
+    'src/plugin/bun.ts',
+    'src/plugin/babel.ts',
+    'src/plugin/vite.ts',
+    'src/compiler.ts',
+    'src/error.ts',
+    'src/file.ts',
+    'src/importer.ts',
+    'src/index.ts',
+    'src/point.ts',
+    'src/resolver.ts',
+    'src/utils.ts',
+    'src/walker.ts',
+  ],
+  format: 'esm',
+  platform: 'node',
+  target: 'es2022',
+  outDir: 'dist',
+  clean: true,
+  dts: { resolver: 'tsc' },
+  sourcemap: false,
+  unbundle: true,
+  treeshake: false,
+  outExtensions: () => ({ js: '.js' }),
+  tsconfig: './tsconfig.build.json',
+  deps: {
+    skipNodeModulesBundle: true,
+    neverBundle: ['bun', /^@types\//],
+  },
+})

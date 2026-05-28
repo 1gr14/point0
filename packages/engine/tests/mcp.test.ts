@@ -163,9 +163,11 @@ describe('point0 MCP server', () => {
       expect(compiled.isError).not.toBe(true)
       const compiledStructured = compiled.structuredContent as { code: string }
       expect(compiledStructured.code).toMatchInlineSnapshot(`
-        "import { root } from './lib/root.js'
-        export const mcpPage = root.lets('page', 'mcpPage', '/mcp').tag('root', 'page').page(() => <div>MCP page</div>)
-        export const mcpActionAction = root.lets       ("action","mcpAction",'GET','/api/mcp').tag('root','action').action(()=>({ok:true}))"
+        "import { root } from './lib/root.js';
+        export const mcpPage = root.lets('page', 'mcpPage', '/mcp').tag('root', 'page').page(() => <div>MCP page</div>);
+        export const mcpActionAction = root.lets("action", "mcpAction", 'GET', '/api/mcp').tag('root', 'action').action(() => ({
+          ok: true
+        }));"
       `)
     } finally {
       await teardownMcpClient(ctx)

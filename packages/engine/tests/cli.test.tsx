@@ -95,9 +95,11 @@ describe('point0 CLI', () => {
       expect(result.output).toContain('cliPage')
       expect(result.output).toContain('cliAction')
       expect(result.output).toMatchInlineSnapshot(`
-        "import { root } from './lib/root.js'
-        export const cliPage = root.lets('page', 'cliPage', '/cli').tag('root', 'page').page(() => <div>CLI page</div>)
-        export const cliActionAction = root.lets       ("action","cliAction",'GET','/api/cli').tag('root','action').action(()=>({ok:true}))
+        "import { root } from './lib/root.js';
+        export const cliPage = root.lets('page', 'cliPage', '/cli').tag('root', 'page').page(() => <div>CLI page</div>);
+        export const cliActionAction = root.lets("action", "cliAction", 'GET', '/api/cli').tag('root', 'action').action(() => ({
+          ok: true
+        }));
         "
       `)
     } finally {
@@ -118,7 +120,7 @@ describe('point0 CLI', () => {
       // Server-side compilation keeps the action body (action runs on the server).
       expect(short.output).toContain('cliPage')
       expect(short.output).toContain('cliAction')
-      expect(short.output).toContain('ok:true')
+      expect(short.output).toContain('ok: true')
     } finally {
       await tp.cleanup({ files: true, ports: true, processes: true })
     }
