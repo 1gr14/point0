@@ -1464,4 +1464,77 @@ describe('with', () => {
       "
     `)
   })
+
+  it('resolve helper: explicit true spreads merged data into props', async () => {
+    const root = createRoot()
+    const query1 = root
+      .lets('query', 'test1')
+      .loader(() => ({ x: 1 }))
+      .query()
+    const query2 = root
+      .lets('query', 'test2')
+      .loader(() => ({ y: 2 }))
+      .query()
+
+    const page = root
+      .lets('page', 'home', '/home')
+      .with(query1)
+      .with(query2)
+      .with(({ queries, resolve }) => resolve(queries, true))
+      .page(({ props }) => {
+        expectTypeOf<typeof props.x>().toEqualTypeOf<number>()
+        expectTypeOf<typeof props.y>().toEqualTypeOf<number>()
+        return (
+          <div id="page">
+            x={props.x} y={props.y}
+          </div>
+        )
+      })
+
+    const { render } = await createTestThings({ ssr: true, points: [root, page, query1, query2] })
+    await render(page.route(), async ({ waitContent }) => {
+      await waitContent('#page:x=1 y=2')
+    })
+  })
+
+  it('resolve helper: default (and false) waits but adds nothing to props', async () => {
+    const root = createRoot()
+    const query1 = root
+      .lets('query', 'test1')
+      .loader(() => ({ x: 1 }))
+      .query()
+
+    const page = root
+      .lets('page', 'home', '/home')
+      .with(query1)
+      // no second arg -> default false -> nothing is added to props
+      .with(({ queries, resolve }) => resolve(queries))
+      .page(({ props }) => <div id="page">keys={Object.keys(props).length}</div>)
+
+    const { render } = await createTestThings({ ssr: true, points: [root, page, query1] })
+    await render(page.route(), async ({ waitContent }) => {
+      await waitContent('#page:keys=0')
+    })
+  })
+
+  it('with(point, input, options, true) spreads query data into props', async () => {
+    const root = createRoot()
+    const query = root
+      .lets('query', 'test')
+      .loader(() => ({ x: 1 }))
+      .query()
+
+    const page = root
+      .lets('page', 'home', '/home')
+      .with(query, undefined, undefined, true)
+      .page(({ props }) => {
+        expectTypeOf<typeof props.x>().toEqualTypeOf<number>()
+        return <div id="page">x={props.x}</div>
+      })
+
+    const { render } = await createTestThings({ ssr: true, points: [root, page, query] })
+    await render(page.route(), async ({ waitContent }) => {
+      await waitContent('#page:x=1')
+    })
+  })
 })

@@ -3616,7 +3616,15 @@ export class Point0<
         Error: any
       }
     },
-    TNewInnerProps extends Props | undefined = undefined,
+    // resolve: true -> data spread into props, false/omitted -> nothing, fn -> mapped props.
+    TResolve extends
+      | boolean
+      | ResolveQueryCallback<
+          TPoint['Infer']['QueryResultType'],
+          TPoint['Infer']['QueriedData'],
+          TPoint['Infer']['Error'],
+          Props | undefined
+        >,
   >(
     ...args: TPoint['Infer']['IsInputOptional'] extends true
       ?
@@ -3645,12 +3653,7 @@ export class Point0<
                     >,
                   ) => TPoint['Infer']['InputRawOrUndefined']),
               queryOptions: TPoint['Infer']['UseQueryOptions'] | undefined,
-              resolve: ResolveQueryCallback<
-                TPoint['Infer']['QueryResultType'],
-                TPoint['Infer']['QueriedData'],
-                TPoint['Infer']['Error'],
-                TNewInnerProps
-              >,
+              resolve: TResolve,
             ]
           | [
               point: TPoint,
@@ -3676,12 +3679,7 @@ export class Point0<
                       TError
                     >,
                   ) => TPoint['Infer']['InputRawOrUndefined']),
-              resolve: ResolveQueryCallback<
-                TPoint['Infer']['QueryResultType'],
-                TPoint['Infer']['QueriedData'],
-                TPoint['Infer']['Error'],
-                TNewInnerProps
-              >,
+              resolve: TResolve,
             ]
       :
           | [
@@ -3708,12 +3706,7 @@ export class Point0<
                     >,
                   ) => TPoint['Infer']['InputRawOrUndefined']),
               queryOptions: TPoint['Infer']['UseQueryOptions'] | undefined,
-              resolve: ResolveQueryCallback<
-                TPoint['Infer']['QueryResultType'],
-                TPoint['Infer']['QueriedData'],
-                TPoint['Infer']['Error'],
-                TNewInnerProps
-              >,
+              resolve: TResolve,
             ]
           | [
               point: TPoint,
@@ -3738,12 +3731,7 @@ export class Point0<
                       TError
                     >,
                   ) => TPoint['Infer']['InputRawOrUndefined']),
-              resolve: ResolveQueryCallback<
-                TPoint['Infer']['QueryResultType'],
-                TPoint['Infer']['QueriedData'],
-                TPoint['Infer']['Error'],
-                TNewInnerProps
-              >,
+              resolve: TResolve,
             ]
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
@@ -3767,7 +3755,15 @@ export class Point0<
     TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
-    TNewInnerProps extends Props ? AppendProps<TInnerProps, TNewInnerProps> : TInnerProps,
+    TResolve extends (success: any) => infer TMapped
+      ? TMapped extends Props
+        ? AppendProps<TInnerProps, TMapped>
+        : TInnerProps
+      : TResolve extends true
+        ? TPoint['Infer']['QueriedData'] extends Props
+          ? AppendProps<TInnerProps, TPoint['Infer']['QueriedData']>
+          : TInnerProps
+        : TInnerProps,
     [
       ...WithSelfQueryIfShouldBeFinalized<
         TPointType,
@@ -3923,7 +3919,7 @@ export class Point0<
             >,
           ) => InputRaw,
           queryOptions?: ExtraUseQueryOptions | ExtraUseInfiniteQueryOptions<any, any, any, any, any, any> | undefined,
-          resolve?: ResolveQueryCallback<any, any, TError, Props | undefined>,
+          resolve?: boolean | ResolveQueryCallback<any, any, TError, Props | undefined>,
         ]
       | [
           point?: AnyPoint | undefined,
@@ -3946,7 +3942,7 @@ export class Point0<
               TError
             >,
           ) => InputRaw,
-          resolve?: ResolveQueryCallback<any, any, TError, Props | undefined>,
+          resolve?: boolean | ResolveQueryCallback<any, any, TError, Props | undefined>,
         ]
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
@@ -3966,7 +3962,7 @@ export class Point0<
       const [{ point }, inputFnOrInput, ...restArgs] = _args
       const [queryOptions, resolveCallback] = (restArgs.length > 1 ? restArgs : [undefined, restArgs[0]]) as [
         ExtraUseQueryOptions | ExtraUseInfiniteQueryOptions<any, any, any, any, any, any> | undefined,
-        ResolveQueryCallback<any, any, TError, Props> | undefined,
+        boolean | ResolveQueryCallback<any, any, TError, Props> | undefined,
       ]
       const getInputFn =
         typeof inputFnOrInput === 'function'
@@ -3985,7 +3981,8 @@ export class Point0<
       const withResolveFn = !resolveCallback
         ? undefined
         : ((({ queries, resolve }) => {
-            return resolve(queries.at(-1), resolveCallback)
+            const lastQuery = queries.at(-1)
+            return resolveCallback === true ? resolve(lastQuery, true) : resolve(lastQuery, resolveCallback)
           }) as WithFn<any, any, any, any, any, any, any, any> | undefined)
       return this._continue({
         _mountActions: [

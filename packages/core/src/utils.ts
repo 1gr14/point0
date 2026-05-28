@@ -1,7 +1,7 @@
 import type { DehydratedState, Mutation, Query, UseInfiniteQueryResult, UseQueryResult } from '@tanstack/react-query'
 import { stringify } from 'safe-stable-stringify'
 import type { ErrorPoint0 } from './error.js'
-import type { Props, QuerySuccess, SuccessQueriesResults, UseQueryOrInfiniteQueryResult } from './mountable.js'
+import type { Props, QuerySuccess, UseQueryOrInfiniteQueryResult } from './mountable.js'
 import type {
   Data,
   DataTransformer,
@@ -616,33 +616,122 @@ export type ResolveQueryCallback<
 //   TMapped extends Props | undefined,
 // > = (success: number) => TMapped
 
-export type ResolveQueryFn = <
-  TQuery extends UseQueryOrInfiniteQueryResult | Array<UseQueryOrInfiniteQueryResult>,
-  TMapped = undefined,
->(
-  query: TQuery,
-  resolver?: (
-    success: TQuery extends UseQueryOrInfiniteQueryResult
-      ? QuerySuccess<TQuery>
-      : TQuery extends Array<UseQueryOrInfiniteQueryResult>
-        ? SuccessQueriesResults<TQuery>
-        : never,
-  ) => TMapped,
-) => TMapped | Error | 'loading'
+// Anything query-like: only needs isLoading / error / data. Real react-query
+// results satisfy this, but so do custom wrappers. Inside resolve `data` is
+// known to be non-nullable (we wait until loaded), so its generic is preserved.
+export type QueryLikeResult<TData = unknown> = {
+  isLoading: boolean
+  error: Error | null | undefined
+  data: TData
+}
 
-export const resolveQuery: ResolveQueryFn = (query, resolver) => {
-  const isArray = Array.isArray(query)
-  const queries = isArray ? query : [query]
-  const isLoading = queries.some((query) => query.isLoading)
-  if (isLoading) {
+// The query as seen inside the resolver: data narrowed to non-nullable. Real
+// react-query results keep their precise success type; anything else gets the
+// structural narrowing.
+type ResolveQuerySuccess<TQuery extends QueryLikeResult> = TQuery extends UseQueryOrInfiniteQueryResult
+  ? QuerySuccess<TQuery>
+  : Omit<TQuery, 'data'> & {
+      data: NonNullable<TQuery['data']>
+    }
+type ResolveQueryData<TQuery> = TQuery extends QueryLikeResult ? NonNullable<TQuery['data']> : never
+type ResolveQuerySpread<TA, TB> = Omit<TA, keyof TB> & TB
+
+// `{ ...data1, ...data2 }` for an array of queries (later wins), up to 5 entries.
+type ResolveQueriesData<TQueries extends readonly QueryLikeResult[]> = TQueries extends readonly [
+  infer Q1,
+  infer Q2,
+  infer Q3,
+  infer Q4,
+  infer Q5,
+]
+  ? ResolveQuerySpread<
+      ResolveQuerySpread<
+        ResolveQuerySpread<ResolveQuerySpread<ResolveQueryData<Q1>, ResolveQueryData<Q2>>, ResolveQueryData<Q3>>,
+        ResolveQueryData<Q4>
+      >,
+      ResolveQueryData<Q5>
+    >
+  : TQueries extends readonly [infer Q1, infer Q2, infer Q3, infer Q4]
+    ? ResolveQuerySpread<
+        ResolveQuerySpread<ResolveQuerySpread<ResolveQueryData<Q1>, ResolveQueryData<Q2>>, ResolveQueryData<Q3>>,
+        ResolveQueryData<Q4>
+      >
+    : TQueries extends readonly [infer Q1, infer Q2, infer Q3]
+      ? ResolveQuerySpread<ResolveQuerySpread<ResolveQueryData<Q1>, ResolveQueryData<Q2>>, ResolveQueryData<Q3>>
+      : TQueries extends readonly [infer Q1, infer Q2]
+        ? ResolveQuerySpread<ResolveQueryData<Q1>, ResolveQueryData<Q2>>
+        : TQueries extends readonly [infer Q1]
+          ? ResolveQueryData<Q1>
+          : Record<string, unknown>
+
+// The tuple of success-queries passed to an array resolver, up to 5 entries.
+type ResolveQuerySuccessTuple<TQueries extends readonly QueryLikeResult[]> = TQueries extends readonly [
+  infer Q1,
+  infer Q2,
+  infer Q3,
+  infer Q4,
+  infer Q5,
+]
+  ? [SQ<Q1>, SQ<Q2>, SQ<Q3>, SQ<Q4>, SQ<Q5>]
+  : TQueries extends readonly [infer Q1, infer Q2, infer Q3, infer Q4]
+    ? [SQ<Q1>, SQ<Q2>, SQ<Q3>, SQ<Q4>]
+    : TQueries extends readonly [infer Q1, infer Q2, infer Q3]
+      ? [SQ<Q1>, SQ<Q2>, SQ<Q3>]
+      : TQueries extends readonly [infer Q1, infer Q2]
+        ? [SQ<Q1>, SQ<Q2>]
+        : TQueries extends readonly [infer Q1]
+          ? [SQ<Q1>]
+          : Array<ResolveQuerySuccess<TQueries[number]>>
+type SQ<TQuery> = TQuery extends QueryLikeResult ? ResolveQuerySuccess<TQuery> : never
+
+// resolve(query)                          -> waits, contributes nothing to props (default false)
+// resolve(query, false)                    -> same as above
+// resolve(query, true)                     -> waits, then spreads data into props
+// resolve(query, (success) => props)       -> waits, maps success to props
+// (and the array variants of all four)
+export type ResolveQueryFn = {
+  <TQuery extends QueryLikeResult>(query: TQuery): undefined | Error | 'loading'
+  <TQuery extends QueryLikeResult>(query: TQuery, resolve: false): undefined | Error | 'loading'
+  <TQuery extends QueryLikeResult>(query: TQuery, resolve: true): NonNullable<TQuery['data']> | Error | 'loading'
+  <TQuery extends QueryLikeResult, TMapped extends Props | undefined>(
+    query: TQuery,
+    resolve: (success: ResolveQuerySuccess<TQuery>) => TMapped,
+  ): TMapped | Error | 'loading'
+  <const TQueries extends readonly QueryLikeResult[]>(queries: TQueries): undefined | Error | 'loading'
+  <const TQueries extends readonly QueryLikeResult[]>(
+    queries: TQueries,
+    resolve: false,
+  ): undefined | Error | 'loading'
+  <const TQueries extends readonly QueryLikeResult[]>(
+    queries: TQueries,
+    resolve: true,
+  ): ResolveQueriesData<TQueries> | Error | 'loading'
+  <const TQueries extends readonly QueryLikeResult[], TMapped extends Props | undefined>(
+    queries: TQueries,
+    resolve: (success: ResolveQuerySuccessTuple<TQueries>) => TMapped,
+  ): TMapped | Error | 'loading'
+}
+
+export const resolveQuery = ((
+  query: QueryLikeResult | readonly QueryLikeResult[],
+  resolve: boolean | ((success: QueryLikeResult | readonly QueryLikeResult[]) => Props | undefined) = false,
+): Props | undefined | Error | 'loading' => {
+  const queries: readonly QueryLikeResult[] = Array.isArray(query) ? query : [query]
+  if (queries.some((q) => q.isLoading)) {
     return 'loading'
   }
-  const error = queries.find((query) => query.error)?.error
+  const error = queries.find((q) => q.error)?.error
   if (error) {
     return error
   }
-  return resolver?.(isArray ? queries : queries[0])
-}
+  if (resolve === false) {
+    return undefined
+  }
+  if (typeof resolve === 'function') {
+    return resolve(Array.isArray(query) ? query : queries[0])
+  }
+  return Object.assign({}, ...queries.map((q) => q.data))
+}) as ResolveQueryFn
 
 export const isAbsoluteUrl = (value: string): boolean => {
   try {

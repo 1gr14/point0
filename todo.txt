@@ -73,13 +73,6 @@ optimize compiler more, do it faster
 
 
 # Micro
-Из инпута в квери Кее надо удалять андефайнеды
-Резолв хелпер пусть может и массив тупле резолвить
-Резолв фалс дождётся, но не будет в пропсы, а тру просто всю дата в пропсы, и по умолчанию тру
-Резолв пусть принимает эни квери лайк штуку
-resolve without arg, should just resolve to data, resolve with false, should just wait for loading
-Cделать красивый вывод в виртуал модуле
-error0 allow empty args, empty message
 В самом поинт0 тоже разделить мсп проджект и мсп докс
 engine config log → logger { log }
 engine config log, also should be able to accept async () => import; return logFn
@@ -102,6 +95,9 @@ nor x.x.x bub x:x:x prepaering to pagena names can contain .
 Убедиться, что виз всегда вызывает врапер, ведь есть риск, что сначала эрор, а потом не эрор, а дальше хук, и будут проблемы
 Мсп должен всегда читать свежую мета
 in example rename file navigate to navigation
+
+error0 allow empty args, empty message
+Cделать красивый вывод в виртуал модуле
 
 
 # Additional

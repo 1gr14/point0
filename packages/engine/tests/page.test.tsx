@@ -1314,4 +1314,22 @@ describe('page', () => {
   //     "
   //   `)
   // })
+
+  it('same query key when a search param is undefined', async () => {
+    const root = createRoot()
+    const page = root
+      .lets('page', 'home', '/')
+      .search(z.object({ filter: z.string(), utm: z.string().optional() }))
+      .loader(({ search }) => ({ filter: search.filter }))
+      .page(({ data }) => <div id="page">{data.filter}</div>)
+
+    const withUndefined = page.getQueryKey({ '?': { filter: 'f', utm: undefined } })
+    const withoutKey = page.getQueryKey({ '?': { filter: 'f' } })
+    const withValue = page.getQueryKey({ '?': { filter: 'f', utm: 'x' } })
+
+    // an undefined GET param must not affect the query key
+    expect(withUndefined).toEqual(withoutKey)
+    // a real value must still produce a different key
+    expect(withValue).not.toEqual(withUndefined)
+  })
 })
