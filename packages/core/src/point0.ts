@@ -375,13 +375,13 @@ export class Point0<
   }
   readonly _Error: ClassLikeError0<TError>
   readonly _middlewares: MiddlewareFn<TError, any>[]
-  _serverurl: string | undefined
+  _serverUrl: string | undefined
   readonly _hasServerLoader: boolean | undefined
   readonly _schemasHelpers: SchemaHelper[] | undefined
   readonly _searchSchemaKeys: string[] | true | undefined
   readonly tags: string[]
   readonly _description: string | undefined
-  readonly _basepath: AnyRoute | undefined
+  readonly _basePath: AnyRoute | undefined
   readonly _endpoint: EndpointDefinition | undefined
   get method(): TPointType extends RequestableReadyPointType ? WideRequestMethod : undefined {
     return (this._endpoint?.method ?? undefined) as TPointType extends RequestableReadyPointType
@@ -568,13 +568,13 @@ export class Point0<
     _logger?: LogFn | undefined
     _Error?: ClassLikeError0<TError>
     _middlewares?: MiddlewareFn<TError, any>[] | undefined
-    _serverurl?: string | undefined
+    _serverUrl?: string | undefined
     _hasServerLoader?: boolean | undefined
     _schemasHelpers?: SchemaHelper[] | undefined
     _searchSchemaKeys?: string[] | true | undefined
     tags?: string[]
     _description?: string
-    _basepath?: AnyRoute | undefined
+    _basePath?: AnyRoute | undefined
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
     _transformer?: DataTransformerExtended | undefined
@@ -659,13 +659,13 @@ export class Point0<
     this._transformer = options._transformer ?? undefined
     this._ssr = options._ssr ?? undefined
     this._eventerSubscriptions = options._eventerSubscriptions ?? []
-    this._serverurl = options._serverurl ?? undefined
+    this._serverUrl = options._serverUrl ?? undefined
     this._hasServerLoader = options._hasServerLoader ?? undefined
     this._schemasHelpers = options._schemasHelpers ?? undefined
     this._searchSchemaKeys = options._searchSchemaKeys
     this.tags = options.tags ?? []
     this._description = options._description ?? undefined
-    this._basepath = options._basepath ?? undefined
+    this._basePath = options._basePath ?? undefined
     this._endpoint = options._endpoint ?? undefined
     this._endpointPrefix = options._endpointPrefix ?? undefined
     this.type = options.type
@@ -754,13 +754,13 @@ export class Point0<
     _logger?: LogFn | undefined
     _Error?: ClassLikeError0<TError> | undefined
     _middlewares?: MiddlewareFn<TError, any>[]
-    _serverurl?: string | undefined
+    _serverUrl?: string | undefined
     _hasServerLoader?: boolean | undefined
     _schemasHelpers?: SchemaHelper[] | undefined
     _searchSchemaKeys?: string[] | true | undefined
     tags?: string[]
     _description?: string | undefined
-    _basepath?: AnyRoute | undefined
+    _basePath?: AnyRoute | undefined
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
     _transformer?: DataTransformerExtended | null
@@ -896,13 +896,13 @@ export class Point0<
       type: set('type') as TPointType,
       _letsReadyPointType: set('_letsReadyPointType') as TLetsReadyPointType,
       _middlewares: set('_middlewares', [...this._middlewares]),
-      _serverurl: set('_serverurl'),
+      _serverUrl: set('_serverUrl'),
       _hasServerLoader: set('_hasServerLoader'),
       _schemasHelpers: set('_schemasHelpers'),
       _searchSchemaKeys: set('_searchSchemaKeys'),
       tags: set('tags'),
       _description: set('_description'),
-      _basepath: set('_basepath'),
+      _basePath: set('_basePath'),
       _endpoint: set('_endpoint'),
       _endpointPrefix: set('_endpointPrefix'),
       _transformer: set('_transformer'),
@@ -1305,9 +1305,9 @@ export class Point0<
       _ProviderReactContext: undefined,
       _useValue: undefined,
       _layouts: this.type === 'layout' ? [...this._layouts, this as unknown as LayoutPoint] : [...this._layouts],
-      _serverurl: this._base?._serverurl,
+      _serverUrl: this._base?._serverUrl,
       _hasServerLoader: undefined,
-      _basepath: this._base?._basepath,
+      _basePath: this._base?._basePath,
       _defaultMutationOptions: this._base?._defaultMutationOptions,
       _mutationOptions: {},
       _defaultQueryOptions: this._base?._defaultQueryOptions,
@@ -2266,8 +2266,8 @@ export class Point0<
     }) as never
   }
 
-  serverurl(
-    serverurl: string,
+  serverUrl(
+    serverUrl: string,
   ): NiceRootStagePoint<
     StagePointTypeOrNever<TPointType>,
     'root',
@@ -2292,7 +2292,7 @@ export class Point0<
     TQueriesDefinitions
   > {
     return this._continue({
-      _serverurl: serverurl,
+      _serverUrl: serverUrl,
     }) as never
   }
 
@@ -2414,8 +2414,8 @@ export class Point0<
     }) as never
   }
 
-  basepath<TBasepath extends string>(
-    basepath: TBasepath,
+  basePath<TBasePath extends string>(
+    basePath: TBasePath,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -2426,7 +2426,7 @@ export class Point0<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TMapperOutput,
-    ExtendRouteDefinition<TRouteDefinition, TBasepath>,
+    ExtendRouteDefinition<TRouteDefinition, TBasePath>,
     TServerInputSchema,
     TClientInputSchema,
     TParamsSchema,
@@ -2439,10 +2439,10 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   > {
-    const newBasepath: CallableRoute = this._basepath ? this._basepath.extend(basepath) : Route0.create(basepath)
+    const newBasePath: CallableRoute = this._basePath ? this._basePath.extend(basePath) : Route0.create(basePath)
     return this._continue({
-      _basepath: newBasepath,
-      route: newBasepath,
+      _basePath: newBasePath,
+      route: newBasePath,
     }) as never
   }
 
@@ -7437,8 +7437,8 @@ export class Point0<
       // _base
       // _root
       _middlewares: [...this._middlewares, ...point._middlewares],
-      // _serverurl: point._serverurl,
-      // _basepath: point._basepath,
+      // _serverUrl: point._serverUrl,
+      // _basePath: point._basePath,
       // _transformer: point._transformer,
       ...set('_ssr'),
       _eventerSubscriptions: [...this._eventerSubscriptions, ...point._eventerSubscriptions],
@@ -8646,8 +8646,8 @@ export class Point0<
   }
 
   private getServerUrl(): string | undefined {
-    if (this._serverurl) {
-      return this._serverurl
+    if (this._serverUrl) {
+      return this._serverUrl
     }
     const request0 = _ss.__POINT0_REQUEST0__.getWeak()
     if (request0?.location.origin) {
@@ -8674,8 +8674,8 @@ export class Point0<
   }): { url: string; init: RequestInit; request: Request; transform: boolean } {
     const baseFetchOptions = this._fetchOptions?.() || {}
     const { transform = true, ...fetchOptions } = { ...baseFetchOptions, ..._fetchOptions }
-    const serverurl = this.getServerUrl()
-    if (!serverurl) {
+    const serverUrl = this.getServerUrl()
+    if (!serverUrl) {
       throw new Error(`Server URL is not set on point ${this.toStringWithLocation()}`)
     }
     if (!this._endpoint) {
@@ -8691,7 +8691,7 @@ export class Point0<
         : isPage || isLayout
           ? route.get(input as never) // pages and layouts strictly have only params and search
           : route.get(), // queries can not have nor params, nor search
-      serverurl,
+      serverUrl,
     )
     const method = this._endpoint.method
 

@@ -473,10 +473,10 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
     )
 
     it.concurrent(
-      'recognize usual action with basepath',
+      'recognize usual action with basePath',
       helper(async ({ files: [f0], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
-          export const root = Point0.lets('root', 'root').basepath('/api').basepath('/:x').root()
+          export const root = Point0.lets('root', 'root').basePath('/api').basePath('/:x').root()
           export const a1 = root.lets('action', 'action1', 'GET', '/users').loader(() => ({ ok: true })).query()
           export const a2 = root.lets('action', 'action2', 'POST', '/users').loader(() => ({ ok: true })).mutation()
           export const a3 = root.lets('action', 'action3', 'DELETE', '/users/:id').loader(() => ({ ok: true })).action()
@@ -513,10 +513,10 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
     )
 
     it.concurrent(
-      'can recognize action shorthand points with basepath',
+      'can recognize action shorthand points with basePath',
       helper(async ({ files: [f0], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
-          export const root = Point0.lets('root', 'root').basepath('/api').basepath('/:x').root()
+          export const root = Point0.lets('root', 'root').basePath('/api').basePath('/:x').root()
           export const a1 = root.lets('GET', '/users').loader(() => ({ ok: true })).query()
           export const a2 = root.lets('POST', '/users').loader(() => ({ ok: true })).mutation()
           export const a3 = root.lets('DELETE', '/users/:id').loader(() => ({ ok: true })).action()
@@ -556,7 +556,7 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
       'recognize non action endpoints',
       helper({ ssr: true }, async ({ files: [f0], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
-          export const root = Point0.lets('root', 'root').basepath('/api').basepath('/:x').root()
+          export const root = Point0.lets('root', 'root').basePath('/api').basePath('/:x').root()
           export const q1 = root.lets('query', 'query1').loader(() => ({ ok: true })).query()
           export const q2 = root.lets('query', 'query2').query()
           export const m1 = root.lets('mutation', 'mutation1').loader(() => ({ ok: true })).mutation()

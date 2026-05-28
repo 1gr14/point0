@@ -65,7 +65,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
   appProvided: EngineOptionsAppComponent | null
   App: TPrepared extends true ? AppComponent | null : undefined
   // appDistFile: string | null
-  basepath: AnyRoute | undefined
+  basePath: AnyRoute | undefined
   serving: EngineOptionsServing
   indexHtml: string | null
   // indexHtmlDistFile: string | null
@@ -133,7 +133,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     this.pointsProvided = input.pointsProvided
     this.appProvided = input.appProvided
     // this.appDistFile = input.appDistFile
-    this.basepath = undefined
+    this.basePath = undefined
     this.serving = input.serving
     this.indexHtml = input.indexHtml
     // this.indexHtmlDistFile = input.indexHtmlDistFile
@@ -288,7 +288,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     }
 
     const points = await this.readPoints()
-    this.basepath = points?.basepath
+    this.basePath = points?.basePath
     await this.readAppComponent()
 
     this.distIndexHtmlContent = _point0_env.build.was && this.indexHtml ? await Bun.file(this.indexHtml).text() : null
@@ -325,7 +325,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
 
   isPageLocationSuitable = ({ pageLocation }: { pageLocation: AnyLocation }): boolean => {
     return ClientPoints.isPageLocationSuitable({
-      basepath: this.basepath,
+      basePath: this.basePath,
       pageLocation,
     })
   }

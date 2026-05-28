@@ -316,7 +316,7 @@ export class Walker {
       // Example: root.lets('page', 'mypage', '/') → pointType = 'page', pointName = 'mypage'
       // Special:
       //   root.lets('GET', '/my/:path') → pointType = 'action', pointName = 'pending...'
-      //   later in point.ts we will fix name to append basepath ane it bacomes pointName = `GET ${basepath}/my/:path` if it is exists somewhere up in the chain
+      //   later in point.ts we will fix name to append basePath ane it bacomes pointName = `GET ${basePath}/my/:path` if it is exists somewhere up in the chain
       //   first method name can be only ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD']
       const firstLetsArg =
         firstLetsArgNodePath?.node.type === 'StringLiteral' ? firstLetsArgNodePath.node.value : undefined

@@ -35,7 +35,7 @@ import { isAbsoluteUrl } from './utils.js'
 export class ClientPoints<TError extends ErrorPoint0> {
   manager: PointsManager
 
-  basepath: AnyRoute | undefined
+  basePath: AnyRoute | undefined
   middlewares: MiddlewareFn<TError, any>[]
   transformer: DataTransformerExtended
 
@@ -52,7 +52,7 @@ export class ClientPoints<TError extends ErrorPoint0> {
     pagesTreeSource,
     pagesTree,
     layouts,
-    basepath,
+    basePath,
     middlewares,
     transformer,
   }: {
@@ -62,7 +62,7 @@ export class ClientPoints<TError extends ErrorPoint0> {
     pagesTreeSource: PagesTreeSource
     pagesTree: PagesTree
     layouts: ClientPointsLayouts
-    basepath: AnyRoute | undefined
+    basePath: AnyRoute | undefined
     middlewares: MiddlewareFn<TError, any>[]
     transformer: DataTransformerExtended
   }) {
@@ -72,7 +72,7 @@ export class ClientPoints<TError extends ErrorPoint0> {
     this.pagesTreeSource = pagesTreeSource
     this.pagesTree = pagesTree
     this.layouts = layouts
-    this.basepath = basepath
+    this.basePath = basePath
     this.middlewares = middlewares
     this.transformer = transformer
   }
@@ -97,7 +97,7 @@ export class ClientPoints<TError extends ErrorPoint0> {
     const pagesTree = ClientPoints.toPagesTree({ points: manager.collection, pagesTreeSource })
     const routesHash = routes._.pathsOrdering.join(',')
     const layouts = ClientPoints.toLayouts({ points: manager.collection })
-    const basepath = root._basepath
+    const basePath = root._basePath
     const middlewares = root._middlewares
     const transformer = root._getTransformer()
 
@@ -108,7 +108,7 @@ export class ClientPoints<TError extends ErrorPoint0> {
       pagesTreeSource,
       pagesTree,
       layouts,
-      basepath,
+      basePath,
       middlewares,
       transformer,
     })
@@ -526,20 +526,20 @@ export class ClientPoints<TError extends ErrorPoint0> {
   }
 
   static isPageLocationSuitable = ({
-    basepath,
+    basePath,
     pageLocation,
   }: {
-    basepath: AnyRoute | undefined
+    basePath: AnyRoute | undefined
     pageLocation: AnyLocation
   }): boolean => {
-    if (basepath) {
-      return basepath.isExactOrAncestor(pageLocation.pathname)
+    if (basePath) {
+      return basePath.isExactOrAncestor(pageLocation.pathname)
     }
     return true
   }
   isPageLocationSuitable = ({ pageLocation }: { pageLocation: AnyLocation }): boolean => {
     return ClientPoints.isPageLocationSuitable({
-      basepath: this.basepath,
+      basePath: this.basePath,
       pageLocation,
     })
   }

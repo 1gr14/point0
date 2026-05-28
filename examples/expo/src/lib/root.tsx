@@ -6,7 +6,7 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native'
 const SERVER_URL = process.env.EXPO_PUBLIC_SERVER_URL ?? 'http://localhost:3000'
 
 export const root = Point0.lets('root', 'root')
-  .serverurl(SERVER_URL)
+  .serverUrl(SERVER_URL)
   .middleware(cors())
   .transformer(superjson)
   .queryOptions({

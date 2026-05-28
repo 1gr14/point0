@@ -153,7 +153,7 @@ describe('route', () => {
     layout.lets('page', 'test', Route0.create('/:x/zxc/:y')).page()
   })
 
-  it('basepath / is used to extend route', async () => {
+  it('basePath / is used to extend route', async () => {
     const root = Point0.lets('root', 'root').root()
     const layout = root.lets('layout', 'layout', '/:x').layout(({ children }) => {
       return <div>{children}</div>
@@ -163,8 +163,8 @@ describe('route', () => {
     expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/:x/:y'>()
   })
 
-  it('basepath /my/path is used to extend route', async () => {
-    const root = Point0.lets('root', 'root').basepath('/my/path').root()
+  it('basePath /my/path is used to extend route', async () => {
+    const root = Point0.lets('root', 'root').basePath('/my/path').root()
     const layout = root.lets('layout', 'layout', '/:x').layout(({ children }) => {
       return <div>{children}</div>
     })
@@ -173,8 +173,8 @@ describe('route', () => {
     expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/my/path/:x/:y'>()
   })
 
-  it('basepath /my/path is used to extend route', async () => {
-    const root = Point0.lets('root', 'root').basepath('/my/path').root()
+  it('basePath /my/path is used to extend route', async () => {
+    const root = Point0.lets('root', 'root').basePath('/my/path').root()
     expectTypeOf<typeof root.Infer.RouteDefinition>().toEqualTypeOf<'/my/path'>()
     const layout = root.lets('layout', 'layout', '/:x').layout(({ children }) => {
       return <div>{children}</div>
@@ -184,8 +184,8 @@ describe('route', () => {
     expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/my/path/:x/:y'>()
   })
 
-  it('basepath /my/path/extra is used to extend route', async () => {
-    const root = Point0.lets('root', 'root').basepath('/my/path/extra').root()
+  it('basePath /my/path/extra is used to extend route', async () => {
+    const root = Point0.lets('root', 'root').basePath('/my/path/extra').root()
     expectTypeOf<typeof root.Infer.RouteDefinition>().toEqualTypeOf<'/my/path/extra'>()
     const layout = root.lets('layout', 'layout', '/:x').layout(({ children }) => {
       return <div>{children}</div>
@@ -195,10 +195,10 @@ describe('route', () => {
     expectTypeOf<(typeof page)['Infer']['RouteDefinition']>().toEqualTypeOf<'/my/path/extra/:x/:y'>()
   })
 
-  it('mutiple basepath is used to extend route', async () => {
-    const root = Point0.lets('root', 'root').basepath('/my').root()
-    const base1 = root.lets('base', 'base').basepath('/path').base()
-    const base2 = base1.lets('base', 'base').basepath('/extra').base()
+  it('mutiple basePath is used to extend route', async () => {
+    const root = Point0.lets('root', 'root').basePath('/my').root()
+    const base1 = root.lets('base', 'base').basePath('/path').base()
+    const base2 = base1.lets('base', 'base').basePath('/extra').base()
     expectTypeOf<typeof base2.Infer.RouteDefinition>().toEqualTypeOf<'/my/path/extra'>()
     const layout = base2.lets('layout', 'layout', '/:x').layout(({ children }) => {
       return <div>{children}</div>

@@ -83,7 +83,7 @@ describe('FakeClient', () => {
   // afterEach(cleanup)
 
   it.concurrent('fetch page with loader', async () => {
-    const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
+    const root = Point0.lets('root', 'root').serverUrl('http://localhost:3000').root()
     const page = root
       .lets('page', 'page', '/page')
       .loader(() => ({ serverLoaderSideName: env.side.name }))
@@ -243,7 +243,7 @@ describe('FakeClient', () => {
   })
 
   it.concurrent('execute page with loader and client loader', async () => {
-    const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
+    const root = Point0.lets('root', 'root').serverUrl('http://localhost:3000').root()
     const page = root
       .lets('page', 'page', '/page')
       .loader(() => ({ serverLoaderSideName: env.side.name }))
@@ -278,7 +278,7 @@ describe('FakeClient', () => {
     })
     const root = Point0.lets('root', 'root')
       .middleware(fetchRecorder.middleware)
-      .serverurl('http://localhost:3000')
+      .serverUrl('http://localhost:3000')
       .root()
     let counter = 0
     const mutation = root
@@ -418,7 +418,7 @@ describe('FakeClient', () => {
   })
 
   // it('should render page with loader and client loader from ssr', async () => {
-  //   const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
+  //   const root = Point0.lets('root', 'root').serverUrl('http://localhost:3000').root()
   //   let counter = 0
   //   const mutation = root
   //     .lets('mutation', 'mutation')
@@ -607,7 +607,7 @@ describe('FakeClient', () => {
   // })
 
   // it('should render ssr page with loader and client loader', async () => {
-  //   const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
+  //   const root = Point0.lets('root', 'root').serverUrl('http://localhost:3000').root()
   //   let counter = 0
   //   const mutation = root
   //     .lets('mutation', 'mutation')
@@ -660,7 +660,7 @@ describe('FakeClient', () => {
   // })
 
   // it('should render page with loader and client loader', async () => {
-  //   const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
+  //   const root = Point0.lets('root', 'root').serverUrl('http://localhost:3000').root()
   //   let counter = 0
   //   const mutation = root
   //     .lets('mutation', 'mutation')

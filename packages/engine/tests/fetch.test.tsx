@@ -15,7 +15,7 @@ declare module '@point0/core/request0' {
 describe('fetch', () => {
   const createRoot = () =>
     Point0.lets('root', 'root')
-      .serverurl('http://localhost:3000')
+      .serverUrl('http://localhost:3000')
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({

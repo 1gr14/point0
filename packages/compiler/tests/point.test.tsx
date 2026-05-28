@@ -488,7 +488,7 @@ export const l3 = b2.lets('layout', 'l3').layout()
         valid: point.valid,
         name: point.name,
         polh: point.polh,
-        basepath: point.basepath?.definition,
+        basePath: point.basePath?.definition,
       }
     }
 
@@ -519,49 +519,49 @@ export const p6 = p5.lets('page', 'p6', '/r6').prefetchPageOnLinkHover('none', 1
           valid: true,
           name: 'root',
           polh: true,
-          basepath: undefined,
+          basePath: undefined,
         })
         expect(parsed[1]).toMatchObject({
           valid: true,
           name: 'p1',
           polh: false,
-          basepath: undefined,
+          basePath: undefined,
         })
         expect(parsed[2]).toMatchObject({
           valid: true,
           name: 'p2',
           polh: false,
-          basepath: undefined,
+          basePath: undefined,
         })
         expect(parsed[3]).toMatchObject({
           valid: true,
           name: 'p3',
           polh: true,
-          basepath: undefined,
+          basePath: undefined,
         })
         expect(parsed[4]).toMatchObject({
           valid: true,
           name: 'p4',
           polh: false,
-          basepath: undefined,
+          basePath: undefined,
         })
         expect(parsed[5]).toMatchObject({
           valid: true,
           name: 'p5',
           polh: 100,
-          basepath: undefined,
+          basePath: undefined,
         })
         expect(parsed[6]).toMatchObject({
           valid: true,
           name: 'p6',
           polh: false,
-          basepath: undefined,
+          basePath: undefined,
         })
       }),
     )
 
     it.concurrent(
-      'point basepath',
+      'point basePath',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
           routes: {
@@ -572,22 +572,22 @@ export const p6 = p5.lets('page', 'p6', '/r6').prefetchPageOnLinkHover('none', 1
           },
         })
         await file.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'root').basepath('/').root()
+export const root = Point0.lets('root', 'root').basePath('/').root()
 export const p1 = root.lets('page', 'p1', '/').page(() => <div>Hello</div>)
-export const root2 = root.lets('root', 'root2').basepath('/root2').root()
+export const root2 = root.lets('root', 'root2').basePath('/root2').root()
 export const p2 = root2.lets('page', 'p2', '/').page(() => <div>Hello</div>)
-export const root3 = root.lets('root', 'root3').basepath('/root3').root()
+export const root3 = root.lets('root', 'root3').basePath('/root3').root()
 export const p3 = root3.lets('page', 'p3', '/').page(() => <div>Hello</div>)
-export const root4 = root.lets('root', 'root4').basepath('/my/base').root()
+export const root4 = root.lets('root', 'root4').basePath('/my/base').root()
 export const p4 = root4.lets('page', 'p4', '/').page(() => <div>Hello</div>)
-export const root5 = root.lets('root', 'root5').basepath('/my/base').root()
+export const root5 = root.lets('root', 'root5').basePath('/my/base').root()
 export const p5 = root5.lets('page', 'p5', '/').page(() => <div>Hello</div>)
-export const root6 = root.lets('root', 'root6').basepath('/my/base').root()
+export const root6 = root.lets('root', 'root6').basePath('/my/base').root()
 export const p6 = root6.lets('page', 'p6', '/').page(() => <div>Hello</div>)
-export const root7 = root.lets('root', 'root7').basepath('/my/base/extra/path').root()
+export const root7 = root.lets('root', 'root7').basePath('/my/base/extra/path').root()
 export const p7 = root7.lets('page', 'p7', '/').page(() => <div>Hello</div>)
-export const root8 = root4.lets('root', 'root8').basepath('/child').basepath('/one').root()
-export const base8 = root8.lets('root', 'root8').basepath('/two').root()
+export const root8 = root4.lets('root', 'root8').basePath('/child').basePath('/one').root()
+export const base8 = root8.lets('root', 'root8').basePath('/two').root()
 export const p8 = base8.lets('page', 'p8', '/three').page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: file.path })
@@ -596,88 +596,88 @@ export const p8 = base8.lets('page', 'p8', '/three').page(() => <div>Hello</div>
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'root',
-          basepath: '/',
+          basePath: '/',
         })
         expect(parsed[1]).toMatchObject({
           valid: true,
           name: 'p1',
-          basepath: '/',
+          basePath: '/',
         })
         expect(parsed[2]).toMatchObject({
           valid: true,
           name: 'root2',
-          basepath: '/root2',
+          basePath: '/root2',
         })
         expect(parsed[3]).toMatchObject({
           valid: true,
           name: 'p2',
-          basepath: '/root2',
+          basePath: '/root2',
         })
         expect(parsed[4]).toMatchObject({
           valid: true,
           name: 'root3',
-          basepath: '/root3',
+          basePath: '/root3',
         })
         expect(parsed[5]).toMatchObject({
           valid: true,
           name: 'p3',
-          basepath: '/root3',
+          basePath: '/root3',
         })
         expect(parsed[6]).toMatchObject({
           valid: true,
           name: 'root4',
-          basepath: '/my/base',
+          basePath: '/my/base',
         })
         expect(parsed[7]).toMatchObject({
           valid: true,
           name: 'p4',
-          basepath: '/my/base',
+          basePath: '/my/base',
         })
         expect(parsed[8]).toMatchObject({
           valid: true,
           name: 'root5',
-          basepath: '/my/base',
+          basePath: '/my/base',
         })
         expect(parsed[9]).toMatchObject({
           valid: true,
           name: 'p5',
-          basepath: '/my/base',
+          basePath: '/my/base',
         })
         expect(parsed[10]).toMatchObject({
           valid: true,
           name: 'root6',
-          basepath: '/my/base',
+          basePath: '/my/base',
         })
         expect(parsed[11]).toMatchObject({
           valid: true,
           name: 'p6',
-          basepath: '/my/base',
+          basePath: '/my/base',
         })
         expect(parsed[12]).toMatchObject({
           valid: true,
           name: 'root7',
-          basepath: '/my/base/extra/path',
+          basePath: '/my/base/extra/path',
         })
         expect(parsed[13]).toMatchObject({
           valid: true,
           name: 'p7',
-          basepath: '/my/base/extra/path',
+          basePath: '/my/base/extra/path',
         })
         expect(parsed[14]).toMatchObject({
           valid: true,
           name: 'root8',
-          basepath: '/my/base/child/one',
+          basePath: '/my/base/child/one',
         })
         expect(parsed[16]).toMatchObject({
           valid: true,
           name: 'p8',
-          basepath: '/my/base/child/one/two',
+          basePath: '/my/base/child/one/two',
         })
       }),
     )
 
     it.concurrent(
-      'route is prefixed with basepath',
+      'route is prefixed with basePath',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
           routes: {
@@ -688,8 +688,8 @@ export const p8 = base8.lets('page', 'p8', '/three').page(() => <div>Hello</div>
         })
         await file.write(`import {Point0} from '@point0/core'
 import { Route0, Routes } from '@devp0nt/route0'
-export const root = Point0.lets('root', 'myroot').basepath('/my/base').root()
-export const base = root.lets('base', 'base').basepath('/another').basepath('/:x/prefix').base()
+export const root = Point0.lets('root', 'myroot').basePath('/my/base').root()
+export const base = root.lets('base', 'base').basePath('/another').basePath('/:x/prefix').base()
 const routes = Routes.create({
   r1: Route0.create('/r1'),
 })
@@ -846,11 +846,11 @@ const page0 = root0.lets('page', 'page0', '/').page(() => <div>Hello</div>)
     )
 
     it.concurrent(
-      'action shorthand supports query/mutation/infiniteQuery endings and uses combined basepath in name',
+      'action shorthand supports query/mutation/infiniteQuery endings and uses combined basePath in name',
       helper(async ({ files: [file], walker }) => {
         await file.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'root').basepath('/api').root()
-export const nested = root.lets('root', 'nested').basepath('/v1').root()
+export const root = Point0.lets('root', 'root').basePath('/api').root()
+export const nested = root.lets('root', 'nested').basePath('/v1').root()
 export const a1 = nested.lets('GET', '/users').loader(() => ({ ok: true })).query()
 export const a2 = nested.lets('POST', '/users').loader(() => ({ ok: true })).mutation()
 export const a3 = nested.lets('PUT', '/users').loader(() => ({ ok: true })).infiniteQuery()
@@ -1051,8 +1051,8 @@ export const page = root.lets('page', 'page', '/')
               export const page = root.lets('page', 'page', '/')
               .description(() => console.info('fake'))
               .tag(() => console.info('fake'))
-              .serverurl(() => console.info('fake'))
-              .basepath(() => console.info('fake'))
+              .serverUrl(() => console.info('fake'))
+              .basePath(() => console.info('fake'))
               .clientOnly()
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
@@ -1116,8 +1116,8 @@ export const page = root.lets('page', 'page', '/')
               .lets('page', 'page', '/')
               .description()
               .tag(() => console.info('fake'))
-              .serverurl(() => console.info('fake'))
-              .basepath(() => console.info('fake'))
+              .serverUrl(() => console.info('fake'))
+              .basePath(() => console.info('fake'))
               .clientOnly()
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
@@ -1244,8 +1244,8 @@ export const page = root.lets('page', 'page', '/')
               export const page = subRoot1.lets('page', 'page', '/')
               .description(() => console.info('fake'))
               .tag(() => console.info('fake'))
-              .serverurl(() => console.info('fake'))
-              .basepath(() => console.info('fake'))
+              .serverUrl(() => console.info('fake'))
+              .basePath(() => console.info('fake'))
               .clientOnly()
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
@@ -1311,8 +1311,8 @@ export const page = root.lets('page', 'page', '/')
               .lets('page', 'page', '/')
               .description()
               .tag(() => console.info('fake'))
-              .serverurl(() => console.info('fake'))
-              .basepath(() => console.info('fake'))
+              .serverUrl(() => console.info('fake'))
+              .basePath(() => console.info('fake'))
               .clientOnly()
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
@@ -1379,8 +1379,8 @@ export const page = root.lets('page', 'page', '/')
               export const page = root.lets('page', 'page', '/')
               .description(() => console.info('fake'))
               .tag(() => console.info('fake'))
-              .serverurl(() => console.info('fake'))
-              .basepath(() => console.info('fake'))
+              .serverUrl(() => console.info('fake'))
+              .basePath(() => console.info('fake'))
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
               .infiniteQueryOptions(() => console.info('fake'))
@@ -1447,8 +1447,8 @@ export const page = root.lets('page', 'page', '/')
               .lets('page', 'page', '/')
               .description(() => console.info('fake'))
               .tag(() => console.info('fake'))
-              .serverurl(() => console.info('fake'))
-              .basepath(() => console.info('fake'))
+              .serverUrl(() => console.info('fake'))
+              .basePath(() => console.info('fake'))
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
               .infiniteQueryOptions(() => console.info('fake'))
@@ -1513,8 +1513,8 @@ export const page = root.lets('page', 'page', '/')
           await file.write(`import {Point0} from '@point0/core'
               export const root = Point0.lets('root', 'root').clientLoader(true).root()
               export const page = root.lets('page', 'page', '/')
-              .serverurl(() => console.info('fake'))
-              .basepath(() => console.info('fake'))
+              .serverUrl(() => console.info('fake'))
+              .basePath(() => console.info('fake'))
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
               .infiniteQueryOptions(() => console.info('fake'))
@@ -1574,8 +1574,8 @@ export const page = root.lets('page', 'page', '/')
             export const root = Point0.lets('root', 'root').clientLoader(true).root()
             export const page = root
               .lets('page', 'page', '/')
-              .serverurl(() => console.info('fake'))
-              .basepath(() => console.info('fake'))
+              .serverUrl(() => console.info('fake'))
+              .basePath(() => console.info('fake'))
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
               .infiniteQueryOptions(() => console.info('fake'))
@@ -1636,8 +1636,8 @@ export const page = root.lets('page', 'page', '/')
           await file.write(`import {Point0} from '@point0/core'
               export const root = Point0.lets('root', 'root').clientLoader(true).root()
               export const page = root.lets('page', 'page', '/')
-              .serverurl(() => console.info('fake'))
-              .basepath(() => console.info('fake'))
+              .serverUrl(() => console.info('fake'))
+              .basePath(() => console.info('fake'))
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
               .infiniteQueryOptions(() => console.info('fake'))
@@ -1693,8 +1693,8 @@ export const page = root.lets('page', 'page', '/')
             export const root = Point0.lets('root', 'root').clientLoader(true).root()
             export const page = root
               .lets('page', 'page', '/')
-              .serverurl(() => console.info('fake'))
-              .basepath(() => console.info('fake'))
+              .serverUrl(() => console.info('fake'))
+              .basePath(() => console.info('fake'))
               .mutationOptions(() => console.info('fake'))
               .queryOptions(() => console.info('fake'))
               .infiniteQueryOptions(() => console.info('fake'))

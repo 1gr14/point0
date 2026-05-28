@@ -3,7 +3,7 @@ import superjson from 'superjson'
 
 export const firstRoot = root.lets
   .root()
-  // .basepath('/')
+  // .basePath('/')
   .transformer(superjson)
   .prefetchPageOnNavigate(false)
   .prefetchPageOnLinkHover(false)

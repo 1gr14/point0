@@ -435,7 +435,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
       'generates routes file with origin with path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').basepath('/my/path').root()
+export const root = Point0.lets('root', 'myroot').basePath('/my/path').root()
 export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
         `)
 
@@ -472,7 +472,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
       'generates routes file with origin with extra path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').basepath('/my/path').root()
+export const root = Point0.lets('root', 'myroot').basePath('/my/path').root()
 export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
         `)
 
@@ -509,7 +509,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
       'generates routes file with origin with path and extra path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').basepath('/my/path/extra/path').root()
+export const root = Point0.lets('root', 'myroot').basePath('/my/path/extra/path').root()
 export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
         `)
 
@@ -583,7 +583,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
       'generates routes file with origin as process.env.BASE_URL and extra path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
-export const root = Point0.lets('root', 'myroot').basepath('/extra/path').root()
+export const root = Point0.lets('root', 'myroot').basePath('/extra/path').root()
 export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
         `)
 

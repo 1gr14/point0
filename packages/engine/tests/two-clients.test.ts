@@ -258,13 +258,13 @@ describe('two-clients', () => {
     )
 
     it(
-      'serve two ssr clients on same host but different basepaths',
+      'serve two ssr clients on same host but different basePaths',
       wrp(
         {
           ssr1: true,
           ssr2: true,
-          basepath1: '/first',
-          basepath2: '/',
+          basePath1: '/first',
+          basePath2: '/',
           ...vites,
           // preserve: true,
         },
@@ -299,7 +299,7 @@ describe('two-clients', () => {
           "
         `)
 
-          // first client return itsefl becouse of basepath
+          // first client return itsefl becouse of basePath
           const page1 = await tp.gotoClient1('/first')
           expect(page1.tale).toMatchInlineSnapshot(`
         "
@@ -319,7 +319,7 @@ describe('two-clients', () => {
           expect(html1).not.toContain('SECOND_VAR')
           expect(html1).not.toContain('SECOND_CONST')
 
-          // second client return itself becouse of basepath
+          // second client return itself becouse of basePath
           const page2 = await tp.gotoClient2('/')
           expect(page2.tale).toMatchInlineSnapshot(`
         "

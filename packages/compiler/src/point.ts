@@ -33,7 +33,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   errors: unknown[]
   valid: TValid extends true ? true : false
   parsed: boolean
-  basepath: AnyRoute | undefined
+  basePath: AnyRoute | undefined
   endpoint: undefined | { method: string; route: AnyRoute }
   tags: string[]
   description: string | undefined
@@ -79,7 +79,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     this.parsed = false
     this.selfMethods = []
     this.chainMethods = []
-    this.basepath = undefined
+    this.basePath = undefined
     this.ssr = ssr
     this.tags = []
     this.description = undefined
@@ -306,7 +306,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         const routeFull = routeInfo.routeFull
         if (routeFull) {
           if (point === this) {
-            return { errors, route: this.respectBasepath(routeFull) }
+            return { errors, route: this.respectBasePath(routeFull) }
           } else {
             routeSegments.splice(0, routeSegments.length, routeFull.definition)
           }
@@ -328,7 +328,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
 
       if (nonEmptySegments.length === 0) {
         // All segments were empty, return root route
-        return { errors, route: this.respectBasepath(Route0.from('/')) }
+        return { errors, route: this.respectBasePath(Route0.from('/')) }
       }
 
       // Start with first segment as base route
@@ -337,14 +337,14 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       for (let i = 1; i < nonEmptySegments.length; i++) {
         finalRoute = finalRoute.extend(nonEmptySegments[i]) as AnyRoute
       }
-      return { errors, route: this.respectBasepath(finalRoute) }
+      return { errors, route: this.respectBasePath(finalRoute) }
     }
 
     return { errors, route: undefined }
   }
 
-  private respectBasepath(route: AnyRoute): AnyRoute {
-    return this.basepath ? this.basepath.extend(route.definition) : route
+  private respectBasePath(route: AnyRoute): AnyRoute {
+    return this.basePath ? this.basePath.extend(route.definition) : route
   }
 
   private extractRouteFromPageOrLayoutLetsCall({
@@ -439,7 +439,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   } {
     // full: lets('action', 'actionName', 'POST', '/api/users')
     // short: lets('POST', '/api/users')
-    // in route we still can have Route0.create('api/users') then it is route, then we do not respect basepath as usual in page
+    // in route we still can have Route0.create('api/users') then it is route, then we do not respect basePath as usual in page
     const errors: unknown[] = []
     const letsNode = this.letsNodePath.node
 
@@ -470,7 +470,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     }
 
     if (routeArg.type === 'StringLiteral') {
-      return { method, route: this.respectBasepath(Route0.from(routeArg.value)), policy, errors }
+      return { method, route: this.respectBasePath(Route0.from(routeArg.value)), policy, errors }
     }
 
     if (routeArg.type === 'MemberExpression') {
@@ -479,7 +479,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         const routeKey = prop.name
         const scopeRoute = this.walker.getRouteByScope(scope, routeKey)
         if (scopeRoute) {
-          return { method, route: this.respectBasepath(scopeRoute), policy, errors }
+          return { method, route: this.respectBasePath(scopeRoute), policy, errors }
         }
         errors.push(
           new Error(
@@ -501,7 +501,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       ) {
         const createArg = routeArg.arguments.at(0)
         if (createArg?.type === 'StringLiteral') {
-          return { method, route: this.respectBasepath(Route0.from(createArg.value)), policy, errors }
+          return { method, route: this.respectBasePath(Route0.from(createArg.value)), policy, errors }
         }
         errors.push(new Error(`Route0.create() first argument must be a string literal`))
         return { method, route: undefined, policy, errors }
@@ -544,21 +544,21 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     return false
   }
 
-  getBasepath(): AnyRoute | undefined {
-    let basepath = undefined as AnyRoute | undefined
+  getBasePath(): AnyRoute | undefined {
+    let basePath = undefined as AnyRoute | undefined
     for (const method of this.chainMethods) {
-      if (method.name === 'basepath') {
+      if (method.name === 'basePath') {
         const nodePath = method.nodePath
         if (nodePath.node.type !== 'CallExpression' || nodePath.node.arguments.length === 0) {
           continue
         }
         const firstArg = nodePath.node.arguments[0]
         if (firstArg.type === 'StringLiteral') {
-          basepath = basepath ? basepath.extend(firstArg.value) : Route0.create(firstArg.value)
+          basePath = basePath ? basePath.extend(firstArg.value) : Route0.create(firstArg.value)
         }
       }
     }
-    return basepath
+    return basePath
   }
 
   getSsr(): boolean {
@@ -749,7 +749,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       this.description = this.getDescription()
 
       this.polh = this.getPrefetchOnLinkHover()
-      this.basepath = this.getBasepath()
+      this.basePath = this.getBasePath()
       this.ssr = this.getSsr()
 
       if (this.type === 'action') {

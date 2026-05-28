@@ -95,9 +95,9 @@ describe('action', () => {
     })
   })
 
-  it('extends basepath', async () => {
+  it('extends basePath', async () => {
     const root = createRoot()
-    const base = root.lets('base', 'base').basepath('/my/prefix').base()
+    const base = root.lets('base', 'base').basePath('/my/prefix').base()
     const action = base
       .lets('POST', '/api/my-test/:id')
       .params(z.object({ id: z.string().min(1) }))
@@ -135,10 +135,10 @@ describe('action', () => {
     })
   })
 
-  it('twice extends basepath', async () => {
+  it('twice extends basePath', async () => {
     const root = createRoot()
-    const base1 = root.lets('base', 'base').basepath('/my/prefix').base()
-    const base2 = base1.lets('base', 'base').basepath('/another/prefix').base()
+    const base1 = root.lets('base', 'base').basePath('/my/prefix').base()
+    const base2 = base1.lets('base', 'base').basePath('/another/prefix').base()
     const action = base2
       .lets('POST', '/api/my-test/:id')
       .params(z.object({ id: z.string().min(1) }))

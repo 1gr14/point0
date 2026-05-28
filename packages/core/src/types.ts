@@ -1268,7 +1268,7 @@ export type WithError<TError, T> = unknown extends TError
 // '/my/path' → '/my/path'
 // 'https://example.com' → '/'
 // 'https://example.com/my/path' → '/my/path'
-export type BasepathByBaseurl<TBaseUrl extends string | undefined> = TBaseUrl extends undefined
+export type BasePathByBaseUrl<TBaseUrl extends string | undefined> = TBaseUrl extends undefined
   ? '/'
   : TBaseUrl extends `${string}://${string}/${infer TPath}`
     ? TPath extends ''
@@ -2178,8 +2178,8 @@ export type NiceRootStagePoint<
   | 'clientOn'
   | 'transformer'
   // | 'fetchFn'
-  | 'serverurl'
-  | 'basepath'
+  | 'serverUrl'
+  | 'basePath'
   | 'mutationOptions'
   | 'queryOptions'
   | 'infiniteQueryOptions'
@@ -2282,8 +2282,8 @@ export type NicePluginStagePoint<
   // | 'transformer'
   // | 'fetchFn'
   // | 'requireCtx'
-  // | 'serverurl'
-  // | 'basepath'
+  // | 'serverUrl'
+  // | 'basePath'
   | 'mutationOptions'
   | 'queryOptions'
   | 'infiniteQueryOptions'
@@ -2378,7 +2378,7 @@ export type NiceBaseStagePoint<
     TQueriesDefinitions
   >,
   | 'base'
-  | 'basepath'
+  | 'basePath'
   | 'on'
   | 'serverOn'
   | 'clientOn'

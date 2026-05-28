@@ -1,7 +1,7 @@
 known stage fns
 
 requireCtx: server, nothing to prune
-serverurl: client, nothing to prune
+serverUrl: client, nothing to prune
 basepath: both, nothing to prune
 ssr: both, nothing to prune
 mutationOptions: client, prune on server

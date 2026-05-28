@@ -37,6 +37,7 @@ figure out how ot pass Link props to other ui componets so it works nice
 Серч и сет серч нужно возвращать прямо из пейджа, чтобы они работали мгновенно
 setSearch как отдельная доступная утилита вне useSearchParams, но и useSearchParams 
 routes should not conflict /users/impersonate/:id? | /users/:sn
+route({origin, encode}), not just (origin)
 allos /:x?/:y?
 route.abs()
 navigate.back()
@@ -78,8 +79,6 @@ optimize compiler more, do it faster
 ? remove props form related query if not exists
 ? Cделать красивый вывод в виртуал модуле
 
-Куки стор в единственно числе
-serverurl → serverUrl
 in example rename file navigate to navigation
 
 Из маунтобла убрать подписку на пейдж стейт а то ререндерит

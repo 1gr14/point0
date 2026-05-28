@@ -34,8 +34,8 @@ export class TestProjectTwoClient {
   client2HmrPort: number | false
   host1: string | true | false
   host2: string | true | false
-  basepath1: string | true | false
-  basepath2: string | true | false
+  basePath1: string | true | false
+  basePath2: string | true | false
   processes: TestProcess[] = []
   ports: number[] = []
   prefetchPageOnNavigate1: false | PrefetchPagePolicy
@@ -61,8 +61,8 @@ export class TestProjectTwoClient {
     client2HmrPort: number | false
     host1: string | true | false
     host2: string | true | false
-    basepath1: string | true | false
-    basepath2: string | true | false
+    basePath1: string | true | false
+    basePath2: string | true | false
     prefetchPageOnNavigate1: false | PrefetchPagePolicy
     prefetchPageOnLinkHover1: false | PrefetchPagePolicy
     prefetchPageOnNavigate2: false | PrefetchPagePolicy
@@ -79,8 +79,8 @@ export class TestProjectTwoClient {
     this.ssr2 = options.ssr2
     this.host1 = options.host1
     this.host2 = options.host2
-    this.basepath1 = options.basepath1
-    this.basepath2 = options.basepath2
+    this.basePath1 = options.basePath1
+    this.basePath2 = options.basePath2
     this.prefetchPageOnNavigate1 = options.prefetchPageOnNavigate1
     this.prefetchPageOnLinkHover1 = options.prefetchPageOnLinkHover1
     this.prefetchPageOnNavigate2 = options.prefetchPageOnNavigate2
@@ -176,18 +176,18 @@ export class TestProjectTwoClient {
     if (host2) {
       await this.replace(this.files.engine, `// serving: client2,`, `serving: '${host2}',`)
     }
-    if (this.basepath1) {
+    if (this.basePath1) {
       await this.replace(
         this.files.root1,
-        `// .basepath('/')`,
-        `.basepath('${this.basepath1 === true ? '/' : this.basepath1}')`,
+        `// .basePath('/')`,
+        `.basePath('${this.basePath1 === true ? '/' : this.basePath1}')`,
       )
     }
-    if (this.basepath2) {
+    if (this.basePath2) {
       await this.replace(
         this.files.root2,
-        `// .basepath('/')`,
-        `.basepath('${this.basepath2 === true ? '/' : this.basepath2}')`,
+        `// .basePath('/')`,
+        `.basePath('${this.basePath2 === true ? '/' : this.basePath2}')`,
       )
     }
     if (!this.superjson1) {
@@ -518,8 +518,8 @@ export type TestProjectTwoClientGeneralOptions = {
   prefetchPageOnLinkHover2: false | PrefetchPagePolicy
   host1: string | true | false
   host2: string | true | false
-  basepath1: string | false
-  basepath2: string | false
+  basePath1: string | false
+  basePath2: string | false
 }
 
 export type TestProjectTwoClientCreateOptions = Omit<
@@ -581,8 +581,8 @@ export class TestProjectTwoClientFactory {
       prefetchPageOnLinkHover2: false,
       host1: false,
       host2: false,
-      basepath1: false,
-      basepath2: false,
+      basePath1: false,
+      basePath2: false,
       ...defaultOptions,
     }
     this.namespace = namespace
