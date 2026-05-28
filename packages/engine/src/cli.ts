@@ -489,4 +489,46 @@ pointsCommand
     console.info(JSON.stringify(result ?? null, null, 2))
   })
 
+const docsCommand = program
+  .command('docs')
+  .description('Search and read Point0 documentation (requires the @point0/docs package)')
+
+const loadDocs = async (): Promise<typeof import('@point0/docs')> => {
+  try {
+    return await import('@point0/docs')
+  } catch {
+    throw new Error('Point0 docs are not installed. Install them with: bun add -D @point0/docs')
+  }
+}
+
+docsCommand
+  .command('search <query...>')
+  .description('Hybrid (keyword + semantic) search across the docs')
+  .option('--limit <number>', 'Maximum number of results', parseNonNegativeIntegerOption('limit'))
+  .action(async (query: string[], options: { limit?: number }) => {
+    const docs = await loadDocs()
+    const hits = await docs.searchDocs(query.join(' '), options.limit)
+    console.info(JSON.stringify(hits, null, 2))
+  })
+
+docsCommand
+  .command('list')
+  .description('List all docs as a table of contents')
+  .action(async () => {
+    const docs = await loadDocs()
+    console.info(JSON.stringify(docs.listDocs(), null, 2))
+  })
+
+docsCommand
+  .command('get <slug>')
+  .description('Get the full markdown of a doc by its slug (the file name)')
+  .action(async (slug: string) => {
+    const docs = await loadDocs()
+    const doc = docs.getDoc(slug)
+    if (!doc) {
+      throw new Error(`No doc found for slug "${slug}".`)
+    }
+    console.info(doc.content)
+  })
+
 program.parse()

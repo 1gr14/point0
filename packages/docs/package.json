@@ -1,0 +1,73 @@
+{
+  "name": "@point0/docs",
+  "version": "0.1.0",
+  "license": "MIT",
+  "author": {
+    "name": "Sergei Dmitriev",
+    "url": "https://p0nt.dev"
+  },
+  "homepage": "https://github.com/devp0nt/point0#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devp0nt/point0.git",
+    "directory": "packages/docs"
+  },
+  "bugs": {
+    "url": "https://github.com/devp0nt/point0/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "bin": {
+    "point0-docs-mcp": "./dist/mcp.js"
+  },
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "": [
+        "./dist/index.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "content/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build:content": "bun ./scripts/build-content.ts",
+    "build": "bun run build:content && tsdown",
+    "build:watch": "tsdown --watch",
+    "test": "bun test ./tests",
+    "test:watch": "bun test --watch ./tests",
+    "types": "tsc --noEmit -p tsconfig.build.json",
+    "typesgo": "tsgo --noEmit -p tsconfig.build.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "pack:dist": "rimraf ../../packages-dist-npm && bun ../../scripts/transform-package-for-publish.ts && mkdir -p ../../packages-dist-npm/docs && npm pack --pack-destination ../../packages-dist-npm/docs --silent && (cd ../../packages-dist-npm/docs && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz) && bun ../../scripts/restore-package.ts",
+    "prepublishOnly": "bun run build:content && bun ../../scripts/transform-package-for-publish.ts",
+    "postpublish": "bun ../../scripts/restore-package.ts"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "catalog:",
+    "@modelcontextprotocol/sdk": "catalog:",
+    "@orama/orama": "catalog:",
+    "gray-matter": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.22",
+    "@types/node": "^20.0.0",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
+}

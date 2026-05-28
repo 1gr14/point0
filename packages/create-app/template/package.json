@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "point0 dev",
     "generate": "point0 generate",
-    "mcp": "point0-mcp --meta ./src/generated/point0/meta.ts",
+    "mcp:project": "point0-project-mcp --meta ./src/generated/point0/meta.ts",
+    "mcp:docs": "point0-docs-mcp",
     "build": "point0 build",
     "start": "cross-env NODE_ENV=production bun run ./dist/server/index.server.js",
     "docker:build": "docker compose build",
@@ -52,6 +53,7 @@
     "@tailwindcss/vite": "^4.2.2"
   },
   "devDependencies": {
+    "@point0/docs": "workspace:*",
     "@svgr/core": "^8.1.0",
     "@svgr/plugin-jsx": "^8.1.0",
     "@tanstack/react-query-devtools": "^5.99.0",

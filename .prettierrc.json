@@ -16,6 +16,12 @@
       "options": {
         "trailingComma": "none"
       }
+    },
+    {
+      "files": ["*.md"],
+      "options": {
+        "printWidth": 80
+      }
     }
   ]
 }

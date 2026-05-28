@@ -17,7 +17,7 @@ Fullstack TypeScript framework. Bun-based monorepo. The CLI `point0` (provided b
 ```
 packages/
   core/         shared logic (client + server). The framework's "kernel": Point0, points-manager, eventer, super-store, env, error, navigation, schema adapters.
-  engine/       server runtime + CLI + build pipeline orchestration. Owns `point0` and `point0-mcp` bins, dev/build/generate, vite/bun integration, MCP server.
+  engine/       server runtime + CLI + build pipeline orchestration. Owns `point0` and `point0-project-mcp` bins, dev/build/generate, vite/bun integration, MCP server.
   compiler/     source transform: file walker, point detection, virtual modules, babel/mdx plugins, bun/vite plugin entry points.
   react-dom/    React/DOM bindings on top of core.
   openapi/      OpenAPI generation from points.

@@ -98,7 +98,7 @@ describe('FilesGenerator', () => {
   })
 
   describe('#sync', () => {
-    it.concurrent(
+    it(
       'generates server points file',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log, getLastLogMessage, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -140,7 +140,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
       }),
     )
 
-    it.concurrent(
+    it(
       'generates lazy client points file',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log, getLastLogMessage, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -229,7 +229,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
       }),
     )
 
-    it.concurrent(
+    it(
       'generates server points file (ssr)',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log }) => {
         // with all pages come to server, becouse some of them have loaders, but even if it has no loader, it can be used to retrieve queryClientDehydratedState
@@ -275,7 +275,7 @@ export const queryWithoutLoader = layout2.lets('query', 'queryWithoutLoader').qu
       }),
     )
 
-    it.concurrent(
+    it(
       'generates server points file (no ssr)',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log }) => {
         // without ssr only pages with loaders come to server, becouse they have endpoints
@@ -320,7 +320,7 @@ export const queryWithoutLoader = layout2.lets('query', 'queryWithoutLoader').qu
       }),
     )
 
-    it.concurrent(
+    it(
       'generates ready points file',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -358,7 +358,7 @@ export const page = root.lets('page', 'mypage', '/mypage').page(() => <div>Hello
       }),
     )
 
-    it.concurrent(
+    it(
       'generates routes file',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -394,7 +394,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
       }),
     )
 
-    it.concurrent(
+    it(
       'generates routes file with origin without path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -431,7 +431,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
       }),
     )
 
-    it.concurrent(
+    it(
       'generates routes file with origin with path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -468,7 +468,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
       }),
     )
 
-    it.concurrent(
+    it(
       'generates routes file with origin with extra path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -505,7 +505,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
       }),
     )
 
-    it.concurrent(
+    it(
       'generates routes file with origin with path and extra path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -542,7 +542,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
       }),
     )
 
-    it.concurrent(
+    it(
       'generates routes file with origin as process.env.BASE_URL',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -579,7 +579,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
       }),
     )
 
-    it.concurrent(
+    it(
       'generates routes file with origin as process.env.BASE_URL and extra path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -616,7 +616,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
       }),
     )
 
-    it.concurrent(
+    it(
       'generates all three file types',
       helper(async ({ dir, files: [rootFile, lazyFile, readyFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -699,7 +699,7 @@ export const layout = root.lets('layout', 'mylayout', '/layout').loader(() => ({
       }),
     )
 
-    it.concurrent(
+    it(
       'generates files with banner',
       helper(async ({ dir, files: [rootFile, pointsFile0, pointsFile1], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -769,7 +769,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
       }),
     )
 
-    it.concurrent(
+    it(
       'generates routes file with empty routes when no pages',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -802,7 +802,7 @@ export const root = Point0.lets('root', 'myroot').root()
       }),
     )
 
-    it.concurrent(
+    it(
       'handles multiple scopes',
       helper(async ({ dir, files: [root0File, root1File, lazy0File, lazy1File, lazy2File], fixPaths, log: log }) => {
         await root0File.write(`import {Point0} from '@point0/core'
@@ -900,7 +900,7 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
       }),
     )
 
-    it.concurrent(
+    it(
       'generates meta file',
       helper(async ({ dir, files: [rootFile, metaFile], fixPaths, log: log, getLastLogMessage, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -1184,7 +1184,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
       }),
     )
 
-    it.concurrent(
+    it(
       'generates custom file',
       helper(async ({ dir, files: [rootFile, customFile], fixPaths, log: log, getLastLogMessage, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -1221,7 +1221,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
       }),
     )
 
-    it.concurrent(
+    it(
       'generates custom file with imports',
       helper(async ({ dir, files: [rootFile, customFile], fixPaths, log: log, getLastLogMessage, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
@@ -1271,7 +1271,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
       }),
     )
 
-    it.concurrent(
+    it(
       'generates custom by controlled handler',
       helper(
         async ({
@@ -1323,7 +1323,7 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
   })
 
   describe('#watch', () => {
-    it.concurrent(
+    it(
       'watches files and updates points',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, getLogs, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'

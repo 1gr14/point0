@@ -107,7 +107,7 @@ const buildFilter = (input: AnalyzerPointSelectOptions): AnalyzerPointsFilterOpt
 
 const server = new McpServer(
   {
-    name: 'point0',
+    name: 'point0-project',
     version: '1.0.0',
   },
   {

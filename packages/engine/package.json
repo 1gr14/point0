@@ -19,7 +19,7 @@
   "sideEffects": false,
   "bin": {
     "point0": "./dist/cli.js",
-    "point0-mcp": "./dist/mcp.js"
+    "point0-project-mcp": "./dist/mcp.js"
   },
   "types": "./dist/index.d.ts",
   "typesVersions": {
@@ -165,7 +165,7 @@
     "postpublish": "bun ../../scripts/restore-package.ts"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "catalog:",
     "@parcel/watcher": "^2.5.1",
     "commander": "catalog:",
     "devalue": "^5.6.2",
@@ -201,6 +201,7 @@
     "@tanstack/query-core": "catalog:",
     "safe-stable-stringify": "catalog:",
     "@point0/cookies-store": "workspace:*",
+    "@point0/docs": "workspace:*",
     "@testing-library/react": "^16.3.1",
     "@types/bun": "^1.2.22",
     "@types/lodash": "^4.17.20",
