@@ -29,6 +29,21 @@ mcp as comments
 ------
 
 
+
+# Runtime
+---
+? build: {watch}, dev: {watch}, generate: {watch}
+? Из компилера не учитывать импорты в которых только тайп при импорт протекшене (они сами удалятся)
+optimize compiler more, do it faster
+
+
+
+# Compiler
+---
+? Попробовать не убирать тайпскрипт, а отменить экспериментальное сохранение синтаксиса
+? Тайпскрипт только при билде не вырезать, а так вырезать
+
+
 # Navigation
 Infer for Link, getLinkProps({route, to href}), useLinkProps?({route, to href})
 Link should have all <a> props
@@ -58,18 +73,13 @@ normalize scroll restoration (it is trash now)
 
 
 
-# Runtime
----
-? build: {watch}, dev: {watch}, generate: {watch}
-? Из компилера не учитывать импорты в которых только тайп при импорт протекшене (они сами удалятся)
-optimize compiler more, do it faster
-
-
-
-# Compiler
----
-? Попробовать не убирать тайпскрипт, а отменить экспериментальное сохранение синтаксиса
-? Тайпскрипт только при билде не вырезать, а так вырезать
+# Agentic setup
+organize agents repo
+script to sync agents rules, etc betwee claud and cursor without ln, but just copying files and fix them for cursor
+tmux commands
+web view of agents
+mobile agents maniplulations
+agents branch where all code goes to
 
 
 
@@ -78,8 +88,6 @@ optimize compiler more, do it faster
 ? Эз форм дата тру фалс авто влияет и на опенапи и аозмовозможность вообще отправить другое
 ? remove props form related query if not exists
 ? Cделать красивый вывод в виртуал модуле
-
-in example rename file navigate to navigation
 
 Из маунтобла убрать подписку на пейдж стейт а то ререндерит
 Глобал хед в отдельном компоненте рядом в провайдере анхеда выводить, а не сувать его во все пейджи (вероятно)
@@ -105,6 +113,7 @@ allow related query in plugins, and just location there
 Мсп должен всегда читать свежую мета
 
 error0 allow empty args, empty message
+in example rename file navigate to navigation
 
 
 # Additional
@@ -117,6 +126,7 @@ SSrStore. ССР стор и куки стор одинааковый стиль
 Опенапи пер поинт с суффиксом . Опенапи
 пофиксить экзамплы
 пофиксить криэйт апп
+docs
 
 
 # Later
@@ -155,13 +165,9 @@ SSrStore. ССР стор и куки стор одинааковый стиль
 В генераторе пусть также собираются все файлы и информация об их экспортах чтобы можно было что угодно нагенерить
 Скрипт для синхронизации файлов экзамплов вайт бан и вайт классик
 
-# Docs
-docs should be available via local mcp
 
 
 
-
-REFACTOING 3000
 
 
 
