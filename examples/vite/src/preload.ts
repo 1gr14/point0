@@ -1,5 +1,5 @@
 import { engine } from '@/engine'
 
-if (engine.isFileInEngineDir()) {
+if (engine.isFileInEngineDir() || engine.isCliFile()) {
   await engine.preload({ nodeEnvFallback: 'development', preventLoadBunPlugins: true })
 }

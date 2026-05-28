@@ -8,7 +8,7 @@ import type {
   PointsScope,
   RequiredCtx,
 } from '@point0/core'
-import { _point0_env, _ssServerLog, prependAndDeappendSlash } from '@point0/core'
+import { _point0_env, prependAndDeappendSlash } from '@point0/core'
 import type { BunPlugin, Serve } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -324,24 +324,19 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     }
     await this.readPoints()
     this.prepared = true as never
-    this._applyRootLogger()
+    this._applyRootLogger(engine)
     this.fetcher = Fetcher.create({ engine, server: this as EngineServer<true, TError> }) as TPrepared extends true
       ? Fetcher<TError>
       : null
     return this as EngineServer<true, TError>
   }
 
-  /** Override default engine logger with root point _logger when present (point logger > engine config). */
-  private _applyRootLogger(): void {
+  /** Override the engine logger with the root point's `_logger` when present (point logger > engine config). */
+  private _applyRootLogger(engine: Engine<RequiredCtx, TError, true>): void {
     if (!this.points) return
     const rootLogger = this.points.manager.root._getLogFn()
     if (!rootLogger) return
-    _ssServerLog.set(rootLogger)
-    this.log = rootLogger
-    this.points.manager.log = rootLogger
-    for (const client of this.clients) {
-      client.log = rootLogger
-    }
+    engine._setLog(rootLogger)
   }
 
   async readPoints(): Promise<ServerPoints<TError>> {

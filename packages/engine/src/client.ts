@@ -424,6 +424,7 @@ import { registerOnProcessExit } from '@point0/engine/utils';
 import { env } from '@point0/core';
 const { engine } = await Engine.findAndImportSelf({ engineFile: '${this.engineFile}' });
 try {
+  await engine.preload({ preventSetEnvVars: true });
   if (!env.mode.is.production) {
     await killPort([${this.port}, ${this.hmrPort}].filter(Boolean), { force: true, category: ['client'] })
   }

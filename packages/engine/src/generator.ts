@@ -157,7 +157,7 @@ export class FilesGenerator {
   readonly routes: Record<string, RoutesPretty>
   readonly routesSrc: Record<string, { instance: RoutesPretty | null; getter: EngineOptionsRoutes | null }>
   private isRoutesInitialized = false
-  readonly log: LogFn
+  log: LogFn
   private readonly filesWatcher: FilesWatcher
   readonly ssr: boolean
 

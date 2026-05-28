@@ -73,7 +73,6 @@ optimize compiler more, do it faster
 
 
 # Micro
-В самом поинт0 тоже разделить мсп проджект и мсп докс
 engine config log → logger { log }
 engine config log, also should be able to accept async () => import; return logFn
 Куки стор в единственно числе

@@ -141,10 +141,21 @@ export type EngineOptionsCompilerSpecificParsed = {
 
 export type EngineOptionsServing = boolean | string | ((options: { request: Request0 }) => boolean)
 
+/** Logger settings. Currently just the log function, but kept as an object so more can be added later. */
+export type LoggerConfig = {
+  log?: LogFn
+}
+/**
+ * Either a logger config directly, or a (sync/async) function that returns one. The function form is
+ * resolved during preload, after bun plugins are loaded — so a custom logger imported inside it goes
+ * through the compiler transforms (same as how points are read).
+ */
+export type LoggerOptionsInput = LoggerConfig | (() => LoggerConfig | Promise<LoggerConfig>)
+
 export type EngineGeneralOptions = {
   file: string
   generte?: Array<Omit<FilesGeneratorTaskMeta, 'scopes'>>
-  log?: LogFn
+  logger?: LoggerOptionsInput
   generate?: FilesGeneratorSimpleGeneralConfig | FilesGeneratorTask[]
   itWasBuilt?: boolean
   cwdAfterBuild?: string
@@ -229,7 +240,10 @@ export type EngineOptions<
 }
 
 export type EngineGeneralOptionsParsed = {
+  /** Available synchronously: the object-form `logger.log`, or the default until a function form is resolved. */
   log: LogFn
+  /** Raw `logger` option; the function form is resolved during preload (after bun plugins). */
+  logger: LoggerOptionsInput | undefined
   itWasBuilt: boolean
   cwdAfterBuild: string
   cwdBeforeBuild: string
@@ -550,8 +564,13 @@ const parseEngineGeneralOptions = ({
             clients: clientsOptions?.map((client) => ({ scope: client.scope })),
           },
         })
+  // The object form gives `log` synchronously; the function form is resolved later, during preload
+  // (after bun plugins), so a custom logger imported inside it goes through the compiler transforms.
+  const logger = generalOptions.logger
+  const log: LogFn = typeof logger === 'function' ? _defaultLogFn : (logger?.log ?? _defaultLogFn)
   const result = {
-    log: generalOptions.log ?? _defaultLogFn,
+    log,
+    logger,
     itWasBuilt,
     cwdAfterBuild,
     cwdBeforeBuild,

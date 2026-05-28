@@ -1,7 +1,8 @@
 import { resolveTempDirPath } from '@point0/compiler'
-import type { PointsDefinitionSource, RichFetchFn } from '@point0/core'
+import type { NormalizedNodeEnv, RichFetchFn } from '@point0/core'
 import {
   __POINT0_QUERY_CLIENT__,
+  _defaultLogFn,
   _getSsItemsWithRestErrors,
   _ssRunWithServerStorageState,
   _ssServerLog,
@@ -19,9 +20,9 @@ import type { Serve } from 'bun'
 import nodeFs from 'node:fs'
 import nodeFsPromises from 'node:fs/promises'
 import nodePath from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { EngineClient } from './client.js'
-import type { EngineOptions } from './config.js'
+import type { EngineOptions, LoggerOptionsInput } from './config.js'
 import { parseEngineOptions } from './config.js'
 import type { FileGeneratorProcessResult } from './generator.js'
 import { FilesGenerator } from './generator.js'
@@ -34,7 +35,6 @@ import {
   normalizeAndValidateNodeEnv,
 } from './utils.js'
 import { FilesWatcher } from './watcher.js'
-import type { NormalizedNodeEnv } from '@point0/core'
 
 export class Engine<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -52,6 +52,7 @@ export class Engine<
   server: TPrepared extends true ? EngineServer<true, TError> : EngineServer<false, TError>
   publicdirs: TPrepared extends true ? Array<Publicdir<true, TError>> : Array<Publicdir<false, TError>>
   log: LogFn
+  logger: LoggerOptionsInput | undefined
   generator: FilesGenerator
   prepared: TPrepared
   pointsGlob: string[]
@@ -67,6 +68,7 @@ export class Engine<
     clients: EngineClient<any, TError>[]
     server: EngineServer<any, any>
     log: LogFn
+    logger: LoggerOptionsInput | undefined
     prepared: TPrepared
     generator: FilesGenerator
     publicdirs: Array<Publicdir<false, TError>>
@@ -82,6 +84,7 @@ export class Engine<
       : EngineClient<false, TError>[]
     this.server = input.server as TPrepared extends true ? EngineServer<true, TError> : EngineServer<false, TError>
     this.log = input.log
+    this.logger = input.logger
     this.prepared = input.prepared
     this.generator = input.generator
     this.publicdirs = input.publicdirs as TPrepared extends true
@@ -156,6 +159,7 @@ export class Engine<
       clients,
       server,
       log: parsedOptions.general.log,
+      logger: parsedOptions.general.logger,
       prepared: false,
       generator,
       publicdirs,
@@ -180,10 +184,47 @@ export class Engine<
     prepare?: TPrepare
   } = {}): Promise<TPrepare extends true ? Engine<TRequiredCtx, TError, true> : typeof this> {
     await this.server.preload({ preventSetEnvVars, nodeEnvFallback, preventLoadBunPlugins })
+    await this.applyLogger()
     if (prepare) {
       await this.prepare()
     }
     return this as TPrepare extends true ? Engine<TRequiredCtx, TError, true> : typeof this
+  }
+
+  /**
+   * The single source of truth for logger propagation: apply a log fn to every place that holds one in this process —
+   * the engine, server, generator and clients, the server/client superstores, and the points manager (once loaded).
+   * Future per-side (server/client) overrides would slot in here.
+   */
+  _setLog(logFn: LogFn): void {
+    this.log = logFn
+    this.generator.log = logFn
+    this.server.log = logFn
+    for (const client of this.clients) {
+      client.log = logFn
+    }
+    const manager = this.server.points?.manager
+    if (manager) {
+      manager.log = logFn
+    }
+    _ssServerLog.set(logFn)
+    // later will fix, for now client uses only default logger
+    // _ssClientLog.set(logFn)
+  }
+
+  /**
+   * Resolve the configured `logger` (awaiting the function form) and propagate it via `_setLog`. Idempotent — the raw
+   * `logger` is consumed on first call. Callers must ensure bun plugins are active first (preload in the main process;
+   * bunfig in spawned dev children).
+   */
+  async applyLogger(): Promise<void> {
+    const logger = this.logger
+    if (logger === undefined) {
+      return
+    }
+    this.logger = undefined
+    const config = typeof logger === 'function' ? await logger() : logger
+    this._setLog(config.log ?? _defaultLogFn)
   }
 
   async prepare(): Promise<Engine<TRequiredCtx, TError, true>> {
@@ -955,6 +996,19 @@ export class Engine<
   isFileInEngineDir(file: string = Bun.main): boolean {
     const engineFileDir = nodePath.dirname(this.file)
     return !nodePath.relative(engineFileDir, file).startsWith('..')
+  }
+
+  isCliFile(file: string = Bun.main): boolean {
+    const selfDir = nodePath.dirname(fileURLToPath(import.meta.url))
+    const names = ['cli']
+    const exts = ['js', 'ts', 'mjs', 'cjs', 'mts', 'cts']
+    const paths = new Set<string>()
+    for (const name of names) {
+      for (const ext of exts) {
+        paths.add(nodePath.resolve(selfDir, `${name}.${ext}`))
+      }
+    }
+    return paths.has(file)
   }
 
   async readEverything(): Promise<void> {

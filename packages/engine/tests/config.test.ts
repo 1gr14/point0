@@ -581,4 +581,23 @@ describe('config', () => {
       expect(parsed.server.envConsts).toEqual({ MY_CONST: 'value' })
     })
   })
+
+  describe('logger', () => {
+    const sampleLog = { level: 'info' as const, category: ['test'], message: 'hi' }
+
+    it('uses logger.log directly when given the object form', () => {
+      const calls: string[] = []
+      const parsed = parseEngineOptions(base({ general: { logger: { log: () => calls.push('x') } } }))
+      parsed.general.log(sampleLog)
+      expect(calls).toEqual(['x'])
+    })
+
+    it('carries the function form raw (resolved later in preload, after bun plugins)', () => {
+      const fn = () => ({ log: () => {} })
+      const parsed = parseEngineOptions(base({ general: { logger: fn } }))
+      // not resolved at parse time: the raw function is carried, and log stays the default until preload
+      expect(parsed.general.logger).toBe(fn)
+      expect(() => parsed.general.log(sampleLog)).not.toThrow()
+    })
+  })
 })
