@@ -51,10 +51,6 @@ figure out how ot pass Link props to other ui componets so it works nice
 Навигецт и редирект абсолютного пути не в той оригине должен использовать виндоу, и вообще иметь хук для открытия сторонних ссылок, а также пропсу для открытия в новой вкладке
 Серч и сет серч нужно возвращать прямо из пейджа, чтобы они работали мгновенно
 setSearch как отдельная доступная утилита вне useSearchParams, но и useSearchParams 
-routes should not conflict /users/impersonate/:id? | /users/:sn
-route({origin, encode}), not just (origin)
-allos /:x?/:y?
-route.abs()
 navigate.back()
 Добавить хелпер гет локейшен
 layout Page404 allow elemnt not component
@@ -74,12 +70,9 @@ normalize scroll restoration (it is trash now)
 
 
 # Agentic setup
-organize agents repo
-script to sync agents rules, etc betwee claud and cursor without ln, but just copying files and fix them for cursor
-tmux commands
+- tmux commands
 web view of agents
-mobile agents maniplulations
-agents branch where all code goes to
+todo0
 
 
 

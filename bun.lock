@@ -507,33 +507,6 @@
         "react-dom": "catalog:",
       },
     },
-    "packages/engine/tests/temp/template/test-2f04b749-8df6-43d8-9ac8-a755339418f8": {
-      "name": "@point0/test-2f04b749-8df6-43d8-9ac8-a755339418f8",
-      "version": "1.0.0",
-      "dependencies": {
-        "@devp0nt/route0": "catalog:",
-        "@point0/compiler": "workspace:*",
-        "@point0/core": "workspace:*",
-        "@point0/cors": "workspace:*",
-        "@point0/engine": "workspace:*",
-        "@point0/react-dom": "workspace:*",
-        "react": "catalog:",
-        "react-dom": "catalog:",
-        "server-only": "^0.0.1",
-        "superjson": "catalog:",
-      },
-      "devDependencies": {
-        "@svgr/core": "^8.1.0",
-        "@svgr/plugin-jsx": "^8.1.0",
-        "@types/bun": "catalog:",
-        "@types/react": "catalog:",
-        "@types/react-dom": "catalog:",
-        "cross-env": "^10.0.0",
-        "ncp": "^2.0.0",
-        "rimraf": "^6.0.1",
-        "typescript": "catalog:",
-      },
-    },
     "packages/engine/tests/templates/one-client": {
       "name": "@point0/test-one-client",
       "version": "1.0.0",
@@ -639,8 +612,8 @@
   },
   "catalog": {
     "@devp0nt/error0": "^1.0.0",
-    "@devp0nt/flat0": "^1.1.5",
-    "@devp0nt/route0": "^1.0.1",
+    "@devp0nt/flat0": "^1.2.0",
+    "@devp0nt/route0": "^1.1.0",
     "@huggingface/transformers": "^4.2.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@orama/orama": "^3.1.18",
@@ -940,9 +913,9 @@
 
     "@devp0nt/error0": ["@devp0nt/error0@1.0.0", "", {}, "sha512-PODfADkTC1zIDg+M9koAKnaZaRTUOhHOZBWYuPiYgSi/+nACDwZmMnh15C/EgD7T0Zt7c2brXvc5FlK2JrYCbA=="],
 
-    "@devp0nt/flat0": ["@devp0nt/flat0@1.1.5", "", {}, "sha512-yiv0jnwp2h7ZODhCw1HQFEE/+WPVKecPTeNw5aO/GAgPZXdWjNLWp1nSu/ulADABSJF0ByFO/c7cvCUDssDv7Q=="],
+    "@devp0nt/flat0": ["@devp0nt/flat0@1.2.0", "", {}, "sha512-uZtYPTnMEtFicmXL2FFtgJLrt0Lee33zBwo8HGi0GlR9O4UkrJ86VGHttJVrAO505JEt4lmHPFjYB4s8yEnuDQ=="],
 
-    "@devp0nt/route0": ["@devp0nt/route0@1.0.1", "", { "peerDependencies": { "@devp0nt/flat0": "^1.1.1", "@standard-schema/spec": "^1.0.0" }, "optionalPeers": ["@standard-schema/spec"] }, "sha512-q28qdh1KbzbNQH56znf5cxA7CuKuPKtTjoyzRSxq8mwqvNqElBMIFALYa4WGvBrdWReTGJJtbDnFtN1NYv+7ow=="],
+    "@devp0nt/route0": ["@devp0nt/route0@1.1.0", "", { "peerDependencies": { "@devp0nt/flat0": "^1.2.0", "@standard-schema/spec": "^1.0.0" }, "optionalPeers": ["@standard-schema/spec"] }, "sha512-dxOlpMyTpgrmIaNhvT3PFmHyZs0QV3TMngdI6mm0CikY67M/U9PoERBREJMmJ3HtAsbv+/U6fkKCHa1ZJDn4Ow=="],
 
     "@electric-sql/pglite": ["@electric-sql/pglite@0.4.1", "", {}, "sha512-mZ9NzzUSYPOCnxHH1oAHPRzoMFJHY472raDKwXl/+6oPbpdJ7g8LsCN4FSaIIfkiCKHhb3iF/Zqo3NYxaIhU7Q=="],
 
@@ -1403,8 +1376,6 @@
     "@point0/openapi": ["@point0/openapi@workspace:packages/openapi"],
 
     "@point0/react-dom": ["@point0/react-dom@workspace:packages/react-dom"],
-
-    "@point0/test-2f04b749-8df6-43d8-9ac8-a755339418f8": ["@point0/test-2f04b749-8df6-43d8-9ac8-a755339418f8@workspace:packages/engine/tests/temp/template/test-2f04b749-8df6-43d8-9ac8-a755339418f8"],
 
     "@point0/test-one-client": ["@point0/test-one-client@workspace:packages/engine/tests/templates/one-client"],
 
