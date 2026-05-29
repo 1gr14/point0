@@ -11350,7 +11350,9 @@ export class Point0<
     const { '?': _search, ...paramsRaw } = input as Record<string, unknown>
     const paramsWithStrings = flat0.parse(flat0.stringify(paramsRaw))
     const location = Object.assign(
-      Route0.getLocation(this.route.get(input, typeof window !== 'undefined' ? window.location.origin : undefined)),
+      Route0.getLocation(
+        this.route.get(input, { origin: typeof window !== 'undefined' ? window.location.origin : undefined }),
+      ),
       {
         route: this.route.definition,
         params: paramsWithStrings,

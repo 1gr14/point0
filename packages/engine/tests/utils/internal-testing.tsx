@@ -586,7 +586,7 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
       if (!point.route) {
         throw new Error(`Point "${point.toString()}" has no route`)
       }
-      const response = await client.fetch(point.route.get(args[0] || {}, 'http://localhost'), ...args.slice(1))
+      const response = await client.fetch(point.route.get(args[0] || {}, { origin: 'http://localhost' }), ...args.slice(1))
       return await HtmlView.parse(await response.text())
     })
   }) as unknown as FetchHtmlView
@@ -595,7 +595,7 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
       if (!point.route) {
         throw new Error(`Point "${point.toString()}" has no route`)
       }
-      const response = await client.fetch(point.route.get(args[0] || {}, 'http://localhost'), ...args.slice(1))
+      const response = await client.fetch(point.route.get(args[0] || {}, { origin: 'http://localhost' }), ...args.slice(1))
       return (await HtmlView.parse(await response.text())).preview
     })
   }) as unknown as FetchHtmlPreview
@@ -604,7 +604,7 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
       if (!point.route) {
         throw new Error(`Point "${point.toString()}" has no route`)
       }
-      const url = point.route.get(args[0] || {}, 'http://localhost')
+      const url = point.route.get(args[0] || {}, { origin: 'http://localhost' })
       const response = await client.fetch(url, ...args.slice(1))
       const transformer = point.point._getTransformer()
       const view = await HtmlView.parse(await response.text())

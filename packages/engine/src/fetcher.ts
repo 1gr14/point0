@@ -592,7 +592,9 @@ export class Fetcher<TError extends ErrorPoint0> {
         if (!route) {
           throw new ErrorClass(`Point "${point.toString()}" has no route while requested page html via task`)
         }
-        const pageUrl = route.get({ ...input.params, '?': input.search } as never, request.from.location?.origin)
+        const pageUrl = route.get({ ...input.params, '?': input.search } as never, {
+          origin: request.from.location?.origin,
+        })
         const pageLocation = Object.assign(Route0.getLocation(pageUrl), {
           params: input.params,
           route: route.definition,
@@ -633,7 +635,9 @@ export class Fetcher<TError extends ErrorPoint0> {
         if (!route) {
           throw new ErrorClass(`Point "${point.toString()}" has no route while requested page html via endpoint`)
         }
-        const pageUrl = route.get({ ...input.params, '?': input.search } as never, request.from.location?.origin)
+        const pageUrl = route.get({ ...input.params, '?': input.search } as never, {
+          origin: request.from.location?.origin,
+        })
         const pageLocation = Object.assign(Route0.getLocation(pageUrl), {
           params: input.params,
           route: route.definition,

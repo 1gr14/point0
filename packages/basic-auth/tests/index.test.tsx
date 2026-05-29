@@ -265,11 +265,11 @@ describe('basic-auth', () => {
 
     const { fetch } = await createTestThings({ points: [root, action], ssr: true })
 
-    const response1 = await fetch(action.route.get({}, 'http://localhost:3000'))
+    const response1 = await fetch(action.route.get({}, { origin: 'http://localhost:3000' }))
     expect(response1.status).toBe(401)
     expect(response1.headers.get('WWW-Authenticate')).toBe('Basic realm="Restricted", charset="UTF-8"')
 
-    const response2 = await fetch(action.route.get({}, 'http://localhost:3000'), {
+    const response2 = await fetch(action.route.get({}, { origin: 'http://localhost:3000' }), {
       headers: {
         Authorization: getBasicAuthHeader('admin', 'secret'),
       },

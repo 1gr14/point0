@@ -75,3 +75,8 @@ secrets/
 
 # Claude/Cursor
 .claude/settings.local.json
+
+# Task0
+tasks
+# todo.md
+# todo.txt
