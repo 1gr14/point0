@@ -60,6 +60,7 @@ program
       await patchTemplate(appName, useVite)
       if (shouldInstall) {
         await installDependencies(appName)
+        await setupProject(appName)
       }
       outro(`Project "${appName}" created successfully with (${useVite ? 'vite' : 'bun'}) bundler.`)
     } catch (error) {
@@ -326,6 +327,18 @@ async function installDependencies(appName: string) {
   const install = spawnSync('bun', ['install'], { cwd: appRoot, stdio: 'inherit' })
   if (install.status !== 0) {
     throw new Error('Failed to install dependencies in the generated project.')
+  }
+}
+
+// The template's `setup` script (prisma migrate/generate + point0 generate + seed)
+// is intentionally NOT named `prepare`: a `prepare` script runs on every
+// `bun install`, which breaks installs in the monorepo (and any CI) where no
+// database is available. We run it explicitly here, after deps are installed.
+async function setupProject(appName: string) {
+  const appRoot = resolve(process.cwd(), appName)
+  const setup = spawnSync('bun', ['run', 'setup'], { cwd: appRoot, stdio: 'inherit' })
+  if (setup.status !== 0) {
+    throw new Error('Failed to set up the generated project (prisma migrate/generate/seed).')
   }
 }
 

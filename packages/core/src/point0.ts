@@ -11310,7 +11310,7 @@ export class Point0<
     }
   }
 
-  private async _prefetchPage({
+  async _prefetchPage({
     input = {},
     options = {},
   }: {
@@ -11475,6 +11475,17 @@ export class Point0<
                 clientQuery: 'client' as const,
                 serverAndClientQuery: 'combined' as const,
               }[policy]
+        // A related point can be query-shaped (`_queryResultType === 'query'`) yet have no
+        // loader for the resolved mode — e.g. a page with no `.loader()` whose layouts do.
+        // Skip it (otherwise `getQueryOptions` throws "No loader found"). Mirrors the
+        // loader check inside `getQueryOptions`.
+        const hasServerLoader = !!p._hasServerLoader
+        const hasClientLoader = p._hasClientLoader()
+        const hasLoaderForMode =
+          mode === 'server' ? hasServerLoader : mode === 'client' ? hasClientLoader : hasServerLoader || hasClientLoader
+        if (!hasLoaderForMode) {
+          return []
+        }
         if (p._queryResultType === 'infiniteQuery') {
           return await p.prefetchInfiniteQuery(inputHere as never, undefined, {
             queryClient,

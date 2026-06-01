@@ -389,7 +389,6 @@ describe('redirect', () => {
           query.query1 (server) < {}
           query.query2 (server) < {}
           page.page2 (client) (page) < {}
-          query.query2 (server) < {}
           "
         `)
     })
@@ -648,7 +647,6 @@ describe('redirect', () => {
         page.page1 (client) (page) < {}
         page.page1 (server) < {}
         page.page2 (client) (page) < {}
-        page.page1 (server) < {}
         "
       `)
     })
@@ -713,7 +711,6 @@ describe('redirect', () => {
         page.page1 (client) (page) < {}
         page.page1 (server) < {"q":"zxc","id":"111"}
         page.page2 (client) (page) < {}
-        page.page1 (server) < {"id":"111"}
         "
       `)
     })
@@ -774,7 +771,6 @@ describe('redirect', () => {
         page.page1 (client) (page) < {}
         page.page1 (server) < {}
         page.page2 (client) (page) < {}
-        page.page1 (server) < {}
         "
       `)
     })
@@ -837,7 +833,6 @@ describe('redirect', () => {
         page.page1 (client) (page) < {}
         page.page1 (server) < {"q":"zxc","id":"111"}
         page.page2 (client) (page) < {}
-        page.page1 (server) < {"id":"111"}
         "
       `)
     })

@@ -75,6 +75,7 @@ secrets/
 
 # Claude/Cursor
 .claude/settings.local.json
+.claude/*.lock
 
 # Task0
 tasks

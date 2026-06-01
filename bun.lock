@@ -39,7 +39,6 @@
         "@devp0nt/route0": "catalog:",
         "@point0/basic-auth": "workspace:*",
         "@point0/compiler": "workspace:*",
-        "@point0/cookie-store": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/engine": "workspace:*",
         "@point0/openapi": "workspace:*",
@@ -84,7 +83,6 @@
         "@devp0nt/route0": "catalog:",
         "@point0/basic-auth": "workspace:*",
         "@point0/compiler": "workspace:*",
-        "@point0/cookie-store": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/engine": "workspace:*",
         "@point0/openapi": "workspace:*",
@@ -128,7 +126,6 @@
         "@devp0nt/error0": "catalog:",
         "@devp0nt/route0": "catalog:",
         "@point0/compiler": "workspace:*",
-        "@point0/cookie-store": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/engine": "workspace:*",
         "@point0/react-dom": "workspace:*",
@@ -194,7 +191,6 @@
         "@devp0nt/route0": "catalog:",
         "@point0/basic-auth": "workspace:*",
         "@point0/compiler": "workspace:*",
-        "@point0/cookie-store": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/engine": "workspace:*",
         "@point0/openapi": "workspace:*",
@@ -287,20 +283,6 @@
         "typescript": "*",
       },
     },
-    "packages/cookie-store": {
-      "name": "@point0/cookie-store",
-      "version": "0.1.0",
-      "devDependencies": {
-        "@types/bun": "^1.2.22",
-        "@types/node": "^20.0.0",
-        "tsdown": "catalog:",
-        "typescript": "catalog:",
-      },
-      "peerDependencies": {
-        "@point0/core": "workspace:*",
-        "@point0/engine": "workspace:*",
-      },
-    },
     "packages/core": {
       "name": "@point0/core",
       "version": "0.1.0",
@@ -380,7 +362,6 @@
         "@devp0nt/route0": "catalog:",
         "@point0/basic-auth": "workspace:*",
         "@point0/compiler": "workspace:*",
-        "@point0/cookie-store": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/engine": "workspace:*",
         "@point0/openapi": "workspace:*",
@@ -471,7 +452,6 @@
         "@devp0nt/error0": "catalog:",
         "@devp0nt/flat0": "catalog:",
         "@devp0nt/route0": "catalog:",
-        "@point0/cookie-store": "workspace:*",
         "@point0/docs": "workspace:*",
         "@tanstack/query-core": "catalog:",
         "@testing-library/react": "^16.3.1",
@@ -505,6 +485,33 @@
         "@unhead/react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
+      },
+    },
+    "packages/engine/tests/temp/two-clients/test-4bebf5c2-013e-4778-9fcd-46f32a8a9fa2": {
+      "name": "@point0/test-4bebf5c2-013e-4778-9fcd-46f32a8a9fa2",
+      "version": "1.0.0",
+      "dependencies": {
+        "@devp0nt/route0": "catalog:",
+        "@point0/compiler": "workspace:*",
+        "@point0/core": "workspace:*",
+        "@point0/cors": "workspace:*",
+        "@point0/engine": "workspace:*",
+        "@point0/react-dom": "workspace:*",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "server-only": "^0.0.1",
+        "superjson": "catalog:",
+      },
+      "devDependencies": {
+        "@svgr/core": "^8.1.0",
+        "@svgr/plugin-jsx": "^8.1.0",
+        "@types/bun": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "cross-env": "^10.0.0",
+        "ncp": "^2.0.0",
+        "rimraf": "^6.0.1",
+        "typescript": "catalog:",
       },
     },
     "packages/engine/tests/templates/one-client": {
@@ -1351,8 +1358,6 @@
 
     "@point0/compiler": ["@point0/compiler@workspace:packages/compiler"],
 
-    "@point0/cookie-store": ["@point0/cookie-store@workspace:packages/cookie-store"],
-
     "@point0/core": ["@point0/core@workspace:packages/core"],
 
     "@point0/cors": ["@point0/cors@workspace:packages/cors"],
@@ -1376,6 +1381,8 @@
     "@point0/openapi": ["@point0/openapi@workspace:packages/openapi"],
 
     "@point0/react-dom": ["@point0/react-dom@workspace:packages/react-dom"],
+
+    "@point0/test-4bebf5c2-013e-4778-9fcd-46f32a8a9fa2": ["@point0/test-4bebf5c2-013e-4778-9fcd-46f32a8a9fa2@workspace:packages/engine/tests/temp/two-clients/test-4bebf5c2-013e-4778-9fcd-46f32a8a9fa2"],
 
     "@point0/test-one-client": ["@point0/test-one-client@workspace:packages/engine/tests/templates/one-client"],
 

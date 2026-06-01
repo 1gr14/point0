@@ -1,4 +1,4 @@
-import { CookieStore } from '@point0/cookie-store'
+import { CookieStore } from '@point0/core/cookie-store'
 import { createQueryClient, isQueryClientDehydratedStateQuery } from '@point0/core'
 import type {
   AnyNiceRequestableReadyPoint,
@@ -22,7 +22,7 @@ import * as rtl from '@testing-library/react/pure.js'
 import { YAML } from 'bun'
 import { Window } from 'happy-dom'
 import React from 'react'
-import type { EngineOptions } from '../../src/config.js'
+import type { EngineOptions, SsrOptions } from '../../src/config.js'
 import { Engine } from '../../src/engine.js'
 import { FakeClient } from '../../src/fake-client.js'
 import { ElementViewer } from './element-viewer.js'
@@ -308,6 +308,20 @@ type FetchSsr = <T extends AnyNiceRequestableReadyPoint>(
   queryClientQueriesKeys: string[]
   queryClientQueriesState: Record<string, { status: string; data: string | undefined; error: string | undefined }>
   queryClientQueriesPreview: string
+  rendersCount: number
+  response: Response
+}>
+type FetchQueryClientDehydratedState = <T extends AnyNiceRequestableReadyPoint>(
+  point: T,
+  ...args: T['Infer']['IsInputOptional'] extends true
+    ? [input?: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]
+    : [input: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]
+) => Promise<{
+  dehydratedState: DehydratedState
+  queryClientQueriesKeys: string[]
+  queryClientQueriesState: Record<string, { status: string; data: string | undefined; error: string | undefined }>
+  queryClientQueriesPreview: string
+  rendersCount: number
   response: Response
 }>
 type FetchTitle = <T extends AnyNiceRequestableReadyPoint>(
@@ -327,6 +341,7 @@ export type TestThings<TRoutes extends RoutesPretty> = {
   app: AppComponent
   fetch: FakeClient<any, any>['fetch']
   fetchSsr: FetchSsr
+  fetchQueryClientDehydratedState: FetchQueryClientDehydratedState
   loadPoint: FetchPoint
   loadPointYml: FetchPointYml
   fetchView: FetchHtmlView
@@ -351,7 +366,7 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
 }: {
   wrapper?: React.ComponentType<{ children: React.ReactNode }>
   points?: PointsDefinition<any, any>
-  ssr?: boolean
+  ssr?: boolean | SsrOptions
   app?: AppComponent
   globals?: Record<string, any>
   engineOptions?: Partial<EngineOptions>
@@ -586,7 +601,10 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
       if (!point.route) {
         throw new Error(`Point "${point.toString()}" has no route`)
       }
-      const response = await client.fetch(point.route.get(args[0] || {}, { origin: 'http://localhost' }), ...args.slice(1))
+      const response = await client.fetch(
+        point.route.get(args[0] || {}, { origin: 'http://localhost' }),
+        ...args.slice(1),
+      )
       return await HtmlView.parse(await response.text())
     })
   }) as unknown as FetchHtmlView
@@ -595,7 +613,10 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
       if (!point.route) {
         throw new Error(`Point "${point.toString()}" has no route`)
       }
-      const response = await client.fetch(point.route.get(args[0] || {}, { origin: 'http://localhost' }), ...args.slice(1))
+      const response = await client.fetch(
+        point.route.get(args[0] || {}, { origin: 'http://localhost' }),
+        ...args.slice(1),
+      )
       return (await HtmlView.parse(await response.text())).preview
     })
   }) as unknown as FetchHtmlPreview
@@ -662,6 +683,7 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
             ]),
           )
         : {}
+      const rendersCount = Number(response.headers.get('x-point0-renders-count'))
       const queryClientQueriesPreview =
         Object.entries(queryClientQueriesState)
           .map(([key, value]) => {
@@ -678,9 +700,67 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
         queryClientQueriesState,
         queryClientQueriesPreview,
         response,
+        rendersCount,
       } satisfies Awaited<ReturnType<FetchSsr>>
     })
   }) as unknown as FetchSsr
+
+  // Data-only request (outputType: queryClientDehydratedState) — the client navigation
+  // prefetch path. Hits the page's ENDPOINT route (e.g. /_point0/<scope>/page/<name>),
+  // not the display route, with the queryClientDehydratedState header. Returns the
+  // dehydrated query state only (no HTML). The page must have a server loader so it owns
+  // an endpoint. On the server this runs the same executor.prefetchAppPagePointDeep loop
+  // as HTML (committing staged SSR-store/cookie values between passes), just without the
+  // final HTML render.
+  const fetchQueryClientDehydratedState = (async (point: ReadyPoint, ...args: [any, any?]) => {
+    return await client.run(async () => {
+      const endpoint = (point.point as any)._endpoint
+      if (!endpoint?.route) {
+        throw new Error(
+          `Point "${point.toString()}" has no endpoint route — a page needs a server loader to be fetchable as data`,
+        )
+      }
+      const url = endpoint.route.get(args[0] || {}, { origin: 'http://localhost' })
+      const response = await client.fetch(url, {
+        ...(args[1] ?? {}),
+        headers: {
+          'x-point0-output-type': 'queryClientDehydratedState',
+          Accept: 'application/json',
+          ...((args[1]?.headers as Record<string, string> | undefined) ?? {}),
+        },
+      })
+      const transformer = point.point._getTransformer()
+      const parsed = transformer.parse(await response.text()) as { dehydratedState: DehydratedState }
+      const dehydratedState = parsed.dehydratedState
+      const queryClientQueriesKeys = dehydratedState.queries.map((query) => lineQueryKey(query.queryKey))
+      const queryClientQueriesState = Object.fromEntries(
+        dehydratedState.queries.map((query) => [
+          lineQueryKey(query.queryKey),
+          {
+            status: query.state.status,
+            data: query.state.data ? JSON.stringify(query.state.data) : undefined,
+            error: (query.state.error as Error | undefined)?.message,
+          },
+        ]),
+      )
+      const queryClientQueriesPreview =
+        Object.entries(queryClientQueriesState)
+          .map(([key, value]) => {
+            return `${key}
+${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${value.status}`}`
+          })
+          .join('\n') + '\n'
+      const rendersCount = Number(response.headers.get('x-point0-renders-count'))
+      return {
+        dehydratedState,
+        queryClientQueriesKeys,
+        queryClientQueriesState,
+        queryClientQueriesPreview,
+        response,
+        rendersCount,
+      } satisfies Awaited<ReturnType<FetchQueryClientDehydratedState>>
+    })
+  }) as unknown as FetchQueryClientDehydratedState
 
   const fetchesTale = fetchRecorder.tale.bind(fetchRecorder)
 
@@ -697,6 +777,7 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
     app,
     fetch,
     fetchSsr,
+    fetchQueryClientDehydratedState,
     loadPoint,
     loadPointYml,
     fetchView,

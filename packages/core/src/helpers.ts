@@ -47,6 +47,12 @@ export const getFetchWeak = ({ scope }: { scope?: string | string[] } = {}): Ric
   }
 }
 
+/**
+ * `useLayoutEffect` on the client; on the server runs `effect()` synchronously
+ * during render (layout effects never fire during SSR). Deps are ignored on the
+ * server. Use it when a layout side effect must also apply while server
+ * rendering.
+ */
 export const useLayoutEffectSsr: typeof useLayoutEffect = (effect, deps) => {
   if (_point0_env.side.is.server) {
     effect()
@@ -55,6 +61,17 @@ export const useLayoutEffectSsr: typeof useLayoutEffect = (effect, deps) => {
   }
 }
 
+/**
+ * `useEffect` on the client; on the server runs `effect()` synchronously during
+ * render (normal effects never fire during SSR). Deps are ignored on the server.
+ *
+ * This is the hook to use when a side effect must also happen during SSR — e.g.
+ * writing to an `SsrStore` or cookie item from a page so the value lands in the
+ * SSR output. The SSR prefetch loop re-renders until those stores stop changing.
+ *
+ * If you instead want the effect to have already run before the first paint on
+ * the client (no flash), use {@link useEffectAsap}.
+ */
 export const useEffectSsr: typeof useEffect = (effect, deps) => {
   if (_point0_env.side.is.server) {
     effect()
@@ -63,6 +80,16 @@ export const useEffectSsr: typeof useEffect = (effect, deps) => {
   }
 }
 
+/**
+ * Runs `effect()` synchronously on the very first render (before commit/paint)
+ * and then behaves like a normal `useEffect` for subsequent updates. Works the
+ * same on server and client.
+ *
+ * Use it when the effect must have run by the time the JSX is committed (to
+ * avoid a flash of pre-effect state), while still getting normal effect + deps
+ * behavior on updates. For an effect that only needs to run during SSR, prefer
+ * {@link useEffectSsr}.
+ */
 export const useEffectAsap: typeof useEffect = (effect, deps) => {
   const isFirstRender = useRef(true)
   const isFirstMount = useRef(true)

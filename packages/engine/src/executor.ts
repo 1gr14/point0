@@ -1,6 +1,5 @@
 import * as flat0 from '@devp0nt/flat0'
 import { Route0, type AnyLocation, type AnyRoute } from '@devp0nt/route0'
-import { _ss, _ssRunWithServerStorageState, isQueryClientDehydratedStateQuery, parseQueryKey } from '@point0/core'
 import type {
   AnyPoint,
   AppComponent,
@@ -16,6 +15,7 @@ import type {
   InputSchema,
   IsSchemaOptional,
   LoaderOutput,
+  NiceServerPoints,
   PagePoint,
   PointName,
   PointsScope,
@@ -31,18 +31,28 @@ import type {
   UndefinedData,
   UndefinedLoaderOutput,
   UnknownCtx,
-  NiceServerPoints,
   UnknownData,
 } from '@point0/core'
+import {
+  _point0_env,
+  _ss,
+  _ssRunWithServerStorageState,
+  getEffects,
+  isQueryClientDehydratedStateQuery,
+  parseQueryKey,
+} from '@point0/core'
+import { CookieStore } from '@point0/core/cookie-store'
 import { Effects } from '@point0/core/effects'
 import { RedirectTask } from '@point0/core/navigation'
 import type { Request0 } from '@point0/core/request0'
-import { dehydrate } from '@tanstack/react-query'
+import { SsrStore } from '@point0/core/ssr-store'
 import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
+import { dehydrate } from '@tanstack/react-query'
 import { createHead } from '@unhead/react/server'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import { stringify } from 'safe-stable-stringify'
+import type { SsrOptionsResolved } from './config.js'
 import type { Engine } from './engine.js'
 
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError extends ErrorPoint0 = ErrorPoint0> {
@@ -86,6 +96,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     serverStorageState: SuperStoreInternalValuesOrErrors
   }): Promise<Executor<TRequiredCtx, TError>> {
     const serverStorageState = Object.assign(providedServerStorageState, {
+      __POINT0_SSR_STORE_PENDING__: new Map(),
+      __POINT0_COOKIE_STORE_PENDING__: new Map(),
       __POINT0_HYDRATION_FINISHED__: false,
       __POINT0_FAKE_CLIENT__: undefined,
       __POINT0_FETCH_FN__: engine.fetch.bind(engine),
@@ -803,8 +815,11 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     pageLocation,
     seenQueryHashes = new Set<string>(),
     seenRedirectTo = new Map<string, number>(),
-    level = 0,
+    rendersCount = 0,
+    locationRendersCount = 0,
+    // ssrStoresRerenderCount = 0,
     redirectPolicy,
+    ssrOptions,
   }: {
     App: AppComponent
     clientPoints: ClientPoints<any>
@@ -813,17 +828,48 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     pageLocation: AnyLocation
     seenQueryHashes?: Set<string>
     seenRedirectTo?: Map<string, number>
-    level?: number
+    rendersCount?: number
+    locationRendersCount?: number
+    // ssrStoresRerenderCount?: number
     redirectPolicy: 'continue' | 'throw'
-  }): Promise<void> {
-    if (level === 0) {
+    ssrOptions: SsrOptionsResolved
+  }): Promise<{ rendersCount: number }> {
+    if (rendersCount === 0) {
       this.serverStorageState.__POINT0_CURRENT_LOCATION__ = pageLocation
       this.serverStorageState.__POINT0_SSR_LOCATION__ = pageLocation
       this.serverStorageState.__POINT0_CLIENT_POINTS__ = clientPoints
       this.serverStorageState.__POINT0_IS_SSR_IN_PROGRESS__ = true
       this.serverStorageState.__POINT0_SSR_REDIRECT_TASK__ = undefined
     }
-    await this.withServerGlobalState(async () => {
+    return await this.withServerGlobalState(async () => {
+      // Apply any values staged by the PREVIOUS render pass before we render again. On the
+      // server `set()` only stages a `nextValue`; reads (`get()`/`use()`) return the
+      // committed value. Committing here — at the start of every pass — means this render,
+      // and every query it issues, sees the latest committed store/cookie values. That is
+      // what lets a query feed an SsrStore (via useEffectSsr) whose value is then the INPUT
+      // of another query: once the store is committed, the dependent query is issued with
+      // the real input and discovered/prefetched on this pass (in both the HTML and the
+      // data-only paths). At level 0 nothing is staged yet, so this is a no-op.
+      SsrStore.commitPending()
+      CookieStore.commitPending()
+
+      // Optionally warm the query client before the very first render: prefetch the
+      // page and its layouts (their onPrefetch hooks + server queries, inputs derived
+      // from the route) so the render finds the data in cache and needs fewer — often
+      // zero — re-render passes. Opt-in; the render-to-discover loop below still
+      // handles ad-hoc queries whose params are only known at render time.
+      if (rendersCount === 0 && pagePoint && ssrOptions.prefetchBeforePageRender) {
+        const input = {
+          ...pageLocation.params,
+          ...(pageLocation.searchString ? { '?': pageLocation.search } : {}),
+        }
+        // Call `_prefetchPage` (not the public `prefetchPage`): the latter dedupes via
+        // `__POINT0_PREFETCH_PAGE_PROMISES__`, which the SSR executor intentionally
+        // disables (it is a client-navigation concept). `_prefetchPage` does the actual
+        // declarative prefetch — onPrefetch hooks + page/layout server queries.
+        await pagePoint._prefetchPage({ input, options: { policy: 'serverQuery' } })
+      }
+
       const stream = await renderToReadableStream(React.createElement(App))
       await stream.allReady
       const redirectTask = await this.handleRedirectTask({ clientPoints, redirectPolicy })
@@ -842,7 +888,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               ErrorClass: clientPoints.manager.root._Error,
             })
           }
-          await this.prefetchAppPagePointDeep({
+          const { rendersCount: newRendersCount } = await this.prefetchAppPagePointDeep({
             App,
             renderToReadableStream,
             pagePoint: redirectTask.pagePoint,
@@ -850,10 +896,13 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
             clientPoints,
             seenQueryHashes,
             seenRedirectTo,
-            level: level + 1,
+            rendersCount: rendersCount + 1,
+            locationRendersCount: 0,
+            // ssrStoresRerenderCount,
             redirectPolicy,
+            ssrOptions,
           })
-          return
+          return { rendersCount: newRendersCount }
         }
       }
 
@@ -861,6 +910,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       const suitableMarkers = queryClientState.flatMap((query) => {
         // it is exists runtime, but types in react query is wrong
         if ((query.options as any).enabled === false) {
+          return []
+        }
+        if (query.state.status !== 'pending') {
           return []
         }
         const parsedQueryKey = Executor.parseQueryKey({
@@ -917,7 +969,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       )
 
       if (suitableMarkers.length > 0) {
-        await this.prefetchAppPagePointDeep({
+        const { rendersCount: newRendersCount } = await this.prefetchAppPagePointDeep({
           App,
           renderToReadableStream,
           pagePoint,
@@ -925,19 +977,87 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           clientPoints,
           seenQueryHashes,
           seenRedirectTo,
-          level: level + 1,
+          rendersCount: rendersCount + 1,
+          locationRendersCount: locationRendersCount + 1,
+          // ssrStoresRerenderCount,
           redirectPolicy,
+          ssrOptions,
         })
-      } else {
-        if (pagePoint) {
-          await this.addPrefetchPageDehydratedStateToQueryClient({
+        return { rendersCount: newRendersCount }
+      }
+
+      // No new server queries to prefetch. If a page staged an SsrStore change during
+      // this render (e.g. overrode a layout default via `useEffectSsr` -> item.set()),
+      // commit it and render again so ancestors pick up the new value. Two caps govern
+      // this:
+      //  - allowedRerendersCount (soft, default Infinity): once reached we stop quietly
+      //    WITHOUT committing the staged SsrStore changes — set low (0/1) to opt out of
+      //    re-rendering for performance.
+      //  - forbiddenRerendersCount (hard, default 25): reaching it stops the loop, leaves
+      //    the staged SsrStore changes uncommitted, AND logs an error — the safety net
+      //    for non-deterministic values (e.g. Date.now()) that never stabilize.
+      // Cookies drive re-renders too: on the server `get()` prefers the committed (effects)
+      // value over the incoming request, so a `set()` deeper in the tree must re-render
+      // ancestors that read it via `use()` (same SSR reactivity as SsrStore).
+      //
+      // We DON'T commit here — the commit happens at the START of the next pass (see the top
+      // of this callback). We only decide whether another pass is warranted. This applies to
+      // both the HTML and the data-only (queryClientDehydratedState) paths: data requests
+      // must re-render too, otherwise a store-derived dependent query is never discovered.
+      const ssrStoresChanged = SsrStore.hasPendingChanges()
+      const cookiesChanged = CookieStore.hasPendingChanges()
+      if (ssrStoresChanged || cookiesChanged) {
+        const { allowedRerendersCount, forbiddenRerendersCount } = ssrOptions
+        if (locationRendersCount >= forbiddenRerendersCount) {
+          this.engine.log({
+            level: 'error',
+            category: ['ssr'],
+            message: `SSR stores/cookies did not stabilize after ${forbiddenRerendersCount} re-renders (forbiddenRerendersCount); using the last render. Check for non-deterministic SsrStore or cookie values (e.g. Date.now(), Math.random()).`,
+            meta: { location: pageLocation },
+          })
+        } else if (locationRendersCount < allowedRerendersCount) {
+          const { rendersCount: newRendersCount } = await this.prefetchAppPagePointDeep({
+            App,
+            renderToReadableStream,
             pagePoint,
             pageLocation,
-            redirectTask: undefined,
-            ErrorClass: clientPoints.manager.root._Error,
+            clientPoints,
+            seenQueryHashes,
+            seenRedirectTo,
+            rendersCount: rendersCount + 1,
+            locationRendersCount: locationRendersCount + 1,
+            // ssrStoresRerenderCount: ssrStoresRerenderCount + 1,
+            redirectPolicy,
+            ssrOptions,
           })
+          return { rendersCount: newRendersCount }
         }
+        // else: reached allowedRerendersCount (soft cap) — stop quietly, staged
+        // SsrStore changes are intentionally left uncommitted.
       }
+
+      // We are NOT re-rendering. Always flush staged cookies into the response — unlike
+      // SsrStore, a cookie must never be dropped (a lost cookie is worse than a hydration
+      // mismatch), so we commit even on the final pass.
+      CookieStore.commitPending()
+
+      if (pagePoint) {
+        await this.addPrefetchPageDehydratedStateToQueryClient({
+          pagePoint,
+          pageLocation,
+          redirectTask: undefined,
+          ErrorClass: clientPoints.manager.root._Error,
+        })
+      }
+
+      const finalRendersCount = rendersCount + 1
+      if (!_point0_env.mode.is.production) {
+        getEffects().set.headers({
+          'X-Point0-Renders-Count': finalRendersCount.toString(),
+        })
+      }
+
+      return { rendersCount: finalRendersCount }
     })
   }
 

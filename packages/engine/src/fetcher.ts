@@ -1138,6 +1138,8 @@ export class Fetcher<TError extends ErrorPoint0> {
 
     const serverStorageState = _getSsItemsWithRestErrors(
       {
+        __POINT0_SSR_STORE_PENDING__: _ss.__POINT0_SSR_STORE_PENDING__.getWeak() || new Map(),
+        __POINT0_COOKIE_STORE_PENDING__: _ss.__POINT0_COOKIE_STORE_PENDING__.getWeak() || new Map(),
         __POINT0_SERVER_PORT__: this.server.port,
         __POINT0_FAKE_CLIENT__: undefined,
         __POINT0_IS_SSR_IN_PROGRESS__: false,

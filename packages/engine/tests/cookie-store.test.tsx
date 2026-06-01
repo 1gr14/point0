@@ -1,9 +1,9 @@
-import { getQueryClient, Point0 } from '@point0/core'
+import { getQueryClient, Point0, useEffectSsr } from '@point0/core'
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 import superjson from 'superjson'
 import * as z from 'zod'
-import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
-import { CookieStore, type CookieStoreGetter } from '../src/index.js'
+import { CookieStore, type CookieStoreGetter } from '@point0/core/cookie-store'
+import { createTestThings } from './utils/internal-testing.js'
 
 describe('cookie-store', () => {
   let fakeClient: Awaited<ReturnType<typeof createTestThings>>['client']
@@ -560,6 +560,80 @@ describe('cookie-store', () => {
         "
       `)
       })
+    })
+  })
+
+  describe('ssr render staging', () => {
+    it('commits a cookie set during SSR render — even with allowedRerendersCount: 0 (never drop a cookie)', async () => {
+      const root = Point0.lets('root', 'root').use(CookieStore.plugin()).root()
+      const theme = CookieStore.define('theme')
+      const page = root.lets('page', 'home', '/').page(() => {
+        useEffectSsr(() => {
+          theme.set('dark')
+        }, [])
+        return <div id="page">x</div>
+      })
+      // allowedRerendersCount: 0 => the SSR loop never re-renders. SsrStore changes would
+      // be dropped here, but a cookie must still be written.
+      const { fetchSsr } = await createTestThings({
+        ssr: { allowedRerendersCount: 0 },
+        points: [root, page],
+      })
+      const { response, rendersCount } = await fetchSsr(page)
+      const setCookies = response.headers.getSetCookie()
+      expect(setCookies.some((cookie) => cookie.startsWith('theme=dark'))).toBe(true)
+      expect(rendersCount).toBe(1)
+    })
+
+    it('a cookie set deep in the tree reaches an ancestor that reads it (SSR reactivity)', async () => {
+      const root = Point0.lets('root', 'root').use(CookieStore.plugin()).root()
+      const theme = CookieStore.define<string>({ name: 'theme', fallback: 'light' })
+      const layout = root.lets('layout', 'app').layout(({ children }) => (
+        <div id="layout">
+          <div id="theme">{theme.use()}</div>
+          {children}
+        </div>
+      ))
+      const page = layout.lets('page', 'home', '/').page(() => {
+        useEffectSsr(() => {
+          theme.set('dark')
+        }, [])
+        return <div id="page">x</div>
+      })
+      const { fetchSsr } = await createTestThings({ ssr: true, points: [root, layout, page] })
+      // The layout renders ABOVE the page; the loop re-renders until the cookie stabilizes,
+      // so the layout ends up showing the value the page set (read from committed effects).
+      const { preview, rendersCount } = await fetchSsr(page)
+      expect(preview).toMatchInlineSnapshot(`
+        "
+        #layout:
+          #theme: dark
+          #page: x
+        "
+      `)
+      expect(rendersCount).toBe(2)
+    })
+
+    it('a data-only request writes a cookie set during SSR render', async () => {
+      const root = Point0.lets('root', 'root').use(CookieStore.plugin()).root()
+      const theme = CookieStore.define('theme')
+      // Page has a server loader so it owns an endpoint and is fetchable as data.
+      const page = root
+        .lets('page', 'home', '/')
+        .loader(async () => ({ x: 1 }))
+        .page(({ data }) => {
+          useEffectSsr(() => {
+            theme.set('dark')
+          }, [])
+          return <div id="page">{data.x}</div>
+        })
+      const { fetchQueryClientDehydratedState } = await createTestThings({ ssr: true, points: [root, page] })
+      // The data path runs the same SSR loop as HTML (commit between passes) and the
+      // terminal commit flushes the cookie into the response — a cookie is never dropped.
+      const { response, rendersCount } = await fetchQueryClientDehydratedState(page)
+      const setCookies = response.headers.getSetCookie()
+      expect(setCookies.some((cookie) => cookie.startsWith('theme=dark'))).toBe(true)
+      expect(rendersCount).toBe(3) // initial, page, cookie-store
     })
   })
 })

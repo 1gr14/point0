@@ -38,6 +38,12 @@
       "request0": [
         "./dist/request0.d.ts"
       ],
+      "ssr-store": [
+        "./dist/ssr-store.d.ts"
+      ],
+      "cookie-store": [
+        "./dist/cookie-store.d.ts"
+      ],
       "navigation": [
         "./dist/navigation.d.ts"
       ],
@@ -91,6 +97,14 @@
     "./request0": {
       "types": "./dist/request0.d.ts",
       "import": "./dist/request0.js"
+    },
+    "./ssr-store": {
+      "types": "./dist/ssr-store.d.ts",
+      "import": "./dist/ssr-store.js"
+    },
+    "./cookie-store": {
+      "types": "./dist/cookie-store.d.ts",
+      "import": "./dist/cookie-store.js"
     },
     "./navigation": {
       "types": "./dist/navigation.d.ts",

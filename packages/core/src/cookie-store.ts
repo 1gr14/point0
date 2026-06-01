@@ -1,16 +1,13 @@
-import {
-  blankDataTransformerExtended,
-  type DataTransformer,
-  type DataTransformerExtended,
-  env,
-  getEffects,
-  getRequest,
-  Point0,
-  toExtendedTransformer,
-} from '@point0/core'
-import type { CookieOptionsInput } from '@point0/core/effects'
 import { useEffect, useRef, useState } from 'react'
+import type { CookieOptionsInput } from './effects.js'
+import { env } from './env.js'
+import { getEffects, getRequest } from './helpers.js'
+import { Point0 } from './point0.js'
+import type { DataTransformer, DataTransformerExtended } from './types.js'
+import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
+import { _ss } from './internals.js'
 
+export type CookieStorePendingMap = Map<string, CookieOptionsInput>
 const encodeCookieName = (name: string): string => {
   return encodeURIComponent(name)
     .replace(/%(2[346B]|5E|60|7C)/g, decodeURIComponent)
@@ -240,23 +237,89 @@ export class CookieStore {
   }
 
   static readonly serverCookieGetter: CookieStoreGetter = ((...args: [name: string] | []) => {
-    if (env.side.is.server) {
-      const request0 = getRequest()
-      if (args.length === 0) {
-        return request0.cookies
-      }
-      return request0.cookies[args[0]]
+    if (!env.side.is.server) {
+      throw new Error('serverCookieGetter is only available on the server')
     }
-    throw new Error('serverCookieGetter is only available on the server')
+    // Outgoing (committed) cookies in effects take precedence over the incoming request,
+    // so SSR reads reflect what was set/committed during this render — this is what keeps
+    // cookies reactive during SSR. A deletion (value '') hides the incoming value.
+    const requestCookies = getRequest().cookies
+    const effectsCookies = getEffects().cookies
+    if (args.length === 0) {
+      const result: Record<string, string | undefined> = { ...requestCookies }
+      for (const [name, cookie] of Object.entries(effectsCookies)) {
+        if (cookie.value === '') {
+          delete result[name]
+        } else {
+          result[name] = cookie.value
+        }
+      }
+      return result
+    }
+    const name = args[0]
+    if (Object.hasOwn(effectsCookies, name)) {
+      const committed = effectsCookies[name]
+      return committed.value === '' ? undefined : committed.value
+    }
+    return requestCookies[name]
   }) as CookieStoreGetter
 
   static readonly serverCookieSetter: CookieStoreSetter = (cookieOptionsInput) => {
-    if (env.side.is.server) {
-      const effects = getEffects()
-      effects.set.cookies(cookieOptionsInput)
+    if (!env.side.is.server) {
+      throw new Error('serverCookieSetter is only available on the server')
+    }
+    // During SSR rendering, stage the write and flush it between renders / at the end of
+    // the render loop (see `commitPending`) so render stays pure. Outside the SSR render
+    // (loaders, actions, request handlers), write immediately so the cookie is never lost.
+    if (env.side.is.ssr) {
+      const pending = _ss.__POINT0_COOKIE_STORE_PENDING__.get()
+      pending.set(cookieOptionsInput.name, cookieOptionsInput)
       return
     }
-    throw new Error('serverCookieSetter is only available on the server')
+    getEffects().set.cookies(cookieOptionsInput)
+  }
+
+  /**
+   * Flush staged SSR cookie writes into the response effects. Called by the SSR render loop. Unlike `SsrStore`, cookies
+   * are ALWAYS committed (even on the final pass when no further render happens) — a lost cookie is worse than a
+   * hydration mismatch.
+   */
+  static commitPending(): void {
+    const pending = _ss.__POINT0_COOKIE_STORE_PENDING__.getWeak()
+    if (!pending) {
+      return
+    }
+    if (pending.size === 0) {
+      return
+    }
+    const effects = getEffects()
+    for (const cookieOptionsInput of pending.values()) {
+      effects.set.cookies(cookieOptionsInput)
+    }
+    pending.clear()
+  }
+
+  /**
+   * Whether any cookie staged during the current SSR render would change what `get()` returns (committed effects,
+   * falling back to the request) — i.e. the SSR loop should re-render so readers (`use()`) reflect the new value.
+   * Server-only; does not mutate.
+   */
+  static hasPendingChanges(): boolean {
+    const pending = _ss.__POINT0_COOKIE_STORE_PENDING__.getWeak()
+    if (!pending) {
+      return false
+    }
+    if (pending.size === 0) {
+      return false
+    }
+    for (const [name, options] of pending) {
+      const stagedValue = options.value === '' ? undefined : options.value
+      const currentValue = CookieStore.serverCookieGetter(name)
+      if (stagedValue !== currentValue) {
+        return true
+      }
+    }
+    return false
   }
 
   static set: CookieStoreSetter = (cookieOptionsInput) => {
@@ -391,8 +454,7 @@ class CookieStoreItem<TValue, TFallback, THttpOnly extends boolean> {
   }
 
   /**
-   * Manually refresh the cookie value from client cookies.
-   * This will trigger all registered `use` hooks to update.
+   * Manually refresh the cookie value from client cookies. This will trigger all registered `use` hooks to update.
    */
   refresh(): void {
     if (env.side.is.server) {
@@ -411,11 +473,11 @@ class CookieStoreItem<TValue, TFallback, THttpOnly extends boolean> {
   }
 
   /**
-   * React hook to reactively get the cookie value.
-   * On the server (SSR), returns the current value directly.
-   * On the client, returns a reactive value that updates when refresh() is called.
+   * React hook to reactively get the cookie value. On the server (SSR), returns the current value directly. On the
+   * client, returns a reactive value that updates when refresh() is called.
    *
    * Usage:
+   *
    * ```ts
    * const cookieItem = cookiesStore.define({ name: 'myCookie' })
    * // In your component:

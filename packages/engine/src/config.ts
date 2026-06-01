@@ -145,10 +145,59 @@ export type EngineOptionsServing = boolean | string | ((options: { request: Requ
 export type LoggerConfig = {
   log?: LogFn
 }
+
 /**
- * Either a logger config directly, or a (sync/async) function that returns one. The function form is
- * resolved during preload, after bun plugins are loaded — so a custom logger imported inside it goes
- * through the compiler transforms (same as how points are read).
+ * SSR configuration. Pass `true`/`false` for the simple on/off, or an object to tune the SSR re-render loop.
+ */
+export type SsrOptions = {
+  /** Toggle SSR. Defaults to `true` when an options object is provided. */
+  enabled?: boolean
+  /**
+   * Soft re-render budget. Once this many SSR re-renders have happened, the loop stops quietly (no error). Default
+   * `Infinity` (re-render until stable). Set to `0` or `1` to opt out of SSR-store stabilization re-renders for
+   * performance.
+   */
+  allowedRerendersCount?: number
+  /**
+   * Hard re-render cap. Reaching it stops the loop AND logs a server error — the safety net for non-deterministic
+   * values (e.g. `Date.now()`) that never stabilize. Default `25`.
+   */
+  forbiddenRerendersCount?: number
+  /**
+   * Before the first SSR render, declaratively prefetch the page and its layouts (their `onPrefetch` hooks and server
+   * queries, with inputs derived from the route) so the render finds the data in cache and needs fewer — often zero —
+   * re-render passes. The render-to-discover loop still runs as a fallback for ad-hoc queries whose params are only
+   * known at render time. Default `false`.
+   */
+  prefetchBeforePageRender?: boolean
+}
+export type SsrOptionsResolved = {
+  allowedRerendersCount: number
+  forbiddenRerendersCount: number
+  prefetchBeforePageRender: boolean
+}
+export const defaultSsrOptionsResolved: SsrOptionsResolved = {
+  allowedRerendersCount: Infinity,
+  forbiddenRerendersCount: 25,
+  prefetchBeforePageRender: false,
+}
+const normalizeSsrEnabled = (ssr: boolean | SsrOptions | undefined): boolean | undefined => {
+  if (ssr === undefined) return undefined
+  if (typeof ssr === 'boolean') return ssr
+  return ssr.enabled ?? true
+}
+const pickSsrOptionsPartial = (ssr: boolean | SsrOptions | undefined): Partial<SsrOptionsResolved> => {
+  if (!ssr || typeof ssr === 'boolean') return {}
+  const partial: Partial<SsrOptionsResolved> = {}
+  if (ssr.allowedRerendersCount !== undefined) partial.allowedRerendersCount = ssr.allowedRerendersCount
+  if (ssr.forbiddenRerendersCount !== undefined) partial.forbiddenRerendersCount = ssr.forbiddenRerendersCount
+  if (ssr.prefetchBeforePageRender !== undefined) partial.prefetchBeforePageRender = ssr.prefetchBeforePageRender
+  return partial
+}
+/**
+ * Either a logger config directly, or a (sync/async) function that returns one. The function form is resolved during
+ * preload, after bun plugins are loaded — so a custom logger imported inside it goes through the compiler transforms
+ * (same as how points are read).
  */
 export type LoggerOptionsInput = LoggerConfig | (() => LoggerConfig | Promise<LoggerConfig>)
 
@@ -170,7 +219,7 @@ export type EngineGeneralOptions = {
   viteConfig?: EngineOptionsViteConfig
   compiler?: EngineOptionsCompilerGeneral | boolean
   // default ssr value
-  ssr?: boolean
+  ssr?: boolean | SsrOptions
 }
 
 export type EngineServerOptions<
@@ -200,7 +249,7 @@ export type EngineServerOptions<
   routes?: EngineOptionsRoutes
   banner?: string
   hmrPort?: number | string | boolean
-  ssr?: boolean
+  ssr?: boolean | SsrOptions
 }
 
 export type EngineClientOptions = {
@@ -228,7 +277,7 @@ export type EngineClientOptions = {
   outdir?: string
   routes?: EngineOptionsRoutes
   banner?: string
-  ssr?: boolean
+  ssr?: boolean | SsrOptions
 }
 export type EngineOptions<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -260,6 +309,7 @@ export type EngineGeneralOptionsParsed = {
   bunBuildConfig: BunBuildConfigDefinition | null
   bunPlugins: EngineSharedPluginsDefinition
   ssr: boolean | undefined
+  ssrOptions: SsrOptionsResolved
 }
 export type EngineClientOptionsParsed = {
   scope: PointsScope
@@ -291,6 +341,7 @@ export type EngineClientOptionsParsed = {
     cacheLimit: number | boolean
   } | null
   ssr: boolean
+  ssrOptions: SsrOptionsResolved
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
@@ -520,7 +571,11 @@ const parseEngineGeneralOptions = ({
     const cwd = cwdBeforeBuild
     return { cwdAfterBuild, cwdBeforeBuild, cwd }
   })()
-  const ssr = generalOptions.ssr
+  const ssr = normalizeSsrEnabled(generalOptions.ssr)
+  const ssrOptions: SsrOptionsResolved = {
+    ...defaultSsrOptionsResolved,
+    ...pickSsrOptionsPartial(generalOptions.ssr),
+  }
   const compiler =
     generalOptions.compiler === undefined
       ? null
@@ -537,9 +592,7 @@ const parseEngineGeneralOptions = ({
               ...(generalOptions.compiler.os !== undefined ? { os: generalOptions.compiler.os } : {}),
               ...(generalOptions.compiler.scope !== undefined ? { scope: generalOptions.compiler.scope } : {}),
               ...(generalOptions.compiler.side !== undefined ? { side: generalOptions.compiler.side } : {}),
-              ...(generalOptions.compiler.markdown !== undefined
-                ? { markdown: generalOptions.compiler.markdown }
-                : {}),
+              ...(generalOptions.compiler.markdown !== undefined ? { markdown: generalOptions.compiler.markdown } : {}),
               ...(generalOptions.compiler.babel !== undefined ? { babel: generalOptions.compiler.babel } : {}),
               ...(generalOptions.compiler.ssr !== undefined
                 ? { ssr: generalOptions.compiler.ssr }
@@ -612,6 +665,7 @@ const parseEngineGeneralOptions = ({
         : [generalOptions.buildWatchGlob]
     ).map((g) => toAbsPath(cwd, g, true)),
     ssr,
+    ssrOptions,
   }
 }
 
@@ -772,7 +826,7 @@ export const parseEngineServerOptions = ({
   const serverOptionsCompilerRecord = typeof serverOptions.compiler === 'object' ? serverOptions.compiler : {}
   const ssr =
     typeof serverOptions.ssr !== 'undefined'
-      ? serverOptions.ssr
+      ? (normalizeSsrEnabled(serverOptions.ssr) ?? false)
       : generalOptionsParsed.ssr !== undefined
         ? generalOptionsParsed.ssr
         : false
@@ -946,10 +1000,14 @@ const parseEngineClientOptions = ({
   const clientOptionsCompilerRecord = typeof clientOptions.compiler === 'object' ? clientOptions.compiler : {}
   const ssr =
     typeof clientOptions.ssr !== 'undefined'
-      ? clientOptions.ssr
+      ? (normalizeSsrEnabled(clientOptions.ssr) ?? false)
       : generalOptionsParsed.ssr !== undefined
         ? generalOptionsParsed.ssr
         : false
+  const ssrOptions: SsrOptionsResolved = {
+    ...generalOptionsParsed.ssrOptions,
+    ...pickSsrOptionsPartial(clientOptions.ssr),
+  }
   const mergedCompilerRecord = {
     side: true,
     scope: true,
@@ -1092,6 +1150,7 @@ const parseEngineClientOptions = ({
     bunPlugins: clientOptions.bunPlugins ?? [],
     engineFile: generalOptionsParsed.engineFile,
     ssr,
+    ssrOptions,
   }
 }
 

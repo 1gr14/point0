@@ -600,4 +600,34 @@ describe('config', () => {
       expect(() => parsed.general.log(sampleLog)).not.toThrow()
     })
   })
+
+  describe('ssr options', () => {
+    it('general ssr options flow to each client as the default, filling in resolved defaults', () => {
+      const parsed = parseEngineOptions(
+        base({
+          general: { ssr: { allowedRerendersCount: 7, prefetchBeforePageRender: true } },
+          clients: [{ scope: 'web' }],
+        }),
+      )
+      expect(parsed.clients[0].ssrOptions).toEqual({
+        allowedRerendersCount: 7,
+        forbiddenRerendersCount: 25,
+        prefetchBeforePageRender: true,
+      })
+    })
+
+    it('client-level ssr options override the general default per client', () => {
+      const parsed = parseEngineOptions(
+        base({
+          general: { ssr: { allowedRerendersCount: 7 } },
+          clients: [{ scope: 'web', ssr: { allowedRerendersCount: 1 } }, { scope: 'mobile' }],
+        }),
+      )
+      // web overrides allowedRerendersCount, keeps the forbidden default
+      expect(parsed.clients[0].ssrOptions.allowedRerendersCount).toBe(1)
+      expect(parsed.clients[0].ssrOptions.forbiddenRerendersCount).toBe(25)
+      // mobile inherits the general default
+      expect(parsed.clients[1].ssrOptions.allowedRerendersCount).toBe(7)
+    })
+  })
 })

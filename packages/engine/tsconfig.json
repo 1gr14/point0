@@ -1,9 +1,11 @@
 {
   "extends": "./tsconfig.build.json",
   "compilerOptions": {
+    "rootDir": ".",
     "paths": {
       "@point0/core": ["../core/src/index.ts"],
       "@point0/core/navigation": ["../core/src/navigation.tsx"],
+      "@point0/core/cookie-store": ["../core/src/cookie-store.ts"],
       "@point0/core/schema/zod": ["../core/src/schema/zod.ts"],
       "@point0/core/schema/typebox": ["../core/src/schema/typebox.ts"],
       "@point0/core/schema/valibot": ["../core/src/schema/valibot.ts"],

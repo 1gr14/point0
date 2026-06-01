@@ -27,6 +27,7 @@ import type {
   EngineOptionsServing,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
+  SsrOptionsResolved,
 } from './config.js'
 import type { Executor } from './executor.js'
 import { killPort } from './port.js'
@@ -62,6 +63,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
   pointsProvided: PointsDefinitionSource<any, any> | null
   points: TPrepared extends true ? ClientPoints<TError> | null : undefined
   ssr: boolean
+  ssrOptions: SsrOptionsResolved
   appProvided: EngineOptionsAppComponent | null
   App: TPrepared extends true ? AppComponent | null : undefined
   // appDistFile: string | null
@@ -125,6 +127,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     viteDevServer: ViteDevServer | true | null
     server: EngineServer<any, TError>
     ssr: boolean
+    ssrOptions: SsrOptionsResolved
   }) {
     this.scope = input.scope
     this.cwd = input.cwd
@@ -167,6 +170,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     this.prepared = input.prepared
     this.engineFile = input.engineFile
     this.ssr = input.ssr
+    this.ssrOptions = input.ssrOptions
     this.App = undefined as TPrepared extends true ? AppComponent | null : undefined
   }
 
@@ -201,6 +205,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     compiler: EngineOptionsCompilerSpecificParsed | false
     server: EngineServer<any, TError>
     ssr: boolean
+    ssrOptions: SsrOptionsResolved
   }): EngineClient<false, TError> {
     const viteDevServer = null
     const bunNativeDevServer = null
@@ -1213,6 +1218,7 @@ try {
       domRootElementId: this.domRootElementId,
       redirectPolicy,
       waitForAllReady,
+      ssrOptions: this.ssrOptions,
     })
   }
 
@@ -1260,6 +1266,7 @@ try {
       pagePoint,
       clientPoints: this.points,
       redirectPolicy,
+      ssrOptions: this.ssrOptions,
     })
   }
 }

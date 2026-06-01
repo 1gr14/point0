@@ -242,6 +242,9 @@ export class Engine<
     )
     this.prepared = true as never
 
+    // TODO: maybe keep it here and remove from serve?
+    await this.preparePublicdirs()
+
     return this as Engine<TRequiredCtx, TError, true>
   }
 

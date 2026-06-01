@@ -3,18 +3,20 @@ import type { QueryClient } from '@tanstack/react-query'
 import type { SSRHeadPayload, Unhead } from '@unhead/react/server'
 import type { ResolvableHead } from 'unhead/types'
 import type { ClientPoints } from './client-points.js'
+import type { CookieStorePendingMap } from './cookie-store.js'
 import type { Effects } from './effects.js'
 import { __POINT0_IS_SSR_IN_PROGRESS__ } from './env.js'
-import type { RedirectTask } from './redirect.js'
 import type {
   NavigationHelpersContextValue,
   NavigationPageStateContextValue,
   NavigationTransitionStateContextValue,
 } from './navigation.js'
 import { __POINT0_QUERY_CLIENT__ } from './query-client.js'
+import type { RedirectTask } from './redirect.js'
 import type { Request0 } from './request0.js'
-import { superstore } from './super-store.js'
+import type { SsrStorePendingMap } from './ssr-store.js'
 import type { SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './super-store.js'
+import { superstore } from './super-store.js'
 import type { LayoutPoint, PagePoint, PointsScope, RichFetchFn } from './types.js'
 
 const initUndefined = () => undefined as never
@@ -25,6 +27,16 @@ export const _getFakeClient = (): LikeFakeClient | undefined => {
 }
 
 export const _ss = {
+  __POINT0_SSR_STORE_PENDING__: superstore.define<SsrStorePendingMap>(
+    '__POINT0_SSR_STORE_PENDING__',
+    () => new Map(),
+    'serverOnlyStorage',
+  ),
+  __POINT0_COOKIE_STORE_PENDING__: superstore.define<CookieStorePendingMap>(
+    '__POINT0_COOKIE_STORE_PENDING__',
+    () => new Map(),
+    'serverOnlyStorage',
+  ),
   __POINT0_HYDRATION_FINISHED__: superstore.define<boolean>('__POINT0_HYDRATION_FINISHED__', () => false, 'clientOnly'),
   __POINT0_SSR_REDIRECT_TASK__: superstore.define<{ task: RedirectTask; handled: boolean } | undefined>(
     '__POINT0_SSR_REDIRECT_TASK__',

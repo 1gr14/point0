@@ -2,6 +2,22 @@
 
 Fullstack TypeScript framework. Bun-based monorepo. The CLI `point0` (provided by `@point0/engine`) drives dev/build/generate for apps that consume the framework.
 
+## First-time setup (fresh checkout or new worktree)
+
+A brand-new checkout — including any `git worktree` — has no `node_modules` and no built `dist/`. Bootstrap **once, in this order**, before you typecheck, test, or run anything:
+
+```sh
+bun install      # deps (and, first run, Bun's own native binary)
+bun run build    # build every @point0/* dist + .d.ts in dependency order
+```
+
+- **`bun install` is safe in a fresh tree.** The example apps' Prisma migrate / generate / seed step lives in a `setup` script, *not* `prepare`, so it no longer runs (and aborts the install) when no database exists. If install ever stops with `Bun's postinstall script was not run`, finish it with `bun node_modules/bun/install.js`.
+- **`bun run build` is required, not optional.** Every `@point0/*` package imports its siblings from their built `dist/`. Skip it and you get hundreds of phantom `TS2307 Cannot find module '@point0/…'` errors and `point0: command not found`. This is the one case the "don't rebuild manually" golden rule below does **not** cover.
+
+After this first build, keep `bun run build:watch` running and follow the normal golden-rule workflow (no manual rebuilds).
+
+To run an example app (`point0 dev/build/generate` inside `examples/*`): the `point0` bin links to the engine's freshly built `dist/`. If you built *after* installing, run `bun install` once more to (re)link the bin, then `bun run setup` inside the example to create its SQLite DB and generate code.
+
 ## Golden rules
 
 - **Never read `packages/core/src/point0.ts` in full** — it is ~12,750 lines. Always use Serena MCP (`mcp__serena__find_symbol`, `get_symbols_overview`, `find_referencing_symbols`) to locate and read only the symbols you need. The same applies to any other `>1000 line` file (e.g. [packages/core/src/types.ts](packages/core/src/types.ts), [packages/core/src/mountable.ts](packages/core/src/mountable.ts)).
@@ -10,7 +26,7 @@ Fullstack TypeScript framework. Bun-based monorepo. The CLI `point0` (provided b
 - Use catalog deps. Match versions via the root `workspaces.catalog` in [package.json](package.json) — don't pin per-package.
 - **Never commit, push, publish, tag, or release on your own.** No `git commit`, `git push`, `npm publish`, `bun publish`, `pack:dist`, semantic-release, or any other state-changing remote/registry action unless the user explicitly asks for it in the current chat. A prior approval does not carry over.
 - **Never run the full test suite.** The repo's full `bun test` / `bun run testa` is slow (integration-heavy). Default to a focused run: `bun test path/to/file.test.ts` or `bun --filter '@point0/<pkg>' test`. Only run a package's full `test` script when it is known to be fast (pure unit tests, no Playwright/network/fs-integration). When unsure, ask — or pick the narrowest run that proves your change.
-- **Don't rebuild manually.** The developer almost always has `bun run build:watch` running, so `@point0/*` dists rebuild on save. Skip `bun run build` / per-package `build` after edits unless something is clearly out of date (e.g. a `dist/` import resolves to stale code) or the user asks for it.
+- **Don't rebuild manually.** The developer almost always has `bun run build:watch` running, so `@point0/*` dists rebuild on save. Skip `bun run build` / per-package `build` after edits unless something is clearly out of date (e.g. a `dist/` import resolves to stale code) or the user asks for it. **Exception:** a fresh checkout/worktree has no `dist/` yet — run the one-time bootstrap above before anything else.
 
 ## Repo layout
 

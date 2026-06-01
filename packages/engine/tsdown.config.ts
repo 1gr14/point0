@@ -36,6 +36,10 @@ export default defineConfig({
   tsconfig: './tsconfig.build.json',
   deps: {
     skipNodeModulesBundle: true,
-    neverBundle: ['bun', /^@types\//],
+    // `@point0/docs` is an optional runtime dependency, loaded lazily via a
+    // try/catch `import('@point0/docs')` in cli.ts. It must never be bundled —
+    // otherwise the build tries to load `../docs/dist` and races against the
+    // docs package cleaning its own dist during a parallel `bun run build`.
+    neverBundle: ['bun', /^@types\//, '@point0/docs'],
   },
 })

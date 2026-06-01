@@ -594,9 +594,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
 
   async dispose(options?: { closeViteDevServer?: boolean }): Promise<void> {
     const { closeViteDevServer = false } = options ?? {}
-    if (!this.isPrepared()) {
-      throw new Error('Server is not prepared')
-    }
     if (this.bunServer) {
       await this.bunServer.stop()
     }

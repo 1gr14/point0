@@ -6,6 +6,7 @@ import { uneval } from 'devalue'
 import { createElement } from 'react'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
+import type { SsrOptionsResolved } from './config.js'
 import type { Executor } from './executor.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
@@ -420,6 +421,7 @@ export async function renderAppAsReadableStream({
   clientPoints,
   redirectPolicy,
   waitForAllReady,
+  ssrOptions,
   ...props
 }: {
   App: AppComponent
@@ -435,6 +437,7 @@ export async function renderAppAsReadableStream({
   domRootElementId?: string
   redirectPolicy: 'continue' | 'throw'
   waitForAllReady?: boolean
+  ssrOptions: SsrOptionsResolved
 }): Promise<ReadableStream> {
   await executor.prefetchAppPagePointDeep({
     App,
@@ -443,6 +446,7 @@ export async function renderAppAsReadableStream({
     pagePoint,
     pageLocation,
     redirectPolicy,
+    ssrOptions,
   })
   return await renderReadableStream({
     ...props,

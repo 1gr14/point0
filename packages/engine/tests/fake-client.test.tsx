@@ -1,4 +1,4 @@
-import { CookieStore } from '@point0/cookie-store'
+import { CookieStore } from '@point0/core/cookie-store'
 import { env, Point0, createQueryClient } from '@point0/core'
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import assert from 'node:assert'

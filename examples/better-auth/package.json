@@ -20,7 +20,7 @@
     "prisma:migrate:dev": "cross-env NODE_ENV=development prisma migrate dev",
     "prisma:migrate:deploy": "cross-env NODE_ENV=development prisma migrate deploy",
     "seed": "cross-env NODE_ENV=development bun run ./src/lib/seed.ts",
-    "prepare": "bun run prisma:migrate:deploy && bun run prisma:generate && point0 generate && bun run seed"
+    "setup": "bun run prisma:migrate:deploy && bun run prisma:generate && point0 generate && bun run seed"
   },
   "dependencies": {
     "@devp0nt/error0": "catalog:",
@@ -28,7 +28,6 @@
     "@devp0nt/route0": "catalog:",
     "@point0/basic-auth": "workspace:*",
     "@point0/compiler": "workspace:*",
-    "@point0/cookie-store": "workspace:*",
     "@point0/core": "workspace:*",
     "@point0/engine": "workspace:*",
     "@point0/openapi": "workspace:*",
