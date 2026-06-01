@@ -114,6 +114,7 @@ export class Publicdir<TPrepared extends boolean, TError extends ErrorPoint0> {
 
   scope: PointsScope
   cache: PublicdirCache | null
+  private preparePromise: Promise<void> | null = null
 
   private constructor(input: {
     prepared: TPrepared
@@ -167,8 +168,17 @@ export class Publicdir<TPrepared extends boolean, TError extends ErrorPoint0> {
     if (this.isPrepared()) {
       return this as Publicdir<true, TError>
     }
-    await this.loadFiles()
-    this.prepared = true as never
+    // Dedupe concurrent/repeated calls: the first caller kicks off the file walk, everyone else awaits the same
+    // in-flight promise. Reset on failure so a transient error doesn't poison the publicdir permanently.
+    this.preparePromise ??= this.loadFiles().then(() => {
+      this.prepared = true as never
+    })
+    try {
+      await this.preparePromise
+    } catch (error) {
+      this.preparePromise = null
+      throw error
+    }
     return this as Publicdir<true, TError>
   }
 
@@ -203,12 +213,13 @@ export class Publicdir<TPrepared extends boolean, TError extends ErrorPoint0> {
   }
 
   async fetch({ request }: { request: Request0 }): Promise<Response | undefined> {
-    if (!this.isPrepared()) {
-      throw new Error('Publicdir is not prepared')
-    }
-
     if (!this.isServingRequest({ request })) {
       return undefined
+    }
+    // Lazily build the file index on first matching request, so it never blocks server startup. Idempotent and
+    // concurrency-safe (see `prepare`); once prepared this is just a boolean check, so the per-fetch cost is nil.
+    if (!this.isPrepared()) {
+      await this.prepare()
     }
     const routePath = request.location.pathname
     const fileAbsPathOrContentFn = this.files.get(routePath)

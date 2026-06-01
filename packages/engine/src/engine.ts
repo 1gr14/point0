@@ -242,15 +242,25 @@ export class Engine<
     )
     this.prepared = true as never
 
-    // TODO: maybe keep it here and remove from serve?
-    await this.preparePublicdirs()
+    // Warm up publicdir file indexes in the background: usually ready by the first request, but never blocks startup.
+    // Swallow failures here — `Publicdir.fetch` re-runs `prepare()` lazily (a failed run resets its promise) and will
+    // surface a real error on the request that actually needs it.
+    void this.preparePublicdirs().catch((error: unknown) => {
+      this.log({
+        level: 'error',
+        category: ['publicdir'],
+        message: 'Failed to warm up publicdirs in background',
+        error,
+      })
+    })
 
     return this as Engine<TRequiredCtx, TError, true>
   }
 
   /**
-   * Eager-load every publicdir's file index. Run after `prepare` when you need static file serving ready before the
-   * first request (e.g. tests, smoke checks). `serve()` already does this implicitly.
+   * Eager-load every publicdir's file index. Optional: publicdirs prepare themselves lazily on their first matching
+   * request, so `serve()` no longer blocks on this. Call it explicitly when you need static file serving ready before
+   * the first request (e.g. tests, smoke checks) or to warm the index up front.
    */
   async preparePublicdirs(): Promise<void> {
     await Promise.all(this.publicdirs.map((publicdir) => publicdir.prepare()))
@@ -481,7 +491,6 @@ export class Engine<
   ): Promise<void> {
     const options = args[0] ?? {}
     await this.prepare()
-    await this.preparePublicdirs()
     await this.server.serve(options)
   }
 

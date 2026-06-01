@@ -94,10 +94,6 @@ describe('page state', () => {
             #loading: ...
 
           #layout:
-            #page-state: status=loading, error=undefined
-            #page: x=1
-
-          #layout:
             #page-state: status=success, error=undefined
             #page: x=1
         "
@@ -147,10 +143,6 @@ describe('page state', () => {
             #loading: ...
 
           #layout:
-            #page-state: status=loading, error=undefined
-            #error: test
-
-          #layout:
             #page-state: status=error, error=test
             #error: test
         "
@@ -196,11 +188,6 @@ describe('page state', () => {
         "
         /
           #loading: ...
-
-          #layout:
-            #page-state: status=loading, error=undefined
-            #layout-data: x=1
-            #page-data: empty
 
           #layout:
             #page-state: status=success, error=undefined
@@ -258,11 +245,6 @@ describe('page state', () => {
             #page-state: status=loading, error=undefined
             #layout-data: x=1
             #loading: ...
-
-          #layout:
-            #page-state: status=loading, error=undefined
-            #layout-data: x=1
-            #page-data: y=1
 
           #layout:
             #page-state: status=success, error=undefined
@@ -409,11 +391,6 @@ describe('page state', () => {
             #page-state: status=loading, error=undefined
             #layout-data: x=1
             #loading: ...
-
-          #layout:
-            #page-state: status=loading, error=undefined
-            #layout-data: x=1
-            #error: test
 
           #layout:
             #page-state: status=error, error=test

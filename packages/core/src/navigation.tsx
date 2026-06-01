@@ -10,8 +10,7 @@ import type {
   UnknownLocation,
 } from '@devp0nt/route0'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { _point0_env } from './env.js'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ErrorPoint0 } from './error.js'
 import type { ClassLikeError0 } from './error.js'
 import { getClientPoints, useEffectAsap, useEffectSsr } from './helpers.js'
@@ -197,22 +196,53 @@ export type NavigationPageState<TStatus extends 'success' | 'loading' | 'error' 
           : never
 >
 export type NavigationPageStateContextValue = NavigationPageState<any>
-export const NavigationPageStateContext = singletonize(
-  'NavigationPageStateContext',
-  React.createContext<NavigationPageStateContextValue | null>(null),
-)
-export const getNavigationPageState = (): NavigationPageStateContextValue => {
-  const navigationPageState = _ss.__POINT0_NAVIGATION_PAGE_STATE__.getWeak()
-  if (navigationPageState) {
-    return navigationPageState
+
+// Page state is an imperative, externally-subscribable store rather than React
+// state on the navigation provider. The framework writes the page status
+// (loading / success / error) from deep inside the mountable tree on every
+// navigation; if that write lived in a top-level `useState`, every write would
+// re-render the whole provider subtree (and so every page). Backing it with
+// `useSyncExternalStore` keeps the reactive read opt-in and component-scoped —
+// a page-state change only re-renders the components that actually read it.
+const initialNavigationPageState: NavigationPageStateContextValue = {
+  status: 'initial',
+  error: undefined,
+  loading: undefined,
+  success: undefined,
+  initial: true,
+}
+const navigationPageStateListeners = singletonize('NavigationPageStateListeners', new Set<() => void>())
+const getNavigationPageStateSnapshot = (): NavigationPageStateContextValue =>
+  _ss.__POINT0_NAVIGATION_PAGE_STATE__.getWeak() ?? initialNavigationPageState
+const subscribeNavigationPageState = (listener: () => void): (() => void) => {
+  navigationPageStateListeners.add(listener)
+  return () => {
+    navigationPageStateListeners.delete(listener)
   }
-  throw new Error('NavigationPageStateContextProvider is not yet initialized')
 }
-export const useNavigationPageState = (): NavigationPageStateContextValue => {
-  const ctx = React.useContext(NavigationPageStateContext)
-  if (!ctx) throw new Error('useNavigationPageState must be used within NavigationPageStateContextProvider')
-  return ctx
+export const setNavigationPageState = (next: React.SetStateAction<NavigationPageStateContextValue>): void => {
+  const prev = getNavigationPageStateSnapshot()
+  const value =
+    typeof next === 'function'
+      ? (next as (prev: NavigationPageStateContextValue) => NavigationPageStateContextValue)(prev)
+      : next
+  // Keep the snapshot reference stable when nothing changed, so subscribers
+  // (and `useSyncExternalStore`) don't re-render or loop.
+  if (value === prev) {
+    return
+  }
+  _ss.__POINT0_NAVIGATION_PAGE_STATE__.set(value)
+  for (const listener of navigationPageStateListeners) {
+    listener()
+  }
 }
+export const getNavigationPageState = (): NavigationPageStateContextValue => getNavigationPageStateSnapshot()
+export const useNavigationPageState = (): NavigationPageStateContextValue =>
+  React.useSyncExternalStore(
+    subscribeNavigationPageState,
+    getNavigationPageStateSnapshot,
+    getNavigationPageStateSnapshot,
+  )
 type SetNavigationPageStateOptions = {
   status: 'loading' | 'success' | 'initial' | 'error'
   error?: unknown
@@ -372,30 +402,6 @@ export function NavigationContextProvider<
   const [prevLocation, setPrevLocation] = useState<AnyLocation | null>(null)
   const [transitionStatus, setTransitionStatus] = useState<NavigationStatus>('idle')
   const [transitionError, setTransitionError] = useState<Error | undefined>(undefined)
-  const [pageState, _setPageState] = useState<NavigationPageState>(
-    _ss.__POINT0_NAVIGATION_PAGE_STATE__.getWeak() ?? {
-      status: 'initial',
-      error: undefined,
-      loading: undefined,
-      success: undefined,
-      initial: true,
-    },
-  )
-  const setPageState = useCallback<React.Dispatch<React.SetStateAction<NavigationPageState>>>((pageState) => {
-    if (_point0_env.side.is.server) {
-      const previousPageState = _ss.__POINT0_NAVIGATION_PAGE_STATE__.getWeak() ?? {
-        status: 'initial',
-        error: undefined,
-        loading: undefined,
-        success: undefined,
-        initial: true,
-      }
-      const nextPageState = typeof pageState === 'function' ? pageState(previousPageState) : pageState
-      _ss.__POINT0_NAVIGATION_PAGE_STATE__.set(nextPageState)
-    } else {
-      _setPageState(pageState)
-    }
-  }, [])
 
   const currentLocation = useAdapterLocation()
   useEffectAsap(() => {
@@ -421,7 +427,7 @@ export function NavigationContextProvider<
       setTransitionError,
       useAdapterLocation,
       addHashToLocation,
-      setPageState,
+      setPageState: setNavigationPageState,
       ErrorClass,
       navigate,
       redirect,
@@ -447,15 +453,11 @@ export function NavigationContextProvider<
     _ss.__POINT0_NAVIGATION_TRANSITION_STATE__.set(transitionStateValue)
   }, [transitionStateValue])
 
-  useEffectAsap(() => {
-    _ss.__POINT0_NAVIGATION_PAGE_STATE__.set(pageState)
-  }, [pageState])
-
   return (
     <NavigationHelpersContext.Provider value={helpersValue}>
       <NavigationLocationContext.Provider value={locationValue}>
         <NavigationTransitionStateContext.Provider value={transitionStateValue}>
-          <NavigationPageStateContext.Provider value={pageState}>{children}</NavigationPageStateContext.Provider>
+          {children}
         </NavigationTransitionStateContext.Provider>
       </NavigationLocationContext.Provider>
     </NavigationHelpersContext.Provider>

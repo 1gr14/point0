@@ -1081,7 +1081,25 @@ export const createNavigation = <
   forceRerender?: boolean
   prependRoutes?: React.ReactNode
   appendRoutes?: React.ReactNode
-} = {}) => {
+} = {}): {
+  navigate: NavigateHelper<TRoutes, TAdapterNavigateFn, TErrorClass>
+  Link: CreatedLink<TRoutes, TBaseLocationHook>
+  NavLink: CreatedNavLink<TRoutes, TBaseLocationHook>
+  Redirect: RedirectComponent<TRoutes, AdapterNavigateFnByHook<TBaseLocationHook>>
+  Router: (props: {
+    children?: React.ReactNode
+    ssrLocation?: AnyLocation | undefined
+    Page404?: React.ComponentType
+    layout404?: Layout404Type
+  }) => React.ReactElement
+  RouterRoutes: (props: {
+    Page404?: React.ComponentType
+    layout404?: Layout404Type
+    prepend?: React.ReactNode
+    append?: React.ReactNode
+  }) => React.ReactElement
+  redirect: RedirectHelper<TRoutes, TAdapterNavigateFn>
+} => {
   const navigate = createNavigate({ routes, navigate: adapterNavigate, ErrorClass })
   const redirect = createRedirectHelper({ routes, navigate: adapterNavigate, ErrorClass })
   const Redirect = createRedirectComponent({ routes, hook })

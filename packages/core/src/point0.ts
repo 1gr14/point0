@@ -12069,13 +12069,38 @@ export class Point0<
           continue
         }
         case 'mapper': {
-          if (mountState.status === 'success') {
-            nextMappedData = action.fn({
-              location: (mountState as any).location as AnyLocation | undefined,
-              props: mountState.props,
-              queries: mountState.queries,
-              data: nextMappedData ?? mountState.data ?? {},
-            })
+          const mapperFn = action.fn
+          const isSuccess = mountState.status === 'success'
+          const mapperLocation = (mountState as any).location as AnyLocation | undefined
+          const mapperProps = mountState.props
+          const mapperQueries = mountState.queries
+          const mapperInputData = nextMappedData ?? mountState.data ?? {}
+          // Memoize the mapped result keyed on the mapper inputs, so a re-render
+          // that doesn't change those inputs returns the same reference. Without
+          // this the mapper produces a fresh object every render, defeating any
+          // memoization in the page component below and forcing it to re-render.
+          // The hook is called unconditionally (the branch lives inside the
+          // callback) to keep hook order stable across loading/success renders.
+          const mappedData = React.useMemo(
+            () =>
+              isSuccess
+                ? mapperFn({
+                    location: mapperLocation,
+                    props: mapperProps,
+                    queries: mapperQueries,
+                    data: mapperInputData,
+                  })
+                : undefined,
+            [
+              isSuccess,
+              mapperLocation,
+              mapperProps,
+              mapperInputData,
+              ...mapperQueries.map((query: { data?: unknown }) => query.data),
+            ],
+          )
+          if (isSuccess) {
+            nextMappedData = mappedData
             mountState.data = nextMappedData
           }
           continue
