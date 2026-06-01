@@ -45,6 +45,7 @@ import {
   extractEngineClientBuildConfig,
   extractEngineClientDevPluginsStrings,
   extractViteConfig,
+  fetchRetryingConnectionRefused,
   getViteRoot,
   isAsyncFn,
   killSubprocessOnExit,
@@ -425,7 +426,7 @@ plugins = [${combinedPluginsStrings.map((p) => `"${p}"`).join(', ')}]
 import indexHtml from '${this.indexHtml}';
 import { Engine } from '@point0/engine';
 import { killPort } from '@point0/engine/port';
-import { registerOnProcessExit } from '@point0/engine/utils';
+import { fetchRetryingConnectionRefused, registerOnProcessExit } from '@point0/engine/utils';
 import { env } from '@point0/core';
 const { engine } = await Engine.findAndImportSelf({ engineFile: '${this.engineFile}' });
 try {
@@ -450,7 +451,8 @@ try {
       const url = new URL(request.url)
       const forwardedHeaders = new Headers(request.headers)
       forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client', '${this.scope}')
-      return await fetch(
+      // Server may be mid-restart — retry connection-refused quietly instead of logging a noisy stack.
+      return await fetchRetryingConnectionRefused(
         \`http://localhost:${this.server.port}\${url.pathname}\${url.search}\`,
         {
           method: request.method,
@@ -677,12 +679,16 @@ try {
         }
         const forwardedHeaders = new Headers(request.headers)
         forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client', this.scope)
-        const res = await fetch(`http://localhost:${this.server.port}${location.pathname}${location.searchString}`, {
-          method: request.method,
-          headers: forwardedHeaders,
-          body: request.body,
-          redirect: 'manual',
-        })
+        // Server may be mid-restart — retry connection-refused quietly instead of logging a noisy stack.
+        const res = await fetchRetryingConnectionRefused(
+          `http://localhost:${this.server.port}${location.pathname}${location.searchString}`,
+          {
+            method: request.method,
+            headers: forwardedHeaders,
+            body: request.body,
+            redirect: 'manual',
+          },
+        )
         return res
       },
     })
@@ -700,9 +706,6 @@ try {
   }
 
   async dispose(): Promise<void> {
-    if (!this.isPrepared()) {
-      throw new Error('Client is not prepared')
-    }
     if (this.bunNativeDevServer && typeof this.bunNativeDevServer !== 'boolean') {
       this.bunNativeDevServer.kill()
     }

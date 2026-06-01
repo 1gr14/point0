@@ -3597,6 +3597,24 @@ export type WithQueryIfSuitable<
       >
     : TLiteral
 
+/**
+ * Makes a mountable ready point directly renderable as its own `.X`, so `<MyPoint />` works without reaching for `.X`,
+ * while keeping every point helper (`.X` / `.Component` / `.Provider`, queries, `useValue`, ...). We intersect the
+ * ready point with a call signature derived from its `.X`.
+ *
+ * `.X` is flattened from a `React.ComponentType` (`ComponentClass | FunctionComponent`) to a single function-component
+ * signature — at runtime `point.X` is always a function component, and the bare `ComponentClass` arm only muddies
+ * inference.
+ *
+ * NOTE: this wrapper is applied at the authoring-method return types ONLY (see `.page()` / `.component()` / `.layout()`
+ * / `.provider()` in point0.ts). The underlying `Nice*ReadyPoint` types stay plain `Pick<Point0, ...>` so the
+ * `Any*ReadyPoint` matching unions keep their exact (non-callable) shape — a union of callable members breaks TS's
+ * union-assignability.
+ */
+type AsFunctionComponent<TComponent> =
+  TComponent extends React.ComponentType<infer TProps> ? (props: TProps) => React.ReactNode : never
+export type Mountable<TReadyPoint extends Record<string, unknown>> = AsFunctionComponent<TReadyPoint['X']> & TReadyPoint
+
 export type NicePageReadyPoint<
   TPointType extends 'page',
   TLetsReadyPointType extends UndefinedReadyPointType,

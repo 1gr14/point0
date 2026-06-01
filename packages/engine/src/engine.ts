@@ -231,6 +231,7 @@ export class Engine<
     if (this.prepared) {
       return this as Engine<TRequiredCtx, TError, true>
     }
+    await this.applyLogger()
     await this.server.prepare({ engine: this as Engine<TRequiredCtx, TError, true> })
     await Promise.all(
       this.clients.map(async (client) => {

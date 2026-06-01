@@ -248,6 +248,8 @@ describe('dev', () => {
           .loader(() => {
             return { one: 1 }
           }).mutation()
+        export const Comp = root.lets<{count: number}>('component', 'comp')
+          .component(({props}) => <div>Compot {props.count}</div>)
         export const page = root.lets('page', 'home', '/')
           .wrapper(({children}) => {
             const [countWrapper, setCountWrapper] = useState(0)
@@ -261,15 +263,15 @@ describe('dev', () => {
           })
           .page(() => {
             const [countPage, setCountPage] = useState(0)
-            const increment = incrementMutation.useMutation()
             return (
               <div>
                 Hop {countPage}
                 <button id="page-button" onClick={() => {
-                  increment.mutateAsync()
+                  incrementMutation.fetchMutation()
                     .then((res) => setCountPage(countPage + res.one))
                     .catch((err) => console.error(err))
                 }}>Click</button>
+                <Comp count={countPage} />
               </div>
             )
           })`,
@@ -288,14 +290,27 @@ describe('dev', () => {
         await page.waitContent('Wrapper 2')
         await tp.replace('src/page.tsx', 'Wrapper', 'Wrapperok')
         await page.waitContent('Wrapperok')
+        // BLOCKER (vite only): from here the assertions rely on React state surviving an edit to a
+        // *sibling* component. On vite that doesn't hold — Fast Refresh remounts the point-rendered
+        // components (point.X / point.FC are anonymous, no-signature closures that change identity on every
+        // HMR eval), resetting their state. It is still a real hot-update (content propagates, no full
+        // reload), and bun keeps the state — vite just doesn't. So on vite we only assert that edits
+        // PROPAGATE, not that state survives. See backlog/vite-fast-refresh-point-state-loss.md
+        if (bundler === 'vite') {
+          await page.waitContent('Compot') // component still renders after the page/wrapper edits
+          await tp.replace('src/page.tsx', 'Compot', 'Compotik')
+          await page.waitContent('Compotik') // a component edit hot-updates its content (state may have reset)
+          expect(page.history.length).toBe(1) // no full page reload
+          return
+        }
+        await page.waitContent('Compot 1')
+        await tp.replace('src/page.tsx', 'Compot', 'Compotik')
+        await page.waitContent('Compotik 1')
         await new Promise((resolve) => setTimeout(resolve, 1000))
         await page.original.click('button#page-button')
         expect(page.history.length).toBe(1)
-        if (bundler === 'vite') {
-          // after this vite loose state, but in real browser it works like normal hmr, so idk, it works, just skip test for vite here
-          return
-        }
         await page.waitContent('Hay 2')
+        await page.waitContent('Compotik 2')
         await page.waitContent('Wrapperok 2')
         await tp.replace('src/page.tsx', 'Hay', 'La La Lay')
         await page.waitContent('La La Lay 2')
@@ -307,7 +322,7 @@ describe('dev', () => {
         expect(page.history.length).toBe(1)
       }),
       {
-        retry: 3,
+        retry: 0,
       },
     )
 

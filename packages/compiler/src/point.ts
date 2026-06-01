@@ -1236,6 +1236,25 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   }
 
   private _addHmrFix = false
+  /**
+   * HMR boundary fix — a deliberate trick on the bundler.
+   *
+   * Bun's native bundler and Vite only enable React Fast Refresh for a module when it looks like that module exports a
+   * React component. A point file normally exports _points_ (plain objects / method-decorated functions), not "real"
+   * components — so without help the bundler refuses to accept the module as a hot-reload boundary and falls back to a
+   * full page reload on every edit.
+   *
+   * The deception: ALWAYS append the same decoy `._tail(function X() { return null })` to the final point in the chain.
+   * That statically-declared, capitalized, component-looking `function X` is all the bundler's static pass needs to
+   * wire up Fast Refresh for the module. The decoy is a source-level hint only — the real runtime export is decided by
+   * `Point0._tail` in @point0/core (mountable points return their real mount component `point.X`, everything else
+   * returns the decoy as a boundary-only placeholder). This is why a point file can export literally anything
+   * (mutations, queries, providers, plain values, ...) and HMR keeps working — don't lose this when touching the
+   * pipeline.
+   *
+   * Independently, the inline render function of component / page / layout is hoisted to a top-level declaration (see
+   * `externalizeFirstArrowFunctionArg`) so Fast Refresh tracks edits to the render body.
+   */
   addHmrFix(): void {
     if (this._addHmrFix) {
       return
@@ -1272,34 +1291,32 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       })
     }
 
-    // second lets add hmr fix for the point last method itself, and make any point react like component
-
-    // The last method in the array is the final method call (e.g., .mutation(), .query())
+    // The last method in the array is the final method call (e.g., .component(), .mutation()).
     const lastMethod = methods[methods.length - 1]
     if (lastMethod.nodePath.node.type !== 'CallExpression') {
       this._addHmrFix = true
       return
     }
 
-    // Check if point type is component, layout, or page and has functional component
-    if (this.type === 'component' || this.type === 'layout' || this.type === 'page') {
-      const hasValidEnding = lastMethod.name === this.type
-      const firstArg = lastMethod.nodePath.node.arguments.at(0)
-      const alreadyHasFunctionalComponent = hasValidEnding && !!firstArg
-      if (alreadyHasFunctionalComponent) {
-        this.externalizeFirstArrowFunctionArg({
-          nodePath: lastMethod.nodePath,
-          functionNameBase: `${this.type}_${this.name}`,
-        })
-        // For page/layout/component points with existing functions, don't add HMR fix
-        // Just convert if needed, then return
-        this._addHmrFix = true
-        return
-      }
-      // Otherwise, continue to add HMR fix (last method matches pointType and has no args)
+    // Hoist the inline render function of component / page / layout to a top-level
+    // declaration so React Fast Refresh tracks edits to the render body. (provider's
+    // first arg is a mapper, not a component, so there is nothing to hoist; other point
+    // types have no render function.)
+    if (
+      (this.type === 'component' || this.type === 'page' || this.type === 'layout') &&
+      lastMethod.name === this.type
+    ) {
+      this.externalizeFirstArrowFunctionArg({
+        nodePath: lastMethod.nodePath,
+        functionNameBase: `${this.type}_${this.name}`,
+      })
     }
 
-    // Create the function: function X() { return null }
+    // Always append the same decoy `._tail(function X() { return null })` (see the method
+    // doc above). It only has to *look* like a component — a capitalized name returning
+    // null — for the bundler's static pass to accept the module as a Fast Refresh
+    // boundary. The runtime `_tail` then decides the real export (the point's mount
+    // component for mountable points, the decoy itself otherwise).
     const makeFunctionExpressionReturnNull = () => ({
       type: 'FunctionExpression' as const,
       id: { type: 'Identifier' as const, name: 'X' },

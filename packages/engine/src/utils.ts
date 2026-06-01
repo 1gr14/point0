@@ -750,43 +750,85 @@ export const readableStreamToString = async (readableStream: ReadableStream): Pr
   return new TextDecoder().decode(Buffer.concat(chunks))
 }
 
-type WithAsyncRetriesFn = {
-  <T extends (...args: any[]) => any>(
-    options: RetryOptions,
-    fn: T,
-  ): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>>
-  <T extends (...args: any[]) => any>(count: number, fn: T): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>>
-  <T extends (...args: any[]) => any>(
-    count: number,
-    minTimeout: number,
-    fn: T,
-  ): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>>
+// type WithAsyncRetriesFn = {
+//   <T extends (...args: any[]) => any>(
+//     options: RetryOptions,
+//     fn: T,
+//   ): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>>
+//   <T extends (...args: any[]) => any>(count: number, fn: T): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>>
+//   <T extends (...args: any[]) => any>(
+//     count: number,
+//     minTimeout: number,
+//     fn: T,
+//   ): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>>
+// }
+// export const withAsyncRetries: WithAsyncRetriesFn = (
+//   ...args:
+//     | [options: RetryOptions, fn: (...args: any[]) => any]
+//     | [count: number, fn: (...args: any[]) => any]
+//     | [count: number, minTimeout: number, fn: (...args: any[]) => any]
+// ): any => {
+//   const { options, fn } = ((): {
+//     options: RetryOptions
+//     fn: (...args: any[]) => any
+//   } => {
+//     if (typeof args[0] === 'object') {
+//       return { options: args[0], fn: args[1] as (...args: any[]) => any }
+//     } else if (typeof args[1] === 'function') {
+//       return { options: { retries: args[0] }, fn: args[1] }
+//     } else {
+//       return { options: { retries: args[0], minTimeout: args[1] }, fn: args[2] as (...args: any[]) => any }
+//     }
+//   })()
+//   return async (...args: any[]) => {
+//     return await pRetry(async () => await Promise.resolve(fn(...args)), {
+//       randomize: true,
+//       factor: 1.7,
+//       minTimeout: 200,
+//       ...options,
+//     })
+//   }
+// }
+
+const isConnectionRefusedError = (error: unknown): boolean => {
+  const code = (error as { code?: unknown } | null | undefined)?.code
+  return code === 'ConnectionRefused' || code === 'ECONNREFUSED'
 }
-export const withAsyncRetries: WithAsyncRetriesFn = (
-  ...args:
-    | [options: RetryOptions, fn: (...args: any[]) => any]
-    | [count: number, fn: (...args: any[]) => any]
-    | [count: number, minTimeout: number, fn: (...args: any[]) => any]
-): any => {
-  const { options, fn } = ((): {
-    options: RetryOptions
-    fn: (...args: any[]) => any
-  } => {
-    if (typeof args[0] === 'object') {
-      return { options: args[0], fn: args[1] as (...args: any[]) => any }
-    } else if (typeof args[1] === 'function') {
-      return { options: { retries: args[0] }, fn: args[1] }
-    } else {
-      return { options: { retries: args[0], minTimeout: args[1] }, fn: args[2] as (...args: any[]) => any }
+
+/**
+ * `fetch` for forwarding a request to a dev server that may be briefly unreachable — e.g. while the server is
+ * mid-restart, when the client keeps proxying refetches into a port that is momentarily closed. On a connection-refused
+ * error we quietly retry every `intervalMs` for up to `timeoutMs`, so the caller's promise just stays pending instead
+ * of rejecting. The restart almost always finishes inside the window and the real response comes back; nothing is
+ * logged either way (the server's own logs already pipe to the client). Any other error is real and propagates. If the
+ * window elapses with the server still down we resolve to a silent 502 rather than throw, so the caller never surfaces
+ * a noisy ConnectionRefused stack.
+ */
+export const fetchRetryingConnectionRefused = async (
+  input: string,
+  init?: RequestInit,
+  options?: { intervalMs?: number; timeoutMs?: number },
+): Promise<Response> => {
+  const intervalMs = options?.intervalMs ?? 30
+  const timeoutMs = options?.timeoutMs ?? 3000
+  // A ReadableStream body can be consumed only once; buffer it so every attempt can re-send it.
+  const body =
+    init?.body && typeof (init.body as ReadableStream).getReader === 'function'
+      ? await new Response(init.body as BodyInit).arrayBuffer()
+      : init?.body
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    try {
+      return await fetch(input, { ...init, body })
+    } catch (error) {
+      if (!isConnectionRefusedError(error)) {
+        throw error
+      }
+      if (Date.now() >= deadline) {
+        return new Response('Dev server unavailable', { status: 502 })
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs))
     }
-  })()
-  return async (...args: any[]) => {
-    return await pRetry(async () => await Promise.resolve(fn(...args)), {
-      randomize: true,
-      factor: 1.7,
-      minTimeout: 200,
-      ...options,
-    })
   }
 }
 

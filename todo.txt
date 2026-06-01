@@ -81,6 +81,8 @@ normalize scroll restoration (it is trash now)
 
 Моунтаблы (компонент и провайдердер точно) должны работать и без икса
 
+await fetch(`http://loca → retries each 30ms during 3000ms
+
 expose id form points, also queryPredicate shoudl accpet id
 nor x.x.x bub x:x:x prepaering to pagena names can contain .
 

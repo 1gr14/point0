@@ -197,6 +197,7 @@ import type {
   MutationKey,
   NiceActionReadyPoint,
   NiceBaseReadyPoint,
+  Mountable,
   NiceComponentReadyPoint,
   NiceInfiniteQueryReadyPoint,
   NiceLayoutReadyPoint,
@@ -6877,8 +6878,12 @@ export class Point0<
     // this._applyComponentDisplayName(point.Page, { suffix: 'Page' })
     // this._applyComponentDisplayName(point._PageLoader, { suffix: 'PageLoader' })
     point.X = point.Page
-    Point0._assignNicePointMethodsToComponent({ component: page, point, extra: { X: point.X } })
-    return page as never
+    // Decorate and return point.X (the mount component) so it carries every point
+    // helper and so `_tail` can hand it back as the export. Pages are router-mounted
+    // via `.X` / `.Page`, but keeping the export uniform with component/provider keeps
+    // the `_tail` contract simple (`this.X` is always the decorated mount component).
+    Point0._assignNicePointMethodsToComponent({ component: point.X, point, extra: { X: point.X } })
+    return point.X as never
   }
 
   component(
@@ -6901,34 +6906,36 @@ export class Point0<
           >,
         ]
       : never
-  ): NiceComponentReadyPoint<
-    'component',
-    UndefinedReadyPointType,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<
-      TPointType,
-      TLetsReadyPointType,
+  ): Mountable<
+    NiceComponentReadyPoint<
+      'component',
+      UndefinedReadyPointType,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
       TServerLoaderOutput,
       TClientLoaderOutput,
-      TQueriesDefinitions,
-      TError
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      WithSelfQueryIfShouldBeFinalized<
+        TPointType,
+        TLetsReadyPointType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TQueriesDefinitions,
+        TError
+      >
     >
   > {
     const [component = () => null] = args as never as [
@@ -6952,8 +6959,12 @@ export class Point0<
     // this._applyComponentDisplayName(point.Component, { suffix: 'Component' })
     // this._applyComponentDisplayName(point._ComponentLoader, { suffix: 'ComponentLoader' })
     point.X = point.Component
-    Point0._assignNicePointMethodsToComponent({ component, point, extra: { X: point.X } })
-    return component as never
+    // Return the mount component (point.X) itself, decorated with every point
+    // helper, so `<MyComponent />` renders the full point without reaching for
+    // `.X`. The user's inner `component` is preserved as `_component` and the
+    // compiler hoists it to a top-level declaration for Fast Refresh.
+    Point0._assignNicePointMethodsToComponent({ component: point.X, point, extra: { X: point.X } })
+    return point.X as never
   }
 
   layout(
@@ -7081,8 +7092,10 @@ export class Point0<
       // this._applyComponentDisplayName(point.Layout, { suffix: 'Layout' })
       // this._applyComponentDisplayName(point._LayoutLoader, { suffix: 'LayoutLoader' })
       point.X = point.Layout
-      Point0._assignNicePointMethodsToComponent({ component: layout, point, extra: { X: point.X } })
-      return layout as never
+      // See `page()` — return the decorated mount component (point.X) for a uniform
+      // `_tail` contract across all mountable points.
+      Point0._assignNicePointMethodsToComponent({ component: point.X, point, extra: { X: point.X } })
+      return point.X as never
     } else {
       const [layoutNicePoint] = args as [
         | NiceLayoutReadyPoint<
@@ -7192,34 +7205,36 @@ export class Point0<
           >,
         ]
       : never
-  ): NiceProviderReadyPoint<
-    'provider',
-    UndefinedReadyPointType,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TNewMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<
-      TPointType,
-      TLetsReadyPointType,
+  ): Mountable<
+    NiceProviderReadyPoint<
+      'provider',
+      UndefinedReadyPointType,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
       TServerLoaderOutput,
       TClientLoaderOutput,
-      TQueriesDefinitions,
-      TError
+      TNewMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      WithSelfQueryIfShouldBeFinalized<
+        TPointType,
+        TLetsReadyPointType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TQueriesDefinitions,
+        TError
+      >
     >
   >
   provider(_mapperFn?: any) {
@@ -7253,7 +7268,12 @@ export class Point0<
     // this._applyComponentDisplayName(point.X, { suffix: 'Provider' })
     // this._applyComponentDisplayName(point.Provider, { suffix: 'Provider' })
     point.X = point.Provider
-    return point as never
+    // Return the mount component (point.X) itself, decorated with every point
+    // helper, so `<MyProvider />` renders the full point without reaching for
+    // `.X`. Previously this returned the bare `point` object (not a component),
+    // which is why providers could only be mounted via `.X` / `.Provider`.
+    Point0._assignNicePointMethodsToComponent({ component: point.X, point, extra: { X: point.X } })
+    return point.X as never
   }
 
   use<
@@ -8116,10 +8136,24 @@ export class Point0<
     return point as never
   }
 
-  _tail(component: React.Component): typeof this {
-    const point = this._continue({})
-    Point0._assignNicePointMethodsToComponent({ component, point, extra: {} })
-    return component as never
+  /**
+   * Runtime half of the HMR boundary trick. The compiler appends `._tail(function X() { return null })` to EVERY point
+   * chain (see `Point.addHmrFix` in @point0/compiler). That `function X` is a source-level decoy: its only job is to
+   * make the module statically look like it exports a React component, which is what makes Bun's / Vite's Fast Refresh
+   * accept a point file as a hot-reload boundary. The real runtime export is decided here:
+   *
+   * - Mountable points already expose their decorated mount component as `this.X` (set by `.component()` / `.provider()`
+   *   / `.page()` / `.layout()`), so we return that and discard the decoy — this is what makes `<MyComponent />` /
+   *   `<MyProvider />` render the full point.
+   * - Non-mountable points have no mount component, so the decoy itself becomes the (boundary-only) export, decorated
+   *   with the point's methods.
+   */
+  _tail(decoy: React.Component): typeof this {
+    if (this.X) {
+      return this.X as never
+    }
+    Point0._assignNicePointMethodsToComponent({ component: decoy, point: this, extra: {} })
+    return decoy as never
   }
 
   // internal utils

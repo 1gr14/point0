@@ -18,7 +18,7 @@ describe('component', () => {
       })
       .root()
 
-  it.concurrent('simple', async () => {
+  it('simple', async () => {
     const root = createRoot()
     const component = root.lets('component', 'stats').component(() => <div id="component">x=nothing</div>)
     const page = root.lets('page', 'home', '/').page(() => (
@@ -51,7 +51,7 @@ describe('component', () => {
     `)
   })
 
-  it.concurrent('loader', async () => {
+  it('loader', async () => {
     const root = createRoot()
     const component = root
       .lets('component', 'stats')
@@ -90,7 +90,7 @@ describe('component', () => {
     `)
   })
 
-  it.concurrent('loader error', async () => {
+  it('loader error', async () => {
     const root = createRoot()
     const component = root
       .lets('component', 'stats')
@@ -134,7 +134,7 @@ describe('component', () => {
     `)
   })
 
-  it.concurrent('props and input', async () => {
+  it('props and input', async () => {
     const root = createRoot()
     const component = root
       .lets<{ x: number; y: number }>('component', 'stats')
@@ -178,7 +178,7 @@ describe('component', () => {
     `)
   })
 
-  it.concurrent('client input parsed on mount', async () => {
+  it('client input parsed on mount', async () => {
     const root = createRoot()
     const component = root
       .lets<{ x: number; y: number }>('component', 'stats')
@@ -232,7 +232,7 @@ describe('component', () => {
     `)
   })
 
-  it.concurrent('earlier defined props overrides', async () => {
+  it('earlier defined props overrides', async () => {
     const root = createRoot()
     const base = root
       .lets('base', 'base')
@@ -276,7 +276,7 @@ describe('component', () => {
     `)
   })
 
-  it.concurrent('wrapper', async () => {
+  it('wrapper', async () => {
     const root = createRoot()
     const component = root
       .lets<{ x: number }>('component', 'stats')
@@ -328,7 +328,7 @@ describe('component', () => {
     `)
   })
 
-  it.concurrent('compoent as wrapper', async () => {
+  it('compoent as wrapper', async () => {
     const root = createRoot()
     const wrapper = root
       .lets<{ children: React.ReactNode }>('component', 'wrapper')

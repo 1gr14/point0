@@ -109,6 +109,9 @@ export const mainRoot = Point0.lets('root', 'main')
 export const ideaPage = mainRoot
   .lets('page', 'idea', '/idea/:id')
   .page(PageIdea)
+  ._tail(function X() {
+    return null
+  })
 export const ideaLayout = mainRoot
   .lets('layout', 'idea', '/idea')
   .layout()
@@ -230,6 +233,9 @@ export const root = Point0.lets('root', 'root')
 export const page = root
   .lets('page', 'lets-sugar-fallbacks', '/page')
   .page(PageLetsSugarFallbacks)
+  ._tail(function X() {
+    return null
+  })
 export const layout = root
   .lets('layout', 'lets-sugar-fallbacks', '/layout')
   .layout()

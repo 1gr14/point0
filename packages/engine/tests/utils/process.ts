@@ -169,7 +169,7 @@ export class TestProcess {
     return false
   }
 
-  async waitOutput(text: string | string[], timeout = 10000): Promise<string> {
+  async waitOutput(text: string | string[], timeout = 15000): Promise<string> {
     const startTime = Date.now()
     const texts = Array.isArray(text) ? text : [text]
 

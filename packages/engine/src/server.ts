@@ -515,7 +515,8 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     }
 
     if (this.bunServer) {
-      throw new Error('Server is already running')
+      // throw new Error('Server is already running')
+      return
     }
 
     const customServeConfig = ((this.bunServeConfig as unknown) ?? {}) as Record<string, unknown>

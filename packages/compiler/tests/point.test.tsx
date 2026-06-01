@@ -1882,6 +1882,9 @@ export const page = root
                 .loading(PageHomeLoading)
                 .error(PageHomeError)
                 .page(PageHome)
+                ._tail(function X() {
+                  return null
+                })
               function PageHomeWrapper() {
                 return <div>Wrapper</div>
               }
@@ -1937,7 +1940,12 @@ export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
               "import { Point0 } from '@point0/core'
               export const root = Point0.lets('root', 'root').root()
-              export const page = root.lets('page', 'home', '/').page(PageHome)
+              export const page = root
+                .lets('page', 'home', '/')
+                .page(PageHome)
+                ._tail(function X() {
+                  return null
+                })
               function PageHome() {
                 return <div>Hello</div>
               }
@@ -1960,7 +1968,12 @@ export default root.lets('page', 'home', '/').page(() => <div>Hello</div>)
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
               "import { Point0 } from '@point0/core'
               const root = Point0.lets('root', 'root').root()
-              export default root.lets('page', 'home', '/').page(PageHome)
+              export default root
+                .lets('page', 'home', '/')
+                .page(PageHome)
+                ._tail(function X() {
+                  return null
+                })
               function PageHome() {
                 return <div>Hello</div>
               }
@@ -1983,7 +1996,12 @@ export const layout = root.lets('layout', 'main', '/').layout(() => <div>Layout<
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
               "import { Point0 } from '@point0/core'
               export const root = Point0.lets('root', 'root').root()
-              export const layout = root.lets('layout', 'main', '/').layout(LayoutMain)
+              export const layout = root
+                .lets('layout', 'main', '/')
+                .layout(LayoutMain)
+                ._tail(function X() {
+                  return null
+                })
               function LayoutMain() {
                 return <div>Layout</div>
               }
@@ -2009,6 +2027,9 @@ export const component = root.lets('component', 'myComponent', '/').component(()
               export const component = root
                 .lets('component', 'myComponent', '/')
                 .component(ComponentMyComponent)
+                ._tail(function X() {
+                  return null
+                })
               function ComponentMyComponent() {
                 return <div>Component</div>
               }
@@ -2031,12 +2052,19 @@ export const page = root.lets('page', 'home', '/').page(function MyPage() {retur
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
               "import { Point0 } from '@point0/core'
               export const root = Point0.lets('root', 'root').root()
-              export const page = root.lets('page', 'home', '/').page(function MyPage() {
-                return <div>Hello</div>
-              })
+              export const page = root
+                .lets('page', 'home', '/')
+                .page(function MyPage() {
+                  return <div>Hello</div>
+                })
+                ._tail(function X() {
+                  return null
+                })
               "
             `)
-            expect(point.file.modified).toBe(false)
+            // Existing inline function expressions are kept as-is, but the decoy `_tail`
+            // is still appended (always) so the bundler sees a statically-declared component.
+            expect(point.file.modified).toBe(true)
           }),
         )
 
@@ -2057,7 +2085,12 @@ export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
                 return null
               }
               export const root = Point0.lets('root', 'root').root()
-              export const page = root.lets('page', 'home', '/').page(PageHome0)
+              export const page = root
+                .lets('page', 'home', '/')
+                .page(PageHome0)
+                ._tail(function X() {
+                  return null
+                })
               function PageHome0() {
                 return <div>Hello</div>
               }
