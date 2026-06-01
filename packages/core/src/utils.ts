@@ -494,8 +494,12 @@ export const parseMutationKey = (mutationKey: readonly unknown[] | undefined): M
   return mutationKey[1] as MutationKey[1]
 }
 
+export const getPointId = (point: { scope: PointsScope; type: PointType; name: PointName }): string =>
+  `${point.scope}:${point.type}:${point.name}`
+
 export type QueryPredicateOptions = {
   // input?: ((input: InputRaw) => boolean) | undefined
+  id?: string | undefined
   tags?: string | string[] | ((tags: string[]) => boolean) | undefined
   finiteness?: 'finite' | 'infinite'
   output?: FetchServerOutputType | undefined
@@ -517,6 +521,9 @@ export const getQueryPredicate = (options: QueryPredicateOptions): ((query: Quer
   return (query: Query) => {
     const obj = parseQueryKey(query.queryKey)
     if (!obj) {
+      return false
+    }
+    if (options.id && options.id !== getPointId(obj)) {
       return false
     }
     if (tagsFunction) {
@@ -549,6 +556,7 @@ export const getQueryPredicate = (options: QueryPredicateOptions): ((query: Quer
 
 export type MutationPredicateOptions = {
   // input?: ((input: InputRaw) => boolean) | undefined
+  id?: string | undefined
   tags?: string | string[] | ((tags: string[]) => boolean) | undefined
   scope?: PointsScope | undefined
   type?: PointType | undefined
@@ -566,6 +574,9 @@ export const getMutationPredicate = (options: MutationPredicateOptions): ((mutat
   return (mutation: Mutation) => {
     const obj = parseMutationKey(mutation.options.mutationKey)
     if (!obj) {
+      return false
+    }
+    if (options.id && options.id !== getPointId(obj)) {
       return false
     }
     if (tagsFunction) {
@@ -698,10 +709,7 @@ export type ResolveQueryFn = {
     resolve: (success: ResolveQuerySuccess<TQuery>) => TMapped,
   ): TMapped | Error | 'loading'
   <const TQueries extends readonly QueryLikeResult[]>(queries: TQueries): undefined | Error | 'loading'
-  <const TQueries extends readonly QueryLikeResult[]>(
-    queries: TQueries,
-    resolve: false,
-  ): undefined | Error | 'loading'
+  <const TQueries extends readonly QueryLikeResult[]>(queries: TQueries, resolve: false): undefined | Error | 'loading'
   <const TQueries extends readonly QueryLikeResult[]>(
     queries: TQueries,
     resolve: true,

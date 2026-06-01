@@ -262,6 +262,7 @@ import {
   generateId,
   getByPath,
   getCallerLocation,
+  getPointId,
   getWindowScrollPositionGetterByElementGetter,
   getWindowScrollPositionGetterBySelector,
   getWindowScrollPositionSetterByElementGetter,
@@ -338,8 +339,11 @@ export class Point0<
 
   private readonly __POINT0_INSTANCE__: boolean = true
 
+  get id(): string {
+    return getPointId(this)
+  }
   toString() {
-    return `${this.scope}.${this.type}.${this.name}`
+    return this.id
   }
   toStringWithLocation() {
     return this._fsLocation

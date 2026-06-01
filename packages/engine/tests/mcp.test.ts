@@ -126,7 +126,7 @@ describe('point0 MCP server', () => {
       }
       expect(listedStructured.total).toBe(1)
       expect(listedStructured.points[0]?.name).toBe('mcpAction')
-      expect(listedStructured.points[0]?.id).toContain('.action.mcpAction')
+      expect(listedStructured.points[0]?.id).toContain(':action:mcpAction')
     } finally {
       await teardownMcpClient(ctx)
     }
@@ -143,7 +143,7 @@ describe('point0 MCP server', () => {
         },
       })
       expect(single.isError).not.toBe(true)
-      expect(single.structuredContent).toEqual({ id: 'root.page.mcpPage' })
+      expect(single.structuredContent).toEqual({ id: 'root:page:mcpPage' })
     } finally {
       await teardownMcpClient(ctx)
     }

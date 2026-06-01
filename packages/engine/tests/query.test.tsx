@@ -503,6 +503,14 @@ describe('query', () => {
       })
       expect(scopedByName.length).toBe(1)
       expect(scopedByName[0]?.state.data).toEqual({ value: 'A' })
+
+      // `id` is exposed on every point as `scope:type:name`, and predicates accept it
+      expect(qa.id).toBe('root:query:helpers-tag-a')
+      const byId = queryClient.getQueryCache().findAll({
+        predicate: getQueryPredicate({ id: qa.id }),
+      })
+      expect(byId.length).toBe(1)
+      expect(byId[0]?.state.data).toEqual({ value: 'A' })
     })
   })
 })

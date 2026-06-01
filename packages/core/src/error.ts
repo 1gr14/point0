@@ -32,7 +32,7 @@ export class ErrorPoint0 extends Error {
   // meta?: Record<string, unknown>
 
   constructor(
-    message: string,
+    message?: string,
     // options: { cause?: unknown; status?: number; code?: string; meta?: Record<string, unknown> } = {},
     options: {
       cause?: unknown
@@ -43,7 +43,7 @@ export class ErrorPoint0 extends Error {
       headers?: Record<string, string | undefined>
     } = {},
   ) {
-    super(message, { cause: options.cause })
+    super(message || 'Unknown error', { cause: options.cause })
     if (options.status) {
       this.status = options.status
     }
@@ -133,7 +133,7 @@ export class ErrorPoint0 extends Error {
 
 export type ClassLikeError0<T extends ErrorPoint0 = ErrorPoint0> = {
   new (
-    message: string,
+    message?: string,
     options?: {
       cause?: unknown
       status?: number

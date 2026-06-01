@@ -202,7 +202,7 @@ describe('point0 CLI', () => {
       const payload = parseJsonFromOutput<{ points: Array<{ id: string; name: string }>; total: number }>(result.output)
       expect(payload.total).toBe(1)
       expect(payload.points[0]?.name).toBe('cliAction')
-      expect(payload.points[0]?.id).toContain('.action.cliAction')
+      expect(payload.points[0]?.id).toContain(':action:cliAction')
     } finally {
       await tp.cleanup({ files: true, ports: true, processes: true })
     }
@@ -217,7 +217,7 @@ describe('point0 CLI', () => {
       })
       expect(result.exitCode).toBe(0)
       const payload = parseJsonFromOutput<{ id: string }>(result.output)
-      expect(payload).toEqual({ id: 'root.page.cliPage' })
+      expect(payload).toEqual({ id: 'root:page:cliPage' })
     } finally {
       await tp.cleanup({ files: true, ports: true, processes: true })
     }

@@ -427,6 +427,14 @@ describe('mutation', () => {
       })
       expect(scopedByName.length).toBe(1)
       expect(scopedByName[0]?.state.data).toEqual({ id: 1, ok: true })
+
+      // `id` is exposed on every point as `scope:type:name`, and predicates accept it
+      expect(ma.id).toBe('root:mutation:helpers-tag-a')
+      const byId = queryClient.getMutationCache().findAll({
+        predicate: getMutationPredicate({ id: ma.id }),
+      })
+      expect(byId.length).toBe(1)
+      expect(byId[0]?.state.data).toEqual({ id: 1, ok: true })
     })
   })
 })

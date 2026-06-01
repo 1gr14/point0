@@ -167,7 +167,7 @@ describe('openapi', () => {
                   "description": "Successful response",
                 },
               },
-              "summary": "root.query.query1",
+              "summary": "root:query:query1",
             },
           },
           "/api/another-test/{id}": {

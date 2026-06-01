@@ -110,7 +110,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     type: ReadyPointType
     name: PointName
   }): string {
-    return `${scope ?? 'undefined'}.${type}.${name}`
+    return `${scope ?? 'undefined'}:${type}:${name}`
   }
 
   static isLetsTypeSugarCall({ node }: { node: Node }): boolean {

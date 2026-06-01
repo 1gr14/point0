@@ -965,7 +965,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 scope: 'myroot',
                 type: 'root',
                 name: 'myroot',
-                id: 'myroot.root.myroot',
+                id: 'myroot:root:myroot',
                 tags: ['root-tag'],
                 description: \`root description\`,
                 route: undefined,
@@ -986,7 +986,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 scope: 'plugin',
                 type: 'plugin',
                 name: 'myplugin',
-                id: 'plugin.plugin.myplugin',
+                id: 'plugin:plugin:myplugin',
                 tags: [],
                 description: undefined,
                 route: undefined,
@@ -1007,7 +1007,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 scope: 'myroot',
                 type: 'page',
                 name: 'page3',
-                id: 'myroot.page.page3',
+                id: 'myroot:page:page3',
                 tags: ['root-tag', 'invalid-tag'],
                 description: \`root description
 
@@ -1031,7 +1031,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                     scope: 'myroot',
                     type: 'root',
                     name: 'myroot',
-                    id: 'myroot.root.myroot',
+                    id: 'myroot:root:myroot',
                     pos: {
                       file: '<file>',
                       line: 2,
@@ -1045,7 +1045,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 scope: 'myroot',
                 type: 'page',
                 name: 'mypage',
-                id: 'myroot.page.mypage',
+                id: 'myroot:page:mypage',
                 tags: ['root-tag', 'layout-tag', 'page-tag-a', 'page-tag-b'],
                 description: \`root description
 
@@ -1068,7 +1068,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                     scope: 'myroot',
                     type: 'layout',
                     name: 'mylayout',
-                    id: 'myroot.layout.mylayout',
+                    id: 'myroot:layout:mylayout',
                     pos: {
                       file: '<file>',
                       line: 3,
@@ -1079,7 +1079,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                     scope: 'myroot',
                     type: 'root',
                     name: 'myroot',
-                    id: 'myroot.root.myroot',
+                    id: 'myroot:root:myroot',
                     pos: {
                       file: '<file>',
                       line: 2,
@@ -1092,7 +1092,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                     scope: 'myroot',
                     type: 'layout',
                     name: 'mylayout',
-                    id: 'myroot.layout.mylayout',
+                    id: 'myroot:layout:mylayout',
                     pos: {
                       file: '<file>',
                       line: 3,
@@ -1105,7 +1105,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 scope: 'myroot',
                 type: 'layout',
                 name: 'mylayout',
-                id: 'myroot.layout.mylayout',
+                id: 'myroot:layout:mylayout',
                 tags: ['root-tag', 'layout-tag'],
                 description: \`root description
 
@@ -1126,7 +1126,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                     scope: 'myroot',
                     type: 'root',
                     name: 'myroot',
-                    id: 'myroot.root.myroot',
+                    id: 'myroot:root:myroot',
                     pos: {
                       file: '<file>',
                       line: 2,
@@ -1140,7 +1140,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 scope: 'myroot',
                 type: 'action',
                 name: 'myaction',
-                id: 'myroot.action.myaction',
+                id: 'myroot:action:myaction',
                 tags: ['root-tag', 'action-tag'],
                 description: \`root description
 
@@ -1164,7 +1164,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                     scope: 'myroot',
                     type: 'root',
                     name: 'myroot',
-                    id: 'myroot.root.myroot',
+                    id: 'myroot:root:myroot',
                     pos: {
                       file: '<file>',
                       line: 2,
