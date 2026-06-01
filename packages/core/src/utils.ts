@@ -142,6 +142,34 @@ export const isContainsBinary = (value: unknown): boolean => {
   return false
 }
 
+/**
+ * Make a value safe and pleasant to log. Binaries (File / Blob / FormData) — which can sit anywhere in an input, nested
+ * in objects or arrays (mirrors {@link isContainsBinary}) — are replaced with a short placeholder string. Everything
+ * else is kept as-is and stays multi-level. Used to project an event's `input` into its log-friendly `meta`.
+ */
+export const sanitizeForLog = (value: unknown): unknown => {
+  if (value instanceof File) {
+    return `[File: ${value.name || 'unnamed'} (${value.size} bytes)]`
+  }
+  if (value instanceof Blob) {
+    return `[Blob: ${value.size} bytes]`
+  }
+  if (value instanceof FormData) {
+    return '[FormData]'
+  }
+  if (Array.isArray(value)) {
+    return value.map(sanitizeForLog)
+  }
+  if (value && typeof value === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const [key, item] of Object.entries(value)) {
+      result[key] = sanitizeForLog(item)
+    }
+    return result
+  }
+  return value
+}
+
 export const blankDataTransformer: DataTransformer = {
   serialize: (data) => data,
   deserialize: (data) => data,

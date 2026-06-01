@@ -58,6 +58,20 @@ describe('on', () => {
           },
         ]
       `)
+
+      // `meta` is a log-friendly projection of `data` built from real framework objects
+      const pointEvent = events.find((e) => e.name === 'pointQueryStart')
+      expect(typeof pointEvent?.meta.point).toBe('string')
+      expect(pointEvent?.meta.point).toContain('home')
+
+      const fetchEvent = events.find((e) => e.name === 'engineFetchStart')
+      expect(fetchEvent?.meta.request).toMatchObject({ method: expect.any(String), path: expect.any(String) })
+      expect(fetchEvent?.meta.scope).toBeDefined()
+
+      // heavy payloads (the HTTP response / fetch result) are dropped from meta
+      const successEvent = events.find((e) => e.name === 'engineFetchSuccess')
+      expect(successEvent?.meta.result).toBeUndefined()
+      expect(successEvent?.meta.response).toBeUndefined()
     })
   })
 
@@ -162,6 +176,15 @@ describe('on', () => {
           },
         ]
       `)
+
+      // our meta stays ours: the error is not duplicated into event meta...
+      const queryErrorEvent = events.find((e) => e.name === 'pointQueryError')
+      expect(queryErrorEvent?.meta.error).toBeUndefined()
+      expect(queryErrorEvent?.meta.point).toContain('home')
+      // ...and we don't pollute the user's thrown error with our meta either
+      const thrownError = queryErrorEvent?.data.error as ErrorPoint0 | undefined
+      expect(thrownError).toBeInstanceOf(ErrorPoint0)
+      expect(thrownError?.meta).toBeUndefined()
     })
   })
 })

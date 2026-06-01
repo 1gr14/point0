@@ -487,33 +487,6 @@
         "react-dom": "catalog:",
       },
     },
-    "packages/engine/tests/temp/two-clients/test-4bebf5c2-013e-4778-9fcd-46f32a8a9fa2": {
-      "name": "@point0/test-4bebf5c2-013e-4778-9fcd-46f32a8a9fa2",
-      "version": "1.0.0",
-      "dependencies": {
-        "@devp0nt/route0": "catalog:",
-        "@point0/compiler": "workspace:*",
-        "@point0/core": "workspace:*",
-        "@point0/cors": "workspace:*",
-        "@point0/engine": "workspace:*",
-        "@point0/react-dom": "workspace:*",
-        "react": "catalog:",
-        "react-dom": "catalog:",
-        "server-only": "^0.0.1",
-        "superjson": "catalog:",
-      },
-      "devDependencies": {
-        "@svgr/core": "^8.1.0",
-        "@svgr/plugin-jsx": "^8.1.0",
-        "@types/bun": "catalog:",
-        "@types/react": "catalog:",
-        "@types/react-dom": "catalog:",
-        "cross-env": "^10.0.0",
-        "ncp": "^2.0.0",
-        "rimraf": "^6.0.1",
-        "typescript": "catalog:",
-      },
-    },
     "packages/engine/tests/templates/one-client": {
       "name": "@point0/test-one-client",
       "version": "1.0.0",
@@ -618,7 +591,7 @@
     },
   },
   "catalog": {
-    "@devp0nt/error0": "^1.0.0",
+    "@devp0nt/error0": "^1.0.6",
     "@devp0nt/flat0": "^1.2.0",
     "@devp0nt/route0": "^1.1.0",
     "@huggingface/transformers": "^4.2.0",
@@ -918,7 +891,7 @@
 
     "@commitlint/types": ["@commitlint/types@19.8.1", "", { "dependencies": { "@types/conventional-commits-parser": "^5.0.0", "chalk": "^5.3.0" } }, "sha512-/yCrWGCoA1SVKOks25EGadP9Pnj0oAIHGpl2wH2M2Y46dPM2ueb8wyCVOD7O3WCTkaJ0IkKvzhl1JY7+uCT2Dw=="],
 
-    "@devp0nt/error0": ["@devp0nt/error0@1.0.0", "", {}, "sha512-PODfADkTC1zIDg+M9koAKnaZaRTUOhHOZBWYuPiYgSi/+nACDwZmMnh15C/EgD7T0Zt7c2brXvc5FlK2JrYCbA=="],
+    "@devp0nt/error0": ["@devp0nt/error0@1.0.6", "", {}, "sha512-Qe21HmmEGcoUNVxMaXwOgM23ZVuRYvHvawZAA/D0Pixb6OhG5tNKTzlzSu4DLSu9GctmeZLRnnSo8FFxFH2wpw=="],
 
     "@devp0nt/flat0": ["@devp0nt/flat0@1.2.0", "", {}, "sha512-uZtYPTnMEtFicmXL2FFtgJLrt0Lee33zBwo8HGi0GlR9O4UkrJ86VGHttJVrAO505JEt4lmHPFjYB4s8yEnuDQ=="],
 
@@ -1381,8 +1354,6 @@
     "@point0/openapi": ["@point0/openapi@workspace:packages/openapi"],
 
     "@point0/react-dom": ["@point0/react-dom@workspace:packages/react-dom"],
-
-    "@point0/test-4bebf5c2-013e-4778-9fcd-46f32a8a9fa2": ["@point0/test-4bebf5c2-013e-4778-9fcd-46f32a8a9fa2@workspace:packages/engine/tests/temp/two-clients/test-4bebf5c2-013e-4778-9fcd-46f32a8a9fa2"],
 
     "@point0/test-one-client": ["@point0/test-one-client@workspace:packages/engine/tests/templates/one-client"],
 

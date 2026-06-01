@@ -29,11 +29,10 @@ export class ErrorPoint0 extends Error {
   redirect?: RedirectTask
   response?: Response
   headers?: Record<string, string | undefined>
-  // meta?: Record<string, unknown>
+  meta?: Record<string, unknown>
 
   constructor(
     message?: string,
-    // options: { cause?: unknown; status?: number; code?: string; meta?: Record<string, unknown> } = {},
     options: {
       cause?: unknown
       status?: number
@@ -41,6 +40,7 @@ export class ErrorPoint0 extends Error {
       redirect?: RedirectTask
       response?: Response
       headers?: Record<string, string | undefined>
+      meta?: Record<string, unknown>
     } = {},
   ) {
     super(message || 'Unknown error', { cause: options.cause })
@@ -59,6 +59,9 @@ export class ErrorPoint0 extends Error {
     if (options.headers) {
       this.headers = options.headers
     }
+    if (options.meta) {
+      this.meta = options.meta
+    }
     this.name = 'ErrorPoint0'
     Object.defineProperty(this, 'toJSON', {
       value: () => ErrorPoint0.serialize(this),
@@ -69,7 +72,6 @@ export class ErrorPoint0 extends Error {
     // Walk `this` and the cause chain so every link's stack is remapped (when the engine
     // installed the hook under vite dev).
     fixStackChain(this)
-    // this.meta = options.meta
   }
 
   static from(error: unknown): ErrorPoint0 {
@@ -99,11 +101,16 @@ export class ErrorPoint0 extends Error {
     const status = typeof record.status === 'number' ? record.status : undefined
     const code = typeof record.code === 'string' ? record.code : undefined
     const stack = typeof record.stack === 'string' ? record.stack : undefined
+    const meta =
+      record.meta && typeof record.meta === 'object' && !Array.isArray(record.meta)
+        ? (record.meta as Record<string, unknown>)
+        : undefined
     const error0 = new ErrorPoint0(message, {
       cause,
       status,
       code,
       redirect,
+      meta,
     })
     if (stack) {
       error0.stack = stack
@@ -112,19 +119,24 @@ export class ErrorPoint0 extends Error {
   }
 
   static serialize(error: ErrorPoint0): Record<string, unknown> {
-    // const meta = (() => {
-    //   try {
-    //     return JSON.parse(JSON.stringify(error.meta))
-    //   } catch {
-    //     console.error('ErrorPoint0 meta is not serializable', error.meta)
-    //     return undefined
-    //   }
-    // })()
+    const meta = (() => {
+      if (!error.meta) {
+        return undefined
+      }
+      if (process.env.NODE_ENV === 'production') {
+        return undefined
+      }
+      try {
+        return JSON.parse(JSON.stringify(error.meta)) as Record<string, unknown>
+      } catch {
+        return undefined
+      }
+    })()
     const isStacktracePublic = process.env.NODE_ENV !== 'production'
     return {
       message: error.message,
       ...(error.code ? { code: error.code } : {}),
-      // ...(meta ? { meta } : {}),
+      ...(meta ? { meta } : {}),
       ...(!isStacktracePublic || !error.stack ? {} : { stack: error.stack }),
       ...(error.redirect ? { redirect: error.redirect.serialize() } : {}),
     }
@@ -141,8 +153,42 @@ export type ClassLikeError0<T extends ErrorPoint0 = ErrorPoint0> = {
       redirect?: RedirectTask
       response?: Response
       headers?: Record<string, string | undefined>
+      meta?: Record<string, unknown>
     },
   ): T
   from(error: unknown): T
   serialize(error: T): Record<string, unknown>
 }
+
+/**
+ * Registry of all `POINT0_*` error codes the framework attaches (via `error.code`) to the errors it
+ * creates. This list is intentionally not referenced anywhere — it exists purely as a single,
+ * discoverable place that records every code we introduce, so they can be documented, grepped, or
+ * matched against in userland. Keep it in sync when adding a new coded error.
+ */
+export const POINT0_ERROR_CODES = [
+  // input schema (@point0/core)
+  'POINT0_INPUT_SCHEMA_PROMISE_NOT_ALLOWED',
+  'POINT0_INPUT_SCHEMA_UNKNOWN',
+  'POINT0_INPUT_SCHEMA_INVALID',
+  'POINT0_INPUT_SCHEMA_NOT_ALLOWED',
+  'POINT0_PARAMS_SCHEMA_NOT_ALLOWED',
+  'POINT0_SEARCH_SCHEMA_NOT_ALLOWED',
+  // prefetch (@point0/core)
+  'POINT0_ROUTE_NOT_SET',
+  // fetch / execute (@point0/engine)
+  'POINT0_POINT_NOT_FOUND',
+  'POINT0_POINT_NO_SERVER_LOADER',
+  'POINT0_POINT_NO_ROUTE',
+  'POINT0_CLIENT_NOT_FOUND',
+  'POINT0_CLIENT_NO_INDEX_HTML',
+  'POINT0_HTML_OUTPUT_UNSUPPORTED_POINT_TYPE',
+  'POINT0_DEHYDRATED_STATE_UNSUPPORTED_POINT_TYPE',
+  'POINT0_RSC_NOT_SUPPORTED',
+  'POINT0_NO_OUTPUT',
+  'POINT0_NOT_FOUND',
+  'POINT0_REDIRECT',
+  'POINT0_ERROR_STRINGIFY_FAILED',
+] as const
+
+export type Point0ErrorCode = (typeof POINT0_ERROR_CODES)[number]

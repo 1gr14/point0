@@ -583,14 +583,23 @@ export class Fetcher<TError extends ErrorPoint0> {
       const input = await this.getPointInputFromEndpointRequest({ request, location, point, transform })
       if (outputType === 'html') {
         if (point.type !== 'page') {
-          throw new ErrorClass(`Point type "${point.type}" is not supported for html output type`)
+          throw new ErrorClass(`Point type "${point.type}" is not supported for html output type`, {
+            code: 'POINT0_HTML_OUTPUT_UNSUPPORTED_POINT_TYPE',
+            meta: { point: point.toString(), pointType: point.type },
+          })
         }
         if (!client) {
-          throw new ErrorClass(`Client for scope "${point.scope}" not found while requested page html via endpoint`)
+          throw new ErrorClass(`Client for scope "${point.scope}" not found while requested page html via endpoint`, {
+            code: 'POINT0_CLIENT_NOT_FOUND',
+            meta: { scope: point.scope },
+          })
         }
         const route = point.route as AnyRoute | undefined
         if (!route) {
-          throw new ErrorClass(`Point "${point.toString()}" has no route while requested page html via task`)
+          throw new ErrorClass(`Point "${point.toString()}" has no route while requested page html via task`, {
+            code: 'POINT0_POINT_NO_ROUTE',
+            meta: { point: point.toString() },
+          })
         }
         const pageUrl = route.get({ ...input.params, '?': input.search } as never, {
           origin: request.from.location?.origin,
@@ -626,14 +635,26 @@ export class Fetcher<TError extends ErrorPoint0> {
 
       if (outputType === 'queryClientDehydratedState') {
         if (point.type !== 'page') {
-          throw new ErrorClass(`Point type "${point.type}" is not supported for queryClientDehydratedState output type`)
+          throw new ErrorClass(
+            `Point type "${point.type}" is not supported for queryClientDehydratedState output type`,
+            {
+              code: 'POINT0_DEHYDRATED_STATE_UNSUPPORTED_POINT_TYPE',
+              meta: { point: point.toString(), pointType: point.type },
+            },
+          )
         }
         if (!client) {
-          throw new ErrorClass(`Client for scope "${point.scope}" not found while requested page html via endpoint`)
+          throw new ErrorClass(`Client for scope "${point.scope}" not found while requested page html via endpoint`, {
+            code: 'POINT0_CLIENT_NOT_FOUND',
+            meta: { scope: point.scope },
+          })
         }
         const route = point.route as AnyRoute | undefined
         if (!route) {
-          throw new ErrorClass(`Point "${point.toString()}" has no route while requested page html via endpoint`)
+          throw new ErrorClass(`Point "${point.toString()}" has no route while requested page html via endpoint`, {
+            code: 'POINT0_POINT_NO_ROUTE',
+            meta: { point: point.toString() },
+          })
         }
         const pageUrl = route.get({ ...input.params, '?': input.search } as never, {
           origin: request.from.location?.origin,
@@ -719,7 +740,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       if (React.isValidElement(executeResult.output)) {
-        throw new ErrorClass('RSC is not yet supported')
+        throw new ErrorClass('RSC is not yet supported', { code: 'POINT0_RSC_NOT_SUPPORTED' })
         // const stream = await renderToReadableStream(executeResult.output)
         // const response = new Response(stream, {
         //   headers: { 'Content-Type': 'text/x-component' },
@@ -731,7 +752,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       if (!executeResult.output) {
-        const error = new ErrorClass('No output')
+        const error = new ErrorClass('No output', { code: 'POINT0_NO_OUTPUT' })
         const response = this.toJsonErrorResponse({
           ErrorClass,
           error,
@@ -871,7 +892,10 @@ export class Fetcher<TError extends ErrorPoint0> {
           response,
         }
       } else {
-        throw new ErrorClass(`Client "${client.scope}" has no indexHtml`)
+        throw new ErrorClass(`Client "${client.scope}" has no indexHtml`, {
+          code: 'POINT0_CLIENT_NO_INDEX_HTML',
+          meta: { scope: client.scope },
+        })
       }
     } catch (error) {
       const error0 = ErrorClass.from(error)
@@ -1070,7 +1094,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       const ErrorClass = this.server.points.manager.root._Error
-      const error = new ErrorClass(`Not Found`, { status: 404 })
+      const error = new ErrorClass(`Not Found`, { status: 404, code: 'POINT0_NOT_FOUND' })
       return {
         request: prepareFetchResult.request,
         scope: prepareFetchResult.scope,
@@ -1130,6 +1154,13 @@ export class Fetcher<TError extends ErrorPoint0> {
       scope: prepareFetchResult.scope,
       error: undefined,
     }
+    const meta = {
+      request: {
+        method: prepareFetchResult.request.method,
+        path: prepareFetchResult.request.location.pathname,
+      },
+      scope: prepareFetchResult.scope,
+    }
 
     const emit = this.engine.getEmit({
       point: (prepareFetchResult.request.variant as { point?: AnyPoint }).point,
@@ -1156,7 +1187,7 @@ export class Fetcher<TError extends ErrorPoint0> {
     const middlewareOptions = prepareFetchResult.middlewareOptions
 
     return await _ssRunWithServerStorageState(serverStorageState, async () => {
-      emit?.('engineFetchStart', _eventData)
+      emit?.('engineFetchStart', _eventData, meta)
       try {
         const result = await this._composeMiddlewares<TError>({
           middlewares,
@@ -1178,11 +1209,11 @@ export class Fetcher<TError extends ErrorPoint0> {
           response,
         } as FetcherFetchDetailedResult<TError>
         const error = (result as { error?: TError }).error
-        emit?.('engineFetchSettled', { ..._eventData, error, result: finalResult })
+        emit?.('engineFetchSettled', { ..._eventData, error, result: finalResult }, meta)
         if (error) {
-          emit?.('engineFetchError', { ..._eventData, error, result: finalResult })
+          emit?.('engineFetchError', { ..._eventData, error, result: finalResult }, meta)
         } else {
-          emit?.('engineFetchSuccess', { ..._eventData, error: undefined, result: finalResult })
+          emit?.('engineFetchSuccess', { ..._eventData, error: undefined, result: finalResult }, meta)
         }
         return finalResult
       } catch (error) {
@@ -1203,8 +1234,8 @@ export class Fetcher<TError extends ErrorPoint0> {
           variant: { type: 'error' as const, error: error0 },
           error: error0,
         }
-        emit?.('engineFetchSettled', { ..._eventData, error: error0, result: finalResult })
-        emit?.('engineFetchError', { ..._eventData, error: error0, result: finalResult })
+        emit?.('engineFetchSettled', { ..._eventData, error: error0, result: finalResult }, meta)
+        emit?.('engineFetchError', { ..._eventData, error: error0, result: finalResult }, meta)
         return finalResult
       }
     })
@@ -1243,7 +1274,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       const serialized = ErrorClass.serialize(error0)
       const stringified = transformer ? transformer.stringify(serialized) : JSON.stringify(serialized)
       if (!stringified) {
-        throw new ErrorClass('Failed to stringify error', { cause: error0 })
+        throw new ErrorClass('Failed to stringify error', { cause: error0, code: 'POINT0_ERROR_STRINGIFY_FAILED' })
       }
       return new Response(stringified, {
         headers: { 'Content-Type': 'application/json' },

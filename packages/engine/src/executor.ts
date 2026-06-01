@@ -419,7 +419,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       try {
         if (!point) {
           const status = 404
-          const error0 = new ErrorClass(`Point Not Found`, { status })
+          const error0 = new ErrorClass(`Point Not Found`, { status, code: 'POINT0_POINT_NOT_FOUND' })
           effects.set.status(status)
           return {
             ctx: layers[0].ctx,
@@ -436,7 +436,11 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
 
         if (!point._hasServerLoader) {
           const status = 500
-          const error0 = new ErrorClass(`Point "${point.toString()}" has no server loader`, { status })
+          const error0 = new ErrorClass(`Point "${point.toString()}" has no server loader`, {
+            status,
+            code: 'POINT0_POINT_NO_SERVER_LOADER',
+            meta: { point: point.toString() },
+          })
           effects.set.status(status)
           return {
             ctx: layers[0].ctx,
@@ -1130,6 +1134,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         })
         const redirectError = new ErrorClass(`Redirect to "${redirectTask.to}"`, {
           redirect: redirectTask,
+          code: 'POINT0_REDIRECT',
         })
         const redirectQuery =
           queryClient.getQueryCache().find({ queryKey: redirectQueryKey }) ||

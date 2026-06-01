@@ -47,6 +47,7 @@ import type {
   AnyEventerSubscriptionCallback,
   ClientEventerEventName,
   ClientEventerSubscriptionCallback,
+  EventerEventMeta,
   EventerSubscription,
   ServerEventerEventName,
   ServerEventerSubscriptionCallback,
@@ -278,6 +279,7 @@ import {
   parseMutationKey,
   parseQueryKey,
   resolveQuery,
+  sanitizeForLog,
   setByPath,
   singletonize,
   toExtendedTransformer,
@@ -8364,6 +8366,7 @@ export class Point0<
       if (result instanceof Promise) {
         throw new this._Error(
           `Promise returning schema input not allowed for client input schemas on point ${this.toStringWithLocation()}`,
+          { code: 'POINT0_INPUT_SCHEMA_PROMISE_NOT_ALLOWED', meta: { point: this.toString() } },
         )
       }
 
@@ -8382,12 +8385,18 @@ export class Point0<
           data: undefined,
           error: new this._Error(`Unknown input schema error on point ${this.toStringWithLocation()}`, {
             cause: result,
+            code: 'POINT0_INPUT_SCHEMA_UNKNOWN',
+            meta: { point: this.toString() },
           }),
         }
       }
       const path = firstIssue.path?.map((p) => (typeof p === 'object' ? p.key : p)).join('.')
       const message = [path, firstIssue.message].filter(Boolean).join(': ')
-      const error = new this._Error(message, { cause: result })
+      const error = new this._Error(message, {
+        cause: result,
+        code: 'POINT0_INPUT_SCHEMA_INVALID',
+        meta: { point: this.toString(), path },
+      })
       return {
         success: false,
         data: undefined,
@@ -8940,6 +8949,7 @@ export class Point0<
       error: undefined,
       output: undefined,
     }
+    const meta = { point: this.toString(), input: sanitizeForLog(input) }
     try {
       const fetchOptions = this._getFetchServerOptions({
         input,
@@ -8948,7 +8958,7 @@ export class Point0<
       })
       const fetchFn = getFetch({ scope: this.scopes })
       const fetchRequest = this.modifyFetchRequestForServerIfRequired(fetchOptions)
-      this._emit('pointFetchServerStart', _eventData)
+      this._emit('pointFetchServerStart', _eventData, meta)
       res = await fetchFn(fetchRequest)
       // this.modifyEffectsCookiesAfterServerFetchIfRequired(res)
 
@@ -8973,8 +8983,8 @@ export class Point0<
           ..._eventData,
           ...result,
         }
-        this._emit('pointFetchServerSettled', eventData)
-        this._emit('pointFetchServerSuccess', eventData)
+        this._emit('pointFetchServerSettled', eventData, meta)
+        this._emit('pointFetchServerSuccess', eventData, meta)
         return result
       }
 
@@ -9032,8 +9042,9 @@ export class Point0<
           ..._eventData,
           ...result,
         }
-        this._emit('pointFetchServerSettled', eventData)
-        this._emit('pointFetchServerSuccess', eventData)
+        const successMeta = result.redirect ? { ...meta, redirect: result.redirect.serialize() } : meta
+        this._emit('pointFetchServerSettled', eventData, successMeta)
+        this._emit('pointFetchServerSuccess', eventData, successMeta)
         return result
       }
       const error0 = this._Error.from(data)
@@ -9049,8 +9060,8 @@ export class Point0<
         ..._eventData,
         ...result,
       }
-      this._emit('pointFetchServerSettled', eventData)
-      this._emit('pointFetchServerError', eventData)
+      this._emit('pointFetchServerSettled', eventData, meta)
+      this._emit('pointFetchServerError', eventData, meta)
       return result
     } catch (error) {
       const result = {
@@ -9064,8 +9075,8 @@ export class Point0<
         ..._eventData,
         ...result,
       }
-      this._emit('pointFetchServerSettled', eventData)
-      this._emit('pointFetchServerError', eventData)
+      this._emit('pointFetchServerSettled', eventData, meta)
+      this._emit('pointFetchServerError', eventData, meta)
       return result
     }
   }
@@ -9312,8 +9323,9 @@ export class Point0<
       error: undefined,
       data: undefined,
     }
+    const meta = { point: this.toString(), input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
     const queryFn = async ({ signal }: { signal: AbortSignal }) => {
-      this._emit('pointQueryStart', _eventData)
+      this._emit('pointQueryStart', _eventData, meta)
       try {
         const data = await this._fetchServer({
           input,
@@ -9325,8 +9337,8 @@ export class Point0<
           redirect: undefined,
           data: data as Data,
         }
-        this._emit('pointQuerySettled', eventData)
-        this._emit('pointQuerySuccess', eventData)
+        this._emit('pointQuerySettled', eventData, meta)
+        this._emit('pointQuerySuccess', eventData, meta)
         return data
       } catch (error) {
         const error0 = this._Error.from(error)
@@ -9336,8 +9348,9 @@ export class Point0<
             error: undefined,
             redirect: error0.redirect,
           }
-          this._emit('pointQuerySettled', eventData)
-          this._emit('pointQuerySuccess', eventData)
+          const redirectMeta = { ...meta, redirect: error0.redirect.serialize() }
+          this._emit('pointQuerySettled', eventData, redirectMeta)
+          this._emit('pointQuerySuccess', eventData, redirectMeta)
           throw error0
         } else {
           const eventData = {
@@ -9345,8 +9358,8 @@ export class Point0<
             error: error0,
             redirect: undefined,
           }
-          this._emit('pointQuerySettled', eventData)
-          this._emit('pointQueryError', eventData)
+          this._emit('pointQuerySettled', eventData, meta)
+          this._emit('pointQueryError', eventData, meta)
           throw error0
         }
       }
@@ -9420,8 +9433,9 @@ export class Point0<
       error: undefined,
       data: undefined,
     }
+    const meta = { point: this.toString(), input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
     const queryFn = async () => {
-      this._emit('pointQueryStart', _eventData)
+      this._emit('pointQueryStart', _eventData, meta)
       try {
         const { clientData } = await this._executeClientAsync({
           serverData,
@@ -9433,8 +9447,8 @@ export class Point0<
           data: clientData as Data,
           redirect: undefined,
         }
-        this._emit('pointQuerySettled', eventData)
-        this._emit('pointQuerySuccess', eventData)
+        this._emit('pointQuerySettled', eventData, meta)
+        this._emit('pointQuerySuccess', eventData, meta)
         return clientData
       } catch (error) {
         const error0 = this._Error.from(error)
@@ -9444,8 +9458,9 @@ export class Point0<
             error: undefined,
             redirect: error0.redirect,
           }
-          this._emit('pointQuerySettled', eventData)
-          this._emit('pointQuerySuccess', eventData)
+          const redirectMeta = { ...meta, redirect: error0.redirect.serialize() }
+          this._emit('pointQuerySettled', eventData, redirectMeta)
+          this._emit('pointQuerySuccess', eventData, redirectMeta)
           throw error0
         } else {
           const eventData = {
@@ -9453,8 +9468,8 @@ export class Point0<
             error: error0,
             redirect: undefined,
           }
-          this._emit('pointQuerySettled', eventData)
-          this._emit('pointQueryError', eventData)
+          this._emit('pointQuerySettled', eventData, meta)
+          this._emit('pointQueryError', eventData, meta)
           throw error0
         }
       }
@@ -9516,8 +9531,9 @@ export class Point0<
       error: undefined,
       data: undefined,
     }
+    const meta = { point: this.toString(), input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
     const queryFn = async () => {
-      this._emit('pointQueryStart', _eventData)
+      this._emit('pointQueryStart', _eventData, meta)
       try {
         const serverData = await (async () => {
           const serverKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
@@ -9546,8 +9562,8 @@ export class Point0<
           redirect: undefined,
           data: data as Data,
         }
-        this._emit('pointQuerySettled', eventData)
-        this._emit('pointQuerySuccess', eventData)
+        this._emit('pointQuerySettled', eventData, meta)
+        this._emit('pointQuerySuccess', eventData, meta)
         return data
       } catch (error) {
         const error0 = this._Error.from(error)
@@ -9557,8 +9573,9 @@ export class Point0<
             error: undefined,
             redirect: error0.redirect,
           }
-          this._emit('pointQuerySettled', eventData)
-          this._emit('pointQuerySuccess', eventData)
+          const redirectMeta = { ...meta, redirect: error0.redirect.serialize() }
+          this._emit('pointQuerySettled', eventData, redirectMeta)
+          this._emit('pointQuerySuccess', eventData, redirectMeta)
           throw error0
         } else {
           const eventData = {
@@ -9566,8 +9583,8 @@ export class Point0<
             error: error0,
             redirect: undefined,
           }
-          this._emit('pointQuerySettled', eventData)
-          this._emit('pointQueryError', eventData)
+          this._emit('pointQuerySettled', eventData, meta)
+          this._emit('pointQueryError', eventData, meta)
           throw error0
         }
       }
@@ -9727,13 +9744,14 @@ export class Point0<
       error: undefined,
       data: undefined,
     }
+    const meta = { point: this.toString(), input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey, exact: true })
     const maybeRedirect = (query?.state.error as Record<string, unknown> | undefined)?.redirect
     const redirect = RedirectTask.is(maybeRedirect) ? maybeRedirect : undefined
     const queryFn = async ({ pageParam, signal }: { pageParam: unknown; signal: AbortSignal }) => {
       try {
-        this._emit('pointInfiniteQueryStart', _eventData)
+        this._emit('pointInfiniteQueryStart', _eventData, meta)
         const inputWithPageParam = this._toInputWithPageParam({ input, pageParam })
         const data = await this._fetchServer({
           input: inputWithPageParam as never,
@@ -9745,8 +9763,8 @@ export class Point0<
           redirect: undefined,
           data: data as Data,
         }
-        this._emit('pointInfiniteQuerySettled', eventData)
-        this._emit('pointInfiniteQuerySuccess', eventData)
+        this._emit('pointInfiniteQuerySettled', eventData, meta)
+        this._emit('pointInfiniteQuerySuccess', eventData, meta)
         return data
       } catch (error) {
         const error0 = this._Error.from(error)
@@ -9756,8 +9774,9 @@ export class Point0<
             error: undefined,
             redirect: error0.redirect,
           }
-          this._emit('pointInfiniteQuerySettled', eventData)
-          this._emit('pointInfiniteQuerySuccess', eventData)
+          const redirectMeta = { ...meta, redirect: error0.redirect.serialize() }
+          this._emit('pointInfiniteQuerySettled', eventData, redirectMeta)
+          this._emit('pointInfiniteQuerySuccess', eventData, redirectMeta)
           throw error0
         } else {
           const eventData = {
@@ -9765,8 +9784,8 @@ export class Point0<
             error: error0,
             redirect: undefined,
           }
-          this._emit('pointInfiniteQuerySettled', eventData)
-          this._emit('pointInfiniteQueryError', eventData)
+          this._emit('pointInfiniteQuerySettled', eventData, meta)
+          this._emit('pointInfiniteQueryError', eventData, meta)
           throw error0
         }
       }
@@ -9842,9 +9861,10 @@ export class Point0<
       error: undefined,
       data: undefined,
     }
+    const meta = { point: this.toString(), input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
     const queryFn = async ({ pageParam }: { pageParam: unknown }) => {
       try {
-        this._emit('pointInfiniteQueryStart', _eventData)
+        this._emit('pointInfiniteQueryStart', _eventData, meta)
         const inputWithPageParam = this._toInputWithPageParam({ input, pageParam })
         const { clientData } = await this._executeClientAsync({
           serverData,
@@ -9856,8 +9876,8 @@ export class Point0<
           redirect: undefined,
           data: clientData as Data,
         }
-        this._emit('pointInfiniteQuerySettled', eventData)
-        this._emit('pointInfiniteQuerySuccess', eventData)
+        this._emit('pointInfiniteQuerySettled', eventData, meta)
+        this._emit('pointInfiniteQuerySuccess', eventData, meta)
         return clientData
       } catch (error) {
         const error0 = this._Error.from(error)
@@ -9867,8 +9887,9 @@ export class Point0<
             error: undefined,
             redirect: error0.redirect,
           }
-          this._emit('pointInfiniteQuerySettled', eventData)
-          this._emit('pointInfiniteQuerySuccess', eventData)
+          const redirectMeta = { ...meta, redirect: error0.redirect.serialize() }
+          this._emit('pointInfiniteQuerySettled', eventData, redirectMeta)
+          this._emit('pointInfiniteQuerySuccess', eventData, redirectMeta)
           throw error0
         } else {
           const eventData = {
@@ -9876,8 +9897,8 @@ export class Point0<
             error: error0,
             redirect: undefined,
           }
-          this._emit('pointInfiniteQuerySettled', eventData)
-          this._emit('pointInfiniteQueryError', eventData)
+          this._emit('pointInfiniteQuerySettled', eventData, meta)
+          this._emit('pointInfiniteQueryError', eventData, meta)
           throw error0
         }
       }
@@ -9942,9 +9963,10 @@ export class Point0<
       error: undefined,
       data: undefined,
     }
+    const meta = { point: this.toString(), input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
     const queryFn = async (ctx: { pageParam: unknown }) => {
       try {
-        this._emit('pointInfiniteQueryStart', _eventData)
+        this._emit('pointInfiniteQueryStart', _eventData, meta)
         const pageParam = ctx.pageParam ?? this._infiniteQueryOptions.initialPageParam
         const serverData = await (async () => {
           queryClient ??= _ss.__POINT0_QUERY_CLIENT__.get()
@@ -9996,8 +10018,8 @@ export class Point0<
           redirect: undefined,
           data: clientData as Data,
         }
-        this._emit('pointInfiniteQuerySettled', eventData)
-        this._emit('pointInfiniteQuerySuccess', eventData)
+        this._emit('pointInfiniteQuerySettled', eventData, meta)
+        this._emit('pointInfiniteQuerySuccess', eventData, meta)
         return clientData
       } catch (error) {
         const error0 = this._Error.from(error)
@@ -10007,8 +10029,9 @@ export class Point0<
             error: undefined,
             redirect: error0.redirect,
           }
-          this._emit('pointInfiniteQuerySettled', eventData)
-          this._emit('pointInfiniteQuerySuccess', eventData)
+          const redirectMeta = { ...meta, redirect: error0.redirect.serialize() }
+          this._emit('pointInfiniteQuerySettled', eventData, redirectMeta)
+          this._emit('pointInfiniteQuerySuccess', eventData, redirectMeta)
           throw error0
         } else {
           const eventData = {
@@ -10016,8 +10039,8 @@ export class Point0<
             error: error0,
             redirect: undefined,
           }
-          this._emit('pointInfiniteQuerySettled', eventData)
-          this._emit('pointInfiniteQueryError', eventData)
+          this._emit('pointInfiniteQuerySettled', eventData, meta)
+          this._emit('pointInfiniteQueryError', eventData, meta)
           throw error0
         }
       }
@@ -10265,6 +10288,7 @@ export class Point0<
         output: undefined,
         redirect: undefined,
       }
+      const meta = { point: this.toString(), input: sanitizeForLog(input) }
       const handleRedirect = async (redirect: RedirectTask) => {
         const redirectEventData = {
           ...eventData,
@@ -10272,12 +10296,13 @@ export class Point0<
           output: undefined,
           redirect,
         }
-        this._emit('pointMutationSettled', redirectEventData)
-        this._emit('pointMutationSuccess', redirectEventData)
+        const redirectMeta = { ...meta, redirect: redirect.serialize() }
+        this._emit('pointMutationSettled', redirectEventData, redirectMeta)
+        this._emit('pointMutationSuccess', redirectEventData, redirectMeta)
         await getNavigationHelpers().navigate.to(redirect.to, redirect.options)
         return redirect as never as FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
       }
-      this._emit('pointMutationStart', eventData)
+      this._emit('pointMutationStart', eventData, meta)
       try {
         if (_point0_env.side.is.server) {
           throw new Error(
@@ -10305,23 +10330,23 @@ export class Point0<
           if (!clientOutput) {
             throw new Error(`Client output is not set on point ${this.toStringWithLocation()}`)
           }
-          this._emit('pointMutationSettled', { ...eventData, output: clientOutput })
-          this._emit('pointMutationSuccess', { ...eventData, output: clientOutput })
+          this._emit('pointMutationSettled', { ...eventData, output: clientOutput }, meta)
+          this._emit('pointMutationSuccess', { ...eventData, output: clientOutput }, meta)
           return clientOutput as FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
         }
         if (!serverFetchResult?.output) {
           throw new Error(`Server output is not set on point ${this.toStringWithLocation()}`)
         }
-        this._emit('pointMutationSettled', { ...eventData, output: serverFetchResult.output })
-        this._emit('pointMutationSuccess', { ...eventData, output: serverFetchResult.output })
+        this._emit('pointMutationSettled', { ...eventData, output: serverFetchResult.output }, meta)
+        this._emit('pointMutationSuccess', { ...eventData, output: serverFetchResult.output }, meta)
         return serverFetchResult.output as never as FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>
       } catch (error) {
         const error0 = this._Error.from(error)
         if (error0.redirect) {
           return await handleRedirect(error0.redirect)
         }
-        this._emit('pointMutationSettled', { ...eventData, error: error0 })
-        this._emit('pointMutationError', { ...eventData, error: error0 })
+        this._emit('pointMutationSettled', { ...eventData, error: error0 }, meta)
+        this._emit('pointMutationError', { ...eventData, error: error0 }, meta)
         throw error0
       }
     }
@@ -11376,12 +11401,13 @@ export class Point0<
     if (policy === 'none') {
       return
     }
-    this._emit('pointPrefetchPageStart', eventData)
+    const meta = { point: this.toString(), input: sanitizeForLog(input), options: { policy, trigger } }
+    this._emit('pointPrefetchPageStart', eventData, meta)
 
     if (!this.route) {
-      const error = new this._Error('Route is not set')
-      this._emit('pointPrefetchPageSettled', { ...eventData, error })
-      this._emit('pointPrefetchPageError', { ...eventData, error })
+      const error = new this._Error('Route is not set', { code: 'POINT0_ROUTE_NOT_SET', meta })
+      this._emit('pointPrefetchPageSettled', { ...eventData, error }, meta)
+      this._emit('pointPrefetchPageError', { ...eventData, error }, meta)
       throw error
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -11416,8 +11442,8 @@ export class Point0<
     })()
 
     if (policy === 'ssrDehydratedState') {
-      this._emit('pointPrefetchPageSuccess', eventData)
-      this._emit('pointPrefetchPageSettled', eventData)
+      this._emit('pointPrefetchPageSuccess', eventData, meta)
+      this._emit('pointPrefetchPageSettled', eventData, meta)
       return
     }
 
@@ -11542,12 +11568,12 @@ export class Point0<
 
     try {
       await Promise.all([queriesPrefetching, relatedQueriesPrefetching, onPrefetchFnsPromise])
-      this._emit('pointPrefetchPageSettled', eventData)
-      this._emit('pointPrefetchPageSuccess', eventData)
+      this._emit('pointPrefetchPageSettled', eventData, meta)
+      this._emit('pointPrefetchPageSuccess', eventData, meta)
     } catch (error) {
       const error0 = this._Error.from(error)
-      this._emit('pointPrefetchPageSettled', { ...eventData, error: error0 })
-      this._emit('pointPrefetchPageError', { ...eventData, error: error0 })
+      this._emit('pointPrefetchPageSettled', { ...eventData, error: error0 }, meta)
+      this._emit('pointPrefetchPageError', { ...eventData, error: error0 }, meta)
       throw error0
     }
   }
@@ -12167,6 +12193,7 @@ export class Point0<
             return React.createElement(ErrorComponent, {
               error: new this._Error(
                 `Usual input schema are not allowed for this point: ${this.toStringWithLocation()}`,
+                { code: 'POINT0_INPUT_SCHEMA_NOT_ALLOWED', meta: { point: this.toString(), pointType: this.type } },
               ),
             })
           }
@@ -12195,6 +12222,7 @@ export class Point0<
             return React.createElement(ErrorComponent, {
               error: new this._Error(
                 `Params input schema are not allowed for this point: ${this.toStringWithLocation()}`,
+                { code: 'POINT0_PARAMS_SCHEMA_NOT_ALLOWED', meta: { point: this.toString(), pointType: this.type } },
               ),
             })
           }
@@ -12229,6 +12257,7 @@ export class Point0<
             return React.createElement(ErrorComponent, {
               error: new this._Error(
                 `Search input schema are not allowed for this point: ${this.toStringWithLocation()}`,
+                { code: 'POINT0_SEARCH_SCHEMA_NOT_ALLOWED', meta: { point: this.toString(), pointType: this.type } },
               ),
             })
           }
@@ -12797,9 +12826,15 @@ export class Point0<
   _emit<TName extends AnyEventerEventName>(
     name: TName,
     data: Extract<AnyEventerEvent<TError>, { name: TName }>['data'],
+    meta: EventerEventMeta,
     preventEmitError = false,
   ) {
-    const event = { name, data, side: _point0_env.side.name } as AnyEventerEvent<TError>
+    const event = {
+      name,
+      data,
+      meta,
+      side: _point0_env.side.name,
+    } as AnyEventerEvent<TError>
     for (const subscription of this._eventerSubscriptions) {
       if (subscription.side && subscription.side !== event.side) {
         continue
@@ -12813,7 +12848,9 @@ export class Point0<
         } catch (error) {
           try {
             if (!preventEmitError) {
-              this._emit('emitError', { error: this._Error.from(error), event: event as never }, true)
+              const error0 = this._Error.from(error)
+              const emitErrorMeta = { event: { name: event.name, meta: event.meta } }
+              this._emit('emitError', { error: error0, event: event as never }, emitErrorMeta, true)
             }
           } catch {}
         }

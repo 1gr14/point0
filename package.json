@@ -27,7 +27,7 @@
       "@tanstack/react-query": "^5.0.0",
       "@tanstack/query-core": "^5.0.0",
       "superjson": "^2.2.5",
-      "@devp0nt/error0": "^1.0.0",
+      "@devp0nt/error0": "^1.0.6",
       "@devp0nt/route0": "^1.1.0",
       "@devp0nt/flat0": "^1.2.0",
       "arktype": "^2.2.0",

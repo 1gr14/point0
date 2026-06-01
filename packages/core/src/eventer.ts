@@ -18,15 +18,26 @@ import type { RedirectTask } from './navigation.js'
 
 export type EventerSide = 'client' | 'server'
 
+/** A log-friendly projection of an event's `data`: a plain record you can hand straight to any logger. */
+export type EventerEventMeta = Record<string, unknown>
+
 export type EventerEvent<TSide extends EventerSide, TName extends string, TData extends object> = {
   side: TSide
   name: TName
+  /** The raw event payload — rich, but not always pleasant to serialize/log. */
   data: TData
+  /**
+   * A log-friendly projection of `data`, assembled explicitly at each emit site: points become ids, requests become `{
+   * method, path }`, errors/redirects are serialized, binaries in the input are replaced with placeholders. Can be
+   * nested. Safe to dump into any logger as-is.
+   */
+  meta: EventerEventMeta
 }
 
 export type EventerEmitFn<TError extends ErrorPoint0> = <TName extends AnyEventerEventName>(
   name: TName,
   data: Extract<AnyEventerEvent<TError>, { name: TName }>['data'],
+  meta: EventerEventMeta,
 ) => void
 
 export type AnyEventerSubscriptionCallback<
