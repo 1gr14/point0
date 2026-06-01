@@ -8,7 +8,7 @@ import type {
   PointsScope,
   RequiredCtx,
 } from '@point0/core'
-import { _point0_env, prependAndDeappendSlash } from '@point0/core'
+import { _point0_env, PointsSourceNotReadyError, prependAndDeappendSlash } from '@point0/core'
 import type { BunPlugin, Serve } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -340,10 +340,26 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   }
 
   async readPoints(): Promise<ServerPoints<TError>> {
-    const points = await ServerPoints.createFromSource(this.pointsProvided, { log: this.log })
-    await points.load()
-    this.points = points as TPrepared extends true ? ServerPoints<TError> : undefined
-    return points
+    try {
+      const points = await ServerPoints.createFromSource(this.pointsProvided, { log: this.log })
+      await points.load()
+      this.points = points as TPrepared extends true ? ServerPoints<TError> : undefined
+      return points
+    } catch (error) {
+      // In dev the points module is re-imported on every request (see Fetcher.fetchDetailed), so a
+      // Vite HMR invalidation window can hand us a transiently-empty source. Keep the last-good
+      // points instead of failing the request — the next read (once Vite settles) picks up the new
+      // ones. Any other error is a real problem and must surface.
+      if (error instanceof PointsSourceNotReadyError && this.points) {
+        this.log({
+          level: 'debug',
+          category: ['server', 'points'],
+          message: 'Points source not ready (HMR transient) — keeping previously loaded points',
+        })
+        return this.points
+      }
+      throw error
+    }
   }
 
   async setPoints(points: PointsDefinitionSource<RequiredCtx, TError>): Promise<ServerPoints<TError>> {
@@ -446,9 +462,12 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       if (!viteDevServer) {
         throw new Error(`Vite dev server not started for server`)
       }
-      // Vite 8: load via the ModuleRunner. Dispose/accept HMR boilerplate is injected into
-      // entries by the `point0:server-entry-hmr` plugin (see createViteDevServer), so vite's
-      // own HMR pipeline handles re-execution — no manual watcher needed here.
+      // Vite 8: load via the ModuleRunner. Per the Environment API docs the server entry should
+      // self-accept (`import.meta.hot.accept()`) so a change doesn't invalidate the whole server
+      // module graph; because our entry is side-effect-ful (it calls `engine.serve()`), it also
+      // registers `import.meta.hot.dispose(() => engine.dispose())` to tear the old server down.
+      // That boilerplate lives in the user's entry file (see examples/*/src/*.server.ts) — vite's
+      // HMR pipeline drives re-execution, so no manual watcher is needed here.
       const ssrEnv = viteDevServer.environments.ssr
       if (!isRunnableDevEnvironment(ssrEnv)) {
         throw new Error(`Vite SSR environment is not runnable (cannot import server entry in-process)`)

@@ -13,6 +13,22 @@ import type {
   UndefinedRoute,
 } from './types.js'
 
+/**
+ * Thrown when a points source resolves to no usable points definition.
+ *
+ * The common cause is a Vite HMR / SSR ModuleRunner invalidation window: the (re)generated points
+ * module is dynamically re-imported (the engine does this per request in dev), and for a brief
+ * moment its `default` export is `undefined` — the module node was cleared but not yet
+ * re-evaluated. This is a transient, self-healing state, so callers (engine `readPoints`) catch it
+ * and keep their last-good points instead of crashing the request.
+ */
+export class PointsSourceNotReadyError extends Error {
+  constructor(message = 'Points source is not ready yet (no points definition resolved)') {
+    super(message)
+    this.name = 'PointsSourceNotReadyError'
+  }
+}
+
 export class PointsManager<
   TReady extends boolean = boolean,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -66,6 +82,13 @@ export class PointsManager<
   > => {
     if (points instanceof PointsManager) {
       return points as never
+    }
+    // On Vite HMR the dynamically (re)imported points module can momentarily resolve to an
+    // undefined `default` (or an empty namespace) while the SSR ModuleRunner is mid-invalidation.
+    // Don't silently coerce it to `[]` (that just defers the crash to "Root point not found") —
+    // surface it so the caller can keep its last-good points. See PointsSourceNotReadyError.
+    if (!Array.isArray(points)) {
+      throw new PointsSourceNotReadyError()
     }
     const collection = PointsManager.toNormalizedPointsCollection(points)
     return PointsManager.createFromCollection(collection, options) as never

@@ -12,7 +12,7 @@ import type {
   RequiredCtx,
   PagePoint,
 } from '@point0/core'
-import { _point0_env, ClientPoints } from '@point0/core'
+import { _point0_env, ClientPoints, PointsSourceNotReadyError } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import * as nodeFs from 'node:fs/promises'
@@ -310,9 +310,23 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     if (!this.pointsProvided) {
       return null
     }
-    const points = await ClientPoints.createFromSource(this.pointsProvided, { log: this.log })
-    this.points = points as TPrepared extends true ? ClientPoints<TError> | null : undefined
-    return points
+    try {
+      const points = await ClientPoints.createFromSource(this.pointsProvided, { log: this.log })
+      this.points = points as TPrepared extends true ? ClientPoints<TError> | null : undefined
+      return points
+    } catch (error) {
+      // Same Vite HMR invalidation window as the server: the re-imported points module can be
+      // transiently empty. Keep the last-good points rather than failing. Other errors surface.
+      if (error instanceof PointsSourceNotReadyError && this.points) {
+        this.log({
+          level: 'debug',
+          category: ['client', 'points'],
+          message: 'Points source not ready (HMR transient) — keeping previously loaded points',
+        })
+        return this.points
+      }
+      throw error
+    }
   }
 
   async readAppComponent(): Promise<AppComponent | null> {
