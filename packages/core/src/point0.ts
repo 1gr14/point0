@@ -7571,19 +7571,28 @@ export class Point0<
     }
   }
 
+  /**
+   * Finalize this point as an infinite query. ONE signature (deliberately not overloads) — same
+   * reason as `with`: with 3 overloads the language server can't pick which to complete the options
+   * object against, so `.infiniteQuery({ ▮ })` offers a useless global list ("never until correct")
+   * and a wrong call collapses to "No overload matches this call". A single signature gives real
+   * member completion for the options and a precise error (e.g. "getNextPageParam is missing").
+   *
+   * It branches on `TLetsReadyPointType` (what `.lets()` declared this point as) — these are mutually
+   * exclusive, so exactly one branch is live for any given point:
+   *   - 'infiniteQuery' -> a standalone infinite query point
+   *   - 'action'        -> an action finalized as an infinite query
+   *   - MountablePointType (page/component/...) -> finalize the point's own query
+   * Each branch first guards that loaders exist (and didn't return a Response) and that the point
+   * isn't already finalized, surfacing a `ShowError` message in place of the options argument.
+   * The options type is the same in every branch; only the guard messages and the result differ.
+   */
   infiniteQuery(
     ...args: TLetsReadyPointType extends 'infiniteQuery'
       ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
         ? [
             infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-              FinalInputRaw<
-                TLetsReadyPointType,
-                TServerInputSchema,
-                TClientInputSchema,
-                TParamsSchema,
-                TSearchSchema,
-                TBodySchema
-              >,
+              FinalInputRaw<TLetsReadyPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
               TError,
               InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -7596,141 +7605,130 @@ export class Point0<
               ShowError<`InfiniteQuery can not return response. Last loader should provide plain object data, not response.`>,
             ]
           : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery()`>]
-      : never
-  ): NiceInfiniteQueryReadyPoint<
-    'infiniteQuery',
-    undefined,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    'infiniteQuery',
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  infiniteQuery(
-    ...args: TLetsReadyPointType extends 'action'
-      ? TPointType extends 'finalStage'
-        ? [ShowError<`You can not use infiniteQuery() to finalize, becouse it is already finalized`>]
-        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
-          ? [
-              infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-                FinalInputRaw<
-                  TLetsReadyPointType,
-                  TServerInputSchema,
-                  TClientInputSchema,
-                  TParamsSchema,
-                  TSearchSchema,
-                  TBodySchema
-                >,
-                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                TError,
-                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-                QueryKey,
-                unknown
-              >,
-            ]
-          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+      : TLetsReadyPointType extends 'action'
+        ? TPointType extends 'finalStage'
+          ? [ShowError<`You can not use infiniteQuery() to finalize, becouse it is already finalized`>]
+          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
             ? [
-                ShowError<`InfiniteQuery can not return response. Last loader should provide plain object data, not response.`>,
-              ]
-            : [
-                ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery()`>,
-              ]
-      : never
-  ): NiceActionReadyPoint<
-    'action',
-    UndefinedReadyPointType,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    'infiniteQuery',
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  infiniteQuery(
-    ...args: TLetsReadyPointType extends MountablePointType
-      ? TPointType extends 'finalStage'
-        ? [ShowError<`You can not use infiniteQuery() to finalize yout query, becouse it is already finalized`>]
-        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
-          ? [
-              infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-                FinalInputRaw<
-                  TLetsReadyPointType,
-                  TServerInputSchema,
-                  TClientInputSchema,
-                  TParamsSchema,
-                  TSearchSchema,
-                  TBodySchema
+                infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+                  FinalInputRaw<TLetsReadyPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+                  FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                  TError,
+                  InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+                  QueryKey,
+                  unknown
                 >,
-                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                TError,
-                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-                QueryKey,
-                unknown
-              >,
-            ]
-          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
-            ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
-            : [
-                ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery() to finalize query.`>,
               ]
-      : never
-  ): NiceStagePoint<
-    'finalStage',
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    'infiniteQuery',
-    TOuterProps,
-    TInnerProps,
-    AppendQueries<
-      TQueriesDefinitions,
-      QueryDefinition<
+            : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+              ? [
+                  ShowError<`InfiniteQuery can not return response. Last loader should provide plain object data, not response.`>,
+                ]
+              : [
+                  ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery()`>,
+                ]
+        : TLetsReadyPointType extends MountablePointType
+          ? TPointType extends 'finalStage'
+            ? [ShowError<`You can not use infiniteQuery() to finalize yout query, becouse it is already finalized`>]
+            : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+              ? [
+                  infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+                    FinalInputRaw<TLetsReadyPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+                    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                    TError,
+                    InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+                    QueryKey,
+                    unknown
+                  >,
+                ]
+              : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+                ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
+                : [
+                    ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery() to finalize query.`>,
+                  ]
+          : never
+  ): TLetsReadyPointType extends 'infiniteQuery'
+    ? // standalone infinite query point
+      NiceInfiniteQueryReadyPoint<
         'infiniteQuery',
-        InfiniteData<FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>,
-        TError
+        undefined,
+        TRequiredCtx,
+        TError,
+        TCtx,
+        TCtxExposedKeys,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TMapperOutput,
+        TRouteDefinition,
+        TServerInputSchema,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
+        'infiniteQuery',
+        TOuterProps,
+        TInnerProps,
+        TQueriesDefinitions
       >
-    >
-  >
+    : TLetsReadyPointType extends 'action'
+      ? // action finalized as an infinite query
+        NiceActionReadyPoint<
+          'action',
+          UndefinedReadyPointType,
+          TRequiredCtx,
+          TError,
+          TCtx,
+          TCtxExposedKeys,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TMapperOutput,
+          TRouteDefinition,
+          TServerInputSchema,
+          TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema,
+          THeadersSchema,
+          TCookiesSchema,
+          'infiniteQuery',
+          TOuterProps,
+          TInnerProps,
+          TQueriesDefinitions
+        >
+      : TLetsReadyPointType extends MountablePointType
+        ? // finalize the mountable point's own query (appended to its queries)
+          NiceStagePoint<
+            'finalStage',
+            ReadyPointTypeOrNever<TLetsReadyPointType>,
+            TRequiredCtx,
+            TError,
+            TCtx,
+            TCtxExposedKeys,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TMapperOutput,
+            TRouteDefinition,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema,
+            THeadersSchema,
+            TCookiesSchema,
+            'infiniteQuery',
+            TOuterProps,
+            TInnerProps,
+            AppendQueries<
+              TQueriesDefinitions,
+              QueryDefinition<
+                'infiniteQuery',
+                InfiniteData<FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>,
+                TError
+              >
+            >
+          >
+        : never
   infiniteQuery(...args: any[]) {
     const [infiniteQueryOptions = {}] = args as [ExtraUseInfiniteQueryOptions<any> | undefined]
     if (this._isMountablePoint()) {

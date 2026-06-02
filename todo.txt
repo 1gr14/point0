@@ -75,8 +75,6 @@ normalize scroll restoration (it is trash now)
 
 # Extra
 
-.infiniteQuery({}) should have nice autocompletion, ow it is never until correct, (В Инфинити скрол опции ошибку можно добавить как реквайред поле с эрором)
-
 Убедиться, что виз всегда вызывает врапер, ведь есть риск, что сначала эрор, а потом не эрор, а дальше хук, и будут проблемы
 
 Мсп должен всегда читать свежую мета

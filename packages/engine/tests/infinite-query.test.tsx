@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 import { Point0 } from '@point0/core'
 import { QueryClient } from '@tanstack/react-query'
+import path from 'node:path'
+import url from 'node:url'
+import ts from 'typescript'
 import z from 'zod'
 import { createTestThings, waitReturn } from './utils/internal-testing.js'
 
@@ -353,5 +356,131 @@ describe('infinityQuery', () => {
       expect(q.getInfiniteQueryData(input, options)).toBeUndefined()
       expect(q.getInfiniteQueriesCache(true, options)).toEqual([])
     })
+  })
+})
+
+// ────────────────────────────────────────────────────────────────────────────────────────────────
+// Editor experience for `.infiniteQuery(options)`. Like `with`, the options surface is produced by
+// the (big) `infiniteQuery` signature. It used to be three overloads, which meant the language
+// server couldn't decide which to complete the options object against — so `.infiniteQuery({ ▮ })`
+// offered a giant global list (nothing useful, "never until correct") and a wrong call collapsed to
+// "No overload matches this call". A single signature fixes both. These tests drive the TypeScript
+// language service over the *source* types and assert the real completions and diagnostics, so a
+// future edit that silently degrades them fails here.
+const iqProbe = `
+import { Point0 } from '@point0/core'
+import { z } from 'zod'
+
+const root = Point0.lets('root', 'root').loading(() => null).error(() => null).root()
+
+const iq = root
+  .lets('infiniteQuery', 'reqd')
+  .input(z.object({ cursor: z.number().optional() }))
+  .loader(({ input }) => {
+    const cursor = input.cursor ?? 0
+    return { items: [] as { id: number }[], nextCursor: cursor as number | undefined }
+  })
+
+iq.infiniteQuery({}) /* EMPTY */
+iq.infiniteQuery({
+  pageParamFromInput: {
+    get: ({ input, get }) => get(input, 'cursor'),
+    set: ({ input, value, set }) => set(input, 'cursor', value),
+  },
+  getNextPageParam: (lastPage) => lastPage.nextCursor,
+  initialPageParam: 0,
+}) /* OKAY */
+const _complete = iq.infiniteQuery({ /*CURSOR*/ })
+
+// a point with no loader can't be finalized as an infinite query
+root.lets('infiniteQuery', 'noload').infiniteQuery({}) /* NOLOADER */
+`
+
+const iqEngineDir = path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..')
+const iqProbePath = path.join(iqEngineDir, 'tests', '__iq_dx_probe__.tsx')
+const iqParsed = ts.parseJsonConfigFileContent(
+  ts.readConfigFile(path.join(iqEngineDir, 'tsconfig.json'), ts.sys.readFile).config,
+  ts.sys,
+  iqEngineDir,
+)
+const iqOptions: ts.CompilerOptions = { ...iqParsed.options, noEmit: true }
+delete iqOptions.rootDir
+const iqHost: ts.LanguageServiceHost = {
+  getScriptFileNames: () => [iqProbePath],
+  getScriptVersion: () => '1',
+  getScriptSnapshot: (f) =>
+    f === iqProbePath
+      ? ts.ScriptSnapshot.fromString(iqProbe)
+      : ts.sys.fileExists(f)
+        ? ts.ScriptSnapshot.fromString(ts.sys.readFile(f)!)
+        : undefined,
+  getCurrentDirectory: () => iqEngineDir,
+  getCompilationSettings: () => iqOptions,
+  getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o),
+  fileExists: ts.sys.fileExists,
+  readFile: ts.sys.readFile,
+  readDirectory: ts.sys.readDirectory,
+  directoryExists: ts.sys.directoryExists,
+  getDirectories: ts.sys.getDirectories,
+  realpath: ts.sys.realpath,
+}
+const iqService = ts.createLanguageService(iqHost, ts.createDocumentRegistry())
+const iqSourceFile = iqService.getProgram()!.getSourceFile(iqProbePath)!
+const iqDiagnostics = iqService.getSemanticDiagnostics(iqProbePath)
+const iqCodesOf = (tag: string) => {
+  const line = iqSourceFile.getLineAndCharacterOfPosition(iqProbe.indexOf(tag)).line
+  return iqDiagnostics
+    .filter((d) => d.start !== undefined && iqSourceFile.getLineAndCharacterOfPosition(d.start).line === line)
+    .map((d) => d.code)
+}
+const iqMessageOf = (tag: string) => {
+  const line = iqSourceFile.getLineAndCharacterOfPosition(iqProbe.indexOf(tag)).line
+  const d = iqDiagnostics.find(
+    (x) => x.start !== undefined && iqSourceFile.getLineAndCharacterOfPosition(x.start).line === line,
+  )
+  return d ? ts.flattenDiagnosticMessageText(d.messageText, '\n') : ''
+}
+
+describe('infiniteQuery — what the developer sees in the editor (autocomplete & type errors)', () => {
+  it('offers the infinite-query option fields while typing the options object', () => {
+    // The developer finalizes an infinite query and starts typing its options:
+    //
+    //     point.infiniteQuery({ ▮ })
+    //
+    // They expect the editor to suggest `getNextPageParam`, `initialPageParam`, `pageParamFromInput`.
+    // With the old three-overload signature the language server gave a useless global list instead —
+    // you had to already know the option names ("never until correct"). We assert member-completion.
+    const completions = iqService.getCompletionsAtPosition(iqProbePath, iqProbe.indexOf('/*CURSOR*/'), {})
+    const names = (completions?.entries ?? []).map((e) => e.name)
+    expect(completions?.isMemberCompletion).toBe(true)
+    expect(names).toContain('getNextPageParam')
+    expect(names).toContain('initialPageParam')
+    expect(names).not.toContain('Point0')
+  })
+
+  it('flags the missing required options when called with {} (the required fields ARE the error)', () => {
+    // Author calls it but hasn't filled in the required options:
+    //
+    //     point.infiniteQuery({})        // ← getNextPageParam / initialPageParam missing
+    //
+    // We want one precise argument error (code 2345) pointing at `{}`, whose message lists the
+    // missing required fields — not the old "No overload matches this call".
+    expect(iqCodesOf('/* EMPTY */')).toContain(2345)
+  })
+
+  it('accepts a fully-specified options object with no error', () => {
+    // The happy path must stay clean — pageParamFromInput / getNextPageParam / initialPageParam all
+    // provided, and their callbacks (`lastPage`, `input`) are correctly typed from the loader output.
+    expect(iqCodesOf('/* OKAY */')).toEqual([])
+  })
+
+  it('blocks finalizing a loader-less point with a readable "has no loaders" message', () => {
+    // You can't make an infinite query out of a point that has no loader:
+    //
+    //     root.lets('infiniteQuery', 'x').infiniteQuery({})   // ← no .loader() yet
+    //
+    // The signature swaps the options argument for a ShowError carrying the explanation, so the
+    // error text itself tells the author what to do.
+    expect(iqMessageOf('/* NOLOADER */')).toContain('has no loaders')
   })
 })
