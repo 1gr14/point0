@@ -1,3 +1,4 @@
+import * as nodeFs from 'node:fs'
 import { cpus } from 'node:os'
 import * as nodePath from 'node:path'
 
@@ -5,6 +6,16 @@ const slowTestsOnly = process.env.SLOW_TESTS_ONLY === '1'
 const noSlowTests = process.env.NO_SLOW_TESTS === '1'
 const noTestUtilsTests = process.env.NO_TEST_UTILS_TESTS === '1'
 const liveTestOutput = process.env.LIVE_TEST_OUTPUT === '1'
+
+// Coverage mode: each shard writes its own lcov into coverage/raw/<shard>/, merged at the end.
+// Bun can't merge coverage across processes, so we collect per-shard and fold it together ourselves.
+const withCoverage = process.env.COVERAGE === '1'
+const coverageDir = nodePath.resolve(__dirname, '..', 'coverage')
+const coverageRawDir = nodePath.join(coverageDir, 'raw')
+if (withCoverage) {
+  nodeFs.rmSync(coverageDir, { recursive: true, force: true })
+  nodeFs.mkdirSync(coverageRawDir, { recursive: true })
+}
 
 const slowTests =
   process.env.SLOW_TESTS_NOT_SLOW === '1'
@@ -141,8 +152,15 @@ const runFile = async (filePath: string) => {
         },
       })
 
+  const cmd = ['bun', 'test']
+  if (withCoverage) {
+    const shard = nodePath.relative(cwd, filePath).replace(/[^a-zA-Z0-9]+/g, '_')
+    cmd.push('--coverage', '--coverage-reporter=lcov', `--coverage-dir=${nodePath.join(coverageRawDir, shard)}`)
+  }
+  cmd.push(filePath)
+
   const proc = Bun.spawn({
-    cmd: ['bun', 'test', filePath],
+    cmd,
     stdout: liveTestOutput ? 'inherit' : undefined,
     stderr: liveTestOutput ? 'inherit' : undefined,
     terminal,
@@ -200,7 +218,11 @@ if (!liveTestOutput) {
   }
 }
 
-const final = () => {
+const final = async () => {
+  if (withCoverage) {
+    const { generateCoverageReport, printCoverageSummary } = await import('./coverage.js')
+    printCoverageSummary(generateCoverageReport({ outDir: coverageDir, rawDir: coverageRawDir }))
+  }
   const endTime = Date.now()
   process.stdout.write(`\n===== Total time: ${formatDuration(endTime - startTime)} =====\n`)
 
@@ -208,7 +230,7 @@ const final = () => {
 }
 
 if (failed) {
-  final()
+  await final()
 }
 
 if (pendingSlowFiles.length > 0) {
@@ -224,4 +246,4 @@ if (pendingSlowFiles.length > 0) {
   await process.exited
 }
 
-final()
+await final()

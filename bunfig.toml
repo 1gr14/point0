@@ -3,3 +3,18 @@ linker = "hoisted"
 
 [run]
 noOrphans = true
+
+# Coverage shape only — does NOT enable coverage (that stays off for the fast dev loop).
+# These settings take effect only when `--coverage` is passed (see the `testc` script).
+[test]
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = [
+  "**/node_modules/**",
+  "**/dist/**",
+  "**/tests/**",
+  "**/*.test.*",
+  "**/*.spec.*",
+  "**/generated/**",
+  "examples/**",
+  "scripts/**",
+]
