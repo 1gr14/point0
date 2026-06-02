@@ -4,6 +4,9 @@ import type { EmptyObject } from '@point0/core'
 import { createNavigation } from '@point0/react-dom/router'
 import type { InfiniteData, InfiniteQueryObserverSuccessResult, QueryObserverSuccessResult } from '@tanstack/query-core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
+import path from 'node:path'
+import url from 'node:url'
+import ts from 'typescript'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { createTestThings } from './utils/internal-testing.js'
@@ -1376,7 +1379,7 @@ describe('with', () => {
           {children}
         </div>
       ))
-      .with(query2, undefined, ({ data }) => ({ mul: data.y }))
+      .with(query2, undefined, undefined, ({ data }) => ({ mul: data.y }))
       .with(({ queries, children }) => {
         const [ready, setReady] = useState(false)
         useEffect(() => {
@@ -1536,5 +1539,160 @@ describe('with', () => {
     await render(page.route(), async ({ waitContent }) => {
       await waitContent('#page:x=1')
     })
+  })
+})
+
+// ────────────────────────────────────────────────────────────────────────────────────────────────
+// The tests above prove `with` BEHAVES correctly at runtime. The tests below prove it FEELS correct
+// in the editor — the developer-facing surface: does `input` autocomplete? when you misuse `with`,
+// is the red squiggle helpful or garbage? That surface is produced entirely by the (enormous) `with`
+// type signature, and it can rot silently: a careless edit still type-checks, but autocomplete dies
+// and errors turn into "No overload matches this call". Plain runtime/`expectTypeOf` tests can't
+// catch that — so here we drive the TypeScript language service over the *source* types (exactly
+// what the editor uses) and assert on the actual completions and diagnostic messages.
+//
+// One shared probe file holds every scenario; each line is tagged in a trailing comment so a test
+// can find its diagnostic. `/*CURSOR*/` marks where we ask "what would autocomplete offer here?".
+const dxProbe = `
+import { Point0 } from '@point0/core'
+import { z } from 'zod'
+
+const root = Point0.lets('root', 'root')
+  .loading(() => null)
+  .error(() => null)
+  .root()
+
+// a query whose input is REQUIRED ({ y: number })
+const queryReq = root
+  .lets('query', 'reqd')
+  .input(z.object({ y: z.number() }))
+  .loader(({ input }) => ({ x: input.y * 2 }))
+  .query()
+
+// a query with NO input
+const queryOpt = root
+  .lets('query', 'opt')
+  .loader(() => ({ x: 1 }))
+  .query()
+
+root.lets('page', 'm1', '/:y').with(queryReq) /* MISSING */
+root.lets('page', 'm2', '/:y').with(queryReq, {}) /* EMPTY */
+root.lets('page', 'm3', '/:y').with(queryReq, { y: 'str' }) /* WRONG */
+root.lets('page', 'm4', '/:y').with(queryReq, { y: 1 }) /* OKAY */
+root.lets('page', 'm5', '/:y').with(queryOpt) /* OPTOK */
+const _complete = root.lets('page', 'm6', '/:y').with(queryReq, { /*CURSOR*/ })
+`
+
+// Build one language service over the engine project, serving the probe from memory and reading the
+// real `@point0/core` *source* (via the tsconfig path mapping) — no dist build needed.
+const dxEngineDir = path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..')
+const dxProbePath = path.join(dxEngineDir, 'tests', '__with_dx_probe__.tsx')
+const dxParsed = ts.parseJsonConfigFileContent(
+  ts.readConfigFile(path.join(dxEngineDir, 'tsconfig.json'), ts.sys.readFile).config,
+  ts.sys,
+  dxEngineDir,
+)
+const dxOptions: ts.CompilerOptions = { ...dxParsed.options, noEmit: true }
+delete dxOptions.rootDir // avoid TS6059 emit-layout noise; we only read the probe's own diagnostics
+const dxHost: ts.LanguageServiceHost = {
+  getScriptFileNames: () => [dxProbePath],
+  getScriptVersion: () => '1',
+  getScriptSnapshot: (f) =>
+    f === dxProbePath
+      ? ts.ScriptSnapshot.fromString(dxProbe)
+      : ts.sys.fileExists(f)
+        ? ts.ScriptSnapshot.fromString(ts.sys.readFile(f)!)
+        : undefined,
+  getCurrentDirectory: () => dxEngineDir,
+  getCompilationSettings: () => dxOptions,
+  getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o),
+  fileExists: ts.sys.fileExists,
+  readFile: ts.sys.readFile,
+  readDirectory: ts.sys.readDirectory,
+  directoryExists: ts.sys.directoryExists,
+  getDirectories: ts.sys.getDirectories,
+  realpath: ts.sys.realpath,
+}
+const dxService = ts.createLanguageService(dxHost, ts.createDocumentRegistry())
+const dxSourceFile = dxService.getProgram()!.getSourceFile(dxProbePath)!
+const dxDiagnostics = dxService.getSemanticDiagnostics(dxProbePath)
+// diagnostics that land on the line carrying the given tag comment
+const dxCodesOf = (tag: string) => {
+  const line = dxSourceFile.getLineAndCharacterOfPosition(dxProbe.indexOf(tag)).line
+  return dxDiagnostics
+    .filter((d) => d.start !== undefined && dxSourceFile.getLineAndCharacterOfPosition(d.start).line === line)
+    .map((d) => d.code)
+}
+const dxMessageOf = (tag: string) => {
+  const line = dxSourceFile.getLineAndCharacterOfPosition(dxProbe.indexOf(tag)).line
+  const d = dxDiagnostics.find(
+    (x) => x.start !== undefined && dxSourceFile.getLineAndCharacterOfPosition(x.start).line === line,
+  )
+  return d ? ts.flattenDiagnosticMessageText(d.messageText, '\n') : ''
+}
+
+describe('with — what the developer sees in the editor (autocomplete & type errors)', () => {
+  it('offers the query input fields while typing the input object', () => {
+    // The developer injects a query and starts typing its input:
+    //
+    //     page.with(queryReq, { ▮ })     // queryReq input is { y: number }
+    //
+    // They expect the editor to suggest `y` (and only the input fields). With the old multi-overload
+    // signature the language server couldn't pick an overload to complete against, so it gave a
+    // useless global list (everything in scope) and `y` was nowhere — you had to already know the
+    // shape. We assert real member-completion: `y` is offered, and a global name like `Point0` is not.
+    const completions = dxService.getCompletionsAtPosition(dxProbePath, dxProbe.indexOf('/*CURSOR*/'), {})
+    const names = (completions?.entries ?? []).map((e) => e.name)
+    expect(completions?.isMemberCompletion).toBe(true)
+    expect(names).toContain('y')
+    expect(names).not.toContain('Point0')
+  })
+
+  it('says "Expected N arguments" when a required input is forgotten', () => {
+    // The query needs an input, but the author forgot to pass one:
+    //
+    //     page.with(queryReq)            // ← missing the required { y } input
+    //
+    // The signature must NOT silently accept this, and must NOT collapse to the old
+    // "No overload matches this call" (which even blamed the unrelated `with(fn)` form). The single
+    // signature gives the plain, correct message — "Expected 2-4 arguments, but got 1" — code 2554.
+    expect(dxCodesOf('/* MISSING */')).toContain(2554)
+    expect(dxMessageOf('/* MISSING */')).toContain('Expected')
+  })
+
+  it('points at the bad argument when the input object is incomplete', () => {
+    // Author passes an input, but leaves out a required field:
+    //
+    //     page.with(queryReq, {})        // ← `y` is missing
+    //
+    // We want a precise argument error (code 2345, "Argument of type '{}' is not assignable …"),
+    // landing on the `{}` — not a wall of "no overload matches" with every candidate listed.
+    expect(dxCodesOf('/* EMPTY */')).toContain(2345)
+  })
+
+  it('shows the exact type mismatch when an input field has the wrong type', () => {
+    // Author passes the right field with the wrong type:
+    //
+    //     page.with(queryReq, { y: 'str' })   // ← y must be a number
+    //
+    // We want the error to point at the value and read "Type 'string' is not assignable to type
+    // 'number'" (code 2322) — the same message you'd get assigning to a plain typed variable.
+    expect(dxCodesOf('/* WRONG */')).toContain(2322)
+    expect(dxMessageOf('/* WRONG */')).toContain('not assignable')
+  })
+
+  it('accepts a correct required input with no error', () => {
+    // The happy path must stay clean — no false positives:
+    //
+    //     page.with(queryReq, { y: 1 })
+    expect(dxCodesOf('/* OKAY */')).toEqual([])
+  })
+
+  it('lets a query with no input be used without an input argument', () => {
+    // A query that takes no input must be usable as just `with(query)` — the "optional" half of the
+    // same signature that makes the required half above demand an argument:
+    //
+    //     page.with(queryOpt)            // queryOpt has no input
+    expect(dxCodesOf('/* OPTOK */')).toEqual([])
   })
 })

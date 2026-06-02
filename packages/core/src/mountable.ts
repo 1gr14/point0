@@ -603,10 +603,15 @@ export type WithFn<
     TError
   >,
 ) => TNewInnerProps | React.ReactElement | Error | 'loading' | undefined | void
-export type InferWithFnOutputNewInnerProps<TWithFn extends WithFn<any, any, any, any, any, any, any, any, any>> =
-  Exclude<ReturnType<TWithFn>, undefined | void | Error | RedirectTask | 'loading' | React.ReactElement> extends never
+// Given a with-fn's (already-awaited) return type, the props it contributes — everything that is
+// not a React element, error, 'loading', or nothing. Takes the return type directly so the unified
+// `with` signature can pass `Awaited<ReturnType<TArg>>` without `TArg` satisfying the `WithFn` constraint.
+export type WithFnReturnProps<TReturn> =
+  Exclude<TReturn, undefined | void | Error | RedirectTask | 'loading' | React.ReactElement> extends never
     ? undefined
-    : NormalizeCtxLike<Exclude<ReturnType<TWithFn>, Error | 'loading' | RedirectTask | React.ReactElement>>
+    : NormalizeCtxLike<
+        Extract<Exclude<TReturn, Error | 'loading' | RedirectTask | React.ReactElement>, Record<string, any> | undefined>
+      >
 
 export type ClientOnlyFallbackComponentProps<
   TLocation extends AnyLocation | undefined,

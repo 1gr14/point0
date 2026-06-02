@@ -68,7 +68,6 @@ import type {
   ErrorComponentType,
   GlobalHeadFn,
   HeadFn,
-  InferWithFnOutputNewInnerProps,
   IsQueryShouldBeFinalized,
   LayoutLocation,
   LayoutSelfProps,
@@ -103,6 +102,7 @@ import type {
   UseQueryOrInfiniteQueryResult,
   WithFn,
   WithFnOptions,
+  WithFnReturnProps,
   WithQueryFn,
   WithSelfQueryIfShouldBeFinalized,
   WrapperComponentType,
@@ -3510,136 +3510,121 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Mount something onto this point. ONE signature (deliberately not overloads) covers every form:
+   *
+   * ```
+   * with(query)                                inject another point's query (input optional)
+   * with(query, input)                         ...input required when the query's input is required
+   * with(query, input, queryOptions)           ...plus react-query options
+   * with(query, input, queryOptions, resolve)  ...resolve (boolean | callback) is ALWAYS the 4th arg;
+   *                                               pass `undefined` for queryOptions if you only want it
+   * with(fn)                                   a with-fn returning queries (appended) or props (merged)
+   * ```
+   *
+   * WHY one signature and not overloads: with multiple overloads the language server can't decide
+   * which candidate to complete `input` against, so autocomplete dies, and any mistake collapses to a
+   * useless "No overload matches this call". A single signature instead gives member completion for
+   * `input`, a precise "Expected N arguments" when a required input is omitted, and an exact
+   * per-argument error when it's wrong. The cost is the wall of conditional types below — kept here in
+   * one readable place (and commented) rather than scattered into single-use aliases that would only
+   * move the complexity and add many-param indirection.
+   *
+   * Everything below branches on what `arg0` is: a function (with-fn / with-query-fn) vs a query point.
+   * Three type params are inferred: `TArg` (arg0), and the two halves of `resolve` (see below).
+   */
   with<
-    TPoint extends {
-      Infer: {
-        IsInputOptional: boolean
-        InputRawOrUndefined: any
-        InputRawOrUndefinedOrVoid: any
-        UseQueryOptions: any
-        QueryResultType: 'query' | 'infiniteQuery'
-        QueriedData: any
-        Error: any
-      }
-    },
-  >(
-    point: TPoint,
-    ...args: TPoint['Infer']['IsInputOptional'] extends true
-      ? [
-          input?:
-            | TPoint['Infer']['InputRawOrUndefined']
-            | ((
-                options: WithFnOptions<
-                  MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-                  TParamsSchema,
-                  TSearchSchema,
-                  TClientInputSchema,
-                  TInnerProps,
-                  WithSelfQueryIfShouldBeFinalized<
-                    TPointType,
-                    TLetsReadyPointType,
-                    TServerLoaderOutput,
-                    TClientLoaderOutput,
-                    TQueriesDefinitions,
-                    TError
-                  >,
-                  TMapperOutput,
-                  TError
-                >,
-              ) => TPoint['Infer']['InputRawOrUndefined']),
-          queryOptions?: TPoint['Infer']['UseQueryOptions'] | undefined,
-        ]
-      : [
-          input:
-            | TPoint['Infer']['InputRawOrUndefined']
-            | ((
-                options: WithFnOptions<
-                  MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-                  TParamsSchema,
-                  TSearchSchema,
-                  TClientInputSchema,
-                  TInnerProps,
-                  WithSelfQueryIfShouldBeFinalized<
-                    TPointType,
-                    TLetsReadyPointType,
-                    TServerLoaderOutput,
-                    TClientLoaderOutput,
-                    TQueriesDefinitions,
-                    TError
-                  >,
-                  TMapperOutput,
-                  TError
-                >,
-              ) => TPoint['Infer']['InputRawOrUndefined']),
-          queryOptions?: TPoint['Infer']['UseQueryOptions'] | undefined,
-        ]
-  ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
-      ? 'finalStage'
-      : StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    [
-      ...WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions,
-        TError
-      >,
-      {
-        type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
-        data: TPoint['Infer']['QueriedData']
-        error: TPoint['Infer']['Error']
-      },
-    ]
-  >
-  with<
-    TPoint extends {
-      Infer: {
-        IsInputOptional: boolean
-        InputRawOrUndefined: any
-        UseQueryOptions: any
-        QueryResultType: 'query' | 'infiniteQuery'
-        QueriedData: any
-        Error: any
-      }
-    },
-    // resolve: true -> data spread into props, false/omitted -> nothing, fn -> mapped props.
-    TResolve extends
-      | boolean
-      | ResolveQueryCallback<
-          TPoint['Infer']['QueryResultType'],
-          TPoint['Infer']['QueriedData'],
-          TPoint['Infer']['Error'],
-          Props | undefined
+    // arg0 is exactly one of three things. The union is also the constraint, so passing anything
+    // else (e.g. `() => 'a string'`) fails here with a normal "not assignable" error.
+    TArg extends
+      // 1. a query point to inject. We only ever read its `Infer` shape, never call it.
+      | {
+          Infer: {
+            IsInputOptional: boolean
+            InputRawOrUndefined: any
+            InputRawOrUndefinedOrVoid: any
+            UseQueryOptions: any
+            QueryResultType: 'query' | 'infiniteQuery'
+            QueriedData: any
+            Error: any
+          }
+        }
+      // 2. a with-query-fn: a fn returning a query (or array of queries) — they get appended below.
+      | WithQueryFn<
+          MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+          TParamsSchema,
+          TSearchSchema,
+          TClientInputSchema,
+          TInnerProps,
+          WithSelfQueryIfShouldBeFinalized<
+            TPointType,
+            TLetsReadyPointType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TQueriesDefinitions,
+            TError
+          >,
+          TMapperOutput,
+          TError
+        >
+      // 3. a plain with-fn: a fn returning props (or a React element / nothing) — props get merged.
+      | WithFn<
+          MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+          TParamsSchema,
+          TSearchSchema,
+          TClientInputSchema,
+          TInnerProps,
+          WithSelfQueryIfShouldBeFinalized<
+            TPointType,
+            TLetsReadyPointType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TQueriesDefinitions,
+            TError
+          >,
+          TMapperOutput,
+          TError,
+          Props
         >,
+    // resolve: true -> data spread into props, false/omitted -> nothing, fn -> mapped props.
+    // Split into two params so an inline resolve callback infers correctly: `success` is typed
+    // concretely inside the rest tuple (so the callback isn't context-sensitive), `TResolveMapped`
+    // is inferred from its return, and `TResolveBool` captures the literal `true`.
+    TResolveBool extends boolean = false,
+    TResolveMapped extends Props | undefined = undefined,
   >(
-    ...args: TPoint['Infer']['IsInputOptional'] extends true
-      ?
-          | [
-              point: TPoint,
-              input:
-                | TPoint['Infer']['InputRawOrUndefined']
-                | undefined
+    // Only a *plain* with-fn is forbidden from returning an array (a frequent mistake: returning the
+    // query data array directly). A with-query-fn legitimately returns an array of queries, and a
+    // query point isn't a function at all — both skip the assert (`& unknown` is a no-op).
+    arg0: TArg &
+      (TArg extends (...args: any[]) => any
+        ? Awaited<ReturnType<TArg>> extends UseQueryOrInfiniteQueryResult | QueriesResults
+          ? unknown
+          : AssertNoArrayReturn<Awaited<ReturnType<TArg>>, 'With fn should not return array'>
+        : unknown),
+    // What follows arg0 depends on arg0:
+    //  - a function (with-fn / with-query-fn) takes no further args -> `[]`
+    //  - a query point takes [input, queryOptions?, resolve?] (see the two branches below)
+    ...rest: TArg extends (...args: any[]) => any
+      ? []
+      : TArg extends {
+            Infer: {
+              IsInputOptional: infer TIsInputOptional
+              InputRawOrUndefined: infer TInputRawOrUndefined
+              UseQueryOptions: infer TUseQueryOptions
+              QueryResultType: infer TQueryResultType extends QueryResultType
+              QueriedData: infer TQueriedData extends Data
+              Error: infer TQueryError extends ErrorPoint0
+            }
+          }
+        ? // `input` is optional iff the query's input is optional. That single `?` on the tuple
+          // element is what makes `with(query)` say "Expected 2 arguments" (instead of silently
+          // passing) when the query actually requires an input. The two branches are identical
+          // except for that `?`. `input` may also be a fn deriving the input from the mount options.
+          TIsInputOptional extends true
+          ? [
+              input?:
+                | TInputRawOrUndefined
                 | ((
                     options: WithFnOptions<
                       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
@@ -3658,15 +3643,13 @@ export class Point0<
                       TMapperOutput,
                       TError
                     >,
-                  ) => TPoint['Infer']['InputRawOrUndefined']),
-              queryOptions: TPoint['Infer']['UseQueryOptions'] | undefined,
-              resolve: TResolve,
+                  ) => TInputRawOrUndefined),
+              queryOptions?: TUseQueryOptions | undefined,
+              resolve?: TResolveBool | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
             ]
-          | [
-              point: TPoint,
+          : [
               input:
-                | TPoint['Infer']['InputRawOrUndefined']
-                | undefined
+                | TInputRawOrUndefined
                 | ((
                     options: WithFnOptions<
                       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
@@ -3685,61 +3668,14 @@ export class Point0<
                       TMapperOutput,
                       TError
                     >,
-                  ) => TPoint['Infer']['InputRawOrUndefined']),
-              resolve: TResolve,
+                  ) => TInputRawOrUndefined),
+              queryOptions?: TUseQueryOptions | undefined,
+              resolve?: TResolveBool | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
             ]
-      :
-          | [
-              point: TPoint,
-              input:
-                | TPoint['Infer']['InputRawOrUndefined']
-                | ((
-                    options: WithFnOptions<
-                      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-                      TParamsSchema,
-                      TSearchSchema,
-                      TClientInputSchema,
-                      TInnerProps,
-                      WithSelfQueryIfShouldBeFinalized<
-                        TPointType,
-                        TLetsReadyPointType,
-                        TServerLoaderOutput,
-                        TClientLoaderOutput,
-                        TQueriesDefinitions,
-                        TError
-                      >,
-                      TMapperOutput,
-                      TError
-                    >,
-                  ) => TPoint['Infer']['InputRawOrUndefined']),
-              queryOptions: TPoint['Infer']['UseQueryOptions'] | undefined,
-              resolve: TResolve,
-            ]
-          | [
-              point: TPoint,
-              input:
-                | TPoint['Infer']['InputRawOrUndefined']
-                | ((
-                    options: WithFnOptions<
-                      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-                      TParamsSchema,
-                      TSearchSchema,
-                      TClientInputSchema,
-                      TInnerProps,
-                      WithSelfQueryIfShouldBeFinalized<
-                        TPointType,
-                        TLetsReadyPointType,
-                        TServerLoaderOutput,
-                        TClientLoaderOutput,
-                        TQueriesDefinitions,
-                        TError
-                      >,
-                      TMapperOutput,
-                      TError
-                    >,
-                  ) => TPoint['Infer']['InputRawOrUndefined']),
-              resolve: TResolve,
-            ]
+        : []
+    // The result is the same point, advanced one stage. Every type arg below is this point's current
+    // state passed through UNCHANGED — only the last two (inner props, queries) are recomputed, since
+    // `with` is the only thing that can add props or queries. They're the two interesting positions.
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -3762,144 +3698,76 @@ export class Point0<
     TCookiesSchema,
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
-    TResolve extends (success: any) => infer TMapped
-      ? TMapped extends Props
-        ? AppendProps<TInnerProps, TMapped>
-        : TInnerProps
-      : TResolve extends true
-        ? TPoint['Infer']['QueriedData'] extends Props
-          ? AppendProps<TInnerProps, TPoint['Infer']['QueriedData']>
-          : TInnerProps
-        : TInnerProps,
-    [
-      ...WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions,
-        TError
-      >,
-      {
-        type: TPoint['Infer']['QueryResultType'] extends 'infiniteQuery' ? 'infiniteQuery' : 'query'
-        data: TPoint['Infer']['QueriedData']
-        error: TPoint['Infer']['Error']
-      },
-    ]
-  >
-  with<TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults>(
-    withQueryFn: WithQueryFn<
-      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-      TParamsSchema,
-      TSearchSchema,
-      TClientInputSchema,
-      TInnerProps,
-      WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions,
-        TError
-      >,
-      TMapperOutput,
-      TError,
-      TNewQueries
-    >,
-  ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
-      ? 'finalStage'
-      : StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    [
-      ...WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions,
-        TError
-      >,
-      ...(TNewQueries extends QueriesResults
-        ? QueriesDefinitionsByQueries<TNewQueries>
-        : TNewQueries extends UseQueryOrInfiniteQueryResult
-          ? [QueryDefinitionByQuery<TNewQueries>]
-          : never),
-    ]
-  >
-  with<
-    TWithFn extends WithFn<
-      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-      TParamsSchema,
-      TSearchSchema,
-      TClientInputSchema,
-      TInnerProps,
-      WithSelfQueryIfShouldBeFinalized<
-        TPointType,
-        TLetsReadyPointType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TQueriesDefinitions,
-        TError
-      >,
-      TMapperOutput,
-      TError,
-      Props
-    >,
-  >(
-    withFn: TWithFn & AssertNoArrayReturn<Awaited<ReturnType<TWithFn>>, 'With fn should not return array'>, // withFn: WithFn<
-  ): NiceStagePoint<
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
-      ? 'finalStage'
-      : StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true ? 'query' : TQueryResultType,
-    TOuterProps,
-    // AppendProps<TInnerProps, InferWithFnOutputNewInnerProps<TWithFn>>,
-    IsUndefined<InferWithFnOutputNewInnerProps<TWithFn>> extends true
-      ? TInnerProps
-      : AppendProps<TInnerProps, InferWithFnOutputNewInnerProps<TWithFn>>,
-    WithSelfQueryIfShouldBeFinalized<
-      TPointType,
-      TLetsReadyPointType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TQueriesDefinitions,
-      TError
-    >
+    // ---- NiceStagePoint's TInnerProps slot — who adds props, and which ----
+    TArg extends (...args: any[]) => any
+      ? // a function:
+        Awaited<ReturnType<TArg>> extends UseQueryOrInfiniteQueryResult | QueriesResults
+        ? TInnerProps // with-query-fn -> adds queries (below), not props
+        : // plain with-fn -> merge in the props it returned (nothing to add if it returned undefined)
+          IsUndefined<WithFnReturnProps<Awaited<ReturnType<TArg>>>> extends true
+          ? TInnerProps
+          : AppendProps<TInnerProps, WithFnReturnProps<Awaited<ReturnType<TArg>>>>
+      : // a query point: props change only via `resolve`.
+        [TResolveMapped] extends [undefined]
+        ? // no resolve callback ->
+          TResolveBool extends true
+          ? // resolve: true -> spread the query's data into props
+            TArg extends { Infer: { QueriedData: infer TQueriedData } }
+            ? TQueriedData extends Props
+              ? AppendProps<TInnerProps, TQueriedData>
+              : TInnerProps
+            : TInnerProps
+          : TInnerProps // resolve omitted/false -> props unchanged
+        : // resolve callback -> merge in whatever it mapped to
+          TResolveMapped extends Props
+          ? AppendProps<TInnerProps, TResolveMapped>
+          : TInnerProps,
+    // ---- NiceStagePoint's TQueriesDefinitions slot — who appends queries, and which ----
+    TArg extends (...args: any[]) => any
+      ? // a with-query-fn appends the queries it returned; a plain with-fn appends nothing.
+        // `infer TNewQueries extends ...` re-narrows the return so the spread is provably an array.
+        Awaited<ReturnType<TArg>> extends infer TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults
+        ? [
+            ...WithSelfQueryIfShouldBeFinalized<
+              TPointType,
+              TLetsReadyPointType,
+              TServerLoaderOutput,
+              TClientLoaderOutput,
+              TQueriesDefinitions,
+              TError
+            >,
+            ...(TNewQueries extends QueriesResults
+              ? QueriesDefinitionsByQueries<TNewQueries>
+              : TNewQueries extends UseQueryOrInfiniteQueryResult
+                ? [QueryDefinitionByQuery<TNewQueries>]
+                : never),
+          ]
+        : // plain with-fn -> queries unchanged (this is the existing query list, possibly with this
+          // point's own self-query folded in when it's being finalized — that's what the helper does).
+          WithSelfQueryIfShouldBeFinalized<
+            TPointType,
+            TLetsReadyPointType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TQueriesDefinitions,
+            TError
+          >
+      : // a query point -> append a definition for the query we just injected.
+        [
+          ...WithSelfQueryIfShouldBeFinalized<
+            TPointType,
+            TLetsReadyPointType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TQueriesDefinitions,
+            TError
+          >,
+          {
+            type: TArg extends { Infer: { QueryResultType: 'infiniteQuery' } } ? 'infiniteQuery' : 'query'
+            data: TArg extends { Infer: { QueriedData: infer TQueriedData } } ? TQueriedData : never
+            error: TArg extends { Infer: { Error: infer TQueryError } } ? TQueryError : never
+          },
+        ]
   >
   with(...args: any[]) {
     const _args = args as
@@ -3928,29 +3796,6 @@ export class Point0<
           queryOptions?: ExtraUseQueryOptions | ExtraUseInfiniteQueryOptions<any, any, any, any, any, any> | undefined,
           resolve?: boolean | ResolveQueryCallback<any, any, TError, Props | undefined>,
         ]
-      | [
-          point?: AnyPoint | undefined,
-          input?: (
-            options: WithFnOptions<
-              MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-              TParamsSchema,
-              TSearchSchema,
-              TClientInputSchema,
-              TInnerProps,
-              WithSelfQueryIfShouldBeFinalized<
-                TPointType,
-                TLetsReadyPointType,
-                TServerLoaderOutput,
-                TClientLoaderOutput,
-                TQueriesDefinitions,
-                TError
-              >,
-              TMapperOutput,
-              TError
-            >,
-          ) => InputRaw,
-          resolve?: boolean | ResolveQueryCallback<any, any, TError, Props | undefined>,
-        ]
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
@@ -3967,7 +3812,8 @@ export class Point0<
     // it is query injection
     if ('point' in _args[0]) {
       const [{ point }, inputFnOrInput, ...restArgs] = _args
-      const [queryOptions, resolveCallback] = (restArgs.length > 1 ? restArgs : [undefined, restArgs[0]]) as [
+      // queryOptions is always the 3rd arg, resolve always the 4th (pass undefined queryOptions for resolve-only).
+      const [queryOptions, resolveCallback] = restArgs as [
         ExtraUseQueryOptions | ExtraUseInfiniteQueryOptions<any, any, any, any, any, any> | undefined,
         boolean | ResolveQueryCallback<any, any, TError, Props> | undefined,
       ]
