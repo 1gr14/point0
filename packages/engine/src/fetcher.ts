@@ -2,6 +2,7 @@ import * as flat0 from '@devp0nt/flat0'
 import * as React from 'react'
 import { Route0, type AnyLocation, type AnyRoute, type ExactLocation, type KnownLocation } from '@devp0nt/route0'
 import {
+  POINT0_ERROR_CODES_MAP,
   _getSsItemsWithRestErrors,
   _point0_env,
   _ss,
@@ -584,20 +585,20 @@ export class Fetcher<TError extends ErrorPoint0> {
       if (outputType === 'html') {
         if (point.type !== 'page') {
           throw new ErrorClass(`Point type "${point.type}" is not supported for html output type`, {
-            code: 'POINT0_HTML_OUTPUT_UNSUPPORTED_POINT_TYPE',
+            code: POINT0_ERROR_CODES_MAP.HTML_OUTPUT_UNSUPPORTED_POINT_TYPE,
             meta: { point: point.toString(), pointType: point.type },
           })
         }
         if (!client) {
           throw new ErrorClass(`Client for scope "${point.scope}" not found while requested page html via endpoint`, {
-            code: 'POINT0_CLIENT_NOT_FOUND',
+            code: POINT0_ERROR_CODES_MAP.CLIENT_NOT_FOUND,
             meta: { scope: point.scope },
           })
         }
         const route = point.route as AnyRoute | undefined
         if (!route) {
           throw new ErrorClass(`Point "${point.toString()}" has no route while requested page html via task`, {
-            code: 'POINT0_POINT_NO_ROUTE',
+            code: POINT0_ERROR_CODES_MAP.POINT_NO_ROUTE,
             meta: { point: point.toString() },
           })
         }
@@ -638,21 +639,21 @@ export class Fetcher<TError extends ErrorPoint0> {
           throw new ErrorClass(
             `Point type "${point.type}" is not supported for queryClientDehydratedState output type`,
             {
-              code: 'POINT0_DEHYDRATED_STATE_UNSUPPORTED_POINT_TYPE',
+              code: POINT0_ERROR_CODES_MAP.DEHYDRATED_STATE_UNSUPPORTED_POINT_TYPE,
               meta: { point: point.toString(), pointType: point.type },
             },
           )
         }
         if (!client) {
           throw new ErrorClass(`Client for scope "${point.scope}" not found while requested page html via endpoint`, {
-            code: 'POINT0_CLIENT_NOT_FOUND',
+            code: POINT0_ERROR_CODES_MAP.CLIENT_NOT_FOUND,
             meta: { scope: point.scope },
           })
         }
         const route = point.route as AnyRoute | undefined
         if (!route) {
           throw new ErrorClass(`Point "${point.toString()}" has no route while requested page html via endpoint`, {
-            code: 'POINT0_POINT_NO_ROUTE',
+            code: POINT0_ERROR_CODES_MAP.POINT_NO_ROUTE,
             meta: { point: point.toString() },
           })
         }
@@ -740,7 +741,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       if (React.isValidElement(executeResult.output)) {
-        throw new ErrorClass('RSC is not yet supported', { code: 'POINT0_RSC_NOT_SUPPORTED' })
+        throw new ErrorClass('RSC is not yet supported', { code: POINT0_ERROR_CODES_MAP.RSC_NOT_SUPPORTED })
         // const stream = await renderToReadableStream(executeResult.output)
         // const response = new Response(stream, {
         //   headers: { 'Content-Type': 'text/x-component' },
@@ -752,7 +753,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       if (!executeResult.output) {
-        const error = new ErrorClass('No output', { code: 'POINT0_NO_OUTPUT' })
+        const error = new ErrorClass('No output', { code: POINT0_ERROR_CODES_MAP.NO_OUTPUT })
         const response = this.toJsonErrorResponse({
           ErrorClass,
           error,
@@ -893,7 +894,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
       } else {
         throw new ErrorClass(`Client "${client.scope}" has no indexHtml`, {
-          code: 'POINT0_CLIENT_NO_INDEX_HTML',
+          code: POINT0_ERROR_CODES_MAP.CLIENT_NO_INDEX_HTML,
           meta: { scope: client.scope },
         })
       }
@@ -1094,7 +1095,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       const ErrorClass = this.server.points.manager.root._Error
-      const error = new ErrorClass(`Not Found`, { status: 404, code: 'POINT0_NOT_FOUND' })
+      const error = new ErrorClass(`Not Found`, { status: 404, code: POINT0_ERROR_CODES_MAP.NOT_FOUND })
       return {
         request: prepareFetchResult.request,
         scope: prepareFetchResult.scope,
@@ -1274,7 +1275,10 @@ export class Fetcher<TError extends ErrorPoint0> {
       const serialized = ErrorClass.serialize(error0)
       const stringified = transformer ? transformer.stringify(serialized) : JSON.stringify(serialized)
       if (!stringified) {
-        throw new ErrorClass('Failed to stringify error', { cause: error0, code: 'POINT0_ERROR_STRINGIFY_FAILED' })
+        throw new ErrorClass('Failed to stringify error', {
+          cause: error0,
+          code: POINT0_ERROR_CODES_MAP.ERROR_STRINGIFY_FAILED,
+        })
       }
       return new Response(stringified, {
         headers: { 'Content-Type': 'application/json' },

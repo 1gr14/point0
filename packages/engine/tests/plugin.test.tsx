@@ -4,6 +4,20 @@ import { z } from 'zod'
 import { createTestThings, ymlify, ymlifyline } from './utils/internal-testing.js'
 
 describe('plugin', () => {
+  const createRoot = () =>
+    Point0.lets('root', 'root')
+      .loading(() => <div id="loading">...</div>)
+      .error(({ error }) => <div id="error">{error.message}</div>)
+      .queryOptions({
+        retry: false,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
+      })
+      .root()
+
   it.concurrent('merges ctx', async () => {
     const plugin = Point0.lets('plugin', 'test-plugin')
       .ctx(() => ({ plugin: 'ok1' }))
@@ -425,6 +439,76 @@ describe('plugin', () => {
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #page: plugin: 123, query: 456
+      "
+    `)
+  })
+
+  // related queries are allowed inside plugins too; the actions merge into whatever mountable `.use()`s
+  // the plugin, and the input getter receives `location` (typed as `AnyLocation` — a plugin is not bound
+  // to a single route).
+
+  it('allows a related query inside a plugin', async () => {
+    const root = createRoot()
+    const query = root
+      .lets('query', 'test')
+      .loader(() => ({ x: 1 }))
+      .query()
+    const plugin = Point0.lets('plugin', 'test-plugin').relatedQuery(query).plugin()
+    const page = root
+      .lets('page', 'home', '/home')
+      .use(plugin)
+      .page(({ data }) => <div id="page">{ymlify(data)}</div>)
+
+    const { render, fetchesTale } = await createTestThings({ ssr: true, points: [root, page, query] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /home
+          #loading: ...
+
+          #page: x: 1
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      query.test (client) < {}
+      "
+    `)
+  })
+
+  it('related query inside a plugin receives location', async () => {
+    const root = createRoot()
+    const query = root
+      .lets('query', 'test')
+      .input(z.object({ path: z.string() }))
+      .loader(({ input }) => ({ x: input.path }))
+      .query()
+    // `location` here is `AnyLocation` (a plugin is not bound to a route), so `location.pathname` is typed
+    const plugin = Point0.lets('plugin', 'test-plugin')
+      .relatedQuery(query, ({ location }) => ({ path: location.pathname }))
+      .plugin()
+    const page = root
+      .lets('page', 'home', '/home')
+      .use(plugin)
+      .page(({ data }) => <div id="page">{ymlify(data)}</div>)
+
+    const { render, fetchesTale } = await createTestThings({ ssr: true, points: [root, page, query] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /home
+          #loading: ...
+
+          #page: x: /home
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      query.test (client) < {"path":"/home"}
       "
     `)
   })

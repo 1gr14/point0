@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { Point0 } from '@point0/core'
 import { createTestThings } from './utils/internal-testing.js'
 import z from 'zod'
@@ -387,5 +387,54 @@ describe('component', () => {
           #component: x=zxc
       "
     `)
+  })
+
+  // short notation: a mountable point now *is* its own component, so `<Stats />` renders it
+  // without reaching for `.X`. The old `<Stats.X />` notation keeps working, and every point
+  // helper (queries, etc.) stays available on the short-notation export (`Stats.fetchQuery`).
+
+  it('short notation renders without reaching for .X (old notation still works)', async () => {
+    const root = createRoot()
+    const Stats = root.lets('component', 'stats').component(() => <div id="component">x=nothing</div>)
+    const page = root.lets('page', 'home', '/').page(() => (
+      <div id="page">
+        {/* new short notation */}
+        <Stats />
+        {/* old notation still works */}
+        <Stats.X />
+      </div>
+    ))
+
+    const { render } = await createTestThings({ ssr: true, points: [root, Stats, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#component')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /
+          #page:
+            #component: x=nothing
+            #component: x=nothing
+        "
+      `)
+    })
+  })
+
+  it('keeps point methods on the short-notation component', () => {
+    const root = createRoot()
+    const Stats = root
+      .lets('component', 'stats')
+      .loader(() => ({ x: 1 }))
+      .component(({ data }) => <div id="component">x={data.x}</div>)
+
+    // query/fetch helpers are still here on the short notation (it is `point.X` decorated with them)
+    expect(typeof Stats.fetchQuery).toBe('function')
+    expect(typeof Stats.useQuery).toBe('function')
+    expect(typeof Stats.prefetchQuery).toBe('function')
+    expectTypeOf(Stats.fetchQuery).toBeFunction()
+    expectTypeOf(Stats.useQuery).toBeFunction()
+    expectTypeOf(Stats.prefetchQuery).toBeFunction()
+    // and the explicit `.X` / `.Component` accessors are still reachable too
+    expect(typeof Stats.X).toBe('function')
+    expect(typeof Stats.Component).toBe('function')
   })
 })

@@ -2292,6 +2292,9 @@ export type NicePluginStagePoint<
   // | 'head'
   | 'wrapper'
   | 'with'
+  // related queries can be declared inside a plugin too; their `location` is just `AnyLocation`
+  // (a plugin is not bound to a route), and the actions merge into whatever mountable `.use()`s it
+  | 'relatedQuery'
   | 'scrollPosition'
   | 'scrollRestore'
   | 'onPrefetchPage'

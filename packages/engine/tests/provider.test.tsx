@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { Point0 } from '@point0/core'
 import React from 'react'
 import { z } from 'zod'
@@ -372,5 +372,54 @@ describe('provider', () => {
         #page: x=1 y=2
         "
       `)
+  })
+
+  // short notation: a provider now *is* its own component, so `<App>{children}</App>` works without
+  // reaching for `.X`. The old `<App.X>` notation keeps working, and every point helper
+  // (`App.useValue`, `App.getValue`, ...) stays available on the short-notation export.
+
+  it('short notation works as a wrapper without reaching for .X', async () => {
+    const root = createRoot()
+    const App = root.lets('provider', 'app').provider(() => ({ x: 1, y: 2 }))
+    const page = root.lets('page', 'home', '/home').page(() => {
+      const usedValue = App.useValue()
+      return (
+        <div id="page">
+          x={usedValue.x} y={usedValue.y}
+        </div>
+      )
+    })
+
+    const { render } = await createTestThings({
+      ssr: true,
+      points: [root, App, page],
+      // new short notation in the wrapper (was `<provider.X>`)
+      wrapper: ({ children }) => <App>{children}</App>,
+    })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /home
+          #page: x=1 y=2
+        "
+      `)
+    })
+  })
+
+  it('keeps point methods on the short-notation provider', () => {
+    const root = createRoot()
+    const App = root.lets('provider', 'app').provider(() => ({ x: 1, y: 2 }))
+
+    // value helpers are still here on the short notation (it is `point.X` decorated with them)
+    expect(typeof App.useValue).toBe('function')
+    expect(typeof App.getValue).toBe('function')
+    expect(typeof App.getValueWeak).toBe('function')
+    expectTypeOf(App.useValue).toBeFunction()
+    expectTypeOf(App.getValue).toBeFunction()
+    expectTypeOf(App.getValueWeak).toBeFunction()
+    // and the explicit `.X` / `.Provider` accessors are still reachable too
+    expect(typeof App.X).toBe('function')
+    expect(typeof App.Provider).toBe('function')
   })
 })

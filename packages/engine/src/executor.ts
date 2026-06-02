@@ -34,6 +34,7 @@ import type {
   UnknownData,
 } from '@point0/core'
 import {
+  POINT0_ERROR_CODES_MAP,
   _point0_env,
   _ss,
   _ssRunWithServerStorageState,
@@ -419,7 +420,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       try {
         if (!point) {
           const status = 404
-          const error0 = new ErrorClass(`Point Not Found`, { status, code: 'POINT0_POINT_NOT_FOUND' })
+          const error0 = new ErrorClass(`Point Not Found`, { status, code: POINT0_ERROR_CODES_MAP.POINT_NOT_FOUND })
           effects.set.status(status)
           return {
             ctx: layers[0].ctx,
@@ -438,7 +439,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           const status = 500
           const error0 = new ErrorClass(`Point "${point.toString()}" has no server loader`, {
             status,
-            code: 'POINT0_POINT_NO_SERVER_LOADER',
+            code: POINT0_ERROR_CODES_MAP.POINT_NO_SERVER_LOADER,
             meta: { point: point.toString() },
           })
           effects.set.status(status)
@@ -1133,7 +1134,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         })
         const redirectError = new ErrorClass(`Redirect to "${redirectTask.to}"`, {
           redirect: redirectTask,
-          code: 'POINT0_REDIRECT',
+          code: POINT0_ERROR_CODES_MAP.REDIRECT,
         })
         const redirectQuery =
           queryClient.getQueryCache().find({ queryKey: redirectQueryKey }) ||

@@ -1,5 +1,4 @@
 import * as flat0 from '@devp0nt/flat0'
-import { Route0 } from '@devp0nt/route0'
 import type {
   AnyLocation,
   AnyRoute,
@@ -12,7 +11,7 @@ import type {
   UnknownSearchParsed,
   WeakAncestorLocation,
 } from '@devp0nt/route0'
-import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Route0 } from '@devp0nt/route0'
 import type {
   CancelOptions,
   DehydratedState,
@@ -31,16 +30,16 @@ import type {
   UseMutationResult,
   UseQueryResult,
 } from '@tanstack/react-query'
+import { hydrate, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
-import { createContext, useContextSelector } from 'use-context-selector'
 import type { Context } from 'use-context-selector'
+import { createContext, useContextSelector } from 'use-context-selector'
 import { _point0_env } from './env.js'
-import { ErrorPoint0 } from './error.js'
 import type { ClassLikeError0 } from './error.js'
-import { uniqEventerErrorEventNames } from './eventer.js'
+import { ErrorPoint0, POINT0_ERROR_CODES_MAP } from './error.js'
 import type {
   AnyEventerEvent,
   AnyEventerEventName,
@@ -53,6 +52,7 @@ import type {
   ServerEventerSubscriptionCallback,
   UniqEventerErrorEventName,
 } from './eventer.js'
+import { uniqEventerErrorEventNames } from './eventer.js'
 import { ClientOnly, getFetch, setStatus } from './helpers.js'
 import { _getFakeClient, _ss } from './internals.js'
 import { log, type LogFn } from './logger.js'
@@ -194,11 +194,11 @@ import type {
   MergeRecordValidationSchemas,
   MiddlewareFn,
   MiddlewareFnOptions,
+  Mountable,
   MountablePointType,
   MutationKey,
   NiceActionReadyPoint,
   NiceBaseReadyPoint,
-  Mountable,
   NiceComponentReadyPoint,
   NiceInfiniteQueryReadyPoint,
   NiceLayoutReadyPoint,
@@ -258,6 +258,7 @@ import type {
   UseQueryOptions,
   WithError,
 } from './types.js'
+import type { FsLocation, ResolveQueryCallback } from './utils.js'
 import {
   blankDataTransformerExtended,
   generateId,
@@ -288,7 +289,6 @@ import {
   windowScrollPositionSetter,
   withLetsSugar,
 } from './utils.js'
-import type { FsLocation, ResolveQueryCallback } from './utils.js'
 
 export class Point0<
   in out TPointType extends PointType,
@@ -4048,7 +4048,7 @@ export class Point0<
       }
     },
   >(
-    ...args: TLetsReadyPointType extends MountablePointType
+    ...args: TLetsReadyPointType extends MountablePointType | 'plugin'
       ? [
           point: TPoint,
           ...rest: TPoint['Infer']['IsInputOptional'] extends true
@@ -8364,7 +8364,7 @@ export class Point0<
       if (result instanceof Promise) {
         throw new this._Error(
           `Promise returning schema input not allowed for client input schemas on point ${this.toStringWithLocation()}`,
-          { code: 'POINT0_INPUT_SCHEMA_PROMISE_NOT_ALLOWED', meta: { point: this.toString() } },
+          { code: POINT0_ERROR_CODES_MAP.INPUT_SCHEMA_PROMISE_NOT_ALLOWED, meta: { point: this.toString() } },
         )
       }
 
@@ -8383,7 +8383,7 @@ export class Point0<
           data: undefined,
           error: new this._Error(`Unknown input schema error on point ${this.toStringWithLocation()}`, {
             cause: result,
-            code: 'POINT0_INPUT_SCHEMA_UNKNOWN',
+            code: POINT0_ERROR_CODES_MAP.INPUT_SCHEMA_UNKNOWN,
             meta: { point: this.toString() },
           }),
         }
@@ -8392,7 +8392,7 @@ export class Point0<
       const message = [path, firstIssue.message].filter(Boolean).join(': ')
       const error = new this._Error(message, {
         cause: result,
-        code: 'POINT0_INPUT_SCHEMA_INVALID',
+        code: POINT0_ERROR_CODES_MAP.INPUT_SCHEMA_INVALID,
         meta: { point: this.toString(), path },
       })
       return {
@@ -10945,7 +10945,7 @@ export class Point0<
     this._emit('pointPrefetchPageStart', eventData, meta)
 
     if (!this.route) {
-      const error = new this._Error('Route is not set', { code: 'POINT0_ROUTE_NOT_SET', meta })
+      const error = new this._Error('Route is not set', { code: POINT0_ERROR_CODES_MAP.ROUTE_NOT_SET, meta })
       this._emit('pointPrefetchPageSettled', { ...eventData, error }, meta)
       this._emit('pointPrefetchPageError', { ...eventData, error }, meta)
       throw error
@@ -11739,7 +11739,10 @@ export class Point0<
             return React.createElement(ErrorComponent, {
               error: new this._Error(
                 `Usual input schema are not allowed for this point: ${this.toStringWithLocation()}`,
-                { code: 'POINT0_INPUT_SCHEMA_NOT_ALLOWED', meta: { point: this.toString(), pointType: this.type } },
+                {
+                  code: POINT0_ERROR_CODES_MAP.INPUT_SCHEMA_NOT_ALLOWED,
+                  meta: { point: this.toString(), pointType: this.type },
+                },
               ),
             })
           }
@@ -11768,7 +11771,10 @@ export class Point0<
             return React.createElement(ErrorComponent, {
               error: new this._Error(
                 `Params input schema are not allowed for this point: ${this.toStringWithLocation()}`,
-                { code: 'POINT0_PARAMS_SCHEMA_NOT_ALLOWED', meta: { point: this.toString(), pointType: this.type } },
+                {
+                  code: POINT0_ERROR_CODES_MAP.PARAMS_SCHEMA_NOT_ALLOWED,
+                  meta: { point: this.toString(), pointType: this.type },
+                },
               ),
             })
           }
@@ -11803,7 +11809,10 @@ export class Point0<
             return React.createElement(ErrorComponent, {
               error: new this._Error(
                 `Search input schema are not allowed for this point: ${this.toStringWithLocation()}`,
-                { code: 'POINT0_SEARCH_SCHEMA_NOT_ALLOWED', meta: { point: this.toString(), pointType: this.type } },
+                {
+                  code: POINT0_ERROR_CODES_MAP.SEARCH_SCHEMA_NOT_ALLOWED,
+                  meta: { point: this.toString(), pointType: this.type },
+                },
               ),
             })
           }

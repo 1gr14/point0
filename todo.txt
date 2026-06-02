@@ -75,36 +75,36 @@ normalize scroll restoration (it is trash now)
 
 # Extra
 
-
-Закоммитить в отдельную ветку удаление шаред квери
-Лоадер только один разрешить
-Запретить комбайнед квери
-Дописать просто тест, что нельзя иметь два лоадера и два разных лоадера
+Дописать просто тест, что нельзя иметь лоадер после лоадера (11, 12, 21)
 
 Добавить тесты вкомпонент и провайдер на предмет использования короткой нотации
+
 Коды ошибок сделать мапой, и переиспользовать на местах в поинт0
+
+allow related query in plugins, and just location there
 
 with query, }>(point: TPoint, ...args: TPoint['Infer']['IsInputOptional'] extends true ? [ →to overrides, becouse with incorrect input it miss value
 
 .infiniteQuery({}) should have nice autocompletion, ow it is never until correct, (В Инфинити скрол опции ошибку можно добавить как реквайред поле с эрором)
 
-allow related query in plugins, and just location there
-
 Убедиться, что виз всегда вызывает врапер, ведь есть риск, что сначала эрор, а потом не эрор, а дальше хук, и будут проблемы
 
 Мсп должен всегда читать свежую мета
 
-in example rename file navigate to navigation
-
 docs mcp limit, pagination
 
-compiler option experimental_preserve_syntax so bun still can works
-
-test coverage
+navigation
 
 пофиксить экзамплы
+in example rename file navigate to navigation
 пофиксить криэйт апп
+
 docs
+
+...finishing...
+
+compiler option experimental_preserve_syntax so bun still can works
+test coverage (merge add-coverage)
 ---
 ? Криэйт квери клиент должен сразу принимать нужные опции а не функцию возвращающую объект
 ? Эз форм дата тру фалс авто влияет и на опенапи и аозмовозможность вообще отправить другое

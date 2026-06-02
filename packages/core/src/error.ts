@@ -161,10 +161,10 @@ export type ClassLikeError0<T extends ErrorPoint0 = ErrorPoint0> = {
 }
 
 /**
- * Registry of all `POINT0_*` error codes the framework attaches (via `error.code`) to the errors it
- * creates. This list is intentionally not referenced anywhere — it exists purely as a single,
- * discoverable place that records every code we introduce, so they can be documented, grepped, or
- * matched against in userland. Keep it in sync when adding a new coded error.
+ * Registry of all `POINT0_*` error codes the framework attaches (via `error.code`) to the errors it creates. This is
+ * the single source of truth: every code is written here exactly once. Keep it in sync when adding a new coded error —
+ * the throw sites reference {@link POINT0_ERROR_CODES_MAP}, derived from this list, and userland can document, grep, or
+ * match against it.
  */
 export const POINT0_ERROR_CODES = [
   // input schema (@point0/core)
@@ -192,3 +192,13 @@ export const POINT0_ERROR_CODES = [
 ] as const
 
 export type Point0ErrorCode = (typeof POINT0_ERROR_CODES)[number]
+
+/**
+ * The same codes as {@link POINT0_ERROR_CODES}, keyed by their short name (the `POINT0_` prefix stripped) so the throw
+ * sites can reference them ergonomically and stay in sync by construction: `POINT0_ERROR_CODES_MAP.NOT_FOUND ===
+ * 'POINT0_NOT_FOUND'`. Built from the array above (each code written once); the assertion narrows
+ * `Object.fromEntries`'s widened `{ [k: string]: string }` back to the precise key → code mapping.
+ */
+export const POINT0_ERROR_CODES_MAP = Object.fromEntries(
+  POINT0_ERROR_CODES.map((code) => [code.replace(/^POINT0_/, ''), code]),
+) as { [C in Point0ErrorCode as C extends `POINT0_${infer TShort}` ? TShort : C]: C }
