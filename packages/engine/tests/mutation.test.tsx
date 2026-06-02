@@ -105,52 +105,6 @@ describe('mutation', () => {
       `)
   })
 
-  it.concurrent('with loader and clientLoader', async () => {
-    const root = createRoot()
-    const q = root
-      .lets('mutation', 'test')
-      .loader(() => ({ x: 1 }))
-      .clientLoader(({ data }) => ({ y: 2, ...data }))
-      .mutation()
-    const page = root.lets('page', 'home', '/').page(() => {
-      const mutation = q.useMutation()
-      return (
-        <div id="page">
-          <div id="data">
-            x={mutation.data?.x ?? 'nothing'} y={mutation.data?.y ?? 'nothing'}
-          </div>
-          <button id="mutate" onClick={() => mutation.mutate()}>
-            Mutate
-          </button>
-        </div>
-      )
-    })
-
-    const { render, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
-    await render(page.route(), async ({ waitContent, tale, click }) => {
-      await waitContent('#data')
-      await click('#mutate')
-      await waitContent('x=1 y=2')
-      expect(await tale()).toMatchInlineSnapshot(`
-          "
-          /
-            #page:
-              #data: x=nothing y=nothing
-              #mutate: Mutate
-
-            #page:
-              #data: x=1 y=2
-              #mutate: Mutate
-          "
-        `)
-      expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "
-        mutation.test (client) < {}
-        "
-      `)
-    })
-  })
-
   it.concurrent('with input and loader', async () => {
     const root = createRoot()
     const q = root
@@ -235,51 +189,6 @@ describe('mutation', () => {
     expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
 
-        "
-      `)
-  })
-
-  it.concurrent('with input and clientLoader and loader', async () => {
-    const root = createRoot()
-    const q = root
-      .lets('mutation', 'test')
-      .sharedInput(z.object({ y: z.number() }))
-      .loader(() => ({ z: 3 }))
-      .clientLoader(({ input }) => ({ x: input.y * 2 }))
-      .mutation()
-    const page = root.lets('page', 'home', '/').page(() => {
-      const mutation = q.useMutation()
-      return (
-        <div id="page">
-          <div id="data">x={mutation.data?.x ?? 'nothing'}</div>
-          <button id="mutate" onClick={() => mutation.mutate({ y: 123 })}>
-            Mutate
-          </button>
-        </div>
-      )
-    })
-
-    const { render, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
-    await render(page.route(), async ({ waitContent, tale, click }) => {
-      await waitContent('#data')
-      await click('#mutate')
-      await waitContent('x=246')
-      expect(await tale()).toMatchInlineSnapshot(`
-          "
-          /
-            #page:
-              #data: x=nothing
-              #mutate: Mutate
-
-            #page:
-              #data: x=246
-              #mutate: Mutate
-          "
-        `)
-    })
-    expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "
-        mutation.test (client) < {"y":123}
         "
       `)
   })

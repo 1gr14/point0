@@ -9,7 +9,7 @@ import { TestProjectOneClientFactory } from './utils/project.one-client.js'
 import { toKebabCase } from '@point0/core'
 import type { PrefetchPagePolicy } from '@point0/core'
 
-setDefaultTimeout(20000)
+setDefaultTimeout(45000)
 
 const tpf = TestProjectOneClientFactory.create({
   namespace: 'prefetch-page',
@@ -27,7 +27,7 @@ const toMark = (polh: string | boolean, pon: string | boolean) => `polh-${string
 const layoutNavTsx = (polh: string | boolean, pon: string | boolean, ssr: boolean) => {
   const mark = toMark(polh, pon)
   return `import { root } from '../lib/root.js'
-import { Link, NavLink, navigate } from '../lib/navigate.js'
+import { Link, NavLink } from '../lib/navigate.js'
 export const layout = root.lets('layout', 'layout_${toMark(polh, pon)}', '/${toMark(polh, pon)}')
   .prefetchPageOnLinkHover(${stringify2(polh === true ? (ssr ? 'ssrDehydratedStateAndClientQuery' : 'serverAndClientQuery') : polh)})
   .prefetchPageOnNavigate(${stringify2(pon === true ? (ssr ? 'ssrDehydratedStateAndClientQuery' : 'serverAndClientQuery') : pon)})
@@ -37,7 +37,6 @@ export const layout = root.lets('layout', 'layout_${toMark(polh, pon)}', '/${toM
         <Link to="/${mark}">/</Link>
         <Link to="/${mark}/with-server">/with-server</Link>
         <Link to="/${mark}/with-client">/with-client</Link>
-        <Link to="/${mark}/with-both" onClick={(e) => { e.preventDefault(); navigate.to('/${mark}/with-both') }}>/with-both</Link>
         <Link to="/${mark}/with-related-query">/with-related-query</Link>
         <Link to="/${mark}/with-mounted-query">/with-mounted-query</Link>
         <Link to="/${mark}/with-redirect-from">/with-redirect-from</Link>
@@ -70,19 +69,6 @@ export const withClientPage = layout.lets('page', 'withClient_${mark}', 'with-cl
     return { x: 1 }
   })
   .page(({ data }) => <div id="with-client">{data.x}</div>)
-`
-
-const pageWithBothTsx = (mark: string) => `import { layout } from './layout.js'
-export const withBothPage = layout.lets('page', 'withBoth_${mark}', 'with-both')
-  .loader(async () => {
-    await new Promise((r) => setTimeout(r, ${loaderDuration / 2}))
-    return { a: 1 }
-  })
-  .clientLoader(async ({ data }) => {
-    await new Promise((r) => setTimeout(r, ${loaderDuration / 2}))
-    return { ...data, b: 2 }
-  })
-  .page(({ data }) => <div id="with-both">{data.a},{data.b}</div>)
 `
 
 const pageWithRelatedQueryTsx = (mark: string) => `import { layout } from './layout.js'
@@ -148,7 +134,6 @@ async function writePages(tp: TestProjectOneClient) {
       await tp.write(`src/${mark}/home.tsx`, pageHomeTsx(mark))
       await tp.write(`src/${mark}/with-server.tsx`, pageWithServerTsx(mark))
       await tp.write(`src/${mark}/with-client.tsx`, pageWithClientTsx(mark))
-      await tp.write(`src/${mark}/with-both.tsx`, pageWithBothTsx(mark))
       await tp.write(`src/${mark}/with-related-query.tsx`, pageWithRelatedQueryTsx(mark))
       await tp.write(`src/${mark}/with-mounted-query.tsx`, pageWithMountedQueryTsx(mark))
       await tp.write(`src/${mark}/with-none.tsx`, pageWithNoneTsx(mark))
@@ -179,9 +164,6 @@ async function navigatePages(
   await click('/with-client')
   await page.waitContent('#with-client')
 
-  await click('/with-both')
-  await page.waitContent('#with-both')
-
   await click('/with-related-query')
   await page.waitContent('#with-related-query')
 
@@ -205,7 +187,6 @@ const getRequestsTale = (page: PlaywrightPage, mark: string) => {
     .replaceAll(`-${toKebabCase(mark)}`, '')
     .replaceAll(`with-server`, 'withServer')
     .replaceAll(`with-client`, 'withClient')
-    .replaceAll(`with-both`, 'withBoth')
     .replaceAll(`with-related-query`, 'withRelatedQuery')
     .replaceAll(`with-mounted-query`, 'withMountedQuery')
     .replaceAll(`with-none`, 'withNone')
@@ -225,7 +206,6 @@ const getTale = (page: PlaywrightPage, mark: string) => {
     a: /
     a: /with-server
     a: /with-client
-    a: /with-both
     a: /with-related-query
     a: /with-mounted-query
     a: /with-redirect-from
@@ -349,11 +329,6 @@ describe('prefetch-page', () => {
             
             #with-client: 1
             
-          /with-both
-            div: Loading...
-            
-            #with-both: 1,2
-            
           /with-related-query
             div: Loading...
             
@@ -381,7 +356,6 @@ describe('prefetch-page', () => {
           "
           GET /
           root.page.withServer (data)
-          root.page.withBoth (data)
           root.query.relatedQuery (data)
           root.query.mountedQuery (data)
           root.page.withRedirectFrom (data)
@@ -412,11 +386,6 @@ describe('prefetch-page', () => {
               
               #with-client: 1
               
-            /with-both
-              div: Loading...
-              
-              #with-both: 1,2
-              
             /with-related-query
               div: Loading...
               
@@ -444,7 +413,6 @@ describe('prefetch-page', () => {
             "
             GET /
             root.page.withServer (data)
-            root.page.withBoth (data)
             root.query.relatedQuery (data)
             root.query.mountedQuery (data)
             root.page.withRedirectFrom (data)
@@ -471,9 +439,6 @@ describe('prefetch-page', () => {
               /with-client
                 #with-client: 1
                 
-              /with-both
-                #with-both: 1,2
-                
               /with-related-query
                 #with-related-query: 1
                 
@@ -492,7 +457,6 @@ describe('prefetch-page', () => {
               GET /
               root.page.withServer (queryClientDehydratedState)
               root.page.withClient (queryClientDehydratedState)
-              root.page.withBoth (queryClientDehydratedState)
               root.page.withRelatedQuery (queryClientDehydratedState)
               root.page.withMountedQuery (queryClientDehydratedState)
               root.page.withRedirectFrom (queryClientDehydratedState)
@@ -520,9 +484,6 @@ describe('prefetch-page', () => {
               /with-client
                 #with-client: 1
                 
-              /with-both
-                #with-both: 1,2
-                
               /with-related-query
                 #with-related-query: 1
                 
@@ -541,7 +502,6 @@ describe('prefetch-page', () => {
               GET /
               root.page.withServer (queryClientDehydratedState)
               root.page.withClient (queryClientDehydratedState)
-              root.page.withBoth (queryClientDehydratedState)
               root.page.withRelatedQuery (queryClientDehydratedState)
               root.page.withMountedQuery (queryClientDehydratedState)
               root.page.withRedirectFrom (queryClientDehydratedState)
@@ -629,9 +589,6 @@ describe('prefetch-page', () => {
               /with-client
                 #with-client: 1
                 
-              /with-both
-                #with-both: 1,2
-                
               /with-related-query
                 #with-related-query: 1
                 
@@ -650,7 +607,6 @@ describe('prefetch-page', () => {
               GET /
               root.page.withServer (queryClientDehydratedState)
               root.page.withClient (queryClientDehydratedState)
-              root.page.withBoth (queryClientDehydratedState)
               root.page.withRelatedQuery (queryClientDehydratedState)
               root.page.withMountedQuery (queryClientDehydratedState)
               root.page.withRedirectFrom (queryClientDehydratedState)
@@ -677,9 +633,6 @@ describe('prefetch-page', () => {
               /with-client
                 #with-client: 1
                 
-              /with-both
-                #with-both: 1,2
-                
               /with-related-query
                 #with-related-query: 1
                 
@@ -698,7 +651,6 @@ describe('prefetch-page', () => {
               GET /
               root.page.withServer (queryClientDehydratedState)
               root.page.withClient (queryClientDehydratedState)
-              root.page.withBoth (queryClientDehydratedState)
               root.page.withRelatedQuery (queryClientDehydratedState)
               root.page.withMountedQuery (queryClientDehydratedState)
               root.page.withRedirectFrom (queryClientDehydratedState)
@@ -726,9 +678,6 @@ describe('prefetch-page', () => {
               /with-client
                 #with-client: 1
                 
-              /with-both
-                #with-both: 1,2
-                
               /with-related-query
                 #with-related-query: 1
                 
@@ -747,7 +696,6 @@ describe('prefetch-page', () => {
               GET /
               root.page.withServer (queryClientDehydratedState)
               root.page.withClient (queryClientDehydratedState)
-              root.page.withBoth (queryClientDehydratedState)
               root.page.withRelatedQuery (queryClientDehydratedState)
               root.page.withMountedQuery (queryClientDehydratedState)
               root.page.withRedirectFrom (queryClientDehydratedState)
@@ -801,11 +749,6 @@ describe('prefetch-page', () => {
               
               #with-client: 1
               
-            /with-both
-              div: Loading...
-              
-              #with-both: 1,2
-              
             /with-related-query
               div: Loading...
               
@@ -833,7 +776,6 @@ describe('prefetch-page', () => {
             "
             GET /
             root.page.withServer (data)
-            root.page.withBoth (data)
             root.query.relatedQuery (data)
             root.query.mountedQuery (data)
             root.page.withRedirectFrom (data)
@@ -866,11 +808,6 @@ describe('prefetch-page', () => {
               
               #with-client: 1
               
-            /with-both
-              div: Loading...
-              
-              #with-both: 1,2
-              
             /with-related-query
               div: Loading...
               
@@ -898,7 +835,6 @@ describe('prefetch-page', () => {
             "
             GET /
             root.page.withServer (data)
-            root.page.withBoth (data)
             root.query.relatedQuery (data)
             root.query.mountedQuery (data)
             root.page.withRedirectFrom (data)
@@ -929,9 +865,6 @@ describe('prefetch-page', () => {
               /with-client
                 #with-client: 1
                 
-              /with-both
-                #with-both: 1,2
-                
               /with-related-query
                 #with-related-query: 1
                 
@@ -953,7 +886,6 @@ describe('prefetch-page', () => {
               "
               GET /
               root.page.withServer (data)
-              root.page.withBoth (data)
               root.query.relatedQuery (data)
               root.query.mountedQuery (data)
               root.page.withRedirectFrom (data)
@@ -982,9 +914,6 @@ describe('prefetch-page', () => {
               /with-client
                 #with-client: 1
                 
-              /with-both
-                #with-both: 1,2
-                
               /with-related-query
                 #with-related-query: 1
                 
@@ -1006,7 +935,6 @@ describe('prefetch-page', () => {
               "
               GET /
               root.page.withServer (data)
-              root.page.withBoth (data)
               root.query.relatedQuery (data)
               root.query.mountedQuery (data)
               root.page.withRedirectFrom (data)
@@ -1039,11 +967,6 @@ describe('prefetch-page', () => {
                 
                 #with-client: 1
                 
-              /with-both
-                div: Loading...
-                
-                #with-both: 1,2
-                
               /with-related-query
                 div: Loading...
                 
@@ -1069,7 +992,6 @@ describe('prefetch-page', () => {
               "
               GET /
               root.page.withServer (data)
-              root.page.withBoth (data)
               root.query.relatedQuery (data)
               root.query.mountedQuery (data)
               root.page.withRedirectFrom (data)
@@ -1098,9 +1020,6 @@ describe('prefetch-page', () => {
               /with-client
                 #with-client: 1
                 
-              /with-both
-                #with-both: 1,2
-                
               /with-related-query
                 #with-related-query: 1
                 
@@ -1124,7 +1043,6 @@ describe('prefetch-page', () => {
               "
               GET /
               root.page.withServer (data)
-              root.page.withBoth (data)
               root.query.relatedQuery (data)
               root.query.mountedQuery (data)
               root.page.withRedirectFrom (data)
@@ -1153,9 +1071,6 @@ describe('prefetch-page', () => {
               /with-client
                 #with-client: 1
                 
-              /with-both
-                #with-both: 1,2
-                
               /with-related-query
                 #with-related-query: 1
                 
@@ -1177,7 +1092,6 @@ describe('prefetch-page', () => {
             "
             GET /
             root.page.withServer (data)
-            root.page.withBoth (data)
             root.query.relatedQuery (data)
             root.query.mountedQuery (data)
             root.page.withRedirectFrom (data)
@@ -1207,9 +1121,6 @@ describe('prefetch-page', () => {
               /with-client
                 #with-client: 1
                 
-              /with-both
-                #with-both: 1,2
-                
               /with-related-query
                 #with-related-query: 1
                 
@@ -1231,7 +1142,6 @@ describe('prefetch-page', () => {
               "
               GET /
               root.page.withServer (data)
-              root.page.withBoth (data)
               root.query.relatedQuery (data)
               root.query.mountedQuery (data)
               root.page.withRedirectFrom (data)

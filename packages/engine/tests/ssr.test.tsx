@@ -113,17 +113,12 @@ describe('ssr', () => {
     `)
   })
 
-  it.concurrent('page with loader and component with loader and client loader', async () => {
+  it.concurrent('page with loader and component with loader', async () => {
     const root = Point0.lets('root', 'root').root()
     const component = root
       .lets('component', 'component')
       .loader(() => ({ z: 3 }))
-      .clientLoader(({ data }) => ({ ...data, y: 2 }))
-      .component(({ data }) => (
-        <div id="component">
-          z={data.z}, y={data.y}
-        </div>
-      ))
+      .component(({ data }) => <div id="component">z={data.z}</div>)
     const page = root
       .lets('page', 'home', '/')
       .loader(() => ({ x: 1 }))
@@ -146,7 +141,7 @@ describe('ssr', () => {
       "
       #page:
         #page-content: x=1
-        text: Loading...
+        #component: z=3
       "
     `)
     expect(await fetchesTale()).toMatchInlineSnapshot(`

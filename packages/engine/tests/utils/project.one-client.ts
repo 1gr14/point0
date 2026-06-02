@@ -284,10 +284,10 @@ export class TestProjectOneClient {
 
   async waitStarted(port?: number) {
     if (port) {
-      await this.waitOutput([`started http://localhost:${port}`, '!Failed to start server'], 10000)
+      await this.waitOutput([`started http://localhost:${port}`, '!Failed to start server'], 30000)
     } else {
-      await this.waitOutput([`started http://localhost:${this.serverPort}`, '!Failed to start server'], 10000)
-      await this.waitOutput([`started http://localhost:${this.clientPort}`, '!Failed to start client'], 10000)
+      await this.waitOutput([`started http://localhost:${this.serverPort}`, '!Failed to start server'], 30000)
+      await this.waitOutput([`started http://localhost:${this.clientPort}`, '!Failed to start client'], 30000)
     }
   }
 

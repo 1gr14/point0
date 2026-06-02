@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { createTestThings } from './utils/internal-testing.js'
 
 describe('input', () => {
-  it('params by route definition', async () => {
+  it('params by route definition (server loader)', async () => {
     const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'test', '/test/:id')
@@ -13,19 +13,10 @@ describe('input', () => {
         expect(params).toEqual({ id: '123' })
         return { x: 1 }
       })
-      .clientLoader(({ params, data }) => {
-        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
-        expect(params).toEqual({ id: '123' })
-        return { y: 2, ...data }
-      })
       .page(({ params, data }) => {
         expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
         expect(params).toEqual({ id: '123' })
-        return (
-          <div id="page">
-            {data.x},{data.y}
-          </div>
-        )
+        return <div id="page">{data.x}</div>
       })
     const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route({ id: '123' }), async ({ waitContent, tale }) => {
@@ -35,13 +26,41 @@ describe('input', () => {
         /test/123
           Loading...
 
-          #page: 1,2
+          #page: 1
         "
       `)
     })
   })
 
-  it('params by schema', async () => {
+  it('params by route definition (client loader)', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const page = root
+      .lets('page', 'test', '/test/:id')
+      .clientLoader(({ params }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        return { y: 2 }
+      })
+      .page(({ params, data }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        return <div id="page">{data.y}</div>
+      })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
+    await render(page.route({ id: '123' }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /test/123
+          Loading...
+
+          #page: 2
+        "
+      `)
+    })
+  })
+
+  it('params by schema (server loader)', async () => {
     const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'test', '/test/:id')
@@ -51,19 +70,10 @@ describe('input', () => {
         expect(params).toEqual({ id: 123 })
         return { x: 1 }
       })
-      .clientLoader(({ params, data }) => {
-        expectTypeOf<typeof params>().toEqualTypeOf<{ id: number }>()
-        expect(params).toEqual({ id: 123 })
-        return { y: 2, ...data }
-      })
       .page(({ params, data }) => {
         expectTypeOf<typeof params>().toEqualTypeOf<{ id: number }>()
         expect(params).toEqual({ id: 123 })
-        return (
-          <div id="page">
-            {data.x},{data.y}
-          </div>
-        )
+        return <div id="page">{data.x}</div>
       })
     const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route({ id: '123' }), async ({ waitContent, tale }) => {
@@ -73,13 +83,42 @@ describe('input', () => {
         /test/123
           Loading...
 
-          #page: 1,2
+          #page: 1
         "
       `)
     })
   })
 
-  it('params by custom validate fn', async () => {
+  it('params by schema (client loader)', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const page = root
+      .lets('page', 'test', '/test/:id')
+      .params(z.object({ id: z.string().transform((val) => +val) }))
+      .clientLoader(({ params }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: number }>()
+        expect(params).toEqual({ id: 123 })
+        return { y: 2 }
+      })
+      .page(({ params, data }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: number }>()
+        expect(params).toEqual({ id: 123 })
+        return <div id="page">{data.y}</div>
+      })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
+    await render(page.route({ id: '123' }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /test/123
+          Loading...
+
+          #page: 2
+        "
+      `)
+    })
+  })
+
+  it('params by custom validate fn (server loader)', async () => {
     const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'test', '/test/:id')
@@ -93,19 +132,10 @@ describe('input', () => {
         expect(params).toEqual({ id: 123 })
         return { x: 1 }
       })
-      .clientLoader(({ params, data }) => {
-        expectTypeOf<typeof params>().toEqualTypeOf<{ id: number }>()
-        expect(params).toEqual({ id: 123 })
-        return { y: 2, ...data }
-      })
       .page(({ params, data }) => {
         expectTypeOf<typeof params>().toEqualTypeOf<{ id: number }>()
         expect(params).toEqual({ id: 123 })
-        return (
-          <div id="page">
-            {data.x},{data.y}
-          </div>
-        )
+        return <div id="page">{data.x}</div>
       })
     const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route({ id: '123' }), async ({ waitContent, tale }) => {
@@ -115,13 +145,46 @@ describe('input', () => {
         /test/123
           Loading...
 
-          #page: 1,2
+          #page: 1
         "
       `)
     })
   })
 
-  it('search by schema', async () => {
+  it('params by custom validate fn (client loader)', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const page = root
+      .lets('page', 'test', '/test/:id')
+      .params((params) => {
+        return {
+          id: +params.id,
+        }
+      })
+      .clientLoader(({ params }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: number }>()
+        expect(params).toEqual({ id: 123 })
+        return { y: 2 }
+      })
+      .page(({ params, data }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: number }>()
+        expect(params).toEqual({ id: 123 })
+        return <div id="page">{data.y}</div>
+      })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
+    await render(page.route({ id: '123' }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /test/123
+          Loading...
+
+          #page: 2
+        "
+      `)
+    })
+  })
+
+  it('search by schema (server loader)', async () => {
     const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'test', '/test/:id')
@@ -133,23 +196,12 @@ describe('input', () => {
         expect(search).toEqual({ cursor: 777 })
         return { x: 1 }
       })
-      .clientLoader(({ params, search, data }) => {
-        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
-        expect(params).toEqual({ id: '123' })
-        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor: number }>()
-        expect(search).toEqual({ cursor: 777 })
-        return { y: 2, ...data }
-      })
       .page(({ params, search, data }) => {
         expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
         expect(params).toEqual({ id: '123' })
         expectTypeOf<typeof search>().toEqualTypeOf<{ cursor: number }>()
         expect(search).toEqual({ cursor: 777 })
-        return (
-          <div id="page">
-            {data.x},{data.y}
-          </div>
-        )
+        return <div id="page">{data.x}</div>
       })
     const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route({ id: '123', '?': { cursor: '777' } }), async ({ waitContent, tale }) => {
@@ -159,13 +211,46 @@ describe('input', () => {
         /test/123?cursor=777
           Loading...
 
-          #page: 1,2
+          #page: 1
         "
       `)
     })
   })
 
-  it('search by custom validate fn', async () => {
+  it('search by schema (client loader)', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const page = root
+      .lets('page', 'test', '/test/:id')
+      .search(z.object({ cursor: z.string().transform((val) => +val) }))
+      .clientLoader(({ params, search }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor: number }>()
+        expect(search).toEqual({ cursor: 777 })
+        return { y: 2 }
+      })
+      .page(({ params, search, data }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor: number }>()
+        expect(search).toEqual({ cursor: 777 })
+        return <div id="page">{data.y}</div>
+      })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
+    await render(page.route({ id: '123', '?': { cursor: '777' } }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /test/123?cursor=777
+          Loading...
+
+          #page: 2
+        "
+      `)
+    })
+  })
+
+  it('search by custom validate fn (server loader)', async () => {
     const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'test', '/test/:id')
@@ -181,23 +266,12 @@ describe('input', () => {
         expect(search).toEqual({ cursor: 777 })
         return { x: 1 }
       })
-      .clientLoader(({ params, search, data }) => {
-        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
-        expect(params).toEqual({ id: '123' })
-        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor: number }>()
-        expect(search).toEqual({ cursor: 777 })
-        return { y: 2, ...data }
-      })
       .page(({ params, search, data }) => {
         expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
         expect(params).toEqual({ id: '123' })
         expectTypeOf<typeof search>().toEqualTypeOf<{ cursor: number }>()
         expect(search).toEqual({ cursor: 777 })
-        return (
-          <div id="page">
-            {data.x},{data.y}
-          </div>
-        )
+        return <div id="page">{data.x}</div>
       })
     const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route({ id: '123', '?': { cursor: '777' } }), async ({ waitContent, tale }) => {
@@ -207,13 +281,50 @@ describe('input', () => {
         /test/123?cursor=777
           Loading...
 
-          #page: 1,2
+          #page: 1
         "
       `)
     })
   })
 
-  it('search by type (unsafe)', async () => {
+  it('search by custom validate fn (client loader)', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const page = root
+      .lets('page', 'test', '/test/:id')
+      .search((search) => {
+        return {
+          cursor: +search.cursor,
+        }
+      })
+      .clientLoader(({ params, search }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor: number }>()
+        expect(search).toEqual({ cursor: 777 })
+        return { y: 2 }
+      })
+      .page(({ params, search, data }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor: number }>()
+        expect(search).toEqual({ cursor: 777 })
+        return <div id="page">{data.y}</div>
+      })
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
+    await render(page.route({ id: '123', '?': { cursor: '777' } }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /test/123?cursor=777
+          Loading...
+
+          #page: 2
+        "
+      `)
+    })
+  })
+
+  it('search by type (unsafe) (server loader)', async () => {
     const root = Point0.lets('root', 'root').root()
     const page = root
       .lets('page', 'test', '/test/:id')
@@ -225,23 +336,12 @@ describe('input', () => {
         expect(search).toEqual({ cursor: '777' })
         return { x: 1 }
       })
-      .clientLoader(({ params, search, data }) => {
-        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
-        expect(params).toEqual({ id: '123' })
-        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor?: string }>()
-        expect(search).toEqual({ cursor: '777' })
-        return { y: 2, ...data }
-      })
       .page(({ params, search, data }) => {
         expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
         expect(params).toEqual({ id: '123' })
         expectTypeOf<typeof search>().toEqualTypeOf<{ cursor?: string }>()
         expect(search).toEqual({ cursor: '777' })
-        return (
-          <div id="page">
-            {data.x},{data.y}
-          </div>
-        )
+        return <div id="page">{data.x}</div>
       })
     const { render } = await createTestThings({ ssr: true, points: [root, page] })
     await render(page.route({ id: '123', '?': { cursor: '777' } }), async ({ waitContent, tale }) => {
@@ -251,39 +351,43 @@ describe('input', () => {
         /test/123?cursor=777
           Loading...
 
-          #page: 1,2
+          #page: 1
         "
       `)
     })
   })
 
-  it('available in mutation loader by input schema definition, and empty object in clientLoader', async () => {
+  it('search by type (unsafe) (client loader)', async () => {
     const root = Point0.lets('root', 'root').root()
-    const mutation = root
-      .lets('mutation', 'test')
-      .input(z.object({ id: z.number() }))
-      .loader(({ input }) => {
-        return { loader: { input } }
+    const page = root
+      .lets('page', 'test', '/test/:id')
+      .search<{ cursor?: string }>()
+      .clientLoader(({ params, search }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor?: string }>()
+        expect(search).toEqual({ cursor: '777' })
+        return { y: 2 }
       })
-      .clientLoader(({ data, ...rest }) => {
-        // expectTypeOf<typeof input>().toEqualTypeOf<Record<never, never>>()
-        return { clientLoader: { input: (rest as any).input || 'undefined' }, ...data }
+      .page(({ params, search, data }) => {
+        expectTypeOf<typeof params>().toEqualTypeOf<{ id: string }>()
+        expect(params).toEqual({ id: '123' })
+        expectTypeOf<typeof search>().toEqualTypeOf<{ cursor?: string }>()
+        expect(search).toEqual({ cursor: '777' })
+        return <div id="page">{data.y}</div>
       })
-      .mutation()
-    expectTypeOf<typeof mutation.Infer.InputRaw>().toEqualTypeOf<{ id: number }>()
-    expectTypeOf<typeof mutation.Infer.IsInputOptional>().toEqualTypeOf<false>()
-    expectTypeOf<typeof mutation.Infer.InputRawOrUndefined>().toEqualTypeOf<{ id: number }>()
-    const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
-    const result = await loadPointYml(mutation, { id: 123 })
-    expect(result).toMatchInlineSnapshot(`
-      "
-      clientLoader: 
-        input: undefined
-      loader: 
-        input: 
-          id: 123
-      "
-    `)
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
+    await render(page.route({ id: '123', '?': { cursor: '777' } }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /test/123?cursor=777
+          Loading...
+
+          #page: 2
+        "
+      `)
+    })
   })
 
   it('works with unions', async () => {
@@ -419,33 +523,6 @@ describe('input', () => {
     `)
   })
 
-  it('available in mutation loader and clientLoader by schema definition', async () => {
-    const root = Point0.lets('root', 'root').root()
-    const mutation = root
-      .lets('mutation', 'test')
-      .input(z.object({ id: z.string() }))
-      .loader(({ input }) => {
-        return { loader: { input } }
-      })
-      .clientInput(z.object({ sn: z.number() }))
-      .clientLoader(({ input, data }) => {
-        return { clientLoader: { input }, ...data }
-      })
-      .mutation()
-    const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
-    const result = await loadPointYml(mutation, { id: '123', sn: 234 })
-    expect(result).toMatchInlineSnapshot(`
-      "
-      clientLoader: 
-        input: 
-          sn: 234
-      loader: 
-        input: 
-          id: "123"
-      "
-    `)
-  })
-
   it('available in mutation loader by schema definition and function and generic', async () => {
     const root = Point0.lets('root', 'root').root()
     const mutation = root
@@ -568,26 +645,45 @@ describe('input', () => {
     `)
   })
 
-  it('can be combined in different ways', async () => {
+  it('input and sharedInput combine for the server loader', async () => {
     const root = Point0.lets('root', 'root').root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.object({ a: z.string() }))
-      .clientInput(z.object({ b: z.number() }))
       .sharedInput(z.object({ c: z.number() }))
-      .clientInput(z.object({ d: z.boolean() }))
       .input(z.object({ e: z.number() }))
       .loader(({ input }) => {
         expectTypeOf<typeof input>().toEqualTypeOf<{ a: string; c: number; e: number }>()
         return { loader: { input } }
       })
-      .clientLoader(({ input, data }) => {
+      .mutation()
+    const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
+    const result = await loadPointYml(mutation, { a: '123', c: 345, e: 456 })
+    expect(result).toMatchInlineSnapshot(`
+      "
+      loader: 
+        input: 
+          a: "123"
+          c: 345
+          e: 456
+      "
+    `)
+  })
+
+  it('clientInput and sharedInput combine for the client loader', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const mutation = root
+      .lets('mutation', 'test')
+      .clientInput(z.object({ b: z.number() }))
+      .sharedInput(z.object({ c: z.number() }))
+      .clientInput(z.object({ d: z.boolean() }))
+      .clientLoader(({ input }) => {
         expectTypeOf<typeof input>().toEqualTypeOf<{ b: number; c: number; d: boolean }>()
-        return { clientLoader: { input }, ...data }
+        return { clientLoader: { input } }
       })
       .mutation()
     const { loadPointYml } = await createTestThings({ ssr: true, points: [root, mutation] })
-    const result = await loadPointYml(mutation, { a: '123', b: 234, c: 345, d: true, e: 456 })
+    const result = await loadPointYml(mutation, { b: 234, c: 345, d: true })
     expect(result).toMatchInlineSnapshot(`
       "
       clientLoader: 
@@ -595,11 +691,6 @@ describe('input', () => {
           b: 234
           c: 345
           d: true
-      loader: 
-        input: 
-          a: "123"
-          c: 345
-          e: 456
       "
     `)
   })

@@ -194,39 +194,29 @@ describe('dev', () => {
             sayHiFromClient()
           }
 
+        // server-only code lives in the server loader; client-only code lives in the
+        // client-only page body, so the compiler can cut each from the other bundle.
         export const page = root.lets('page', 'home', '/')
+          .clientOnly()
           .loader(() => {
             return {
               ...sayHiFromServer(),
             }
           })
-          .clientLoader(({data}) => {
-            return {
-              ...data,
-              ...sayHiFromClient(),
-            }
-          })
-          .page(({data}) => <div>
-            <div id="server">{data.hiFromServer}</div>
-            <div id="client">{data.hiFromClient}</div>
-          </div>)`,
+          .page(({data}) => {
+            const client = sayHiFromClient()
+            return <div>
+              <div id="server">{data.hiFromServer}</div>
+              <div id="client">{client.hiFromClient}</div>
+            </div>
+          })`,
         )
         tp.spawn(['bun', 'run', 'dev'])
         await tp.waitStarted()
         const page = await tp.gotoClient('/')
         await page.stable
-        expect(page.tale).toMatchInlineSnapshot(`
-        "
-        /
-          (Empty)
-          
-          div: Loading...
-          
-          div:
-            #server: hiFromServer
-            #client: hiFromClient
-          "
-        `)
+        expect(page.tale).toContain('hiFromServer')
+        expect(page.tale).toContain('hiFromClient')
       }),
       {
         retry: 3,

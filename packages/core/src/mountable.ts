@@ -1453,7 +1453,7 @@ export type MountAction<
 export type IsQueryShouldBeFinalized<
   TPointType extends PointType,
   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
-> = TPointType extends 'serverStage' | 'clientStage'
+> = TPointType extends 'loadedStage'
   ? TLetsReadyPointType extends QueryableReadyPointType
     ? true
     : false

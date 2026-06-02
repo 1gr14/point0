@@ -86,7 +86,7 @@ export type QueryKey = readonly [
     scope: PointsScope
     type: PointType
     name: PointName
-    mode: 'server' | 'client' | 'combined'
+    mode: 'server' | 'client'
     finiteness: 'finite' | 'infinite'
     tags: string[]
     output: FetchServerOutputType
@@ -273,10 +273,9 @@ export type PointType =
   | 'mutation'
   | 'action'
   | 'coreStage'
-  | 'serverStage'
-  | 'clientStage'
+  | 'loadedStage'
   | 'finalStage'
-export type StagePointType = 'coreStage' | 'serverStage' | 'clientStage' | 'finalStage'
+export type StagePointType = 'coreStage' | 'loadedStage' | 'finalStage'
 export type ReadyPointType = Exclude<PointType, StagePointType>
 export type RequestableReadyPointType = Exclude<ReadyPointType, 'root' | 'base' | 'plugin'>
 export type MountablePointType = 'page' | 'component' | 'layout' | 'provider'
@@ -1378,27 +1377,6 @@ export type UseClientQueryResult<
     : TQueryResultType extends 'query'
       ? NarrowQueryComponentPropStatus<UseQueryResult<TClientLoaderOutput, TError>, TStatus>
       : never
-export type UseCombinedQueryResult<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TError extends ErrorPoint0,
-  TStatus extends 'pending' | 'error' | 'success',
-> = TClientLoaderOutput extends UndefinedLoaderOutput
-  ? never
-  : TServerLoaderOutput extends UndefinedLoaderOutput
-    ? never
-    : TQueryResultType extends 'infiniteQuery'
-      ? NarrowQueryComponentPropStatus<
-          UseInfiniteQueryResult<InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>, TError>,
-          TStatus
-        >
-      : TQueryResultType extends 'query'
-        ? NarrowQueryComponentPropStatus<
-            UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, TError>,
-            TStatus
-          >
-        : never
 export type UsePointQueryResult<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1406,9 +1384,8 @@ export type UsePointQueryResult<
   TError extends ErrorPoint0,
   TStatus extends 'pending' | 'error' | 'success' = any,
 > = TServerLoaderOutput extends Data
-  ? TClientLoaderOutput extends Data
-    ? UseCombinedQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TError, TStatus>
-    : UseServerQueryResult<TQueryResultType, TServerLoaderOutput, TError, TStatus>
+  ? // only one loader per point, so a server loader is always the sole loader here
+    UseServerQueryResult<TQueryResultType, TServerLoaderOutput, TError, TStatus>
   : TClientLoaderOutput extends Data
     ? UseClientQueryResult<TQueryResultType, TClientLoaderOutput, TError, TStatus>
     : never
@@ -1455,7 +1432,7 @@ export type ScrollPositionGetter = () => { x: number; y: number } | undefined
 export type ScrollPositionSetter = (position: { x: number; y: number }) => void
 export type ScrollPositionRestorePolicy = ({ prevLocation }: { prevLocation: AnyLocation | null }) => boolean | null
 
-export type QueryMode = 'server' | 'client' | 'combined'
+export type QueryMode = 'server' | 'client'
 export type PrefetchPagePolicy =
   | 'serverQuery'
   | 'clientQuery'
@@ -2029,30 +2006,26 @@ export type AssertNoForbiddenMethodsIfNotSuitableStage<
     | 'body'
     | 'headers'
     | 'cookies',
-> = TPointType extends 'serverStage'
-  ? TMethod extends never // nothing is forbiden
-    ? ShowError<`You can not use ${TMethod}() after calling .loader()`>
+  // After the single loader (loadedStage) — or after finalizing (finalStage) — no setup methods are
+  // allowed: ctx, the input schemas and the one loader must all be defined before the loader. Both
+  // stages forbid the exact same set; they differ elsewhere (loadedStage still allows finalizers and
+  // drives the mountable self-query finalization, finalStage does not).
+> = TPointType extends 'loadedStage' | 'finalStage'
+  ? TMethod extends
+      | 'loader'
+      | 'clientLoader'
+      | 'ctx'
+      | 'input'
+      | 'sharedInput'
+      | 'clientInput'
+      | 'params'
+      | 'search'
+      | 'body'
+      | 'headers'
+      | 'cookies'
+    ? ShowError<`You can not use ${TMethod}() after the loader — only one loader per point, and ctx/input/schemas must be defined before it`>
     : unknown
-  : TPointType extends 'clientStage'
-    ? TMethod extends 'loader' | 'ctx' | 'input' | 'sharedInput' | 'params' | 'search' | 'body' | 'headers' | 'cookies'
-      ? ShowError<`You can not use ${TMethod}() in client loaders stage`>
-      : unknown
-    : TPointType extends 'finalStage'
-      ? TMethod extends
-          | 'loader'
-          | 'ctx'
-          | 'input'
-          | 'sharedInput'
-          | 'clientLoader'
-          | 'clientInput'
-          | 'params'
-          | 'search'
-          | 'body'
-          | 'headers'
-          | 'cookies'
-        ? ShowError<`You can not use ${TMethod}() in final stage, add it somewhere earlier`>
-        : unknown
-      : unknown
+  : unknown
 export type AssertResponseNotAllowed<TOutput, TPointType extends PointType> = TOutput extends Response
   ? ShowError<`Output can not be type of "Response" for point of type "${TPointType}"`>
   : unknown

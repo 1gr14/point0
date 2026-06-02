@@ -733,7 +733,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     | {
         isServer: boolean
         isClient: boolean
-        isCombined: boolean
         scope: PointsScope
         pointType: ReadyPointType
         pointName: PointName
@@ -760,9 +759,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     ) {
       return undefined
     }
-    const isServer = mode === 'server' || mode === 'combined'
-    const isClient = mode === 'client' || mode === 'combined'
-    const isCombined = mode === 'combined'
+    const isServer = mode === 'server'
+    const isClient = mode === 'client'
     const isInfiniteQuery = finiteness === 'infinite'
     const serverHash =
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -770,7 +768,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     return {
       isServer,
       isClient,
-      isCombined,
       scope,
       pointType: type as ReadyPointType,
       pointName: name,
@@ -963,10 +960,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
             return suitableMarker.input
           })()
           if (exactPoint) {
+            // suitableMarkers are already filtered to server queries, and each point has a single
+            // loader, so the prefetch resolves to the server loader automatically.
             if (suitableMarker.isInfiniteQuery) {
-              await exactPoint.prefetchInfiniteQuery(fixedInput, undefined, { mode: 'server' })
+              await exactPoint.prefetchInfiniteQuery(fixedInput, undefined)
             } else {
-              await exactPoint.prefetchQuery(fixedInput, undefined, { mode: 'server' })
+              await exactPoint.prefetchQuery(fixedInput, undefined)
             }
           }
         }),

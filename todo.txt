@@ -32,6 +32,7 @@ mcp as comments
 
 # Runtime
 ---
+? Сделать возможность на сервере читать поинтсы прямо из лези, не читая их заранее в дев среде
 ? build: {watch}, dev: {watch}, generate: {watch}
 ? Из компилера не учитывать импорты в которых только тайп при импорт протекшене (они сами удалятся)
 optimize compiler more, do it faster
@@ -74,8 +75,14 @@ normalize scroll restoration (it is trash now)
 
 # Extra
 
+
+Закоммитить в отдельную ветку удаление шаред квери
 Лоадер только один разрешить
 Запретить комбайнед квери
+Дописать просто тест, что нельзя иметь два лоадера и два разных лоадера
+
+Добавить тесты вкомпонент и провайдер на предмет использования короткой нотации
+Коды ошибок сделать мапой, и переиспользовать на местах в поинт0
 
 with query, }>(point: TPoint, ...args: TPoint['Infer']['IsInputOptional'] extends true ? [ →to overrides, becouse with incorrect input it miss value
 
@@ -89,10 +96,11 @@ allow related query in plugins, and just location there
 
 in example rename file navigate to navigation
 
-
 docs mcp limit, pagination
 
 compiler option experimental_preserve_syntax so bun still can works
+
+test coverage
 
 пофиксить экзамплы
 пофиксить криэйт апп

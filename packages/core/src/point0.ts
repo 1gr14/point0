@@ -5015,12 +5015,8 @@ export class Point0<
           // AssertNoArrayReturn<InferLoaderResponseFnOutput<TLoaderResponseFn>, 'Loader fn should not return array'> &
           AssertResponseNotAllowed<InferLoaderFnOutput<TLoaderResponseFn>, ReadyPointTypeOrNever<TLetsReadyPointType>>, // AssertNotUnknownLoaderOutput<TNewServerLoaderOutput>
   ): NiceStagePoint<
-    InferLoaderFnOutput<TLoaderResponseFn> extends Response ? 'clientStage' : 'serverStage',
-    // InferLoaderFnOutput<TLoaderResponseFn> extends Response
-    //   ? 'clientStage'
-    //   : InferLoaderFnOutput<TLoaderResponseFn> extends React.ReactElement
-    //     ? 'clientStage'
-    //     : 'serverStage',
+    // one loader per point: always move to the single "loaded" stage (no more loaders/setup, only finalize)
+    'loadedStage',
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TError,
@@ -5043,10 +5039,14 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
+  // no-arg passthrough loader: marks the point as having a (server) loader without custom logic,
+  // so the point still gets a server request/ctx. Allowed only before the single loader.
   loader(
-    ...args: TPointType extends 'clientStage' ? [AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>] : []
+    ...args: TPointType extends 'loadedStage' | 'finalStage'
+      ? [AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>]
+      : []
   ): NiceStagePoint<
-    'clientStage',
+    'loadedStage',
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TError,
@@ -5063,7 +5063,6 @@ export class Point0<
     TBodySchema,
     THeadersSchema,
     TCookiesSchema,
-    // NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
     TQueryResultType,
     TOuterProps,
     TInnerProps,
@@ -5085,7 +5084,7 @@ export class Point0<
       any
     >
     return this._continue({
-      type: 'serverStage', // it should be clientStage if loader returns response, but we know it only by types, we do not know it in runtime, bu it is ok to have here for runtime serverStage. Not good, but ok.
+      type: 'loadedStage',
       // _queryResultType: this._normalizeQueryResultType('query'),
       _hasServerLoader: true,
       _serverExecuteActions: [
@@ -5113,7 +5112,7 @@ export class Point0<
             ReadyPointTypeOrNever<TLetsReadyPointType>
           >,
   ): NiceStagePoint<
-    InferClientLoaderFnOutput<TClientLoaderFn> extends Response ? 'finalStage' : 'clientStage', // response can happen only in mutation, so we not care about this happen in mountable
+    InferClientLoaderFnOutput<TClientLoaderFn> extends Response ? 'finalStage' : 'loadedStage', // response can happen only in mutation, so we not care about this happen in mountable
     ReadyPointTypeOrNever<TLetsReadyPointType>,
     TRequiredCtx,
     TError,
@@ -5146,10 +5145,9 @@ export class Point0<
     // in case if we shake clientLoader for server without ssr side
     clientLoaderFn ||= (o: any) => o.data
     return this._continue({
-      // it should be finalStage if loader returns response, but we know it only by types,
-      // we do not know it in runtime, bu it is ok to have here for runtime serverStage. Not good, but ok.
-      // it will be really finalized in runtime in one of next methods
-      type: 'clientStage',
+      // it should be finalStage if the client loader returns a response, but we know that only by types;
+      // ok to keep loadedStage at runtime — it is really finalized later by one of the finalizers
+      type: 'loadedStage',
       // _queryResultType: this._normalizeQueryResultType('query'),
       _clientExecuteActions: [
         ...this._clientExecuteActions,
@@ -8265,7 +8263,7 @@ export class Point0<
     return Point0._isMountablePointType(this._letsReadyPointType || this.type)
   }
   private _isMountableQueryShouldBeFinalized(): boolean {
-    return this._isMountablePoint() && (this.type === 'serverStage' || this.type === 'clientStage')
+    return this._isMountablePoint() && this.type === 'loadedStage'
   }
 
   _isRoot(): boolean {
@@ -8624,18 +8622,10 @@ export class Point0<
       return query as never
     }
 
-    if (!serverQueryEnabled && clientQueryEnabled) {
-      const query = this._useClientQuery({
-        input: input as never,
-        queryOptions,
-      })
-      return query as never
-    }
-
-    const query = this._useCombinedQuery({
+    // only one loader per point — any non-server query is a client query
+    const query = this._useClientQuery({
       input: input as never,
       queryOptions,
-      fetchOptions: options?.fetchOptions,
     })
     return query as never
   }
@@ -8676,18 +8666,10 @@ export class Point0<
       return query as never
     }
 
-    if (!serverQueryEnabled && clientQueryEnabled) {
-      const query = this._useClientInfiniteQuery({
-        input: input as never,
-        infiniteQueryOptions,
-      })
-      return query as never
-    }
-
-    const query = this._useCombinedInfiniteQuery({
+    // only one loader per point — any non-server query is a client query
+    const query = this._useClientInfiniteQuery({
       input: input as never,
       infiniteQueryOptions,
-      fetchOptions: options?.fetchOptions,
     })
     return query as never
   }
@@ -9179,36 +9161,7 @@ export class Point0<
     ]
   }
 
-  private _getCombinedQueryKey({
-    input = {} as never,
-    outputType = 'data',
-    isInfiniteQuery,
-  }: {
-    input: InputRaw
-    outputType?: FetchServerOutputType
-    isInfiniteQuery: boolean
-  }): QueryKey {
-    return [
-      'point0',
-      {
-        scope: this.scope,
-        type: this.type,
-        name: this.name,
-        mode: 'combined',
-        finiteness: isInfiniteQuery ? 'infinite' : 'finite',
-        tags: this.tags,
-        output: outputType,
-        input: this._getTransformer().stringify(
-          this._rawInputToRoutedRawInputForQueryKey({ inputRaw: input as never }),
-        ) as string,
-      },
-    ]
-  }
-
   _getFinalQueryMode(): QueryMode {
-    if (this._hasClientLoader() && this._hasServerLoader) {
-      return 'combined'
-    }
     if (this._hasClientLoader()) {
       return 'client'
     }
@@ -9222,29 +9175,19 @@ export class Point0<
     input = {},
     outputType,
     queryResultType,
-    mode,
   }: {
     input?: InputRaw | void
     outputType?: FetchServerOutputType
     queryResultType: QueryResultType
-    mode?: QueryMode
   }): QueryKey {
-    const hasClientLoader = this._hasClientLoader()
-    const hasServerLoader = !!this._hasServerLoader
-    if (mode ? mode === 'combined' : hasClientLoader && hasServerLoader) {
-      return this._getCombinedQueryKey({
-        input: input as never,
-        outputType: outputType,
-        isInfiniteQuery: queryResultType === 'infiniteQuery',
-      })
-    }
-    if (mode ? mode === 'client' : hasClientLoader) {
+    // only one loader per point, so the query mode is always determined by which loader exists
+    if (this._hasClientLoader()) {
       return this._getClientQueryKey({
         input: input as never,
         isInfiniteQuery: queryResultType === 'infiniteQuery',
       })
     }
-    if (mode ? mode === 'server' : hasServerLoader) {
+    if (this._hasServerLoader) {
       return this._getServerQueryKey({
         input: input as never,
         outputType: outputType,
@@ -9263,12 +9206,11 @@ export class Point0<
       TSearchSchema,
       TBodySchema
     >,
-    options?: { outputType?: FetchServerOutputType; mode?: QueryMode },
+    options?: { outputType?: FetchServerOutputType },
   ): QueryKey {
     return this._getFinalQueryKey({
       input,
       outputType: options?.outputType,
-      mode: options?.mode,
       queryResultType: 'query',
     })
   }
@@ -9282,12 +9224,11 @@ export class Point0<
       TSearchSchema,
       TBodySchema
     >,
-    options?: { outputType?: FetchServerOutputType; mode?: QueryMode },
+    options?: { outputType?: FetchServerOutputType },
   ): QueryKey {
     return this._getFinalQueryKey({
       input,
       outputType: options?.outputType,
-      mode: options?.mode,
       queryResultType: 'infiniteQuery',
     })
   }
@@ -9506,127 +9447,6 @@ export class Point0<
     } as never
   }
 
-  private _getCombinedQueryOptions({
-    input = {} as never,
-    queryClient = _ss.__POINT0_QUERY_CLIENT__.get(),
-    queryOptions,
-    fetchOptions,
-  }: {
-    input: InputRaw
-    queryClient?: QueryClient
-    queryOptions?: ExtraUseQueryOptions | undefined
-    fetchOptions?: FetchOptions | undefined
-  }): UseQueryOptions<
-    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-    TError,
-    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-    QueryKey
-  > {
-    const queryKey = this._getCombinedQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
-    const _eventData = {
-      point: this as never as AnyPoint,
-      input,
-      queryKey,
-      mode: 'combined' as const,
-      error: undefined,
-      data: undefined,
-    }
-    const meta = { point: this.toString(), input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
-    const queryFn = async () => {
-      this._emit('pointQueryStart', _eventData, meta)
-      try {
-        const serverData = await (async () => {
-          const serverKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
-          const cachedServerData = queryClient.getQueryData(serverKey)
-          if (cachedServerData) {
-            return cachedServerData
-          }
-          const serverOpts = this._getServerQueryOptions({
-            input,
-            queryOptions,
-            fetchOptions,
-            outputType: 'data',
-            queryClient,
-          })
-          return await queryClient.fetchQuery(serverOpts as any)
-        })()
-
-        const clientOpts = this._getClientQueryOptions({
-          input: input as never,
-          queryOptions,
-          serverData: serverData as never,
-        })
-        const data = await queryClient.fetchQuery(clientOpts as any)
-        const eventData = {
-          ..._eventData,
-          redirect: undefined,
-          data: data as Data,
-        }
-        this._emit('pointQuerySettled', eventData, meta)
-        this._emit('pointQuerySuccess', eventData, meta)
-        return data
-      } catch (error) {
-        const error0 = this._Error.from(error)
-        if (error0.redirect) {
-          const eventData = {
-            ..._eventData,
-            error: undefined,
-            redirect: error0.redirect,
-          }
-          const redirectMeta = { ...meta, redirect: error0.redirect.serialize() }
-          this._emit('pointQuerySettled', eventData, redirectMeta)
-          this._emit('pointQuerySuccess', eventData, redirectMeta)
-          throw error0
-        } else {
-          const eventData = {
-            ..._eventData,
-            error: error0,
-            redirect: undefined,
-          }
-          this._emit('pointQuerySettled', eventData, meta)
-          this._emit('pointQueryError', eventData, meta)
-          throw error0
-        }
-      }
-    }
-    const mountableDefaultQueryOptions =
-      {
-        page: this._defaultPageQueryOptions,
-        component: this._defaultComponentQueryOptions,
-        layout: this._defaultLayoutQueryOptions,
-        provider: this._defaultProviderQueryOptions,
-      }[this.type as string] || {}
-    const megedQueryOptions = mergeQueryOptions(
-      this._defaultQueryOptions,
-      mountableDefaultQueryOptions,
-      this._queryOptions,
-      queryOptions,
-    )
-    const result = {
-      ...megedQueryOptions,
-      queryKey,
-      queryFn,
-      retry: ((failureCount, error) => {
-        if (error.redirect) {
-          return false
-        }
-        if (typeof megedQueryOptions.retry === 'boolean') {
-          return megedQueryOptions.retry
-        }
-        if (typeof megedQueryOptions.retry === 'function') {
-          return megedQueryOptions.retry(failureCount, error)
-        }
-        return (megedQueryOptions.retry ?? 3) > failureCount
-      }) satisfies UseQueryOptions['retry'],
-    } as UseQueryOptions<
-      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-      TError,
-      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-      QueryKey
-    >
-    return result
-  }
-
   getQueryOptions(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -9641,7 +9461,6 @@ export class Point0<
       queryClient?: QueryClient
       fetchOptions?: FetchOptions | undefined
       outputType?: FetchServerOutputType
-      mode?: QueryMode
     },
   ): UseQueryOptions<
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
@@ -9651,22 +9470,15 @@ export class Point0<
   > {
     const hasClientLoader = this._hasClientLoader()
     const hasServerLoader = !!this._hasServerLoader
-    const { queryClient, fetchOptions, outputType, mode = 'combined' } = options || {}
-    if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'combined')) {
-      return this._getCombinedQueryOptions({
-        input: input as never,
-        queryClient,
-        queryOptions,
-        fetchOptions,
-      }) as never
-    }
-    if (hasClientLoader && (mode === 'client' || mode === 'combined')) {
+    const { queryClient, fetchOptions, outputType } = options || {}
+    // only one loader per point — pick whichever exists
+    if (hasClientLoader) {
       return this._getClientQueryOptions({
         input: input as never,
         queryOptions,
       }) as never
     }
-    if (hasServerLoader && (mode === 'server' || mode === 'combined')) {
+    if (hasServerLoader) {
       return this._getServerQueryOptions({
         input: input as never,
         queryOptions,
@@ -9928,149 +9740,6 @@ export class Point0<
     } as never
   }
 
-  private _getCombinedInfiniteQueryOptions({
-    input = {} as never,
-    infiniteQueryOptions,
-    fetchOptions,
-    queryClient,
-  }: {
-    input: InputRaw
-    fetchOptions?: FetchOptions | undefined
-    infiniteQueryOptions?:
-      | ExtraUseInfiniteQueryOptions<
-          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
-          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-          TError,
-          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-          QueryKey,
-          unknown
-        >
-      | undefined
-    queryClient?: QueryClient
-  }): UseInfiniteQueryOptions<
-    FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
-    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-    TError,
-    InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-    QueryKey
-  > {
-    const queryKey = this._getCombinedQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
-    const _eventData = {
-      point: this as never as AnyPoint,
-      input,
-      queryKey,
-      mode: 'combined' as const,
-      error: undefined,
-      data: undefined,
-    }
-    const meta = { point: this.toString(), input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
-    const queryFn = async (ctx: { pageParam: unknown }) => {
-      try {
-        this._emit('pointInfiniteQueryStart', _eventData, meta)
-        const pageParam = ctx.pageParam ?? this._infiniteQueryOptions.initialPageParam
-        const serverData = await (async () => {
-          queryClient ??= _ss.__POINT0_QUERY_CLIENT__.get()
-          const infiniteServerKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
-          const infiniteCachedServerData = queryClient.getQueryData(infiniteServerKey)
-          if (infiniteCachedServerData) {
-            const pageParamIndex = (infiniteCachedServerData as any).pageParams.findIndex(
-              (p: unknown) => p === pageParam,
-            )
-            if (pageParamIndex !== -1) {
-              return (infiniteCachedServerData as any).pages[pageParamIndex]
-            }
-          }
-          const inputWithPageParam = this._toInputWithPageParam({ input, pageParam })
-          const finiteServerKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
-          const finiteCachedServerData = queryClient.getQueryData(finiteServerKey)
-          if (finiteCachedServerData) {
-            return finiteCachedServerData
-          }
-          const serverFinityOpts = this._getServerQueryOptions({
-            input: inputWithPageParam as never,
-            queryOptions: infiniteQueryOptions,
-            fetchOptions,
-            outputType: 'data',
-            queryClient,
-          })
-          const serverFinityResult = await queryClient.fetchQuery(serverFinityOpts as any)
-          queryClient.setQueryData(infiniteServerKey, (data: { pages: any[]; pageParams: unknown[] } | undefined) => {
-            const pageParamIndex = data?.pageParams.findIndex((p: unknown) => p === pageParam)
-            if (pageParamIndex === undefined || pageParamIndex === -1) {
-              return data
-            }
-            return {
-              pages: [...(data?.pages || []), serverFinityResult],
-              pageParams: [...(data?.pageParams || []), pageParam],
-            }
-          })
-          return serverFinityResult
-        })()
-
-        const clientOpts = this._getClientInfiniteQueryOptions({
-          input: input as never,
-          serverData: serverData as never,
-          infiniteQueryOptions,
-        })
-        const clientData = await (clientOpts as any).queryFn({ ...input, pageParam })
-        const eventData = {
-          ..._eventData,
-          redirect: undefined,
-          data: clientData as Data,
-        }
-        this._emit('pointInfiniteQuerySettled', eventData, meta)
-        this._emit('pointInfiniteQuerySuccess', eventData, meta)
-        return clientData
-      } catch (error) {
-        const error0 = this._Error.from(error)
-        if (error0.redirect) {
-          const eventData = {
-            ..._eventData,
-            error: undefined,
-            redirect: error0.redirect,
-          }
-          const redirectMeta = { ...meta, redirect: error0.redirect.serialize() }
-          this._emit('pointInfiniteQuerySettled', eventData, redirectMeta)
-          this._emit('pointInfiniteQuerySuccess', eventData, redirectMeta)
-          throw error0
-        } else {
-          const eventData = {
-            ..._eventData,
-            error: error0,
-            redirect: undefined,
-          }
-          this._emit('pointInfiniteQuerySettled', eventData, meta)
-          this._emit('pointInfiniteQueryError', eventData, meta)
-          throw error0
-        }
-      }
-    }
-    const megedQueryOptions = mergeInfiniteQueryOptions(
-      this._defaultQueryOptions as UseInfiniteQueryOptions<any> | undefined,
-      this._defaultInfiniteQueryOptions as UseInfiniteQueryOptions<any> | undefined,
-      this._infiniteQueryOptions as UseInfiniteQueryOptions<any> | undefined,
-      infiniteQueryOptions as UseInfiniteQueryOptions<any> | undefined,
-    )
-    const result = {
-      ...megedQueryOptions,
-      queryKey,
-      queryFn,
-      retry: ((failureCount, error) => {
-        if (error.redirect) {
-          return false
-        }
-        if (typeof megedQueryOptions.retry === 'boolean') {
-          return megedQueryOptions.retry
-        }
-        if (typeof megedQueryOptions.retry === 'function') {
-          return megedQueryOptions.retry(failureCount, error)
-        }
-        return (megedQueryOptions.retry ?? 3) > failureCount
-      }) satisfies UseQueryOptions['retry'],
-    } as never
-    return result
-  }
-
   getInfiniteQueryOptions(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -10094,7 +9763,6 @@ export class Point0<
       queryClient?: QueryClient
       fetchOptions?: FetchOptions | undefined
       outputType?: FetchServerOutputType
-      mode?: QueryMode
     },
   ): UseInfiniteQueryOptions<
     FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
@@ -10103,24 +9771,17 @@ export class Point0<
     InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
     QueryKey
   > {
-    const { queryClient, fetchOptions, outputType, mode = 'combined' } = options || {}
+    const { queryClient, fetchOptions, outputType } = options || {}
     const hasClientLoader = this._hasClientLoader()
     const hasServerLoader = !!this._hasServerLoader
-    if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'combined')) {
-      return this._getCombinedInfiniteQueryOptions({
-        input: input as never,
-        infiniteQueryOptions,
-        fetchOptions,
-        queryClient,
-      }) as never
-    }
-    if (hasClientLoader && (mode === 'client' || mode === 'combined')) {
+    // only one loader per point — pick whichever exists
+    if (hasClientLoader) {
       return this._getClientInfiniteQueryOptions({
         input: input as never,
         infiniteQueryOptions,
       }) as never
     }
-    if (hasServerLoader && (mode === 'server' || mode === 'combined')) {
+    if (hasServerLoader) {
       return this._getServerInfiniteQueryOptions({
         input: input as never,
         infiniteQueryOptions,
@@ -10157,26 +9818,6 @@ export class Point0<
       this._getClientQueryOptions({
         input,
         queryOptions,
-      }),
-    )
-  }
-
-  private _useCombinedQuery({
-    input = {} as never,
-    queryOptions,
-    fetchOptions,
-  }: {
-    input: InputRaw
-    queryOptions?: ExtraUseQueryOptions | undefined
-    fetchOptions?: FetchOptions | undefined
-  }): UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, TError> {
-    const queryClient = useQueryClient()
-    return useQuery(
-      this._getCombinedQueryOptions({
-        input,
-        queryOptions,
-        queryClient,
-        fetchOptions,
       }),
     )
   }
@@ -10229,34 +9870,6 @@ export class Point0<
     const infiniteQueryOptions = this._getClientInfiniteQueryOptions({
       input,
       infiniteQueryOptions: providedInfiniteQueryOptions,
-    })
-    return useInfiniteQuery(infiniteQueryOptions) as never
-  }
-
-  private _useCombinedInfiniteQuery({
-    input = {} as never,
-    infiniteQueryOptions: providedInfiniteQueryOptions,
-    fetchOptions,
-  }: {
-    input: InputRaw
-    infiniteQueryOptions?:
-      | ExtraUseInfiniteQueryOptions<
-          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
-          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-          TError,
-          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-          QueryKey,
-          unknown
-        >
-      | undefined
-    fetchOptions?: FetchOptions | undefined
-  }): UseInfiniteQueryResult<InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>, TError> {
-    const queryClient = useQueryClient()
-    const infiniteQueryOptions = this._getCombinedInfiniteQueryOptions({
-      input,
-      infiniteQueryOptions: providedInfiniteQueryOptions,
-      queryClient,
-      fetchOptions,
     })
     return useInfiniteQuery(infiniteQueryOptions) as never
   }
@@ -10564,7 +10177,7 @@ export class Point0<
     input: inputProvided,
     finiteOrInfinite: finiteOrInfiniteProvided,
   }: {
-    mode: QueryMode | undefined
+    mode?: QueryMode
     outputType: FetchServerOutputType | undefined
     input: InputRaw | ((input: InputRaw) => boolean) | true | undefined
     finiteOrInfinite: 'finite' | 'infinite'
@@ -10607,7 +10220,6 @@ export class Point0<
       if (obj.mode !== modeProvided) {
         return false
       }
-      // mode can be also combined, then it is ok
       if (obj.finiteness !== finiteOrInfiniteProvided) {
         return false
       }
@@ -10632,7 +10244,7 @@ export class Point0<
     }
   }
 
-  async fetchQuery<TMode extends QueryMode = 'combined'>(
+  async fetchQuery(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
       TServerInputSchema,
@@ -10645,24 +10257,15 @@ export class Point0<
     options?: {
       queryClient?: QueryClient
       fetchOptions?: FetchOptions
-      mode?: TMode
       outputType?: FetchServerOutputType
     },
-  ): Promise<
-    TMode extends 'server'
-      ? QueriedFiniteData<TServerLoaderOutput>
-      : TMode extends 'client'
-        ? QueriedFiniteData<TClientLoaderOutput>
-        : TMode extends 'combined'
-          ? QueriedFiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
-          : never
-  > {
+  ): Promise<QueriedFiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>> {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
     const normalizedQueryOptions = this.getQueryOptions(input, queryOptions, options)
     return (await queryClient.fetchQuery(normalizedQueryOptions)) as never
   }
 
-  getQueryData<TMode extends QueryMode = 'combined'>(
+  getQueryData(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
       TServerInputSchema,
@@ -10673,16 +10276,9 @@ export class Point0<
     >,
     options?: {
       queryClient?: QueryClient
-      mode?: TMode
       outputType?: FetchServerOutputType
     },
-  ): TMode extends 'server'
-    ? QueriedFiniteData<TServerLoaderOutput> | undefined
-    : TMode extends 'client'
-      ? QueriedFiniteData<TClientLoaderOutput> | undefined
-      : TMode extends 'combined'
-        ? QueriedFiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>> | undefined
-        : never {
+  ): QueriedFiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>> | undefined {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
     const queryKey = this.getQueryKey(input, options)
     return queryClient.getQueryData(queryKey) as never
@@ -10701,7 +10297,6 @@ export class Point0<
     options?: {
       queryClient?: QueryClient
       fetchOptions?: FetchOptions
-      mode?: QueryMode
       outputType?: FetchServerOutputType
     },
   ): Promise<void> {
@@ -10710,7 +10305,7 @@ export class Point0<
     await queryClient.prefetchQuery(normalizedQueryOptions as never)
   }
 
-  async ensureQueryData<TMode extends QueryMode = 'combined'>(
+  async ensureQueryData(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
       TServerInputSchema,
@@ -10723,18 +10318,9 @@ export class Point0<
     options?: {
       queryClient?: QueryClient
       fetchOptions?: FetchOptions
-      mode?: TMode
       outputType?: FetchServerOutputType
     },
-  ): Promise<
-    TMode extends 'server'
-      ? QueriedFiniteData<TServerLoaderOutput>
-      : TMode extends 'client'
-        ? QueriedFiniteData<TClientLoaderOutput>
-        : TMode extends 'combined'
-          ? QueriedFiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
-          : never
-  > {
+  ): Promise<QueriedFiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>> {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
     const normalizedQueryOptions = this.getQueryOptions(input, queryOptions, options)
     return (await queryClient.ensureQueryData(normalizedQueryOptions)) as never
@@ -10752,7 +10338,6 @@ export class Point0<
     refetchOptions?: RefetchOptions,
     options?: {
       queryClient?: QueryClient
-      mode?: QueryMode
       outputType?: FetchServerOutputType
     },
   ): Promise<void> {
@@ -10777,7 +10362,6 @@ export class Point0<
     setDataOptions?: SetDataOptions,
     options?: {
       queryClient?: QueryClient
-      mode?: QueryMode
       outputType?: FetchServerOutputType
     },
   ): FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> {
@@ -10801,7 +10385,6 @@ export class Point0<
     options?: {
       queryClient?: QueryClient
       outputType?: FetchServerOutputType
-      mode?: QueryMode
     },
   ):
     | Query<
@@ -10842,7 +10425,6 @@ export class Point0<
     options?: {
       queryClient?: QueryClient
       outputType?: FetchServerOutputType
-      mode?: QueryMode
     },
   ): Array<
     Query<
@@ -10853,11 +10435,10 @@ export class Point0<
     >
   > {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
-    const { outputType, mode } = options ?? {}
+    const { outputType } = options ?? {}
     const cache = queryClient.getQueryCache()
     return cache.findAll({
       predicate: this._getQueryPredicate({
-        mode,
         outputType,
         input,
         finiteOrInfinite: 'finite',
@@ -10877,7 +10458,6 @@ export class Point0<
     options?: {
       queryClient?: QueryClient
       outputType?: FetchServerOutputType
-      mode?: QueryMode
     },
   ): QueryState<FinalQueriedFiniteData<TServerLoaderOutput, TClientLoaderOutput>, TError> | undefined {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
@@ -10897,7 +10477,6 @@ export class Point0<
     cancelOptions?: CancelOptions,
     options?: {
       queryClient?: QueryClient
-      mode?: QueryMode
       outputType?: FetchServerOutputType
     },
   ): Promise<void> {
@@ -10918,7 +10497,6 @@ export class Point0<
     invalidateOptions?: InvalidateOptions,
     options?: {
       queryClient?: QueryClient
-      mode?: QueryMode
       outputType?: FetchServerOutputType
     },
   ): Promise<void> {
@@ -10938,7 +10516,6 @@ export class Point0<
     >,
     options?: {
       queryClient?: QueryClient
-      mode?: QueryMode
       outputType?: FetchServerOutputType
     },
   ): void {
@@ -10959,7 +10536,6 @@ export class Point0<
     resetOptions?: ResetOptions,
     options?: {
       queryClient?: QueryClient
-      mode?: QueryMode
       outputType?: FetchServerOutputType
     },
   ): Promise<void> {
@@ -10968,7 +10544,7 @@ export class Point0<
     await queryClient.resetQueries({ queryKey, exact: true }, resetOptions)
   }
 
-  async fetchInfiniteQuery<TMode extends QueryMode = 'combined'>(
+  async fetchInfiniteQuery(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
       TServerInputSchema,
@@ -10990,18 +10566,9 @@ export class Point0<
     options?: {
       queryClient?: QueryClient
       fetchOptions?: FetchOptions
-      mode?: TMode
       outputType?: FetchServerOutputType
     },
-  ): Promise<
-    TMode extends 'server'
-      ? QueriedInfiniteData<TServerLoaderOutput>
-      : TMode extends 'client'
-        ? QueriedInfiniteData<TClientLoaderOutput>
-        : TMode extends 'combined'
-          ? QueriedInfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
-          : never
-  > {
+  ): Promise<QueriedInfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>> {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
     const normalizedInfiniteQueryOptions = this.getInfiniteQueryOptions(input, infiniteQueryOptions, options)
     return (await queryClient.fetchInfiniteQuery(normalizedInfiniteQueryOptions)) as never
@@ -11029,7 +10596,6 @@ export class Point0<
     options?: {
       queryClient?: QueryClient
       fetchOptions?: FetchOptions
-      mode?: QueryMode
       outputType?: FetchServerOutputType
     },
   ): Promise<void> {
@@ -11038,7 +10604,7 @@ export class Point0<
     await queryClient.prefetchInfiniteQuery(normalizedInfiniteQueryOptions as never)
   }
 
-  async ensureInfiniteQueryData<TMode extends QueryMode = 'combined'>(
+  async ensureInfiniteQueryData(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
       TServerInputSchema,
@@ -11060,24 +10626,15 @@ export class Point0<
     options?: {
       queryClient?: QueryClient
       fetchOptions?: FetchOptions
-      mode?: TMode
       outputType?: FetchServerOutputType
     },
-  ): Promise<
-    TMode extends 'server'
-      ? QueriedInfiniteData<TServerLoaderOutput>
-      : TMode extends 'client'
-        ? QueriedInfiniteData<TClientLoaderOutput>
-        : TMode extends 'combined'
-          ? QueriedInfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
-          : never
-  > {
+  ): Promise<QueriedInfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>> {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
     const normalizedInfiniteQueryOptions = this.getInfiniteQueryOptions(input, infiniteQueryOptions, options)
     return (await queryClient.ensureInfiniteQueryData(normalizedInfiniteQueryOptions)) as never
   }
 
-  getInfiniteQueryData<TMode extends QueryMode = 'combined'>(
+  getInfiniteQueryData(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
       TServerInputSchema,
@@ -11088,16 +10645,9 @@ export class Point0<
     >,
     options?: {
       queryClient?: QueryClient
-      mode?: TMode
       outputType?: FetchServerOutputType
     },
-  ): TMode extends 'server'
-    ? QueriedInfiniteData<TServerLoaderOutput> | undefined
-    : TMode extends 'client'
-      ? QueriedInfiniteData<TClientLoaderOutput> | undefined
-      : TMode extends 'combined'
-        ? QueriedInfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>> | undefined
-        : never {
+  ): QueriedInfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>> | undefined {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
     const queryKey = this.getInfiniteQueryKey(input, options)
     return queryClient.getQueryData(queryKey) as never
@@ -11115,7 +10665,6 @@ export class Point0<
     refetchOptions?: RefetchOptions,
     options?: {
       queryClient?: QueryClient
-      mode?: QueryMode
       outputType?: FetchServerOutputType
     },
   ): Promise<void> {
@@ -11140,7 +10689,6 @@ export class Point0<
     setDataOptions?: SetDataOptions,
     options?: {
       queryClient?: QueryClient
-      mode?: QueryMode
       outputType?: FetchServerOutputType
     },
   ): FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> {
@@ -11164,7 +10712,6 @@ export class Point0<
     options?: {
       queryClient?: QueryClient
       outputType?: FetchServerOutputType
-      mode?: QueryMode
     },
   ):
     | Query<
@@ -11206,7 +10753,6 @@ export class Point0<
     options?: {
       queryClient?: QueryClient
       outputType?: FetchServerOutputType
-      mode?: QueryMode
     },
   ): Array<
     Query<
@@ -11217,11 +10763,10 @@ export class Point0<
     >
   > {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
-    const { outputType, mode } = options ?? {}
+    const { outputType } = options ?? {}
     const cache = queryClient.getQueryCache()
     return cache.findAll({
       predicate: this._getQueryPredicate({
-        mode,
         outputType,
         input,
         finiteOrInfinite: 'infinite',
@@ -11241,7 +10786,6 @@ export class Point0<
     options?: {
       queryClient?: QueryClient
       outputType?: FetchServerOutputType
-      mode?: QueryMode
     },
   ):
     | Query<
@@ -11268,7 +10812,6 @@ export class Point0<
     cancelOptions?: CancelOptions,
     options?: {
       queryClient?: QueryClient
-      mode?: QueryMode
       outputType?: FetchServerOutputType
     },
   ): Promise<void> {
@@ -11289,7 +10832,6 @@ export class Point0<
     invalidateOptions?: InvalidateOptions,
     options?: {
       queryClient?: QueryClient
-      mode?: QueryMode
       outputType?: FetchServerOutputType
     },
   ): Promise<void> {
@@ -11309,7 +10851,6 @@ export class Point0<
     >,
     options?: {
       queryClient?: QueryClient
-      mode?: QueryMode
       outputType?: FetchServerOutputType
     },
   ): void {
@@ -11330,7 +10871,6 @@ export class Point0<
     resetOptions?: ResetOptions,
     options?: {
       queryClient?: QueryClient
-      mode?: QueryMode
       outputType?: FetchServerOutputType
     },
   ): Promise<void> {
@@ -11476,17 +11016,26 @@ export class Point0<
         if (policy === 'clientQuery' && !p._hasClientLoader()) {
           return []
         }
+        // the policy decides which related points to prefetch by loader type; each point has a
+        // single loader, so the prefetch itself resolves which query (server/client) to run.
         const mode =
           policy === 'ssrDehydratedStateAndClientQuery'
-            ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step
+            ? // server queries were prefetched on the prefetchPageQueryClientDehydratedState step
               queryClientDehydratedStateWasPrefetched
               ? 'client'
-              : 'combined'
+              : undefined
             : {
                 serverQuery: 'server' as const,
                 clientQuery: 'client' as const,
-                serverAndClientQuery: 'combined' as const,
+                serverAndClientQuery: undefined,
               }[policy]
+        const hasServerLoader = !!p._hasServerLoader
+        const hasClientLoader = p._hasClientLoader()
+        const hasLoaderForMode =
+          mode === 'server' ? hasServerLoader : mode === 'client' ? hasClientLoader : hasServerLoader || hasClientLoader
+        if (!hasLoaderForMode) {
+          return []
+        }
         if (p._queryResultType === 'infiniteQuery') {
           return await p.prefetchInfiniteQuery(
             relatedQuery.inputGetter({ location, props: {} as never }),
@@ -11494,7 +11043,6 @@ export class Point0<
             {
               queryClient,
               fetchOptions,
-              mode,
             },
           )
         } else if (p._queryResultType === 'query') {
@@ -11504,7 +11052,6 @@ export class Point0<
             {
               queryClient,
               fetchOptions,
-              mode,
             },
           )
         }
@@ -11528,21 +11075,22 @@ export class Point0<
         }
         // for self we get input, all others is layouts so we calculate its input by page
         const inputHere = p === (this as never as ReadyPoint) ? input : p._getUnsafeInputRawByLocation(location)
+        // the policy decides which related points to prefetch by loader type; each point has a
+        // single loader, so the prefetch itself resolves which query (server/client) to run.
         const mode =
           policy === 'ssrDehydratedStateAndClientQuery'
-            ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step
+            ? // server queries were prefetched on the prefetchPageQueryClientDehydratedState step
               queryClientDehydratedStateWasPrefetched
               ? 'client'
-              : 'combined'
+              : undefined
             : {
                 serverQuery: 'server' as const,
                 clientQuery: 'client' as const,
-                serverAndClientQuery: 'combined' as const,
+                serverAndClientQuery: undefined,
               }[policy]
         // A related point can be query-shaped (`_queryResultType === 'query'`) yet have no
         // loader for the resolved mode — e.g. a page with no `.loader()` whose layouts do.
-        // Skip it (otherwise `getQueryOptions` throws "No loader found"). Mirrors the
-        // loader check inside `getQueryOptions`.
+        // Skip it (otherwise the prefetch would target a query that does not exist).
         const hasServerLoader = !!p._hasServerLoader
         const hasClientLoader = p._hasClientLoader()
         const hasLoaderForMode =
@@ -11554,13 +11102,11 @@ export class Point0<
           return await p.prefetchInfiniteQuery(inputHere as never, undefined, {
             queryClient,
             fetchOptions,
-            mode,
           })
         } else if (p._queryResultType === 'query') {
           return await p.prefetchQuery(inputHere as never, undefined, {
             queryClient,
             fetchOptions,
-            mode,
           })
         }
       }),

@@ -165,50 +165,6 @@ describe('query', () => {
   )
 
   it(
-    'with loader and clientLoader',
-    async () => {
-      const root = createRoot()
-      const q = root
-        .lets('query', 'test')
-        .loader(() => ({ x: 1 }))
-        .clientLoader(({ data }) => ({ y: 2, ...data }))
-        .query()
-      const page = root.lets('page', 'home', '/').page(() => {
-        const query = q.useQuery()
-        return (
-          <div id="page">
-            q={query.data?.x ?? 'nothing'} y={query.data?.y ?? 'nothing'}
-          </div>
-        )
-      })
-
-      const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
-      await render(page.route(), async ({ waitContent, tale }) => {
-        await waitContent('#page')
-        expect(await tale()).toMatchInlineSnapshot(`
-          "
-          /
-            #page: q=nothing y=nothing
-
-            #page: q=1 y=2
-          "
-        `)
-      })
-      expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "
-        query.test (client) < {}
-        "
-      `)
-      expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "
-        #page: q=nothing y=nothing
-        "
-      `)
-    },
-    { retry: 3 },
-  )
-
-  it(
     'with input and loader',
     async () => {
       const root = createRoot()
@@ -277,47 +233,6 @@ describe('query', () => {
       expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
 
-        "
-      `)
-      expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-        "
-        #page: x=nothing
-        "
-      `)
-    },
-    { retry: 3 },
-  )
-
-  it(
-    'with input and clientLoader and loader',
-    async () => {
-      const root = createRoot()
-      const q = root
-        .lets('query', 'test')
-        .sharedInput(z.object({ y: z.number() }))
-        .loader(() => ({ z: 3 }))
-        .clientLoader(({ input }) => ({ x: input.y * 2 }))
-        .query()
-      const page = root.lets('page', 'home', '/').page(() => {
-        const query = q.useQuery({ y: 123 })
-        return <div id="page">x={query.data?.x ?? 'nothing'}</div>
-      })
-
-      const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, q, page] })
-      await render(page.route(), async ({ waitContent, tale }) => {
-        await waitContent('#page')
-        expect(await tale()).toMatchInlineSnapshot(`
-          "
-          /
-            #page: x=nothing
-
-            #page: x=246
-          "
-        `)
-      })
-      expect(await fetchesTale()).toMatchInlineSnapshot(`
-        "
-        query.test (client) < {"y":123}
         "
       `)
       expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -483,8 +398,8 @@ describe('query', () => {
         .query()
       const queryClient = new QueryClient()
 
-      await qa.fetchQuery(undefined, undefined, { queryClient, mode: 'client' })
-      await qb.fetchQuery(undefined, undefined, { queryClient, mode: 'client' })
+      await qa.fetchQuery(undefined, undefined, { queryClient })
+      await qb.fetchQuery(undefined, undefined, { queryClient })
 
       const tagAQueries = queryClient.getQueryCache().findAll({
         predicate: getQueryPredicate({ tags: 'my-tag-a' }),

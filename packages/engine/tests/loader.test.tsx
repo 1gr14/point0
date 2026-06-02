@@ -190,33 +190,10 @@ describe('loader', () => {
     })
   })
 
-  it('overrides data', async () => {
-    const root = createRoot()
-    const page = root
-      .lets('page', 'home', '/')
-      .loader(() => ({ x: 1, y: 2 }))
-      .loader(({ data }) => ({ ...data, y: 100, z: 3 }))
-      .page(({ data }) => {
-        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number; y: number; z: number }>()
-        return ymlify(data)
-      })
-    const { fetchPreview, fetchSsr } = await createTestThings({ ssr: true, points: [root, page] })
-    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "
-      x: 1
-      y: 100
-      z: 3
-      "
-    `)
-    const { response } = await fetchSsr(page)
-    expect(response.status).toBe(200)
-  })
-
   it('undefined equals to empty data', async () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
-      .loader(() => ({ x: 1, y: 2 }))
       .loader(() => undefined)
       .page(({ data }) => {
         expectTypeOf<typeof data>().toEqualTypeOf<EmptyObject>()

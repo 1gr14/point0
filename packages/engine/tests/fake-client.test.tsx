@@ -242,17 +242,12 @@ describe('FakeClient', () => {
     expect(env.side.name).toBe('server')
   })
 
-  it.concurrent('execute page with loader and client loader', async () => {
+  it.concurrent('execute page with server loader', async () => {
     const root = Point0.lets('root', 'root').serverUrl('http://localhost:3000').root()
     const page = root
       .lets('page', 'page', '/page')
       .loader(() => ({ serverLoaderSideName: env.side.name }))
-      .clientLoader(({ data }) => ({ ...data, clientLoaderSideName: env.side.name }))
-      .page(({ data }) => (
-        <div>
-          Hello from {data.serverLoaderSideName} and {data.clientLoaderSideName}
-        </div>
-      ))
+      .page(({ data }) => <div>Hello from {data.serverLoaderSideName}</div>)
     const points = [root, page] as const
     const engine = await Engine.create({
       compiler: false,
@@ -267,12 +262,35 @@ describe('FakeClient', () => {
       const data = await page.fetchQuery()
       expect(env.side.name).toBe('client')
       expect(data.serverLoaderSideName).toBe('server')
+    })
+    expect(env.side.name).toBe('server')
+  })
+
+  it.concurrent('execute page with client loader', async () => {
+    const root = Point0.lets('root', 'root').serverUrl('http://localhost:3000').root()
+    const page = root
+      .lets('page', 'page', '/page')
+      .clientLoader(() => ({ clientLoaderSideName: env.side.name }))
+      .page(({ data }) => <div>Hello from {data.clientLoaderSideName}</div>)
+    const points = [root, page] as const
+    const engine = await Engine.create({
+      compiler: false,
+      file: import.meta.url,
+      server: { scope: 'root', points },
+      clients: [{ scope: 'root', points }],
+    }).prepare()
+    const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
+    expect(env.side.name).toBe('server')
+    await fakeClient.run(async () => {
+      expect(env.side.name).toBe('client')
+      const data = await page.fetchQuery()
+      expect(env.side.name).toBe('client')
       expect(data.clientLoaderSideName).toBe('client')
     })
     expect(env.side.name).toBe('server')
   })
 
-  it.concurrent('should render page with loader and client loader', async () => {
+  it.concurrent('should render page with client loader and mutation with server loader', async () => {
     const fetchRecorder = FetchRecorder.create({
       limit: 100,
     })
@@ -284,21 +302,17 @@ describe('FakeClient', () => {
     const mutation = root
       .lets('mutation', 'mutation')
       .loader(() => ({ index: counter++, serverMutationSideName: env.side.name }))
-      .clientLoader(({ data }) => ({ ...data, clientMutationSideName: env.side.name }))
       .mutation()
     const page = root
       .lets('page', 'page', '/')
-      .loader(() => ({ x: 1, serverLoaderSideName: env.side.name }))
-      .clientLoader(({ data }) => ({ ...data, clientLoaderSideName: env.side.name }))
+      .clientLoader(() => ({ x: 1, clientLoaderSideName: env.side.name }))
       .page(({ data }) => {
         const inc = mutation.useMutation()
         return (
           <div>
             <div id="pageSideName">{env.side.name}</div>
-            <div id="serverLoaderSideName">{data.serverLoaderSideName}</div>
             <div id="clientLoaderSideName">{data.clientLoaderSideName}</div>
             <div id="serverMutationSideName">{inc.data?.serverMutationSideName || '-'}</div>
-            <div id="clientMutationSideName">{inc.data?.clientMutationSideName || '-'}</div>
             <button
               onClick={() => {
                 inc.mutateAsync().catch((err: unknown) => {
@@ -356,18 +370,11 @@ describe('FakeClient', () => {
       await waitFor(() => expect(button.textContent).toBe('Increment 0'))
       fireEvent.click(button)
       await waitFor(() => expect(button.textContent).toBe('Increment 1'))
-      //   expect(env.side.name).toBe('client')
-      // })
-      // expect(env.side.name).toBe('server')
-      // await client.run(async ({ container, getButton, viewer }) => {
       expect(env.side.name).toBe('client')
-      // const button = getButton()
       fireEvent.click(button)
       await waitFor(() => expect(button.textContent).toBe('Increment 2'))
-      expect(container.querySelector('#serverLoaderSideName')?.textContent).toBe('server')
       expect(container.querySelector('#clientLoaderSideName')?.textContent).toBe('client')
       expect(container.querySelector('#serverMutationSideName')?.textContent).toBe('server')
-      expect(container.querySelector('#clientMutationSideName')?.textContent).toBe('client')
       const results = await fetchRecorder.waitFinishedResults({ pointType: 'mutation', variant: 'endpoint' })
       expect(results).toHaveLength(3)
     })

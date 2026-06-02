@@ -179,7 +179,7 @@ export type EventerEventPointQueryStart = EventerEvent<
     queryKey: QueryKey
     point: AnyNiceReadyPoint
     input: InputRaw
-    mode: 'server' | 'client' | 'combined'
+    mode: 'server' | 'client'
   }
 >
 export type EventerEventPointQuerySettled<TError extends ErrorPoint0> = EventerEvent<
@@ -189,7 +189,7 @@ export type EventerEventPointQuerySettled<TError extends ErrorPoint0> = EventerE
     queryKey: QueryKey
     point: AnyNiceReadyPoint
     input: InputRaw
-    mode: 'server' | 'client' | 'combined'
+    mode: 'server' | 'client'
   } & (
     | {
         data: Data
@@ -216,7 +216,7 @@ export type EventerEventPointQuerySuccess = EventerEvent<
     point: AnyNiceReadyPoint
     input: InputRaw
     error: undefined
-    mode: 'server' | 'client' | 'combined'
+    mode: 'server' | 'client'
   } & (
     | {
         data: Data
@@ -237,7 +237,7 @@ export type EventerEventPointQueryError<TError extends ErrorPoint0> = EventerEve
     input: InputRaw
     error: TError
     data: undefined
-    mode: 'server' | 'client' | 'combined'
+    mode: 'server' | 'client'
   }
 >
 
@@ -249,7 +249,7 @@ export type EventerEventPointInfiniteQueryStart = EventerEvent<
     queryKey: QueryKey
     point: AnyNiceReadyPoint
     input: InputRaw
-    mode: 'server' | 'client' | 'combined'
+    mode: 'server' | 'client'
   }
 >
 export type EventerEventPointInfiniteQuerySettled<TError extends ErrorPoint0> = EventerEvent<
@@ -259,7 +259,7 @@ export type EventerEventPointInfiniteQuerySettled<TError extends ErrorPoint0> = 
     queryKey: QueryKey
     point: AnyNiceReadyPoint
     input: InputRaw
-    mode: 'server' | 'client' | 'combined'
+    mode: 'server' | 'client'
   } & (
     | {
         data: Data
@@ -286,7 +286,7 @@ export type EventerEventPointInfiniteQuerySuccess = EventerEvent<
     point: AnyNiceReadyPoint
     input: InputRaw
     error: undefined
-    mode: 'server' | 'client' | 'combined'
+    mode: 'server' | 'client'
   } & (
     | {
         data: Data
@@ -307,7 +307,7 @@ export type EventerEventPointInfiniteQueryError<TError extends ErrorPoint0> = Ev
     input: InputRaw
     error: TError
     data: undefined
-    mode: 'server' | 'client' | 'combined'
+    mode: 'server' | 'client'
   }
 >
 
