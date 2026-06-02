@@ -4,9 +4,8 @@ import { Compiler } from '@point0/compiler'
 import type { PointsScope } from '@point0/core'
 import { Command } from 'commander'
 import { default as nodePath, default as path } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { Analyzer } from './analyzer.js'
-import type { AnalyzerPointSelectOptions, AnalyzerPointsFilterOptions } from './analyzer.js'
+import { Analyzer, buildPointsFilter, ensureMetaPaths, resolveMetaImportPaths } from './analyzer.js'
+import type { AnalyzerPointSelectOptions } from './analyzer.js'
 import { Engine } from './engine.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
 
@@ -365,40 +364,8 @@ const parseNonNegativeIntegerOption =
     }
     return parsed
   }
-const ensureMetaPaths = (meta: string[] | undefined): string[] => {
-  if (!meta || meta.length === 0) {
-    throw new Error("At least one '--meta <path>' flag is required.")
-  }
-  return meta
-}
-const resolveMetaImportPaths = (metaPaths: string[]): string[] => {
-  return metaPaths.map((metaPath) => {
-    const absolutePath = path.isAbsolute(metaPath) ? metaPath : path.resolve(process.cwd(), metaPath)
-    return pathToFileURL(absolutePath).href
-  })
-}
 const loadAnalyzer = async (meta: string[] | undefined): Promise<Analyzer> => {
   return await Analyzer.load(resolveMetaImportPaths(ensureMetaPaths(meta)))
-}
-const buildPointsFilter = (input: AnalyzerPointSelectOptions): AnalyzerPointsFilterOptions => {
-  return {
-    ids: input.ids,
-    id: input.id,
-    tags: input.tags,
-    scope: input.scope,
-    type: input.type,
-    name: input.name,
-    route: input.route,
-    url: input.url,
-    endpointMethod: input.endpointMethod,
-    endpointRoute: input.endpointRoute,
-    endpointUrl: input.endpointUrl,
-    valid: input.valid,
-    ssr: input.ssr,
-    file: input.file,
-    parendId: input.parendId,
-    layoutId: input.layoutId,
-  }
 }
 const undefinedIfEmpty = <T>(value: T[] | undefined): T[] | undefined => {
   if (!value || value.length === 0) {
@@ -505,18 +472,21 @@ docsCommand
   .command('search <query...>')
   .description('Hybrid (keyword + semantic) search across the docs')
   .option('--limit <number>', 'Maximum number of results', parseNonNegativeIntegerOption('limit'))
-  .action(async (query: string[], options: { limit?: number }) => {
+  .option('--offset <number>', 'Pagination offset', parseNonNegativeIntegerOption('offset'))
+  .action(async (query: string[], options: { limit?: number; offset?: number }) => {
     const docs = await loadDocs()
-    const hits = await docs.searchDocs(query.join(' '), options.limit)
-    console.info(JSON.stringify(hits, null, 2))
+    const result = await docs.searchDocs(query.join(' '), { limit: options.limit, offset: options.offset })
+    console.info(JSON.stringify(result, null, 2))
   })
 
 docsCommand
   .command('list')
   .description('List all docs as a table of contents')
-  .action(async () => {
+  .option('--limit <number>', 'Maximum number of docs', parseNonNegativeIntegerOption('limit'))
+  .option('--offset <number>', 'Pagination offset', parseNonNegativeIntegerOption('offset'))
+  .action(async (options: { limit?: number; offset?: number }) => {
     const docs = await loadDocs()
-    console.info(JSON.stringify(docs.listDocs(), null, 2))
+    console.info(JSON.stringify(docs.listDocs({ limit: options.limit, offset: options.offset }), null, 2))
   })
 
 docsCommand

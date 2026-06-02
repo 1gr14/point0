@@ -39,21 +39,41 @@ const makeSnippet = (content: string, max = 280): string => {
   return trimmed.length > max ? `${trimmed.slice(0, max).trimEnd()}…` : trimmed
 }
 
-/** List all docs as a table of contents, ordered by category then frontmatter index. */
-export const listDocs = (): DocSummary[] => {
+/**
+ * List all docs as a table of contents, ordered by category then frontmatter index.
+ * The list is small, so pagination is optional — `limit`/`offset` default to "return all" —
+ * but `total` is always reported to match the paginated shape of the other tools.
+ */
+export const listDocs = ({
+  limit,
+  offset = 0,
+}: { limit?: number; offset?: number } = {}): {
+  docs: DocSummary[]
+  total: number
+  hasMore: boolean
+  nextOffset: number | undefined
+} => {
   const data = loadDocsData()
   const categoryOrder = new Map(data.categories.map((category, order) => [category.slug, order]))
-  return data.docs
+  const sorted = data.docs
     .slice()
     .sort((a, b) => {
       const byCategory = (categoryOrder.get(a.category) ?? Infinity) - (categoryOrder.get(b.category) ?? Infinity)
       return byCategory !== 0 ? byCategory : a.index - b.index
     })
     .map((doc) => ({ slug: doc.slug, category: doc.category, title: doc.title, description: doc.description }))
+  const total = sorted.length
+  const docs = limit === undefined ? sorted.slice(offset) : sorted.slice(offset, offset + limit)
+  const hasMore = limit !== undefined && total > offset + limit
+  const nextOffset = hasMore ? offset + limit : undefined
+  return { docs, total, hasMore, nextOffset }
 }
 
 /** Hybrid (keyword + semantic) search across doc sections. */
-export const searchDocs = async (query: string, limit = 8): Promise<DocSearchHit[]> => {
+export const searchDocs = async (
+  query: string,
+  { limit = 8, offset = 0 }: { limit?: number; offset?: number } = {},
+): Promise<{ hits: DocSearchHit[]; total: number; hasMore: boolean; nextOffset: number | undefined }> => {
   const db = await getDb()
   const vector = await embed(query)
   const results = await search(db, {
@@ -61,8 +81,9 @@ export const searchDocs = async (query: string, limit = 8): Promise<DocSearchHit
     term: query,
     vector: { value: vector, property: 'embedding' },
     limit,
+    offset,
   })
-  return results.hits.map((hit) => ({
+  const hits = results.hits.map((hit) => ({
     slug: hit.document.docSlug,
     title: hit.document.title,
     category: hit.document.category,
@@ -70,6 +91,10 @@ export const searchDocs = async (query: string, limit = 8): Promise<DocSearchHit
     snippet: makeSnippet(hit.document.content),
     score: hit.score,
   }))
+  const total = results.count
+  const hasMore = total > offset + limit
+  const nextOffset = hasMore ? offset + limit : undefined
+  return { hits, total, hasMore, nextOffset }
 }
 
 /** Get the full markdown of a single doc by its slug (the file name, e.g. `overview`). */

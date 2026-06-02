@@ -1,14 +1,18 @@
 #!/usr/bin/env bun
 
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { Compiler } from '@point0/compiler'
 import type { PointsScope } from '@point0/core'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
-import { Analyzer, analyzerListPointsSchemaShape, analyzerPointSelectSchemaShape } from './analyzer.js'
-import type { AnalyzerMetaEngine, AnalyzerPointSelectOptions, AnalyzerPointsFilterOptions } from './analyzer.js'
+import {
+  analyzerListPointsSchemaShape,
+  analyzerPointSelectSchemaShape,
+  buildPointsFilter,
+  createMetaAnalyzerLoader,
+} from './analyzer.js'
+import type { Analyzer, AnalyzerMetaEngine } from './analyzer.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
 
 const parseMetaArgs = (): string[] => {
@@ -33,18 +37,14 @@ const parseMetaArgs = (): string[] => {
   return metaPaths
 }
 
-const resolveMetaImportPaths = (metaPaths: string[]): string[] => {
-  return metaPaths.map((metaPath) => {
-    const absolutePath = path.isAbsolute(metaPath) ? metaPath : path.resolve(process.cwd(), metaPath)
-    return pathToFileURL(absolutePath).href
-  })
-}
+let loadAnalyzer: (() => Promise<Analyzer>) | undefined
 
-let analyzerPromise: Promise<Analyzer> | undefined
-
-const getAnalyzer = async (): Promise<Analyzer> => {
-  analyzerPromise ??= Analyzer.load(resolveMetaImportPaths(parseMetaArgs()))
-  return await analyzerPromise
+// Re-reads the on-disk meta on every call (see createMetaAnalyzerLoader), so the long-lived MCP
+// never serves stale points after `point0 generate` regenerates the meta. parseMetaArgs stays
+// lazy so a missing `--meta` surfaces on first tool call, not at connect time.
+const getAnalyzer = (): Promise<Analyzer> => {
+  loadAnalyzer ??= createMetaAnalyzerLoader(parseMetaArgs())
+  return loadAnalyzer()
 }
 
 const getMetaEngine = async (engineFile?: string): Promise<AnalyzerMetaEngine> => {
@@ -84,27 +84,6 @@ const traceSchemaShape = {
   engineFile: z.string().optional().describe('Engine file path when multiple metas/engines are provided.'),
 }
 
-const buildFilter = (input: AnalyzerPointSelectOptions): AnalyzerPointsFilterOptions => {
-  return {
-    ids: input.ids,
-    id: input.id,
-    tags: input.tags,
-    scope: input.scope,
-    type: input.type,
-    name: input.name,
-    route: input.route,
-    url: input.url,
-    endpointMethod: input.endpointMethod,
-    endpointRoute: input.endpointRoute,
-    endpointUrl: input.endpointUrl,
-    valid: input.valid,
-    ssr: input.ssr,
-    file: input.file,
-    parendId: input.parendId,
-    layoutId: input.layoutId,
-  }
-}
-
 const server = new McpServer(
   {
     name: 'point0-project',
@@ -126,7 +105,7 @@ server.registerTool(
   },
   async (input) => {
     const analyzer = await getAnalyzer()
-    const filter = buildFilter(input)
+    const filter = buildPointsFilter(input)
 
     const result = analyzer.listPoints({
       filter,
@@ -157,7 +136,7 @@ server.registerTool(
   },
   async (input) => {
     const analyzer = await getAnalyzer()
-    const filter = buildFilter(input)
+    const filter = buildPointsFilter(input)
 
     const result = analyzer.getPoint({
       filter,

@@ -1,3 +1,6 @@
+import { stat } from 'node:fs/promises'
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import type { AnyRoute } from '@devp0nt/route0'
 import type { CompilerPointParsedPos } from '@point0/compiler'
 import type { AnyNiceReadyPoint, PointName, PointsScope, ReadyPointType } from '@point0/core'
@@ -295,5 +298,69 @@ export class Analyzer {
     : AnalyzerMetaPoint | undefined {
     const { points } = this.listPoints({ filter, fields, omitImports })
     return points[0] as never
+  }
+}
+
+/** Pick only the filter keys out of a select/list options object (drops `fields`, `limit`, `offset`). */
+export const buildPointsFilter = (input: AnalyzerPointSelectOptions): AnalyzerPointsFilterOptions => {
+  return {
+    ids: input.ids,
+    id: input.id,
+    tags: input.tags,
+    scope: input.scope,
+    type: input.type,
+    name: input.name,
+    route: input.route,
+    url: input.url,
+    endpointMethod: input.endpointMethod,
+    endpointRoute: input.endpointRoute,
+    endpointUrl: input.endpointUrl,
+    valid: input.valid,
+    ssr: input.ssr,
+    file: input.file,
+    parendId: input.parendId,
+    layoutId: input.layoutId,
+  }
+}
+
+/** Require at least one `--meta` path, mirroring the CLI/MCP contract. */
+export const ensureMetaPaths = (metaPaths: string[] | undefined): string[] => {
+  if (!metaPaths || metaPaths.length === 0) {
+    throw new Error("At least one '--meta <path>' flag is required.")
+  }
+  return metaPaths
+}
+
+/** Resolve meta paths (relative to cwd) into importable `file://` URLs. */
+export const resolveMetaImportPaths = (metaPaths: string[]): string[] => {
+  return ensureMetaPaths(metaPaths).map((metaPath) => {
+    const absolutePath = path.isAbsolute(metaPath) ? metaPath : path.resolve(process.cwd(), metaPath)
+    return pathToFileURL(absolutePath).href
+  })
+}
+
+/**
+ * Build a loader that always reflects the on-disk meta. MCP servers are long-lived, so an
+ * analyzer loaded once would keep serving stale points after `point0 generate` rewrites the
+ * meta. On each call we stat the meta files; when any `mtime` changed we re-import with a
+ * `?v=<mtime>` cache-buster — ESM caches modules by URL, so re-importing the same href would
+ * otherwise be a no-op and the new points would never load. Unchanged metas hit the ESM module
+ * cache and the rebuild is effectively free.
+ */
+export const createMetaAnalyzerLoader = (metaPaths: string[]): (() => Promise<Analyzer>) => {
+  const absolutePaths = ensureMetaPaths(metaPaths).map((metaPath) =>
+    path.isAbsolute(metaPath) ? metaPath : path.resolve(process.cwd(), metaPath),
+  )
+  let cached: { key: string; analyzer: Analyzer } | undefined
+  return async () => {
+    const mtimes = await Promise.all(absolutePaths.map(async (absolutePath) => (await stat(absolutePath)).mtimeMs))
+    const key = mtimes.join('|')
+    if (cached?.key === key) {
+      return cached.analyzer
+    }
+    const urls = absolutePaths.map((absolutePath, index) => `${pathToFileURL(absolutePath).href}?v=${mtimes[index]}`)
+    const analyzer = await Analyzer.load(urls)
+    cached = { key, analyzer }
+    return analyzer
   }
 }

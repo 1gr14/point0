@@ -21,14 +21,18 @@ server.registerTool(
   'list_docs',
   {
     title: 'List Point0 docs',
-    description: 'List all Point0 documentation pages (table of contents) with their slug, category, title and description.',
-    inputSchema: {},
+    description:
+      'List all Point0 documentation pages (table of contents) with their slug, category, title and description.',
+    inputSchema: {
+      limit: z.number().int().nonnegative().optional().describe('Maximum number of docs to return. Default: all.'),
+      offset: z.number().int().nonnegative().optional().describe('Zero-based pagination offset. Default 0.'),
+    },
   },
-  async () => {
-    const docs = listDocs()
+  async ({ limit, offset }) => {
+    const result = listDocs({ limit, offset })
     return {
-      content: [{ type: 'text', text: JSON.stringify(docs, null, 2) }],
-      structuredContent: { docs },
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      structuredContent: result,
     }
   },
 )
@@ -40,14 +44,15 @@ server.registerTool(
     description: 'Hybrid (keyword + semantic) search across Point0 documentation. Returns matching sections with snippets.',
     inputSchema: {
       query: z.string().describe('Natural-language search query.'),
-      limit: z.number().int().positive().optional().describe('Max number of results (default 8).'),
+      limit: z.number().int().nonnegative().optional().describe('Max number of results (default 8).'),
+      offset: z.number().int().nonnegative().optional().describe('Zero-based pagination offset. Default 0.'),
     },
   },
-  async ({ query, limit }) => {
-    const hits = await searchDocs(query, limit)
+  async ({ query, limit, offset }) => {
+    const result = await searchDocs(query, { limit, offset })
     return {
-      content: [{ type: 'text', text: JSON.stringify(hits, null, 2) }],
-      structuredContent: { hits },
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      structuredContent: result,
     }
   },
 )
