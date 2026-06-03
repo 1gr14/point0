@@ -1,14 +1,83 @@
 
+неубиваемоубиваемый дев сервер
 
 
-------
-------
-------
+compiler option experimental_preserve_syntax so bun still can works
+
+пофиксить экзамплы
+in example rename file navigate to navigation
+пофиксить криэйт апп
+create-app test
+
+Добавить рантайм ошибки для запрещённых методов поинтов
+
+types.ts file thet reexport only needed types
+index exports only realy used fns and helpers without types
+
+update deps
+
+docs
+Вставить призыв к старт0 прямо в кли и в ридми всех экзамплов и криэйт апа
 
 
-refactoring
-finishing
-🚀 launch
+
+
+
+
+FINISH
+Проверка под линукс и виндоус
+pipeline
+examples has real versions, not just catalog, and odcker file is own only its code
+catalog versions scripts never use catalog in places, but just hardly replace versions with setted in catalog, also applies it to @point0/ packages to current version
+catalog versions in create-app/template should be replaced also with real versions
+In error0 import RedirectTask from "@point0/core/navigate", and in examples use htis plugin
+Убрать из экзамплов не нужные зависимости
+
+BUN-ISSUE
+https://github.com/oven-sh/bun/issues/6173
+https://github.com/oven-sh/bun/issues/5844
+https://github.com/oven-sh/bun/issues/7337
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=== LATER ===
+
 
 guide0
 mcp as comments
@@ -17,34 +86,28 @@ mcp as comments
 втирина-хостинги
 ? реализация всех базовых проектов (заметки, задачник, црмка)
 
----
 +file-routing
 +init
 +static
 +channel
 
 
-------
-------
-------
-
-
-# Extra
-
-В роутах генерить роутв с серч парамсами
-неубиваемоубиваемый дев сервер
-
-пофиксить экзамплы
-in example rename file navigate to navigation
-пофиксить криэйт апп
-
-docs
-
-...finishing...
-
-compiler option experimental_preserve_syntax so bun still can works
-test coverage (merge add-coverage)
 ---
+В креэйт апп можно передать флаг экзампл и тогда скопируется его код с заменой пакейджа на верные
+Пейдж поинт вместе стегами должен быть доступен в юз пейдж стейт
+usePageData → return same as useQuery for page, needed to get page data in layout (mabye just usePageState and data also there?)
+on serve stop, kill everything, ot engine.onStop(() => ) or how? to when we kill by port we kill literally everyhting...
+? Сет кукис и кукис надо синхронизировать
+merge engines and have shared server and fetch functions
+fetchOptions также принимают fetchFn
+when electrobun allow passing replaceFetch to point
+? mirror generator
+? queryKey: and do not stringify input
+? https://tsrx.dev/getting-started
+
+У экстеншенов и плагинов разрешить указывать сервронли и клиент онли флагс
+
+
 ? Криэйт квери клиент должен сразу принимать нужные опции а не функцию возвращающую объект
 ? Эз форм дата тру фалс авто влияет и на опенапи и аозмовозможность вообще отправить другое
 ? remove props form related query if not exists
@@ -59,7 +122,6 @@ test coverage (merge add-coverage)
 Экзампла с поинт0 как бэкенд онли, как фронтед онли
 isApiHealthy и так далее положить в энжину, а в девпонт сайте убрать папку апи
 Однопортовый запуск сервера и клиента в дев модах
-
 
 
 # Later
@@ -93,7 +155,6 @@ isApiHealthy и так далее положить в энжину, а в дев
 В роут0 добавить возможность выбора конкретной строки в параметр
 Страницам разрешить принимать пост запросы и прокидывать боди в квери самой страницы
 клинет дев логи всё же выводить с припиской [client:dev]
-Добавить рантайм ошибки для запрещённых методов поинтов
 Опробовать параллельные тесты бана
 Во время энжин препары можно и заассайнить на все сервер поинты эндинифетч фн
 В генераторе пусть также собираются все файлы и информация об их экспортах чтобы можно было что угодно нагенерить
@@ -116,57 +177,6 @@ vite stable hmr references (vite отстой)
 
 
 
-
-
-
-
-
-
-
-FINISH
-update deps
-Зафиксировать версии в старт0 и девпонте
-Проверка под линукс и виндоус
-pipeline
-types.ts file thet reexport only needed types
-index exports only realy used fns and helpers without types
-examples has real versions, not just catalog, and odcker file is own only its code
-catalog versions scripts never use catalog in places, but just hardly replace versions with setted in catalog, also applies it to @point0/ packages to current version
-catalog versions in create-app/template should be replaced also with real versions
-In error0 import RedirectTask from "@point0/core/navigate", and in examples use htis plugin
-examples normalize dockerfile
-Вставить призыв к старт0 прямо в кли и в ридми всех экзамплов и криэйт апа
-В креэйт апп можно передать флаг экзампл и тогда скопируется его код с заменой пакейджа на верные
-create-app test
-Убрать из экзамплов не нужные зависимости
-Обновить зависимости
-Зазвать подписчиков на стрим-созвон и там обсудить как мне вести канал (за миг до запуска)
-
-BUN-ISSUE
-https://github.com/oven-sh/bun/issues/6173
-https://github.com/oven-sh/bun/issues/5844
-https://github.com/oven-sh/bun/issues/7337
-В бан написать, что клиент не обновляется при создании новых файлов
-Попросить в рантайм плагине дать получать соурсмапы
-
-
-
-
-=== LATER ===
-
----
-Пейдж поинт вместе стегами должен быть доступен в юз пейдж стейт
-usePageData → return same as useQuery for page, needed to get page data in layout (mabye just usePageState and data also there?)
-on serve stop, kill everything, ot engine.onStop(() => ) or how? to when we kill by port we kill literally everyhting...
-? Сет кукис и кукис надо синхронизировать
-merge engines and have shared server and fetch functions
-fetchOptions также принимают fetchFn
-when electrobun allow passing replaceFetch to point
-? mirror generator
-? queryKey: and do not stringify input
-? https://tsrx.dev/getting-started
-
-У экстеншенов и плагинов разрешить указывать сервронли и клиент онли флагс
 
 
 
