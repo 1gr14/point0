@@ -934,8 +934,6 @@ export class FilesGenerator {
     if (task.banner) {
       lines.push(task.banner)
     }
-    lines.push(`import { Routes } from '@devp0nt/route0'`)
-    lines.push(``)
 
     const hasRootPoint = points.some((p) => p.type === 'root' && p.scope === task.scope)
     if (!hasRootPoint) {
@@ -951,13 +949,36 @@ export class FilesGenerator {
         : `'${task.origin}'`
     const originSuffix = originString ? `, { origin: ${originString} }` : ''
 
+    // A page becomes a typed route — `Route0.create(path).search<...>()` instead of a bare path
+    // string — when a search schema applies to it (declared on the page or inherited from a layout)
+    // and it is exported, so we can reference its inferred search type. We use `SearchRaw` (the input
+    // accepted when building a URL) and point at it via a `typeof import('...')` expression rather
+    // than a runtime import, so the page module (and its server-only code) is never pulled into the
+    // routes bundle.
     const pagePoints = points.flatMap((p) =>
-      p.type === 'page' && p.route ? [{ name: p.name, route: p.route.definition }] : [],
+      p.type === 'page' && p.route
+        ? [{ point: p, name: p.name, route: p.route.definition, typed: p.hasSearch() && p.exportName !== undefined }]
+        : [],
     )
+    const hasTypedPages = pagePoints.some((p) => p.typed)
+
+    lines.push(
+      hasTypedPages ? `import { Route0, Routes } from '@devp0nt/route0'` : `import { Routes } from '@devp0nt/route0'`,
+    )
+    lines.push(``)
+
     if (pagePoints.length > 0) {
       lines.push(`export const routes = Routes.create({`)
       for (const p of pagePoints) {
-        lines.push(`  '${p.name}': '${p.route}',`)
+        if (p.typed) {
+          const importPath = FilesGenerator.toRelativeJsImportPath(task.outfile, p.point.file.abs)
+          const exportName = p.point.exportName === 'default' ? 'default' : p.point.exportName
+          lines.push(
+            `  '${p.name}': Route0.create('${p.route}').search<typeof import('${importPath}')['${exportName}']['Infer']['SearchRaw']>(),`,
+          )
+        } else {
+          lines.push(`  '${p.name}': '${p.route}',`)
+        }
       }
       lines.push(`}${originSuffix})`)
     } else {

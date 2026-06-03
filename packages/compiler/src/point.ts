@@ -580,6 +580,13 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     return this.selfMethods.some((method) => method.name === 'loader')
   }
 
+  // Whether a `.search(...)` schema applies to this point anywhere in its chain — either declared
+  // on the point itself or inherited from a parent layout (the point's inferred search type already
+  // merges ancestors, so it covers both).
+  hasSearch(): boolean {
+    return [this, ...this.parents].some((point) => point.selfMethods.some((method) => method.name === 'search'))
+  }
+
   getLayouts(): string[] {
     const layouts: string[] = []
     for (const point of [this, ...this.parents]) {

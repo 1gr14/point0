@@ -395,6 +395,121 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
     )
 
     it(
+      'generates routes file with typed search for a page that declares its own search',
+      helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+import {z} from 'zod'
+export const root = Point0.lets('root', 'myroot').root()
+export const page = root.lets('page', 'mypage', '/news').search(z.object({ q: z.string() })).page(() => <div>Hello</div>)
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [
+            {
+              scope: 'myroot',
+              what: 'routes',
+              outfile: routesFile.path,
+            },
+          ],
+          log,
+          routes: {},
+        })
+
+        await generator.sync()
+
+        const content = fixPaths(await routesFile.text())
+        expect(content).toMatchInlineSnapshot(`
+          "import { Route0, Routes } from '@devp0nt/route0'
+
+          export const routes = Routes.create({
+            'mypage': Route0.create('/news').search<typeof import('./file0.js')['page']['Infer']['SearchRaw']>(),
+          })
+          "
+        `)
+      }),
+    )
+
+    it(
+      'generates routes file mixing typed (own search) and plain pages',
+      helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+import {z} from 'zod'
+export const root = Point0.lets('root', 'myroot').root()
+export const home = root.lets('page', 'home', '/').page(() => <div>Home</div>)
+export const list = root.lets('page', 'list', '/list').search(z.object({ page: z.coerce.number().default(0) })).page(() => <div>List</div>)
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [
+            {
+              scope: 'myroot',
+              what: 'routes',
+              outfile: routesFile.path,
+              origin: 'https://example.com',
+            },
+          ],
+          log,
+          routes: {},
+        })
+
+        await generator.sync()
+
+        const content = fixPaths(await routesFile.text())
+        expect(content).toMatchInlineSnapshot(`
+          "import { Route0, Routes } from '@devp0nt/route0'
+
+          export const routes = Routes.create({
+            'home': '/',
+            'list': Route0.create('/list').search<typeof import('./file0.js')['list']['Infer']['SearchRaw']>(),
+          }, { origin: 'https://example.com' })
+          "
+        `)
+      }),
+    )
+
+    it(
+      'types a page that inherits search from its layout',
+      helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+import {z} from 'zod'
+export const root = Point0.lets('root', 'myroot').root()
+export const layout = root.lets('layout', 'mylayout').search(z.object({ q: z.string() })).layout(() => <div>Layout</div>)
+export const page = layout.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [
+            {
+              scope: 'myroot',
+              what: 'routes',
+              outfile: routesFile.path,
+            },
+          ],
+          log,
+          routes: {},
+        })
+
+        await generator.sync()
+
+        const content = fixPaths(await routesFile.text())
+        expect(content).toMatchInlineSnapshot(`
+          "import { Route0, Routes } from '@devp0nt/route0'
+
+          export const routes = Routes.create({
+            'mypage': Route0.create('/news').search<typeof import('./file0.js')['page']['Infer']['SearchRaw']>(),
+          })
+          "
+        `)
+      }),
+    )
+
+    it(
       'generates routes file with origin without path as string',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
