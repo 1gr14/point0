@@ -31,6 +31,7 @@ import type {
   SsrOptionsResolved,
 } from './config.js'
 import type { Executor } from './executor.js'
+import { isDevShuttingDown, requestDevShutdown } from './devlock.js'
 import { killPort } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
@@ -622,6 +623,18 @@ try {
       })
       pipeFilteredLogs({ stream: child.stdout, target: process.stdout })
       pipeFilteredLogs({ stream: child.stderr, target: process.stderr })
+      void child.exited.then((code) => {
+        // `restarting` covers our own restart-on-new-file kill; isDevShuttingDown covers Ctrl-C / point0 stop.
+        if (restarting || isDevShuttingDown()) {
+          return
+        }
+        // The dev tree lives and dies as one unit: a client dying on its own (crash, or an agent freeing its port)
+        // tears the rest down rather than leaving a half-alive tree behind.
+        requestDevShutdown({
+          reason: `Client "${this.scope}" dev process exited unexpectedly (code ${String(code)}). Tearing down dev.`,
+          log: this.log,
+        })
+      })
       return child
     }
 

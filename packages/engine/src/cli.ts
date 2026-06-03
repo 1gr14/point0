@@ -6,6 +6,7 @@ import { Command } from 'commander'
 import { default as nodePath, default as path } from 'node:path'
 import { Analyzer, buildPointsFilter, ensureMetaPaths, resolveMetaImportPaths } from './analyzer.js'
 import type { AnalyzerPointSelectOptions } from './analyzer.js'
+import { stopDevTree } from './devlock.js'
 import { Engine } from './engine.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
 
@@ -107,6 +108,23 @@ program
   .action(async () => {
     const { engine } = await Engine.findAndImportSelf({ cwd: process.cwd() })
     await engine.prune()
+  })
+
+program
+  .command('stop')
+  .description('Stop the running dev tree for this project (server + clients), via the dev lockfile')
+  .action(async () => {
+    // Runs against the current working directory — same anchor as `point0 dev` (which also has no --cwd), so the
+    // lockfile written by dev and the one read here always resolve to the same path. Deliberately does not import the
+    // engine: stopping must work even when the app's engine throws on import.
+    const result = await stopDevTree({ cwd: process.cwd() })
+    if (!result.stopped) {
+      console.info('point0: no running dev server found for this project.')
+      return
+    }
+    const pidPart = result.pid ? ` (pid ${result.pid})` : ''
+    const portsPart = result.ports.length > 0 ? `, freed ports ${result.ports.join(', ')}` : ''
+    console.info(`point0: dev stopped${pidPart}${portsPart}.`)
   })
 
 program
@@ -267,8 +285,7 @@ program
       const babelOverride = options.babel === false ? { babel: [] } : {}
       // --hmr (-h) → force true; --no-hmr (-H) → force false; absent → leave engine-config value.
       // (commander resolves to last-wins if both are passed)
-      const hmrOverride =
-        options.hmr === true ? { hmrFix: true } : options.hmr === false ? { hmrFix: false } : {}
+      const hmrOverride = options.hmr === true ? { hmrFix: true } : options.hmr === false ? { hmrFix: false } : {}
       const compiler = Compiler.create({
         ...compilerOptions,
         ...babelOverride,
