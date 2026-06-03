@@ -33,7 +33,9 @@ import {
   isExtractingViteConfig,
   killSubprocessOnExit,
   normalizeAndValidateNodeEnv,
+  registerOnProcessExit,
 } from './utils.js'
+import { markDevShuttingDown, removeDevLockSync, stopDevTree, writeDevLock } from './devlock.js'
 import { FilesWatcher } from './watcher.js'
 
 export class Engine<
@@ -323,6 +325,33 @@ export class Engine<
               : [watchProvided]
 
     normalizeAndValidateNodeEnv('development')
+
+    // Dev process-tree lifecycle. The dev tree (this orchestrator + server child + client children) must behave as one
+    // unit: reap any stale tree left over for this project, then claim a lockfile so `point0 stop` and the next
+    // `point0 dev` can find and tear this whole tree down. The lockfile is written before anything is spawned, so its
+    // presence always implies "children may exist". Removal + the shutting-down flag are registered on process exit so
+    // every teardown path (Ctrl-C, SIGTERM from `point0 stop`, an unexpected child death) cleans up and the children's
+    // own exit handlers know not to re-trigger a teardown.
+    const reaped = await stopDevTree({ cwd, log: this.log, excludePid: process.pid })
+    if (reaped.stopped) {
+      this.log({
+        level: 'info',
+        category: ['dev'],
+        message: `Reaped a previous dev tree for this project before starting${reaped.pid ? ` (was pid ${reaped.pid})` : ''}.`,
+      })
+    }
+    await writeDevLock({
+      pid: process.pid,
+      ppid: process.ppid,
+      cwd,
+      ports: this.collectDevPorts(),
+      startedAt: new Date().toISOString(),
+    })
+    registerOnProcessExit(() => {
+      markDevShuttingDown()
+      removeDevLockSync(cwd)
+    })
+
     const isSideServer = !side || side === 'server'
     const isSideClient = !side || side === 'client'
     const isScopeServer = !scope || scope === this.server.scope
@@ -361,6 +390,28 @@ export class Engine<
     } else {
       await Promise.all([generatorWatchProcess, this.prepare(), clientsDevServers])
     }
+  }
+
+  /**
+   * Every port the dev tree may bind — server + every client, including their hmr ports — recorded in the dev lockfile
+   * so `point0 stop` can free them as a fallback if a child outlives its parent. Ports may arrive as strings from env
+   * (e.g. `port: process.env.SERVER_PORT`), so they are coerced and de-duplicated here.
+   */
+  private collectDevPorts(): number[] {
+    const ports: number[] = []
+    const add = (value: unknown): void => {
+      const port = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN
+      if (Number.isFinite(port) && port > 0) {
+        ports.push(port)
+      }
+    }
+    add(this.server.port)
+    add(this.server.hmrPort)
+    for (const client of this.clients) {
+      add(client.port)
+      add(client.hmrPort)
+    }
+    return [...new Set(ports)]
   }
 
   /**

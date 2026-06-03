@@ -22,6 +22,7 @@ import type {
 } from './config.js'
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
+import { isDevShuttingDown, requestDevShutdown } from './devlock.js'
 import { killPort } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
@@ -635,16 +636,23 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     watch: string[] | boolean
     cwd: string
   }): Promise<void> {
-    // Two restart strategies:
-    // - touch  (POINT0_DEV_SERVER_TOUCH_ON_WATCH=true): child runs with `bun --watch`; on import change
-    //   we rewrite the entry file's bytes so bun's content-hash watcher restarts the child itself.
-    // - respawn (default): child runs without `--watch`; on import change we SIGKILL that child and spawn a new one.
+    // The server child always runs under `bun --watch` (see the spawn below). That matters twice: bun reloads it
+    // in-process on change, and — crucially for the dev lifecycle — it keeps the child ALIVE (printing the error)
+    // when the code throws, instead of letting the process exit. So a developer's syntax/runtime error never makes
+    // `child.exited` resolve, and the unexpected-exit teardown is never tripped by a code error you can just fix.
+    // On top of bun's own watch, the orchestrator watches the entry's deep-import graph and forces a restart there:
+    // - respawn (default): SIGKILL the child and spawn a fresh one (marked in `intentionalKills` so its exit is not
+    //   mistaken for a crash).
+    // - touch (POINT0_DEV_SERVER_TOUCH_ON_WATCH=true): rewrite the entry file's bytes so bun's own watcher restarts it.
     const useTouch = process.env.POINT0_DEV_SERVER_TOUCH_ON_WATCH === 'true'
 
     const activeEntries = Object.values(this.entry || []).filter((entryFile) => entriesFiles.includes(entryFile))
 
     const allChildren = new Set<Bun.Subprocess<'ignore', 'pipe', 'pipe'>>()
     killSubprocessOnExit(() => allChildren)
+    // Children we kill on purpose (a respawn on import-graph change) so their exit does not look "unexpected" and
+    // trip the teardown below.
+    const intentionalKills = new Set<Bun.Subprocess<'ignore', 'pipe', 'pipe'>>()
 
     const spawnEntry = (entryFile: string): Bun.Subprocess<'ignore', 'pipe', 'pipe'> => {
       const child = Bun.spawn({
@@ -657,7 +665,18 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         stderr: 'pipe',
       })
       allChildren.add(child)
-      void child.exited.finally(() => allChildren.delete(child))
+      void child.exited.then((code) => {
+        allChildren.delete(child)
+        if (intentionalKills.delete(child) || isDevShuttingDown()) {
+          return
+        }
+        // A core child died on its own (crash, or an agent freeing its port). The dev tree lives and dies as one
+        // unit, so tear the rest down rather than leave a half-alive tree behind.
+        requestDevShutdown({
+          reason: `Server dev process exited unexpectedly (entry "${nodePath.relative(cwd, entryFile)}", code ${String(code)}). Tearing down dev.`,
+          log: this.log,
+        })
+      })
       pipeStreamStripped({ stream: child.stdout, target: process.stdout })
       pipeStreamStripped({ stream: child.stderr, target: process.stderr })
       return child
@@ -701,6 +720,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       const old = childByEntry.get(entryFile)
       if (old) {
         try {
+          intentionalKills.add(old)
           old.kill('SIGKILL')
           await old.exited
         } catch {
