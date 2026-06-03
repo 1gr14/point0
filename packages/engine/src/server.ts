@@ -22,7 +22,7 @@ import type {
 } from './config.js'
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
-import { isDevShuttingDown, requestDevShutdown } from './devlock.js'
+import { isDevShuttingDown, registerDevChild, requestDevShutdown } from './devlock.js'
 import { killPort } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
@@ -40,7 +40,6 @@ import {
   extractViteConfig,
   getDirByPaths,
   getViteRoot,
-  killSubprocessOnExit,
   loadBunPlugins,
   normalizeAndValidateNodeEnv,
   pipeStreamStripped,
@@ -648,8 +647,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
 
     const activeEntries = Object.values(this.entry || []).filter((entryFile) => entriesFiles.includes(entryFile))
 
-    const allChildren = new Set<Bun.Subprocess<'ignore', 'pipe', 'pipe'>>()
-    killSubprocessOnExit(() => allChildren)
     // Children we kill on purpose (a respawn on import-graph change) so their exit does not look "unexpected" and
     // trip the teardown below.
     const intentionalKills = new Set<Bun.Subprocess<'ignore', 'pipe', 'pipe'>>()
@@ -664,9 +661,8 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         stdout: 'pipe',
         stderr: 'pipe',
       })
-      allChildren.add(child)
+      registerDevChild(child)
       void child.exited.then((code) => {
-        allChildren.delete(child)
         if (intentionalKills.delete(child) || isDevShuttingDown()) {
           return
         }

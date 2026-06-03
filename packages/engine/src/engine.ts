@@ -33,9 +33,8 @@ import {
   isExtractingViteConfig,
   killSubprocessOnExit,
   normalizeAndValidateNodeEnv,
-  registerOnProcessExit,
 } from './utils.js'
-import { markDevShuttingDown, removeDevLockSync, stopDevTree, writeDevLock } from './devlock.js'
+import { installDevShutdown, stopDevTree, writeDevLock } from './devlock.js'
 import { FilesWatcher } from './watcher.js'
 
 export class Engine<
@@ -329,9 +328,9 @@ export class Engine<
     // Dev process-tree lifecycle. The dev tree (this orchestrator + server child + client children) must behave as one
     // unit: reap any stale tree left over for this project, then claim a lockfile so `point0 stop` and the next
     // `point0 dev` can find and tear this whole tree down. The lockfile is written before anything is spawned, so its
-    // presence always implies "children may exist". Removal + the shutting-down flag are registered on process exit so
-    // every teardown path (Ctrl-C, SIGTERM from `point0 stop`, an unexpected child death) cleans up and the children's
-    // own exit handlers know not to re-trigger a teardown.
+    // presence always implies "children may exist". `installDevShutdown` then owns the orchestrator's signal handling:
+    // on any teardown (Ctrl-C, `point0 stop`'s SIGTERM, an unexpected child death) it gives every child a graceful
+    // SIGTERM + grace window — so a developer's own shutdown handlers run — before SIGKILL, and removes the lockfile.
     const reaped = await stopDevTree({ cwd, log: this.log, excludePid: process.pid })
     if (reaped.stopped) {
       this.log({
@@ -347,10 +346,7 @@ export class Engine<
       ports: this.collectDevPorts(),
       startedAt: new Date().toISOString(),
     })
-    registerOnProcessExit(() => {
-      markDevShuttingDown()
-      removeDevLockSync(cwd)
-    })
+    installDevShutdown({ cwd, log: this.log })
 
     const isSideServer = !side || side === 'server'
     const isSideClient = !side || side === 'client'

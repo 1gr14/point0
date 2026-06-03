@@ -6,6 +6,22 @@ import nodePath from 'node:path'
 import { killPort } from './port.js'
 
 /**
+ * Dev process-tree lifecycle for `point0 dev`.
+ *
+ * Two related concerns, kept together because they are one story — making the multi-process dev tree (orchestrator +
+ * server child + client children) behave as a single unit:
+ *
+ * 1. The **lockfile** (`node_modules/.cache/@point0/dev/<hash>.json`) records the running tree so `point0 stop` and the
+ *    next `point0 dev`'s reap-on-start can find and tear it down — even after the orchestrator was killed and its
+ *    children orphaned. `stopDevTree` is the external "stop it" entry point.
+ * 2. The **shutdown coordinator** (`installDevShutdown` + `registerDevChild`) owns the orchestrator's own teardown: on
+ *    Ctrl-C / SIGTERM / an unexpected child death it gives every child a catchable SIGTERM and a grace window to run
+ *    its own cleanup before SIGKILLing stragglers, then exits.
+ */
+
+// --- lockfile ---------------------------------------------------------------
+
+/**
  * On-disk record of a running `point0 dev` tree, written by the orchestrator (the `point0 dev` process) and read by
  * `point0 stop` and the next `point0 dev`'s reap-on-start. It is what lets the multi-process dev tree (orchestrator +
  * server child + client children) be found and torn down as a single unit, even after the orchestrator has been killed
@@ -91,49 +107,13 @@ export const removeDevLockSync = (cwd: string): void => {
   }
 }
 
-// --- shutdown coordination -------------------------------------------------
-//
-// The whole point of the dev tree is that it lives and dies as one unit. When any core child exits unexpectedly
-// (e.g. an agent freed its port with `kill`), the orchestrator tears the rest down via `requestDevShutdown`. The
-// `shuttingDown` flag lets the child-exit handlers tell an *expected* exit (we are already going down, or we killed
-// the child ourselves for a restart) from an *unexpected* one that should trigger teardown.
-
-let shuttingDown = false
-
-/** True once the dev tree has begun tearing down (via signal, `requestDevShutdown`, or normal process exit). */
-export const isDevShuttingDown = (): boolean => shuttingDown
-
-/**
- * Mark the dev tree as shutting down without initiating one — registered on process exit so signal-driven teardown
- * (Ctrl-C, `point0 stop`'s SIGTERM) flips the flag before the children's exit handlers run.
- */
-export const markDevShuttingDown = (): void => {
-  shuttingDown = true
-}
-
-/**
- * Tear the whole dev tree down because something went wrong (a core child died unexpectedly). Idempotent. Exiting the
- * orchestrator runs its registered process-exit handlers, which SIGKILL the remaining children synchronously and remove
- * the lockfile — so the entire tree goes down together rather than leaving orphans behind.
- *
- * @related isDevShuttingDown
- */
-export const requestDevShutdown = (options: { reason: string; log?: LogFn; code?: number }): void => {
-  if (shuttingDown) {
-    return
-  }
-  shuttingDown = true
-  const { reason, log = defaultLog, code = 1 } = options
-  log({ level: 'warn', category: ['dev'], message: reason })
-  process.exit(code)
-}
-
 /**
  * Stop a running `point0 dev` tree for a project, the clean way:
  *
- * 1. SIGTERM the orchestrator from the lockfile — this runs _its own_ graceful teardown (it SIGKILLs its children), which
- *    is the same path as Ctrl-C.
- * 2. If it does not exit within `timeoutMs`, escalate to SIGKILL.
+ * 1. SIGTERM the orchestrator from the lockfile — this runs _its own_ graceful teardown (give children a grace window,
+ *    then exit), the same path as Ctrl-C.
+ * 2. If it does not exit within `timeoutMs`, escalate to SIGKILL. The default sits above the orchestrator's own grace
+ *    window (`POINT0_DEV_SHUTDOWN_GRACE_MS`, default 5s) so a normal graceful teardown finishes before we escalate.
  * 3. As a belt-and-suspenders, free every recorded port in case a child outlived its parent (an orphan from an older
  *    build, or a child killed out of band).
  * 4. Remove the lockfile.
@@ -151,7 +131,7 @@ export const stopDevTree = async (options: {
   /** A pid that must never be signalled (the caller itself, when reaping before a fresh start). */
   excludePid?: number
 }): Promise<{ stopped: boolean; pid?: number; ports: number[] }> => {
-  const { cwd, log = defaultLog, timeoutMs = 3000, excludePid } = options
+  const { cwd, log = defaultLog, timeoutMs = 8000, excludePid } = options
   const lock = readDevLock(cwd)
   if (!lock) {
     return { stopped: false, ports: [] }
@@ -184,4 +164,134 @@ export const stopDevTree = async (options: {
 
   removeDevLockSync(cwd)
   return { stopped: shouldSignalPid || ports.length > 0, pid, ports }
+}
+
+// --- shutdown coordinator ---------------------------------------------------
+//
+// When the dev tree comes down — Ctrl-C, `point0 stop`'s SIGTERM, or a core child dying unexpectedly — we must give
+// each child a *catchable* signal and a *grace window* to run its own cleanup (a user's `signal-exit` / `onShutdown`
+// handlers: close the DB, stop a job queue) before force-killing it. The flow is: SIGTERM every live child → wait up to
+// the grace window → SIGKILL any straggler → exit. The fast path is fast: as soon as every child has exited the wait
+// resolves; the grace window is only an upper bound for a hung child.
+
+type DevChild = Bun.Subprocess<any, any, any>
+
+const DEFAULT_GRACE_MS = 5000
+
+const children = new Set<DevChild>()
+let shuttingDown = false
+let installed = false
+let graceMs = DEFAULT_GRACE_MS
+let lockCwd: string | undefined
+let coordinatorLog: LogFn = defaultLog
+
+/**
+ * Whether the dev tree has begun tearing down. The child-exit handlers consult this to tell an _expected_ exit (we are
+ * already going down) from an _unexpected_ one (a crash / an agent freeing a port) that should trigger a teardown.
+ */
+export const isDevShuttingDown = (): boolean => shuttingDown
+
+/**
+ * Track a freshly spawned dev child so the coordinator can tear it down gracefully on shutdown. The child is dropped
+ * from the set automatically when it exits.
+ */
+export const registerDevChild = (child: DevChild): void => {
+  children.add(child)
+  void child.exited.finally(() => children.delete(child))
+}
+
+const aliveChildren = (): DevChild[] =>
+  [...children].filter((child) => child.exitCode === null && child.signalCode === null)
+
+/** SIGKILL every still-alive child, synchronously — the last-resort backstop, safe to call from an `exit` handler. */
+const sigkillAliveChildren = (): void => {
+  for (const child of aliveChildren()) {
+    try {
+      child.kill('SIGKILL')
+    } catch {
+      // Already dead or detached.
+    }
+  }
+}
+
+/** SIGTERM every live child, wait up to `graceMs` for them all to exit on their own, then SIGKILL any straggler. */
+const terminateChildrenGracefully = async (): Promise<void> => {
+  const alive = aliveChildren()
+  if (alive.length === 0) {
+    return
+  }
+  for (const child of alive) {
+    try {
+      child.kill('SIGTERM')
+    } catch {
+      // Already dead or detached.
+    }
+  }
+  await Promise.race([
+    Promise.all(alive.map((child) => child.exited)),
+    new Promise((resolve) => setTimeout(resolve, graceMs)),
+  ])
+  sigkillAliveChildren()
+}
+
+/**
+ * The single async shutdown path for the dev orchestrator. Idempotent. Gives the children their grace window, then
+ * exits — the `exit` backstop (installed by {@link installDevShutdown}) removes the lockfile and SIGKILLs any
+ * straggler.
+ */
+export const shutdownDevTree = async (options?: { code?: number; reason?: string; log?: LogFn }): Promise<void> => {
+  if (shuttingDown) {
+    return
+  }
+  shuttingDown = true
+  const { code = 0, reason, log = coordinatorLog } = options ?? {}
+  if (reason) {
+    log({ level: 'warn', category: ['dev'], message: reason })
+  }
+  await terminateChildrenGracefully()
+  process.exit(code)
+}
+
+/**
+ * Tear the whole tree down because a core child exited unexpectedly (a crash, or an agent freeing its port). Surviving
+ * children still get the graceful SIGTERM + grace window before being killed.
+ */
+export const requestDevShutdown = (options: { reason: string; log?: LogFn; code?: number }): void => {
+  void shutdownDevTree({ code: options.code ?? 1, reason: options.reason, log: options.log })
+}
+
+/**
+ * Install the coordinator once, from `engine.dev()`. It takes ownership of SIGINT/SIGTERM/SIGHUP for the orchestrator
+ * and routes them to the graceful teardown. Its signal listeners are kept installed for the life of the process: a
+ * present listener stops Node from terminating on the signal, so the async teardown can run to completion even though
+ * other `registerOnProcessExit` handlers re-raise the signal after their synchronous cleanup.
+ *
+ * The grace window defaults to 5s and can be tuned with `POINT0_DEV_SHUTDOWN_GRACE_MS` (raise it for apps whose cleanup
+ * is slow — note `stopDevTree`'s own timeout should stay above it).
+ */
+export const installDevShutdown = (options: { cwd: string; graceMs?: number; log?: LogFn }): void => {
+  if (installed) {
+    return
+  }
+  installed = true
+  lockCwd = options.cwd
+  coordinatorLog = options.log ?? defaultLog
+  const envGrace = Number(process.env.POINT0_DEV_SHUTDOWN_GRACE_MS)
+  graceMs = options.graceMs ?? (Number.isFinite(envGrace) && envGrace >= 0 ? envGrace : DEFAULT_GRACE_MS)
+
+  const signalCodes: Partial<Record<NodeJS.Signals, number>> = { SIGINT: 130, SIGTERM: 0, SIGHUP: 129 }
+  for (const signal of Object.keys(signalCodes) as NodeJS.Signals[]) {
+    process.on(signal, () => {
+      void shutdownDevTree({ code: signalCodes[signal] ?? 0 })
+    })
+  }
+
+  // Last-resort backstop: if the process ever exits without the graceful path (or a straggler survived it), make sure
+  // no child is left orphaned and the lockfile is gone. Both operations are synchronous, as `exit` handlers must be.
+  process.on('exit', () => {
+    sigkillAliveChildren()
+    if (lockCwd) {
+      removeDevLockSync(lockCwd)
+    }
+  })
 }

@@ -31,7 +31,7 @@ import type {
   SsrOptionsResolved,
 } from './config.js'
 import type { Executor } from './executor.js'
-import { isDevShuttingDown, requestDevShutdown } from './devlock.js'
+import { isDevShuttingDown, registerDevChild, requestDevShutdown } from './devlock.js'
 import { killPort } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
@@ -50,7 +50,6 @@ import {
   fetchRetryingConnectionRefused,
   getViteRoot,
   isAsyncFn,
-  killSubprocessOnExit,
   normalizeAndValidateNodeEnv,
   pipeStreamStripped,
   readableStreamToString,
@@ -595,7 +594,6 @@ try {
     }
 
     let currentChild: Bun.Subprocess<'ignore', 'pipe', 'pipe'>
-    killSubprocessOnExit(() => currentChild)
 
     const pipeFilteredLogs = ({
       stream,
@@ -623,6 +621,7 @@ try {
       })
       pipeFilteredLogs({ stream: child.stdout, target: process.stdout })
       pipeFilteredLogs({ stream: child.stderr, target: process.stderr })
+      registerDevChild(child)
       void child.exited.then((code) => {
         // `restarting` covers our own restart-on-new-file kill; isDevShuttingDown covers Ctrl-C / point0 stop.
         if (restarting || isDevShuttingDown()) {
