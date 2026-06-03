@@ -29,6 +29,7 @@ import type {
   PrefetchPagePolicy,
   ReadyPoint,
   ReadyPointType,
+  ScrollConfig,
 } from './types.js'
 import { isAbsoluteUrl } from './utils.js'
 
@@ -523,6 +524,19 @@ export class ClientPoints<TError extends ErrorPoint0> {
       return undefined
     }
     return { point, location }
+  }
+
+  // Resolved scroll config (custom element getter/setter + restore policy) for the
+  // page that matches `href`. Used by the router's central scroll manager.
+  _getPageScrollConfigByHref = (href: string): ScrollConfig | undefined => {
+    const found = this._getPageByHref(href)
+    if (!found) {
+      return undefined
+    }
+    const record = found.point
+    const readyPoint: ReadyPoint | undefined =
+      'ready' in record ? record.point : typeof record.point === 'function' ? undefined : record.point.point
+    return readyPoint?._getScrollConfig()
   }
 
   static isPageLocationSuitable = ({

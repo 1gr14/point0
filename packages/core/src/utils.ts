@@ -20,6 +20,7 @@ import type {
   QueryMode,
   QueryResultType,
   ScrollPositionGetter,
+  ScrollPositionRestorePolicy,
   ScrollPositionSetter,
   UseInfiniteQueryOptions,
   UseMutationOptions,
@@ -67,6 +68,12 @@ export const prependAndDeappendSlash = <T extends string | undefined | null>(pat
   result = result.replace(/\/\/+/g, '/')
   result = result.replace(/\/$/, '')
   return result as T
+}
+
+// Default scroll behavior: a new navigation (push) scrolls to the top; going
+// back/forward (pop) restores the saved position.
+export const defaultScrollPositionRestorePolicy: ScrollPositionRestorePolicy = ({ type }) => {
+  return type === 'pop' ? true : null
 }
 
 export const windowScrollPositionGetter: ScrollPositionGetter = () => {

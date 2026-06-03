@@ -8,7 +8,7 @@ import type {
 import type * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type { ErrorPoint0 } from './error.js'
-import type { NavigationPageState, RedirectTask } from './navigation.js'
+import type { NavigationPageState, RedirectTask, SetSearchHelper } from './navigation.js'
 import type {
   AnyPoint,
   CurrentRouteDefinition,
@@ -21,6 +21,7 @@ import type {
   FinalLoaderDataOrNever,
   IfAnyThenElse,
   InputParsed,
+  InputRaw,
   InputSchema,
   IsEmptyObject,
   IsNever,
@@ -610,7 +611,10 @@ export type WithFnReturnProps<TReturn> =
   Exclude<TReturn, undefined | void | Error | RedirectTask | 'loading' | React.ReactElement> extends never
     ? undefined
     : NormalizeCtxLike<
-        Extract<Exclude<TReturn, Error | 'loading' | RedirectTask | React.ReactElement>, Record<string, any> | undefined>
+        Extract<
+          Exclude<TReturn, Error | 'loading' | RedirectTask | React.ReactElement>,
+          Record<string, any> | undefined
+        >
       >
 
 export type ClientOnlyFallbackComponentProps<
@@ -749,6 +753,14 @@ export type GlobalHeadFn<
   TLocation extends AnyLocation = any,
 > = (options: GlobalHeadFnOptions<TStatus, TLocation>) => ResolvableHead | string
 
+// `setSearch` is handed to pages/layouts (which own a URL `search`) next to the
+// parsed `search` prop. Typed by the point's search schema's INPUT side (what you
+// pass into the URL — same as `route.get({ '?': ... })`), not the parsed output:
+// setSearch writes the query and the page re-parses it.
+type WithSetSearch<TSearchSchema extends InputSchema | UndefinedInputSchema> = {
+  setSearch: TSearchSchema extends InputSchema ? SetSearchHelper<InputRaw<TSearchSchema>> : SetSearchHelper
+}
+
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type PageExtraInnerProps = {}
 export type PageLocation<TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition> = ExactLocation<
@@ -770,7 +782,8 @@ export type PageSuccessComponentProps<
   TInnerProps,
   TQueriesDefinitions,
   TMapperOutput
->
+> &
+  WithSetSearch<TSearchSchema>
 export type PageSuccessComponentType<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
@@ -815,7 +828,8 @@ export type LayoutSuccessComponentProps<
   TQueriesDefinitions,
   TMapperOutput
 > &
-  LayoutExtraInnerProps
+  LayoutExtraInnerProps &
+  WithSetSearch<TSearchSchema>
 export type LayoutSuccessComponentType<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
@@ -1458,11 +1472,7 @@ export type MountAction<
 export type IsQueryShouldBeFinalized<
   TPointType extends PointType,
   TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType,
-> = TPointType extends 'loadedStage'
-  ? TLetsReadyPointType extends QueryableReadyPointType
-    ? true
-    : false
-  : false
+> = TPointType extends 'loadedStage' ? (TLetsReadyPointType extends QueryableReadyPointType ? true : false) : false
 
 export type WithSelfQueryIfShouldBeFinalized<
   TPointType extends PointType,

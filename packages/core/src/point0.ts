@@ -110,8 +110,8 @@ import type {
 import {
   RedirectTask,
   getNavigationHelpers,
+  setSearch,
   useLocation,
-  useNavigationTransitionState,
   useSetNavigationPageState,
   type NavigationPageState,
 } from './navigation.js'
@@ -236,6 +236,7 @@ import type {
   RouteDefinition,
   RouteSchema,
   SchemaHelper,
+  ScrollConfig,
   ScrollPositionGetter,
   ScrollPositionRestorePolicy,
   ScrollPositionSetter,
@@ -261,6 +262,7 @@ import type {
 import type { FsLocation, ResolveQueryCallback } from './utils.js'
 import {
   blankDataTransformerExtended,
+  defaultScrollPositionRestorePolicy,
   generateId,
   getByPath,
   getCallerLocation,
@@ -458,7 +460,15 @@ export class Point0<
   private readonly _scrollPositionSetter: ScrollPositionSetter | undefined
   private readonly _getScrollPositionSetter = () => this._scrollPositionSetter ?? windowScrollPositionSetter
   private readonly _scrollPositionRestorePolicy: ScrollPositionRestorePolicy | undefined
-  private readonly _getScrollPositionRestorePolicy = () => this._scrollPositionRestorePolicy ?? (() => null)
+  private readonly _getScrollPositionRestorePolicy = () =>
+    this._scrollPositionRestorePolicy ?? defaultScrollPositionRestorePolicy
+  // Public accessor so the router's central scroll manager can read this page's
+  // resolved scroll config (custom element getter/setter + restore policy).
+  readonly _getScrollConfig = (): ScrollConfig => ({
+    getter: this._getScrollPositionGetter(),
+    setter: this._getScrollPositionSetter(),
+    policy: this._getScrollPositionRestorePolicy(),
+  })
   private readonly _polhPolicy: PrefetchPagePolicy | undefined
   private readonly _polhDuration: number | undefined
   private readonly _ponPolicy: PrefetchPagePolicy | undefined
@@ -4180,9 +4190,6 @@ export class Point0<
       _scrollPositionRestorePolicy: typeof policy === 'function' ? policy : () => policy ?? null,
     }) as never
   }
-
-  private static readonly _prevPageScrollPositions: Array<{ name: PointName; pathname: string; x: number; y: number }> =
-    []
 
   // middlewares
 
@@ -11901,50 +11908,8 @@ export class Point0<
       return { inputRaw, outerProps }
     }, [props, location])
 
-    const { prevLocation, status } = useNavigationTransitionState()
-    const pathname = location.pathname
-    const prevPathname = React.useRef<string | null>(null)
-    React.useEffect(() => {
-      if (status !== 'idle') {
-        return
-      }
-      const scrollPositionRestorePolicy = this._getScrollPositionRestorePolicy()({ prevLocation })
-      const prevPageScrollPosition = Point0._prevPageScrollPositions.find(
-        (p) => p.name === this.name && p.pathname === pathname,
-      )
-      if (
-        scrollPositionRestorePolicy !== false &&
-        prevLocation &&
-        prevLocation.pathname !== pathname &&
-        prevPathname.current !== pathname
-      ) {
-        if (scrollPositionRestorePolicy === null) {
-          this._getScrollPositionSetter()({ x: 0, y: 0 })
-        }
-        if (scrollPositionRestorePolicy === true) {
-          if (!prevPageScrollPosition) {
-            this._getScrollPositionSetter()({ x: 0, y: 0 })
-          } else {
-            this._getScrollPositionSetter()({ x: prevPageScrollPosition.x, y: prevPageScrollPosition.y })
-          }
-        }
-      }
-      prevPathname.current = pathname
-      return () => {
-        const currentPageScrollPosition = this._getScrollPositionGetter()()
-        if (prevPageScrollPosition) {
-          prevPageScrollPosition.x = currentPageScrollPosition?.x ?? 0
-          prevPageScrollPosition.y = currentPageScrollPosition?.y ?? 0
-        } else {
-          Point0._prevPageScrollPositions.push({
-            name: this.name,
-            pathname,
-            x: currentPageScrollPosition?.x ?? 0,
-            y: currentPageScrollPosition?.y ?? 0,
-          })
-        }
-      }
-    }, [this.name, pathname, prevLocation, status, prevPathname])
+    // Scroll restoration is handled centrally by the router (see
+    // `useScrollRestoration`), not per-page anymore.
 
     return this._applyWrappers(
       this._Mountable({
@@ -11956,7 +11921,7 @@ export class Point0<
           },
         ],
         extraProps: () => {
-          return { location }
+          return { location, setSearch }
         },
         mountComponent: this._page as never,
       }),
@@ -12053,6 +12018,7 @@ export class Point0<
               value: mountableState.data,
               children,
             }),
+            setSearch,
           }
         },
         mountComponent: this._layout as never,

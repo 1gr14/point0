@@ -82,3 +82,7 @@ Rules of the tree:
   - better-auth
   - expo
   - capacitor
+
+---
+NEW:
+add "types" to concepts and tell there about typeof myPoint.Infer... 

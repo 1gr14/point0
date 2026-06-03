@@ -1430,7 +1430,18 @@ export type FetchOptions = RequestInit & { transform?: boolean }
 
 export type ScrollPositionGetter = () => { x: number; y: number } | undefined
 export type ScrollPositionSetter = (position: { x: number; y: number }) => void
-export type ScrollPositionRestorePolicy = ({ prevLocation }: { prevLocation: AnyLocation | null }) => boolean | null
+/** `'push'` — a new navigation (forward); `'pop'` — back/forward through history. */
+export type ScrollPositionRestoreType = 'push' | 'pop'
+// true - restore saved position (or 0,0), false - leave scroll as-is, null - scroll to 0,0
+export type ScrollPositionRestorePolicy = (options: {
+  prevLocation: AnyLocation | null
+  type: ScrollPositionRestoreType
+}) => boolean | null
+export type ScrollConfig = {
+  getter: ScrollPositionGetter
+  setter: ScrollPositionSetter
+  policy: ScrollPositionRestorePolicy
+}
 
 export type QueryMode = 'server' | 'client'
 export type PrefetchPagePolicy =

@@ -14,6 +14,7 @@ import {
   navigateWithTransitions,
   NavigationContextProvider,
   RedirectTask,
+  ScrollRestoration,
   specialNavigationOptionsSymbols,
   useLocation,
   useNavigationLocationContext,
@@ -23,9 +24,11 @@ import type {
   NavigateHelper,
   NavigateOptionsByAdapterNavigateFn,
   NavigateWithTransitionsReturnType,
+  OpenExternalFn,
   RedirectComponent,
   RedirectHelper,
   RedirectOptionsByAdapterNavigateFn,
+  ScrollToHashPolicy,
   SpecialLinkOptions,
   SpecialNavigateOptions,
   SpecialRedirectOptions,
@@ -93,6 +96,7 @@ export type NavLinkAsChildProps = AsChildProps<
 >
 export type Layout404TypeOne = string | AnyNiceReadyPoint<'layout'>
 export type Layout404Type = Array<Layout404TypeOne> | Layout404TypeOne
+export type Page404Type = React.ComponentType | React.ReactElement
 
 export type NavLinkStateType = 'exact' | 'same' | 'ancestor' | 'descendant' | 'unmatched'
 export type NavLinkStateOptions =
@@ -298,6 +302,8 @@ export const linkSpecialOptionKeys = [
   'prefetchOnNavigate',
   'before',
   'after',
+  'newTab',
+  'scrollToHash',
 ] as const
 export const linkTargetKeys = ['route', 'input', 'to', 'href'] as const
 // wouter HookNavigationOptions / NavigationalProps (adapter-level nav options).
@@ -395,6 +401,8 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
     prefetch,
     before,
     after,
+    newTab,
+    scrollToHash,
     ...rest
   } = props as WouterLinkProps<any> & { tohref: string } & SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>> & {
       onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => void
@@ -494,6 +502,8 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
       [specialNavigationOptionsSymbols.prefetchOnNavigate]: prefetchOnNavigate,
       [specialNavigationOptionsSymbols.before]: before,
       [specialNavigationOptionsSymbols.after]: after,
+      [specialNavigationOptionsSymbols.newTab]: newTab,
+      [specialNavigationOptionsSymbols.scrollToHash]: scrollToHash,
     } as WouterLinkProps, // & SpecialLinkOptionsInDataAttributes,
   }
 }
@@ -528,6 +538,8 @@ const splitOptions = <TAdapterNavigateFn extends AdapterNavigateFn = AdapterNavi
     before: getOptionValue('before'),
     after: getOptionValue('after'),
     status: getOptionValue('status'),
+    newTab: getOptionValue('newTab'),
+    scrollToHash: getOptionValue('scrollToHash'),
   }
   const specialOptionsWithSymbolKeys = {
     [specialNavigationOptionsSymbols.prefetchOnNavigate]: specialOptionsWithStringKeys.prefetchOnNavigate,
@@ -536,6 +548,8 @@ const splitOptions = <TAdapterNavigateFn extends AdapterNavigateFn = AdapterNavi
     [specialNavigationOptionsSymbols.before]: specialOptionsWithStringKeys.before,
     [specialNavigationOptionsSymbols.after]: specialOptionsWithStringKeys.after,
     [specialNavigationOptionsSymbols.status]: specialOptionsWithStringKeys.status,
+    [specialNavigationOptionsSymbols.newTab]: specialOptionsWithStringKeys.newTab,
+    [specialNavigationOptionsSymbols.scrollToHash]: specialOptionsWithStringKeys.scrollToHash,
   }
   const optionsWithoutSpecialKeys = {
     ...options,
@@ -546,12 +560,16 @@ const splitOptions = <TAdapterNavigateFn extends AdapterNavigateFn = AdapterNavi
   delete optionsWithoutSpecialKeys.before
   delete optionsWithoutSpecialKeys.after
   delete optionsWithoutSpecialKeys.status
+  delete optionsWithoutSpecialKeys.newTab
+  delete optionsWithoutSpecialKeys.scrollToHash
   delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.prefetchOnNavigate]
   delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.prefetchOnHover]
   delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.prefetch]
   delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.before]
   delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.after]
   delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.status]
+  delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.newTab]
+  delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.scrollToHash]
   const wouterOptions = {
     ...optionsWithoutSpecialKeys,
     ...specialOptionsWithSymbolKeys,
@@ -635,7 +653,19 @@ export const createNavigate = <
       ErrorClass,
     })
   }
-  return Object.assign(navigate, { to: wrappedNavigate })
+  return Object.assign(navigate, {
+    to: wrappedNavigate,
+    back: () => {
+      if (typeof window !== 'undefined') {
+        window.history.back()
+      }
+    },
+    forward: () => {
+      if (typeof window !== 'undefined') {
+        window.history.forward()
+      }
+    },
+  })
 }
 
 export const createLink = <
@@ -1021,13 +1051,15 @@ export const createRouter = <
   forceRerender,
   prependRoutes,
   appendRoutes,
+  openExternal,
+  scrollToHash = true,
   _navigate = createNavigate({ routes, navigate: adapterNavigate, ErrorClass }),
   _redirect = createRedirectHelper({ routes, navigate: adapterNavigate, ErrorClass }),
   _Redirect = createRedirectComponent({ routes, hook }),
 }: {
   addHashToLocation?: boolean
   routes?: RoutesPretty
-  Page404?: React.ComponentType
+  Page404?: Page404Type
   layout404?: Layout404Type
   pagesTree?: PagesTree
   layouts?: ClientPointsLayouts
@@ -1038,20 +1070,22 @@ export const createRouter = <
   forceRerender?: boolean
   prependRoutes?: React.ReactNode
   appendRoutes?: React.ReactNode
+  openExternal?: OpenExternalFn
+  scrollToHash?: ScrollToHashPolicy
   _navigate?: NavigateHelper<TRoutes, AdapterNavigateFnByHook<TBaseLocationHook>, TErrorClass>
   _Redirect?: RedirectComponent<TRoutes, AdapterNavigateFnByHook<TBaseLocationHook>>
   _redirect?: RedirectHelper<TRoutes, AdapterNavigateFnByHook<TBaseLocationHook>>
 }): ((props: {
   children?: React.ReactNode
   ssrLocation?: AnyLocation | undefined
-  Page404?: React.ComponentType
+  Page404?: Page404Type
   layout404?: Layout404Type
 }) => React.ReactElement) => {
   function RouterRoutes({
     Page404,
     layout404,
   }: {
-    Page404?: React.ComponentType
+    Page404?: Page404Type
     layout404?: Layout404Type
   }): React.ReactElement {
     if (forceRerender) {
@@ -1077,7 +1111,7 @@ export const createRouter = <
   }: {
     children?: React.ReactNode
     ssrLocation?: AnyLocation | undefined
-    Page404?: React.ComponentType
+    Page404?: Page404Type
     layout404?: Layout404Type
   }) {
     const wouterSsrProps = useMemo(() => {
@@ -1153,7 +1187,10 @@ export const createRouter = <
           redirect={_redirect}
           Redirect={_Redirect}
           ErrorClass={ErrorClass}
+          openExternal={openExternal}
+          scrollToHash={scrollToHash}
         >
+          <ScrollRestoration />
           {children ?? <RouterRoutes Page404={Page404} layout404={layout404} />}
         </NavigationContextProvider>
       </NativeWouterRouter>
@@ -1174,7 +1211,7 @@ export const createRouterRoutes = ({
 }: {
   pagesTree?: PagesTree
   layouts?: ClientPointsLayouts
-  Page404?: React.ComponentType
+  Page404?: Page404Type
   layout404?: Layout404Type
   forceRerender?: boolean
   prepend?: React.ReactNode
@@ -1186,7 +1223,7 @@ export const createRouterRoutes = ({
     prepend = providedPrepend,
     append = providedAppend,
   }: {
-    Page404?: React.ComponentType
+    Page404?: Page404Type
     layout404?: Layout404Type
     prepend?: React.ReactNode
     append?: React.ReactNode
@@ -1226,10 +1263,12 @@ export const createNavigation = <
   forceRerender = false,
   prependRoutes,
   appendRoutes,
+  openExternal,
+  scrollToHash,
 }: {
   addHashToLocation?: boolean
   routes?: TRoutes
-  Page404?: React.ComponentType
+  Page404?: Page404Type
   layout404?: Layout404Type
   pagesTree?: PagesTree
   layouts?: ClientPointsLayouts
@@ -1240,6 +1279,8 @@ export const createNavigation = <
   forceRerender?: boolean
   prependRoutes?: React.ReactNode
   appendRoutes?: React.ReactNode
+  openExternal?: OpenExternalFn
+  scrollToHash?: ScrollToHashPolicy
 } = {}): {
   navigate: NavigateHelper<TRoutes, TAdapterNavigateFn, TErrorClass>
   Link: CreatedLink<TRoutes, TBaseLocationHook>
@@ -1248,11 +1289,11 @@ export const createNavigation = <
   Router: (props: {
     children?: React.ReactNode
     ssrLocation?: AnyLocation | undefined
-    Page404?: React.ComponentType
+    Page404?: Page404Type
     layout404?: Layout404Type
   }) => React.ReactElement
   RouterRoutes: (props: {
-    Page404?: React.ComponentType
+    Page404?: Page404Type
     layout404?: Layout404Type
     prepend?: React.ReactNode
     append?: React.ReactNode
@@ -1283,6 +1324,8 @@ export const createNavigation = <
       forceRerender,
       prependRoutes,
       appendRoutes,
+      openExternal,
+      scrollToHash,
       _navigate: navigate,
       _redirect: redirect,
       _Redirect: Redirect,
@@ -1310,15 +1353,16 @@ const WrappedPage404 = ({
   layouts,
 }: {
   layouts: ClientPointsLayouts
-  Page404: React.ComponentType
+  Page404: Page404Type
   layout404?: Layout404Type
 }) => {
+  const page404Node = React.isValidElement(Page404) ? Page404 : <Page404 />
   const items: Layout404TypeOne[] = (Array.isArray(layout404) ? layout404 : [layout404]).filter(
     (item): item is Layout404TypeOne => Boolean(item),
   )
 
   if (items.length === 0) {
-    return <Page404 />
+    return page404Node
   }
 
   return items.reduceRight<React.ReactNode>(
@@ -1334,7 +1378,7 @@ const WrappedPage404 = ({
       const LayoutByPoint = layoutItem.X
       return <LayoutByPoint>{children}</LayoutByPoint>
     },
-    <Page404 />,
+    page404Node,
   )
 }
 
@@ -1349,7 +1393,7 @@ export const RenderPagesTree = ({
 }: {
   pagesTree: PagesTree
   layouts: ClientPointsLayouts
-  Page404?: React.ComponentType
+  Page404?: Page404Type
   layout404?: Layout404Type
   level?: number
   append?: React.ReactNode
