@@ -50,27 +50,18 @@ vite stable hmr references (vite отстой)
 
 # Extra
 
-Infer for Link, getLinkProps({route, to href}), useLinkProps?({route, to href})
-useNavLink should return state of path
-Link should have all <a> props
-figure out how ot pass Link props to other ui componets so it works nice
+- layout Page404 allow elemnt not only component
+- ensure navigate to not navigate to same url twice
+- Навигецт и редирект абсолютного пути не в той оригине должен использовать виндоу, и вообще иметь хук для открытия сторонних ссылок, а также пропсу для открытия в новой вкладке
+- navigate.back()
+- Серч и сет серч нужно возвращать прямо из пейджа, чтобы они работали мгновенно
+- setSearch как отдельная доступная утилита вне useSearchParams, но и useSearchParams 
+- normalize scroll restoration (it is trash now)
+- Скрол ресторейшен пусть будет в самом роутере
 
-layout Page404 allow elemnt not only component
-ensure navigate to not navigate to same url twice
-Навигецт и редирект абсолютного пути не в той оригине должен использовать виндоу, и вообще иметь хук для открытия сторонних ссылок, а также пропсу для открытия в новой вкладке
-navigate.back()
-
-Серч и сет серч нужно возвращать прямо из пейджа, чтобы они работали мгновенно
-setSearch как отдельная доступная утилита вне useSearchParams, но и useSearchParams 
 В роутах генерить роутв с серч парамсами
-
 Пейдж поинт вместе стегами должен быть доступен в юз пейдж стейт
 usePageData → return same as useQuery for page, needed to get page data in layout (mabye just usePageState and data also there?)
-
-normalize scroll restoration (it is trash now)
-Скрол ресторейшен пусть будет в самом роутере
-
-Редирект при не квери дегидрейтед Стейт пути должен не переходить дальше на страницу а сразу сровить редирект
 
 пофиксить экзамплы
 in example rename file navigate to navigation
