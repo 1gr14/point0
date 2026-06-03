@@ -14,7 +14,7 @@ const routes = Routes.create({
 
 // Real-world usage pattern: destructure InferNavigation off createNavigation and
 // read prop shapes off it via `typeof` in type position.
-const { InferNavigation } = createNavigation({ routes })
+const { InferNavigation, navigate, redirect } = createNavigation({ routes })
 
 // How a consumer embeds link props into their own component (cf. the site's Button).
 type ButtonOwnProps = { variant?: 'primary' | 'secondary'; loading?: boolean; children?: ReactNode }
@@ -230,5 +230,72 @@ describe('<Button /> usage (runtime)', () => {
 describe('InferNavigation type identity', () => {
   it('InferNavigation.LinkProps === InferLinkProps<typeof routes>', () => {
     expectTypeOf<typeof InferNavigation.LinkProps>().toEqualTypeOf<InferLinkProps<typeof routes>>()
+  })
+})
+
+describe('navigate history helpers', () => {
+  it('exposes back() and forward()', () => {
+    expectTypeOf(navigate.back).toEqualTypeOf<() => void>()
+    expectTypeOf(navigate.forward).toEqualTypeOf<() => void>()
+  })
+})
+
+describe('scrollToHash / newTab options (types)', () => {
+  it('navigate / navigate.to / redirect accept the presets + newTab', () => {
+    // Never called — body is type-checked, but navigate() needs a mounted provider
+    // at runtime, so we don't actually invoke it here.
+    const _typecheck = () => {
+      void navigate('home', undefined, { scrollToHash: 'pushHard', newTab: true })
+      void navigate('ideaView', { id: '1' }, { scrollToHash: 'pushHardCurrentSmooth' })
+      void navigate.to('#section', { scrollToHash: 'pushHardCurrentHard' })
+      void navigate.to('/about', { newTab: true, replace: true })
+      redirect('home', undefined, { scrollToHash: false })
+      redirect.to('/about', { newTab: true })
+      // @ts-expect-error kebab-case is not a valid scrollToHash preset
+      void navigate.to('/x', { scrollToHash: 'push-hard' })
+    }
+    void _typecheck
+    expect(typeof navigate).toBe('function')
+  })
+
+  it('LinkProps accepts scrollToHash presets + newTab', () => {
+    ;({ to: '/about', scrollToHash: 'pushHard', newTab: true }) satisfies typeof InferNavigation.LinkProps
+    ;({ route: 'home', scrollToHash: false }) satisfies typeof InferNavigation.LinkProps
+    ;({ to: '/about', scrollToHash: 'pushHardCurrentSmooth' }) satisfies typeof InferNavigation.LinkProps
+    // @ts-expect-error unknown scrollToHash preset
+    ;({ to: '/about', scrollToHash: 'nope' }) satisfies typeof InferNavigation.LinkProps
+  })
+})
+
+describe('scrollToHash / newTab via splitLinkProps (runtime)', () => {
+  it('routes scrollToHash + newTab onto the link half', () => {
+    const [linkProps, rest, isLink] = splitLinkProps({
+      to: '/about',
+      scrollToHash: 'pushHard',
+      newTab: true,
+      variant: 'primary',
+    })
+    expect(linkProps).toEqual({ to: '/about', scrollToHash: 'pushHard', newTab: true })
+    expect(rest).toEqual({ variant: 'primary' })
+    expect(isLink).toBe(true)
+  })
+})
+
+describe('createNavigation options (types)', () => {
+  it('accepts global scrollToHash, openExternal, and a Page404 element or component', () => {
+    createNavigation({ routes, scrollToHash: 'pushHardCurrentHard' })
+    createNavigation({ routes, scrollToHash: false })
+    createNavigation({
+      routes,
+      openExternal: (to, { newTab }) => {
+        void to
+        void newTab
+      },
+    })
+    createNavigation({ routes, Page404: () => null })
+    createNavigation({ routes, Page404: <span /> })
+    // @ts-expect-error kebab-case is not a valid global scrollToHash preset
+    createNavigation({ routes, scrollToHash: 'push-hard' })
+    expect(true).toBe(true)
   })
 })

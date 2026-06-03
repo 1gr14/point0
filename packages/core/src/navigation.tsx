@@ -41,8 +41,8 @@ export type SpecialNavigateOptions<TAdapterNavigateOptions extends AdapterNaviga
   /** Open the target in a new tab (uses the `openExternal` hook). */
   newTab?: boolean
   /**
-   * Scroll-to-hash policy for this navigation, overriding the global
-   * `createNavigation({ scrollToHash })`. See {@link ScrollToHashPolicy}.
+   * Scroll-to-hash policy for this navigation, overriding the global `createNavigation({ scrollToHash })`. See
+   * {@link ScrollToHashPolicy}.
    */
   scrollToHash?: ScrollToHashPolicy
 }
@@ -55,8 +55,8 @@ export type SpecialLinkOptions<TAdapterNavigateOptions extends AdapterNavigateOp
   /** Open the target in a new tab (uses the `openExternal` hook). */
   newTab?: boolean
   /**
-   * Scroll-to-hash policy for this navigation, overriding the global
-   * `createNavigation({ scrollToHash })`. See {@link ScrollToHashPolicy}.
+   * Scroll-to-hash policy for this navigation, overriding the global `createNavigation({ scrollToHash })`. See
+   * {@link ScrollToHashPolicy}.
    */
   scrollToHash?: ScrollToHashPolicy
 }
@@ -559,27 +559,18 @@ export type SetSearchInput<TSearchInput = UnknownSearchInput> =
   | SetSearchValues<TSearchInput>
   | ((prev: SetSearchValues<TSearchInput>) => SetSearchValues<TSearchInput>)
 /**
- * Sets the URL query. The value is the search **input** (raw) — the same type
- * `route.get({ '?': ... })` takes — merged into the current query and serialized;
- * the page re-parses it through its own schema. So e.g. for a `z.coerce.number()`
- * search the value here is the schema's input (not the parsed `number`). Pass
- * `undefined` for a key to remove it. The updater's `prev` is the current raw
- * query (`location.search`), so its keys are optional too.
+ * Sets the URL query. The value is the search **input** (raw) — the same type `route.get({ '?': ... })` takes; the page
+ * re-parses it through its own schema (so e.g. for a `z.coerce.number()` search the value here is the schema's input,
+ * not the parsed `number`).
+ *
+ * The object form **replaces** the whole query — `setSearch({ a: 1 })` makes the query exactly `?a=1`, and
+ * `setSearch({})` clears it. To patch, use the updater form and spread: `setSearch((prev) => ({ ...prev, a: 1 }))`.
+ * `undefined` values are dropped, so `({ ...prev, a: undefined })` removes a key.
  */
 export type SetSearchHelper<TSearchInput = UnknownSearchInput> = (
   next: SetSearchInput<TSearchInput>,
   options?: SetSearchOptions,
 ) => void
-
-const removeUndefinedValues = (obj: Record<string, unknown>): Record<string, unknown> => {
-  const result: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(obj)) {
-    if (value !== undefined) {
-      result[key] = value
-    }
-  }
-  return result
-}
 
 export const getSearch = <TSearch = UnknownSearchParsed,>(): TSearch => {
   return getLocation().search as TSearch
@@ -588,15 +579,20 @@ export const getSearch = <TSearch = UnknownSearchParsed,>(): TSearch => {
 export const setSearch: SetSearchHelper = (next, options) => {
   const helpers = getNavigationHelpers()
   const location = getLocation()
-  const prev = location.search
-  const patch = typeof next === 'function' ? next(prev) : next
-  const merged = removeUndefinedValues({ ...prev, ...patch })
-  const searchString = flat0.stringify(merged)
+  // Object form replaces the whole query; the updater form gets the current raw
+  // query and returns the full next one (spread `prev` to patch). `flat0.stringify`
+  // already drops `undefined` values, so a removed key just disappears.
+  const nextValues = typeof next === 'function' ? next(location.search) : next
+  const searchString = flat0.stringify(nextValues)
   const to = `${location.pathname}${searchString ? `?${searchString}` : ''}${location.hash || ''}`
   helpers.adapterNavigate(to, { replace: options?.replace !== false })
 }
 
-export const useSearchParams = <TSearch = UnknownSearchParsed,>(): [TSearch, SetSearchHelper<TSearch>] => {
+// Returns `[search, setSearch]`. Single generic: whatever type you pass is what
+// you get for both — no schema parsing or point inference, the caller owns the
+// type. (`search` is the raw `location.search`; the parsed, schema-typed search
+// is the page/layout `search` prop.)
+export const useSearch = <TSearch = UnknownSearchParsed,>(): [TSearch, SetSearchHelper<TSearch>] => {
   const location = useLocation()
   return [location.search as TSearch, setSearch as SetSearchHelper<TSearch>]
 }
@@ -612,23 +608,21 @@ const scrollPositionsByHref = singletonize('Point0ScrollPositionsByHref', new Ma
 // Hard (instant) vs smooth scrolling to a #hash element.
 export type ScrollToHashBehavior = 'hard' | 'smooth'
 /**
- * Scroll-to-hash policy. Usable both globally (`createNavigation({ scrollToHash })`)
- * and per-call on `navigate` / `Link` / `redirect` (where it overrides the global
- * one for that navigation — handy because a link may resolve to the current page
- * or a different one):
+ * Scroll-to-hash policy. Usable both globally (`createNavigation({ scrollToHash })`) and per-call on `navigate` /
+ * `Link` / `redirect` (where it overrides the global one for that navigation — handy because a link may resolve to the
+ * current page or a different one):
+ *
  * - `false` / `'none'` — never jump to the hash
  * - `'pushHard'` — hard jump on a cross-page (push) navigation only
- * - `'pushHardCurrentSmooth'` / `true` (default) — hard on push, smooth on a
- *   current-page (#anchor) navigation
+ * - `'pushHardCurrentSmooth'` / `true` (default) — hard on push, smooth on a current-page (#anchor) navigation
  * - `'pushHardCurrentHard'` — hard on both
  *
- * `current` is a navigation to the same pathname (an in-page anchor). Named
- * `current` (not `same`) to avoid clashing with the NavLink `same` state.
- * Back/forward (pop) never jumps to the hash — the scroll position is restored.
+ * `current` is a navigation to the same pathname (an in-page anchor). Named `current` (not `same`) to avoid clashing
+ * with the NavLink `same` state. Back/forward (pop) never jumps to the hash — the scroll position is restored.
  */
 export type ScrollToHashPolicy = boolean | 'none' | 'pushHard' | 'pushHardCurrentSmooth' | 'pushHardCurrentHard'
-type ResolvedScrollToHashPolicy = { push?: ScrollToHashBehavior; current?: ScrollToHashBehavior }
-const resolveScrollToHashPolicy = (policy: ScrollToHashPolicy | undefined): ResolvedScrollToHashPolicy => {
+export type ResolvedScrollToHashPolicy = { push?: ScrollToHashBehavior; current?: ScrollToHashBehavior }
+export const resolveScrollToHashPolicy = (policy: ScrollToHashPolicy | undefined): ResolvedScrollToHashPolicy => {
   const normalized =
     policy === true ? 'pushHardCurrentSmooth' : policy === false || policy === undefined ? 'none' : policy
   switch (normalized) {
@@ -645,7 +639,7 @@ const resolveScrollToHashPolicy = (policy: ScrollToHashPolicy | undefined): Reso
 }
 // Behavior for one navigation: per-call overrides the global default, then pick
 // the trigger ('push' for cross-page, 'current' for a current-page #hash jump).
-const resolveScrollToHashBehavior = (
+export const resolveScrollToHashBehavior = (
   perCall: ScrollToHashPolicy | undefined,
   globalPolicy: ScrollToHashPolicy | undefined,
   trigger: 'push' | 'current',
