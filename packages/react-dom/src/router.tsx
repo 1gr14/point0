@@ -67,7 +67,9 @@ type LinkAsChildProps = AsChildProps<
   { children: ReactElement; onClick?: MouseEventHandler },
   HTMLLinkAttributes & RefAttributes<HTMLAnchorElement>
 >
-export type LinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> &
+// Internal: the prop bundle handed straight to wouter's <Link>. Not part of the
+// public API surface — consumers use LinkComponentProps / InferLinkProps instead.
+export type WouterLinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> &
   LinkAsChildProps &
   SpecialLinkOptions<HookNavigationOptions<H>>
 export type AdapterNavigateFnByHook<TBaseLocationHook extends BaseLocationHook = BrowserLocationHook> =
@@ -89,10 +91,6 @@ export type NavLinkAsChildProps = AsChildProps<
   { children: ReactElement; onClick?: MouseEventHandler },
   Omit<HTMLLinkAttributes, 'className'> & RefAttributes<HTMLAnchorElement>
 >
-export type NavLinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> &
-  NavLinkAsChildProps &
-  NavLinkClassNameProps &
-  SpecialLinkOptions<HookNavigationOptions<H>>
 export type Layout404TypeOne = string | AnyNiceReadyPoint<'layout'>
 export type Layout404Type = Array<Layout404TypeOne> | Layout404TypeOne
 
@@ -139,31 +137,64 @@ export type NavLinkStateOptions =
       unmatched: true
     }
 
-export type LinkRouteProps<
+// ─── Infer* — embeddable navigation props ────────────────────────────────────
+// Navigation target + behavior props that can be embedded into ANY component
+// (your own Button, Card, MenuItem, …) WITHOUT the underlying <a> HTML attributes,
+// ref, `asChild` or `children`. The host component owns rendering — these only
+// describe "where this navigates and how". Exposed per-instance via `InferNavigation`
+// and split out at runtime with `splitLinkProps`.
+
+// Just the typed route target: `{ route, input }` discriminated union (+ nav options).
+export type InferRouteProps<
   TRoutes extends RoutesPretty,
   TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
 > = {
+  // `to?: undefined; href?: undefined` keeps all three discriminants present on
+  // every branch (so consumers can read `linkProps.to` etc.) and makes route ⇿
+  // to ⇿ href mutually exclusive in both directions.
   [TRouteName in ExtractRoutesKeys<TRoutes>]: {
     route: TRouteName
+    to?: undefined
+    href?: undefined
   } & (IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
     ? { input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }
     : { input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }) &
-    LinkAsChildProps &
     HookNavigationOptions<TBaseLocationHook> &
     SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>>
 }[ExtractRoutesKeys<TRoutes>]
 
-export type LinkComponentProps<
+export type InferLinkProps<
   TRoutes extends RoutesPretty,
   TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
 > =
-  | LinkRouteProps<TRoutes, TBaseLocationHook>
-  | ({ to?: string; href?: undefined } & LinkAsChildProps &
-      HookNavigationOptions<TBaseLocationHook> &
+  | InferRouteProps<TRoutes, TBaseLocationHook>
+  // `route?: never` keeps the branches mutually exclusive: passing `route` forces
+  // a valid route name + its typed `input` (the route branch) instead of silently
+  // falling back to the loose `to` branch.
+  | ({ route?: never; to?: string; href?: undefined } & HookNavigationOptions<TBaseLocationHook> &
       SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>>)
-  | ({ href?: string; to?: undefined } & LinkAsChildProps &
-      HookNavigationOptions<TBaseLocationHook> &
+  | ({ route?: never; href?: string; to?: undefined } & HookNavigationOptions<TBaseLocationHook> &
       SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>>)
+
+// Like InferLinkProps but with NavLink's state-driven className props, for components
+// that also want exact/same/ancestor/descendant/unmatched styling.
+export type InferNavLinkProps<
+  TRoutes extends RoutesPretty,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+> = InferLinkProps<TRoutes, TBaseLocationHook> & NavLinkClassNameProps
+
+// ─── *ComponentProps — the full props each component accepts ──────────────────
+// = the embeddable Infer* navigation props + the native <a> surface
+// (asChild / children / anchor attributes / ref).
+export type LinkRouteProps<
+  TRoutes extends RoutesPretty,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+> = InferRouteProps<TRoutes, TBaseLocationHook> & LinkAsChildProps
+
+export type LinkComponentProps<
+  TRoutes extends RoutesPretty,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+> = InferLinkProps<TRoutes, TBaseLocationHook> & LinkAsChildProps
 
 export type CreatedLink<
   TRoutes extends RoutesPretty,
@@ -173,30 +204,56 @@ export type CreatedLink<
 export type NavLinkRouteProps<
   TRoutes extends RoutesPretty,
   TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
-> = {
-  [TRouteName in ExtractRoutesKeys<TRoutes>]: {
-    route: TRouteName
-  } & (IsParamsOptional<ExtractRoute<TRoutes, TRouteName>> extends true
-    ? { input?: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }
-    : { input: GetPathInputByRoute<ExtractRoute<TRoutes, TRouteName>> }) &
-    NavLinkAsChildProps &
-    HookNavigationOptions<TBaseLocationHook> &
-    NavLinkClassNameProps &
-    SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>>
-}[ExtractRoutesKeys<TRoutes>]
+> = InferRouteProps<TRoutes, TBaseLocationHook> & NavLinkClassNameProps & NavLinkAsChildProps
 
 export type NavLinkComponentProps<
   TRoutes extends RoutesPretty,
   TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
-> =
-  | NavLinkRouteProps<TRoutes, TBaseLocationHook>
-  | ({ to: string } & NavLinkProps<TBaseLocationHook>)
-  | ({ href: string } & NavLinkProps<TBaseLocationHook>)
+> = InferNavLinkProps<TRoutes, TBaseLocationHook> & NavLinkAsChildProps
 
 export type CreatedNavLink<
   TRoutes extends RoutesPretty,
   TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
 > = (props: NavLinkComponentProps<TRoutes, TBaseLocationHook>) => React.ReactElement
+
+// What `useNavLink` accepts: just the navigation target, no anchor/className/options.
+export type UseNavLinkProps<
+  TRoutes extends RoutesPretty,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+> = InferLinkProps<TRoutes, TBaseLocationHook>
+// What `useNavLink` returns: the resolved match state (NavLinkStateOptions) plus the
+// resolved target. Mirrors what NavLink computes internally for its className.
+export type UseNavLinkResult = NavLinkStateOptions & {
+  tohref: string
+  to: string | undefined
+  href: string | undefined
+}
+export type CreatedUseNavLink<
+  TRoutes extends RoutesPretty,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+> = (props: UseNavLinkProps<TRoutes, TBaseLocationHook>) => UseNavLinkResult
+
+/**
+ * Type-only handle returned from `createNavigation`. At runtime it is `null` — it
+ * exists purely so you can read the navigation prop shapes off it in type position
+ * (it carries the route generic, so `route`/`input` stay typed):
+ *
+ *   export const { Link, InferNavigation } = createNavigation({ routes })
+ *   type ButtonProps = MyOwnProps & typeof InferNavigation.LinkProps
+ *
+ * Never read its members at runtime.
+ */
+export type InferNavigation<
+  TRoutes extends RoutesPretty,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+> = {
+  /** Embeddable Link props: route/to/href + prefetch/before/after + adapter opts. No <a> attrs, no asChild. */
+  LinkProps: InferLinkProps<TRoutes, TBaseLocationHook>
+  /** Like LinkProps, plus NavLink's state className props (exactClassName, sameClassName, …). */
+  NavLinkProps: InferNavLinkProps<TRoutes, TBaseLocationHook>
+  /** The typed route target only: `{ route, input }` discriminated union (no to/href). */
+  RouteProps: InferRouteProps<TRoutes, TBaseLocationHook>
+}
 
 const _resolveFinalTo = <TRoutes extends RoutesPretty>({
   routes,
@@ -231,17 +288,69 @@ const _resolveFinalTo = <TRoutes extends RoutesPretty>({
   return { tohref: ginalTo, to: ginalTo, href: undefined }
 }
 
+// --- Single source of truth for "what is a link/navigation prop" ----------------
+// Keep these lists in sync with SpecialLinkOptions (core) and wouter's
+// NavigationalProps. `splitLinkProps`, `_getNativeAnchorProps` and `splitOptions`
+// all derive from them so they can never drift apart.
+export const linkSpecialOptionKeys = [
+  'prefetch',
+  'prefetchOnHover',
+  'prefetchOnNavigate',
+  'before',
+  'after',
+] as const
+export const linkTargetKeys = ['route', 'input', 'to', 'href'] as const
+// wouter HookNavigationOptions / NavigationalProps (adapter-level nav options).
+export const linkAdapterNavKeys = ['replace', 'state'] as const
+export const linkPropKeys = [...linkTargetKeys, ...linkAdapterNavKeys, ...linkSpecialOptionKeys] as const
+export type LinkPropKey = (typeof linkPropKeys)[number]
+const linkPropKeySet: ReadonlySet<string> = new Set(linkPropKeys)
+
+// Distribute Pick/Omit over unions so a discriminated props type
+// (e.g. `OwnProps & InferNavigation.LinkProps`) keeps its branches after splitting.
+type DistributivePick<T, K extends PropertyKey> = T extends unknown ? Pick<T, Extract<keyof T, K>> : never
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
+
+/**
+ * Split a props object into `[linkProps, restProps, isLink]`: the navigation-specific
+ * props (route/input/to/href + replace/state + prefetch/before/after), everything else
+ * (your component's own props + native element attributes), and whether a navigation
+ * target was actually passed.
+ *
+ * `isLink` is `true` only when a target (`to` / `href` / `route`) is present — link
+ * options on their own (e.g. just `prefetch`) don't make it a link. Use it to pick the
+ * element to render, no manual `to ?? href ?? route` check needed:
+ *
+ *   const [linkProps, rest, isLink] = splitLinkProps(props)
+ *   const Comp = isLink ? Link : 'button'
+ *   return <Comp {...rest} {...linkProps} />
+ */
+export const splitLinkProps = <P extends Record<string, any>>(
+  props: P,
+): [DistributivePick<P, LinkPropKey>, DistributiveOmit<P, LinkPropKey>, boolean] => {
+  const linkProps: Record<string, unknown> = {}
+  const rest: Record<string, unknown> = {}
+  for (const key of Object.keys(props)) {
+    if (linkPropKeySet.has(key)) {
+      linkProps[key] = props[key]
+    } else {
+      rest[key] = props[key]
+    }
+  }
+  const isLink = Boolean(linkProps.to ?? linkProps.href ?? linkProps.route)
+  return [linkProps as DistributivePick<P, LinkPropKey>, rest as DistributiveOmit<P, LinkPropKey>, isLink]
+}
+
 const _getNativeAnchorProps = (props: Record<string, any>): React.ComponentProps<'a'> => {
   const nativeProps = Object.assign({}, props)
-  delete nativeProps.state
-  delete nativeProps.replace
   delete nativeProps.tohref
-  delete nativeProps.prefetchOnHover
-  delete nativeProps.prefetch
-  delete nativeProps.prefetchOnNavigate
-  delete nativeProps.before
-  delete nativeProps.after
   delete nativeProps.status
+  for (const key of linkAdapterNavKeys) {
+    delete nativeProps[key]
+  }
+  for (const key of linkSpecialOptionKeys) {
+    delete nativeProps[key]
+  }
   return nativeProps
 }
 
@@ -267,9 +376,9 @@ const _getNativeAnchorProps = (props: Record<string, any>): React.ComponentProps
 // }
 
 const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = BrowserLocationHook>(
-  props: LinkProps<TBaseLocationHook> & { tohref: string },
+  props: WouterLinkProps<TBaseLocationHook> & { tohref: string },
 ): {
-  wouterLinkProps: LinkProps
+  wouterLinkProps: WouterLinkProps
   tohref: string
   pointWithLocation:
     | { point: NormalizedLazyPointsCollectionRecord | ReadyPointsCollectionRecord; location: AnyLocation }
@@ -287,7 +396,7 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
     before,
     after,
     ...rest
-  } = props as LinkProps<any> & { tohref: string } & SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>> & {
+  } = props as WouterLinkProps<any> & { tohref: string } & SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>> & {
       onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => void
       onMouseLeave?: (e: React.MouseEvent<HTMLAnchorElement>) => void
     }
@@ -385,7 +494,7 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
       [specialNavigationOptionsSymbols.prefetchOnNavigate]: prefetchOnNavigate,
       [specialNavigationOptionsSymbols.before]: before,
       [specialNavigationOptionsSymbols.after]: after,
-    } as LinkProps, // & SpecialLinkOptionsInDataAttributes,
+    } as WouterLinkProps, // & SpecialLinkOptionsInDataAttributes,
   }
 }
 
@@ -567,7 +676,7 @@ export const createLink = <
   return Link
 }
 
-export const createNavLink = <
+export const createUseNavLink = <
   TRoutes extends RoutesPretty,
   TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
 >({
@@ -577,32 +686,15 @@ export const createNavLink = <
 }: {
   routes: TRoutes
   hook?: TBaseLocationHook
-}): CreatedNavLink<TRoutes, TBaseLocationHook> => {
-  function NavLink(props: NavLinkComponentProps<TRoutes, TBaseLocationHook>): React.ReactElement
-  function NavLink(props: {
+}): CreatedUseNavLink<TRoutes, TBaseLocationHook> => {
+  function useNavLink(props: UseNavLinkProps<TRoutes, TBaseLocationHook>): UseNavLinkResult
+  function useNavLink(props: {
     to?: string
     href?: string
     route?: string
     input?: Record<string, unknown>
-  }): React.ReactElement {
-    const {
-      route: routeName,
-      input = {},
-      to: providedTo,
-      href: providedHref,
-      exactClassName,
-      sameClassName,
-      ancestorClassName,
-      descendantClassName,
-      unmatchedClassName,
-      className,
-      ...rest
-    } = props as typeof props &
-      NavLinkClassNameProps & {
-        input?: Record<string, unknown>
-        to?: string
-        href?: string
-      }
+  }): UseNavLinkResult {
+    const { route: routeName, input = {}, to: providedTo, href: providedHref } = props
     const finalTo = _resolveFinalTo({
       routes,
       routeName,
@@ -611,11 +703,13 @@ export const createNavLink = <
       providedHref,
       componentName: 'NavLink',
     })
-    const { pointWithLocation, wouterLinkProps } = _getWouterLinkProps<TBaseLocationHook>({
-      ...rest,
-      ...finalTo,
-    })
     const currentLocation = useLocation()
+    const pointWithLocation = useMemo(() => {
+      if (!finalTo.tohref || finalTo.tohref.startsWith('#')) {
+        return undefined
+      }
+      return getClientPoints()._getPageByHref(finalTo.tohref)
+    }, [finalTo.tohref])
     const route = pointWithLocation?.point.route
     const relation = useMemo(() => {
       if (!route) {
@@ -623,7 +717,7 @@ export const createNavLink = <
       }
       return route.getRelation(currentLocation.pathname)
     }, [pointWithLocation?.point.route?.definition, currentLocation.pathname])
-    const statusOptions = useMemo<NavLinkStateOptions>(() => {
+    const state = useMemo<NavLinkStateOptions>(() => {
       const unmatched = {
         type: 'unmatched',
         exact: false,
@@ -654,37 +748,102 @@ export const createNavLink = <
         return { type: 'descendant', exact: false, same: false, ancestor: false, descendant: true, unmatched: false }
       }
       return unmatched
-    }, [currentLocation.pathname, finalTo])
+    }, [
+      relation,
+      currentLocation.origin,
+      currentLocation.href,
+      currentLocation.hrefRel,
+      currentLocation.pathname,
+      finalTo.tohref,
+    ])
+    return { ...state, tohref: finalTo.tohref, to: finalTo.to, href: finalTo.href }
+  }
+  return useNavLink
+}
+
+export const createNavLink = <
+  TRoutes extends RoutesPretty,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+>({
+  routes,
+  hook,
+}: {
+  routes: TRoutes
+  hook?: TBaseLocationHook
+}): CreatedNavLink<TRoutes, TBaseLocationHook> => {
+  const useNavLink = createUseNavLink<TRoutes, TBaseLocationHook>({ routes, hook })
+  function NavLink(props: NavLinkComponentProps<TRoutes, TBaseLocationHook>): React.ReactElement
+  function NavLink(props: {
+    to?: string
+    href?: string
+    route?: string
+    input?: Record<string, unknown>
+  }): React.ReactElement {
+    const {
+      route: routeName,
+      input = {},
+      to: providedTo,
+      href: providedHref,
+      exactClassName,
+      sameClassName,
+      ancestorClassName,
+      descendantClassName,
+      unmatchedClassName,
+      className,
+      ...rest
+    } = props as typeof props &
+      NavLinkClassNameProps & {
+        input?: Record<string, unknown>
+        to?: string
+        href?: string
+      }
+    const navLink = useNavLink({
+      route: routeName,
+      input,
+      to: providedTo,
+      href: providedHref,
+    } as UseNavLinkProps<TRoutes, TBaseLocationHook>)
+    // Resolve the target again here (pure + cheap) to keep the discriminated
+    // { to, href } correlation that _getWouterLinkProps needs; useNavLink only
+    // owns the match state.
+    const finalTo = _resolveFinalTo({
+      routes,
+      routeName,
+      input,
+      providedTo,
+      providedHref,
+      componentName: 'NavLink',
+    })
+    const { wouterLinkProps } = _getWouterLinkProps<TBaseLocationHook>({
+      ...rest,
+      ...finalTo,
+    })
     const resolvedClassName = useMemo(() => {
       const classNameFromFnOrString =
-        typeof className === 'function'
-          ? className(statusOptions)
-          : typeof className === 'string'
-            ? className
-            : undefined
+        typeof className === 'function' ? className(navLink) : typeof className === 'string' ? className : undefined
       const classNamesFromMap =
-        typeof className === 'object' && className !== null ? [className.default, className[statusOptions.type]] : []
+        typeof className === 'object' && className !== null ? [className.default, className[navLink.type]] : []
       const allClassNames = [
         classNameFromFnOrString,
         ...classNamesFromMap,
-        statusOptions.exact ? exactClassName : undefined,
-        statusOptions.same ? sameClassName : undefined,
-        statusOptions.ancestor ? ancestorClassName : undefined,
-        statusOptions.descendant ? descendantClassName : undefined,
-        statusOptions.unmatched ? unmatchedClassName : undefined,
+        navLink.exact ? exactClassName : undefined,
+        navLink.same ? sameClassName : undefined,
+        navLink.ancestor ? ancestorClassName : undefined,
+        navLink.descendant ? descendantClassName : undefined,
+        navLink.unmatched ? unmatchedClassName : undefined,
       ]
       const mergedClassNames = allClassNames.filter((value): value is string => Boolean(value)).join(' ')
       return mergedClassNames || undefined
     }, [
       className,
-      statusOptions,
+      navLink,
       exactClassName,
       sameClassName,
       ancestorClassName,
       descendantClassName,
       unmatchedClassName,
     ])
-    const finalWouterLinkProps = useMemo<LinkProps>(() => {
+    const finalWouterLinkProps = useMemo<WouterLinkProps>(() => {
       if ('asChild' in wouterLinkProps && wouterLinkProps.asChild) {
         return wouterLinkProps
       }
@@ -1099,6 +1258,8 @@ export const createNavigation = <
     append?: React.ReactNode
   }) => React.ReactElement
   redirect: RedirectHelper<TRoutes, TAdapterNavigateFn>
+  useNavLink: CreatedUseNavLink<TRoutes, TBaseLocationHook>
+  InferNavigation: InferNavigation<TRoutes, TBaseLocationHook>
 } => {
   const navigate = createNavigate({ routes, navigate: adapterNavigate, ErrorClass })
   const redirect = createRedirectHelper({ routes, navigate: adapterNavigate, ErrorClass })
@@ -1136,6 +1297,10 @@ export const createNavigation = <
       append: appendRoutes,
     }),
     redirect,
+    useNavLink: createUseNavLink({ routes, hook }),
+    // Phantom type-only handle — `null` at runtime, never read; only used via
+    // `typeof InferNavigation.LinkProps` in type position.
+    InferNavigation: null as unknown as InferNavigation<TRoutes, TBaseLocationHook>,
   }
 }
 

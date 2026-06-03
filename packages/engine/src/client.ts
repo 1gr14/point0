@@ -1,6 +1,7 @@
 import type { AnyRoute } from '@devp0nt/route0'
 import { type AnyLocation, Route0 } from '@devp0nt/route0'
 import type { CompilerOptions } from '@point0/compiler'
+import type { StaticCompilerRef } from '@point0/compiler/plugin/bun-static'
 import { FileResolver, resolveTempDirPath } from '@point0/compiler'
 import type {
   AppComponent,
@@ -270,8 +271,30 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
       process.env.POINT0_STATIC_COMPILER_OPTIONS = JSON.stringify(
         this.getCompilerOptions({ built: _point0_env.build.was }),
       )
+      const compilerRef = this.getStaticCompilerRef()
+      if (compilerRef) {
+        process.env.POINT0_STATIC_COMPILER_REF = compilerRef
+      }
     }
     return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR }
+  }
+
+  /**
+   * Companion to `POINT0_STATIC_COMPILER_OPTIONS` for the native dev server. JSON can't carry the _function_ refs in
+   * `compiler.markdown` (remark/rehype/recma) or `compiler.babel` — `JSON.stringify` silently turns them into `null`,
+   * which then breaks MDX compilation in the spawned bun child (empty `.mdx` modules, `page` export `undefined`). This
+   * ref lets `@point0/compiler/plugin/bun-static` re-import the engine in-process and read those plugins back as live
+   * functions. Only emitted when we know our engine file. See {@link resolveStaticCompilerOptions}.
+   */
+  private getStaticCompilerRef(): string | undefined {
+    if (!this.engineFile) {
+      return undefined
+    }
+    return JSON.stringify({
+      engineFile: this.engineFile,
+      clientIndex: this.index,
+      built: _point0_env.build.was,
+    } satisfies StaticCompilerRef)
   }
 
   /**
@@ -422,6 +445,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     })
     const pluginsStrings = [...generalPluginsStrings, ...ownPluginsStrings]
     const compilerOptions = this.getCompilerOptions({ built: _point0_env.build.was })
+    const compilerRef = this.getStaticCompilerRef()
     const scriptPath = nodePath.join(tempDir, `serve.js`)
     const bunfigTomlPath = nodePath.join(tempDir, 'bunfig.toml')
     const combinedPluginsStrings = compilerOptions
@@ -592,6 +616,7 @@ try {
           ...process.env,
           FORCE_COLOR: process.env.FORCE_COLOR ?? '1',
           ...(compilerOptions ? { POINT0_STATIC_COMPILER_OPTIONS: JSON.stringify(compilerOptions) } : {}),
+          ...(compilerOptions && compilerRef ? { POINT0_STATIC_COMPILER_REF: compilerRef } : {}),
           NODE_ENV: process.env.NODE_ENV,
         },
       })
