@@ -34,7 +34,7 @@ import {
   killSubprocessOnExit,
   normalizeAndValidateNodeEnv,
 } from './utils.js'
-import { installDevShutdown, stopDevTree, writeDevLock } from './devlock.js'
+import { installDevShutdown, reapDevTree, writeDevLock } from './devlock.js'
 import { FilesWatcher } from './watcher.js'
 
 export class Engine<
@@ -326,27 +326,28 @@ export class Engine<
     normalizeAndValidateNodeEnv('development')
 
     // Dev process-tree lifecycle. The dev tree (this orchestrator + server child + client children) must behave as one
-    // unit: reap any stale tree left over for this project, then claim a lockfile so `point0 stop` and the next
-    // `point0 dev` can find and tear this whole tree down. The lockfile is written before anything is spawned, so its
-    // presence always implies "children may exist". `installDevShutdown` then owns the orchestrator's signal handling:
-    // on any teardown (Ctrl-C, `point0 stop`'s SIGTERM, an unexpected child death) it gives every child a graceful
-    // SIGTERM + grace window — so a developer's own shutdown handlers run — before SIGKILL, and removes the lockfile.
-    const reaped = await stopDevTree({ cwd, log: this.log, excludePid: process.pid })
+    // unit. The lock is keyed by cwd + ports, so we only reap a *previous instance of this exact config* (a restart, or
+    // its leftover zombie) — a second `point0 dev` in the same folder on other ports coexists untouched. We claim the
+    // lock before spawning (so its presence always implies "children may exist"), then `installDevShutdown` owns the
+    // orchestrator's signal handling: on any teardown (Ctrl-C, `point0 stop`'s SIGTERM, an unexpected child death) it
+    // gives every child a graceful SIGTERM + grace window — so a developer's own shutdown handlers run — before SIGKILL.
+    const ports = this.collectDevPorts()
+    const reaped = await reapDevTree({ cwd, ports, log: this.log, excludePid: process.pid })
     if (reaped.stopped) {
       this.log({
         level: 'info',
         category: ['dev'],
-        message: `Reaped a previous dev tree for this project before starting${reaped.pid ? ` (was pid ${reaped.pid})` : ''}.`,
+        message: `Reaped a previous dev tree on these ports before starting${reaped.pid ? ` (was pid ${reaped.pid})` : ''}.`,
       })
     }
     await writeDevLock({
       pid: process.pid,
       ppid: process.ppid,
       cwd,
-      ports: this.collectDevPorts(),
+      ports,
       startedAt: new Date().toISOString(),
     })
-    installDevShutdown({ cwd, log: this.log })
+    installDevShutdown({ cwd, ports, log: this.log })
 
     const isSideServer = !side || side === 'server'
     const isSideClient = !side || side === 'client'

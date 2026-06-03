@@ -6,7 +6,7 @@ import { Command } from 'commander'
 import { default as nodePath, default as path } from 'node:path'
 import { Analyzer, buildPointsFilter, ensureMetaPaths, resolveMetaImportPaths } from './analyzer.js'
 import type { AnalyzerPointSelectOptions } from './analyzer.js'
-import { stopDevTree } from './devlock.js'
+import { stopAllDevTrees } from './devlock.js'
 import { Engine } from './engine.js'
 import { normalizeAndValidateNodeEnv } from './utils.js'
 
@@ -114,17 +114,25 @@ program
   .command('stop')
   .description('Stop the running dev tree for this project (server + clients), via the dev lockfile')
   .action(async () => {
-    // Runs against the current working directory — same anchor as `point0 dev` (which also has no --cwd), so the
-    // lockfile written by dev and the one read here always resolve to the same path. Deliberately does not import the
-    // engine: stopping must work even when the app's engine throws on import.
-    const result = await stopDevTree({ cwd: process.cwd() })
-    if (!result.stopped) {
+    // Runs against the current working directory — same anchor as `point0 dev`. Stops every dev tree of this folder
+    // (there can be more than one, on different ports). Deliberately does not import the engine: stopping must work
+    // even when the app's engine throws on import.
+    const stopped = (await stopAllDevTrees({ cwd: process.cwd() })).filter((result) => result.stopped)
+    if (stopped.length === 0) {
       console.info('point0: no running dev server found for this project.')
       return
     }
-    const pidPart = result.pid ? ` (pid ${result.pid})` : ''
-    const portsPart = result.ports.length > 0 ? `, freed ports ${result.ports.join(', ')}` : ''
-    console.info(`point0: dev stopped${pidPart}${portsPart}.`)
+    if (stopped.length === 1) {
+      const [only] = stopped
+      const pidPart = only.pid ? ` (pid ${only.pid})` : ''
+      const portsPart = only.ports.length > 0 ? `, freed ports ${only.ports.join(', ')}` : ''
+      console.info(`point0: dev stopped${pidPart}${portsPart}.`)
+      return
+    }
+    console.info(`point0: stopped ${stopped.length} dev trees:`)
+    for (const tree of stopped) {
+      console.info(`  - pid ${tree.pid ?? '?'}${tree.ports.length > 0 ? `, ports ${tree.ports.join(', ')}` : ''}`)
+    }
   })
 
 program
