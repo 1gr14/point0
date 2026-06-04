@@ -513,23 +513,37 @@ export class CompilerFile<THasContent extends boolean> {
     // for the intermediate, then chain it with the previously captured map1
     // (intermediate → original) so the inline source map ends up mapping final → original.
     const generatorSourceLabel = this._preUserBabelMap ? this.intermediateSourceLabel : this.abs
-    // We disable it whenever the AST has been mutated (user babel plugins OR any of our own
-    // shake/optimize passes): once nodes are added or replaced, their loc info no longer maps
-    // cleanly into the source text, and preserveFormat can emit syntactically broken JS — e.g.
-    // collapsing `}); else return` into `})else return` after rolldown-style brace elision is
-    // shaken or react-compiler-emitted TS type members come out invalid.
-    // const canPreserveFormat = !this._preUserBabelMap && !this.modified
+    // Bun can't yet apply an onLoad plugin's source map at runtime (oven-sh/bun#6173), so when our
+    // transforms pretty-print the AST and shift lines, runtime stack traces report the wrong line
+    // numbers. Note this only bites MODIFIED files: compile() returns the original content verbatim
+    // for unmodified ones (they never reach toCode()), so the drift is entirely a toCode() problem.
+    //
+    // POINT0_BUN_COMPILER_EXPERIMENTAL_FIX=true opts back into babel's experimental_preserveFormat,
+    // which re-emits the unchanged subtrees verbatim from their original source spans (relying on the
+    // tokens + createParenthesizedExpressions kept in parse()) so the emitted lines stay aligned.
+    //
+    // We gate only on !_preUserBabelMap, NOT on !this.modified: modified is the only case that gets
+    // here, so gating on it would make the flag a no-op. _preUserBabelMap is the real exclusion —
+    // when user babel plugins (react-compiler) ran, this.content is the intermediate regenerated text
+    // and preserveFormat against it would be wrong. For our own passes (env shake, guarded-expr,
+    // use-memo, point transforms) this.content is still the original, so the spans line up.
+    //
+    // Residual risk, and why this is opt-in/experimental: preserveFormat reuses source spans, so a
+    // subtree our passes added/replaced can come out syntactically broken — e.g. collapsing
+    // `}); else return` into `})else return` after rolldown-style brace elision is shaken.
+    //
+    // Drop this whole flag once Bun supports runtime source maps from onLoad plugins.
+    const canPreserveFormat =
+      process.env.POINT0_BUN_COMPILER_EXPERIMENTAL_FIX === 'true' && !this._preUserBabelMap
 
     const { code, map } = babelGenerator(
       this.ast,
       {
         sourceFileName: generatorSourceLabel,
         ...(sourceMaps ? { sourceMaps: true } : {}),
-        // https://github.com/oven-sh/bun/issues/6173
-        // ...({ experimental_preserveFormat: true, retainLines: true } as unknown as Record<string, unknown>),
-        // ...(canPreserveFormat
-        //   ? ({ retainLines: true, experimental_preserveFormat: true } as unknown as Record<string, unknown>)
-        //   : { compact: false, concise: false, minified: false, retainLines: false }),
+        ...(canPreserveFormat
+          ? ({ retainLines: true, experimental_preserveFormat: true } as unknown as Record<string, unknown>)
+          : {}),
       },
       this.content,
     )

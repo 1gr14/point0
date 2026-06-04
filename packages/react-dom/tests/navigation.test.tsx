@@ -14,7 +14,7 @@ const routes = Routes.create({
 
 // Real-world usage pattern: destructure InferNavigation off createNavigation and
 // read prop shapes off it via `typeof` in type position.
-const { InferNavigation, navigate, redirect } = createNavigation({ routes })
+const { InferNavigation, navigate, redirect, Link } = createNavigation({ routes })
 
 // How a consumer embeds link props into their own component (cf. the site's Button).
 type ButtonOwnProps = { variant?: 'primary' | 'secondary'; loading?: boolean; children?: ReactNode }
@@ -222,6 +222,58 @@ describe('<Button /> usage (runtime)', () => {
     const html = renderToStaticMarkup(<Button variant="secondary">just a button</Button>)
     expect(html).not.toContain('data-target')
     expect(html).toContain('just a button')
+  })
+})
+
+describe('<Link newTab /> (runtime)', () => {
+  // newTab leaves the SPA, so the anchor must carry a native target="_blank" for
+  // every target kind — not rely on the client router intercepting the click.
+  it('renders a native target="_blank" anchor for an href target', () => {
+    const html = renderToStaticMarkup(
+      <Link href="https://devp0nt.dev" newTab>
+        go
+      </Link>,
+    )
+    expect(html).toContain('href="https://devp0nt.dev"')
+    expect(html).toContain('target="_blank"')
+    expect(html).toContain('rel="noopener noreferrer"')
+  })
+
+  it('renders a native target="_blank" anchor for a `to` target', () => {
+    const html = renderToStaticMarkup(
+      <Link to="/about" newTab>
+        go
+      </Link>,
+    )
+    expect(html).toContain('href="/about"')
+    expect(html).toContain('target="_blank"')
+    expect(html).toContain('rel="noopener noreferrer"')
+  })
+
+  it('renders a native target="_blank" anchor for a typed route target', () => {
+    const html = renderToStaticMarkup(
+      <Link route="ideaView" input={{ id: '1' }} newTab>
+        go
+      </Link>,
+    )
+    expect(html).toContain('href="/ideas/1"')
+    expect(html).toContain('target="_blank"')
+  })
+
+  it('keeps a plain href anchor (no target) when newTab is absent', () => {
+    const html = renderToStaticMarkup(<Link href="https://devp0nt.dev">go</Link>)
+    expect(html).toContain('href="https://devp0nt.dev"')
+    expect(html).not.toContain('target=')
+  })
+
+  it('honors an explicit target/rel over the newTab defaults', () => {
+    const html = renderToStaticMarkup(
+      <Link href="https://devp0nt.dev" newTab target="_self" rel="noopener">
+        go
+      </Link>,
+    )
+    expect(html).toContain('target="_self"')
+    expect(html).toContain('rel="noopener"')
   })
 })
 

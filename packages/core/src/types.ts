@@ -1,7 +1,6 @@
 import type {
   AnyLocation,
   AnyRoute,
-  DescendantLocation,
   ExactLocation,
   Extended,
   HasParams,
@@ -45,11 +44,8 @@ import type { GetByPath, SetByPath } from './utils.js'
 
 export type EmptyObject = Record<never, never>
 
-export type UndefinedMethod = undefined
 export type PointName = string
-export type UndefinedPointName = undefined
 export type PointsScope = string
-export type UndefinedPointsScope = undefined
 
 export type UndefinedRoute = undefined
 export type RouteDefinition = string
@@ -1482,8 +1478,6 @@ export type NiceServerPoints = {
 }
 
 export type UndefinedResponse = undefined
-export type UndefinedClientResponse = undefined
-export type UndefinedLastDataOrResponse = undefined
 
 export type ServerExecuteFn = <
   TPoint extends {
@@ -1779,19 +1773,6 @@ export type ClientExecuteAction<
           : TType extends 'pluginEnd'
             ? { type: 'pluginEnd'; name: string; unstableId: number }
             : never
-
-export type ClientExecuteActionLocation<
-  TLetsReadyPointType extends ReadyPointType | UndefinedReadyPointType = ReadyPointType | UndefinedReadyPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-> = TLetsReadyPointType extends 'page'
-  ? ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
-  : TLetsReadyPointType extends 'layout'
-    ?
-        | DescendantLocation<CurrentRouteDefinition<TRouteDefinition>>
-        | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
-    : TLetsReadyPointType extends 'component'
-      ? AnyLocation
-      : AnyLocation
 
 type WithClientInputParsed<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,

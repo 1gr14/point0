@@ -29,6 +29,7 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
+import { _point0_env } from './env.js'
 
 export type NavigationCallback<TAdapterNavigateOptions extends AdapterNavigateOptions = AdapterNavigateOptions> = (
   to: string,
@@ -577,6 +578,12 @@ export const getSearch = <TSearch = UnknownSearchParsed,>(): TSearch => {
 }
 
 export const setSearch: SetSearchHelper = (next, options) => {
+  // Client-only: writes the URL through the adapter navigate (history / hash /
+  // memory). On the server there is nothing to navigate, so no-op — SSR code
+  // paths can call it safely.
+  if (_point0_env.side.is.server) {
+    return
+  }
   const helpers = getNavigationHelpers()
   const location = getLocation()
   // Object form replaces the whole query; the updater form gets the current raw
@@ -584,14 +591,23 @@ export const setSearch: SetSearchHelper = (next, options) => {
   // already drops `undefined` values, so a removed key just disappears.
   const nextValues = typeof next === 'function' ? next(location.search) : next
   const searchString = flat0.stringify(nextValues)
+  // Skip a redundant write when the query is unchanged (same values, or an
+  // identity updater): comparing the canonical `flat0` form of both sides — not
+  // the raw `searchString`, whose encoding/order may differ — avoids a no-op
+  // history entry and re-render. pathname + hash come from the current location
+  // and never change here, so an unchanged query means an identical URL.
+  if (searchString === flat0.stringify(location.search)) {
+    return
+  }
   const to = `${location.pathname}${searchString ? `?${searchString}` : ''}${location.hash || ''}`
   helpers.adapterNavigate(to, { replace: options?.replace !== false })
 }
 
 // Returns `[search, setSearch]`. Single generic: whatever type you pass is what
 // you get for both — no schema parsing or point inference, the caller owns the
-// type. (`search` is the raw `location.search`; the parsed, schema-typed search
-// is the page/layout `search` prop.)
+// type. (`search` here is the generically-parsed query object — `flat0.parse` of
+// the query string — so its values are raw strings/arrays, NOT coerced by any
+// schema; the schema-typed, coerced search is the page/layout `search` prop.)
 export const useSearch = <TSearch = UnknownSearchParsed,>(): [TSearch, SetSearchHelper<TSearch>] => {
   const location = useLocation()
   return [location.search as TSearch, setSearch as SetSearchHelper<TSearch>]

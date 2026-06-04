@@ -395,7 +395,9 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
     )
 
     it(
-      'generates routes file with typed search for a page that declares its own search',
+      // Typed search routes are intentionally disabled (see emitRoutesPointsFile) — a page that
+      // declares its own search must still emit a plain bare-path route. Regression guard.
+      'emits a plain route for a page that declares its own search (typed search disabled)',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 import {z} from 'zod'
@@ -421,10 +423,10 @@ export const page = root.lets('page', 'mypage', '/news').search(z.object({ q: z.
 
         const content = fixPaths(await routesFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import { Route0, Routes } from '@devp0nt/route0'
+          "import { Routes } from '@devp0nt/route0'
 
           export const routes = Routes.create({
-            'mypage': Route0.create('/news').search<typeof import('./file0.js')['page']['Infer']['SearchRaw']>(),
+            'mypage': '/news',
           })
           "
         `)
@@ -432,7 +434,9 @@ export const page = root.lets('page', 'mypage', '/news').search(z.object({ q: z.
     )
 
     it(
-      'generates routes file mixing typed (own search) and plain pages',
+      // Typed search routes are intentionally disabled (see emitRoutesPointsFile) — pages with and
+      // without a search schema must all emit plain bare-path routes. Regression guard.
+      'emits plain routes for pages with and without search (typed search disabled)',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 import {z} from 'zod'
@@ -460,11 +464,11 @@ export const list = root.lets('page', 'list', '/list').search(z.object({ page: z
 
         const content = fixPaths(await routesFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import { Route0, Routes } from '@devp0nt/route0'
+          "import { Routes } from '@devp0nt/route0'
 
           export const routes = Routes.create({
             'home': '/',
-            'list': Route0.create('/list').search<typeof import('./file0.js')['list']['Infer']['SearchRaw']>(),
+            'list': '/list',
           }, { origin: 'https://example.com' })
           "
         `)
@@ -472,7 +476,9 @@ export const list = root.lets('page', 'list', '/list').search(z.object({ page: z
     )
 
     it(
-      'types a page that inherits search from its layout',
+      // Typed search routes are intentionally disabled (see emitRoutesPointsFile) — a page that
+      // inherits search from its layout must still emit a plain bare-path route. Regression guard.
+      'emits a plain route for a page that inherits search from its layout (typed search disabled)',
       helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 import {z} from 'zod'
@@ -499,10 +505,10 @@ export const page = layout.lets('page', 'mypage', '/news').page(() => <div>Hello
 
         const content = fixPaths(await routesFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import { Route0, Routes } from '@devp0nt/route0'
+          "import { Routes } from '@devp0nt/route0'
 
           export const routes = Routes.create({
-            'mypage': Route0.create('/news').search<typeof import('./file0.js')['page']['Infer']['SearchRaw']>(),
+            'mypage': '/news',
           })
           "
         `)

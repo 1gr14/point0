@@ -29,6 +29,6 @@ export default defineConfig({
   tsconfig: './tsconfig.build.json',
   deps: {
     skipNodeModulesBundle: true,
-    neverBundle: ['bun', /^@types\//],
+    neverBundle: ['bun', /^@types\//, /^@point0\//],
   },
 })

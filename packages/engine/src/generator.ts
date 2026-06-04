@@ -949,36 +949,77 @@ export class FilesGenerator {
         : `'${task.origin}'`
     const originSuffix = originString ? `, { origin: ${originString} }` : ''
 
-    // A page becomes a typed route — `Route0.create(path).search<...>()` instead of a bare path
-    // string — when a search schema applies to it (declared on the page or inherited from a layout)
-    // and it is exported, so we can reference its inferred search type. We use `SearchRaw` (the input
-    // accepted when building a URL) and point at it via a `typeof import('...')` expression rather
-    // than a runtime import, so the page module (and its server-only code) is never pulled into the
-    // routes bundle.
-    const pagePoints = points.flatMap((p) =>
-      p.type === 'page' && p.route
-        ? [{ point: p, name: p.name, route: p.route.definition, typed: p.hasSearch() && p.exportName !== undefined }]
-        : [],
-    )
-    const hasTypedPages = pagePoints.some((p) => p.typed)
+    // ---------------------------------------------------------------------------------------------
+    // DISABLED — typed search routes.
+    //
+    // We used to emit a page as a typed route — `Route0.create(path).search<…>()` — referencing the
+    // page's inferred `SearchRaw` (the input side of its `.search()` schema, what you pass when
+    // building a URL) via `typeof import('…page')['Infer']['SearchRaw']`, so the route table carried
+    // typed search params. The runtime is fine (`typeof import(...)` is erased), but at the TYPE
+    // level it forms a cycle:
+    //
+    //   routes.ts ─typeof import▶ page ─import { Link }▶ lib/navigate ─import { routes }▶ routes.ts
+    //
+    // Typing `routes` needs the page's type, which through `Link`/navigate needs `routes`'s type
+    // again. TS gives up ("referenced directly or indirectly … implicitly any") and search typing
+    // silently degrades to `any`.
+    //
+    // There is no cheap correct fix: ANY variant where this file references the page module recreates
+    // the cycle. The only real fix is to make `routes.ts` a leaf (import nothing but @devp0nt/route0)
+    // by INLINING the already-resolved primitive type instead of importing it, e.g.
+    // `.search<{ page?: number }>()`. Both ways to obtain that literal cost too much to justify now:
+    //   • TS compiler API (`checker.typeToString` over `Infer → SearchRaw`): the generator has no
+    //     type-checker today (resolver.ts only does `ts.resolveModuleName`); we'd have to stand up
+    //     and keep warm a `ts.Program`/`LanguageService`, plus write a bounded type-expander with a
+    //     cycle-safe fallback (NOT back to `typeof import`, or the cycle returns).
+    //   • Mapping the captured `.search()` schema AST → a type literal in the existing babel pass:
+    //     no checker, but reimplements inference per schema adapter (zod/valibot/yup/arktype/typebox/
+    //     superstruct) and can't handle external/composed schemas.
+    //
+    // Until we pick one, routes are emitted untyped (bare path strings). Original typed emit kept
+    // below, commented out, for whoever revisits this:
+    //
+    //   const pagePoints = points.flatMap((p) =>
+    //     p.type === 'page' && p.route
+    //       ? [{ point: p, name: p.name, route: p.route.definition, typed: p.hasSearch() && p.exportName !== undefined }]
+    //       : [],
+    //   )
+    //   const hasTypedPages = pagePoints.some((p) => p.typed)
+    //   lines.push(
+    //     hasTypedPages ? `import { Route0, Routes } from '@devp0nt/route0'` : `import { Routes } from '@devp0nt/route0'`,
+    //   )
+    //   lines.push(``)
+    //   if (pagePoints.length > 0) {
+    //     lines.push(`export const routes = Routes.create({`)
+    //     for (const p of pagePoints) {
+    //       if (p.typed) {
+    //         const importPath = FilesGenerator.toRelativeJsImportPath(task.outfile, p.point.file.abs)
+    //         const exportName = p.point.exportName === 'default' ? 'default' : p.point.exportName
+    //         lines.push(
+    //           `  '${p.name}': Route0.create('${p.route}').search<typeof import('${importPath}')['${exportName}']['Infer']['SearchRaw']>(),`,
+    //         )
+    //       } else {
+    //         lines.push(`  '${p.name}': '${p.route}',`)
+    //       }
+    //     }
+    //     lines.push(`}${originSuffix})`)
+    //   } else {
+    //     lines.push(`export const routes = Routes.create({}${originSuffix})`)
+    //   }
+    //   lines.push(``)
+    // ---------------------------------------------------------------------------------------------
 
-    lines.push(
-      hasTypedPages ? `import { Route0, Routes } from '@devp0nt/route0'` : `import { Routes } from '@devp0nt/route0'`,
+    const pagePoints = points.flatMap((p) =>
+      p.type === 'page' && p.route ? [{ name: p.name, route: p.route.definition }] : [],
     )
+
+    lines.push(`import { Routes } from '@devp0nt/route0'`)
     lines.push(``)
 
     if (pagePoints.length > 0) {
       lines.push(`export const routes = Routes.create({`)
       for (const p of pagePoints) {
-        if (p.typed) {
-          const importPath = FilesGenerator.toRelativeJsImportPath(task.outfile, p.point.file.abs)
-          const exportName = p.point.exportName === 'default' ? 'default' : p.point.exportName
-          lines.push(
-            `  '${p.name}': Route0.create('${p.route}').search<typeof import('${importPath}')['${exportName}']['Infer']['SearchRaw']>(),`,
-          )
-        } else {
-          lines.push(`  '${p.name}': '${p.route}',`)
-        }
+        lines.push(`  '${p.name}': '${p.route}',`)
       }
       lines.push(`}${originSuffix})`)
     } else {

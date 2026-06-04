@@ -11,6 +11,7 @@ import type {
   ReadyPointsCollectionRecord,
 } from '@point0/core'
 import {
+  getNavigationHelpers,
   navigateWithTransitions,
   NavigationContextProvider,
   RedirectTask,
@@ -24,6 +25,7 @@ import type {
   NavigateHelper,
   NavigateOptionsByAdapterNavigateFn,
   NavigateWithTransitionsReturnType,
+  NavigationContextProviderProps,
   OpenExternalFn,
   RedirectComponent,
   RedirectHelper,
@@ -360,6 +362,33 @@ const _getNativeAnchorProps = (props: Record<string, any>): React.ComponentProps
   return nativeProps
 }
 
+/**
+ * Render the plain native `<a>` for a link target. Used for `href` links (no SPA
+ * routing) and for any `newTab` link, regardless of how the target was given
+ * (`to` / `href` / `route`).
+ *
+ * `newTab` leaves the SPA, so we render a real `target="_blank"` +
+ * `rel="noopener noreferrer"` anchor (honoring an explicit `target`/`rel` if the
+ * caller passed one) instead of letting the client router intercept the click. The
+ * native target is more robust than a JS-driven `window.open`: it works before
+ * hydration, honors cmd/middle-click, and is announced to assistive tech. Imperative
+ * `navigate({ newTab })` has no anchor, so it still leaves the SPA via `openExternal`.
+ */
+const _getNativeAnchorElement = (props: Record<string, any>, tohref: string, newTab: boolean): React.ReactElement => {
+  const nativeProps = _getNativeAnchorProps(props)
+  if (!newTab) {
+    return <a {...nativeProps} href={tohref} />
+  }
+  return (
+    <a
+      {...nativeProps}
+      href={tohref}
+      target={(nativeProps.target as string | undefined) ?? '_blank'}
+      rel={(nativeProps.rel as string | undefined) ?? 'noopener noreferrer'}
+    />
+  )
+}
+
 // const _useFinalTo = <TRoutes extends RoutesPretty>({
 //   routes,
 //   routeName,
@@ -598,13 +627,27 @@ export const createNavigate = <
   TErrorClass extends ClassLikeError0<ErrorPoint0> = ClassLikeError0<ErrorPoint0>,
 >({
   routes,
-  navigate: adapterNavigate = browserNavigate as TAdapterNavigateFn,
+  navigate: adapterNavigate,
   ErrorClass = ErrorPoint0 as unknown as TErrorClass,
 }: {
   routes: TRoutes
   navigate?: TAdapterNavigateFn
   ErrorClass?: TErrorClass
 }): NavigateHelper<TRoutes, TAdapterNavigateFn, TErrorClass> => {
+  // No explicit `navigate` → use the adapter navigate the Router derived from the
+  // location `hook` (stored in the navigation helpers), so imperative navigation
+  // stays consistent with the configured hook. Outside a Router (standalone use),
+  // fall back to browser navigate.
+  const resolveAdapterNavigate = (): AdapterNavigateFn => {
+    if (adapterNavigate) {
+      return adapterNavigate as AdapterNavigateFn
+    }
+    try {
+      return getNavigationHelpers().adapterNavigate
+    } catch {
+      return browserNavigate
+    }
+  }
   const wrappedNavigate = (
     to: string,
     options?: NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> &
@@ -614,7 +657,7 @@ export const createNavigate = <
     return navigateWithTransitions({
       to,
       options: normalOptions,
-      navigate: () => adapterNavigate(to, wouterOptions),
+      navigate: () => resolveAdapterNavigate()(to, wouterOptions),
       ErrorClass,
     })
   }
@@ -649,7 +692,7 @@ export const createNavigate = <
     return await navigateWithTransitions({
       to,
       options: normalOptions,
-      navigate: () => adapterNavigate(to, wouterOptions),
+      navigate: () => resolveAdapterNavigate()(to, wouterOptions),
       ErrorClass,
     })
   }
@@ -696,12 +739,12 @@ export const createLink = <
       componentName: 'Link',
     })
 
-    if (finalTo.to) {
+    const newTab = (rest as { newTab?: boolean }).newTab === true
+    if (finalTo.to && !newTab) {
       const { wouterLinkProps } = _getWouterLinkProps({ ...rest, ...finalTo })
       return <NativeWouterLink {...wouterLinkProps} />
-    } else {
-      return <a {..._getNativeAnchorProps(rest)} href={finalTo.tohref} />
     }
+    return _getNativeAnchorElement(rest, finalTo.tohref, newTab)
   }
   return Link
 }
@@ -879,11 +922,11 @@ export const createNavLink = <
       }
       return { ...wouterLinkProps, className: resolvedClassName }
     }, [wouterLinkProps, resolvedClassName])
-    if (finalTo.to) {
+    const newTab = (rest as { newTab?: boolean }).newTab === true
+    if (finalTo.to && !newTab) {
       return <NativeWouterLink {...finalWouterLinkProps} />
-    } else {
-      return <a {..._getNativeAnchorProps(finalWouterLinkProps)} href={finalTo.tohref} />
     }
+    return _getNativeAnchorElement(finalWouterLinkProps, finalTo.tohref, newTab)
   }
   return NavLink
 }
@@ -1033,6 +1076,44 @@ export const createRedirectHelper = <
   return Object.assign(redirect, { to: redirectTo })
 }
 
+// Derives the imperative "adapter navigate" from the configured wouter location
+// `hook` and feeds the resolved one into NavigationContextProvider. wouter
+// location hooks return `[location, navigate]`, and that navigate already matches
+// the hook's semantics (browser history / hash / memory / custom). This mirrors
+// how `searchHook` is auto-derived from the hook (`hook.searchHook ?? …`), so
+// configuring only `hook` keeps imperative `navigate()` / `setSearch()`
+// consistent with it — no need to also hand-pass a matching `navigate`. An
+// explicit `navigate` (here `providedNavigate`) still wins.
+//
+// Runs inside <NativeWouterRouter>, so `useWouterRouter()` returns the active
+// router and `hook(router)` honors its ssr/base options. The extra location
+// subscription this adds re-renders only this thin wrapper; the provider it wraps
+// already re-renders on every location change.
+function AdapterNavigateProvider<
+  TRoutes extends RoutesPretty,
+  TAdapterNavigateFn extends AdapterNavigateFn,
+  TErrorClass extends ClassLikeError0<ErrorPoint0>,
+>({
+  hook,
+  providedNavigate,
+  ...providerProps
+}: Omit<NavigationContextProviderProps<TRoutes, TAdapterNavigateFn, TErrorClass>, 'adapterNavigate'> & {
+  hook: BaseLocationHook
+  providedNavigate?: AdapterNavigateFn
+}): React.ReactElement {
+  const wouterRouter = useWouterRouter()
+  // wouter location hooks always return `[location, navigate]`, so `hookNavigate`
+  // is guaranteed present — no further fallback needed.
+  const [, hookNavigate] = hook(wouterRouter)
+  const adapterNavigate = (providedNavigate ?? hookNavigate) as TAdapterNavigateFn
+  return (
+    <NavigationContextProvider<TRoutes, TAdapterNavigateFn, TErrorClass>
+      adapterNavigate={adapterNavigate}
+      {...providerProps}
+    />
+  )
+}
+
 export const createRouter = <
   TRoutes extends RoutesPretty,
   TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
@@ -1046,15 +1127,15 @@ export const createRouter = <
   layouts,
   hook = useBrowserLocation,
   searchHook = hook.searchHook ?? useBrowserSearch,
-  navigate: adapterNavigate = browserNavigate,
+  navigate: providedNavigate,
   ErrorClass,
   forceRerender,
   prependRoutes,
   appendRoutes,
   openExternal,
   scrollToHash = true,
-  _navigate = createNavigate({ routes, navigate: adapterNavigate, ErrorClass }),
-  _redirect = createRedirectHelper({ routes, navigate: adapterNavigate, ErrorClass }),
+  _navigate = createNavigate({ routes, navigate: providedNavigate, ErrorClass }),
+  _redirect = createRedirectHelper({ routes, navigate: providedNavigate, ErrorClass }),
   _Redirect = createRedirectComponent({ routes, hook }),
 }: {
   addHashToLocation?: boolean
@@ -1178,11 +1259,12 @@ export const createRouter = <
         aroundNav={aroundNav}
         ssrContext={ssrContext}
       >
-        <NavigationContextProvider
+        <AdapterNavigateProvider
+          hook={hook}
+          providedNavigate={providedNavigate}
           useAdapterLocation={useAdapterLocation}
           ssrLocation={ssrLocation}
           addHashToLocation={addHashToLocation}
-          adapterNavigate={adapterNavigate}
           navigate={_navigate}
           redirect={_redirect}
           Redirect={_Redirect}
@@ -1192,7 +1274,7 @@ export const createRouter = <
         >
           <ScrollRestoration />
           {children ?? <RouterRoutes Page404={Page404} layout404={layout404} />}
-        </NavigationContextProvider>
+        </AdapterNavigateProvider>
       </NativeWouterRouter>
     )
   }
@@ -1259,7 +1341,7 @@ export const createNavigation = <
   hook = useBrowserLocation as TBaseLocationHook,
   searchHook = hook.searchHook ?? useBrowserSearch,
   ErrorClass = ErrorPoint0 as unknown as TErrorClass,
-  navigate: adapterNavigate = browserNavigate as TAdapterNavigateFn,
+  navigate: providedNavigate,
   forceRerender = false,
   prependRoutes,
   appendRoutes,
@@ -1302,8 +1384,8 @@ export const createNavigation = <
   useNavLink: CreatedUseNavLink<TRoutes, TBaseLocationHook>
   InferNavigation: InferNavigation<TRoutes, TBaseLocationHook>
 } => {
-  const navigate = createNavigate({ routes, navigate: adapterNavigate, ErrorClass })
-  const redirect = createRedirectHelper({ routes, navigate: adapterNavigate, ErrorClass })
+  const navigate = createNavigate({ routes, navigate: providedNavigate, ErrorClass })
+  const redirect = createRedirectHelper({ routes, navigate: providedNavigate, ErrorClass })
   const Redirect = createRedirectComponent({ routes, hook })
   return {
     navigate,
@@ -1319,7 +1401,7 @@ export const createNavigation = <
       layouts,
       hook,
       searchHook,
-      navigate: adapterNavigate,
+      navigate: providedNavigate,
       ErrorClass,
       forceRerender,
       prependRoutes,

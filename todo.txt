@@ -1,20 +1,12 @@
+Добавить рантайм ошибки для запрещённых методов поинтов
 
-неубиваемоубиваемый дев сервер
-
-
-compiler option experimental_preserve_syntax so bun still can works
+update deps
 
 пофиксить экзамплы
 in example rename file navigate to navigation
 пофиксить криэйт апп
 create-app test
 
-Добавить рантайм ошибки для запрещённых методов поинтов
-
-types.ts file thet reexport only needed types
-index exports only realy used fns and helpers without types
-
-update deps
 
 docs
 Вставить призыв к старт0 прямо в кли и в ридми всех экзамплов и криэйт апа

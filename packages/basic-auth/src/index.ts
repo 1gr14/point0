@@ -6,8 +6,6 @@ export const getBasicAuthHeader = (username: string, password: string): string =
 
 export type BasicAuthOptionsInputUsers = Record<string, string> | string | string[]
 
-export type BasicAuthOptionsUsers = Record<string, string>
-
 type OnUnauthorizedOptions = {
   request: Request0
   username: string | undefined

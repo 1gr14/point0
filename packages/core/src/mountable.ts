@@ -79,14 +79,6 @@ export type WithLocationIfExists<TLocation extends AnyLocation | undefined> = TL
     {}
   : { location: TLocation }
 
-type RequiredKeys<T> = {
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-  [K in keyof T]-?: {} extends Pick<T, K> ? never : K
-}[keyof T]
-
-export type IsOuterPropsOptional<TOuterProps extends Props> =
-  IsNever<keyof TOuterProps> extends true ? true : RequiredKeys<TOuterProps> extends never ? true : false
-
 export type UseQueryOrInfiniteQueryResult = UseInfiniteQueryResult | UseQueryResult
 export type QueriesResults = readonly UseQueryOrInfiniteQueryResult[]
 export type QueryDefinition<TQueryResultType extends QueryResultType, TQueriedData extends Data, TError> = {
@@ -210,40 +202,6 @@ export type QueryPending<TQuery extends UseQueryOrInfiniteQueryResult> = Extract
 //             ? [Q1 extends UseQueryOrInfiniteQueryResult ? QueryDataByResult<QuerySuccess<Q1>> : never]
 //             : []
 // >
-
-export type SuccessQueriesResults<TQueries extends UseQueryOrInfiniteQueryResult[]> = IfAnyThenElse<
-  TQueries,
-  any[],
-  TQueries extends [infer Q1, infer Q2, infer Q3, infer Q4, infer Q5]
-    ? [
-        Q1 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q1> : never,
-        Q2 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q2> : never,
-        Q3 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q3> : never,
-        Q4 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q4> : never,
-        Q5 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q5> : never,
-      ]
-    : TQueries extends [infer Q1, infer Q2, infer Q3, infer Q4]
-      ? [
-          Q1 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q1> : never,
-          Q2 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q2> : never,
-          Q3 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q3> : never,
-          Q4 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q4> : never,
-        ]
-      : TQueries extends [infer Q1, infer Q2, infer Q3]
-        ? [
-            Q1 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q1> : never,
-            Q2 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q2> : never,
-            Q3 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q3> : never,
-          ]
-        : TQueries extends [infer Q1, infer Q2]
-          ? [
-              Q1 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q1> : never,
-              Q2 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q2> : never,
-            ]
-          : TQueries extends [infer Q1]
-            ? [Q1 extends UseQueryOrInfiniteQueryResult ? QuerySuccess<Q1> : never]
-            : []
->
 
 type CleanQueryData<TData> =
   Exclude<TData, undefined> extends infer TClean

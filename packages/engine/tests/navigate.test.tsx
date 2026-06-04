@@ -5,6 +5,7 @@ import { useLocation, useOnNavigate } from '@point0/core/navigation'
 import { createNavigation } from '@point0/react-dom/router'
 import { describe, expect, it, setDefaultTimeout } from 'bun:test'
 import React, { useState } from 'react'
+import { z } from 'zod'
 import { createTestThings } from './utils/internal-testing.js'
 
 setDefaultTimeout(20000)
@@ -796,5 +797,81 @@ describe('navigate', () => {
     {
       retry: 3,
     },
+  )
+})
+
+describe('setSearch', () => {
+  // A page that owns a URL search and mutates it via the `setSearch` prop. The
+  // harness wires createNavigation WITHOUT an explicit `navigate`, so `setSearch`
+  // goes through the adapter navigate derived from the location `hook` — so this
+  // verifies the hook-derived navigate path end-to-end (page prop → navigation
+  // helpers → real browser history → URL), not just the helper in isolation.
+  //
+  // We assert the URL (`window.location.search`), not the rendered DOM: in this
+  // happy-dom harness wouter's history is never patched, so its location
+  // subscription doesn't fire — React re-renders are driven only by
+  // `navigateWithTransitions`' own state. `setSearch` deliberately bypasses that
+  // pipeline (a "soft" URL update), so here it writes the URL without re-rendering
+  // the tree. The URL write is the contract; the re-render-on-setSearch path works
+  // in a real browser (history patched) and the updater / short-circuit / replace
+  // behaviors are covered as a unit in packages/core/tests/navigation.test.ts.
+  const createSearchT = async () => {
+    const root = Point0.lets('root', 'root')
+      .loading(() => <div id="loading">...</div>)
+      .error(({ error }) => <div id="error">{error.message}</div>)
+      .queryOptions({
+        retry: false,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
+      })
+      .root()
+    const searchPage = root
+      .lets('page', 'search', '/search')
+      .search(z.object({ tab: z.string().optional(), sort: z.string().optional() }))
+      .page(({ search, setSearch }) => {
+        const location = useLocation()
+        return (
+          <div id="search-page">
+            <div id="ss">ss={location.searchString || '-'}</div>
+            <div id="tab">tab={search.tab ?? '-'}</div>
+            <button id="set-tab" onClick={() => setSearch({ tab: 'a' })}>
+              set tab
+            </button>
+            <button id="set-sort" onClick={() => setSearch({ sort: 'desc' })}>
+              set sort
+            </button>
+          </div>
+        )
+      })
+    const testThings = await createTestThings({ ssr: true, points: [root, searchPage] })
+    return { root, searchPage, ...testThings }
+  }
+
+  it(
+    'object form writes the query to the URL via the hook-derived adapter navigate',
+    async () => {
+      const t = await createSearchT()
+      await t.render('/search', async ({ waitContent, click }) => {
+        // setSearch writes the URL synchronously, but poll to stay robust.
+        const waitForSearch = async (expected: string) => {
+          for (let i = 0; i < 100; i++) {
+            if (window.location.search === expected) {
+              return
+            }
+            await new Promise((resolve) => setTimeout(resolve, 10))
+          }
+          expect(window.location.search).toBe(expected)
+        }
+        await waitContent('ss=-') // page mounted at /search with no query
+        await click('#set-tab')
+        await waitForSearch('?tab=a') // object form set the query
+        await click('#set-sort')
+        await waitForSearch('?sort=desc') // object form replaces the whole query
+      })
+    },
+    { retry: 3 },
   )
 })

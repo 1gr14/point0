@@ -4,7 +4,6 @@ import { PointsManager } from '@point0/core'
 import type {
   DataTransformerExtended,
   ErrorPoint0,
-  LayoutPoint,
   LogFn,
   MiddlewareFn,
   PagePoint,
@@ -296,27 +295,3 @@ export class ServerPoints<TError extends ErrorPoint0> {
     return this._collection
   }
 }
-
-export type PagesTreeSourceRecord = {
-  layout: string | undefined
-  pages: string[]
-  nested: undefined | PagesTreeSourceRecord[]
-}
-export type PagesTreeSource = PagesTreeSourceRecord[]
-
-export type PagesTreeRecord = {
-  layoutName?: PointName
-  layoutPoint?: LayoutPoint | (() => Promise<LayoutPoint>) | undefined
-  Layout?:
-    | React.ComponentType<{ children: React.ReactNode }>
-    | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
-    | undefined
-  pages: Array<{
-    pageName: PointName
-    pageRoute: AnyRoute
-    pagePoint: PagePoint | (() => Promise<PagePoint>)
-    Page: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
-  }>
-  nested: undefined | PagesTreeRecord[]
-}
-export type PagesTree = PagesTreeRecord[]
