@@ -1,6 +1,13 @@
 import * as flat0 from '@devp0nt/flat0'
+import nodePath from 'node:path'
 import * as React from 'react'
 import { Route0, type AnyLocation, type AnyRoute, type ExactLocation, type KnownLocation } from '@devp0nt/route0'
+import {
+  DEV_SSR_FIX_ASSETS_URL_PREFIX,
+  devSsrFixAssetNameRegex,
+  isDevSsrFixAssetsEnabled,
+  resolveDevSsrFixAssetsDir,
+} from '@point0/compiler'
 import {
   POINT0_ERROR_CODES_MAP,
   _getSsItemsWithRestErrors,
@@ -75,25 +82,36 @@ export class Fetcher<TError extends ErrorPoint0> {
     return new Fetcher({ engine, server })
   }
 
-  static fetchAbsFilePathOnDevServer = async ({ request }: { request: Request0 }): Promise<Response | undefined> => {
-    // if it is client bun dev server and assets was imported on ssr it returns abs file paths not bun assets, so just in dev we try to fetch them
+  /**
+   * Dev + Bun only. The `bun-plugin-dev-ssr-fix-assets` plugin rewrites `file`-loader asset imports (on both the
+   * browser bundle and the SSR runtime) to a `/_point0/asset/<hash>.<ext>` URL and caches the bytes content-addressed.
+   * Here we serve those URLs back from that same cache. Safe by construction: only names that match `<hash>.<ext>` (no
+   * slashes, no `..`) are accepted, so there is no path traversal and no arbitrary file read — we only ever serve
+   * assets that were actually imported. Replaces the old `POINT0_UNSAFE_FIX_BUN_STATIC_SERVE` hack, which served
+   * arbitrary files by absolute path.
+   */
+  static fetchDevSsrFixAsset = async ({ request }: { request: Request0 }): Promise<Response | undefined> => {
     if (process.env.NODE_ENV === 'production') {
       return undefined
     }
     if (_point0_env.build.was) {
       return undefined
     }
-    const allowedPrefix = process.env.POINT0_UNSAFE_FIX_BUN_STATIC_SERVE
-    if (!allowedPrefix) {
+    if (!isDevSsrFixAssetsEnabled()) {
       return undefined
     }
-    const absPath = request.location.pathname
-    if (!absPath.startsWith(allowedPrefix)) {
+    const pathname = request.location.pathname
+    if (!pathname.startsWith(DEV_SSR_FIX_ASSETS_URL_PREFIX)) {
       return undefined
     }
-    const bunFile = Bun.file(absPath)
+    const name = pathname.slice(DEV_SSR_FIX_ASSETS_URL_PREFIX.length)
+    if (!devSsrFixAssetNameRegex.test(name)) {
+      return undefined
+    }
+    const filePath = nodePath.join(resolveDevSsrFixAssetsDir(), name)
+    const bunFile = Bun.file(filePath)
     if (await bunFile.exists()) {
-      return new Response(Bun.file(absPath))
+      return new Response(bunFile)
     }
     return undefined
   }
@@ -349,12 +367,12 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       if (!this.server.itWasBuilt) {
-        const responseFromAbsFilePath = await Fetcher.fetchAbsFilePathOnDevServer({ request })
-        if (responseFromAbsFilePath) {
+        const devSsrFixAssetResponse = await Fetcher.fetchDevSsrFixAsset({ request })
+        if (devSsrFixAssetResponse) {
           const variant: RequestVariantPublicdir<undefined> = {
             type: 'publicdir',
             publicdir: undefined,
-            response: responseFromAbsFilePath,
+            response: devSsrFixAssetResponse,
           }
           request.variant = variant
           return {

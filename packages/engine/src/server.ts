@@ -1,4 +1,4 @@
-import { Compiler, type CompilerOptions } from '@point0/compiler'
+import { Compiler, type CompilerOptions, isDevSsrFixAssetsEnabled } from '@point0/compiler'
 import type {
   ErrorPoint0,
   FetcherFetchDetailedResult,
@@ -416,7 +416,14 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       : _point0_env.build.was || !compilerOptions
         ? []
         : [await import('@point0/compiler/plugin/bun').then((module) => module.compilerBunPlugin(compilerOptions))]
-    const extractedBunPlugins = [...compilerPlugin, ...extraPlugins, ...extractedPlugins]
+    // Dev + Bun only: the SSR runtime resolves `file`-loader asset imports to absolute disk paths, breaking
+    // hydration. This isolated plugin rewrites them to a served `/_point0/asset/<hash>` URL. Never in builds
+    // (Bun.build resolves assets itself) or Vite (its own pipeline). See `bun-plugin-dev-ssr-fix-assets`.
+    const devSsrFixAssetsPlugin =
+      this.viteConfig || built || _point0_env.build.was || !isDevSsrFixAssetsEnabled()
+        ? []
+        : [await import('@point0/compiler/plugin/bun-plugin-dev-ssr-fix-assets').then((module) => module.default)]
+    const extractedBunPlugins = [...compilerPlugin, ...devSsrFixAssetsPlugin, ...extraPlugins, ...extractedPlugins]
     return extractedBunPlugins
   }
 

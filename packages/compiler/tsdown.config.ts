@@ -3,6 +3,7 @@ import { defineConfig } from 'tsdown'
 export default defineConfig({
   entry: [
     'src/plugin/bun-static.ts',
+    'src/plugin/bun-plugin-dev-ssr-fix-assets.ts',
     'src/plugin/bun.ts',
     'src/plugin/babel.ts',
     'src/plugin/vite.ts',

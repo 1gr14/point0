@@ -2,7 +2,7 @@ import type { AnyRoute } from '@devp0nt/route0'
 import { type AnyLocation, Route0 } from '@devp0nt/route0'
 import type { CompilerOptions } from '@point0/compiler'
 import type { StaticCompilerRef } from '@point0/compiler/plugin/bun-static'
-import { FileResolver, resolveTempDirPath } from '@point0/compiler'
+import { FileResolver, isDevSsrFixAssetsEnabled, resolveTempDirPath } from '@point0/compiler'
 import type {
   AppComponent,
   ErrorPoint0,
@@ -448,9 +448,15 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     const compilerRef = this.getStaticCompilerRef()
     const scriptPath = nodePath.join(tempDir, `serve.js`)
     const bunfigTomlPath = nodePath.join(tempDir, 'bunfig.toml')
-    const combinedPluginsStrings = compilerOptions
-      ? ['@point0/compiler/plugin/bun-static', ...pluginsStrings]
-      : pluginsStrings
+    const combinedPluginsStrings = [
+      ...(compilerOptions ? ['@point0/compiler/plugin/bun-static'] : []),
+      // Dev + Bun only: rewrite `file`-loader asset imports to a served `/_point0/asset/<hash>` URL so the browser
+      // bundle and the SSR runtime agree (the identical plugin runs on both sides). Independent of the compiler — it
+      // must also run for `compiler: false` clients, since the SSR side injects it regardless. See server.ts and
+      // `bun-plugin-dev-ssr-fix-assets`.
+      ...(isDevSsrFixAssetsEnabled() ? ['@point0/compiler/plugin/bun-plugin-dev-ssr-fix-assets'] : []),
+      ...pluginsStrings,
+    ]
     const bunfigTomlContent = `[serve.static]
 plugins = [${combinedPluginsStrings.map((p) => `"${p}"`).join(', ')}]
 `

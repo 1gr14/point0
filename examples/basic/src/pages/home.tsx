@@ -3,6 +3,8 @@ import { Link } from '@/lib/navigate'
 import { prisma } from '@/lib/prisma'
 import { root } from '@/lib/root'
 import { x, y } from '@/lib/x123'
+import testPng from '../assets/test.png'
+import testSvg from '../assets/icon.svg'
 import { useState } from 'react'
 
 export const ideaBestComponent = root.lets
@@ -77,6 +79,9 @@ export default generalLayout
 
     return (
       <div className="mx-auto  space-y-6">
+        {/* Imported static assets — exercise the dev SSR asset fix (see @point0/compiler bun-plugin-dev-ssr-fix-assets) */}
+        <img src={testPng} alt="png" />
+        <img src={testSvg} alt="svg" />
         <div className="space-y-2">
           <h1
             className="text-3xl font-bold tracking-tight text-slate-900"

@@ -32,6 +32,9 @@
       "plugin/bun-static": [
         "./dist/plugin/bun-static.d.ts"
       ],
+      "plugin/bun-plugin-dev-ssr-fix-assets": [
+        "./dist/plugin/bun-plugin-dev-ssr-fix-assets.d.ts"
+      ],
       "plugin/babel": [
         "./dist/plugin/babel.d.ts"
       ]
@@ -53,6 +56,10 @@
     "./plugin/bun-static": {
       "types": "./dist/plugin/bun-static.d.ts",
       "import": "./dist/plugin/bun-static.js"
+    },
+    "./plugin/bun-plugin-dev-ssr-fix-assets": {
+      "types": "./dist/plugin/bun-plugin-dev-ssr-fix-assets.d.ts",
+      "import": "./dist/plugin/bun-plugin-dev-ssr-fix-assets.js"
     },
     "./plugin/babel": {
       "types": "./dist/plugin/babel.d.ts",
