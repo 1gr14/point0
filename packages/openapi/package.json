@@ -54,12 +54,12 @@
     "@point0/engine": "workspace:*",
     "openapi-types": "catalog:",
     "safe-stable-stringify": "catalog:",
-    "@scalar/types": "^0.7.6",
+    "@scalar/types": "^0.12.3",
     "@types/swagger-ui": "^5.32.0"
   },
   "devDependencies": {
-    "@scalar/types": "^0.7.6",
-    "@types/bun": "^1.2.22",
+    "@scalar/types": "^0.12.3",
+    "@types/bun": "catalog:",
     "@types/node": "^20.0.0",
     "@types/swagger-ui": "^5.32.0",
     "@point0/basic-auth": "workspace:*",

@@ -184,7 +184,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@unhead/react": "catalog:",
-    "@valibot/to-json-schema": "^1.6.0",
+    "@valibot/to-json-schema": "^1.7.0",
     "arktype": "catalog:",
     "react": "catalog:",
     "superjson": "^2.2.6",

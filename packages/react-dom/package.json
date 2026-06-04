@@ -79,7 +79,7 @@
     "@devp0nt/route0": "catalog:",
     "@point0/core": "workspace:*",
     "wouter": "catalog:",
-    "@types/bun": "^1.2.22",
+    "@types/bun": "catalog:",
     "@types/node": "^20.0.0",
     "tsdown": "catalog:",
     "typescript": "catalog:"

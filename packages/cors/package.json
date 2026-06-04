@@ -54,7 +54,7 @@
     "@point0/engine": "workspace:*"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.22",
+    "@types/bun": "catalog:",
     "@types/node": "^20.0.0",
     "tsdown": "catalog:",
     "typescript": "catalog:"
