@@ -973,6 +973,26 @@ export class Point0<
     })
   }
 
+  /**
+   * Runtime backstop for the type-level `AssertNoForbiddenMethodsIfNotSuitableStage` guard. Setup methods — the single
+   * loader plus ctx and every input schema — may only run while the point is still being composed, which is exactly
+   * `coreStage` (a fresh point, and what `.use()` resets a point back to). Once a loader is set (`loadedStage`), the
+   * point is finalized (`finalStage`), or it has become a concrete ready point
+   * (page/component/layout/provider/mutation/action/base/root/plugin), more setup is forbidden: a second loader would
+   * silently stack into `_serverExecuteActions`, and a late ctx/input/schema would be ignored or mis-ordered. The
+   * public `Nice*` projections already make this impossible at the type level (setup methods are absent from a
+   * finalized point's `Pick`, and the assert errors mid-chain); this throws for the raw `.point` escape hatch and any
+   * `as never`/`as any` bypass. Points are declared at the top level, so a violation surfaces right at startup.
+   */
+  private _assertSetupStageAllowed(method: string): void {
+    const composing = this.type === 'coreStage'
+    if (!composing) {
+      throw new Error(
+        `You can not call .${method}() on point ${this.toStringWithLocation()} — its setup stage is "${this.type}". The single loader, ctx and all input schemas (input/clientInput/sharedInput/params/search/body/headers/cookies) must be defined while the point is still being composed: before the loader, and before the point is finalized.`,
+      )
+    }
+  }
+
   static lets = withLetsSugar((pointType: 'root' | 'plugin', pointName: string) => {
     const _fsLocation = _point0_env.mode.is.production || _point0_env.build.was ? undefined : getCallerLocation(3)
     if (pointType === 'root') {
@@ -3523,79 +3543,76 @@ export class Point0<
   /**
    * Mount something onto this point. ONE signature (deliberately not overloads) covers every form:
    *
-   * ```
-   * with(query)                                inject another point's query (input optional)
-   * with(query, input)                         ...input required when the query's input is required
-   * with(query, input, queryOptions)           ...plus react-query options
-   * with(query, input, queryOptions, resolve)  ...resolve (boolean | callback) is ALWAYS the 4th arg;
-   *                                               pass `undefined` for queryOptions if you only want it
-   * with(fn)                                   a with-fn returning queries (appended) or props (merged)
-   * ```
+   *     with(query)                                inject another point's query (input optional)
+   *     with(query, input)                         ...input required when the query's input is required
+   *     with(query, input, queryOptions)           ...plus react-query options
+   *     with(query, input, queryOptions, resolve)  ...resolve (boolean | callback) is ALWAYS the 4th arg;
+   *                                                   pass `undefined` for queryOptions if you only want it
+   *     with(fn)                                   a with-fn returning queries (appended) or props (merged)
    *
-   * WHY one signature and not overloads: with multiple overloads the language server can't decide
-   * which candidate to complete `input` against, so autocomplete dies, and any mistake collapses to a
-   * useless "No overload matches this call". A single signature instead gives member completion for
-   * `input`, a precise "Expected N arguments" when a required input is omitted, and an exact
-   * per-argument error when it's wrong. The cost is the wall of conditional types below — kept here in
-   * one readable place (and commented) rather than scattered into single-use aliases that would only
-   * move the complexity and add many-param indirection.
+   * WHY one signature and not overloads: with multiple overloads the language server can't decide which candidate to
+   * complete `input` against, so autocomplete dies, and any mistake collapses to a useless "No overload matches this
+   * call". A single signature instead gives member completion for `input`, a precise "Expected N arguments" when a
+   * required input is omitted, and an exact per-argument error when it's wrong. The cost is the wall of conditional
+   * types below — kept here in one readable place (and commented) rather than scattered into single-use aliases that
+   * would only move the complexity and add many-param indirection.
    *
-   * Everything below branches on what `arg0` is: a function (with-fn / with-query-fn) vs a query point.
-   * Three type params are inferred: `TArg` (arg0), and the two halves of `resolve` (see below).
+   * Everything below branches on what `arg0` is: a function (with-fn / with-query-fn) vs a query point. Three type
+   * params are inferred: `TArg` (arg0), and the two halves of `resolve` (see below).
    */
   with<
     // arg0 is exactly one of three things. The union is also the constraint, so passing anything
     // else (e.g. `() => 'a string'`) fails here with a normal "not assignable" error.
-    TArg extends
-      // 1. a query point to inject. We only ever read its `Infer` shape, never call it.
-      | {
-          Infer: {
-            IsInputOptional: boolean
-            InputRawOrUndefined: any
-            InputRawOrUndefinedOrVoid: any
-            UseQueryOptions: any
-            QueryResultType: 'query' | 'infiniteQuery'
-            QueriedData: any
-            Error: any
+    TArg extends // 1. a query point to inject. We only ever read its `Infer` shape, never call it.
+
+        | {
+            Infer: {
+              IsInputOptional: boolean
+              InputRawOrUndefined: any
+              InputRawOrUndefinedOrVoid: any
+              UseQueryOptions: any
+              QueryResultType: 'query' | 'infiniteQuery'
+              QueriedData: any
+              Error: any
+            }
           }
-        }
-      // 2. a with-query-fn: a fn returning a query (or array of queries) — they get appended below.
-      | WithQueryFn<
-          MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-          TParamsSchema,
-          TSearchSchema,
-          TClientInputSchema,
-          TInnerProps,
-          WithSelfQueryIfShouldBeFinalized<
-            TPointType,
-            TLetsReadyPointType,
-            TServerLoaderOutput,
-            TClientLoaderOutput,
-            TQueriesDefinitions,
+        // 2. a with-query-fn: a fn returning a query (or array of queries) — they get appended below.
+        | WithQueryFn<
+            MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+            TParamsSchema,
+            TSearchSchema,
+            TClientInputSchema,
+            TInnerProps,
+            WithSelfQueryIfShouldBeFinalized<
+              TPointType,
+              TLetsReadyPointType,
+              TServerLoaderOutput,
+              TClientLoaderOutput,
+              TQueriesDefinitions,
+              TError
+            >,
+            TMapperOutput,
             TError
+          >
+        // 3. a plain with-fn: a fn returning props (or a React element / nothing) — props get merged.
+        | WithFn<
+            MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+            TParamsSchema,
+            TSearchSchema,
+            TClientInputSchema,
+            TInnerProps,
+            WithSelfQueryIfShouldBeFinalized<
+              TPointType,
+              TLetsReadyPointType,
+              TServerLoaderOutput,
+              TClientLoaderOutput,
+              TQueriesDefinitions,
+              TError
+            >,
+            TMapperOutput,
+            TError,
+            Props
           >,
-          TMapperOutput,
-          TError
-        >
-      // 3. a plain with-fn: a fn returning props (or a React element / nothing) — props get merged.
-      | WithFn<
-          MountableLocation<TLetsReadyPointType, TRouteDefinition>,
-          TParamsSchema,
-          TSearchSchema,
-          TClientInputSchema,
-          TInnerProps,
-          WithSelfQueryIfShouldBeFinalized<
-            TPointType,
-            TLetsReadyPointType,
-            TServerLoaderOutput,
-            TClientLoaderOutput,
-            TQueriesDefinitions,
-            TError
-          >,
-          TMapperOutput,
-          TError,
-          Props
-        >,
     // resolve: true -> data spread into props, false/omitted -> nothing, fn -> mapped props.
     // Split into two params so an inline resolve callback infers correctly: `success` is typed
     // concretely inside the rest tuple (so the callback isn't context-sensitive), `TResolveMapped`
@@ -3655,7 +3672,9 @@ export class Point0<
                     >,
                   ) => TInputRawOrUndefined),
               queryOptions?: TUseQueryOptions | undefined,
-              resolve?: TResolveBool | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
+              resolve?:
+                | TResolveBool
+                | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
             ]
           : [
               input:
@@ -3680,13 +3699,14 @@ export class Point0<
                     >,
                   ) => TInputRawOrUndefined),
               queryOptions?: TUseQueryOptions | undefined,
-              resolve?: TResolveBool | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
+              resolve?:
+                | TResolveBool
+                | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
             ]
-        : []
-    // The result is the same point, advanced one stage. Every type arg below is this point's current
-    // state passed through UNCHANGED — only the last two (inner props, queries) are recomputed, since
+        : [] // The result is the same point, advanced one stage. Every type arg below is this point's current
     // `with` is the only thing that can add props or queries. They're the two interesting positions.
-  ): NiceStagePoint<
+  ) // state passed through UNCHANGED — only the last two (inner props, queries) are recomputed, since
+  : NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
@@ -4829,6 +4849,7 @@ export class Point0<
     TQueriesDefinitions
   >
   ctx(ctxOrFn?: CtxFn | Ctx, expose?: true | string[]) {
+    this._assertSetupStageAllowed('ctx')
     const ctxFn =
       typeof ctxOrFn === 'undefined' // in case if we shake ctx for client side
         ? () => ({})
@@ -4922,6 +4943,7 @@ export class Point0<
     TQueriesDefinitions
   >
   loader(...args: any[]) {
+    this._assertSetupStageAllowed('loader')
     const loaderFn = (args[0] ?? ((c: any) => c.data)) as LoaderFn<
       any,
       any,
@@ -4995,6 +5017,7 @@ export class Point0<
     // >
   >
   clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any> | undefined) {
+    this._assertSetupStageAllowed('clientLoader')
     // in case if we shake clientLoader for server without ssr side
     clientLoaderFn ||= (o: any) => o.data
     return this._continue({
@@ -5455,6 +5478,7 @@ export class Point0<
     >
   >
   input(...args: any[]) {
+    this._assertSetupStageAllowed('input')
     const schema = Point0._normalizeInputSchema(args[0])
     return this._continue({
       _serverExecuteActions: [
@@ -5624,6 +5648,7 @@ export class Point0<
     >
   >
   clientInput(...args: any[]) {
+    this._assertSetupStageAllowed('clientInput')
     const schema = Point0._normalizeInputSchema(args[0])
     return this._continue({
       _clientExecuteActions: [
@@ -5794,6 +5819,7 @@ export class Point0<
     >
   >
   sharedInput(...args: any[]) {
+    this._assertSetupStageAllowed('sharedInput')
     const schema = Point0._normalizeInputSchema(args[0])
     return this._continue({
       _serverExecuteActions: [
@@ -5894,6 +5920,7 @@ export class Point0<
     >
   >
   params(...args: any[]) {
+    this._assertSetupStageAllowed('params')
     const schema = Point0._normalizeInputSchema(args[0])
     return this._continue({
       _serverExecuteActions: [
@@ -6025,6 +6052,7 @@ export class Point0<
     >
   >
   search(...args: any[]) {
+    this._assertSetupStageAllowed('search')
     const schema = Point0._normalizeInputSchema(args[0])
     const newSearchSchemaKeys = (() => {
       if (this._searchSchemaKeys === true) {
@@ -6163,6 +6191,7 @@ export class Point0<
     >
   >
   body(...args: any[]) {
+    this._assertSetupStageAllowed('body')
     const schema = Point0._normalizeInputSchema(args[0])
     return this._continue({
       _serverExecuteActions: [
@@ -6271,6 +6300,7 @@ export class Point0<
     >
   >
   headers(...args: any[]) {
+    this._assertSetupStageAllowed('headers')
     const schema = Point0._normalizeInputSchema(args[0])
     return this._continue({
       _serverExecuteActions: [
@@ -6379,6 +6409,7 @@ export class Point0<
     >
   >
   cookies(...args: any[]) {
+    this._assertSetupStageAllowed('cookies')
     const schema = Point0._normalizeInputSchema(args[0])
     return this._continue({
       _serverExecuteActions: [
@@ -7133,6 +7164,19 @@ export class Point0<
     return point.X as never
   }
 
+  // Merge two `_searchSchemaKeys` sets when a plugin folds into a consumer: `true` means "every query
+  // param is search" (the fallback when keys can't be statically extracted) and wins; otherwise union the
+  // explicit key lists; `undefined` means "no search declared" and yields to the other side.
+  private static _mergeSearchSchemaKeys(
+    a: string[] | true | undefined,
+    b: string[] | true | undefined,
+  ): string[] | true | undefined {
+    if (a === undefined) return b
+    if (b === undefined) return a
+    if (a === true || b === true) return true
+    return [...new Set([...a, ...b])]
+  }
+
   use<
     T extends NicePluginReadyPoint<
       any,
@@ -7236,6 +7280,22 @@ export class Point0<
     >,
   ) {
     const point = plugin.point
+
+    // Runtime backstop for the `NicePluginReadyPoint` type bound: `.use()` only accepts a plugin (a point
+    // finalized with `.plugin()`, so `type === 'plugin'`). The type forbids anything else, but `.use()` reads
+    // the raw `plugin.point` and would otherwise blindly merge a non-plugin's guts (loaders, mappers, mount
+    // actions). `.use()` is never called internally, so this only fires on a `.point`/`as any` bypass — at
+    // point-declaration time, i.e. startup.
+    const candidate = point as unknown as { __POINT0_INSTANCE__?: boolean; type?: PointType } | null | undefined
+    if (!candidate || candidate.__POINT0_INSTANCE__ !== true || candidate.type !== 'plugin') {
+      const received =
+        candidate?.__POINT0_INSTANCE__ === true
+          ? `a point of type "${candidate.type}" (${point.toStringWithLocation()})`
+          : String(plugin)
+      throw new Error(
+        `.use() expects a plugin created via .plugin(), but received ${received}. Used on point ${this.toStringWithLocation()}.`,
+      )
+    }
 
     // // throw new Error(`Point ${this.toString()} and ${point.toString()} have different ssr settings`)
     // let pointMountActionsSsr = 'none' as 'none' | 'mash' | true | false
@@ -7359,6 +7419,10 @@ export class Point0<
         ...pluginEndMountAction,
       ],
       _wrappers: [...this._wrappers, ...point._wrappers],
+      // Search params declared inside the plugin (e.g. via `.search()`) must stay routable on the consumer.
+      // Without this, a page/layout consumer keeps only its own `_searchSchemaKeys`, so the plugin's search
+      // keys get filtered out of the routed input / query key (see `_rawInputToRoutedRawInputForQueryKey`).
+      _searchSchemaKeys: Point0._mergeSearchSchemaKeys(this._searchSchemaKeys, point._searchSchemaKeys),
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
       // _ProviderReactContext: point._ProviderReactContext,
       // _useValue: point._useValue,
@@ -7579,27 +7643,35 @@ export class Point0<
   }
 
   /**
-   * Finalize this point as an infinite query. ONE signature (deliberately not overloads) — same
-   * reason as `with`: with 3 overloads the language server can't pick which to complete the options
-   * object against, so `.infiniteQuery({ ▮ })` offers a useless global list ("never until correct")
-   * and a wrong call collapses to "No overload matches this call". A single signature gives real
-   * member completion for the options and a precise error (e.g. "getNextPageParam is missing").
+   * Finalize this point as an infinite query. ONE signature (deliberately not overloads) — same reason as `with`: with
+   * 3 overloads the language server can't pick which to complete the options object against, so `.infiniteQuery({ ▮ })`
+   * offers a useless global list ("never until correct") and a wrong call collapses to "No overload matches this call".
+   * A single signature gives real member completion for the options and a precise error (e.g. "getNextPageParam is
+   * missing").
    *
-   * It branches on `TLetsReadyPointType` (what `.lets()` declared this point as) — these are mutually
-   * exclusive, so exactly one branch is live for any given point:
-   *   - 'infiniteQuery' -> a standalone infinite query point
-   *   - 'action'        -> an action finalized as an infinite query
-   *   - MountablePointType (page/component/...) -> finalize the point's own query
-   * Each branch first guards that loaders exist (and didn't return a Response) and that the point
-   * isn't already finalized, surfacing a `ShowError` message in place of the options argument.
-   * The options type is the same in every branch; only the guard messages and the result differ.
+   * It branches on `TLetsReadyPointType` (what `.lets()` declared this point as) — these are mutually exclusive, so
+   * exactly one branch is live for any given point:
+   *
+   * - 'infiniteQuery' -> a standalone infinite query point
+   * - 'action' -> an action finalized as an infinite query
+   * - MountablePointType (page/component/...) -> finalize the point's own query Each branch first guards that loaders
+   *   exist (and didn't return a Response) and that the point isn't already finalized, surfacing a `ShowError` message
+   *   in place of the options argument. The options type is the same in every branch; only the guard messages and the
+   *   result differ.
    */
   infiniteQuery(
     ...args: TLetsReadyPointType extends 'infiniteQuery'
       ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
         ? [
             infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-              FinalInputRaw<TLetsReadyPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+              FinalInputRaw<
+                TLetsReadyPointType,
+                TServerInputSchema,
+                TClientInputSchema,
+                TParamsSchema,
+                TSearchSchema,
+                TBodySchema
+              >,
               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
               TError,
               InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -7618,7 +7690,14 @@ export class Point0<
           : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
             ? [
                 infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-                  FinalInputRaw<TLetsReadyPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+                  FinalInputRaw<
+                    TLetsReadyPointType,
+                    TServerInputSchema,
+                    TClientInputSchema,
+                    TParamsSchema,
+                    TSearchSchema,
+                    TBodySchema
+                  >,
                   FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                   TError,
                   InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -7639,7 +7718,14 @@ export class Point0<
             : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
               ? [
                   infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-                    FinalInputRaw<TLetsReadyPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+                    FinalInputRaw<
+                      TLetsReadyPointType,
+                      TServerInputSchema,
+                      TClientInputSchema,
+                      TParamsSchema,
+                      TSearchSchema,
+                      TBodySchema
+                    >,
                     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                     TError,
                     InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
@@ -7648,7 +7734,9 @@ export class Point0<
                   >,
                 ]
               : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
-                ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
+                ? [
+                    ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>,
+                  ]
                 : [
                     ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery() to finalize query.`>,
                   ]

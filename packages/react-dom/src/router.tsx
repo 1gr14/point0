@@ -991,6 +991,21 @@ export const createRedirectComponent = <
         ? statusByTaskOrProvided
         : undefined
 
+    // Adapter-level nav options (replace, state) reach the component via `rest` when
+    // <Redirect> is used as JSX, but are nested in `task.options` when it comes from the
+    // redirect() helper / a page redirect. Forward those too — otherwise a page-level
+    // redirect.to(to, { replace: true }) silently loses `replace`, so the redirect source
+    // is pushed onto history and Back returns to it instead of skipping it.
+    const taskAdapterNavOptions: Record<string, unknown> = {}
+    if (providedTask?.options) {
+      for (const key of linkAdapterNavKeys) {
+        const value = (providedTask.options as Record<string, unknown>)[key]
+        if (value !== undefined) {
+          taskAdapterNavOptions[key] = value
+        }
+      }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { tohref, ...finalTo } = _resolveFinalTo({
       routes,
@@ -1010,6 +1025,7 @@ export const createRedirectComponent = <
     return (
       <NativeWouterRedirect
         {...rest}
+        {...taskAdapterNavOptions}
         {...{
           prefetch: prefetchByTaskOrProvided,
           before: beforeByTaskOrProvided,

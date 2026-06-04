@@ -253,21 +253,25 @@ describe('loader', () => {
 
   it('forbids loader after loader', () => {
     const root = createRoot()
-    root
-      .lets('page', 'home', '/')
-      .loader(() => ({ x: 1 }))
-      // @ts-expect-error -- only one loader per point: no loader after a loader
-      .loader(() => ({ y: 2 }))
-      .page()
+    expect(() =>
+      root
+        .lets('page', 'home', '/')
+        .loader(() => ({ x: 1 }))
+        // @ts-expect-error -- only one loader per point: no loader after a loader
+        .loader(() => ({ y: 2 }))
+        .page(),
+    ).toThrow()
   })
 
   it('forbids clientLoader after loader', () => {
     const root = createRoot()
-    root
-      .lets('page', 'home', '/')
-      .loader(() => ({ x: 1 }))
-      // @ts-expect-error -- only one loader per point: no clientLoader after a (server) loader
-      .clientLoader(() => ({ y: 2 }))
-      .page()
+    expect(() =>
+      root
+        .lets('page', 'home', '/')
+        .loader(() => ({ x: 1 }))
+        // @ts-expect-error -- only one loader per point: no clientLoader after a (server) loader
+        .clientLoader(() => ({ y: 2 }))
+        .page(),
+    ).toThrow()
   })
 })

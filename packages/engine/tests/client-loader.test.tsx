@@ -222,31 +222,36 @@ describe('clientLoader', () => {
 
   it('forbids loader after clientLoader', () => {
     const root = createRoot()
-    root
-      .lets('page', 'home', '/')
-      .clientLoader(() => ({ x: 1 }))
-      // @ts-expect-error -- only one loader per point: no (server) loader after a clientLoader
-      .loader(() => ({ y: 2 }))
-      .page()
+    expect(() =>
+      root
+        .lets('page', 'home', '/')
+        .clientLoader(() => ({ x: 1 }))
+        // @ts-expect-error -- only one loader per point: no (server) loader after a clientLoader
+        .loader(() => ({ y: 2 }))
+        .page(),
+    ).toThrow()
   })
 
   it('forbids empty loader after clientLoader', () => {
     const root = createRoot()
-    root
-      .lets('page', 'home', '/')
-      .clientLoader(() => ({ x: 1 }))
-      // @ts-expect-error -- only one loader per point: no (server) loader after a clientLoader
-      .loader()
-      .page()
+    expect(() =>
+      root
+        .lets('page', 'home', '/')
+        .clientLoader(() => ({ x: 1 }))
+        // @ts-expect-error -- only one loader per point: no (server) loader after a clientLoader
+        .loader(),
+    ).toThrow()
   })
 
   it('forbids clientLoader after clientLoader', () => {
     const root = createRoot()
-    root
-      .lets('page', 'home', '/')
-      .clientLoader(() => ({ x: 1 }))
-      // @ts-expect-error -- only one loader per point: no clientLoader after a clientLoader
-      .clientLoader(() => ({ y: 2 }))
-      .page()
+    expect(() =>
+      root
+        .lets('page', 'home', '/')
+        .clientLoader(() => ({ x: 1 }))
+        // @ts-expect-error -- only one loader per point: no clientLoader after a clientLoader
+        .clientLoader(() => ({ y: 2 }))
+        .page(),
+    ).toThrow()
   })
 })

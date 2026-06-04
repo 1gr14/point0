@@ -513,6 +513,36 @@ describe('plugin', () => {
     `)
   })
 
+  it('page recognizes a search key contributed by a plugin (getQueryKey routing)', () => {
+    const root = Point0.lets('root', 'root').root()
+    const searchPlugin = Point0.lets('plugin', 'search-plugin')
+      .search(z.object({ q: z.string().optional() }))
+      .plugin()
+    const page = root
+      .lets('page', 'via-plugin', '/via-plugin')
+      .use(searchPlugin)
+      .loader(() => ({}))
+      .page(() => null)
+
+    // The plugin contributed a `.search()` schema, so `q` must be routed as a search param — a query key
+    // with `q` set must differ from one without it. If `use()` drops the plugin's `_searchSchemaKeys`, the
+    // page filters `q` out as unknown and both keys collapse to the same value.
+    const withValue = page.getQueryKey({ '?': { q: 'x' } })
+    const without = page.getQueryKey({ '?': {} })
+    expect(withValue).not.toEqual(without)
+  })
+
+  it('use() rejects a non-plugin point at runtime', () => {
+    const root = Point0.lets('root', 'root').root()
+    const notAPlugin = root
+      .lets('page', 'home', '/')
+      .loader(() => ({ a: 1 }))
+      .page(() => null)
+    // `notAPlugin` is type "page", not "plugin" — injecting it via `.use()` must throw rather than silently
+    // merging its loader/mount actions. The type already forbids it; this is the runtime backstop.
+    expect(() => root.lets('page', 'other', '/other').use(notAPlugin as never)).toThrow('expects a plugin')
+  })
+
   // it.concurrent('forbidden different ssr settings when mount actions provided', async () => {
   //   const pluginNoSsr = Point0.lets('plugin', 'test-plugin-no-ssr')
   //   .clientOnly()
