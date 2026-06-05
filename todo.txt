@@ -1,5 +1,10 @@
-server-hmr (перзерв формат оставляем?)
-assets
+server-hmr (выпилить презерв формат, фикс сорусмэпа везде)
+assets (вмержить)
+
+
+
+
+
 
 docs
 Вставить призыв к старт0 прямо в кли и в ридми всех экзамплов и криэйт апа
@@ -10,8 +15,8 @@ docs
 
 
 FINISH
-Проверка под линукс и виндоус
 pipeline
+Проверка под линукс и виндоус
 examples has real versions, not just catalog, and odcker file is own only its code
 catalog versions scripts never use catalog in places, but just hardly replace versions with setted in catalog, also applies it to @point0/ packages to current version
 catalog versions in create-app/template should be replaced also with real versions
