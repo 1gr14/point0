@@ -473,6 +473,14 @@ describe('config', () => {
       if (parsed.server.compiler === false) throw new Error('unreachable')
       expect(parsed.server.compiler.assets).toBe(false)
     })
+
+    it('`defaultMode: false` survives the merge — distinct from `assets: false` (pipeline ON, bare goes native)', () => {
+      const parsed = parseEngineOptions(base({ general: { compiler: {}, assets: { defaultMode: false } } }))
+      if (parsed.server.compiler === false) throw new Error('unreachable')
+      // NOT `false` (that disables the whole pipeline) — the pipeline stays on, only the bare default is opted out, so
+      // the explicit `?url`/`?file`/`?text`/`?react` forms still resolve and the generator omits only the bare d.ts.
+      expect(parsed.server.compiler.assets).toEqual({ extensions: undefined, defaultMode: false, svgr: undefined })
+    })
   })
 
   describe('ssr resolution', () => {

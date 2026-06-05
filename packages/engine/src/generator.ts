@@ -84,7 +84,7 @@ export type FilesGeneratorTaskAssetsTypes = {
   banner?: string | null
   outfile: string
   extensions?: string[]
-  defaultMode?: AssetResolveMode
+  defaultMode?: AssetResolveMode | false
 }
 
 export type EmitNamedImportsResult = {
@@ -1445,7 +1445,7 @@ export class FilesGenerator {
   }: {
     config: FilesGeneratorSimpleGeneralConfig
     scopes: string[]
-    assetsDefaults?: { extensions?: string[]; defaultMode?: AssetResolveMode }
+    assetsDefaults?: { extensions?: string[]; defaultMode?: AssetResolveMode | false }
     engine: {
       file: string
       server:

@@ -156,7 +156,7 @@ export type EngineOptionsCompilerAssets =
   | {
       enabled?: boolean
       extensions?: string[]
-      defaultMode?: AssetResolveMode
+      defaultMode?: AssetResolveMode | false
       svgr?: AssetsSvgrOptions | false
     }
 
@@ -451,7 +451,12 @@ const mergeBabelOptions = (
 const normalizeAssetsOptions = (
   input: EngineOptionsCompilerAssets | undefined,
 ):
-  | { enabled?: boolean; extensions?: string[]; defaultMode?: AssetResolveMode; svgr?: AssetsSvgrOptions | false }
+  | {
+      enabled?: boolean
+      extensions?: string[]
+      defaultMode?: AssetResolveMode | false
+      svgr?: AssetsSvgrOptions | false
+    }
   | undefined => {
   if (input === undefined) return undefined
   if (input === false) return { enabled: false }

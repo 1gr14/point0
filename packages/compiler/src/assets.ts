@@ -21,7 +21,9 @@ import { resolveTempDirPath } from './utils.js'
  *
  * Resolution is configurable per import:
  *
- * - bare `import x from './x.png'` (or `?url`) → **url mode**: bytes written to `urlDir`, value is the served URL.
+ * - bare `import x from './x.png'` (or `?url`) → **url mode**: bytes written to `urlDir`, value is the served URL. Set
+ *   `compiler.assets.defaultMode: false` to opt the bare form out — it then goes native (incl. Bun `with { type }`),
+ *   while the explicit `?url`/`?file`/`?text`/`?react` queries below stay managed.
  * - `import x from './x.png?file'` → **file mode**: bytes written to `fileDir`, value is a path the _server_ can read at
  *   runtime (resolved via the chunk's `import.meta.url`, so it's cwd-independent). In dev (no `fileDir`) it's the
  *   original source path. Intended for server-side file access.
@@ -104,8 +106,13 @@ export type AssetsSvgrOptions = Config
 export type CompilerAssetsOptions = {
   /** Extensions this plugin manages. Others are left entirely to Bun (incl. `with { type }`). */
   extensions?: string[]
-  /** How a bare import (no `?url`/`?file`) of a managed extension resolves. Default `'url'`. */
-  defaultMode?: AssetResolveMode
+  /**
+   * How a bare import (no query) of a managed extension resolves. Default `'url'`. `false` opts bare imports OUT of the
+   * pipeline entirely — they're left to the bundler's native asset handling (so Bun `import x from './x.png' with {
+   * type }` works again, and Vite uses its own URL). The explicit `?url`/`?file`/`?text`/`?react` forms are still
+   * handled.
+   */
+  defaultMode?: AssetResolveMode | false
   /** SVGR options for `?react`, or `false` to disable our `?react` (bring your own, e.g. `vite-plugin-svgr`). */
   svgr?: AssetsSvgrOptions | false
   /** Bun url-mode output dir (served at `/_point0/asset/`); defaults to the dev cache. (Vite owns url-mode.) */
@@ -183,8 +190,9 @@ export const makeAssetsBunPlugin = (options: CompilerAssetsOptions = {}): BunPlu
   // Managed imports carrying a `?url` / `?file` query — must go through onResolve (Bun can't resolve a query path).
   const queryFilter = new RegExp(`\\.(${extAlt})\\?`, 'i')
 
-  // Query flag → mode. One flag per import in practice; if several are present, this is the precedence.
-  const resolveMode = (query: string): AssetResolveMode => {
+  // Query flag → mode. One flag per import in practice; if several are present, this is the precedence. Falls back to
+  // `defaultMode`, which may be `false` (an unrecognized query under `defaultMode: false` → not ours, hand it to Bun).
+  const resolveMode = (query: string): AssetResolveMode | false => {
     if (/(^|&|\?)file(&|=|$)/i.test(query)) return 'file'
     if (/(^|&|\?)react(&|=|$)/i.test(query)) return 'react'
     if (/(^|&|\?)(text|raw)(&|=|$)/i.test(query)) return 'text'
@@ -247,6 +255,8 @@ export const makeAssetsBunPlugin = (options: CompilerAssetsOptions = {}): BunPlu
         const clean = args.path.slice(0, queryIndex)
         const query = args.path.slice(queryIndex + 1)
         const mode = resolveMode(query)
+        // `defaultMode: false` + a query with no recognized point0 flag → not ours; let Bun resolve it natively.
+        if (mode === false) return
         // `args.resolveDir` is populated in a `Bun.build` but can be empty in the dev SSR runtime — fall back to the
         // importer's directory (the source file is on disk there) so a relative asset path still resolves.
         const resolveDir = args.resolveDir || (args.importer ? nodePath.dirname(args.importer) : process.cwd())
@@ -272,10 +282,13 @@ export const makeAssetsBunPlugin = (options: CompilerAssetsOptions = {}): BunPlu
         return await load(realPath, mode)
       })
 
-      // Bare imports of managed extensions (Bun already resolved the path) → default mode.
-      build.onLoad({ filter: bareFilter }, async (args) => {
-        return await load(args.path, defaultMode)
-      })
+      // Bare imports of managed extensions (Bun already resolved the path) → default mode. Skipped entirely when
+      // `defaultMode: false`, so a bare import falls through to Bun's native asset handling (incl. `with { type }`).
+      if (defaultMode !== false) {
+        build.onLoad({ filter: bareFilter }, async (args) => {
+          return await load(args.path, defaultMode)
+        })
+      }
     },
   }
 }
@@ -319,18 +332,22 @@ export const svgrToJsx = async (
  * Map a Vite import query to one of point0's managed modes, or `null` to leave it to Vite's natives. `?url`/`?raw` (and
  * a bare/unrecognized import under the default `url` mode) return `null` so Vite owns the URL; point0 takes over
  * `?text`/`?file`/`?react`. A bare import — or a query with no recognized point0 flag — otherwise follows
- * `defaultMode`, mirroring the Bun `resolveMode` so both bundlers resolve the same import to the same mode. Used by
- * `compilerVitePlugin`.
+ * `defaultMode`, mirroring the Bun `resolveMode` so both bundlers resolve the same import to the same mode.
+ * `defaultMode: false` makes a bare/unrecognized import `null` too (native Vite) — the parity of the Bun side dropping
+ * its bare hook. Used by `compilerVitePlugin`.
  */
-export const viteAssetMode = (query: string, defaultMode: AssetResolveMode = 'url'): AssetResolveMode | null => {
+export const viteAssetMode = (
+  query: string,
+  defaultMode: AssetResolveMode | false = 'url',
+): AssetResolveMode | null => {
   const has = (flag: string): boolean => new RegExp(`(^|&)${flag}(&|=|$)`, 'i').test(query)
   if (has('file')) return 'file'
   if (has('react')) return 'react'
   if (has('text')) return 'text'
   if (has('url') || has('raw')) return null // Vite handles these natively
-  // Bare import, or a query with no recognized point0 flag → follow `defaultMode` (parity with Bun's `resolveMode`);
-  // a `url` default stays native (Vite owns the URL).
-  return defaultMode === 'url' ? null : defaultMode
+  // Bare import, or a query with no recognized point0 flag → follow `defaultMode` (parity with Bun's `resolveMode`); a
+  // `url` default — or `false` (opt bare out) — stays native (Vite owns the URL).
+  return !defaultMode || defaultMode === 'url' ? null : defaultMode
 }
 
 /**
@@ -338,12 +355,15 @@ export const viteAssetMode = (query: string, defaultMode: AssetResolveMode = 'ur
  * query forms are typed in user code (like `vite/client`). The explicit query forms are fixed: `?url`/`?file`/`?text`/
  * `?raw` → `string`, and `*.svg?react` → a React component (emitted only when `svg` is managed). The **bare** import's
  * type follows `defaultMode`: `string` for `url`/`file`/`text`, and the React component for `react` (svg only — bare
- * `?react` of a non-svg is a build error anyway). Pass the same `extensions`/`defaultMode` the plugin uses so the
- * declared types match what is actually rewritten. The engine's generator writes this to `generate.assetsTypes` and
- * defaults both from `compiler.assets`; reference it from tsconfig `types`/`include` or a `/// <reference path=...
- * />`.
+ * `?react` of a non-svg is a build error anyway). `defaultMode: false` OMITS the bare-module declaration entirely (the
+ * bundler's own ambient types — `bun-types`, `vite/client` — own a bare import then). Pass the same
+ * `extensions`/`defaultMode` the plugin uses so the declared types match what is actually rewritten. The engine's
+ * generator writes this to `generate.assetsTypes` and defaults both from `compiler.assets`; reference it from tsconfig
+ * `types`/`include` or a `/// <reference path=... />`.
  */
-export const generateAssetsDts = (options: { extensions?: string[]; defaultMode?: AssetResolveMode } = {}): string => {
+export const generateAssetsDts = (
+  options: { extensions?: string[]; defaultMode?: AssetResolveMode | false } = {},
+): string => {
   const extensions = (options.extensions ?? DEFAULT_ASSET_EXTENSIONS).map((ext) => ext.replace(/^\./, ''))
   const defaultMode = options.defaultMode ?? 'url'
   const stringModule = (specifier: string): string =>
@@ -359,8 +379,12 @@ export const generateAssetsDts = (options: { extensions?: string[]; defaultMode?
     '',
   ]
   for (const ext of extensions) {
-    // The bare import follows defaultMode: a string for url/file/text, the SVGR component for react (svg only).
-    blocks.push(defaultMode === 'react' && ext === 'svg' ? reactModule(`*.${ext}`) : stringModule(`*.${ext}`))
+    // The bare import follows defaultMode: a string for url/file/text, the SVGR component for react (svg only). Under
+    // `defaultMode: false` the bare import is native, so we declare NO bare module — the bundler's own ambient types
+    // own it (declaring it here would shadow them and mistype `with { type }` results).
+    if (defaultMode !== false) {
+      blocks.push(defaultMode === 'react' && ext === 'svg' ? reactModule(`*.${ext}`) : stringModule(`*.${ext}`))
+    }
     // Explicit query forms are fixed regardless of defaultMode.
     for (const query of ['url', 'file', 'text', 'raw']) {
       blocks.push(stringModule(`*.${ext}?${query}`))

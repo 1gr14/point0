@@ -2,7 +2,7 @@ import assert from 'node:assert'
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import * as React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { generateAssetsDts, makeAssetsBunPlugin } from '@point0/compiler'
+import { generateAssetsDts, makeAssetsBunPlugin, viteAssetMode } from '@point0/compiler'
 import type { CompilerAssetsOptions } from '@point0/compiler'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
@@ -164,6 +164,50 @@ describe('assets plugin (unit)', () => {
     expect(result.asText as string).toMatch(/^\/_point0\/asset\//) // hijacked to url, NOT the svg text
   })
 
+  it('defaultMode:false → a bare import is left to Bun, NOT hijacked to a point0 url', async () => {
+    const { result } = await buildAndRun({
+      files: { 'logo.svg': SVG, 'entry.ts': `import logo from './logo.svg'\nexport const result = { logo }` },
+      pluginOptions: { defaultMode: false },
+    })
+    expect(typeof result.logo).toBe('string')
+    expect(result.logo as string).not.toMatch(/^\/_point0\//) // native Bun asset handling, not our url mode
+  })
+
+  it('defaultMode:false → standard Bun `with { type }` works on a MANAGED ext (lifts the limitation above)', async () => {
+    // The exact counterpart of the limitation test: with the bare hook dropped, Bun's native loader sees the import and
+    // honors `with { type: 'text' }`, so we get the svg text — not a hijacked url. This is the whole point of the flag.
+    const { result } = await buildAndRun({
+      files: {
+        'logo.svg': SVG,
+        'entry.ts': `import asText from './logo.svg' with { type: 'text' }\nexport const result = { asText }`,
+      },
+      pluginOptions: { defaultMode: false },
+    })
+    expect(result.asText).toBe(SVG)
+  })
+
+  it('defaultMode:false still handles the EXPLICIT query forms (?url / ?text / ?file)', async () => {
+    const { result } = await buildAndRun({
+      files: {
+        'logo.svg': SVG,
+        'entry.ts': `import u from './logo.svg?url'\nimport t from './logo.svg?text'\nimport p from './logo.svg?file'\nimport fs from 'node:fs'\nexport const result = { u, t, fileContent: fs.readFileSync(p, 'utf8') }`,
+      },
+      pluginOptions: { defaultMode: false },
+    })
+    expect(result.u as string).toMatch(/^\/_point0\/asset\//) // ?url still ours
+    expect(result.t).toBe(SVG) // ?text still inlines
+    expect(result.fileContent).toBe(SVG) // ?file still emits a path the runtime can read
+  })
+
+  it('viteAssetMode: defaultMode:false → bare/unrecognized native (null); explicit forms unchanged', () => {
+    expect(viteAssetMode('', false)).toBe(null) // bare → native Vite
+    expect(viteAssetMode('v=1', false)).toBe(null) // unrecognized query → native
+    expect(viteAssetMode('url', false)).toBe(null) // ?url is always Vite-native
+    expect(viteAssetMode('file', false)).toBe('file') // explicit forms stay ours
+    expect(viteAssetMode('text', false)).toBe('text')
+    expect(viteAssetMode('react', false)).toBe('react')
+  })
+
   it('?text → inlines the file contents as a string (managed ext)', async () => {
     const { result } = await buildAndRun({
       files: { 'logo.svg': SVG, 'entry.ts': `import s from './logo.svg?text'\nexport const result = { s }` },
@@ -248,6 +292,17 @@ describe('assets plugin (unit)', () => {
     expect((asUrl.match(/FC<SVGProps<SVGSVGElement>>/g) ?? []).length).toBe(1)
     // react-mode: bare *.svg is ALSO the component → the component type appears twice (bare + ?react)
     expect((asReact.match(/FC<SVGProps<SVGSVGElement>>/g) ?? []).length).toBe(2)
+  })
+
+  it('generateAssetsDts: defaultMode:false OMITS the bare module decl (native), keeps the query forms', () => {
+    const dts = generateAssetsDts({ extensions: ['png', 'svg'], defaultMode: false })
+    // bare modules are NOT declared — the bundler's own ambient types own a bare `import x from './x.png'`
+    expect(dts).not.toContain("declare module '*.png' {")
+    expect(dts).not.toContain("declare module '*.svg' {")
+    // the explicit query forms remain point0's, so they're still declared
+    for (const spec of ['*.png?url', '*.png?file', '*.png?text', '*.png?raw', '*.svg?react']) {
+      expect(dts).toContain(`declare module '${spec}'`)
+    }
   })
 })
 
