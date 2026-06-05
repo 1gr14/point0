@@ -17,6 +17,8 @@ const slowTests =
         'engine/tests/prefetch-page.test.ts',
         'engine/tests/two-clients.test.ts',
         'engine/tests/publicdir.test.ts',
+        'engine/tests/assets.test.tsx',
+        'create-app/tests/index.test.tsx',
       ]
 const testUtilsTests = ['engine/tests/utils/*']
 

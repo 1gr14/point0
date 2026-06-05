@@ -181,7 +181,8 @@ describe('create-app e2e', () => {
         // 3. Start the dev server (point0 dev regenerates on startup, then serves).
         await killPorts([mode.serverPort, mode.clientPort])
         dev = spawnDev(appDir)
-        await waitForOutput(dev, `started http://localhost:${mode.clientPort}`, 90_000)
+        await waitForOutput(dev, `started http://localhost:${mode.clientPort}`, 30_000)
+        await waitForOutput(dev, `started http://localhost:${mode.serverPort}`, 30_000)
 
         // 4. SSR check: the server URL 302-redirects to the client dev server, which renders the page.
         const html = await fetch(serverUrl, { redirect: 'follow' }).then((response) => response.text())
