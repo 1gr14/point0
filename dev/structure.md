@@ -90,3 +90,6 @@ add "types" to concepts and tell there about typeof myPoint.Infer...
 Когда пишем контент для экзамплов, просто основные идеи можно происывать прямо в маркдауне основные куски кода. Например в экзампле вайта что это такой же как базик, но вот тутнадо путь другой постаивть и конфиг прописать
 Квери клиент отдельная страница в доке (concepts - query-client)
 add: blocks - import-protection
+add: blocks - assets
+error-handling — blocks
+add: intro - bun vs vite

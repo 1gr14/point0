@@ -2,6 +2,7 @@ import { Route0 } from '@devp0nt/route0'
 import type { AnyLocation, ExactLocation } from '@devp0nt/route0'
 import type { ErrorPoint0 } from './error.js'
 import type { IsAny, PagePoint, RequestableReadyPoint } from './types.js'
+import { generateId } from './utils.js'
 
 const decodeCookieValue = (value: string): string => {
   const unquoted = value.startsWith('"') ? value.slice(1, -1) : value
@@ -68,15 +69,15 @@ export class Request0<
 
   static create<TError extends ErrorPoint0>(
     original: Request,
-    options: {
+    options?: {
       bunServer?: { requestIP: (request: Request) => { address: string } | null }
-      id: string
-      isFromServer: boolean
+      id?: string
+      isFromServer?: boolean
       state?: RequestState
       prev?: Request0 | undefined
     },
   ): Request0<any, TError> {
-    const { bunServer, id, isFromServer, state = {}, prev } = options
+    const { bunServer, id = generateId(), isFromServer = false, state = {}, prev } = options ?? {}
     const cache = prev?.cache ?? {}
     const first = prev?.first ?? prev
 

@@ -1,10 +1,10 @@
+server-hmr
+assets
 
 пофиксить экзамплы
 in example rename file navigate to navigation
 пофиксить криэйт апп
 create-app test
-
-безопасность для бан статик импорта
 
 docs
 Вставить призыв к старт0 прямо в кли и в ридми всех экзамплов и криэйт апа
@@ -83,6 +83,7 @@ mcp as comments
 
 
 ---
+Расписать как можно сделать монорепу
 В креэйт апп можно передать флаг экзампл и тогда скопируется его код с заменой пакейджа на верные
 Пейдж поинт вместе стегами должен быть доступен в юз пейдж стейт
 usePageData → return same as useQuery for page, needed to get page data in layout (mabye just usePageState and data also there?)
