@@ -1,6 +1,7 @@
 import type { GeneratorResult } from '@babel/generator'
 import type { BunPlugin, OnLoadResult } from 'bun'
 import nodeFs from 'node:fs'
+import { applyAssetsBunPlugin } from '../assets.js'
 import { Compiler } from '../compiler.js'
 import type { CompilerOptions } from '../compiler.js'
 import { CriticalCompilerError } from '../error.js'
@@ -73,6 +74,12 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
       build.onLoad({ filter: compiler.filter }, (args) => {
         return loader(args.path)
       })
+      // Managed static-asset imports (`./x.png`, `?url`/`?file`/`?text`/`?react`) ride inside this plugin, gated on
+      // `compiler.assets` (carried on the compiler like `filter`/`markdown`/`babel`, so the options and instance forms
+      // behave the same). `false` → the bundler's native asset behavior.
+      if (compiler.assets) {
+        void applyAssetsBunPlugin(build, compiler.assets)
+      }
     },
   } satisfies BunPlugin
 }

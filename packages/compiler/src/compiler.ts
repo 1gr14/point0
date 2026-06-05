@@ -19,6 +19,7 @@ import { createRequire } from 'node:module'
 import { CriticalCompilerError } from './error.js'
 import { stringify } from 'safe-stable-stringify'
 import { normalizeEnvConsts } from './utils.js'
+import type { CompilerAssetsOptions } from './assets.js'
 
 const requireFromCompiler = createRequire(import.meta.url)
 
@@ -129,6 +130,7 @@ export class Compiler {
   processEnvAliases: string[]
   markdown: MdxCompileOptions
   babel: { plugins: PluginItem[]; presets: PluginItem[] }
+  assets: CompilerAssetsOptions | false
   chainCallbackUseMemo: boolean
   /*
    * Match JS/TS and markdown-ish source files while excluding virtual/shim
@@ -180,6 +182,7 @@ export class Compiler {
     cache,
     markdown,
     babel,
+    assets,
     chainCallbackUseMemo,
   }: {
     filter: RegExp
@@ -199,6 +202,7 @@ export class Compiler {
     cache: boolean
     markdown: MdxCompileOptions
     babel: { plugins: PluginItem[]; presets: PluginItem[] }
+    assets: CompilerAssetsOptions | false
     chainCallbackUseMemo: boolean
   }) {
     this.filter = filter
@@ -218,6 +222,7 @@ export class Compiler {
     this.cache = cache
     this.markdown = markdown
     this.babel = babel
+    this.assets = assets
     this.chainCallbackUseMemo = chainCallbackUseMemo
   }
 
@@ -239,6 +244,9 @@ export class Compiler {
       cache = true,
       markdown: providedMarkdown,
       babel: providedBabel,
+      // Assets default ON (enabled with defaults) when the compiler runs; pass `false` to opt out. Matches the engine,
+      // where `mergeAssetsOptions` also defaults enabled. `{}` is the compiler-level "on" (the type has no boolean).
+      assets = {},
     } = options
     if (mode !== false && (!mode || !normalNodeEnvs.includes(mode as NormalizedNodeEnv))) {
       throw new Error(`Invalid mode (NODE_ENV): "${mode}". Allowed values: production, development, test`)
@@ -290,6 +298,7 @@ export class Compiler {
       cache,
       markdown,
       babel,
+      assets,
       chainCallbackUseMemo: chainCallbackDecision.inject,
     })
   }
@@ -847,6 +856,8 @@ export class Compiler {
         markdown: this.markdown,
         babel: this.babel,
         chainCallbackUseMemo: this.chainCallbackUseMemo,
+        // `assets` is intentionally absent: it doesn't change `compile()` output (asset resolution is separate plugin
+        // hooks), and it carries per-build dirs (`urlDir`/`fileDir`) that would needlessly fragment the transform cache.
       },
       fnReplacer,
     )
@@ -934,6 +945,13 @@ export type CompilerOptions = {
   cache?: boolean
   markdown?: CompilerMarkdownOptions
   babel?: CompilerBabelOptions
+  /**
+   * Static-asset pipeline. Rides _inside_ the compiler plugin (Bun + Vite): when set, the plugin handles managed asset
+   * imports — bare/`?url`/`?file`/`?text`/`?react`. `false`/omitted leaves the bundler's native asset behavior.
+   * `extensions`/`defaultMode`/`svgr` come from config; the per-build dirs (`urlDir`/`fileDir`/`writeUrlBytes`) are
+   * injected per side (Bun url-mode only — Vite uses its native URLs).
+   */
+  assets?: CompilerAssetsOptions | false
 }
 export type CompilerMarkdownPluginRef =
   | NonNullable<MdxCompileOptions['remarkPlugins']>[number]

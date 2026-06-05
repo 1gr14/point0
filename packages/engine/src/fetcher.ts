@@ -2,12 +2,7 @@ import * as flat0 from '@devp0nt/flat0'
 import nodePath from 'node:path'
 import * as React from 'react'
 import { Route0, type AnyLocation, type AnyRoute, type ExactLocation, type KnownLocation } from '@devp0nt/route0'
-import {
-  DEV_SSR_FIX_ASSETS_URL_PREFIX,
-  devSsrFixAssetNameRegex,
-  isDevSsrFixAssetsEnabled,
-  resolveDevSsrFixAssetsDir,
-} from '@point0/compiler'
+import { ASSET_URL_PREFIX, assetNameRegex, resolveAssetsCacheDir } from '@point0/compiler'
 import {
   POINT0_ERROR_CODES_MAP,
   _getSsItemsWithRestErrors,
@@ -83,32 +78,29 @@ export class Fetcher<TError extends ErrorPoint0> {
   }
 
   /**
-   * Dev + Bun only. The `bun-plugin-dev-ssr-fix-assets` plugin rewrites `file`-loader asset imports (on both the
-   * browser bundle and the SSR runtime) to a `/_point0/asset/<hash>.<ext>` URL and caches the bytes content-addressed.
-   * Here we serve those URLs back from that same cache. Safe by construction: only names that match `<hash>.<ext>` (no
-   * slashes, no `..`) are accepted, so there is no path traversal and no arbitrary file read — we only ever serve
-   * assets that were actually imported. Replaces the old `POINT0_UNSAFE_FIX_BUN_STATIC_SERVE` hack, which served
-   * arbitrary files by absolute path.
+   * Dev + Bun only. The asset pipeline (part of the compiler plugin — see `@point0/compiler` `applyAssetsBunPlugin`)
+   * rewrites `file`-loader asset imports (on both the browser bundle and the SSR runtime) to a
+   * `/_point0/asset/<hash>.<ext>` URL and caches the bytes content-addressed. Here we serve those URLs back from that
+   * same cache. Safe by construction: only names that match `<hash>.<ext>` (no slashes, no `..`) are accepted, so there
+   * is no path traversal and no arbitrary file read — we only ever serve assets that were actually imported. Replaces
+   * the old `POINT0_UNSAFE_FIX_BUN_STATIC_SERVE` hack, which served arbitrary files by absolute path. In prod the
+   * static `dist/client` publicdir serves these instead.
    */
-  static fetchDevSsrFixAsset = async ({ request }: { request: Request0 }): Promise<Response | undefined> => {
-    if (process.env.NODE_ENV === 'production') {
-      return undefined
-    }
+  static fetchDevAsset = async ({ request }: { request: Request0 }): Promise<Response | undefined> => {
+    // Dev-only: `build.was` is statically `true` in a built bundle (this route shakes out; prod serves the bytes from
+    // the `dist/client` publicdir) and `false` in the unbuilt dev server — the single, sufficient gate.
     if (_point0_env.build.was) {
       return undefined
     }
-    if (!isDevSsrFixAssetsEnabled()) {
-      return undefined
-    }
     const pathname = request.location.pathname
-    if (!pathname.startsWith(DEV_SSR_FIX_ASSETS_URL_PREFIX)) {
+    if (!pathname.startsWith(ASSET_URL_PREFIX)) {
       return undefined
     }
-    const name = pathname.slice(DEV_SSR_FIX_ASSETS_URL_PREFIX.length)
-    if (!devSsrFixAssetNameRegex.test(name)) {
+    const name = pathname.slice(ASSET_URL_PREFIX.length)
+    if (!assetNameRegex.test(name)) {
       return undefined
     }
-    const filePath = nodePath.join(resolveDevSsrFixAssetsDir(), name)
+    const filePath = nodePath.join(resolveAssetsCacheDir(), name)
     const bunFile = Bun.file(filePath)
     if (await bunFile.exists()) {
       return new Response(bunFile)
@@ -367,12 +359,12 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       if (!this.server.itWasBuilt) {
-        const devSsrFixAssetResponse = await Fetcher.fetchDevSsrFixAsset({ request })
-        if (devSsrFixAssetResponse) {
+        const assetResponse = await Fetcher.fetchDevAsset({ request })
+        if (assetResponse) {
           const variant: RequestVariantPublicdir<undefined> = {
             type: 'publicdir',
             publicdir: undefined,
-            response: devSsrFixAssetResponse,
+            response: assetResponse,
           }
           request.variant = variant
           return {

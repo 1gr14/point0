@@ -1,5 +1,12 @@
 import type { RoutesPretty } from '@devp0nt/route0'
-import { CompilerPoint, END_POINT_TYPES, Walker, resolveTempDirPath } from '@point0/compiler'
+import {
+  CompilerPoint,
+  END_POINT_TYPES,
+  Walker,
+  generateAssetsDts,
+  resolveTempDirPath,
+  type AssetResolveMode,
+} from '@point0/compiler'
 import { generateId, log } from '@point0/core'
 import type { LogFn } from '@point0/core'
 import fg from 'fast-glob'
@@ -72,6 +79,14 @@ export type FilesGeneratorTaskMeta = {
   outfile: string
 }
 
+export type FilesGeneratorTaskAssetsTypes = {
+  what: 'assetsTypes'
+  banner?: string | null
+  outfile: string
+  extensions?: string[]
+  defaultMode?: AssetResolveMode
+}
+
 export type EmitNamedImportsResult = {
   importLines: string[]
   importedPoints: Array<{ point: CompilerPoint<true>; index: number; renamedExportName: string }>
@@ -127,6 +142,11 @@ export type FilesGeneratorSimpleClientConfig = {
 
 export type FilesGeneratorSimpleGeneralConfig = {
   meta?: string | { outfile: string; banner?: string | null }
+  /**
+   * Generate an ambient `.d.ts` typing imported static assets (`import x from './x.png'` and the
+   * `?url`/`?file`/`?text`/`?raw`/`?react` forms). The extension list defaults from `compiler.assets`.
+   */
+  assetsTypes?: string | { outfile: string; banner?: string | null; extensions?: string[] }
   custom?: FilesGeneratorTaskCustomWithoutScope[]
 }
 
@@ -135,6 +155,7 @@ export type FilesGeneratorTask =
   | FilesGeneratorTaskServerPoints
   | FilesGeneratorTaskRoutes
   | FilesGeneratorTaskMeta
+  | FilesGeneratorTaskAssetsTypes
   | FilesGeneratorTaskCustomFile
   | FilesGeneratorTaskCustomControlled
 
@@ -519,6 +540,14 @@ export class FilesGenerator {
         content: this.emitMetaFile(task),
         outputAbs: task.outfile,
         tempOutputAbs: nodePath.join(this.tempDir, `${task.scopes.join('.')}.${generateId()}.meta.ts`),
+        type: 'file',
+      })
+    }
+    if (task.what === 'assetsTypes') {
+      tasks.push({
+        content: this.emitAssetsTypesFile(task),
+        outputAbs: task.outfile,
+        tempOutputAbs: nodePath.join(this.tempDir, `assetsTypes.${generateId()}.d.ts`),
         type: 'file',
       })
     }
@@ -1030,6 +1059,15 @@ export class FilesGenerator {
     return lines.join('\n')
   }
 
+  emitAssetsTypesFile(task: FilesGeneratorTaskAssetsTypes): string {
+    const lines: string[] = []
+    if (task.banner) {
+      lines.push(task.banner)
+    }
+    lines.push(generateAssetsDts({ extensions: task.extensions, defaultMode: task.defaultMode }))
+    return lines.join('\n')
+  }
+
   emitMetaFile(task: FilesGeneratorTaskMeta): string {
     const points = this.points.filter(
       (p) => (p.scope && task.scopes.includes(p.scope)) || p.scope === 'plugin',
@@ -1403,9 +1441,11 @@ export class FilesGenerator {
     config,
     scopes,
     engine,
+    assetsDefaults,
   }: {
     config: FilesGeneratorSimpleGeneralConfig
     scopes: string[]
+    assetsDefaults?: { extensions?: string[]; defaultMode?: AssetResolveMode }
     engine: {
       file: string
       server:
@@ -1430,6 +1470,21 @@ export class FilesGenerator {
         banner,
         scopes,
         engine,
+      })
+    }
+    if (config.assetsTypes) {
+      const outfile = typeof config.assetsTypes === 'string' ? config.assetsTypes : config.assetsTypes.outfile
+      const banner = typeof config.assetsTypes === 'string' ? undefined : config.assetsTypes.banner
+      const extensions =
+        typeof config.assetsTypes === 'object' && config.assetsTypes.extensions
+          ? config.assetsTypes.extensions
+          : assetsDefaults?.extensions
+      tasks.push({
+        what: 'assetsTypes',
+        outfile,
+        banner,
+        extensions,
+        defaultMode: assetsDefaults?.defaultMode,
       })
     }
     tasks.push(...this.simpleCustomConfigToTasks({ config }))

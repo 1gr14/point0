@@ -32,9 +32,6 @@
       "plugin/bun-static": [
         "./dist/plugin/bun-static.d.ts"
       ],
-      "plugin/bun-plugin-dev-ssr-fix-assets": [
-        "./dist/plugin/bun-plugin-dev-ssr-fix-assets.d.ts"
-      ],
       "plugin/babel": [
         "./dist/plugin/babel.d.ts"
       ]
@@ -56,10 +53,6 @@
     "./plugin/bun-static": {
       "types": "./dist/plugin/bun-static.d.ts",
       "import": "./dist/plugin/bun-static.js"
-    },
-    "./plugin/bun-plugin-dev-ssr-fix-assets": {
-      "types": "./dist/plugin/bun-plugin-dev-ssr-fix-assets.d.ts",
-      "import": "./dist/plugin/bun-plugin-dev-ssr-fix-assets.js"
     },
     "./plugin/babel": {
       "types": "./dist/plugin/babel.d.ts",
@@ -85,6 +78,8 @@
     "postpublish": "bun ../../scripts/restore-package.ts"
   },
   "dependencies": {
+    "@svgr/core": "catalog:",
+    "@svgr/plugin-jsx": "catalog:",
     "@babel/core": "^7.29.7",
     "@babel/generator": "^7.29.7",
     "@babel/parser": "^7.29.7",
@@ -106,13 +101,15 @@
     "typescript": "*"
   },
   "devDependencies": {
+    "@devp0nt/flat0": "catalog:",
     "@point0/engine": "workspace:*",
+    "@types/babel__core": "^7.20.5",
+    "@types/babel__generator": "^7.27.0",
     "@types/babel__traverse": "^7.28.0",
     "@types/bun": "catalog:",
     "@types/node": "^20.0.0",
-    "@devp0nt/flat0": "catalog:",
-    "dedent": "^1.7.1",
     "babel-plugin-react-compiler": "catalog:",
+    "dedent": "^1.7.1",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },

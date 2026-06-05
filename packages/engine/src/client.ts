@@ -2,7 +2,7 @@ import type { AnyRoute } from '@devp0nt/route0'
 import { type AnyLocation, Route0 } from '@devp0nt/route0'
 import type { CompilerOptions } from '@point0/compiler'
 import type { StaticCompilerRef } from '@point0/compiler/plugin/bun-static'
-import { FileResolver, isDevSsrFixAssetsEnabled, resolveTempDirPath } from '@point0/compiler'
+import { FileResolver, resolveTempDirPath } from '@point0/compiler'
 import type {
   AppComponent,
   ErrorPoint0,
@@ -410,6 +410,9 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
       cache: this.compiler.cache,
       markdown: this.compiler.markdown,
       babel: this.compiler.babel,
+      // Asset pipeline rides on the compiler (like `markdown`/`babel`); `false` → native asset behavior. Per-build
+      // dirs (`urlDir`/`fileDir`/`writeUrlBytes`) are merged into `assets` at the build sites below.
+      assets: this.compiler.assets,
       built,
     }
   }
@@ -449,12 +452,9 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     const scriptPath = nodePath.join(tempDir, `serve.js`)
     const bunfigTomlPath = nodePath.join(tempDir, 'bunfig.toml')
     const combinedPluginsStrings = [
+      // The compiler plugin carries the asset pipeline (assets ride in `compilerOptions.assets`, threaded to this
+      // spawned child via `POINT0_STATIC_COMPILER_OPTIONS` below) — no separate asset plugin/env needed.
       ...(compilerOptions ? ['@point0/compiler/plugin/bun-static'] : []),
-      // Dev + Bun only: rewrite `file`-loader asset imports to a served `/_point0/asset/<hash>` URL so the browser
-      // bundle and the SSR runtime agree (the identical plugin runs on both sides). Independent of the compiler — it
-      // must also run for `compiler: false` clients, since the SSR side injects it regardless. See server.ts and
-      // `bun-plugin-dev-ssr-fix-assets`.
-      ...(isDevSsrFixAssetsEnabled() ? ['@point0/compiler/plugin/bun-plugin-dev-ssr-fix-assets'] : []),
       ...pluginsStrings,
     ]
     const bunfigTomlContent = `[serve.static]
@@ -998,6 +998,16 @@ try {
         : {}
 
       const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
+      if (compilerOptions && compilerOptions.assets) {
+        // Bun client build's asset output dirs: url-mode bytes → the served `dist/client/_point0/asset/<hash>`,
+        // `?file` bytes → next to the bundle. (The Vite client build below leans on Vite's native asset URLs, so it
+        // sets neither.)
+        compilerOptions.assets = {
+          ...compilerOptions.assets,
+          urlDir: nodePath.join(buildPaths.outdir, '_point0', 'asset'),
+          fileDir: buildPaths.outdir,
+        }
+      }
       const compilerPlugin = compilerOptions
         ? [await import('@point0/compiler/plugin/bun').then((module) => module.compilerBunPlugin(compilerOptions))]
         : []
@@ -1067,6 +1077,10 @@ try {
     }
 
     const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
+    if (compilerOptions && compilerOptions.assets) {
+      // `?file` build: copy bytes next to the emitted bundle so they're readable at runtime (Vite owns `?url`/`?raw`).
+      compilerOptions.assets = { ...compilerOptions.assets, fileDir: buildPaths.outdir }
+    }
     const compilerPlugin = compilerOptions
       ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
       : []

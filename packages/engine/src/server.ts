@@ -1,4 +1,4 @@
-import { Compiler, type CompilerOptions, isDevSsrFixAssetsEnabled } from '@point0/compiler'
+import { Compiler, type CompilerOptions } from '@point0/compiler'
 import type {
   ErrorPoint0,
   FetcherFetchDetailedResult,
@@ -12,7 +12,7 @@ import { _point0_env, PointsSourceNotReadyError, prependAndDeappendSlash } from 
 import type { BunPlugin, Serve } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import { isRunnableDevEnvironment, type ViteDevServer } from 'vite'
+import type { ViteDevServer } from 'vite'
 import type { EngineClient } from './client.js'
 import type {
   EngineOptionsCompilerSpecificParsed,
@@ -385,6 +385,9 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       cache: this.compiler.cache,
       markdown: this.compiler.markdown,
       babel: this.compiler.babel,
+      // Asset pipeline rides on the compiler (like `markdown`/`babel`); `false` → native asset behavior. Per-build
+      // dirs (`urlDir`/`fileDir`/`writeUrlBytes`) are merged into `assets` by `extractBunPlugins`/the build sites.
+      assets: this.compiler.assets,
     }
   }
 
@@ -392,10 +395,13 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     built = _point0_env.build.was,
     onDeny,
     extraPlugins = [],
+    assetsDirs,
   }: {
     built?: boolean
     onDeny?: 'throw' | 'log'
     extraPlugins?: BunPlugin[]
+    /** Per-build asset dirs merged into `compilerOptions.assets` (the asset pipeline rides in the compiler plugin). */
+    assetsDirs?: { urlDir?: string; fileDir?: string; writeUrlBytes?: boolean }
   } = {}): Promise<BunPlugin[]> {
     const ownExtractedPlugins = await extractEngineServerPlugins({
       mode: normalizeAndValidateNodeEnv(),
@@ -411,19 +417,17 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     })
     const extractedPlugins = [...generalExtractedPlugins, ...ownExtractedPlugins]
     const compilerOptions = this.getCompilerOptions({ built, onDeny })
+    // Merge the caller's per-build asset dirs into `compilerOptions.assets` (the pipeline rides in the compiler
+    // plugin). Dev passes none; build sites pass their output dirs. `compiler: false` → no assets (native behavior).
+    if (compilerOptions && compilerOptions.assets && assetsDirs) {
+      compilerOptions.assets = { ...compilerOptions.assets, ...assetsDirs }
+    }
     const compilerPlugin = this.viteConfig // we inject vite compiler plugin in vite config
       ? []
       : _point0_env.build.was || !compilerOptions
         ? []
         : [await import('@point0/compiler/plugin/bun').then((module) => module.compilerBunPlugin(compilerOptions))]
-    // Dev + Bun only: the SSR runtime resolves `file`-loader asset imports to absolute disk paths, breaking
-    // hydration. This isolated plugin rewrites them to a served `/_point0/asset/<hash>` URL. Never in builds
-    // (Bun.build resolves assets itself) or Vite (its own pipeline). See `bun-plugin-dev-ssr-fix-assets`.
-    const devSsrFixAssetsPlugin =
-      this.viteConfig || built || _point0_env.build.was || !isDevSsrFixAssetsEnabled()
-        ? []
-        : [await import('@point0/compiler/plugin/bun-plugin-dev-ssr-fix-assets').then((module) => module.default)]
-    const extractedBunPlugins = [...compilerPlugin, ...devSsrFixAssetsPlugin, ...extraPlugins, ...extractedPlugins]
+    const extractedBunPlugins = [...compilerPlugin, ...extraPlugins, ...extractedPlugins]
     return extractedBunPlugins
   }
 
@@ -476,6 +480,9 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       // That boilerplate lives in the user's entry file (see examples/*/src/*.server.ts) — vite's
       // HMR pipeline drives re-execution, so no manual watcher is needed here.
       const ssrEnv = viteDevServer.environments.ssr
+      // Lazy import: keep `vite` out of the engine's static graph so a Bun-only build never bundles it (and never
+      // needs vite's optional-peer `esbuild`). This method is dev + vite only — guarded by the throws above.
+      const { isRunnableDevEnvironment } = await import('vite')
       if (!isRunnableDevEnvironment(ssrEnv)) {
         throw new Error(`Vite SSR environment is not runnable (cannot import server entry in-process)`)
       }
@@ -923,11 +930,23 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       splitting: true,
       ...thisBunBuildConfig,
       ...providedBunBuildConfig,
+      external: [
+        ...(thisBunBuildConfig.external ?? []),
+        ...(providedBunBuildConfig.external ?? []),
+        // `vite` (and its optional-peer `esbuild`) are reached only on the lazy vite code paths — never in a Bun-only
+        // app. Keep them external so the Bun bundler never pulls vite into the server bundle (which would fail to
+        // resolve esbuild when it isn't installed). A Bun-only app thus builds and runs with neither installed.
+        'vite',
+        'esbuild',
+      ],
       plugins: [
+        // Server build assets: `writeUrlBytes: false` because the client build already wrote the url bytes (shared
+        // content hash → the same `/_point0/asset/<hash>` URL); only `?file` bytes are copied, next to the server bundle.
         ...(await this.extractBunPlugins({
           built: true,
           onDeny: 'throw',
           extraPlugins: [...(thisBunBuildConfig.plugins ?? []), ...(providedBunBuildConfig.plugins ?? [])],
+          assetsDirs: { writeUrlBytes: false, fileDir: buildPaths.outdir },
         })),
       ],
       banner: [injectEnvsScript, thisBunBuildConfig.banner, providedBunBuildConfig.banner].filter(Boolean).join('\n'),
@@ -972,6 +991,11 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     this.envConsts.NODE_ENV = NODE_ENV
 
     const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
+    if (compilerOptions && compilerOptions.assets) {
+      // `?file` build: copy bytes next to the emitted server bundle so server code can read them at runtime (Vite
+      // owns `?url`/`?raw`).
+      compilerOptions.assets = { ...compilerOptions.assets, fileDir: buildPaths.outdir }
+    }
     const compilerPlugin = compilerOptions
       ? [await import('@point0/compiler/plugin/vite').then((module) => module.compilerVitePlugin(compilerOptions))]
       : []

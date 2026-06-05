@@ -639,5 +639,6 @@ export const page2 = root.lets('page', 'page2', '/2')
         retry: 3,
       },
     )
+
   })
 })
