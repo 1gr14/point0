@@ -1,6 +1,9 @@
 import type { RoutesPretty } from '@devp0nt/route0'
 import { normalizeEnvConsts } from '@point0/compiler'
 import type {
+  AssetResolveMode,
+  AssetsSvgrOptions,
+  CompilerAssetsOptions,
   CompilerBabelOptions,
   CompilerBabelOptionsNormalized,
   CompilerEnvConsts,
@@ -99,6 +102,7 @@ export type EngineOptionsCompilerGeneral = {
   cache?: boolean
   markdown?: CompilerMarkdownOptions
   babel?: CompilerBabelOptions
+  assets?: EngineOptionsCompilerAssets
 }
 // export type EngineOptionsCompilerGeneralParsed = {
 //   side: boolean
@@ -123,6 +127,7 @@ export type EngineOptionsCompilerSpecific = {
   cache?: boolean
   markdown?: CompilerMarkdownOptions
   babel?: CompilerBabelOptions
+  assets?: EngineOptionsCompilerAssets
 }
 export type EngineOptionsCompilerSpecificParsed = {
   side: boolean
@@ -137,7 +142,23 @@ export type EngineOptionsCompilerSpecificParsed = {
   cache: boolean
   markdown: CompilerMarkdownOptions | undefined
   babel: CompilerBabelOptionsNormalized | undefined
+  assets: CompilerAssetsOptions | false
 }
+
+/**
+ * `compiler.assets` — the static-asset pipeline config. It rides along with the compiler: a `compiler: false` side
+ * keeps the bundler's native asset behavior (this is never read there). `false` disables it for an enabled compiler;
+ * `true`/object enables it. `extensions`/`defaultMode`/`svgr` should be kept identical across sides — they must agree
+ * for client and SSR to emit the same URL (a per-side override is allowed but is a footgun).
+ */
+export type EngineOptionsCompilerAssets =
+  | boolean
+  | {
+      enabled?: boolean
+      extensions?: string[]
+      defaultMode?: AssetResolveMode
+      svgr?: AssetsSvgrOptions | false
+    }
 
 export type EngineOptionsServing = boolean | string | ((options: { request: Request0 }) => boolean)
 
@@ -220,6 +241,8 @@ export type EngineGeneralOptions = {
   compiler?: EngineOptionsCompilerGeneral | boolean
   // default ssr value
   ssr?: boolean | SsrOptions
+  /** Default static-asset config for the whole engine. Folds into `compiler.assets`; a nested/per-side one wins. */
+  assets?: EngineOptionsCompilerAssets
 }
 
 export type EngineServerOptions<
@@ -250,6 +273,11 @@ export type EngineServerOptions<
   banner?: string
   hmrPort?: number | string | boolean
   ssr?: boolean | SsrOptions
+  /**
+   * Static-asset config for this side. Folds into `compiler.assets`; `compiler.assets` wins. Keep it in sync with other
+   * sides — `extensions`/`defaultMode`/`svgr` must agree across client and server for the same URL.
+   */
+  assets?: EngineOptionsCompilerAssets
 }
 
 export type EngineClientOptions = {
@@ -278,6 +306,11 @@ export type EngineClientOptions = {
   routes?: EngineOptionsRoutes
   banner?: string
   ssr?: boolean | SsrOptions
+  /**
+   * Static-asset config for this client. Folds into `compiler.assets`; `compiler.assets` wins. Keep it in sync with
+   * other sides — `extensions`/`defaultMode`/`svgr` must agree across client and server for the same URL.
+   */
+  assets?: EngineOptionsCompilerAssets
 }
 export type EngineOptions<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -310,6 +343,7 @@ export type EngineGeneralOptionsParsed = {
   bunPlugins: EngineSharedPluginsDefinition
   ssr: boolean | undefined
   ssrOptions: SsrOptionsResolved
+  assets: EngineOptionsCompilerAssets | undefined
 }
 export type EngineClientOptionsParsed = {
   scope: PointsScope
@@ -410,6 +444,45 @@ const mergeBabelOptions = (
   return {
     plugins: [...(g.plugins ?? []), ...(s.plugins ?? [])],
     presets: [...(g.presets ?? []), ...(s.presets ?? [])],
+  }
+}
+
+/** `false`/`true` shorthand → record; leaves `enabled` undefined for the object form so merge can tell "unset" apart. */
+const normalizeAssetsOptions = (
+  input: EngineOptionsCompilerAssets | undefined,
+):
+  | { enabled?: boolean; extensions?: string[]; defaultMode?: AssetResolveMode; svgr?: AssetsSvgrOptions | false }
+  | undefined => {
+  if (input === undefined) return undefined
+  if (input === false) return { enabled: false }
+  if (input === true) return { enabled: true }
+  return input
+}
+
+const mergeAssetsOptions = (
+  general: EngineOptionsCompilerAssets | undefined,
+  specific: EngineOptionsCompilerAssets | undefined,
+): CompilerAssetsOptions | false => {
+  const g = normalizeAssetsOptions(general)
+  const s = normalizeAssetsOptions(specific)
+  // Enabled defaults to on (a `compiler: true`/object side gets assets with defaults) unless a layer disables it.
+  // Folding the gate in here means `compiler.assets` is already the final `CompilerAssetsOptions | false` the plugin
+  // reads — no separate resolve step. Per-build dirs (`urlDir`/`fileDir`) are merged in later, at the build sites.
+  if ((s?.enabled ?? g?.enabled ?? true) === false) return false
+  // Specific overrides general field-by-field.
+  return {
+    extensions: s?.extensions ?? g?.extensions,
+    defaultMode: s?.defaultMode ?? g?.defaultMode,
+    // `svgr: false` (disable `?react`) can't be deep-merged — handle it explicitly. Specific disabling wins; a general
+    // disable is overridden only by a specific object; otherwise merge the two option objects.
+    svgr:
+      s?.svgr === false
+        ? false
+        : g?.svgr === false
+          ? (s?.svgr ?? false)
+          : g?.svgr !== undefined || s?.svgr !== undefined
+            ? { ...g?.svgr, ...s?.svgr }
+            : undefined,
   }
 }
 
@@ -594,6 +667,7 @@ const parseEngineGeneralOptions = ({
               ...(generalOptions.compiler.side !== undefined ? { side: generalOptions.compiler.side } : {}),
               ...(generalOptions.compiler.markdown !== undefined ? { markdown: generalOptions.compiler.markdown } : {}),
               ...(generalOptions.compiler.babel !== undefined ? { babel: generalOptions.compiler.babel } : {}),
+              ...(generalOptions.compiler.assets !== undefined ? { assets: generalOptions.compiler.assets } : {}),
               ...(generalOptions.compiler.ssr !== undefined
                 ? { ssr: generalOptions.compiler.ssr }
                 : ssr !== undefined
@@ -611,6 +685,16 @@ const parseEngineGeneralOptions = ({
       : FilesGenerator.simpleGeneralConfigToTasks({
           config: providedGenerate,
           scopes,
+          // Single source of truth for the d.ts: the general `compiler.assets` (extensions + defaultMode). The bare
+          // import's declared type follows defaultMode, so both must flow into the generator.
+          assetsDefaults: (() => {
+            // Effective general assets: nested `compiler.assets` wins over the top-level `assets`, mirroring the merge.
+            const a =
+              compiler && typeof compiler === 'object' && compiler.assets !== undefined
+                ? compiler.assets
+                : generalOptions.assets
+            return a && typeof a === 'object' ? { extensions: a.extensions, defaultMode: a.defaultMode } : undefined
+          })(),
           engine: {
             file: engineFile,
             server: { scope: serverOptions.scope },
@@ -666,6 +750,7 @@ const parseEngineGeneralOptions = ({
     ).map((g) => toAbsPath(cwd, g, true)),
     ssr,
     ssrOptions,
+    assets: generalOptions.assets,
   }
 }
 
@@ -855,6 +940,10 @@ export const parseEngineServerOptions = ({
     ],
     markdown: mergeMarkdownOptions(generalOptionsParsedCompilerRecord.markdown, serverOptionsCompilerRecord.markdown),
     babel: mergeBabelOptions(generalOptionsParsedCompilerRecord.babel, serverOptionsCompilerRecord.babel),
+    assets: mergeAssetsOptions(
+      generalOptionsParsedCompilerRecord.assets ?? generalOptionsParsed.assets,
+      serverOptionsCompilerRecord.assets ?? serverOptions.assets,
+    ),
     ssr:
       serverOptionsCompilerRecord.ssr !== undefined
         ? serverOptionsCompilerRecord.ssr
@@ -893,6 +982,7 @@ export const parseEngineServerOptions = ({
             cache: mergedCompilerRecord.cache,
             markdown: mergedCompilerRecord.markdown,
             babel: mergedCompilerRecord.babel,
+            assets: mergedCompilerRecord.assets,
           }
         : serverOptions.compiler !== undefined
           ? mergedCompilerRecord
@@ -1033,6 +1123,10 @@ const parseEngineClientOptions = ({
     ],
     markdown: mergeMarkdownOptions(generalOptionsParsedCompilerRecord.markdown, clientOptionsCompilerRecord.markdown),
     babel: mergeBabelOptions(generalOptionsParsedCompilerRecord.babel, clientOptionsCompilerRecord.babel),
+    assets: mergeAssetsOptions(
+      generalOptionsParsedCompilerRecord.assets ?? generalOptionsParsed.assets,
+      clientOptionsCompilerRecord.assets ?? clientOptions.assets,
+    ),
     ssr:
       clientOptionsCompilerRecord.ssr !== undefined
         ? clientOptionsCompilerRecord.ssr
@@ -1071,6 +1165,7 @@ const parseEngineClientOptions = ({
             cache: mergedCompilerRecord.cache,
             markdown: mergedCompilerRecord.markdown,
             babel: mergedCompilerRecord.babel,
+            assets: mergedCompilerRecord.assets,
           }
         : clientOptions.compiler !== undefined
           ? mergedCompilerRecord

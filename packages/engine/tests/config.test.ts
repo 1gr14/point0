@@ -405,6 +405,76 @@ describe('config', () => {
     })
   })
 
+  describe('compiler assets layering', () => {
+    it('defaults assets ON (enabled with defaults) when the compiler is on and no `assets` is given', () => {
+      const parsed = parseEngineOptions(base({ general: { compiler: {} } }))
+      if (parsed.server.compiler === false) throw new Error('unreachable')
+      expect(parsed.server.compiler.assets).toEqual({ extensions: undefined, defaultMode: undefined, svgr: undefined })
+    })
+
+    it('uses the general top-level `assets` as compiler.assets when the compiler is enabled', () => {
+      const parsed = parseEngineOptions(base({ general: { compiler: {}, assets: { defaultMode: 'file' } } }))
+      if (parsed.server.compiler === false) throw new Error('unreachable')
+      expect(parsed.server.compiler.assets).toEqual({ extensions: undefined, defaultMode: 'file', svgr: undefined })
+    })
+
+    it('uses the per-side top-level `assets` as compiler.assets', () => {
+      const parsed = parseEngineOptions(
+        base({ general: { compiler: {} }, server: { assets: { extensions: ['png'] } } }),
+      )
+      if (parsed.server.compiler === false) throw new Error('unreachable')
+      expect(parsed.server.compiler.assets).toEqual({ extensions: ['png'], defaultMode: undefined, svgr: undefined })
+    })
+
+    it('prefers compiler.assets over the per-side top-level `assets`', () => {
+      const parsed = parseEngineOptions(
+        base({
+          general: { compiler: {} },
+          server: { assets: { defaultMode: 'url' }, compiler: { assets: { defaultMode: 'file' } } },
+        }),
+      )
+      if (parsed.server.compiler === false) throw new Error('unreachable')
+      expect(parsed.server.compiler.assets).toEqual({ extensions: undefined, defaultMode: 'file', svgr: undefined })
+    })
+
+    it('keeps the per-side top-level `assets` independent per client', () => {
+      const parsed = parseEngineOptions(
+        base({
+          general: { compiler: {} },
+          clients: [{ scope: 'a', assets: { defaultMode: 'file' } }, { scope: 'b' }],
+        }),
+      )
+      if (parsed.clients[0].compiler === false || parsed.clients[1].compiler === false) throw new Error('unreachable')
+      expect(parsed.clients[0].compiler.assets).toEqual({ extensions: undefined, defaultMode: 'file', svgr: undefined })
+      expect(parsed.clients[1].compiler.assets).toEqual({
+        extensions: undefined,
+        defaultMode: undefined,
+        svgr: undefined,
+      })
+    })
+
+    it('merges the general top-level with a per-side override field-by-field (specific wins)', () => {
+      const parsed = parseEngineOptions(
+        base({
+          general: { compiler: {}, assets: { extensions: ['png', 'svg'], defaultMode: 'url' } },
+          server: { assets: { defaultMode: 'file' } },
+        }),
+      )
+      if (parsed.server.compiler === false) throw new Error('unreachable')
+      expect(parsed.server.compiler.assets).toEqual({
+        extensions: ['png', 'svg'],
+        defaultMode: 'file',
+        svgr: undefined,
+      })
+    })
+
+    it('top-level `assets: false` disables the pipeline for that side (compiler still on)', () => {
+      const parsed = parseEngineOptions(base({ general: { compiler: {} }, server: { assets: false } }))
+      if (parsed.server.compiler === false) throw new Error('unreachable')
+      expect(parsed.server.compiler.assets).toBe(false)
+    })
+  })
+
   describe('ssr resolution', () => {
     it('defaults to false when nothing is provided', () => {
       const parsed = parseEngineOptions(base({}))

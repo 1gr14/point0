@@ -1,3 +1,4 @@
+export * from './assets.js'
 export * from './compiler.js'
 export * from './file.js'
 export * from './importer.js'

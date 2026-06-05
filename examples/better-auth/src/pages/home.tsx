@@ -2,6 +2,8 @@ import { generalLayout } from '@/layouts/general.js'
 import { Link } from '@/lib/navigation'
 import { prisma } from '@/lib/prisma'
 import { root } from '@/lib/root'
+import icon from '../assets/icon.svg'
+import IconReact from '../assets/icon.svg?react'
 
 export const ideaBestComponent = root.lets
   .component<{ cta: string }>()
@@ -41,6 +43,9 @@ export default generalLayout
   .page(() => {
     return (
       <div className="mx-auto  space-y-6">
+        {/* Static assets via point0's pipeline — types from the generated `generated/point0/assets.d.ts`. */}
+        <img src={icon} alt="icon" />
+        <IconReact width={24} height={24} aria-label="icon as a react component (?react)" />
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome to IdeaNick!</h1>
           <p className="text-slate-600">
