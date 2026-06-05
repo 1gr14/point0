@@ -15,7 +15,15 @@ type CliOptions = {
   override?: boolean
 }
 
-const VITE_CONFIG_LINE = "viteConfig: '../vite.config.ts',"
+// The template ships the vite shape: an inline `viteConfig` plus two vite-only imports in `src/engine.ts`, each
+// fenced by `start` / `end` marker comments (matching the vite example). For vite we just drop the marker
+// comments (keeping the fenced code); for bun we cut both fenced blocks whole, keeping `bunPlugins` instead.
+const VITE_IMPORT_START = '// vite import start\n'
+const VITE_IMPORT_END = '// vite import end\n'
+const VITE_IMPORT_BLOCK = /[ \t]*\/\/ vite import start\n[\s\S]*?[ \t]*\/\/ vite import end\n/
+const VITE_CONFIG_START = '  // viteConfig start\n'
+const VITE_CONFIG_END = '  // viteConfig end\n'
+const VITE_CONFIG_BLOCK = /[ \t]*\/\/ viteConfig start\n[\s\S]*?[ \t]*\/\/ viteConfig end\n/
 const BUN_PLUGINS_LINE = "    bunPlugins: ['bun-plugin-tailwind'],\n"
 const PRELOAD_DEFAULT = "engine.preload({ nodeEnvFallback: 'development' })"
 const PRELOAD_VITE = "engine.preload({ nodeEnvFallback: 'development', preventLoadBunPlugins: true })"
@@ -270,10 +278,16 @@ async function patchEngine(enginePath: string, useVite: boolean) {
   let next: string
 
   if (useVite) {
-    // Enable the vite config reference and drop the bun-only tailwind plugin (its package is removed for vite).
-    next = current.replace(`// ${VITE_CONFIG_LINE}`, VITE_CONFIG_LINE).replace(BUN_PLUGINS_LINE, '')
+    // Keep the fenced vite imports + `viteConfig`; just drop the marker comments and the bun-only tailwind plugin.
+    next = current
+      .replace(VITE_IMPORT_START, '')
+      .replace(VITE_IMPORT_END, '')
+      .replace(VITE_CONFIG_START, '')
+      .replace(VITE_CONFIG_END, '')
+      .replace(BUN_PLUGINS_LINE, '')
   } else {
-    next = current.replace(`// ${VITE_CONFIG_LINE}`, '').replace(VITE_CONFIG_LINE, '')
+    // Bun bundling: cut both fenced vite blocks (imports + config) whole; keep `bunPlugins`.
+    next = current.replace(VITE_IMPORT_BLOCK, '').replace(VITE_CONFIG_BLOCK, '')
   }
 
   await writeFile(enginePath, next, 'utf8')

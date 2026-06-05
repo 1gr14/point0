@@ -1,4 +1,8 @@
 import { Engine } from '@point0/engine'
+// vite import start
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+// vite import end
 import { clientEnvKeys } from '@/lib/env/client-shape'
 
 export const engine = Engine.create({
@@ -6,7 +10,22 @@ export const engine = Engine.create({
   ssr: true,
   pointsGlob: '**/*.{ts,tsx,mdx}',
   generate: { meta: './generated/point0/meta.ts', assetsTypes: './generated/point0/assets.d.ts' },
-  // viteConfig: '../vite.config.ts',
+  // viteConfig start
+  viteConfig: ({ plugins }) => {
+    return {
+      resolve: {
+        tsconfigPaths: true,
+      },
+      plugins: [
+        // we just have point0 vite compiler plugin here inside ...plugins, and we can place it where we want
+        ...plugins,
+        react({ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }),
+        tailwindcss(),
+        // options.side === 'client' ? analyzer() : null,
+      ],
+    }
+  },
+  // viteConfig end
   server: {
     scope: 'root',
     port: process.env.SERVER_PORT || process.env.PORT,

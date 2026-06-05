@@ -160,6 +160,10 @@ describe('create-app e2e', () => {
 
         // The bundler-specific patching ran: vite gets a vite.config.ts, bun does not.
         expect(await Bun.file(resolve(appDir, 'vite.config.ts')).exists()).toBe(mode.id === 'vite')
+        // The engine carries the vite config inline for vite, and bun plugins for bun — never both.
+        const engineSrc = await Bun.file(resolve(appDir, 'src/engine.ts')).text()
+        expect(engineSrc.includes('viteConfig: ({ plugins })')).toBe(mode.id === 'vite')
+        expect(engineSrc.includes('bunPlugins:')).toBe(mode.id === 'bun')
         // Both keep the new bootstrap from the template.
         expect(await Bun.file(resolve(appDir, 'bunfig.toml')).exists()).toBe(true)
         expect(await Bun.file(resolve(appDir, 'src/preload.ts')).exists()).toBe(true)
