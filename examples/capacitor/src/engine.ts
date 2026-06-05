@@ -4,6 +4,7 @@ export const engine = Engine.create({
   file: import.meta.url,
   pointsGlob: ['**/*.{ts,tsx}'],
   ssr: true,
+  generate: { assetsTypes: './lib/assets.d.ts' },
   server: {
     scope: 'site',
     devWatchGlob: ['**/*.{ts,tsx}'],
