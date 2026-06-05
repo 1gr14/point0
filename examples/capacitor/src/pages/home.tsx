@@ -1,4 +1,4 @@
-import { Link } from '@/lib/navigate'
+import { Link } from '@/lib/navigation'
 import { root } from '@/lib/root'
 
 export default root

@@ -1,4 +1,5 @@
 import { Engine } from '@point0/engine'
+import { clientEnvKeys } from '@/lib/env/client-shape'
 
 export const engine = Engine.create({
   file: import.meta.url,
@@ -7,12 +8,11 @@ export const engine = Engine.create({
   generate: { meta: './generated/point0/meta.ts' },
   server: {
     scope: 'root',
-    port: process.env.SERVER_PORT,
+    port: process.env.SERVER_PORT || process.env.PORT,
     entry: { main: './app.server.ts' },
     points: async () => await import('./generated/point0/points.server'),
     generate: { points: './generated/point0/points.server.ts' },
     outdir: '../dist/server',
-    // devWatchGlob: ['**/*.{ts,tsx,mdx}', '!generated/point0/meta.ts'],
   },
   client: {
     compiler: {
@@ -27,11 +27,8 @@ export const engine = Engine.create({
       points: './generated/point0/points.client.ts',
       routes: './generated/point0/routes.ts',
     },
-    importer: {
-      deny: ['**/prisma.*'],
-    },
     bunPlugins: ['bun-plugin-tailwind'],
-    env: { vars: ['SERVER_URL'] },
+    env: { vars: clientEnvKeys },
     publicdir: {
       source: [
         '../public',

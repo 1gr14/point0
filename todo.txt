@@ -1,10 +1,5 @@
-server-hmr
+server-hmr (перзерв формат оставляем?)
 assets
-
-пофиксить экзамплы
-in example rename file navigate to navigation
-пофиксить криэйт апп
-create-app test
 
 docs
 Вставить призыв к старт0 прямо в кли и в ридми всех экзамплов и криэйт апа

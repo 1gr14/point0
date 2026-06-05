@@ -1,5 +1,5 @@
 import { generalLayout } from '@/layouts/general.js'
-import { Link } from '@/lib/navigate'
+import { Link } from '@/lib/navigation'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 

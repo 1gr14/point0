@@ -1,7 +1,7 @@
 import type { IdeaCreateInput } from '@/generated/prisma/models'
 import { faker } from '@faker-js/faker'
-import { authServer } from './auth/core'
-import { prisma } from './prisma'
+import { authServer } from '@/lib/auth/server'
+import { prisma } from '@/lib/prisma'
 
 const fakeIdeas = [
   {

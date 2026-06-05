@@ -1,4 +1,4 @@
-import { authServer } from '@/lib/auth/core'
+import { authServer } from '@/lib/auth/server'
 import { AppError, ErrorComponent } from '@/lib/error'
 import { basicAuth } from '@point0/basic-auth'
 import { Point0 } from '@point0/core'

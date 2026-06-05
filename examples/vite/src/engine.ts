@@ -2,6 +2,7 @@ import { Engine } from '@point0/engine'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import svgr from 'vite-plugin-svgr'
+import { clientEnvKeys } from '@/lib/env/client-shape'
 
 export const engine = Engine.create({
   file: import.meta.url,
@@ -25,7 +26,7 @@ export const engine = Engine.create({
   },
   server: {
     scope: 'root',
-    port: process.env.SERVER_PORT,
+    port: process.env.SERVER_PORT || process.env.PORT,
     entry: { main: './app.server.ts' },
     points: async () => await import('./generated/point0/points.server'),
     generate: { points: './generated/point0/points.server.ts' },
@@ -42,10 +43,7 @@ export const engine = Engine.create({
     app: async () => await import('./app.client'),
     points: async () => await import('./generated/point0/points.client'),
     generate: { points: './generated/point0/points.client.ts', routes: './generated/point0/routes.ts' },
-    importer: {
-      deny: ['**/prisma.*'],
-    },
-    env: { vars: ['SERVER_URL'] },
+    env: { vars: clientEnvKeys },
     publicdir: {
       source: [
         '../public',

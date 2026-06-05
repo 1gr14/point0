@@ -35,6 +35,8 @@ const redirectPlugin = <TAdapterNavigateOptions extends AdapterNavigateOptions =
     })
 }
 
+// Optional — there's a default ErrorPoint0, but you can replace it with your own error class:
+// one built with Error0, or just a plain class extended from Error.
 export const AppError = Error0.use(statusPlugin())
   .use(codePlugin())
   .use(metaPlugin())

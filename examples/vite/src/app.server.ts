@@ -1,6 +1,7 @@
-import { engine } from './engine'
+// Validate server env before anything else so a misconfigured server fails fast.
+import '@/lib/env/server'
 
-await import('./lib/env').then((m) => m.validateServerEnv())
+import { engine } from '@/engine'
 
 await engine.serve()
 

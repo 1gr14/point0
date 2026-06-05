@@ -23,11 +23,11 @@ export const ideaNewsPostCreateMutation = root.lets
         content: input.content,
       },
     })
-    return { newsPost, ideadId: input.ideaId }
+    return { newsPost, ideaId: input.ideaId }
   })
   .mutation({
-    onSuccess: async ({ ideadId }) => {
-      void ideaNewsPage.invalidateInfiniteQuery({ id: ideadId })
+    onSuccess: async ({ ideaId }) => {
+      void ideaNewsPage.invalidateInfiniteQuery({ id: ideaId })
     },
   })
 
@@ -82,18 +82,18 @@ export const ideaNewsPage = ideaLayout.lets
             {query.isFetchingNextPage ? 'Loading more...' : 'Load more'}
           </button>
         )}
-        <CreateIdeNewsPostComponent ideaId={idea.id} />
+        <CreateIdeaNewsPostComponent ideaId={idea.id} />
       </div>
     )
   })
 
-export const CreateIdeNewsPostComponent = ({ ideaId }: { ideaId: number }) => {
+export const CreateIdeaNewsPostComponent = ({ ideaId }: { ideaId: number }) => {
   const mutation = ideaNewsPostCreateMutation.useMutation()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
 
   return (
-    <div className="">
+    <div>
       <hr className="my-4 border-slate-200" />
       <h4 className="text-lg font-semibold text-slate-900">Create News Post</h4>
       <form

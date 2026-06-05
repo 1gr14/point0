@@ -3,8 +3,8 @@ import { ClientOnly, Point0 } from '@point0/core'
 import { zodSchemaHelper } from '@point0/core/schema/zod'
 import { openapi } from '@point0/openapi'
 import superjson from 'superjson'
-import { AppError } from './error.js'
-import { serverEnv } from './env.js'
+import { AppError } from '@/lib/error.js'
+import { serverEnv } from '@/lib/env/server.js'
 
 export const root = Point0.lets
   .root()

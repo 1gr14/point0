@@ -1,11 +1,13 @@
 import { PrismaClient } from '@/generated/prisma/client'
+import { serverEnv } from '@/lib/env/server'
+import '@point0/core/server-only'
 import { PrismaLibSql } from '@prisma/adapter-libsql'
 
 // to imitate slow server response
-const queryDelayMs = Number(process.env.PRISMA_QUERY_DELAY_MS ?? 0)
+const queryDelayMs = serverEnv.PRISMA_QUERY_DELAY_MS
 
 export const prisma = new PrismaClient({
-  adapter: new PrismaLibSql({ url: process.env.DATABASE_URL as string }),
+  adapter: new PrismaLibSql({ url: serverEnv.DATABASE_URL }),
   log: ['error'],
 }).$extends({
   query: {

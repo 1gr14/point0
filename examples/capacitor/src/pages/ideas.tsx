@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from '@/lib/navigate'
+import { Link } from '@/lib/navigation'
 import { root } from '@/lib/root'
 import { createIdeaMutation, ideasQuery } from '@/ideas'
 

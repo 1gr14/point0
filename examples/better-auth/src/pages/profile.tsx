@@ -1,6 +1,7 @@
 import { generalLayout } from '@/layouts/general'
-import { authClient } from '@/lib/auth/core'
-import { getMeQuery, redirectUnauthorizedPlugin, signOutClient } from '@/lib/auth/utils'
+import { getMeQuery } from '@/lib/auth/api'
+import { authClient, signOutClient } from '@/lib/auth/client'
+import { redirectUnauthorizedPlugin } from '@/lib/auth/plugins'
 import { Input } from '@/ui/input'
 import { useState } from 'react'
 

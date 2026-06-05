@@ -1,5 +1,6 @@
-import { mePlugin, signOutClient } from '@/lib/auth/utils'
-import { NavLink } from '@/lib/navigate'
+import { signOutClient } from '@/lib/auth/client'
+import { mePlugin } from '@/lib/auth/plugins'
+import { NavLink } from '@/lib/navigation'
 import { root } from '@/lib/root'
 import { useIsNavigating } from '@point0/core/navigation'
 

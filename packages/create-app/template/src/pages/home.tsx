@@ -1,5 +1,5 @@
 import { generalLayout } from '@/layouts/general.js'
-import { Link } from '@/lib/navigate'
+import { Link } from '@/lib/navigation'
 
 export default generalLayout
   .lets('page', 'home', '/')
@@ -9,7 +9,7 @@ export default generalLayout
   })
   .page(() => {
     return (
-      <div className="mx-auto  space-y-6">
+      <div className="space-y-6">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome to My App!</h1>
           <p className="text-slate-600">

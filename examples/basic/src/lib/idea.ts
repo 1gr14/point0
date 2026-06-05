@@ -1,6 +1,6 @@
 import * as z from 'zod'
-import { prisma } from './prisma'
-import { root } from './root'
+import { prisma } from '@/lib/prisma'
+import { root } from '@/lib/root'
 
 export const ideaGeneralShape = {
   title: z.string().min(1).max(100),

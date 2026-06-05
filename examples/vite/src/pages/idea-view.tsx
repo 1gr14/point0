@@ -1,5 +1,5 @@
 import { ideaLayout } from '@/layouts/idea.js'
-import { Link } from '@/lib/navigate'
+import { Link } from '@/lib/navigation'
 import { prisma } from '@/lib/prisma'
 
 export const ideaViewPage = ideaLayout.lets
@@ -10,10 +10,10 @@ export const ideaViewPage = ideaLayout.lets
     })
     return { idea }
   })
-  // we can get idea right form layout as from provider
+  // We can read the idea straight from the layout, like from a provider
   .with(() => ({ idea: ideaLayout.useValue('idea') }))
-  // or we can reuse query
-  // .with(getIdeaQuery, ({ params: { id } }) => ({ id }))
+  // ...or reuse a query instead
+  // .with(ideaViewQuery, ({ params: { id } }) => ({ id: +id }))
   .head(({ props: { idea } }) => idea.title)
   .page(({ props: { idea } }) => {
     return (

@@ -1,6 +1,6 @@
 import { generalLayout } from '@/layouts/general'
 import { ideaCreateSchema, ideaUpdateSchema, ideaViewQuery } from '@/lib/idea'
-import { navigate } from '@/lib/navigate'
+import { navigate } from '@/lib/navigation'
 import { prisma } from '@/lib/prisma'
 import { root } from '@/lib/root'
 import { Field } from '@/ui/field'
@@ -135,7 +135,7 @@ export const ideaUpdatePage = generalLayout.lets
   .with(ideaViewQuery, ({ params: { id } }) => ({ id: +id }))
   .head(({ data: { idea } }) => `Edit Idea: ${idea.title}`)
   .page(({ data: { idea } }) => {
-    // any hook or whatever here, it is just client code
+    // Any hook or whatever here — the page body is just client code.
     const mutation = ideaUpdateMutation.useMutation()
     const [title, setTitle] = useState(() => idea.title)
     const [description, setDescription] = useState(idea.description)

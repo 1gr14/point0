@@ -1,5 +1,5 @@
 import { ideaLayout } from '@/layouts/idea.js'
-import { Link } from '@/lib/navigate'
+import { Link } from '@/lib/navigation'
 import { prisma } from '@/lib/prisma'
 
 export const ideaViewPage = ideaLayout.lets

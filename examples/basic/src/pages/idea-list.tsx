@@ -1,10 +1,7 @@
 import { generalLayout } from '@/layouts/general.js'
-import { Link } from '@/lib/navigate'
+import { Link } from '@/lib/navigation'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
-
-// try uncomment it to see how client will reject it by engine.importer deny options
-// console.log(!!prisma)
 
 export const ideaListPage = generalLayout.lets
   .page('/ideas')

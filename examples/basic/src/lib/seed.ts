@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker'
-import { prisma } from './prisma'
+import { prisma } from '@/lib/prisma'
 import type { IdeaCreateInput } from '@/generated/prisma/models'
 
 const fakeIdeas = [

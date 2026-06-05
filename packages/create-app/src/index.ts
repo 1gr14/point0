@@ -16,6 +16,9 @@ type CliOptions = {
 }
 
 const VITE_CONFIG_LINE = "viteConfig: '../vite.config.ts',"
+const BUN_PLUGINS_LINE = "    bunPlugins: ['bun-plugin-tailwind'],\n"
+const PRELOAD_DEFAULT = "engine.preload({ nodeEnvFallback: 'development' })"
+const PRELOAD_VITE = "engine.preload({ nodeEnvFallback: 'development', preventLoadBunPlugins: true })"
 const TAILWIND_LINK_COMMENT = '<!-- <link rel="stylesheet" href="/styles/index.css" /> -->'
 const TAILWIND_LINK = '<link rel="stylesheet" href="/styles/index.css" />'
 const HTML_CLIENT_SRC_DOT = './index.client.tsx'
@@ -213,12 +216,14 @@ async function patchTemplate(appName: string, useVite: boolean) {
   const appRoot = resolve(process.cwd(), appName)
   const packageJsonPath = resolve(appRoot, 'package.json')
   const enginePath = resolve(appRoot, 'src/engine.ts')
+  const preloadPath = resolve(appRoot, 'src/preload.ts')
   const indexHtmlPath = resolve(appRoot, 'src/index.html')
   const viteConfigPath = resolve(appRoot, 'vite.config.ts')
   const gitignorePath = resolve(appRoot, '.gitignore')
 
   await patchPackageJson(packageJsonPath, useVite)
   await patchEngine(enginePath, useVite)
+  await patchPreload(preloadPath, useVite)
   await patchIndexHtml(indexHtmlPath, useVite)
   await patchViteConfig(viteConfigPath, useVite)
   await patchGitignore(gitignorePath)
@@ -262,15 +267,26 @@ function removeVitePackages(deps?: Record<string, string>) {
 
 async function patchEngine(enginePath: string, useVite: boolean) {
   const current = await readFile(enginePath, 'utf8')
-  let next = current.replace(`// ${VITE_CONFIG_LINE}`, VITE_CONFIG_LINE).replace(VITE_CONFIG_LINE, '')
+  let next: string
 
   if (useVite) {
-    next = current.replace(`// ${VITE_CONFIG_LINE}`, VITE_CONFIG_LINE)
+    // Enable the vite config reference and drop the bun-only tailwind plugin (its package is removed for vite).
+    next = current.replace(`// ${VITE_CONFIG_LINE}`, VITE_CONFIG_LINE).replace(BUN_PLUGINS_LINE, '')
   } else {
     next = current.replace(`// ${VITE_CONFIG_LINE}`, '').replace(VITE_CONFIG_LINE, '')
   }
 
   await writeFile(enginePath, next, 'utf8')
+}
+
+// In vite mode the bun bundler plugins are gone (see patchEngine), so the preload must not try to load them.
+async function patchPreload(preloadPath: string, useVite: boolean) {
+  if (!useVite) {
+    return
+  }
+  const current = await readFile(preloadPath, 'utf8')
+  const next = current.replace(PRELOAD_DEFAULT, PRELOAD_VITE)
+  await writeFile(preloadPath, next, 'utf8')
 }
 
 async function patchIndexHtml(indexHtmlPath: string, useVite: boolean) {
@@ -349,5 +365,6 @@ function isBunInstalled() {
 
 function resolveTemplateDir() {
   const currentFileDir = dirname(fileURLToPath(import.meta.url))
-  return resolve(currentFileDir, '../../template')
+  // `template/` sits next to `src/` (dev) and next to `dist/` (built/published) — one level up either way.
+  return resolve(currentFileDir, '../template')
 }

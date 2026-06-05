@@ -1,6 +1,6 @@
 import { generalLayout } from '@/layouts/general'
 import { ideaViewQuery } from '@/lib/idea'
-import { NavLink } from '@/lib/navigate'
+import { NavLink } from '@/lib/navigation'
 
 export const ideaLayout = generalLayout
   .lets('layout', 'idea', '/ideas/:id')
