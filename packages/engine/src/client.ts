@@ -36,6 +36,8 @@ import { killPort } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
 import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
+import type { ServerHotStore } from './server-hot-store.js'
+import { chainBundledSourceMaps } from './sourcemap-chain.js'
 import type { EngineServer } from './server.js'
 import type {
   EngineClientBuildConfigDefinition,
@@ -96,6 +98,14 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
   bunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
   prepared: TPrepared
   envVarsApplied = false
+  /**
+   * Server-dev hot-reload binding (CHILD side). Set by {@link bindHotStore} when the stable dev child runs in hot mode:
+   * `readPoints` re-imports THIS client's points aggregator from the content-addressed store (per request, gated by the
+   * manifest hash) so SSR renders the fresh page/layout modules. Both null in build/prod/normal dev; `hotAggregatorAbs`
+   * is null when the `points` source isn't a resolvable dynamic import (then this client stays on `pointsProvided`).
+   */
+  hotStore: ServerHotStore | null = null
+  hotAggregatorAbs: string | null = null
 
   private constructor(input: {
     scope: PointsScope
@@ -329,13 +339,37 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     return !!this.prepared
   }
 
+  /** Bind this client to the content-addressed hot store (child side). See {@link ServerHotStore}. */
+  bindHotStore(hotStore: ServerHotStore, aggregatorAbs: string | null): void {
+    this.hotStore = hotStore
+    this.hotAggregatorAbs = aggregatorAbs
+    hotStore.registerAggregator(aggregatorAbs)
+  }
+
   async readPoints(): Promise<ClientPoints<TError> | null> {
     if (!this.pointsProvided) {
       return null
     }
+    let source = this.pointsProvided
+    // Hot mode: re-import THIS client's points aggregator from the content-addressed store. Its lazy page/layout imports
+    // were rewritten to the store's hashed names, so SSR picks up edited pages with a fresh module identity (and
+    // unchanged deps keep their hash -> cached singletons -> no React tear). See server-hot-store.ts.
+    const hot = this.hotStore && this.hotAggregatorAbs ? { store: this.hotStore, abs: this.hotAggregatorAbs } : null
+    let hotHash: string | undefined
+    if (hot) {
+      const mod = hot.store.currentModule(hot.abs)
+      if (!mod.changed && this.points) {
+        return this.points
+      }
+      hotHash = mod.hash
+      source = () => import(mod.url)
+    }
     try {
-      const points = await ClientPoints.createFromSource(this.pointsProvided, { log: this.log })
+      const points = await ClientPoints.createFromSource(source, { log: this.log })
       this.points = points as TPrepared extends true ? ClientPoints<TError> | null : undefined
+      if (hot && hotHash !== undefined) {
+        hot.store.markLoaded(hot.abs, hotHash)
+      }
       return points
     } catch (error) {
       // Same Vite HMR invalidation window as the server: the re-imported points module can be
@@ -960,6 +994,38 @@ try {
     }
   }
 
+  /**
+   * This client's import-graph entry file(s), resolved from its `indexHtml`'s `<script src="...">` tags. A client is
+   * bundled from its HTML (no explicit `entry` like the server), so this is how {@link Engine.buildWatch} finds the
+   * client's import tree to watch. Returns [] when there is no indexHtml (or it is the in-memory test sentinel) or it
+   * cannot be read. External (`http(s)://`, `//`, `data:`) scripts are skipped.
+   */
+  async resolveEntryFiles(): Promise<string[]> {
+    const indexHtml = this.indexHtml
+    if (!indexHtml || indexHtml === '__POINT0_TEST_INDEX_HTML__') {
+      return []
+    }
+    let html: string
+    try {
+      html = await Bun.file(indexHtml).text()
+    } catch {
+      return []
+    }
+    const dir = nodePath.dirname(indexHtml)
+    const entries: string[] = []
+    const scriptSrcRegex = /<script[^>]*\bsrc=["']([^"']+)["']/gi
+    let match: RegExpExecArray | null
+    while ((match = scriptSrcRegex.exec(html)) !== null) {
+      const src = match[1]
+      if (!src || /^(https?:)?\/\//.test(src) || src.startsWith('data:')) {
+        continue
+      }
+      // src is "./index.client.tsx" or "/index.client.tsx"; both resolve next to the html in the canonical layout.
+      entries.push(nodePath.resolve(dir, src.replace(/^\//, '')))
+    }
+    return entries
+  }
+
   async buildByBun(options?: {
     bunBuildConfig?: EngineClientBuildConfigDefinition
     clean?: boolean
@@ -1054,6 +1120,21 @@ try {
         distOutdir: buildPaths.outdir,
         buildOutput,
       })
+      // Bun's bundler does not chain the inline maps our compiler plugin emits (Bun #6173), so the emitted maps point at
+      // our transformed intermediate, not the original source. Re-chain them (any NODE_ENV — if we built with our
+      // compiler, the maps need fixing regardless of environment) so browser stacks / error monitoring resolve to the
+      // real file. `chainBundledSourceMaps` handles whichever shape was emitted (external `.js.map` or inline-in-`.js`)
+      // and is a no-op when there are no maps to chain.
+      if (compilerPlugin.length > 0) {
+        const { rewritten, total } = await chainBundledSourceMaps(buildPaths.outdir)
+        if (rewritten > 0) {
+          this.log({
+            level: 'info',
+            category: ['client'],
+            message: `Source maps: re-chained ${rewritten}/${total} client chunk maps to original source`,
+          })
+        }
+      }
       return buildOutput.outputs.map((output) => output.path)
     }
   }

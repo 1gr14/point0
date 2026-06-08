@@ -551,7 +551,6 @@ return (
         retry: 3,
       },
     )
-
   })
 
   it(
@@ -604,6 +603,48 @@ return (
     }),
     {
       retry: 3,
+    },
+  )
+
+  it(
+    'build --watch watches the import graph (no glob needed) and rebuilds on a deep source edit',
+    wrp({ ssr: true, vite: false }, async ({ tp }) => {
+      // A deep dependency that is in the import graph but NOT matched by any glob (buildWatchGlob is empty here).
+      await tp.write('src/lib/deep.ts', `export const deep = 'DEEP_A'`)
+      await tp.write(
+        'src/page.tsx',
+        `import { root } from './lib/root.js'
+        import { deep } from './lib/deep.js'
+        export const page = root.lets('page', 'home', '/').page(() => <div id="probe">{deep}</div>)`,
+      )
+
+      const waitForDist = async (marker: string, timeoutMs: number): Promise<boolean> => {
+        const start = Date.now()
+        while (Date.now() - start < timeoutMs) {
+          const content = await tp.getDistServerFilesContent().catch(() => '')
+          if (content.includes(marker)) {
+            return true
+          }
+          await new Promise((resolve) => setTimeout(resolve, 500))
+        }
+        return false
+      }
+
+      // `--watch` with NO glob value: previously this threw ("Build watch glob is not provided"); now build --watch
+      // watches the entries' import graph (server entry + the client entry resolved from indexHtml), so a change to a
+      // deep, glob-unmatched source file triggers a rebuild — consistent with the dev orchestrator.
+      tp.spawn(['bun', 'run', 'build', '--watch'])
+
+      // First build (the watch process generates + bundles it itself) must produce the deep value.
+      expect(await waitForDist('DEEP_A', 90000)).toBe(true)
+
+      // Edit the deep import-graph file — the import-tree watcher must pick it up and rebuild, with no glob configured.
+      await tp.replace('src/lib/deep.ts', 'DEEP_A', 'DEEP_B')
+      expect(await waitForDist('DEEP_B', 90000)).toBe(true)
+    }),
+    {
+      retry: 1,
+      timeout: 200000,
     },
   )
 })

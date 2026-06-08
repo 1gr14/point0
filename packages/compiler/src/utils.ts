@@ -16,7 +16,13 @@ export const normalizeEnvConsts = (consts: CompilerEnvConsts): CompilerEnvConsts
   return consts
 }
 
-export const resolveTempDirPath = (subdir: string[] = []): string => {
+/**
+ * Resolve (and create) a directory under the nearest `node_modules/.cache/`, walking up from cwd. The single source of
+ * truth for "where point0 keeps its build/dev scratch dirs". `segments` are joined under `.cache`, so the caller picks
+ * the namespace — e.g. `['@point0', 'generator']` for the standard temp dir, or `['server-hot', scope]` for the dev
+ * hot-reload store (kept OUT of the `@point0` namespace on purpose; see `@point0/engine`'s server-hot-store).
+ */
+export const resolveCacheDirPath = (segments: string[]): string => {
   let dir = process.cwd()
   let lastDir = ''
 
@@ -24,9 +30,9 @@ export const resolveTempDirPath = (subdir: string[] = []): string => {
   while (dir !== lastDir) {
     const candidate = nodePath.join(dir, 'node_modules')
     if (nodeFsSync.existsSync(candidate)) {
-      const tempDir = nodePath.join(candidate, '.cache', '@point0', ...subdir)
-      nodeFsSync.mkdirSync(tempDir, { recursive: true })
-      return tempDir
+      const cacheDir = nodePath.join(candidate, '.cache', ...segments)
+      nodeFsSync.mkdirSync(cacheDir, { recursive: true })
+      return cacheDir
     }
 
     // Move one level up
@@ -34,11 +40,12 @@ export const resolveTempDirPath = (subdir: string[] = []): string => {
     dir = nodePath.dirname(dir)
   }
 
-  // Fallback: if no node_modules found, use system tmp
-  // const fallback = nodePath.join(nodeFsSync.realpathSync(nodeOs.tmpdir()), '@point0', ...subdir)
-  // nodeFsSync.mkdirSync(fallback, { recursive: true })
-  // return fallback
   throw new Error('No node_modules found. Please run "bun install" in the project root.')
+}
+
+/** Standard point0 temp dir: `node_modules/.cache/@point0/<subdir>`. Thin wrapper over {@link resolveCacheDirPath}. */
+export const resolveTempDirPath = (subdir: string[] = []): string => {
+  return resolveCacheDirPath(['@point0', ...subdir])
 }
 
 export const getHash = (data: string): string => {

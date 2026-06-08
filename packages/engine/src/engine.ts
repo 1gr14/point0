@@ -1,4 +1,4 @@
-import { resolveTempDirPath } from '@point0/compiler'
+import { Compiler, lookupDevSourceMap, resolveTempDirPath } from '@point0/compiler'
 import type { NormalizedNodeEnv, RichFetchFn } from '@point0/core'
 import {
   __POINT0_QUERY_CLIENT__,
@@ -27,6 +27,12 @@ import { parseEngineOptions } from './config.js'
 import type { FileGeneratorProcessResult } from './generator.js'
 import { FilesGenerator } from './generator.js'
 import type { Publicdir } from './publicdir.js'
+import {
+  resolvePointsAggregatorAbs,
+  resolveServerHotStoreDir,
+  ServerHotStore,
+  serverHotStoreRootDir,
+} from './server-hot-store.js'
 import { EngineServer } from './server.js'
 import {
   getViteConfigForDev,
@@ -35,7 +41,7 @@ import {
   normalizeAndValidateNodeEnv,
 } from './utils.js'
 import { installDevShutdown, reapDevTree, writeDevLock } from './devlock.js'
-import { FilesWatcher } from './watcher.js'
+import { collectImportGraphPatterns, FilesWatcher } from './watcher.js'
 
 export class Engine<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -228,10 +234,110 @@ export class Engine<
     this._setLog(config.log ?? _defaultLogFn)
   }
 
+  /**
+   * Server-dev hot reload (CHILD side). When the stable dev child was spawned with `POINT0_DEV_STORE_DIR`, bind the
+   * server + each client to the content-addressed point store: their `readPoints` then re-imports the matching
+   * aggregator from the store (per request, gated by the manifest hash) instead of `pointsProvided`. The aggregator abs
+   * paths are resolved from each side's `points` source (the dynamic `() => import('…')` the engine actually imports),
+   * NOT from the generator — so hot reload works whether the aggregator was generated or hand-written, identically to
+   * what the orchestrator resolves as the store entries, so the manifest keys line up. No-op unless the env var is
+   * set.
+   */
+  private _setupServerHotStore(): void {
+    const hotStore = ServerHotStore.forChild({ log: this.log })
+    if (!hotStore) {
+      return
+    }
+    const engineFile = this.server.engineFile
+    this.server.bindHotStore(hotStore, resolvePointsAggregatorAbs({ source: this.server.pointsProvided, engineFile }))
+    for (const client of this.clients) {
+      client.bindHotStore(hotStore, resolvePointsAggregatorAbs({ source: client.pointsProvided, engineFile }))
+    }
+  }
+
+  /**
+   * Server-dev hot reload (ORCHESTRATOR side). When enabled (the `dev({ serverHot })` option or the
+   * `POINT0_DEV_SERVER_HOT` env var) and the server runs bun-native (no Vite), describe the content-addressed point
+   * store for {@link EngineServer.startBunDevProcess} to build and watch: the re-importable aggregators (server points
+   * plus each client's points, from the generator tasks) and the app source dir that bounds the store. Returns
+   * undefined (→ normal restart-based dev) when off, on Vite, or if there are no aggregators yet.
+   */
+  private _resolveServerHotStore(
+    serverHot: boolean,
+  ): { storeDir: string; entries: string[]; appSrcDir: string } | undefined {
+    if (!serverHot || this.server.viteConfig) {
+      return undefined
+    }
+    const engineFile = this.server.engineFile
+    // Resolve the re-importable aggregators from each side's `points` source (the dynamic `() => import('…')` the
+    // engine actually imports), NOT from the generator — so hot reload doesn't require `point0 generate` and the
+    // entries match exactly what the child binds (both go through resolvePointsAggregatorAbs on the same config).
+    const sources = [this.server.pointsProvided, ...this.clients.map((client) => client.pointsProvided)]
+    const entries = sources
+      .map((source) => resolvePointsAggregatorAbs({ source, engineFile }))
+      .filter((abs): abs is string => !!abs)
+    if (entries.length === 0 || !engineFile) {
+      this.log({
+        level: 'warn',
+        category: ['server'],
+        message:
+          'Server hot reload (serverHot) is on but no resolvable points aggregators / engine file were found — using restart-based dev',
+      })
+      return undefined
+    }
+    // `appSrcDir` bounds which files are content-addressed (must contain the points aggregators + the user's source).
+    // `dirname(engineFile)` is the app's `src/` in the canonical layout; a deeply-nested engine file with siblings
+    // outside it would make the store build throw "entry classified cold or unreachable".
+    return {
+      storeDir: resolveServerHotStoreDir(this.server.scope, this.server.port),
+      entries,
+      appSrcDir: nodePath.dirname(engineFile),
+    }
+  }
+
+  private _bunSourceMapInstalled = false
+  /**
+   * Dev (bun-native) only: install `source-map-support` so that reading an error's `.stack` remaps frames in compiled
+   * files (the content-addressed hot store, and onLoad-transformed sources) back to the ORIGINAL source. Bun does NOT
+   * apply source maps to runtime stack traces itself; `source-map-support` does it via `Error.prepareStackTrace` (which
+   * Bun implements). No-op when built (prod) or under Vite (Vite has its own `ssrFixStacktrace`).
+   * `handleUncaughtExceptions` is off: Bun's native uncaught reporter bypasses `prepareStackTrace` anyway, so it would
+   * only add a duplicate log.
+   */
+  private async _installBunSourceMapSupport(): Promise<void> {
+    if (this._bunSourceMapInstalled || this.server.itWasBuilt || this.server.viteConfig) {
+      return
+    }
+    this._bunSourceMapInstalled = true
+    try {
+      const sourceMapSupport = await import('source-map-support')
+      sourceMapSupport.install({
+        handleUncaughtExceptions: false,
+        environment: 'node',
+        // onLoad-compiled files keep their map only in the in-process registry (the disk file is the untransformed
+        // original), so feed those maps here. Store files carry the map inline on disk → returning null falls through
+        // to source-map-support's default (read the file's inline `//# sourceMappingURL`).
+        retrieveSourceMap: (source: string) => {
+          const map = lookupDevSourceMap(source)
+          return map ? { url: source, map } : null
+        },
+      })
+    } catch (error) {
+      this.log({
+        level: 'warn',
+        category: ['server'],
+        message: 'Could not install source-map-support — dev stack traces will point at compiled files',
+        error,
+      })
+    }
+  }
+
   async prepare(): Promise<Engine<TRequiredCtx, TError, true>> {
     if (this.prepared) {
       return this as Engine<TRequiredCtx, TError, true>
     }
+    this._setupServerHotStore()
+    await this._installBunSourceMapSupport()
     await this.applyLogger()
     await this.server.prepare({ engine: this as Engine<TRequiredCtx, TError, true> })
     await Promise.all(
@@ -302,6 +408,13 @@ export class Engine<
     watch?: string | string[] | boolean
     restart?: boolean
     cwd?: string
+    /**
+     * Server-side hot reload (bun-native dev only): run the server child as a stable process and hot-swap edited points
+     * from a content-addressed store instead of restarting on every change (cold files — the `@point0/core/cold` marker
+     * subtree, the boot entry — still restart). Defaults to the `POINT0_DEV_SERVER_HOT` env var when omitted.
+     * Experimental.
+     */
+    serverHot?: boolean
   }): Promise<void> {
     const {
       generateFiles = true,
@@ -311,7 +424,10 @@ export class Engine<
       bunRunArgs = [],
       watch: watchProvided,
       cwd = process.cwd(),
+      serverHot,
     } = options ?? {}
+    // Explicit option wins; otherwise fall back to the env var (so `POINT0_DEV_SERVER_HOT=true` keeps working).
+    const serverHotEnabled = serverHot ?? process.env.POINT0_DEV_SERVER_HOT === 'true'
     const watch =
       watchProvided === true
         ? true
@@ -379,7 +495,13 @@ export class Engine<
           await this.server.startViteDevServer()
           return [this.server.loadViteDevEntries({ entriesFiles })]
         } else {
-          await this.server.startBunDevProcess({ entriesFiles, bunRunArgs, watch, cwd })
+          await this.server.startBunDevProcess({
+            entriesFiles,
+            bunRunArgs,
+            watch,
+            cwd,
+            devStore: this._resolveServerHotStore(serverHotEnabled),
+          })
           return []
         }
       })()
@@ -602,18 +724,11 @@ export class Engine<
         /* ignore */
       })
     }
-    // const generator = resolveTempDirPath(['generator'])
-    // const compilerVirtual = resolveTempDirPath(['compiler-virtual'])
-    // const clientBunDevServer = resolveTempDirPath(['client-bun-dev-server'])
-    // const compilerCache = resolveTempDirPath(['compiler-cache'])
-    // await Promise.all([
-    //   removeDirAsync(generator),
-    //   removeDirAsync(compilerVirtual),
-    //   removeDirAsync(clientBunDevServer),
-    //   removeDirAsync(compilerCache),
-    // ])
-    const cacheDir = resolveTempDirPath()
-    await removeDirAsync(cacheDir)
+    // The whole `@point0` temp namespace, plus the server hot-reload store. The store lives at `.cache/server-hot`
+    // (OUTSIDE `@point0`) on purpose — `compiler.filter` compiles `node_modules` paths only if they contain "point0",
+    // so an `@point0`-namespaced store would be re-compiled by the child's onLoad; see server-hot-store.ts. That's why
+    // it isn't covered by `resolveTempDirPath()` and needs its own line here.
+    await Promise.all([removeDirAsync(resolveTempDirPath()), removeDirAsync(serverHotStoreRootDir())])
   }
 
   async build(options?: {
@@ -715,10 +830,52 @@ export class Engine<
     cwd?: string
   }): Promise<void> {
     const { watch, cwd = this.cwd, ...buildOptions } = options ?? {}
-    const globs = !watch || watch === true ? this.buildWatchGlob : Array.isArray(watch) ? watch : [watch]
+    // `build --watch` watches the IMPORT GRAPH of the build entries (the same model the dev orchestrator uses), so a
+    // change anywhere in the graph rebuilds — no glob required. The server's entries are explicit; each client's entry
+    // is resolved from its indexHtml's `<script src>`. `buildWatchGlob` / `--watch <glob>` is now an additive
+    // EXTENSION (e.g. to also watch non-imported assets), not the sole mechanism. `--side` narrows which sides watch.
+    const userGlobs = !watch || watch === true ? this.buildWatchGlob : Array.isArray(watch) ? watch : [watch]
+    const side = buildOptions.side
+    const watchTargets: Array<{ compiler: Compiler | undefined; entries: string[] }> = []
+    if (side !== 'client') {
+      const serverCompilerOptions = this.server.getCompilerOptions()
+      watchTargets.push({
+        compiler: serverCompilerOptions ? Compiler.create(serverCompilerOptions) : undefined,
+        entries: Object.values(this.server.entry ?? {}),
+      })
+    }
+    if (side !== 'server') {
+      for (const client of this.clients) {
+        const clientCompilerOptions = client.getCompilerOptions()
+        watchTargets.push({
+          compiler: clientCompilerOptions ? Compiler.create(clientCompilerOptions) : undefined,
+          entries: await client.resolveEntryFiles(),
+        })
+      }
+    }
+    // Re-collected after every rebuild: an edit can add/remove imports, so the graph to watch may shift.
+    const collectPatterns = (): string[] => {
+      const patterns = new Set<string>(userGlobs)
+      for (const target of watchTargets) {
+        for (const entry of target.entries) {
+          patterns.add(entry) // the entry root itself (collectImportGraphPatterns returns only its imports)
+        }
+        for (const pattern of collectImportGraphPatterns({ compiler: target.compiler, entries: target.entries })) {
+          patterns.add(pattern)
+        }
+      }
+      return [...patterns]
+    }
+    // Generate first (when enabled) so the points aggregators on disk are current before we walk their import graph —
+    // otherwise the initial watch list could miss freshly-added points/pages. Mirrors dev, which generates before
+    // watching. The spawned `point0 build` regenerates too; this parent pass is only to seed an accurate watch list.
+    if (buildOptions.generate !== false) {
+      await this.generate({ silent: true })
+    }
+    const globs = collectPatterns()
     if (globs.length === 0) {
       throw new Error(
-        'Build watch glob is not provided, please provide --watch <glob> or set buildWatchGlob in engine options',
+        'Build watch has nothing to watch: no build entries were resolved and no --watch glob / buildWatchGlob was provided',
       )
     }
     let currentBuildProcess: ReturnType<typeof Bun.spawn> | undefined
@@ -820,6 +977,8 @@ export class Engine<
         onEvent: async (_event) => {
           await stopCurrentBuild()
           startBuild()
+          // An edit may have added/removed imports — re-collect the graph so the watch list stays accurate.
+          await watcher.restart({ cwd, patterns: collectPatterns() })
         },
         onError: async (error) => {
           this.log({

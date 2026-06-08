@@ -2787,9 +2787,7 @@ describe('CompilerFile', () => {
       expect(result.modified).toBe(true)
       expect(result.code).toContain('react/jsx-dev-runtime')
       expect(result.code).toContain('_jsxDEV(ClientOnly')
-      // experimental_preserveFormat keeps original whitespace where it can; the substituted
-      // `null` lands without space because the original `children: _jsxDEV(...)` arg got
-      // replaced in-place using its own token span.
+      // The client-only `children: _jsxDEV(...)` arg is substituted in-place with `null`.
       expect(result.code).toContain('children: null')
       expect(result.code).not.toContain('client-only-content')
     })
@@ -2941,87 +2939,6 @@ export function Counter() {
 
       expect(result.errors).toEqual([])
       expect(result.code).not.toContain('react/compiler-runtime')
-    })
-  })
-
-  describe('experimental_preserveFormat (POINT0_BUN_COMPILER_EXPERIMENTAL_FIX)', () => {
-    // Bun can't yet apply an onLoad plugin's source map at runtime (oven-sh/bun#6173), so a
-    // modified file's runtime stack traces point at the wrong line once the generator reflows the
-    // AST. POINT0_BUN_COMPILER_EXPERIMENTAL_FIX=true opts back into babel's experimental_preserveFormat
-    // so unchanged statements keep their original source line. These tests run synchronously
-    // (set env -> compile -> delete env, no await in between) so the global flag never leaks into
-    // other concurrent tests.
-    const lineOf = (text: string, needle: string): number =>
-      text.split('\n').findIndex((line) => line.includes(needle)) + 1
-
-    it('keeps unchanged statements on their original source line when enabled', () => {
-      const content = `
-const { env } = await import('@point0/core')
-
-if (env.side.is.server) console.info('server')
-
-export const after = 'KEEP_ME'
-`
-      const srcLogLine = lineOf(content, 'console.info')
-      const srcKeepLine = lineOf(content, 'KEEP_ME')
-
-      const compile = () => {
-        const compiler = Compiler.create({ side: 'server', scope: 'root', mode: 'development' })
-        return compiler.compile({ file: '/virtual/preserve-format.tsx', content })
-      }
-
-      // Flag off (default): the generator pretty-prints the AST, so lines drift.
-      delete process.env.POINT0_BUN_COMPILER_EXPERIMENTAL_FIX
-      const off = compile()
-
-      // Flag on: experimental_preserveFormat re-emits the untouched spans verbatim.
-      process.env.POINT0_BUN_COMPILER_EXPERIMENTAL_FIX = 'true'
-      const on = compile()
-      delete process.env.POINT0_BUN_COMPILER_EXPERIMENTAL_FIX
-
-      // Both take the modified path (the env branch is shaken) and emit valid code.
-      expect(off.errors).toEqual([])
-      expect(on.errors).toEqual([])
-      expect(off.modified).toBe(true)
-      expect(on.modified).toBe(true)
-      expect(off.code).toContain("console.info('server')")
-      expect(on.code).toContain("console.info('server')")
-      expect(on.code).not.toContain('env.side.is.server')
-
-      // With the flag, untouched statements stay exactly on their source line.
-      expect(lineOf(on.code, 'console.info')).toBe(srcLogLine)
-      expect(lineOf(on.code, 'KEEP_ME')).toBe(srcKeepLine)
-
-      // Without it, the same statement drifts — proving the flag is what holds the line.
-      expect(lineOf(off.code, 'KEEP_ME')).not.toBe(srcKeepLine)
-    })
-
-    it('is ignored on files that went through user babel plugins (no broken output)', () => {
-      // react-compiler regenerates the file, so this.content becomes intermediate text and
-      // preserveFormat against it would be wrong — the _preUserBabelMap guard must keep the flag
-      // off for this path. Enabling it must NOT break the react-compiler output.
-      const content = `
-import { useState } from 'react'
-
-export function Counter() {
-  const [count, setCount] = useState(0)
-  return <button onClick={() => setCount((c) => c + 1)}>{count}</button>
-}
-`
-      process.env.POINT0_BUN_COMPILER_EXPERIMENTAL_FIX = 'true'
-      const compiler = Compiler.create({
-        side: 'client',
-        scope: 'root',
-        mode: 'development',
-        babel: ['babel-plugin-react-compiler'],
-      })
-      const result = compiler.compile({ file: '/virtual/Counter.tsx', content })
-      delete process.env.POINT0_BUN_COMPILER_EXPERIMENTAL_FIX
-
-      expect(result.errors).toEqual([])
-      expect(result.modified).toBe(true)
-      expect(result.code).toContain('react/compiler-runtime')
-      expect(result.code).toContain('export function Counter')
     })
   })
 

@@ -26,6 +26,7 @@ import { isDevShuttingDown, registerDevChild, requestDevShutdown } from './devlo
 import { killPort } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
+import { ServerHotStore } from './server-hot-store.js'
 import { ServerPoints } from './server-points.js'
 import type {
   EngineServerBuildConfigDefinition,
@@ -46,7 +47,7 @@ import {
   registerOnProcessExit,
   validateEntrypoints,
 } from './utils.js'
-import { FilesWatcher } from './watcher.js'
+import { collectImportGraphPatterns, FilesWatcher } from './watcher.js'
 
 export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0> {
   scope: PointsScope
@@ -80,6 +81,15 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   fetcher: TPrepared extends true ? Fetcher<TError> : null
   compiler: EngineOptionsCompilerSpecificParsed | false
   ssr: boolean
+  /**
+   * Server-dev hot-reload binding (CHILD side). Set by {@link bindHotStore} when the stable dev child runs in hot mode:
+   * `readPoints` then re-imports the server points aggregator from the content-addressed store (per request, gated by
+   * the manifest hash) instead of `pointsProvided`. Both null in build/prod/normal dev. `hotAggregatorAbs` is this
+   * server's points-aggregator original path (the store/manifest key); null if the `points` source isn't a resolvable
+   * dynamic import (e.g. an inline points array) — then this side stays on `pointsProvided` (no hot).
+   */
+  hotStore: ServerHotStore | null = null
+  hotAggregatorAbs: string | null = null
 
   private constructor(input: {
     prepared: TPrepared
@@ -339,11 +349,35 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     engine._setLog(rootLogger)
   }
 
+  /** Bind this server to the content-addressed hot store (child side). See {@link ServerHotStore}. */
+  bindHotStore(hotStore: ServerHotStore, aggregatorAbs: string | null): void {
+    this.hotStore = hotStore
+    this.hotAggregatorAbs = aggregatorAbs
+    hotStore.registerAggregator(aggregatorAbs)
+  }
+
   async readPoints(): Promise<ServerPoints<TError>> {
+    let source = this.pointsProvided
+    // Hot mode: re-import the server points aggregator from the content-addressed store. The store filename is the
+    // aggregator's content hash — unchanged content => same name => Bun cache hit (singletons live); changed content
+    // => new name => fresh module identity (no React tear). See server-hot-store.ts.
+    const hot = this.hotStore && this.hotAggregatorAbs ? { store: this.hotStore, abs: this.hotAggregatorAbs } : null
+    let hotHash: string | undefined
+    if (hot) {
+      const mod = hot.store.currentModule(hot.abs)
+      if (!mod.changed && this.points) {
+        return this.points
+      }
+      hotHash = mod.hash
+      source = () => import(mod.url)
+    }
     try {
-      const points = await ServerPoints.createFromSource(this.pointsProvided, { log: this.log })
+      const points = await ServerPoints.createFromSource(source, { log: this.log })
       await points.load()
       this.points = points as TPrepared extends true ? ServerPoints<TError> : undefined
+      if (hot && hotHash !== undefined) {
+        hot.store.markLoaded(hot.abs, hotHash)
+      }
       return points
     } catch (error) {
       // In dev the points module is re-imported on every request (see Fetcher.fetchDetailed), so a
@@ -643,20 +677,37 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     bunRunArgs = [],
     watch,
     cwd,
+    devStore,
   }: {
     entriesFiles: string[]
     bunRunArgs?: string[]
     watch: string[] | boolean
     cwd: string
+    /**
+     * Server-dev hot reload (POINT0_DEV_SERVER_HOT). When set, the child re-imports the points aggregators from a
+     * content-addressed store the orchestrator (re)builds on change. `entries` are the re-importable aggregators
+     * (server points + each client points), `appSrcDir` bounds the store to the app source, `storeDir` is passed to the
+     * child via `POINT0_DEV_STORE_DIR`.
+     */
+    devStore?: { storeDir: string; entries: string[]; appSrcDir: string }
   }): Promise<void> {
-    // The server child always runs under `bun --watch` (see the spawn below). That matters twice: bun reloads it
-    // in-process on change, and — crucially for the dev lifecycle — it keeps the child ALIVE (printing the error)
-    // when the code throws, instead of letting the process exit. So a developer's syntax/runtime error never makes
-    // `child.exited` resolve, and the unexpected-exit teardown is never tripped by a code error you can just fix.
-    // On top of bun's own watch, the orchestrator watches the entry's deep-import graph and forces a restart there:
+    // The server child runs under `bun --watch` (see the spawn below). That matters twice: bun reloads it in-process on
+    // change, and — crucially for the dev lifecycle — it keeps the child ALIVE (printing the error) when the code
+    // throws, instead of letting the process exit. So a developer's syntax/runtime error never makes `child.exited`
+    // resolve, and the unexpected-exit teardown is never tripped by a code error you can just fix. On top of bun's own
+    // watch, the orchestrator watches the entry's deep-import graph and forces a restart there:
     // - respawn (default): SIGKILL the child and spawn a fresh one (marked in `intentionalKills` so its exit is not
     //   mistaken for a crash).
     // - touch (POINT0_DEV_SERVER_TOUCH_ON_WATCH=true): rewrite the entry file's bytes so bun's own watcher restarts it.
+    //
+    // Hot mode (`devStore` set) keeps `--watch` on, and it lands exactly where we want: bun's watcher only sees the
+    // entry's STATIC import graph — i.e. the boot/cold chain (`*.server.ts` -> engine -> env) — while the points/pages
+    // are reached DYNAMICALLY through the store (`import(storeFile)` per request) and are invisible to it (bun#5844).
+    // So `--watch` gives the cold chain its restart-on-edit + keep-alive-on-crash for free, and never fights the
+    // hot-swap. The orchestrator's import-graph watcher still owns the decision per change: a HOT file (in the point
+    // store) -> rebuild the store + bump the manifest, NO restart (the child re-imports the fresh aggregator on its
+    // next request, with no React tear); anything else (the cold-marker/cold-config subtree, the boot entry, files
+    // outside the store) -> a full child restart.
     const useTouch = process.env.POINT0_DEV_SERVER_TOUCH_ON_WATCH === 'true'
 
     const activeEntries = Object.values(this.entry || []).filter((entryFile) => entriesFiles.includes(entryFile))
@@ -665,11 +716,51 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     // trip the teardown below.
     const intentionalKills = new Set<Bun.Subprocess<'ignore', 'pipe', 'pipe'>>()
 
+    // One server compiler, shared by the import-graph watcher and (in hot mode) the store builder.
+    const compilerOptions = this.getCompilerOptions()
+    const compiler = compilerOptions ? Compiler.create(compilerOptions) : undefined
+    // Hot mode needs the watcher: the store only rebuilds from a watch event, so with `watch` off a built store would
+    // be immortal (edits never picked up). When serverHot is requested but watch is off, fall back to normal
+    // restart-based dev rather than serve a frozen store (and skip wiring POINT0_DEV_STORE_DIR into the child).
+    // `devStore` carries the resolved aggregator paths; if none are resolvable (e.g. inline points arrays) there is
+    // nothing to content-address — also fall back to restart-based dev.
+    // `hotStore` is set only when hot mode is fully live (serverHot + watch + a built store with aggregators); its
+    // truthiness IS "hot mode" everywhere below. When serverHot is requested but watch is off, warn and fall back to
+    // restart-based dev (a never-rebuilt store would be immortal). `devStore` is only handed to us when the engine
+    // already resolved at least one aggregator (Engine._resolveServerHotStore returns undefined otherwise — that's
+    // where the inline-points-array fallback is decided), so `hasAggregators` here is a cheap belt-and-suspenders guard.
+    let hotStore: ServerHotStore | undefined
+    if (devStore && compiler && watch) {
+      const store = ServerHotStore.forBuild({
+        dir: devStore.storeDir,
+        appSrcDir: devStore.appSrcDir,
+        compiler,
+        log: this.log,
+      })
+      for (const entry of devStore.entries) store.registerAggregator(entry)
+      if (store.hasAggregators) hotStore = store
+    } else if (devStore && compiler && !watch) {
+      this.log({
+        level: 'warn',
+        category: ['server'],
+        message: 'Server hot reload (serverHot) requested but watch is off — using restart-based dev (no hot store).',
+      })
+    }
+
+    // Hot mode: (re)build the content-addressed point store. The store tracks its own hot node set (a change to one is
+    // a hot-swap; anything else is a restart) and version counter; the first build cleans the dir (no child is serving
+    // yet), rebuilds leave files in place so none disappears under a concurrent request — the atomic manifest swap
+    // flips the live aggregators. See ServerHotStore.
+    if (hotStore) {
+      hotStore.rebuild() // initial build must succeed before the first spawn
+    }
+
     const spawnEntry = (entryFile: string): Bun.Subprocess<'ignore', 'pipe', 'pipe'> => {
       const child = Bun.spawn({
         cmd: ['bun', 'run', '--no-orphans', ...(watch ? ['--watch'] : []), ...bunRunArgs, entryFile],
         env: {
           ...process.env,
+          ...(hotStore ? { POINT0_DEV_STORE_DIR: hotStore.dir } : {}),
         },
         stdin: 'ignore',
         stdout: 'pipe',
@@ -701,24 +792,12 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       return
     }
 
-    const compilerOptions = this.getCompilerOptions()
-    const compiler = compilerOptions ? Compiler.create(compilerOptions) : undefined
     const skipImport = (resolved: { pathResolved: string | undefined }) =>
       resolved.pathResolved === undefined || resolved.pathResolved.includes('/node_modules/')
     const userPatterns = Array.isArray(watch) ? watch : []
 
-    const collectEntryPatterns = (entryFile: string): string[] => {
-      const importFiles = new Set<string>()
-      if (compiler) {
-        const deepImports = compiler.collectImportsDeep({ target: entryFile, skip: skipImport })
-        for (const item of deepImports) {
-          if (item.pathResolved) {
-            importFiles.add(item.pathResolved)
-          }
-        }
-      }
-      return [...userPatterns, ...importFiles]
-    }
+    const collectEntryPatterns = (entryFile: string): string[] =>
+      collectImportGraphPatterns({ compiler, entries: [entryFile], userPatterns, skip: skipImport })
 
     const touchEntry = async (entryFile: string): Promise<void> => {
       const original = await nodeFs.readFile(entryFile)
@@ -750,10 +829,32 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       const watcher = FilesWatcher.create({ cwd, patterns: initialPatterns })
       await watcher.start({
         onEvent: async (event) => {
+          const changed = event.path.split('?', 1)[0] as string
+          // Hot swap: the changed file is a hot store node — rebuild the store, keep the stable child running.
+          if (hotStore?.isHotNode(changed)) {
+            this.log({
+              level: 'info',
+              category: ['server'],
+              message: `Server hot reloading... (changed: ${nodePath.relative(this.cwd, changed)})`,
+            })
+            try {
+              hotStore.rebuild()
+            } catch (error) {
+              this.log({
+                level: 'error',
+                category: ['server'],
+                message: `Hot reload failed — keeping the previous store (fix the error and save again)`,
+                error,
+              })
+            }
+            await watcher.restart({ cwd, patterns: collectEntryPatterns(entryFile) })
+            return
+          }
+          // Full restart: cold-marker subtree, the boot entry, or any file not in the hot store.
           this.log({
             level: 'info',
             category: ['server'],
-            message: `Server restarting... (changed: ${nodePath.relative(this.cwd, event.path)})`,
+            message: `Server restarting... (changed: ${nodePath.relative(this.cwd, changed)})`,
           })
           try {
             await restartEntry(entryFile)
@@ -764,6 +865,21 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
               message: `Failed to restart entry ${nodePath.relative(this.cwd, entryFile)}`,
               error,
             })
+          }
+          if (hotStore) {
+            // Boot/cold deps may have shifted the hot/cold classification — rebuild so the watcher stays accurate.
+            // Separate try/catch: a rebuild failure here (e.g. a transient broken aggregator) must not be misreported
+            // as a restart failure, and the child has already restarted, so the dev tree stays alive regardless.
+            try {
+              hotStore.rebuild()
+            } catch (error) {
+              this.log({
+                level: 'error',
+                category: ['server'],
+                message: `Store rebuild after restart failed — keeping the previous store (fix the error and save again)`,
+                error,
+              })
+            }
           }
           await watcher.restart({ cwd, patterns: collectEntryPatterns(entryFile) })
         },

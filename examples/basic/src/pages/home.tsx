@@ -47,7 +47,7 @@ export default generalLayout
           <div className="flex items-center gap-3">
             <img src={gemUrl} width={40} height={40} alt="gem" />
             <GemIcon width={40} height={40} />
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome to IdeaNick!</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcomex to IdeaNick!</h1>
           </div>
           <p className="text-slate-600">
             Read about this project{' '}

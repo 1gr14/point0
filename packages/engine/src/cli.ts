@@ -46,6 +46,10 @@ program
   )
   .option('--engine <path>', dictionary.enginePath)
   .option(
+    '--hot',
+    'Server-side hot reload (bun-native dev): hot-swap edited points without restarting the server; cold files (the `@point0/core/cold` marker subtree, the boot entry) still restart. Experimental.',
+  )
+  .option(
     '--env <name_eq_value>',
     'Environment variables to define, name=value (--env name1=value1 --env name2=value2 ...)',
     (value, previous: string[] = []) => {
@@ -63,6 +67,7 @@ program
       scope?: string | undefined
       generate?: boolean
       watch?: boolean | string[]
+      hot?: boolean
     }) => {
       // const { engine, engineFile } = await Engine.findAndImportSelf(options.engine)
       const cwd = process.cwd()
@@ -98,6 +103,7 @@ program
         bunRunArgs,
         cwd,
         entries,
+        serverHot: options.hot,
       })
     },
   )
@@ -141,7 +147,7 @@ program
   .option('--engine <path>', dictionary.enginePath)
   .option(
     '-w, --watch [glob]',
-    'Watch files and rebuild on changes (no value = default buildWatchGlob glob from engine config, comma-separated or repeated values supported)',
+    "Watch files and rebuild on changes. With no value, watches the build entries' import graph (no glob needed); a glob value (comma-separated or repeated) is added on top of that, as is engine config's buildWatchGlob",
     parseCommaSeparatedOption,
   )
   .option('--side <side>', 'Build only one side: server or client')

@@ -1,8 +1,41 @@
+import type { Compiler } from '@point0/compiler'
 import type { AsyncSubscription } from '@parcel/watcher'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import { parseGlobs, registerOnProcessExit } from './utils.js'
+
+/**
+ * The set of files to watch for an entry's import graph: the caller's `userPatterns` plus every in-app module the
+ * entry imports (transitively), with `node_modules` excluded by default. This is the "watch by import tree" model —
+ * shared by the dev orchestrator ({@link EngineServer.startBunDevProcess}) and `build --watch`
+ * ({@link Engine.buildWatch}) so both watch the real dependency graph rather than a hardcoded glob. The entry roots
+ * themselves are NOT included (dev relies on `bun --watch` for the boot entry); callers that need the roots watched add
+ * them. Returns `userPatterns` unchanged when no compiler is available.
+ */
+export function collectImportGraphPatterns({
+  compiler,
+  entries,
+  userPatterns = [],
+  skip = (resolved) => resolved.pathResolved === undefined || resolved.pathResolved.includes('/node_modules/'),
+}: {
+  compiler: Compiler | undefined
+  entries: string[]
+  userPatterns?: string[]
+  skip?: (resolved: { pathResolved: string | undefined }) => boolean
+}): string[] {
+  const importFiles = new Set<string>()
+  if (compiler) {
+    for (const entry of entries) {
+      for (const item of compiler.collectImportsDeep({ target: entry, skip })) {
+        if (item.pathResolved) {
+          importFiles.add(item.pathResolved)
+        }
+      }
+    }
+  }
+  return [...userPatterns, ...importFiles]
+}
 
 export type FilesWatcherEvent = {
   type: 'update' | 'delete'

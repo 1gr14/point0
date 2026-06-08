@@ -284,10 +284,10 @@ export class CompilerFile<THasContent extends boolean> {
       const ast = babel.parse(this.content, {
         sourceType: 'module',
         errorRecovery: true,
-        // tokens + createParenthesizedExpressions are required by
-        // experimental_preserveFormat in babelGenerator. They keep the original source
-        // spans + paren nodes so the generator can re-emit unmodified subtrees verbatim
-        // (including comment placement that vite's @vite-ignore detector relies on).
+        // `tokens` keeps comment placement faithful (vite's @vite-ignore detector relies on it);
+        // `createParenthesizedExpressions` keeps the author's explicit parens as AST nodes so the
+        // generator re-emits them instead of dropping redundant ones. (NB: the post-user-babel
+        // re-parse path below deliberately OMITS both — react-compiler bails on paren nodes.)
         tokens: true,
         createParenthesizedExpressions: true,
         plugins: [
@@ -513,37 +513,16 @@ export class CompilerFile<THasContent extends boolean> {
     // for the intermediate, then chain it with the previously captured map1
     // (intermediate → original) so the inline source map ends up mapping final → original.
     const generatorSourceLabel = this._preUserBabelMap ? this.intermediateSourceLabel : this.abs
-    // Bun can't yet apply an onLoad plugin's source map at runtime (oven-sh/bun#6173), so when our
-    // transforms pretty-print the AST and shift lines, runtime stack traces report the wrong line
-    // numbers. Note this only bites MODIFIED files: compile() returns the original content verbatim
-    // for unmodified ones (they never reach toCode()), so the drift is entirely a toCode() problem.
-    //
-    // POINT0_BUN_COMPILER_EXPERIMENTAL_FIX=true opts back into babel's experimental_preserveFormat,
-    // which re-emits the unchanged subtrees verbatim from their original source spans (relying on the
-    // tokens + createParenthesizedExpressions kept in parse()) so the emitted lines stay aligned.
-    //
-    // We gate only on !_preUserBabelMap, NOT on !this.modified: modified is the only case that gets
-    // here, so gating on it would make the flag a no-op. _preUserBabelMap is the real exclusion —
-    // when user babel plugins (react-compiler) ran, this.content is the intermediate regenerated text
-    // and preserveFormat against it would be wrong. For our own passes (env shake, guarded-expr,
-    // use-memo, point transforms) this.content is still the original, so the spans line up.
-    //
-    // Residual risk, and why this is opt-in/experimental: preserveFormat reuses source spans, so a
-    // subtree our passes added/replaced can come out syntactically broken — e.g. collapsing
-    // `}); else return` into `})else return` after rolldown-style brace elision is shaken.
-    //
-    // Drop this whole flag once Bun supports runtime source maps from onLoad plugins.
-    const canPreserveFormat =
-      process.env.POINT0_BUN_COMPILER_EXPERIMENTAL_FIX === 'true' && !this._preUserBabelMap
-
+    // Our transforms pretty-print the AST and shift lines, so a MODIFIED file's compiled lines no longer match the
+    // original. Correct line/column in runtime stack traces is restored by SOURCE MAPS — the engine installs
+    // `source-map-support` in the bun dev child, which remaps `err.stack` via `Error.prepareStackTrace` (Bun itself
+    // still won't apply an onLoad plugin's map at runtime, oven-sh/bun#6173). So we just emit a faithful map here and
+    // let the runtime remap. (Only modified files reach toCode(); unmodified ones return verbatim from compile().)
     const { code, map } = babelGenerator(
       this.ast,
       {
         sourceFileName: generatorSourceLabel,
         ...(sourceMaps ? { sourceMaps: true } : {}),
-        ...(canPreserveFormat
-          ? ({ retainLines: true, experimental_preserveFormat: true } as unknown as Record<string, unknown>)
-          : {}),
       },
       this.content,
     )
@@ -695,20 +674,14 @@ export class CompilerFile<THasContent extends boolean> {
       // (e.g. react-compiler) silently bail on a mutated AST. A clean parse here gives them
       // the structure they expect.
       //
-      // We deliberately do NOT pass experimental_preserveFormat here: that flag preserves
-      // original whitespace by keeping fragments from the source string, but on an AST that
-      // has been mutated it can emit syntactically broken text (especially around TS types).
-      //
-      // Collect a source map for this regenerate step so toCode() can chain it.
+      // Collect a source map for this regenerate step so toCode() can chain it (final → original).
       const preUserBabelResult = babelGenerator(this.ast, { sourceFileName: this.abs, sourceMaps: true }, this.content)
       const regeneratedCode = preUserBabelResult.code
       // Mirror the primary parse()'s syntax plugin list so we can re-parse files that use
-      // decorators / class private fields / etc. without throwing. We deliberately omit
-      // `tokens` and `createParenthesizedExpressions` here: those exist to support
-      // experimental_preserveFormat in toCode(), which we explicitly disable for files that
-      // have been through this regenerate step (see _preUserBabelMap gating). Some plugins
-      // (notably babel-plugin-react-compiler) bail when paren nodes are present in the AST,
-      // so we want them OFF for this re-parse path.
+      // decorators / class private fields / etc. without throwing. We deliberately OMIT
+      // `tokens` and `createParenthesizedExpressions` here (unlike the primary parse): some
+      // plugins — notably babel-plugin-react-compiler — bail when paren nodes are present in the
+      // AST, so we want them OFF for this re-parse path.
       const reparsedAst = babel.parse(regeneratedCode, {
         sourceType: 'module',
         errorRecovery: true,

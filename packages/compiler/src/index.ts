@@ -1,5 +1,6 @@
 export * from './assets.js'
 export * from './compiler.js'
+export * from './sourcemap.js'
 export * from './file.js'
 export * from './importer.js'
 export * from './point.js'

@@ -1152,8 +1152,11 @@ export class Fetcher<TError extends ErrorPoint0> {
     requiredCtx: RequiredCtx
     bunServer?: Bun.Server<unknown>
   }): Promise<FetcherFetchDetailedResult<TError>> {
-    if (!this.server.itWasBuilt && this.server.viteConfig) {
-      // Keep it. Vite server updates will not work for points without it.
+    if (!this.server.itWasBuilt && (this.server.viteConfig || this.server.hotStore)) {
+      // Vite: re-import points per request so its HMR module-graph updates are picked up.
+      // Server-dev hot reload (bun-native store mode): re-import the aggregators per request — each readPoints is
+      // gated by the manifest hash, so an unchanged store is a cheap cache hit and a changed one swaps in fresh
+      // modules (singletons preserved). This is the manifest hook.
       await this.engine.readEverything()
     }
     const prepareFetchResult = await this.prepareFetch({

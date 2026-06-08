@@ -18,6 +18,7 @@ export default defineConfig({
     'src/meta.ts',
     'src/publicdir.ts',
     'src/render.ts',
+    'src/server-hot-store.ts',
     'src/server-points.ts',
     'src/server.ts',
     'src/utils.ts',

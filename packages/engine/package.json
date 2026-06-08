@@ -165,6 +165,7 @@
     "postpublish": "bun ../../scripts/restore-package.ts"
   },
   "dependencies": {
+    "@jridgewell/remapping": "^2.3.5",
     "@modelcontextprotocol/sdk": "catalog:",
     "@parcel/watcher": "^2.5.1",
     "commander": "catalog:",
@@ -176,6 +177,7 @@
     "minimatch": "^10.0.1",
     "p-retry": "^8.0.0",
     "qs": "^6.15.2",
+    "source-map-support": "catalog:",
     "tough-cookie": "^6.0.0",
     "zod": "catalog:"
   },
@@ -190,6 +192,7 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@types/source-map-support": "catalog:",
     "superjson": "catalog:",
     "@devp0nt/error0": "catalog:",
     "@devp0nt/flat0": "catalog:",

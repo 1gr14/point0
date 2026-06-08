@@ -11,6 +11,7 @@ export default defineConfig({
     'src/schema/utils.ts',
     'src/client-only.ts',
     'src/client-points.ts',
+    'src/cold.ts',
     'src/cookie-store.ts',
     'src/effects.ts',
     'src/env.ts',

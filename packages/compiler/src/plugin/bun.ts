@@ -1,18 +1,11 @@
-import type { GeneratorResult } from '@babel/generator'
 import type { BunPlugin, OnLoadResult } from 'bun'
 import nodeFs from 'node:fs'
 import { applyAssetsBunPlugin } from '../assets.js'
 import { Compiler } from '../compiler.js'
 import type { CompilerOptions } from '../compiler.js'
+import { appendInlineSourceMap, getDevSourceMapRegistry } from '../sourcemap.js'
 import { CriticalCompilerError } from '../error.js'
 import { virtualModulePathRegex } from '../importer.js'
-
-function appendInlineSourceMap(code: string, map: GeneratorResult['map']): string {
-  if (!map) return code
-  const json = typeof map === 'string' ? map : JSON.stringify(map)
-  const b64 = Buffer.from(json, 'utf8').toString('base64')
-  return `${code}\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${b64}\n`
-}
 
 export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugin {
   const compiler =
@@ -38,6 +31,13 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
             writeVirtual: !isNormalBundler,
             // pruneWalker: !isNormalBundler,
           })
+          // Dev runtime only (not the bundler): stash the map so source-map-support can remap this file's stack frames.
+          if (!isNormalBundler && result.map) {
+            getDevSourceMapRegistry().set(
+              filepath,
+              typeof result.map === 'string' ? result.map : JSON.stringify(result.map),
+            )
+          }
           return {
             contents: appendInlineSourceMap(result.code, result.map),
             loader: guessLoader(filepath),

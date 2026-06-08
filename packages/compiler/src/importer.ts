@@ -4,8 +4,18 @@ import nodePath from 'node:path'
 import { getHash } from './utils.js'
 
 export type ImporterOptionsInput = {
+  // `mock` + `deny` are COMPILE-TIME import rules: they match an import's TARGET specifier and rewrite/forbid it in
+  // EVERY mode (dev, build, prod), changing the emitted code. `cold` below is a different beast — read its note for the
+  // contrast (it's the one field here that's dev-hot-reload-only and matches the file's own path, not import targets).
   mock?: Array<string | RegExp>
   deny?: Array<string | RegExp>
+  // `cold` is DEV-HOT-RELOAD ONLY: it has NO effect on builds, prod, or non-hot dev — it is read solely when building
+  // the server hot-reload store (`point0 dev --hot`). A file whose OWN path matches one of these globs/regexes (NOT the
+  // import target, unlike `deny`/`mock`) — together with its downward static-import subtree — is externalized from the
+  // hot graph: editing it RESTARTS the server child instead of hot-swapping. The config-side equivalent of the in-file
+  // `import '@point0/core/cold'` marker, for files you can't (or don't want to) edit; same glob style as `deny`. Only
+  // meaningful on `server.importer` (a client has no server dev store) — a cold rule anywhere else is a silent no-op.
+  cold?: Array<string | RegExp>
   // path will be relative to it
   cwd?: string
   onDeny?: 'throw' | 'log'
@@ -22,8 +32,13 @@ export type ImporterOptionsParsed = {
     exclude: Array<RegExp | string>
     ordered: Array<{ type: 'include' | 'exclude'; rule: RegExp | string }>
   }
+  cold: {
+    include: Array<RegExp | string>
+    exclude: Array<RegExp | string>
+    ordered: Array<{ type: 'include' | 'exclude'; rule: RegExp | string }>
+  }
   // full rule → short rule
-  map: { mock: Record<string, string>; deny: Record<string, string> }
+  map: { mock: Record<string, string>; deny: Record<string, string>; cold: Record<string, string> }
   cwd: string | undefined
   onDeny: 'throw' | 'log'
 }
@@ -118,10 +133,14 @@ export const parseImporterOptions = (options: ImporterOptionsInput): ImporterOpt
     }
   }
 
-  const map: { mock: Record<string, string>; deny: Record<string, string> } = { mock: {}, deny: {} }
+  const map: { mock: Record<string, string>; deny: Record<string, string>; cold: Record<string, string> } = {
+    mock: {},
+    deny: {},
+    cold: {},
+  }
   const normalizePatterns = (
     patterns: Array<string | RegExp> | undefined,
-    type: 'mock' | 'deny',
+    type: 'mock' | 'deny' | 'cold',
   ): {
     include: Array<RegExp | string>
     exclude: Array<RegExp | string>
@@ -176,10 +195,26 @@ export const parseImporterOptions = (options: ImporterOptionsInput): ImporterOpt
   return {
     mock: normalizePatterns(options.mock, 'mock'),
     deny: normalizePatterns(options.deny, 'deny'),
+    cold: normalizePatterns(options.cold, 'cold'),
     map,
     onDeny: options.onDeny ?? 'log',
     cwd,
   }
+}
+
+/**
+ * Whether `path` is COLD per the importer's `cold` rules (include minus exclude, applied in declared order — same
+ * semantics as `resolveImporterRule`). Used by the server dev store to classify a file as a restart-trigger.
+ */
+export const isImporterColdPath = ({ path, importer }: { path: string; importer: ImporterOptionsParsed }): boolean => {
+  let cold = false
+  for (const { type, rule } of importer.cold.ordered) {
+    const isMatch = typeof rule === 'string' ? minimatch(path, rule) : rule.test(path)
+    if (isMatch) {
+      cold = type === 'include'
+    }
+  }
+  return cold
 }
 
 export type ResolvedImporterRule = { shortPath: string; shortRule: string; shortImporter: string }

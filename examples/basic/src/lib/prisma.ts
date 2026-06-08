@@ -1,3 +1,4 @@
+import '@point0/core/cold' // server boot singleton — its downward subtree is externalized; editing it restarts the server
 import { PrismaClient } from '@/generated/prisma/client'
 import { serverEnv } from '@/lib/env/server'
 import '@point0/core/server-only'

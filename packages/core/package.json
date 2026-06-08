@@ -29,6 +29,9 @@
       "server-only": [
         "./dist/server-only.d.ts"
       ],
+      "cold": [
+        "./dist/cold.d.ts"
+      ],
       "virtual": [
         "./dist/virtual.d.ts"
       ],
@@ -85,6 +88,10 @@
     "./server-only": {
       "types": "./dist/server-only.d.ts",
       "import": "./dist/server-only.js"
+    },
+    "./cold": {
+      "types": "./dist/cold.d.ts",
+      "import": "./dist/cold.js"
     },
     "./virtual": {
       "types": "./dist/virtual.d.ts",

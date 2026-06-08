@@ -838,6 +838,12 @@ export class Compiler {
     }
     const stringified = stringify(
       {
+        // `map` and `hmrFix` are per-call (they change the emitted output: source maps / HMR shims), so they MUST be
+        // part of the cache key — otherwise a result compiled with one value is served for a request with the other
+        // (e.g. a map:false result returned for a map:true request → no source map). Use the passed args, not
+        // `this.hmrFix`, since compile() lets the call override hmrFix.
+        map,
+        hmrFix,
         filter: this.filter,
         scope: this.scope,
         built: this.built,
@@ -846,7 +852,6 @@ export class Compiler {
         os: this.os,
         side: this.side,
         consts: this.consts,
-        hmrFix: this.hmrFix,
         walker: this.walker,
         routes: this.routes,
         ssr: this.ssr,
