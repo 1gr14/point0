@@ -1,4 +1,4 @@
-import type { AnyLocation, ExactLocation, WeakAncestorLocation } from '@devp0nt/route0'
+import type { AnyLocation, ExactLocation, WeakAncestorLocation } from '@1gr14/route0'
 import type {
   InfiniteQueryObserverSuccessResult,
   QueryObserverSuccessResult,

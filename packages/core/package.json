@@ -4,16 +4,16 @@
   "license": "MIT",
   "author": {
     "name": "Sergei Dmitriev",
-    "url": "https://p0nt.dev"
+    "url": "https://1gr14.dev"
   },
-  "homepage": "https://github.com/devp0nt/point0#readme",
+  "homepage": "https://github.com/1gr14/point0#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/devp0nt/point0.git",
+    "url": "git+https://github.com/1gr14/point0.git",
     "directory": "packages/core"
   },
   "bugs": {
-    "url": "https://github.com/devp0nt/point0/issues"
+    "url": "https://github.com/1gr14/point0/issues"
   },
   "type": "module",
   "sideEffects": false,
@@ -174,8 +174,8 @@
     "use-context-selector": "^2.0.0"
   },
   "peerDependencies": {
-    "@devp0nt/flat0": "catalog:",
-    "@devp0nt/route0": "catalog:",
+    "@1gr14/flat": "catalog:",
+    "@1gr14/route0": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@unhead/react": "catalog:",
     "unhead": "catalog:",
@@ -183,8 +183,8 @@
     "react": "catalog:"
   },
   "devDependencies": {
-    "@devp0nt/flat0": "catalog:",
-    "@devp0nt/route0": "catalog:",
+    "@1gr14/flat": "catalog:",
+    "@1gr14/route0": "catalog:",
     "@sinclair/typebox": "catalog:",
     "@types/bun": "catalog:",
     "@types/node": "^20.0.0",

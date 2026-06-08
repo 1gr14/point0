@@ -4,16 +4,16 @@
   "license": "MIT",
   "author": {
     "name": "Sergei Dmitriev",
-    "url": "https://p0nt.dev"
+    "url": "https://1gr14.dev"
   },
-  "homepage": "https://github.com/devp0nt/point0#readme",
+  "homepage": "https://github.com/1gr14/point0#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/devp0nt/point0.git",
+    "url": "git+https://github.com/1gr14/point0.git",
     "directory": "packages/cors"
   },
   "bugs": {
-    "url": "https://github.com/devp0nt/point0/issues"
+    "url": "https://github.com/1gr14/point0/issues"
   },
   "type": "module",
   "sideEffects": false,

@@ -1,7 +1,7 @@
 import { stat } from 'node:fs/promises'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import type { AnyRoute } from '@devp0nt/route0'
+import type { AnyRoute } from '@1gr14/route0'
 import type { CompilerPointParsedPos } from '@point0/compiler'
 import type { AnyNiceReadyPoint, PointName, PointsScope, ReadyPointType } from '@point0/core'
 import { z } from 'zod'
@@ -340,12 +340,11 @@ export const resolveMetaImportPaths = (metaPaths: string[]): string[] => {
 }
 
 /**
- * Build a loader that always reflects the on-disk meta. MCP servers are long-lived, so an
- * analyzer loaded once would keep serving stale points after `point0 generate` rewrites the
- * meta. On each call we stat the meta files; when any `mtime` changed we re-import with a
- * `?v=<mtime>` cache-buster — ESM caches modules by URL, so re-importing the same href would
- * otherwise be a no-op and the new points would never load. Unchanged metas hit the ESM module
- * cache and the rebuild is effectively free.
+ * Build a loader that always reflects the on-disk meta. MCP servers are long-lived, so an analyzer loaded once would
+ * keep serving stale points after `point0 generate` rewrites the meta. On each call we stat the meta files; when any
+ * `mtime` changed we re-import with a `?v=<mtime>` cache-buster — ESM caches modules by URL, so re-importing the same
+ * href would otherwise be a no-op and the new points would never load. Unchanged metas hit the ESM module cache and the
+ * rebuild is effectively free.
  */
 export const createMetaAnalyzerLoader = (metaPaths: string[]): (() => Promise<Analyzer>) => {
   const absolutePaths = ensureMetaPaths(metaPaths).map((metaPath) =>

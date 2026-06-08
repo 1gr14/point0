@@ -1,4 +1,4 @@
-import { flat0 } from '@devp0nt/flat0'
+import * as flat0 from '@1gr14/flat'
 import type {
   AnyLocation,
   AnyRouteOrDefinition,
@@ -11,7 +11,7 @@ import type {
   UnknownLocation,
   UnknownSearchInput,
   UnknownSearchParsed,
-} from '@devp0nt/route0'
+} from '@1gr14/route0'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ErrorPoint0 } from './error.js'

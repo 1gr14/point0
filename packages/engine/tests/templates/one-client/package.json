@@ -13,7 +13,7 @@
     "typesgo": "tsgo --noEmit -p tsconfig.build.json"
   },
   "dependencies": {
-    "@devp0nt/route0": "catalog:",
+    "@1gr14/route0": "catalog:",
     "@point0/compiler": "workspace:*",
     "@point0/core": "workspace:*",
     "@point0/cors": "workspace:*",

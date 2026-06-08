@@ -1,4 +1,4 @@
-import type { AnyLocation } from '@devp0nt/route0'
+import type { AnyLocation } from '@1gr14/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ErrorPoint0 } from './error.js'
 import type { Request0 } from './request0.js'

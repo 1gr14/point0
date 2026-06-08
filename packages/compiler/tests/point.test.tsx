@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { Route0, Routes } from '@devp0nt/route0'
+import { Route0, Routes } from '@1gr14/route0'
 import type { CompilerPoint } from '../src/point.js'
 import { Walker } from '../src/walker.js'
 import { toText } from './utils.js'
@@ -687,7 +687,7 @@ export const p8 = base8.lets('page', 'p8', '/three').page(() => <div>Hello</div>
           },
         })
         await file.write(`import {Point0} from '@point0/core'
-import { Route0, Routes } from '@devp0nt/route0'
+import { Route0, Routes } from '@1gr14/route0'
 export const root = Point0.lets('root', 'myroot').basePath('/my/base').root()
 export const base = root.lets('base', 'base').basePath('/another').basePath('/:x/prefix').base()
 const routes = Routes.create({

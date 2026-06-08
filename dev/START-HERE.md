@@ -17,7 +17,8 @@ launch**. Everything you need is in this `dev/` folder. Read these, in order:
 ## Where you are
 
 - Worktree: `/Users/iserdmi/cc/worktrees/point0/dev-docs-plan` (branch
-  `dev-docs-plan`). Work here, not in the main checkout. Nothing is committed yet.
+  `dev-docs-plan`). Work here, not in the main checkout. Nothing is committed
+  yet.
 - Public docs live in `docs/<category>/<slug>.md`. One real draft exists:
   `docs/intro/overview.md`.
 - **The code was refactored after this plan was drafted.** Sources, titles, and
@@ -28,10 +29,10 @@ launch**. Everything you need is in this `dev/` folder. Read these, in order:
 
 - Document only what the **current** code and tests actually do. The code wins;
   don't invent API.
-- Describe Point0 **plainly — no coined slogans**. Lead with what's genuinely good
-  and show it through real examples from `examples/*`. (Real-world reference:
-  Sergei's site at `~/cc/projects/devp0nt` runs on Point0; but published snippets
-  stay from the public `examples/*`.)
+- Describe Point0 **plainly — no coined slogans**. Lead with what's genuinely
+  good and show it through real examples from `examples/*`. (Real-world
+  reference: Sergei's site at `~/cc/projects/1gr14` runs on Point0; but
+  published snippets stay from the public `examples/*`.)
 - Use the short builder notation (`root.lets.page('/x')`).
 - Write the article **and** add JSDoc to that feature's public API in the same
   change (Track B).
@@ -41,11 +42,11 @@ launch**. Everything you need is in this `dev/` folder. Read these, in order:
 ## Review loop
 
 Drafts ship in English, but Sergei reviews in **Russian, in the chat**: post the
-article in Russian, fix it together in chat, then apply the changes to the English
-doc and record any new authoring lesson back into `dev/writing-docs.md`.
+article in Russian, fix it together in chat, then apply the changes to the
+English doc and record any new authoring lesson back into `dev/writing-docs.md`.
 
 ## First step
 
-Ask Sergei what the refactor moved, reconcile `dev/structure.md` and `dev/docs.md`
-with the current code, then pilot one P0 article (`concepts/points` or a
-`points/*` page) and take it through the review loop.
+Ask Sergei what the refactor moved, reconcile `dev/structure.md` and
+`dev/docs.md` with the current code, then pilot one P0 article
+(`concepts/points` or a `points/*` page) and take it through the review loop.

@@ -2,7 +2,7 @@ import { Point0 } from '@point0/core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { createTestThings, ymlify } from './utils/internal-testing.js'
 import { createNavigation } from '@point0/react-dom/router'
-import { Routes } from '@devp0nt/route0'
+import { Routes } from '@1gr14/route0'
 
 describe('ctx', () => {
   const createRoot = () =>

@@ -1,4 +1,4 @@
-import { Routes } from '@devp0nt/route0'
+import { Routes } from '@1gr14/route0'
 import { getQueryClient, Point0 } from '@point0/core'
 import { useLocation } from '@point0/core/navigation'
 import { zodSchemaHelper } from '@point0/core/schema/zod'

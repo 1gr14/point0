@@ -1,4 +1,4 @@
-import { Routes } from '@devp0nt/route0'
+import { Routes } from '@1gr14/route0'
 import { ErrorPoint0, Point0 } from '@point0/core'
 import type { EmptyObject } from '@point0/core'
 import { createNavigation } from '@point0/react-dom/router'

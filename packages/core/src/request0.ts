@@ -1,5 +1,5 @@
-import { Route0 } from '@devp0nt/route0'
-import type { AnyLocation, ExactLocation } from '@devp0nt/route0'
+import { Route0 } from '@1gr14/route0'
+import type { AnyLocation, ExactLocation } from '@1gr14/route0'
 import type { ErrorPoint0 } from './error.js'
 import type { IsAny, PagePoint, RequestableReadyPoint } from './types.js'
 import { generateId } from './utils.js'

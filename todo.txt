@@ -266,7 +266,7 @@ test onPrefetchPage and other prefetchModes
 Remove comments, unusde code, unused types (except core/point0.ts and core/types.ts)
 Разобраться с эррор баундари для фронта
 try for input have void type or undefined, than we can avoid using ...args IsInputOptional...
-hide github repos from devp0nt that deprecated
+hide github repos from 1gr14 that deprecated
 Routes<any> shoudl be y default so really any routes suitable to Routes
 refactor types names and order and any points, etc any things. Поправляя эни попробовать отказаться от ифэни в пользу стринг экстендс
 remove default generic values it is unsafe, better add AnySomethingType for it

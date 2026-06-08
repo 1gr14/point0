@@ -22,8 +22,8 @@
     "android": "bun run build && cap sync android && cap open android"
   },
   "dependencies": {
-    "@devp0nt/error0": "catalog:",
-    "@devp0nt/route0": "catalog:",
+    "@1gr14/error0": "catalog:",
+    "@1gr14/route0": "catalog:",
     "@point0/compiler": "workspace:*",
     "@point0/core": "workspace:*",
     "@point0/engine": "workspace:*",

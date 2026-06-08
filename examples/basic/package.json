@@ -26,9 +26,9 @@
     "setup": "bun run prisma:migrate:deploy && bun run prisma:generate && point0 generate && bun run seed"
   },
   "dependencies": {
-    "@devp0nt/error0": "catalog:",
-    "@devp0nt/flat0": "catalog:",
-    "@devp0nt/route0": "catalog:",
+    "@1gr14/error0": "catalog:",
+    "@1gr14/flat": "catalog:",
+    "@1gr14/route0": "catalog:",
     "@point0/basic-auth": "workspace:*",
     "@point0/compiler": "workspace:*",
     "@point0/core": "workspace:*",

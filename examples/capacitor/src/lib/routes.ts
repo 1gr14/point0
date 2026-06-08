@@ -1,6 +1,6 @@
-import { Routes } from '@devp0nt/route0'
+import { Routes } from '@1gr14/route0'
 
 export const routes = Routes.create({
-  'home': '/',
-  'ideas': '/ideas',
+  home: '/',
+  ideas: '/ideas',
 })

@@ -384,7 +384,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
 
         const content = fixPaths(await routesFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import { Routes } from '@devp0nt/route0'
+          "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
             'mypage': '/news',
@@ -423,7 +423,7 @@ export const page = root.lets('page', 'mypage', '/news').search(z.object({ q: z.
 
         const content = fixPaths(await routesFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import { Routes } from '@devp0nt/route0'
+          "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
             'mypage': '/news',
@@ -464,7 +464,7 @@ export const list = root.lets('page', 'list', '/list').search(z.object({ page: z
 
         const content = fixPaths(await routesFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import { Routes } from '@devp0nt/route0'
+          "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
             'home': '/',
@@ -505,7 +505,7 @@ export const page = layout.lets('page', 'mypage', '/news').page(() => <div>Hello
 
         const content = fixPaths(await routesFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import { Routes } from '@devp0nt/route0'
+          "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
             'mypage': '/news',
@@ -542,7 +542,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
 
         const content = fixPaths(await routesFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import { Routes } from '@devp0nt/route0'
+          "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
             'mypage': '/news',
@@ -579,7 +579,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
 
         const content = fixPaths(await routesFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import { Routes } from '@devp0nt/route0'
+          "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
             'mypage': '/my/path/news',
@@ -616,7 +616,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
 
         const content = fixPaths(await routesFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import { Routes } from '@devp0nt/route0'
+          "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
             'mypage': '/my/path/news',
@@ -653,7 +653,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
 
         const content = fixPaths(await routesFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import { Routes } from '@devp0nt/route0'
+          "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
             'mypage': '/my/path/extra/path/news',
@@ -690,7 +690,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
 
         const content = fixPaths(await routesFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import { Routes } from '@devp0nt/route0'
+          "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
             'mypage': '/news',
@@ -727,7 +727,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
 
         const content = fixPaths(await routesFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import { Routes } from '@devp0nt/route0'
+          "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
             'mypage': '/extra/path/news',
@@ -810,7 +810,7 @@ export const layout = root.lets('layout', 'mylayout', '/layout').loader(() => ({
 
         const routesContent = fixPaths(await routesFile.text())
         expect(routesContent).toMatchInlineSnapshot(`
-          "import { Routes } from '@devp0nt/route0'
+          "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
             'mypage': '/news',
@@ -915,7 +915,7 @@ export const root = Point0.lets('root', 'myroot').root()
 
         const content = fixPaths(await routesFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import { Routes } from '@devp0nt/route0'
+          "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({})
           "
@@ -1066,7 +1066,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
             .replaceAll(/file: '[^']*'/g, `file: '<file>'`)
             .replaceAll(/engineFile: '[^']*'/g, `engineFile: '<file>'`),
         ).toMatchInlineSnapshot(`
-          "import { Route0 } from '@devp0nt/route0'
+          "import { Route0 } from '@1gr14/route0'
           import { Engine } from '@point0/engine'
           export default {
             engine: {

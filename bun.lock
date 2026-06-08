@@ -35,9 +35,9 @@
       "name": "@point0/example-basic",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/error0": "catalog:",
-        "@devp0nt/flat0": "catalog:",
-        "@devp0nt/route0": "catalog:",
+        "@1gr14/error0": "catalog:",
+        "@1gr14/flat": "catalog:",
+        "@1gr14/route0": "catalog:",
         "@point0/basic-auth": "workspace:*",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
@@ -79,9 +79,9 @@
       "name": "@point0/example-better-auth",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/error0": "catalog:",
-        "@devp0nt/flat0": "catalog:",
-        "@devp0nt/route0": "catalog:",
+        "@1gr14/error0": "catalog:",
+        "@1gr14/flat": "catalog:",
+        "@1gr14/route0": "catalog:",
         "@point0/basic-auth": "workspace:*",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
@@ -123,9 +123,9 @@
       "name": "@point0/example-capacitor",
       "version": "1.0.0",
       "dependencies": {
+        "@1gr14/error0": "catalog:",
+        "@1gr14/route0": "catalog:",
         "@capacitor/core": "^8.4.0",
-        "@devp0nt/error0": "catalog:",
-        "@devp0nt/route0": "catalog:",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/engine": "workspace:*",
@@ -187,9 +187,9 @@
       "name": "@point0/example-vite",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/error0": "catalog:",
-        "@devp0nt/flat0": "catalog:",
-        "@devp0nt/route0": "catalog:",
+        "@1gr14/error0": "catalog:",
+        "@1gr14/flat": "catalog:",
+        "@1gr14/route0": "catalog:",
         "@point0/basic-auth": "workspace:*",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
@@ -269,7 +269,7 @@
         "remark-mdx-frontmatter": "^5.2.0",
       },
       "devDependencies": {
-        "@devp0nt/flat0": "catalog:",
+        "@1gr14/flat": "catalog:",
         "@point0/engine": "workspace:*",
         "@types/babel__core": "^7.20.5",
         "@types/babel__generator": "^7.27.0",
@@ -282,8 +282,8 @@
         "typescript": "catalog:",
       },
       "peerDependencies": {
-        "@devp0nt/flat0": "catalog:",
-        "@devp0nt/route0": "catalog:",
+        "@1gr14/flat": "catalog:",
+        "@1gr14/route0": "catalog:",
         "@point0/core": "workspace:*",
         "typescript": "*",
       },
@@ -297,8 +297,8 @@
         "use-context-selector": "^2.0.0",
       },
       "devDependencies": {
-        "@devp0nt/flat0": "catalog:",
-        "@devp0nt/route0": "catalog:",
+        "@1gr14/flat": "catalog:",
+        "@1gr14/route0": "catalog:",
         "@sinclair/typebox": "catalog:",
         "@types/bun": "catalog:",
         "@types/node": "^20.0.0",
@@ -318,8 +318,8 @@
         "zod": "catalog:",
       },
       "peerDependencies": {
-        "@devp0nt/flat0": "catalog:",
-        "@devp0nt/route0": "catalog:",
+        "@1gr14/flat": "catalog:",
+        "@1gr14/route0": "catalog:",
         "@tanstack/react-query": "catalog:",
         "@unhead/react": "catalog:",
         "openapi-types": "catalog:",
@@ -363,9 +363,9 @@
       "name": "my-app",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/error0": "catalog:",
-        "@devp0nt/flat0": "catalog:",
-        "@devp0nt/route0": "catalog:",
+        "@1gr14/error0": "catalog:",
+        "@1gr14/flat": "catalog:",
+        "@1gr14/route0": "catalog:",
         "@point0/basic-auth": "workspace:*",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
@@ -457,9 +457,9 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@devp0nt/error0": "catalog:",
-        "@devp0nt/flat0": "catalog:",
-        "@devp0nt/route0": "catalog:",
+        "@1gr14/error0": "catalog:",
+        "@1gr14/flat": "catalog:",
+        "@1gr14/route0": "catalog:",
         "@point0/docs": "workspace:*",
         "@tanstack/query-core": "catalog:",
         "@testing-library/react": "^16.3.1",
@@ -486,8 +486,8 @@
         "vite-tsconfig-paths": "catalog:",
       },
       "peerDependencies": {
-        "@devp0nt/flat0": "catalog:",
-        "@devp0nt/route0": "catalog:",
+        "@1gr14/flat": "catalog:",
+        "@1gr14/route0": "catalog:",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
         "@tanstack/react-query": "catalog:",
@@ -500,7 +500,7 @@
       "name": "@point0/test-one-client",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/route0": "catalog:",
+        "@1gr14/route0": "catalog:",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/cors": "workspace:*",
@@ -527,7 +527,7 @@
       "name": "@point0/test-two-clients",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/route0": "catalog:",
+        "@1gr14/route0": "catalog:",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/cors": "workspace:*",
@@ -576,7 +576,7 @@
       "name": "@point0/react-dom",
       "version": "0.1.0",
       "devDependencies": {
-        "@devp0nt/route0": "catalog:",
+        "@1gr14/route0": "catalog:",
         "@point0/core": "workspace:*",
         "@types/bun": "catalog:",
         "@types/node": "^20.0.0",
@@ -589,7 +589,7 @@
         "wouter": "catalog:",
       },
       "peerDependencies": {
-        "@devp0nt/route0": "catalog:",
+        "@1gr14/route0": "catalog:",
         "@point0/core": "workspace:*",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
@@ -603,9 +603,9 @@
     "zod": "^4.4.3",
   },
   "catalog": {
-    "@devp0nt/error0": "^1.0.6",
-    "@devp0nt/flat0": "^1.2.0",
-    "@devp0nt/route0": "^1.1.1",
+    "@1gr14/error0": "^0.1.0",
+    "@1gr14/flat": "^0.1.0",
+    "@1gr14/route0": "^0.1.0",
     "@huggingface/transformers": "^4.2.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@orama/orama": "^3.1.18",
@@ -647,6 +647,12 @@
     "zod": "^4.4.3",
   },
   "packages": {
+    "@1gr14/error0": ["@1gr14/error0@0.1.0", "", {}, "sha512-sDErcOmQD9zGaD731gGB8sX0XfknQICstsFr4zwM5x576OF8q1sx5XWkWmTzYS25r+m+btOmSe1AbjKBiBvJPQ=="],
+
+    "@1gr14/flat": ["@1gr14/flat@0.1.0", "", {}, "sha512-cAjBwz5cH0DzRLKBgRJyNKt6GFHr4x2WvVqABqC61XicXk05c8sQr0OfSMjPjdd2VORwqSP+dWZ5s1AaN5qZEg=="],
+
+    "@1gr14/route0": ["@1gr14/route0@0.1.0", "", { "peerDependencies": { "@1gr14/flat": "^0.1.0", "@standard-schema/spec": "^1.0.0" }, "optionalPeers": ["@standard-schema/spec"] }, "sha512-ldYdq/QIRG5iKbfoIX1yDWLiWIIDYuqUwzsbyjbadvQvJE15KEh+KIrpmwVyr2/b2HEZGRLi928FSIL0DdKaIg=="],
+
     "@actions/core": ["@actions/core@3.0.1", "", { "dependencies": { "@actions/exec": "^3.0.0", "@actions/http-client": "^4.0.0" } }, "sha512-a6d/Nwahm9fliVGRhdhofo40HjHQasUPusmc7vBfyky+7Z+P2A1J68zyFVaNcEclc/Se+eO595oAr5nwEIoIUA=="],
 
     "@actions/exec": ["@actions/exec@3.0.0", "", { "dependencies": { "@actions/io": "^3.0.2" } }, "sha512-6xH/puSoNBXb72VPlZVm7vQ+svQpFyA96qdDBvhB8eNZOE8LtPf9L4oAsfzK/crCL8YZ+19fKYVnM63Sl+Xzlw=="],
@@ -872,12 +878,6 @@
     "@commitlint/types": ["@commitlint/types@21.0.1", "", { "dependencies": { "conventional-commits-parser": "^6.3.0", "picocolors": "^1.1.1" } }, "sha512-4u7w8jcoCUFWhjWnASYzZHAP34OqOtuFBN87nQmFvqda03YU0T6z+yB4w0gSAMpekiRqqGk5rt+qSlW+a2vSEg=="],
 
     "@conventional-changelog/git-client": ["@conventional-changelog/git-client@2.7.0", "", { "dependencies": { "@simple-libs/child-process-utils": "^1.0.0", "@simple-libs/stream-utils": "^1.2.0", "semver": "^7.5.2" }, "peerDependencies": { "conventional-commits-filter": "^5.0.0", "conventional-commits-parser": "^6.4.0" }, "optionalPeers": ["conventional-commits-filter", "conventional-commits-parser"] }, "sha512-j7A8/LBEQ+3rugMzPXoKYzyUPpw/0CBQCyvtTR7Lmu4olG4yRC/Tfkq79Mr3yuPs0SUitlO2HwGP3gitMJnRFw=="],
-
-    "@devp0nt/error0": ["@devp0nt/error0@1.0.6", "", {}, "sha512-Qe21HmmEGcoUNVxMaXwOgM23ZVuRYvHvawZAA/D0Pixb6OhG5tNKTzlzSu4DLSu9GctmeZLRnnSo8FFxFH2wpw=="],
-
-    "@devp0nt/flat0": ["@devp0nt/flat0@1.2.0", "", {}, "sha512-uZtYPTnMEtFicmXL2FFtgJLrt0Lee33zBwo8HGi0GlR9O4UkrJ86VGHttJVrAO505JEt4lmHPFjYB4s8yEnuDQ=="],
-
-    "@devp0nt/route0": ["@devp0nt/route0@1.1.1", "", { "peerDependencies": { "@devp0nt/flat0": "^1.2.0", "@standard-schema/spec": "^1.0.0" }, "optionalPeers": ["@standard-schema/spec"] }, "sha512-UpsQKvMcM9cpkfg6KEPnLC+/4PxWhHIWavVJZ67P+rO55kz3snm/oKJoaRLNudTRflx9Io2LTJHQxAjYL/tDlg=="],
 
     "@electric-sql/pglite": ["@electric-sql/pglite@0.4.1", "", {}, "sha512-mZ9NzzUSYPOCnxHH1oAHPRzoMFJHY472raDKwXl/+6oPbpdJ7g8LsCN4FSaIIfkiCKHhb3iF/Zqo3NYxaIhU7Q=="],
 

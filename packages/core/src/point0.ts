@@ -1,4 +1,4 @@
-import * as flat0 from '@devp0nt/flat0'
+import * as flat0 from '@1gr14/flat'
 import type {
   AnyLocation,
   AnyRoute,
@@ -10,8 +10,8 @@ import type {
   UnknownSearchInput,
   UnknownSearchParsed,
   WeakAncestorLocation,
-} from '@devp0nt/route0'
-import { Route0 } from '@devp0nt/route0'
+} from '@1gr14/route0'
+import { Route0 } from '@1gr14/route0'
 import type {
   CancelOptions,
   DehydratedState,
@@ -3704,8 +3704,8 @@ export class Point0<
                 | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
             ]
         : [] // The result is the same point, advanced one stage. Every type arg below is this point's current
-    // `with` is the only thing that can add props or queries. They're the two interesting positions.
-  ) // state passed through UNCHANGED — only the last two (inner props, queries) are recomputed, since
+    // state passed through UNCHANGED — only the last two (inner props, queries) are recomputed, since
+  ) // `with` is the only thing that can add props or queries. They're the two interesting positions.
   : NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'

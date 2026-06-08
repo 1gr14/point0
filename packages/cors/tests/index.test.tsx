@@ -4,7 +4,7 @@ import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
 import { cors } from '../src/index.js'
 
 // inspired by https://github.com/elysiajs/elysia-cors/tree/main
-// thanks a lot, SaltyAom https://p0nt.dev/
+// thanks a lot, SaltyAom https://1gr14.dev/
 
 describe('cors', () => {
   const prepare = async (options?: Parameters<typeof cors>[0]) => {
@@ -39,11 +39,11 @@ describe('cors', () => {
     const { fetch } = await prepare()
     const response = await fetch({
       headers: {
-        origin: 'https://p0nt.dev',
+        origin: 'https://1gr14.dev',
       },
     })
     expect(response.status).toBe(200)
-    expect(response.headers.get('access-control-allow-origin')).toBe('https://p0nt.dev')
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://1gr14.dev')
     expect(response.headers.get('access-control-allow-credentials')).toBe('true')
     expect(response.headers.get('access-control-allow-methods')).toBe('GET')
     expect(response.headers.get('access-control-allow-headers')).toContain('origin')
@@ -52,15 +52,15 @@ describe('cors', () => {
 
   it('origin accepts string', async () => {
     const { fetch } = await prepare({
-      origin: 'p0nt.dev',
+      origin: '1gr14.dev',
     })
     const response = await fetch({
       headers: {
-        origin: 'https://p0nt.dev',
+        origin: 'https://1gr14.dev',
       },
     })
     expect(response.status).toBe(200)
-    expect(response.headers.get('access-control-allow-origin')).toBe('https://p0nt.dev')
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://1gr14.dev')
   })
 
   it('origin accepts boolean', async () => {
@@ -104,14 +104,14 @@ describe('cors', () => {
 
   it('origin accepts string[]', async () => {
     const { fetch } = await prepare({
-      origin: ['gehenna.sh', 'p0nt.dev'],
+      origin: ['gehenna.sh', '1gr14.dev'],
     })
     const response = await fetch({
       headers: {
-        origin: 'https://p0nt.dev',
+        origin: 'https://1gr14.dev',
       },
     })
-    expect(response.headers.get('access-control-allow-origin')).toBe('https://p0nt.dev')
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://1gr14.dev')
   })
 
   it('origin accepts mixed array', async () => {

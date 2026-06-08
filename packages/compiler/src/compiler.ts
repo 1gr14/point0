@@ -1,6 +1,6 @@
 import type { PluginItem } from '@babel/core'
 import type { GeneratorResult } from '@babel/generator'
-import type { RoutesPretty } from '@devp0nt/route0'
+import type { RoutesPretty } from '@1gr14/route0'
 import type { CompileOptions as MdxCompileOptions } from '@mdx-js/mdx'
 import { normalNodeEnvs, type EnvOsName, type EnvRuntimeName, type NormalizedNodeEnv } from '@point0/core'
 import { CompilerFile } from './file.js'

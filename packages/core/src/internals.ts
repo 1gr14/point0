@@ -1,4 +1,4 @@
-import type { AnyLocation } from '@devp0nt/route0'
+import type { AnyLocation } from '@1gr14/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import type { SSRHeadPayload, Unhead } from '@unhead/react/server'
 import type { ResolvableHead } from 'unhead/types'

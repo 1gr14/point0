@@ -7,7 +7,7 @@ import type {
   ParamsInput,
   ParamsOutput,
   UnknownSearchInput,
-} from '@devp0nt/route0'
+} from '@1gr14/route0'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
 import type {
   InfiniteData,

@@ -1,7 +1,7 @@
-import * as flat0 from '@devp0nt/flat0'
+import * as flat0 from '@1gr14/flat'
 import nodePath from 'node:path'
 import * as React from 'react'
-import { Route0, type AnyLocation, type AnyRoute, type ExactLocation, type KnownLocation } from '@devp0nt/route0'
+import { Route0, type AnyLocation, type AnyRoute, type ExactLocation, type KnownLocation } from '@1gr14/route0'
 import { ASSET_URL_PREFIX, assetNameRegex, resolveAssetsCacheDir } from '@point0/compiler'
 import {
   POINT0_ERROR_CODES_MAP,

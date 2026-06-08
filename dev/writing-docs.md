@@ -30,8 +30,8 @@ it — because if we don't describe it, no one will.
 - **Keep finding the good parts.** Writing an article, you'll notice
   capabilities the overview missed. Add them — to `dev/overview.md`'s "A few
   more nice things" and to the positioning notes in `dev/docs.md`.
-- **Propose missing articles.** If you hit a feature or approach that doesn't fit
-  your article and isn't planned as its own, don't drop it — propose a new
+- **Propose missing articles.** If you hit a feature or approach that doesn't
+  fit your article and isn't planned as its own, don't drop it — propose a new
   article: add its slug to `dev/structure.md` (the canonical structure) and flag
   it for Sergei.
 
@@ -102,10 +102,10 @@ Two things, in this order, before anything else:
 - **Show, then tell.** Snippet first, one sentence after — not the reverse.
 - **Runnable and minimal.** Real names, real values, copy-paste works. Cut every
   line that isn't load-bearing. Pull from `examples/basic` (canonical) or a
-  package test; keep it real, don't invent. For a real-world cross-check, Sergei's
-  site at `~/cc/projects/devp0nt` runs on Point0 — read it locally to see patterns
-  at scale (it's private, so published snippets still come from the public
-  `examples/*`).
+  package test; keep it real, don't invent. For a real-world cross-check,
+  Sergei's site at `~/cc/projects/1gr14` runs on Point0 — read it locally to see
+  patterns at scale (it's private, so published snippets still come from the
+  public `examples/*`).
 - **Put the explanation inside the code, as comments.** The comment next to the
   line gets read; the paragraph three lines below gets skipped.
 - **Show output where it matters:** `// => { id: 1 }`,
@@ -159,11 +159,11 @@ or on a separate reference page. The top is the journey; the bottom is the map.
   from the variable, and it works for every point type. The explicit form is
   valid too, but the docs use the short one everywhere. (Only `action` adds
   extra terminal options — note that in the actions article.)
-- **Document and comment together.** A feature's article and its code comments are
-  one job. Before you write: read the feature's tests — they show the behavior and
-  the edge cases. As you write: add or improve the JSDoc/TSDoc on that feature's
-  public API in the same change (that's Track B; see `dev/docs.md`). The article
-  and the inline comments ship together.
+- **Document and comment together.** A feature's article and its code comments
+  are one job. Before you write: read the feature's tests — they show the
+  behavior and the edge cases. As you write: add or improve the JSDoc/TSDoc on
+  that feature's public API in the same change (that's Track B; see
+  `dev/docs.md`). The article and the inline comments ship together.
 - **Accuracy beats everything.** Document only what is implemented and exercised
   by `examples/*` or `packages/*/tests`. Verify every snippet against its
   source. When a note or an assumption disagrees with the actual file, the file

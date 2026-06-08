@@ -1,4 +1,4 @@
-import type { AnyLocation } from '@devp0nt/route0'
+import type { AnyLocation } from '@1gr14/route0'
 import { superstore } from '@point0/core'
 import type { AppComponent, ClientPoints, PagePoint } from '@point0/core'
 import { transformHtmlTemplate } from '@unhead/react/server'

@@ -1,4 +1,4 @@
-import type { RoutesPretty } from '@devp0nt/route0'
+import type { RoutesPretty } from '@1gr14/route0'
 import {
   CompilerPoint,
   END_POINT_TYPES,
@@ -994,7 +994,7 @@ export class FilesGenerator {
     // silently degrades to `any`.
     //
     // There is no cheap correct fix: ANY variant where this file references the page module recreates
-    // the cycle. The only real fix is to make `routes.ts` a leaf (import nothing but @devp0nt/route0)
+    // the cycle. The only real fix is to make `routes.ts` a leaf (import nothing but @1gr14/route0)
     // by INLINING the already-resolved primitive type instead of importing it, e.g.
     // `.search<{ page?: number }>()`. Both ways to obtain that literal cost too much to justify now:
     //   • TS compiler API (`checker.typeToString` over `Infer → SearchRaw`): the generator has no
@@ -1015,7 +1015,7 @@ export class FilesGenerator {
     //   )
     //   const hasTypedPages = pagePoints.some((p) => p.typed)
     //   lines.push(
-    //     hasTypedPages ? `import { Route0, Routes } from '@devp0nt/route0'` : `import { Routes } from '@devp0nt/route0'`,
+    //     hasTypedPages ? `import { Route0, Routes } from '@1gr14/route0'` : `import { Routes } from '@1gr14/route0'`,
     //   )
     //   lines.push(``)
     //   if (pagePoints.length > 0) {
@@ -1042,7 +1042,7 @@ export class FilesGenerator {
       p.type === 'page' && p.route ? [{ name: p.name, route: p.route.definition }] : [],
     )
 
-    lines.push(`import { Routes } from '@devp0nt/route0'`)
+    lines.push(`import { Routes } from '@1gr14/route0'`)
     lines.push(``)
 
     if (pagePoints.length > 0) {
@@ -1145,7 +1145,7 @@ export class FilesGenerator {
     }
     const hasRoutes = points.some((p) => ((p.type === 'page' || p.type === 'layout') && p.route) || p.endpoint?.route)
     if (hasRoutes) {
-      lines.push(`import { Route0 } from '@devp0nt/route0'`)
+      lines.push(`import { Route0 } from '@1gr14/route0'`)
       lines.push(`import { Engine } from '@point0/engine'`)
     }
     lines.push(`export default {`)

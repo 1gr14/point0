@@ -1,5 +1,5 @@
-import { Routes } from '@devp0nt/route0'
-import type { AnyLocation } from '@devp0nt/route0'
+import { Routes } from '@1gr14/route0'
+import type { AnyLocation } from '@1gr14/route0'
 import { Point0 } from '@point0/core'
 import { useLocation, useOnNavigate } from '@point0/core/navigation'
 import { createNavigation } from '@point0/react-dom/router'

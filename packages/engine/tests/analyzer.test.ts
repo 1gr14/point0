@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import type { AnalyzerMetaPoint } from '../src/analyzer.js'
 import { Analyzer } from '../src/analyzer.js'
-import { Route0 } from '@devp0nt/route0'
+import { Route0 } from '@1gr14/route0'
 
 const makePoint = (partial: Partial<AnalyzerMetaPoint>): AnalyzerMetaPoint =>
   ({

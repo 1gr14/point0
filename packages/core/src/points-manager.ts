@@ -1,5 +1,5 @@
-import type { AnyRoute } from '@devp0nt/route0'
-import { Route0 } from '@devp0nt/route0'
+import type { AnyRoute } from '@1gr14/route0'
+import { Route0 } from '@1gr14/route0'
 import * as React from 'react'
 import type { ErrorPoint0 } from './error.js'
 import { log, type LogFn } from './logger.js'
@@ -16,11 +16,10 @@ import type {
 /**
  * Thrown when a points source resolves to no usable points definition.
  *
- * The common cause is a Vite HMR / SSR ModuleRunner invalidation window: the (re)generated points
- * module is dynamically re-imported (the engine does this per request in dev), and for a brief
- * moment its `default` export is `undefined` — the module node was cleared but not yet
- * re-evaluated. This is a transient, self-healing state, so callers (engine `readPoints`) catch it
- * and keep their last-good points instead of crashing the request.
+ * The common cause is a Vite HMR / SSR ModuleRunner invalidation window: the (re)generated points module is dynamically
+ * re-imported (the engine does this per request in dev), and for a brief moment its `default` export is `undefined` —
+ * the module node was cleared but not yet re-evaluated. This is a transient, self-healing state, so callers (engine
+ * `readPoints`) catch it and keep their last-good points instead of crashing the request.
  */
 export class PointsSourceNotReadyError extends Error {
   constructor(message = 'Points source is not ready yet (no points definition resolved)') {

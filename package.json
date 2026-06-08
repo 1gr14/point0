@@ -1,18 +1,18 @@
 {
   "name": "point0",
   "version": "0.1.0",
-  "homepage": "https://github.com/devp0nt/point0#readme",
+  "homepage": "https://github.com/1gr14/point0#readme",
   "bugs": {
-    "url": "https://github.com/devp0nt/point0/issues"
+    "url": "https://github.com/1gr14/point0/issues"
   },
   "license": "MIT",
   "author": {
     "name": "Sergei Dmitriev",
-    "url": "https://p0nt.dev"
+    "url": "https://1gr14.dev"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/devp0nt/point0.git"
+    "url": "git+https://github.com/1gr14/point0.git"
   },
   "workspaces": {
     "packages": [
@@ -29,9 +29,9 @@
       "@tanstack/react-query": "^5.101.0",
       "@tanstack/query-core": "^5.101.0",
       "superjson": "^2.2.6",
-      "@devp0nt/error0": "^1.0.6",
-      "@devp0nt/route0": "^1.1.1",
-      "@devp0nt/flat0": "^1.2.0",
+      "@1gr14/error0": "^0.1.0",
+      "@1gr14/route0": "^0.1.0",
+      "@1gr14/flat": "^0.1.0",
       "arktype": "^2.2.0",
       "wouter": "^3.10.0",
       "@types/bun": "^1.3.14",

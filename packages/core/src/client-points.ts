@@ -1,5 +1,5 @@
-import { Route0, Routes } from '@devp0nt/route0'
-import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0nt/route0'
+import { Route0, Routes } from '@1gr14/route0'
+import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@1gr14/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import { _point0_env } from './env.js'
 import type { ErrorPoint0 } from './error.js'

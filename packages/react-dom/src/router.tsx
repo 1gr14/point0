@@ -1,5 +1,5 @@
-import { Route0, type AnyLocation, type ExtractRoute, type ExtractRoutesKeys, type RoutesPretty } from '@devp0nt/route0'
-import type { ExactLocation, GetPathInputByRoute, IsParamsOptional } from '@devp0nt/route0'
+import { Route0, type AnyLocation, type ExtractRoute, type ExtractRoutesKeys, type RoutesPretty } from '@1gr14/route0'
+import type { ExactLocation, GetPathInputByRoute, IsParamsOptional } from '@1gr14/route0'
 import { _point0_env, _ss, env, ErrorPoint0, getClientPoints, log } from '@point0/core'
 import type {
   AnyNiceReadyPoint,
@@ -240,12 +240,11 @@ export type CreatedUseNavLink<
 > = (props: UseNavLinkProps<TRoutes, TBaseLocationHook>) => UseNavLinkResult
 
 /**
- * Type-only handle returned from `createNavigation`. At runtime it is `null` — it
- * exists purely so you can read the navigation prop shapes off it in type position
- * (it carries the route generic, so `route`/`input` stay typed):
+ * Type-only handle returned from `createNavigation`. At runtime it is `null` — it exists purely so you can read the
+ * navigation prop shapes off it in type position (it carries the route generic, so `route`/`input` stay typed):
  *
- *   export const { Link, InferNavigation } = createNavigation({ routes })
- *   type ButtonProps = MyOwnProps & typeof InferNavigation.LinkProps
+ * export const { Link, InferNavigation } = createNavigation({ routes }) type ButtonProps = MyOwnProps & typeof
+ * InferNavigation.LinkProps
  *
  * Never read its members at runtime.
  */
@@ -320,18 +319,16 @@ type DistributivePick<T, K extends PropertyKey> = T extends unknown ? Pick<T, Ex
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
 
 /**
- * Split a props object into `[linkProps, restProps, isLink]`: the navigation-specific
- * props (route/input/to/href + replace/state + prefetch/before/after), everything else
- * (your component's own props + native element attributes), and whether a navigation
- * target was actually passed.
+ * Split a props object into `[linkProps, restProps, isLink]`: the navigation-specific props (route/input/to/href +
+ * replace/state + prefetch/before/after), everything else (your component's own props + native element attributes), and
+ * whether a navigation target was actually passed.
  *
- * `isLink` is `true` only when a target (`to` / `href` / `route`) is present — link
- * options on their own (e.g. just `prefetch`) don't make it a link. Use it to pick the
- * element to render, no manual `to ?? href ?? route` check needed:
+ * `isLink` is `true` only when a target (`to` / `href` / `route`) is present — link options on their own (e.g. just
+ * `prefetch`) don't make it a link. Use it to pick the element to render, no manual `to ?? href ?? route` check
+ * needed:
  *
- *   const [linkProps, rest, isLink] = splitLinkProps(props)
- *   const Comp = isLink ? Link : 'button'
- *   return <Comp {...rest} {...linkProps} />
+ * const [linkProps, rest, isLink] = splitLinkProps(props) const Comp = isLink ? Link : 'button' return <Comp {...rest}
+ * {...linkProps} />
  */
 export const splitLinkProps = <P extends Record<string, any>>(
   props: P,
@@ -363,16 +360,14 @@ const _getNativeAnchorProps = (props: Record<string, any>): React.ComponentProps
 }
 
 /**
- * Render the plain native `<a>` for a link target. Used for `href` links (no SPA
- * routing) and for any `newTab` link, regardless of how the target was given
- * (`to` / `href` / `route`).
+ * Render the plain native `<a>` for a link target. Used for `href` links (no SPA routing) and for any `newTab` link,
+ * regardless of how the target was given (`to` / `href` / `route`).
  *
- * `newTab` leaves the SPA, so we render a real `target="_blank"` +
- * `rel="noopener noreferrer"` anchor (honoring an explicit `target`/`rel` if the
- * caller passed one) instead of letting the client router intercept the click. The
- * native target is more robust than a JS-driven `window.open`: it works before
- * hydration, honors cmd/middle-click, and is announced to assistive tech. Imperative
- * `navigate({ newTab })` has no anchor, so it still leaves the SPA via `openExternal`.
+ * `newTab` leaves the SPA, so we render a real `target="_blank"` + `rel="noopener noreferrer"` anchor (honoring an
+ * explicit `target`/`rel` if the caller passed one) instead of letting the client router intercept the click. The
+ * native target is more robust than a JS-driven `window.open`: it works before hydration, honors cmd/middle-click, and
+ * is announced to assistive tech. Imperative `navigate({ newTab })` has no anchor, so it still leaves the SPA via
+ * `openExternal`.
  */
 const _getNativeAnchorElement = (props: Record<string, any>, tohref: string, newTab: boolean): React.ReactElement => {
   const nativeProps = _getNativeAnchorProps(props)
@@ -433,7 +428,9 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
     newTab,
     scrollToHash,
     ...rest
-  } = props as WouterLinkProps<any> & { tohref: string } & SpecialLinkOptions<HookNavigationOptions<TBaseLocationHook>> & {
+  } = props as WouterLinkProps<any> & { tohref: string } & SpecialLinkOptions<
+      HookNavigationOptions<TBaseLocationHook>
+    > & {
       onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => void
       onMouseLeave?: (e: React.MouseEvent<HTMLAnchorElement>) => void
     }
@@ -907,15 +904,7 @@ export const createNavLink = <
       ]
       const mergedClassNames = allClassNames.filter((value): value is string => Boolean(value)).join(' ')
       return mergedClassNames || undefined
-    }, [
-      className,
-      navLink,
-      exactClassName,
-      sameClassName,
-      ancestorClassName,
-      descendantClassName,
-      unmatchedClassName,
-    ])
+    }, [className, navLink, exactClassName, sameClassName, ancestorClassName, descendantClassName, unmatchedClassName])
     const finalWouterLinkProps = useMemo<WouterLinkProps>(() => {
       if ('asChild' in wouterLinkProps && wouterLinkProps.asChild) {
         return wouterLinkProps
@@ -1463,21 +1452,18 @@ const WrappedPage404 = ({
     return page404Node
   }
 
-  return items.reduceRight<React.ReactNode>(
-    (children, layoutItem) => {
-      if (typeof layoutItem === 'string') {
-        if (!(layoutItem in layouts)) {
-          return children
-        }
-        const LayoutByName = layouts[layoutItem as keyof ClientPointsLayouts]
-        return <LayoutByName>{children}</LayoutByName>
+  return items.reduceRight<React.ReactNode>((children, layoutItem) => {
+    if (typeof layoutItem === 'string') {
+      if (!(layoutItem in layouts)) {
+        return children
       }
+      const LayoutByName = layouts[layoutItem as keyof ClientPointsLayouts]
+      return <LayoutByName>{children}</LayoutByName>
+    }
 
-      const LayoutByPoint = layoutItem.X
-      return <LayoutByPoint>{children}</LayoutByPoint>
-    },
-    page404Node,
-  )
+    const LayoutByPoint = layoutItem.X
+    return <LayoutByPoint>{children}</LayoutByPoint>
+  }, page404Node)
 }
 
 export const RenderPagesTree = ({

@@ -4,16 +4,16 @@
   "license": "MIT",
   "author": {
     "name": "Sergei Dmitriev",
-    "url": "https://p0nt.dev"
+    "url": "https://1gr14.dev"
   },
-  "homepage": "https://github.com/devp0nt/point0#readme",
+  "homepage": "https://github.com/1gr14/point0#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/devp0nt/point0.git",
+    "url": "git+https://github.com/1gr14/point0.git",
     "directory": "packages/engine"
   },
   "bugs": {
-    "url": "https://github.com/devp0nt/point0/issues"
+    "url": "https://github.com/1gr14/point0/issues"
   },
   "type": "module",
   "sideEffects": false,
@@ -182,8 +182,8 @@
     "zod": "catalog:"
   },
   "peerDependencies": {
-    "@devp0nt/route0": "catalog:",
-    "@devp0nt/flat0": "catalog:",
+    "@1gr14/route0": "catalog:",
+    "@1gr14/flat": "catalog:",
     "@point0/compiler": "workspace:*",
     "@point0/core": "workspace:*",
     "@tanstack/react-query": "catalog:",
@@ -194,9 +194,9 @@
   "devDependencies": {
     "@types/source-map-support": "catalog:",
     "superjson": "catalog:",
-    "@devp0nt/error0": "catalog:",
-    "@devp0nt/flat0": "catalog:",
-    "@devp0nt/route0": "catalog:",
+    "@1gr14/error0": "catalog:",
+    "@1gr14/flat": "catalog:",
+    "@1gr14/route0": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "@types/react-dom": "catalog:",
