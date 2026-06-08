@@ -1,4 +1,4 @@
-import * as flat0 from '@1gr14/flat'
+import * as flat from '@1gr14/flat'
 import { Route0, type AnyLocation, type AnyRoute } from '@1gr14/route0'
 import type {
   AnyPoint,
@@ -333,7 +333,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           '#': _hash,
           ...params
-        } = flat0.parse(flat0.stringify(inputProvided)) as Record<string, unknown>
+        } = flat.parse(flat.stringify(inputProvided)) as Record<string, unknown>
         return {
           search: search || {},
           params: params,

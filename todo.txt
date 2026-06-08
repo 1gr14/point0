@@ -1,12 +1,8 @@
-soucemap client
-
-client bundle size (25mb on client, is ok?)
+flat
+getRequqestWeak → ?
 
 Разобрать с пейдж квери дигидрейтед стейтом плюс тесты
 
-flat
-
-getRequqestWeak → ?
 
 
 

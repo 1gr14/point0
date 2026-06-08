@@ -1,4 +1,4 @@
-import * as flat0 from '@1gr14/flat'
+import * as flat from '@1gr14/flat'
 import type {
   AnyLocation,
   AnyRoute,
@@ -3704,8 +3704,8 @@ export class Point0<
                 | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
             ]
         : [] // The result is the same point, advanced one stage. Every type arg below is this point's current
-    // state passed through UNCHANGED — only the last two (inner props, queries) are recomputed, since
-  ) // `with` is the only thing that can add props or queries. They're the two interesting positions.
+    // `with` is the only thing that can add props or queries. They're the two interesting positions.
+  ) // state passed through UNCHANGED — only the last two (inner props, queries) are recomputed, since
   : NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -8402,7 +8402,7 @@ export class Point0<
       if (this.type !== 'page' && this.type !== 'layout') {
         return { params: {}, search: {} }
       }
-      const fixedInput = flat0.parse(flat0.stringify(input)) as InputRaw
+      const fixedInput = flat.parse(flat.stringify(input)) as InputRaw
       const { '?': search = {}, ...params } = fixedInput as {
         '?': InputRaw | undefined
         [key: string]: unknown
@@ -8707,7 +8707,7 @@ export class Point0<
       }
       if (isFormData) {
         const formData = new FormData()
-        const flattened = flat0.serialize(bodyTransformed)
+        const flattened = flat.serialize(bodyTransformed)
         for (const [key, value] of Object.entries(flattened)) {
           if (value instanceof File || value instanceof Blob) {
             formData.append(key, value)
@@ -10891,7 +10891,7 @@ export class Point0<
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { '?': _search, ...paramsRaw } = input as Record<string, unknown>
-    const paramsWithStrings = flat0.parse(flat0.stringify(paramsRaw))
+    const paramsWithStrings = flat.parse(flat.stringify(paramsRaw))
     const location = Object.assign(
       Route0.getLocation(
         this.route.get(input, { origin: typeof window !== 'undefined' ? window.location.origin : undefined }),
@@ -11236,7 +11236,7 @@ export class Point0<
     inputRaw: TInputRaw
   }): TInputRaw => {
     if (this.type === 'page' || this.type === 'layout') {
-      const { '?': searchRaw = {}, ...paramsRaw } = flat0.parse(flat0.stringify(inputRaw)) as {
+      const { '?': searchRaw = {}, ...paramsRaw } = flat.parse(flat.stringify(inputRaw)) as {
         '?': Record<string, unknown> | undefined
         [key: string]: unknown
       }
@@ -11269,8 +11269,8 @@ export class Point0<
         search: InputRaw
         body: InputRaw | undefined
       }
-      const paramsWithStrings = flat0.parse(flat0.stringify(paramsRaw))
-      const searchWithStrings = flat0.parse(flat0.stringify(searchRaw))
+      const paramsWithStrings = flat.parse(flat.stringify(paramsRaw))
+      const searchWithStrings = flat.parse(flat.stringify(searchRaw))
       const paramsKeysCount = Object.keys(paramsWithStrings).length
       const searchKeysCount = Object.keys(searchWithStrings).length
       return {

@@ -1,4 +1,4 @@
-import * as flat0 from '@1gr14/flat'
+import * as flat from '@1gr14/flat'
 import type {
   AnyLocation,
   AnyRouteOrDefinition,
@@ -587,16 +587,16 @@ export const setSearch: SetSearchHelper = (next, options) => {
   const helpers = getNavigationHelpers()
   const location = getLocation()
   // Object form replaces the whole query; the updater form gets the current raw
-  // query and returns the full next one (spread `prev` to patch). `flat0.stringify`
+  // query and returns the full next one (spread `prev` to patch). `flat.stringify`
   // already drops `undefined` values, so a removed key just disappears.
   const nextValues = typeof next === 'function' ? next(location.search) : next
-  const searchString = flat0.stringify(nextValues)
+  const searchString = flat.stringify(nextValues)
   // Skip a redundant write when the query is unchanged (same values, or an
-  // identity updater): comparing the canonical `flat0` form of both sides — not
+  // identity updater): comparing the canonical `flat` form of both sides — not
   // the raw `searchString`, whose encoding/order may differ — avoids a no-op
   // history entry and re-render. pathname + hash come from the current location
   // and never change here, so an unchanged query means an identical URL.
-  if (searchString === flat0.stringify(location.search)) {
+  if (searchString === flat.stringify(location.search)) {
     return
   }
   const to = `${location.pathname}${searchString ? `?${searchString}` : ''}${location.hash || ''}`
@@ -605,7 +605,7 @@ export const setSearch: SetSearchHelper = (next, options) => {
 
 // Returns `[search, setSearch]`. Single generic: whatever type you pass is what
 // you get for both — no schema parsing or point inference, the caller owns the
-// type. (`search` here is the generically-parsed query object — `flat0.parse` of
+// type. (`search` here is the generically-parsed query object — `flat.parse` of
 // the query string — so its values are raw strings/arrays, NOT coerced by any
 // schema; the schema-typed, coerced search is the page/layout `search` prop.)
 export const useSearch = <TSearch = UnknownSearchParsed,>(): [TSearch, SetSearchHelper<TSearch>] => {

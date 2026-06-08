@@ -1,4 +1,4 @@
-import * as flat0 from '@1gr14/flat'
+import * as flat from '@1gr14/flat'
 import nodePath from 'node:path'
 import * as React from 'react'
 import { Route0, type AnyLocation, type AnyRoute, type ExactLocation, type KnownLocation } from '@1gr14/route0'
@@ -177,7 +177,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             acc[key] = typeof value === 'string' ? (transform ? JSON.parse(value) : value) : value
             return acc
           }, {})
-          const unflattened = flat0.deserialize(parsed)
+          const unflattened = flat.deserialize(parsed)
           return unflattened
         }
         const rawBody = request.rawBody !== undefined ? request.rawBody : await request.original.text()
