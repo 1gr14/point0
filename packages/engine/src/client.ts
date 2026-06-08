@@ -1213,7 +1213,10 @@ try {
         ...loadedViteConfig.build,
         outDir: buildPaths.outdir,
         minify: NODE_ENV === 'production' ? (loadedViteConfig.build?.minify ?? 'esbuild') : false,
-        sourcemap: loadedViteConfig.build?.sourcemap ?? true,
+        // Mirror the Bun client build: in prod emit *hidden* external `.map` files (separate file,
+        // no `//# sourceMappingURL=` comment in the bundle) — uploadable to Sentry, never auto-fetched
+        // by browsers, no source leak. Dev keeps inline-style maps for in-place debugging.
+        sourcemap: loadedViteConfig.build?.sourcemap ?? (NODE_ENV === 'production' ? 'hidden' : true),
         rolldownOptions: {
           ...loadedViteConfig.build?.rolldownOptions,
           input: buildPaths.indexHtml,

@@ -754,6 +754,13 @@ export class Engine<
     })
     const { generate = true, side, scope, clean = true, publicdir } = options ?? {}
     normalizeAndValidateNodeEnv('production')
+    if (process.env.NODE_ENV !== 'production') {
+      this.log({
+        level: 'warn',
+        category: ['build'],
+        message: `Building with NODE_ENV=${process.env.NODE_ENV}, not "production": the client gets inline sourcemaps and unminified bundles. Intentional? If not, set NODE_ENV=production`,
+      })
+    }
 
     if (generate) {
       await this.generator.sync({ logOnNotWritten: true })
