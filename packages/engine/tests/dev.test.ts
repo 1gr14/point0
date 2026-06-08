@@ -1,5 +1,7 @@
 import assert from 'assert'
+import { readdirSync } from 'node:fs'
 import { rename, rm } from 'node:fs/promises'
+import nodePath from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { Engine } from '../src/engine.js'
 import { resolveServerHotStoreDir } from '../src/server-hot-store.js'
@@ -869,6 +871,231 @@ export const page2 = root.lets('page', 'page2', '/2')
       }),
       {
         retry: 1,
+        timeout: 90000,
+      },
+    )
+
+    it(
+      'survives a syntax error in a hot file and recovers on fix — same process, no teardown (infinite dev)',
+      wrp({ ssr: true, vite: false }, async ({ tp }) => {
+        await tp.waitPortsFree()
+        await tp.write('src/lib/greeting.ts', `export const greeting = 'MARK_A'`)
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          import { greeting } from './lib/greeting.js'
+          export const page = root.lets('page', 'home', '/')
+            .loader(() => ({ pid: process.pid, mk: greeting }))
+            .page(({ data }) => <div id="probe">pid={data.pid} marker={data.mk}</div>)`,
+        )
+        tp.spawn(['bun', 'run', 'dev', '--hot'])
+        await tp.waitStarted()
+        const before = await waitFor(async () => {
+          const p = await probe(tp)
+          return p.marker === 'MARK_A' && p.pid ? p : undefined
+        }, 15000)
+
+        // Break a HOT file mid-development (the most common dev error). The compiler passes the broken code through into
+        // the store, so the NEXT request's per-request re-import of the store aggregator throws — but that's caught as a
+        // per-request failure (500), NOT a process crash, so the server process MUST stay up and the dev tree
+        // must NOT tear down. This is the "development goes on forever" guarantee.
+        await tp.write('src/lib/greeting.ts', `export const greeting = 'MARK_B' this is a syntax error (`)
+        await waitFor(async () => {
+          const p = await probe(tp)
+          return p.marker === undefined ? true : undefined // erroring while broken
+        }, 15000)
+        expect(tp.output).not.toContain('Tearing down dev')
+
+        // Fix it — the server recovers by re-importing the now-valid store, WITHOUT a restart (same pid).
+        await tp.write('src/lib/greeting.ts', `export const greeting = 'MARK_C'`)
+        const recovered = await waitFor(async () => {
+          const p = await probe(tp)
+          return p.marker === 'MARK_C' && p.pid ? p : undefined
+        }, 25000)
+        expect(recovered.pid).toBe(before.pid) // never restarted — a true hot recovery
+        expect(tp.output).not.toContain('Tearing down dev')
+      }),
+      {
+        retry: 1,
+        timeout: 90000,
+      },
+    )
+
+    it(
+      'hot-swaps a real import cycle (a<->b) without a ./undefined regression — SCC hashing end-to-end',
+      wrp({ ssr: true, vite: false }, async ({ tp }) => {
+        await tp.waitPortsFree()
+        // a and b import each other (functions → no TDZ): a genuine strongly-connected component. The store must hash
+        // {a,b} as ONE unit and rewrite their mutual imports to real store names — the regression this guards against is
+        // the old topo-DFS emitting `'./undefined'` for the not-yet-hashed cyclic dep (→ child crashes importing it).
+        await tp.write(
+          'src/lib/a.ts',
+          `import { bMark } from './b.js'
+          export const aMark = () => 'A'
+          export const pair = () => 'MARK_' + aMark() + bMark()`,
+        )
+        await tp.write('src/lib/b.ts', `import { aMark } from './a.js'\nexport const bMark = () => 'B'`)
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          import { pair } from './lib/a.js'
+          export const page = root.lets('page', 'home', '/')
+            .loader(() => ({ pid: process.pid, mk: pair() }))
+            .page(({ data }) => <div id="probe">pid={data.pid} marker={data.mk}</div>)`,
+        )
+        tp.spawn(['bun', 'run', 'dev', '--hot'])
+        await tp.waitStarted()
+        expect(tp.output).toContain('hot-reload store ready')
+        const before = await waitFor(async () => {
+          const p = await probe(tp)
+          return p.marker === 'MARK_AB' && p.pid ? p : undefined
+        }, 15000)
+
+        // Edit one cycle member → the whole SCC re-hashes; SSR must reflect it with NO restart, proving the rewrite
+        // stayed consistent (a `./undefined` would have crashed the child instead).
+        await tp.replace('src/lib/b.ts', `'B'`, `'C'`)
+        const after = await waitFor(async () => {
+          const p = await probe(tp)
+          return p.marker === 'MARK_AC' ? p : undefined
+        }, 15000)
+        expect(after.pid).toBe(before.pid)
+        expect(tp.output).not.toContain('./undefined')
+        expect(tp.output).not.toContain('Tearing down dev')
+      }),
+      {
+        retry: 2,
+        timeout: 90000,
+      },
+    )
+
+    it(
+      'auto-externalizes an import.meta.url hot node (runs cold; edit restarts, not hot-swaps)',
+      wrp({ ssr: true, vite: false }, async ({ tp }) => {
+        await tp.waitPortsFree()
+        // A location-relative `import.meta.url` can't be flattened (it would resolve to the store dir), so the store must
+        // AUTO-EXTERNALIZE this node — load it from its real path and treat an edit as a RESTART, not a hot-swap.
+        await tp.write(
+          'src/lib/meta.ts',
+          `const here = import.meta.url
+          export const tag = here.length > 0 ? 'COLD_A' : 'COLD_Z'`,
+        )
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          import { tag } from './lib/meta.js'
+          export const page = root.lets('page', 'home', '/')
+            .loader(() => ({ pid: process.pid, cold: tag }))
+            .page(({ data }) => <div id="probe">pid={data.pid} cold={data.cold}</div>)`,
+        )
+        tp.spawn(['bun', 'run', 'dev', '--hot'])
+        await tp.waitStarted()
+        expect(tp.output).toContain("can't be flattened") // the auto-externalization notice
+        expect(tp.output).toContain('meta.ts')
+        const before = await waitFor(async () => {
+          const p = await probe(tp)
+          return p.cold === 'COLD_A' && p.pid ? p : undefined
+        }, 15000)
+
+        // The externalized file is cold → editing it must FULL-restart the child (new pid), not hot-swap.
+        await tp.replace('src/lib/meta.ts', 'COLD_A', 'COLD_B')
+        const after = await waitFor(async () => {
+          const p = await probe(tp)
+          return p.cold === 'COLD_B' ? p : undefined
+        }, 20000)
+        expect(after.pid).not.toBe(before.pid)
+        expect(tp.output).toContain('Server restarting')
+      }),
+      {
+        retry: 2,
+        timeout: 90000,
+      },
+    )
+
+    it(
+      'recovers a --hot session started on an ALREADY-broken hot file (no teardown; boots on fix)',
+      wrp({ ssr: true, vite: false }, async ({ tp }) => {
+        await tp.waitPortsFree()
+        // Start `--hot` with a hot file that is ALREADY broken: the store builds (the compiler passes the broken code
+        // through), the child crashes importing it before binding the port. The dev tree must STAY ALIVE (no teardown),
+        // and once fixed the never-booted child must RESPAWN and serve — closing the "server silently dead" gap (H1).
+        await tp.write('src/lib/dep.ts', `export const mk = 'COLD_A' this is a syntax error (`)
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          import { mk } from './lib/dep.js'
+          export const page = root.lets('page', 'home', '/')
+            .loader(() => ({ pid: process.pid, cold: mk }))
+            .page(({ data }) => <div id="probe">pid={data.pid} cold={data.cold}</div>)`,
+        )
+        tp.spawn(['bun', 'run', 'dev', '--hot'])
+        // The server never comes up while the file is broken…
+        await waitFor(async () => ((await probe(tp)).pid === undefined ? true : undefined), 15000)
+        await new Promise((r) => setTimeout(r, 1500)) // …and crucially the dev tree does NOT tear down.
+        expect(tp.output).not.toContain('Tearing down dev')
+
+        // Fix it → the never-booted child respawns and serves for the first time. We re-save on a SLOW cadence (every
+        // few seconds, well above the child's boot time so we never kill a booting child): in this monorepo the watch
+        // tree spans the workspace packages (they aren't under node_modules), so the file watcher's initial subscription
+        // can lag the first save and miss it — a real app (graph = just its own `src`) subscribes instantly.
+        let recovered: { pid?: string; cold?: string } | undefined
+        for (let attempt = 0; attempt < 5 && !recovered; attempt++) {
+          await tp.write('src/lib/dep.ts', `export const mk = 'COLD_A'`)
+          recovered = await waitFor(async () => {
+            const p = await probe(tp)
+            return p.cold === 'COLD_A' && p.pid ? p : undefined
+          }, 6000).catch(() => undefined)
+        }
+        expect(recovered?.pid).toBeTruthy()
+        expect(tp.output).not.toContain('Tearing down dev')
+      }),
+      {
+        retry: 1,
+        timeout: 120000,
+      },
+    )
+
+    it(
+      'GCs the store dir so it stays bounded across many hot edits',
+      wrp({ ssr: true, vite: false }, async ({ tp }) => {
+        await tp.waitPortsFree()
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          export const page = root.lets('page', 'home', '/')
+            .loader(() => ({ pid: process.pid }))
+            .page(() => <div id="probe">marker=MARK_0</div>)`,
+        )
+        // grace=0 → each rebuild reclaims the previous build's now-stale store files immediately (the test probes
+        // between edits, so the child has already cached each build's modules — deleting the disk file is safe).
+        tp.spawn(['bun', 'run', 'dev', '--hot'], { env: { ...process.env, POINT0_DEV_SERVER_HOT_GC_GRACE_MS: '0' } })
+        await tp.waitStarted()
+
+        // The store dir is keyed by `<scope>-<port>` and lives next to the engine package (resolved from the child's
+        // cwd, not the test project). This run's dir is `root-<serverPort>`; count the `page_*` store files in it.
+        const storeDir = nodePath.join(__dirname, '..', 'node_modules', '.cache', 'server-hot', `root-${tp.serverPort}`)
+        const countPageStoreFiles = (): number => {
+          try {
+            return readdirSync(storeDir).filter((f) => f.startsWith('page_') && f.endsWith('.tsx')).length
+          } catch {
+            return 0
+          }
+        }
+
+        await waitFor(async () => ((await probe(tp)).marker === 'MARK_0' ? true : undefined), 15000)
+        // Edit the same page many times. Each edit re-hashes it into a NEW `page_*` store file; WITHOUT GC the dir would
+        // accumulate one stale `page_*` per edit. WITH GC only the live version(s) remain.
+        for (let i = 1; i <= 8; i++) {
+          await tp.replace('src/page.tsx', `MARK_${i - 1}`, `MARK_${i}`)
+          await waitFor(async () => ((await probe(tp)).marker === `MARK_${i}` ? true : undefined), 15000)
+        }
+        // 8 edits with no GC ⇒ ≥9 stale `page_*` files; with GC only the live version(s) remain. The `>= 1` guards
+        // against a false pass if the dir path were wrong (it would read 0).
+        const pageFiles = countPageStoreFiles()
+        expect(pageFiles).toBeGreaterThanOrEqual(1)
+        expect(pageFiles).toBeLessThan(9)
+      }),
+      {
+        retry: 2,
         timeout: 90000,
       },
     )

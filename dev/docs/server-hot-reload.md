@@ -58,23 +58,26 @@ falls back to the env var. Off by default. Under the hood:
   manifest hook.
 
 Proof: the live `point0 dev` run (page edit → `store v2`, no `Server started`;
-`prisma.ts` edit → `Server restarting` + a new `Server started`) + **14
-automated tests** in `packages/engine/tests/dev.test.ts` →
-`describe('server hot reload (bun-native, --hot)')`: a point edit keeps the
+`prisma.ts` edit → `Server restarting` + a new `Server started`) + the automated
+suite in `packages/engine/tests/dev.test.ts` →
+`describe('server hot reload (bun-native, --hot)')` (plus the pure-unit
+`server-hot-store.unit.test.ts` for the SCC primitive): a point edit keeps the
 server `process.pid` (hot-swap, no restart) while a `@point0/core/cold` edit
 changes it (restart). The full bun + vite `dev.test.ts` suite stays green (no
 regression to the default restart-based dev).
 
-The 14 cover: a page edit (hot-swap, pid stable), a `@point0/core/cold` marker
-edit (restart), a config-glob cold file (restart), cold/boot syntax-error
+The suite covers: a page edit (hot-swap, pid stable), a `@point0/core/cold`
+marker edit (restart), a config-glob cold file (restart), cold/boot syntax-error
 keep-alive + recovery, a layout + server loader + shared-lib cascade + page all
 hot-swapping, a **mutation** hot-resolving (a button click returns the edited
 value, pid stable), a **brand-new page file** added at runtime (route served
 automatically), an **`.mdx` page body** edit (hot-swap, pid stable), a **file
 deletion** (route drops, dev tree alive), a **file rename** keeping the same
-route (route keeps serving), **per-port store-dir isolation** (two dev processes
-on one folder with different ports get disjoint stores), and the three
-interaction tests below.
+route, **per-port store-dir isolation**, a **real import cycle** (`a ↔ b`)
+hot-swapping with no `./undefined` regression (SCC hashing end-to-end), an
+**`import.meta.url` node auto-externalizing** (runs cold; edit restarts), a
+**`--hot` session started on an already-broken hot file** recovering (no
+teardown; boots on fix), and the three interaction tests below.
 
 ### User babel plugins & importer rules × the hot store
 
@@ -113,6 +116,23 @@ and fixing the file recovers it (proven by `dev.test.ts`). A hot-file compile
 error is caught separately and keeps the previous store. The store also skips
 rewriting unchanged files (content-hash names), so a rebuild never bumps a
 watched file's mtime.
+
+Two more recovery paths make "infinite dev" hold even at startup (never a forced
+`point0 dev` re-run for a typo):
+
+- **Initial store build fails** (an un-flattenable import in an aggregator; a
+  compile error that throws) → the orchestrator logs the cause and stays alive
+  with the server child **deferred** (`storeReady=false`); the watcher retries
+  the build on each save and starts the server the moment it succeeds.
+- **`--hot` started on an already-broken hot file** → the store builds (the
+  compiler passes broken code through), so the child crashes importing it before
+  binding the port. The orchestrator tracks whether the child ever **booted**
+  (it scrapes the `Server started http…` line): a never-booted child that exits
+  is dropped **without** tearing the tree down (it's a fixable error, not a dead
+  tree), and the next save **respawns** it (a hot-swap can't revive a server
+  that never came up). Both are covered in `dev.test.ts`. Note: this leans on
+  the file watcher being subscribed before the fix — in a real app the watch
+  tree is just `src` (node_modules excluded), so that's instant.
 
 ### Known follow-ups (MVP cut)
 
@@ -301,8 +321,13 @@ propagated from cold roots along static-import edges and halted at lazy
 2. **Content-addressed point store.** Compile each source file via the compiler
    (`built:false`), write under a **content-hash name**, rewrite **relative** +
    `@/` specifiers to hashed names. **Bare** specifiers (`react`, `@prisma/*`,
-   `@point0/*`) are left alone → cached singletons. Hash topologically so a
-   change cascades only **up** the importer chain.
+   `@point0/*`) are left alone → cached singletons. Hash per
+   **strongly-connected component, dependency-first** (a plain topological order
+   doesn't exist with import cycles): each SCC is hashed as one unit so a change
+   cascades **up** the importer chain and intra-cycle imports still rewrite to
+   consistent, resolvable names. The store filename carries a per-file relpath
+   hash so two paths that sanitize alike can't collide. (Implemented:
+   `stronglyConnectedComponents` + `buildHot` in `server-hot-store.ts`.)
 3. **Re-import on change.** The engine already re-imports points per request
    (`readPoints`, `server.ts:342`). Point it at the **current aggregator hash**
    (a manifest the builder updates). On a watched change (reuse the existing
@@ -322,8 +347,17 @@ propagated from cold roots along static-import edges and halted at lazy
 
 ### Open questions / verify during implementation
 
-- **Memory growth:** old module versions stay cached (dev-only; acceptable —
-  optionally GC via an occasional respawn after N updates).
+- **Unbounded growth — RESOLVED.** Two mechanisms bound a long session: (1)
+  **disk** — `ServerHotStore` mark-and-sweeps its dir after every build,
+  deleting store files no longer referenced by the current manifest that have
+  been stale past a grace window (`POINT0_DEV_SERVER_HOT_GC_GRACE_MS`, default
+  30s; the grace guards a concurrent child first-import). (2) **memory** — the
+  child's Bun module cache keeps every superseded hot-swapped version (no
+  eviction API), so every Nth booted hot reload the orchestrator restarts
+  instead of hot-swapping to release them
+  (`POINT0_DEV_SERVER_HOT_RESTART_EVERY`, default 200, 0 = off). Disk GC is
+  unit-tested (`sweepStaleStoreFiles`) and e2e-tested (dir stays bounded across
+  many edits).
 - **Asset imports** (png/svg) inside points — **confirmed needed by exp9**
   (`home.tsx` imports `test.png`, `icon.svg`): a flattened store file can't
   resolve `../assets/*`. Reuse the existing `bun-plugin-dev-ssr-fix-assets`
@@ -336,13 +370,25 @@ propagated from cold roots along static-import edges and halted at lazy
   through the manifest, not a fresh entry). All-hot applies to the user's
   source; the **unswappable cold set (Prisma's client) is externalized to its
   real path**, not flattened.
-- **How to pick the cold/externalize set** — **DECIDED: the declarative
-  `@point0/core/cold` marker** (not an auto-detect heuristic — that's the "wild
-  crutch" we want to avoid; it misfires silently and is undebuggable). Explicit,
-  predictable, consistent with `@point0/core/client-only`; cold logic lives in
-  ONE place (the store builder). **Proven in exp9:** declaring `lib/prisma.ts`
-  cold externalizes its whole downward subtree (the Prisma client) → store
-  builds with **0 misses**. Marking one file is enough.
+- **How to pick the cold/externalize set** — **DECIDED & SHIPPED: explicit
+  markers FIRST, automatic externalization as a safety net.** Cold roots come
+  from three sources, all in ONE place (the store builder): (1) the declarative
+  `@point0/core/cold` marker; (2) the `server.importer.cold` glob; (3) AUTO — a
+  node the store provably **cannot** flatten: a location-relative `import.meta`
+  (`.url`/`.dir`/… → would resolve to the store dir), or one left with an
+  un-rewritable relative import after the rewrite pass (a "miss", e.g. a
+  generated client's `./enums` dir / wasm). The original worry — that an
+  auto-detect heuristic is a "wild crutch" that misfires _silently_ — is
+  addressed by making auto-externalization **loud and grounded**: it triggers
+  only on a provable un-flattenability (not a guess), and every
+  auto-externalized file is **logged** at startup
+  (`N file(s) can't be flattened — running cold`). This keeps zero-config
+  `--hot` working on a real app (Prisma client + engine config externalize
+  themselves) without forcing the user to hand-mark every generated/infra file.
+  An explicit `@point0/core/cold` marker still works and is preferred when you
+  _want_ a subtree cold deliberately. **Proven in exp9 + the игрич site:**
+  Prisma's client externalizes (whether marked or auto) → store builds with **0
+  misses**.
 - **Client dev is unaffected** — separate path; this is server-only.
 
 ## Pointers

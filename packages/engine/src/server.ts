@@ -751,11 +751,43 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     // a hot-swap; anything else is a restart) and version counter; the first build cleans the dir (no child is serving
     // yet), rebuilds leave files in place so none disappears under a concurrent request — the atomic manifest swap
     // flips the live aggregators. See ServerHotStore.
+    // Hot mode initial store build. A failure here (a compile error in the points graph; an un-flattenable import in an
+    // aggregator) must NOT tear the dev tree down — that would break "infinite dev" (you'd re-run `point0 dev` for every
+    // typo). Instead mirror what `bun --watch` does for a crashing boot entry: log the cause and keep the orchestrator +
+    // file watcher ALIVE, DEFERRING the server child until a save fixes the build. `storeReady` gates the first spawn;
+    // the watcher below retries the build on every change and starts the server the moment it succeeds. (Non-hot dev has
+    // no store, so it's always "ready" and spawns immediately — bun --watch keeps a crashing child alive on its own.)
+    let storeReady = true
     if (hotStore) {
-      hotStore.rebuild() // initial build must succeed before the first spawn
+      try {
+        hotStore.rebuild() // first build; on success the child reads a valid manifest
+      } catch (error) {
+        storeReady = false
+        this.log({
+          level: 'error',
+          category: ['server'],
+          message: 'Server hot-reload store build failed — fix the error and save; the server will start automatically',
+          error,
+        })
+      }
     }
 
+    // Per-entry "did the child actually finish booting (bind its port)?" — scraped from the child's own startup log
+    // (see EngineServer.serve, which logs `Server started http://…`). A child that CRASHES during boot — e.g. `--hot`
+    // was started while a hot file had a syntax error, so the child throws importing the store before `Bun.serve` —
+    // never logs this. The hot-node watcher branch reads it: a fix to a never-booted server must RESPAWN it (re-boot
+    // against the rebuilt store), not hot-swap a server that never came up. Reset to false on every (re)spawn.
+    const SERVER_STARTED_MARKER = 'Server started http'
+    const bootedByEntry = new Map<string, boolean>()
+    // Memory GC backstop: a hot-swap leaves the child's superseded module versions in Bun's cache forever (no eviction
+    // API), so a very long session's heap creeps up. Every Nth booted hot reload we restart instead of hot-swapping to
+    // release them — the disk store is GC'd continuously (ServerHotStore sweep), this bounds the in-memory side. Default
+    // 200 (a brief restart roughly every 200 edits); `POINT0_DEV_SERVER_HOT_RESTART_EVERY=0` disables it.
+    const HOT_RESTART_EVERY = Number(process.env.POINT0_DEV_SERVER_HOT_RESTART_EVERY ?? 200)
+    let hotReloadsSinceRespawn = 0
+
     const spawnEntry = (entryFile: string): Bun.Subprocess<'ignore', 'pipe', 'pipe'> => {
+      bootedByEntry.set(entryFile, false)
       const child = Bun.spawn({
         cmd: ['bun', 'run', '--no-orphans', ...(watch ? ['--watch'] : []), ...bunRunArgs, entryFile],
         env: {
@@ -771,22 +803,47 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         if (intentionalKills.delete(child) || isDevShuttingDown()) {
           return
         }
-        // A core child died on its own (crash, or an agent freeing its port). The dev tree lives and dies as one
+        // Hot mode: a child that exits WITHOUT ever having booted (it never logged that it bound the port) crashed
+        // DURING boot — almost always importing a store built from a file that was broken at `--hot` startup. That's a
+        // fixable code error, not a dead tree: don't tear down. Drop the corpse and leave the watcher to respawn it on
+        // the fix (its hot-node branch sees `bootedByEntry=false` and restarts). The `=== child` guard ignores a stale
+        // exit from an already-replaced child. (A child that HAD booted and then died IS a real crash → tear down.)
+        if (hotStore && bootedByEntry.get(entryFile) === false && childByEntry.get(entryFile) === child) {
+          childByEntry.delete(entryFile)
+          this.log({
+            level: 'error',
+            category: ['server'],
+            message: `Server failed to boot (entry "${nodePath.relative(cwd, entryFile)}", code ${String(code)}) — fix the error and save; it will start automatically.`,
+          })
+          return
+        }
+        // A booted child died on its own (crash, or an agent freeing its port). The dev tree lives and dies as one
         // unit, so tear the rest down rather than leave a half-alive tree behind.
         requestDevShutdown({
           reason: `Server dev process exited unexpectedly (entry "${nodePath.relative(cwd, entryFile)}", code ${String(code)}). Tearing down dev.`,
           log: this.log,
         })
       })
-      pipeStreamStripped({ stream: child.stdout, target: process.stdout })
+      pipeStreamStripped({
+        stream: child.stdout,
+        target: process.stdout,
+        onChunk: (raw) => {
+          if (!bootedByEntry.get(entryFile) && raw.includes(SERVER_STARTED_MARKER)) bootedByEntry.set(entryFile, true)
+        },
+      })
       pipeStreamStripped({ stream: child.stderr, target: process.stderr })
       return child
     }
 
     const childByEntry = new Map<string, Bun.Subprocess<'ignore', 'pipe', 'pipe'>>()
-    for (const entryFile of activeEntries) {
-      childByEntry.set(entryFile, spawnEntry(entryFile))
+    const spawnAll = (): void => {
+      // Idempotent: skip an entry that already has a live child (so a cross-watcher race during recovery can't double-spawn).
+      for (const entryFile of activeEntries) {
+        if (!childByEntry.has(entryFile)) childByEntry.set(entryFile, spawnEntry(entryFile))
+      }
     }
+    // When the hot store failed its first build, hold the spawn — the watcher starts the server once a save fixes it.
+    if (storeReady) spawnAll()
 
     if (!watch) {
       return
@@ -796,8 +853,26 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       resolved.pathResolved === undefined || resolved.pathResolved.includes('/node_modules/')
     const userPatterns = Array.isArray(watch) ? watch : []
 
-    const collectEntryPatterns = (entryFile: string): string[] =>
-      collectImportGraphPatterns({ compiler, entries: [entryFile], userPatterns, skip: skipImport })
+    const collectEntryPatterns = (entryFile: string): string[] => {
+      try {
+        return collectImportGraphPatterns({ compiler, entries: [entryFile], userPatterns, skip: skipImport })
+      } catch {
+        // A compile error somewhere in the import graph can break the deep walk. Fall back to the user patterns plus the
+        // entry's own directory tree so we still SEE the fix; the next successful rebuild restores the precise watch set.
+        return [...userPatterns, nodePath.join(nodePath.dirname(entryFile), '**', '*')]
+      }
+    }
+    // Watch set for an entry. Precise (import-graph) once the server is CONFIRMED UP; otherwise watch the whole app
+    // source tree. "Not up" covers both a failing store build (`storeReady === false`) and a child that crashed at boot
+    // (`bootedByEntry` false) — in either state the precise import-graph walk can't be trusted to include the file that
+    // will FIX it (a not-yet-resolvable import, or a node whose unparsed subtree the walk silently skipped), and missing
+    // that file means the fix is never seen and the server never recovers. Narrow to precise only once it's serving.
+    const watchPatterns = (entryFile: string): string[] => {
+      const precise = collectEntryPatterns(entryFile)
+      const serverUp = storeReady && bootedByEntry.get(entryFile) === true
+      if (!serverUp && devStore) return [...precise, nodePath.join(devStore.appSrcDir, '**', '*')]
+      return precise
+    }
 
     const touchEntry = async (entryFile: string): Promise<void> => {
       const original = await nodeFs.readFile(entryFile)
@@ -822,7 +897,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     const restartEntry = useTouch ? touchEntry : respawnEntry
 
     for (const entryFile of activeEntries) {
-      const initialPatterns = collectEntryPatterns(entryFile)
+      const initialPatterns = watchPatterns(entryFile)
       if (initialPatterns.length === 0) {
         continue
       }
@@ -830,12 +905,51 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       await watcher.start({
         onEvent: async (event) => {
           const changed = event.path.split('?', 1)[0] as string
-          // Hot swap: the changed file is a hot store node — rebuild the store, keep the stable child running.
+          // Recovery: the hot store's first build failed, so no server is running yet (storeReady=false). Retry on every
+          // save; the moment the build succeeds, start the server child(ren) for the first time. Until then stay alive
+          // and keep watching — never tear the dev tree down for a fixable error.
+          if (hotStore && !storeReady) {
+            try {
+              hotStore.rebuild()
+              storeReady = true
+              this.log({
+                level: 'info',
+                category: ['server'],
+                message: `Server hot-reload store recovered — starting server (fixed: ${nodePath.relative(this.cwd, changed)})`,
+              })
+              spawnAll()
+            } catch (error) {
+              this.log({
+                level: 'error',
+                category: ['server'],
+                message: `Server hot-reload store still failing — fix the error and save again`,
+                error,
+              })
+            }
+            await watcher.restart({ cwd, patterns: watchPatterns(entryFile) })
+            return
+          }
+          // Hot swap: the changed file is a hot store node. Rebuild the store; normally the stable child re-imports the
+          // fresh aggregator on its next request — no restart. BUT if that child never finished booting (it crashed
+          // importing a then-broken store at `--hot` startup), a hot-swap revives nothing: RESPAWN it so it re-boots
+          // against the now-rebuilt store. This closes the "started --hot on a broken hot file → server silently dead"
+          // gap while keeping a true zero-restart hot-swap for the normal (already-booted) case.
           if (hotStore?.isHotNode(changed)) {
+            const booted = bootedByEntry.get(entryFile) ?? false
+            if (booted) hotReloadsSinceRespawn++
+            // Restart instead of hot-swapping when EITHER the child never booted (failed-boot recovery — a hot-swap
+            // can't revive a server that never came up) OR we've hit the periodic memory-GC threshold.
+            const gcRestart = booted && HOT_RESTART_EVERY > 0 && hotReloadsSinceRespawn >= HOT_RESTART_EVERY
+            if (gcRestart) hotReloadsSinceRespawn = 0
+            const willRestart = !booted || gcRestart
             this.log({
               level: 'info',
               category: ['server'],
-              message: `Server hot reloading... (changed: ${nodePath.relative(this.cwd, changed)})`,
+              message: !booted
+                ? `Server recovering a failed boot — restarting... (changed: ${nodePath.relative(this.cwd, changed)})`
+                : gcRestart
+                  ? `Server hot reload: periodic restart to release the module cache (every ${HOT_RESTART_EVERY} reloads)`
+                  : `Server hot reloading... (changed: ${nodePath.relative(this.cwd, changed)})`,
             })
             try {
               hotStore.rebuild()
@@ -847,7 +961,19 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
                 error,
               })
             }
-            await watcher.restart({ cwd, patterns: collectEntryPatterns(entryFile) })
+            if (willRestart) {
+              try {
+                await restartEntry(entryFile)
+              } catch (error) {
+                this.log({
+                  level: 'error',
+                  category: ['server'],
+                  message: `Failed to restart entry ${nodePath.relative(this.cwd, entryFile)}`,
+                  error,
+                })
+              }
+            }
+            await watcher.restart({ cwd, patterns: watchPatterns(entryFile) })
             return
           }
           // Full restart: cold-marker subtree, the boot entry, or any file not in the hot store.
@@ -881,7 +1007,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
               })
             }
           }
-          await watcher.restart({ cwd, patterns: collectEntryPatterns(entryFile) })
+          await watcher.restart({ cwd, patterns: watchPatterns(entryFile) })
         },
         onError: async (error) => {
           this.log({

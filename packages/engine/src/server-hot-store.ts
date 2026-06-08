@@ -17,10 +17,13 @@
 // aggregators per request (gated by manifest hash) -> hot content with no React tear (react/@point0/@prisma stay BARE
 // -> same cached singletons).
 //
-// COLD (a file that imports `@point0/core/cold`, propagated DOWNWARD through static imports): NOT flattened. A hot
-// file's import of a cold target is rewritten to the cold file's ABSOLUTE real path, so it loads once at its real
-// location (its own `../` / wasm / `import.meta` intact, via the stable process's compiler plugin) and stays a cached
-// singleton. Editing a cold file => full restart. Proven necessary by exp9: Prisma's generated client can't be flattened.
+// COLD (NOT flattened — loaded once from its real path, propagated DOWNWARD through in-app import edges): a hot file's
+// import of a cold target is rewritten to the cold file's ABSOLUTE real path, so it loads at its real location (its own
+// `../` / wasm / `import.meta` intact, via the stable process's compiler plugin) and stays a cached singleton. Editing a
+// cold file => full restart. Cold roots come from THREE sources: (1) the in-file `@point0/core/cold` marker; (2) the
+// `server.importer.cold` glob; (3) AUTO — a node the store can't faithfully flatten: a location-relative `import.meta`
+// (.url/.dir/…, which would resolve to the store dir), or one left with an un-rewritable relative import after the
+// rewrite pass (a "miss"). Proven necessary by exp9: Prisma's generated client can't be flattened.
 //
 // ASSETS (png/svg/…): rewritten to the asset's absolute path for the MVP (resolvable; proper served
 // `/_point0/asset/<hash>` URLs via the existing dev-ssr-fix-assets transform come later).
@@ -32,7 +35,17 @@
 import type { Compiler } from '@point0/compiler'
 import { appendInlineSourceMap, FileResolver, isImporterColdPath, resolveCacheDirPath } from '@point0/compiler'
 import type { LogFn, PointsDefinitionSource } from '@point0/core'
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import nodePath from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -56,10 +69,13 @@ type ServerHotStoreBuildResult = {
     hotCount: number
     coldCount: number
     rewritten: number
+    /** Asset import sites rewritten to absolute paths (counts import sites, not distinct assets). */
     assets: Array<{ file: string; spec: string }>
-    /** Relative module specifiers still present after rewrite — must be EMPTY for a valid store (asserted). */
-    misses: Array<{ file: string; spec: string }>
     importMeta: string[]
+    /** Hot nodes the store could not flatten and auto-externalized (loaded from their real path; edit => restart). */
+    autoExternalized: string[]
+    /** Stale store files reclaimed by this build's GC sweep. */
+    gcDeleted: number
   }
 }
 
@@ -106,6 +122,107 @@ function sanitizeBase(abs: string, appSrcDir: string): string {
     .replace(/\.[^./]+$/, '')
     .replace(/point0/gi, 'p0')
     .replace(/[^a-zA-Z0-9]+/g, '_')
+}
+
+/**
+ * GC the content-addressed store dir: delete `.tsx` files that the CURRENT build no longer references (`keep`) AND that
+ * have been stale for at least `graceMs`. Without this the dir grows unbounded over a long dev session — every hot edit
+ * cascade-rehashes the changed file + its importers into NEW content-hashed files and the old versions just linger.
+ *
+ * The grace window is the safety margin against a concurrent child read: a request reads the manifest then dynamically
+ * imports the store files it points at, so a JUST-stale file might still be mid-first-import. A content-addressed
+ * file's mtime is fixed once written (unchanged files are never rewritten), so "stale for ≥ graceMs" means it dropped
+ * out of the live set at least `graceMs` ago — long after any in-flight import of it finished. Resilient: a file
+ * already gone or racing a write is skipped. Returns the count deleted. `now` is injected for testability.
+ */
+export function sweepStaleStoreFiles({
+  dir,
+  keep,
+  graceMs,
+  now,
+}: {
+  dir: string
+  keep: Set<string>
+  graceMs: number
+  now: number
+}): number {
+  let deleted = 0
+  let names: string[]
+  try {
+    names = readdirSync(dir)
+  } catch {
+    return 0
+  }
+  for (const name of names) {
+    if (keep.has(name) || !name.endsWith('.tsx')) continue
+    const full = nodePath.join(dir, name)
+    try {
+      if (statSync(full).mtimeMs < now - graceMs) {
+        unlinkSync(full)
+        deleted++
+      }
+    } catch {
+      // Already removed, or racing a write — skip; the next sweep catches it.
+    }
+  }
+  return deleted
+}
+
+/**
+ * Strongly-connected components of a directed graph, returned in DEPENDENCY-FIRST order: for a condensation edge A→B (A
+ * imports B), B's component is emitted before A's. Iterative Tarjan (no recursion → safe on a deep import graph). The
+ * hot store hashes each SCC as one unit, so import CYCLES (which have no plain topological order) still get consistent,
+ * fully-resolvable store names — see {@link ServerHotStore} `_build` phase 4.
+ */
+export function stronglyConnectedComponents(nodes: Iterable<string>, neighbors: (n: string) => string[]): string[][] {
+  let counter = 0
+  const index = new Map<string, number>()
+  const low = new Map<string, number>()
+  const onStack = new Set<string>()
+  const stack: string[] = []
+  const out: string[][] = []
+  for (const start of nodes) {
+    if (index.has(start)) continue
+    const work: Array<{ v: string; ns: string[]; i: number }> = [{ v: start, ns: neighbors(start), i: 0 }]
+    index.set(start, counter)
+    low.set(start, counter)
+    counter++
+    stack.push(start)
+    onStack.add(start)
+    while (work.length > 0) {
+      const frame = work[work.length - 1] as { v: string; ns: string[]; i: number }
+      if (frame.i < frame.ns.length) {
+        const w = frame.ns[frame.i] as string
+        frame.i++
+        if (!index.has(w)) {
+          index.set(w, counter)
+          low.set(w, counter)
+          counter++
+          stack.push(w)
+          onStack.add(w)
+          work.push({ v: w, ns: neighbors(w), i: 0 })
+        } else if (onStack.has(w)) {
+          low.set(frame.v, Math.min(low.get(frame.v) as number, index.get(w) as number))
+        }
+      } else {
+        if (low.get(frame.v) === index.get(frame.v)) {
+          const comp: string[] = []
+          for (;;) {
+            const w = stack.pop() as string
+            onStack.delete(w)
+            comp.push(w)
+            if (w === frame.v) break
+          }
+          out.push(comp)
+        }
+        work.pop()
+        const parent = work[work.length - 1]
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (parent) low.set(parent.v, Math.min(low.get(parent.v) as number, low.get(frame.v) as number))
+      }
+    }
+  }
+  return out
 }
 
 const IMPORT_SPECIFIER_RE = /import\(\s*['"`]([^'"`]+)['"`]\s*\)/
@@ -169,8 +286,13 @@ export class ServerHotStore {
   private readonly appSrcDir: string | undefined
   /** Each side's points-aggregator ORIGINAL abs path. Orchestrator: build entries. Child: manifest lookup keys. */
   private readonly aggregators = new Set<string>()
-  /** Monotonic build counter (orchestrator). Recorded in the manifest; `1` is the initial (cleaning) build. */
+  /** Monotonic build counter (orchestrator). Recorded in the manifest so the child can detect a new build. */
   private version = 0
+  /**
+   * True once a build has SUCCEEDED and cleaned the dir. Gates the one-time clean off success, not `version===1` — a
+   * failed first build (which threw before cleaning) must still clean on the next attempt rather than skip it.
+   */
+  private cleaned = false
   /** Orchestrator: the current hot store node set — a change to one is a hot-swap, anything else a restart. */
   private hotNodes = new Set<string>()
   /** Child: the manifest hash last successfully imported per aggregator, so an unchanged read is a cheap cache hit. */
@@ -207,24 +329,40 @@ export class ServerHotStore {
 
   // ----- orchestrator (build / watch) -----
 
-  /** (Re)build the content-addressed store from the registered aggregators. First build cleans the dir. */
+  /** (Re)build the content-addressed store from the registered aggregators. The first SUCCESSFUL build cleans the dir. */
   rebuild(): void {
     if (!this.compiler || !this.appSrcDir) {
       throw new Error('ServerHotStore.rebuild() requires a compiler + appSrcDir (orchestrator side only)')
     }
     this.version += 1
-    const result = this._build({ clean: this.version === 1, version: this.version })
+    // `clean` on the first SUCCESSFUL build (not `version===1`): if the first build throws before cleaning, the next
+    // attempt must still wipe any stale dir from a prior session rather than skip the clean.
+    const result = this._build({ clean: !this.cleaned, version: this.version })
+    this.cleaned = true
     this.hotNodes = new Set(result.order)
     const d = result.diagnostics
-    this.log({
-      level: 'info',
-      category: ['server'],
-      message:
-        this.version === 1
-          ? `Server hot-reload store ready (${d.hotCount} hot, ${d.coldCount} cold, ${d.assets.length} assets)`
-          : // : `Server hot reloaded (store v${this.version})`,
-            `Server hot reloaded`,
-    })
+    if (this.version === 1) {
+      this.log({
+        level: 'info',
+        category: ['server'],
+        message: `Server hot-reload store ready (${d.hotCount} hot, ${d.coldCount} cold, ${d.assets.length} assets)`,
+      })
+      // Auto-externalized infra (generated clients, engine config, anything the store can't flatten) runs cold: it
+      // loads from its real path and a change there triggers a full restart, not a hot-swap. Surface it once so the
+      // developer knows which files won't hot-reload — and isn't surprised by a restart when they edit one.
+      if (d.autoExternalized.length > 0) {
+        const rel = (p: string) => nodePath.relative(this.appSrcDir as string, p)
+        const shown = d.autoExternalized.slice(0, 8).map(rel).join(', ')
+        const more = d.autoExternalized.length > 8 ? `, +${d.autoExternalized.length - 8} more` : ''
+        this.log({
+          level: 'info',
+          category: ['server'],
+          message: `Server hot-reload: ${d.autoExternalized.length} file(s) can't be flattened — running cold (edit => restart): ${shown}${more}`,
+        })
+      }
+    } else {
+      this.log({ level: 'info', category: ['server'], message: `Server hot reloaded` })
+    }
   }
 
   /** Orchestrator: is a changed file a hot store node (hot-swap) rather than a restart trigger? */
@@ -282,6 +420,11 @@ export class ServerHotStore {
     const mapByAbs = new Map<string, unknown>()
     const outByAbs = new Map<string, Array<{ pathOriginal: string; pathResolved: string }>>()
     const importMeta: string[] = []
+    // Nodes using a LOCATION-relative `import.meta` (`.url`/`.dir`/`.dirname`/`.path`/`.filename`/`.file`/`.resolve`):
+    // these resolve against the MODULE's own path, which a flattened store file moves to the store dir — so the path
+    // silently resolves wrong. Such a node must be externalized (loaded from its real path), not flattened. `.env`/`.hot`/
+    // `.main` don't depend on file location, so they stay hot.
+    const importMetaReloc: string[] = []
     const coldRoots: string[] = []
     const nodes = new Set<string>()
     const queue = [...entryAbsList]
@@ -313,80 +456,196 @@ export class ServerHotStore {
       if (isColdRoot) coldRoots.push(abs)
       outByAbs.set(abs, outs)
       if (/import\.meta/.test(r.code)) importMeta.push(abs)
+      if (/import\.meta\.(url|dir|dirname|path|filename|file|resolve)\b/.test(r.code)) importMetaReloc.push(abs)
     }
 
-    // 3. Cold set = downward static closure from cold roots over in-node edges.
-    const coldSet = new Set<string>()
-    const markCold = (abs: string): void => {
-      if (coldSet.has(abs) || !nodes.has(abs)) return
-      coldSet.add(abs)
-      for (const e of outByAbs.get(abs) ?? []) if (nodes.has(e.pathResolved)) markCold(e.pathResolved)
+    // 3. Cold classification. A cold node is loaded once from its REAL path (not flattened into the store) and stays a
+    //    cached singleton; editing it => full restart. Two sources of cold ROOTS: explicit (`@point0/core/cold` marker
+    //    or `server.importer.cold` glob, collected above) and AUTOMATIC (un-flattenable nodes discovered by the build
+    //    loop below). Cold propagates DOWNWARD through in-node import edges, EXCEPT it never crosses into an aggregator
+    //    entry — entries must stay re-importable (hot), so they're pinned and stop propagation. (Pinning is safe: in hot
+    //    mode the engine reads each aggregator from the store, never via a cold importer's own dynamic `import()` thunk.)
+    const entrySet = new Set(entryAbsList)
+    const markColdFrom = (roots: Iterable<string>): Set<string> => {
+      const coldSet = new Set<string>()
+      const markCold = (abs: string): void => {
+        if (coldSet.has(abs) || !nodes.has(abs) || entrySet.has(abs)) return
+        coldSet.add(abs)
+        for (const e of outByAbs.get(abs) ?? []) if (nodes.has(e.pathResolved)) markCold(e.pathResolved)
+      }
+      for (const root of roots) markCold(root)
+      return coldSet
     }
-    for (const root of coldRoots) markCold(root)
-    const isHot = (abs: string): boolean => nodes.has(abs) && !coldSet.has(abs)
 
-    // 4. Topological order over HOT nodes (deps first) for cascade hashing.
-    const order: string[] = []
-    const seen = new Set<string>()
-    const visit = (abs: string): void => {
-      if (seen.has(abs) || !isHot(abs)) return
-      seen.add(abs)
-      for (const e of outByAbs.get(abs) ?? []) if (isHot(e.pathResolved)) visit(e.pathResolved)
-      order.push(abs)
+    // 4+5. Build the HOT store for a given cold set: hash + rewrite every hot node IN MEMORY (no disk writes — the caller
+    //      writes only the converged build). Hashing is per STRONGLY-CONNECTED-COMPONENT, deps-first: cascade hashing
+    //      needs every dep's final store name known before a node is hashed, and import CYCLES have no plain topo order,
+    //      so each SCC is hashed as ONE unit (all members share one content hash) and its members' intra-cycle imports
+    //      rewrite to consistent, resolvable names. Singleton SCCs (the acyclic norm) reduce to per-node cascade hashing.
+    const buildHot = (
+      coldSet: Set<string>,
+    ): {
+      hashedByAbs: Record<string, string>
+      order: string[]
+      codeByStoreAbs: Map<string, string>
+      assets: Array<{ file: string; spec: string }>
+      rewritten: number
+      misses: Array<{ file: string; spec: string }>
+    } => {
+      const isHot = (abs: string): boolean => nodes.has(abs) && !coldSet.has(abs)
+      const hotNeighbors = (abs: string): string[] => {
+        const seenN = new Set<string>()
+        const ns: string[] = []
+        for (const e of outByAbs.get(abs) ?? []) {
+          if (isHot(e.pathResolved) && !seenN.has(e.pathResolved)) {
+            seenN.add(e.pathResolved)
+            ns.push(e.pathResolved)
+          }
+        }
+        return ns
+      }
+      const hotNodes: string[] = []
+      for (const abs of nodes) if (isHot(abs)) hotNodes.push(abs)
+      const sccs = stronglyConnectedComponents(hotNodes, hotNeighbors) // deps-first
+
+      // Store-filename base: the sanitized relpath PLUS a short hash of the FULL relpath. `sanitizeBase` is lossy
+      // ("point0"->"p0", every non-alnum run -> "_"), so two distinct paths (`foo/bar.ts`, `foo-bar.ts`) can sanitize to
+      // the same string. Within ONE SCC (whose members share a single `sccHash`) that would collide to one filename and
+      // the write loop would silently drop the second member's body. The relpath hash makes the base injective per file.
+      const storeBase = (m: string): string =>
+        `${sanitizeBase(m, appSrcDir)}_${Bun.hash(nodePath.relative(appSrcDir, m)).toString(16).padStart(16, '0').slice(0, 8)}`
+
+      const hashedByAbs: Record<string, string> = {}
+      const order: string[] = []
+      const codeByStoreAbs = new Map<string, string>()
+      const assets: Array<{ file: string; spec: string }> = []
+      const misses: Array<{ file: string; spec: string }> = []
+      let rewritten = 0
+      // Rewrite one node's import specifiers: hot dep -> its store name (`nameOf`); cold dep -> its absolute real path
+      // (singleton); asset -> its absolute path, keeping any `?query` (e.g. `?react` for svgr).
+      const rewriteNode = (abs: string, nameOf: (target: string) => string): string => {
+        let code = codeByAbs.get(abs) ?? ''
+        for (const e of outByAbs.get(abs) ?? []) {
+          if (isHot(e.pathResolved)) code = replaceSpecifier(code, e.pathOriginal, './' + nameOf(e.pathResolved))
+          else if (coldSet.has(e.pathResolved)) code = replaceSpecifier(code, e.pathOriginal, e.pathResolved)
+          else if (ASSET_RE.test(e.pathResolved))
+            code = replaceSpecifier(code, e.pathOriginal, e.pathResolved + splitQuery(e.pathOriginal)[1])
+        }
+        return code
+      }
+      for (const scc of sccs) {
+        const sccSet = new Set(scc)
+        // Hash pass: external hot deps already carry their final names (deps-first); intra-SCC deps don't exist yet, so
+        // they use a stable, name-free placeholder — the SCC's one content hash thus depends on every member's body +
+        // its external deps' hashes (so a change anywhere cascades) but not on the not-yet-known intra names.
+        const placeholder = (t: string): string => `${storeBase(t)}.scc`
+        let hashInput = ''
+        for (const m of [...scc].sort()) {
+          const code = rewriteNode(m, (t) => (sccSet.has(t) ? placeholder(t) : (hashedByAbs[t] ?? placeholder(t))))
+          hashInput += nodePath.relative(appSrcDir, m) + '\0' + code + '\0'
+        }
+        const sccHash = Bun.hash(hashInput).toString(16).padStart(16, '0').slice(0, 12)
+        for (const m of scc) hashedByAbs[m] = `${storeBase(m)}.${sccHash}.tsx`
+        // Final pass: every name (external + intra-SCC) is known now -> rewrite, validate, stash the code.
+        for (const m of scc) {
+          order.push(m)
+          const code = rewriteNode(m, (t) => hashedByAbs[t] as string)
+          codeByStoreAbs.set(m, code)
+          for (const e of outByAbs.get(m) ?? [])
+            if (ASSET_RE.test(e.pathResolved)) assets.push({ file: m, spec: e.pathOriginal })
+          // Validate: any relative specifier still present in the final code is either a rewritten store name (ok), an
+          // asset (ok), or an UNRESOLVED import the store couldn't flatten (a miss — the build loop externalizes it).
+          for (const x of code.matchAll(/(['"])(\.\.?\/[^'"]+)\1/g)) {
+            const spec = x[2] as string
+            if (/\.[0-9a-f]{12}\.tsx$/.test(spec)) rewritten++
+            else if (ASSET_RE.test(spec)) {
+              /* asset, already counted */
+            } else misses.push({ file: m, spec })
+          }
+        }
+      }
+      return { hashedByAbs, order, codeByStoreAbs, assets, rewritten, misses }
     }
-    for (const entry of entryAbsList) visit(entry)
-    for (const abs of nodes) if (isHot(abs)) visit(abs)
 
-    // 5. Cascade-hash + rewrite + write the HOT store. Cold/asset targets -> absolute real path.
+    // 5b. Build, externalizing un-flattenable nodes until the store is clean. A hot node the store can't flatten — a
+    //     LOCATION-relative `import.meta` (resolves wrong once relocated; seeded up front from `importMetaReloc`), or an
+    //     un-rewritable relative import (a generated client's `./enums` dir / wasm, discovered as a "miss") — is
+    //     AUTO-EXTERNALIZED (treated like an explicit cold file: loaded from its real path) rather than failing the whole
+    //     build. Editing such a file => full restart; it's infra (generated clients, engine config), not the points/pages
+    //     you hot-edit. Entries can't be externalized (they must stay re-importable), so a miss on one is a real error.
+    //     Converges fast — each round externalizes its offenders + their downward cold closure; `MAX_ROUNDS` only bounds a
+    //     pathological graph.
+    const autoExternalized = new Set<string>(importMetaReloc.filter((m) => !entrySet.has(m)))
+    let coldSet!: Set<string>
+    let built!: ReturnType<typeof buildHot>
+    const MAX_ROUNDS = 8
+    for (let round = 0; ; round++) {
+      coldSet = markColdFrom([...coldRoots, ...autoExternalized])
+      built = buildHot(coldSet)
+      if (built.misses.length === 0) break
+      const offenders = [...new Set(built.misses.map((m) => m.file))].filter(
+        (f) => !autoExternalized.has(f) && !entrySet.has(f),
+      )
+      if (offenders.length === 0 || round >= MAX_ROUNDS) {
+        // Every remaining miss is on an aggregator ENTRY (can't be externalized — it must stay re-importable) or we hit
+        // the round cap. Name the aggregator explicitly: an entry with an un-flattenable import is a real, actionable bug
+        // (usually a non-module relative import dragged into the generated aggregator).
+        const entryMiss = built.misses.find((m) => entrySet.has(m.file))
+        if (entryMiss) {
+          throw new Error(
+            `Server hot-reload store: the points aggregator "${nodePath.relative(appSrcDir, entryMiss.file)}" has an ` +
+              `import the store cannot flatten ("${entryMiss.spec}") — and an aggregator entry cannot be externalized. ` +
+              `Make that import resolvable, or move it behind a \`@point0/core/cold\` file.`,
+          )
+        }
+        const shown = built.misses.map((m) => `${nodePath.relative(appSrcDir, m.file)} -> ${m.spec}`).join(', ')
+        throw new Error(
+          `Server hot-reload store has ${built.misses.length} unresolved import(s) after ${round} round(s): ${shown}`,
+        )
+      }
+      for (const f of offenders) autoExternalized.add(f)
+    }
+    const { hashedByAbs, order } = built
+
+    // Invariant: store filenames are injective (each maps to exactly one source). `storeBase` already disambiguates by a
+    // relpath hash, so a collision means a relpath-hash clash — assert loudly rather than let the write loop's
+    // existsSync-skip silently drop a member's body (the failure mode this guards against).
+    const nameToAbs = new Map<string, string>()
+    for (const abs of order) {
+      const name = hashedByAbs[abs] as string
+      const prev = nameToAbs.get(name)
+      if (prev !== undefined && prev !== abs) {
+        throw new Error(`Server hot-reload store filename collision: "${name}" maps to both "${prev}" and "${abs}".`)
+      }
+      nameToAbs.set(name, abs)
+    }
+
+    // 6. Write the converged build. Content-addressed: the filename IS the content hash, so an existing file with this
+    //    name already holds this exact code — skip it. Only changed files (new hash => new name) are written, keeping
+    //    unchanged store files' mtimes stable (the child's `bun --watch` never sees a rebuild) and the I/O minimal.
     if (clean) rmSync(storeDir, { recursive: true, force: true })
     mkdirSync(storeDir, { recursive: true })
+    for (const abs of order) {
+      const code = built.codeByStoreAbs.get(abs) as string
+      const storeFilePath = nodePath.join(storeDir, hashedByAbs[abs] as string)
+      if (!existsSync(storeFilePath)) {
+        // The map derives from the same source, so an existing same-hash file already has its inline map → content-
+        // addressing holds. Unmodified files carry no compiler map → a line-identity map still rewrites the store PATH
+        // back to the original source for `source-map-support`.
+        const map = mapByAbs.get(abs) ?? identitySourceMap(abs, code)
+        writeFileSync(storeFilePath, appendInlineSourceMap(code, map))
+      }
+    }
+
     const diagnostics: ServerHotStoreBuildResult['diagnostics'] = {
       nodeCount: nodes.size,
       hotCount: order.length,
       coldCount: coldSet.size,
-      rewritten: 0,
-      assets: [],
-      misses: [],
+      rewritten: built.rewritten,
+      assets: built.assets,
       importMeta,
-    }
-    const hashedByAbs: Record<string, string> = {}
-    for (const abs of order) {
-      let code = codeByAbs.get(abs) ?? ''
-      for (const e of outByAbs.get(abs) ?? []) {
-        if (isHot(e.pathResolved)) {
-          code = replaceSpecifier(code, e.pathOriginal, './' + (hashedByAbs[e.pathResolved] as string))
-        } else if (coldSet.has(e.pathResolved)) {
-          code = replaceSpecifier(code, e.pathOriginal, e.pathResolved) // cold -> absolute real path (singleton)
-        } else if (ASSET_RE.test(e.pathResolved)) {
-          // Asset -> absolute real path, preserving any `?query` from the original specifier (e.g. `?react` for svgr),
-          // so the relocated store file loads it from disk and the right loader still transforms it. (MVP — proper
-          // served `/_point0/asset/<hash>` URLs come with the asset-pipeline rework.)
-          code = replaceSpecifier(code, e.pathOriginal, e.pathResolved + splitQuery(e.pathOriginal)[1])
-          diagnostics.assets.push({ file: abs, spec: e.pathOriginal })
-        }
-      }
-      // Validate: classify any relative specifier still present in the final code.
-      for (const m of code.matchAll(/(['"])(\.\.?\/[^'"]+)\1/g)) {
-        const spec = m[2] as string
-        if (/\.[0-9a-f]{12}\.tsx$/.test(spec)) diagnostics.rewritten++
-        else if (ASSET_RE.test(spec)) {
-          /* already counted */
-        } else diagnostics.misses.push({ file: abs, spec })
-      }
-      const hash = Bun.hash(code).toString(16).padStart(16, '0').slice(0, 12)
-      const hashed = `${sanitizeBase(abs, appSrcDir)}.${hash}.tsx`
-      hashedByAbs[abs] = hashed
-      // Content-addressed: the filename IS the content hash, so an existing file with this name already holds this exact
-      // code. Skip rewriting it — only changed files (new hash => new name) are written. Keeps unchanged store files'
-      // mtimes stable (so the child's `bun --watch` never sees a rebuild) and is less I/O on every reload.
-      const storeFilePath = nodePath.join(storeDir, hashed)
-      if (!existsSync(storeFilePath)) {
-        // Hash is over the rewritten code only (deterministic id); the map derives from the same source, so an existing
-        // file with this hash already has its inline map appended → content-addressing still holds. Unmodified files
-        // carry no compiler map → fall back to a line-identity map so the store PATH still gets rewritten to the original.
-        const map = mapByAbs.get(abs) ?? identitySourceMap(abs, code)
-        writeFileSync(storeFilePath, appendInlineSourceMap(code, map))
-      }
+      autoExternalized: [...autoExternalized],
+      gcDeleted: 0,
     }
 
     // 6a. Invariant: no written store file may match `compiler.filter` (else the child's compiler onLoad plugin would
@@ -400,13 +659,6 @@ export class ServerHotStore {
             `${storeFileAbs}. The store dir or hashed names contain "point0" after node_modules/. Pick a dir without it.`,
         )
       }
-    }
-
-    // 6b. Invariant: every in-app import must have been rewritten (to a hashed name, a cold abs path, or an asset path).
-    //     A leftover relative specifier resolves wrong (or fails) in the stable child — fail loudly instead.
-    if (diagnostics.misses.length > 0) {
-      const shown = diagnostics.misses.map((m) => `${nodePath.relative(appSrcDir, m.file)} -> ${m.spec}`).join(', ')
-      throw new Error(`Server hot-reload store has ${diagnostics.misses.length} unresolved import(s): ${shown}`)
     }
 
     const aggregators: Record<string, string> = {}
@@ -424,6 +676,16 @@ export class ServerHotStore {
     const manifestTmpPath = `${manifestPath}.tmp`
     writeFileSync(manifestTmpPath, JSON.stringify(manifest, null, 2))
     renameSync(manifestTmpPath, manifestPath)
+
+    // GC the dir AFTER the manifest swap (the new files are live, the old ones are now superseded). Reclaims store files
+    // no longer referenced by this build that have been stale past the grace window — bounds the dir over a long session.
+    const graceMs = Number(process.env.POINT0_DEV_SERVER_HOT_GC_GRACE_MS ?? 30_000)
+    diagnostics.gcDeleted = sweepStaleStoreFiles({
+      dir: storeDir,
+      keep: new Set(order.map((abs) => hashedByAbs[abs] as string)),
+      graceMs,
+      now: Date.now(),
+    })
     return { manifest, hashedByAbs, order, coldExternalized: [...coldSet], diagnostics }
   }
 }
