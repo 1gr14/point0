@@ -345,27 +345,29 @@ export class ServerHotStore {
     this.cleaned = true
     this.hotNodes = new Set(result.order)
     const d = result.diagnostics
+    // DEBUG, not info: these are hot-store internals (store stats, the auto-cold set, per-rebuild confirmation) — noise
+    // in a normal `--hot` session. The per-action feedback the developer wants — `Server hot reloading...` on a hot-swap,
+    // `Server restarting...` on a cold-file change — is emitted by the watcher in server.ts, in the right context.
+    // (Demoting "hot reloaded" to debug is also what keeps it from showing as info after a cold-file RESTART, where the
+    // watcher re-`rebuild()`s the store only for bookkeeping.)
     if (this.version === 1) {
       this.log({
-        level: 'info',
+        level: 'debug',
         category: ['server'],
         message: `Server hot-reload store ready (${d.hotCount} hot, ${d.coldCount} cold, ${d.assets.length} assets)`,
       })
-      // Auto-externalized infra (generated clients, engine config, anything the store can't flatten) runs cold: it
-      // loads from its real path and a change there triggers a full restart, not a hot-swap. Surface it once so the
-      // developer knows which files won't hot-reload — and isn't surprised by a restart when they edit one.
       if (d.autoExternalized.length > 0) {
         const rel = (p: string) => nodePath.relative(this.appSrcDir as string, p)
         const shown = d.autoExternalized.slice(0, 8).map(rel).join(', ')
         const more = d.autoExternalized.length > 8 ? `, +${d.autoExternalized.length - 8} more` : ''
         this.log({
-          level: 'info',
+          level: 'debug',
           category: ['server'],
-          message: `Server hot-reload: ${d.autoExternalized.length} file(s) can't be flattened — running cold (edit => restart): ${shown}${more}`,
+          message: `Server hot-reload: ${d.autoExternalized.length} file(s) can't be flattened, running cold (edit => restart): ${shown}${more}`,
         })
       }
     } else {
-      this.log({ level: 'info', category: ['server'], message: `Server hot reloaded` })
+      this.log({ level: 'debug', category: ['server'], message: `Server hot reloaded` })
     }
   }
 
