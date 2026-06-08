@@ -25,8 +25,12 @@
 // (.url/.dir/…, which would resolve to the store dir), or one left with an un-rewritable relative import after the
 // rewrite pass (a "miss"). Proven necessary by exp9: Prisma's generated client can't be flattened.
 //
-// ASSETS (png/svg/…): rewritten to the asset's absolute path for the MVP (resolvable; proper served
-// `/_point0/asset/<hash>` URLs via the existing dev-ssr-fix-assets transform come later).
+// ASSETS (png/svg/…): rewritten to the asset's ABSOLUTE real path (keeping any `?url`/`?file`/`?text`/`?react` query).
+// That's complete, not a stopgap: the compiler's asset plugin (`@point0/compiler` `assets.ts`) keys its onLoad/onResolve
+// on the EXTENSION, not the path, so when the stable child imports that absolute asset path the plugin intercepts it and
+// emits the same content-hashed served URL (`/_point0/asset/<hash>.<ext>`) it would in non-hot dev — verified by the
+// "resolves an asset import through the hot store" test. Absolute paths are fine here: the store is dev-only and
+// machine-local (under `node_modules/.cache`), never shipped.
 //
 // Skip-from-compiler: the store dir lives under `node_modules/.cache/server-hot/` — NO "point0" substring after
 // `node_modules/`, and hashed names strip "point0" — so `compiler.filter` rejects the whole store dir for free (the

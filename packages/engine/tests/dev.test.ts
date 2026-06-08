@@ -1101,6 +1101,43 @@ export const page2 = root.lets('page', 'page2', '/2')
     )
 
     it(
+      'resolves an asset import through the hot store to a served /_point0/asset/ URL',
+      wrp({ ssr: true, vite: false }, async ({ tp }) => {
+        await tp.waitPortsFree()
+        await tp.write(
+          'src/gem.svg',
+          `<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4"/></svg>`,
+        )
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          import gem from './gem.svg'
+          export const page = root.lets('page', 'home', '/')
+            .loader(() => ({ pid: process.pid }))
+            .page(() => <div id="probe">asset={gem}</div>)`,
+        )
+        tp.spawn(['bun', 'run', 'dev', '--hot'])
+        await tp.waitStarted()
+        // The store rewrites the asset import to the file's ABSOLUTE path; the child's asset plugin (keyed on extension,
+        // not path) intercepts it and emits the content-hashed served URL — so a hot-store page resolves assets exactly
+        // like non-hot dev. (This is why the store's absolute-path asset rewrite is correct, not an MVP placeholder.)
+        const html = await waitFor(async () => {
+          const h = (await tp.fetchServerHtml('/').catch(() => '')).replace(/<!--.*?-->/g, '')
+          return h.includes('/_point0/asset/') ? h : undefined
+        }, 15000)
+        const url = html.match(/\/_point0\/asset\/[a-f0-9]+\.svg/)?.[0]
+        expect(url).toBeTruthy()
+        // …and the engine actually serves those bytes back (the dev asset route).
+        const res = await tp.fetchServer(url as string)
+        expect(res.status).toBe(200)
+      }),
+      {
+        retry: 2,
+        timeout: 90000,
+      },
+    )
+
+    it(
       'hot-swaps a layout, a server loader, a shared lib (cascade), and the page — all without restarting',
       wrp({ ssr: true, vite: false }, async ({ tp }) => {
         await tp.waitPortsFree()

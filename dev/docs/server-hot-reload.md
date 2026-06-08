@@ -136,10 +136,15 @@ Two more recovery paths make "infinite dev" hold even at startup (never a forced
 
 ### Known follow-ups (MVP cut)
 
-- Assets still rewrite to an absolute path (MVP); proper `/_point0/asset/<hash>`
-  URLs via the existing dev-ssr-fix-assets transform come later. **(Out of scope
-  here — the asset pipeline is being reworked on another branch; this lands on
-  top of that.)**
+- ~~Assets rewrite to an absolute path (MVP)~~ **RESOLVED.** The store rewrites
+  an asset import to its absolute real path, and that's complete — the
+  compiler's asset plugin (`@point0/compiler` `assets.ts`) keys on the
+  EXTENSION, not the path, so the stable child intercepts the absolute asset
+  import and emits the same content-hashed `/_point0/asset/<hash>.<ext>` served
+  URL as non-hot dev (the `?url`/`?file`/`?text`/`?react` queries are preserved
+  too). Verified by the "resolves an asset import through the hot store" test.
+  Absolute paths are fine: the store is dev-only and machine-local, never
+  shipped.
 - The cold downward closure follows all import edges, not strictly static-only
   (no `kind` flag on compiler imports yet) — fine for the current targets
   (Prisma has no lazy edges); revisit if a cold file lazy-imports a hot subtree.
@@ -358,12 +363,13 @@ propagated from cold roots along static-import edges and halted at lazy
   (`POINT0_DEV_SERVER_HOT_RESTART_EVERY`, default 200, 0 = off). Disk GC is
   unit-tested (`sweepStaleStoreFiles`) and e2e-tested (dir stays bounded across
   many edits).
-- **Asset imports** (png/svg) inside points — **confirmed needed by exp9**
-  (`home.tsx` imports `test.png`, `icon.svg`): a flattened store file can't
-  resolve `../assets/*`. Reuse the existing `bun-plugin-dev-ssr-fix-assets`
-  transform (rewrites asset imports to served `/_point0/asset/<hash>` URLs) as a
-  store-build step, or rewrite to an absolute path. Small, separate from the
-  cold question.
+- **Asset imports** (png/svg) inside points — **DONE.** A flattened store file
+  can't resolve `../assets/*`, so the store rewrites each asset import to the
+  asset's ABSOLUTE real path. The compiler's asset plugin (`@point0/compiler`
+  `assets.ts`) keys its `onLoad`/`onResolve` on the EXTENSION (not the path), so
+  the stable child intercepts that absolute import and emits the same served
+  `/_point0/asset/<hash>.<ext>` URL as non-hot dev — no separate store-build
+  asset step needed. (`?url`/`?file`/`?text`/`?react` queries preserved.)
 - **The content-addressed boundary** — **decided by exp9:** the store
   content-addresses the **points aggregator subtree** (re-imported per request);
   the **server entry stays a single stable load** (loaded once, re-imports go
