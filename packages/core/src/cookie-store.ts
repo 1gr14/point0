@@ -285,7 +285,7 @@ export class CookieStore {
    * hydration mismatch.
    */
   static commitPending(): void {
-    const pending = _ss.__POINT0_COOKIE_STORE_PENDING__.getWeak()
+    const pending = _ss.__POINT0_COOKIE_STORE_PENDING__.getOrUndefined()
     if (!pending) {
       return
     }
@@ -305,7 +305,7 @@ export class CookieStore {
    * Server-only; does not mutate.
    */
   static hasPendingChanges(): boolean {
-    const pending = _ss.__POINT0_COOKIE_STORE_PENDING__.getWeak()
+    const pending = _ss.__POINT0_COOKIE_STORE_PENDING__.getOrUndefined()
     if (!pending) {
       return false
     }

@@ -705,7 +705,7 @@ export class Engine<
       {
         __POINT0_SERVER_PORT__: this.server.port,
         __POINT0_FETCH_FN__: fetchFn as RichFetchFn,
-        __POINT0_QUERY_CLIENT__: __POINT0_QUERY_CLIENT__.getWeak() || __POINT0_QUERY_CLIENT__.config.init(),
+        __POINT0_QUERY_CLIENT__: __POINT0_QUERY_CLIENT__.getOrUndefined() || __POINT0_QUERY_CLIENT__.config.init(),
       },
       'Value "%s" not exists in server storage context yet',
     )

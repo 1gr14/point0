@@ -3704,8 +3704,8 @@ export class Point0<
                 | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
             ]
         : [] // The result is the same point, advanced one stage. Every type arg below is this point's current
-    // `with` is the only thing that can add props or queries. They're the two interesting positions.
-  ) // state passed through UNCHANGED — only the last two (inner props, queries) are recomputed, since
+    // state passed through UNCHANGED — only the last two (inner props, queries) are recomputed, since
+  ) // `with` is the only thing that can add props or queries. They're the two interesting positions.
   : NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -8187,7 +8187,7 @@ export class Point0<
       useValue: point.useValue.bind(point),
       _useValue: point._useValue?.bind(point),
       getValue: point.getValue.bind(point),
-      getValueWeak: point.getValueWeak.bind(point),
+      getValueOrUndefined: point.getValueOrUndefined.bind(point),
 
       route: point.route,
       _tail: point._tail.bind(point),
@@ -8617,14 +8617,14 @@ export class Point0<
     if (this._serverUrl) {
       return this._serverUrl
     }
-    const request0 = _ss.__POINT0_REQUEST0__.getWeak()
+    const request0 = _ss.__POINT0_REQUEST0__.getOrUndefined()
     if (request0?.location.origin) {
       return request0.location.origin
     }
     if (typeof window !== 'undefined') {
       return window.location.origin
     }
-    const serverPort = _ss.__POINT0_SERVER_PORT__.getWeak()
+    const serverPort = _ss.__POINT0_SERVER_PORT__.getOrUndefined()
     if (serverPort) {
       return `http://localhost:${serverPort}`
     }
@@ -8663,7 +8663,7 @@ export class Point0<
     )
     const method = this._endpoint.method
 
-    const fromScope = _ss.__POINT0_CLIENT_POINTS__.getWeak()?.manager.scope ?? _getFakeClient()?.scope
+    const fromScope = _ss.__POINT0_CLIENT_POINTS__.getOrUndefined()?.manager.scope ?? _getFakeClient()?.scope
     const baseHeaders = mergeHeaders(baseFetchOptions.headers, _fetchOptions?.headers)
     const headers = mergeHeaders(baseHeaders, {
       ...(baseHeaders.has('Accept') ? {} : { Accept: 'application/json' }),
@@ -8759,7 +8759,7 @@ export class Point0<
 
   private modifyFetchRequestForServerIfRequired(fetchOptions: ReturnType<typeof this.getFetchServerOptions>): Request {
     if (_point0_env.side.is.server) {
-      const currentRequest0 = _ss.__POINT0_REQUEST0__.getWeak()
+      const currentRequest0 = _ss.__POINT0_REQUEST0__.getOrUndefined()
       if (!currentRequest0) {
         return Object.assign(fetchOptions.request, {
           __POINT0_IS_SERVER_REQUEST__: true,
@@ -8777,7 +8777,7 @@ export class Point0<
         }
       }
 
-      // const currentEffects = _ss.__POINT0_EFFECTS__.getWeak()
+      // const currentEffects = _ss.__POINT0_EFFECTS__.getOrUndefined()
       // if (currentEffects) {
       //   const cookies = Object.values(currentEffects.cookies)
       //   for (const cookie of cookies) {
@@ -8886,7 +8886,7 @@ export class Point0<
       // Bubble up non-default status codes from nested server point fetches
       // to the current outer request (e.g. SSR page render request).
       if (_point0_env.side.is.server) {
-        const currentEffects = _ss.__POINT0_EFFECTS__.getWeak()
+        const currentEffects = _ss.__POINT0_EFFECTS__.getOrUndefined()
         if (typeof currentEffects?.status === 'undefined') {
           currentEffects?.set.status(res.status)
         }
@@ -12146,7 +12146,7 @@ export class Point0<
     return value
   }
 
-  getValueWeak(
+  getValueOrUndefined(
     input?: FinalInputRawOrUndefined<
       TPointType,
       TServerInputSchema,
@@ -12156,7 +12156,7 @@ export class Point0<
       TBodySchema
     >,
   ): MountableSuccessData<TQueriesDefinitions, TMapperOutput> | undefined {
-    const value = superstore.getValueWeak<MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
+    const value = superstore.getValueOrUndefined<MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
       this.getSsProviderValueKey(input),
       'clientServerIsolated',
     )

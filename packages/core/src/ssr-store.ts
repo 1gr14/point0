@@ -58,7 +58,7 @@ export class SsrStore {
    * Server-only; does not mutate anything.
    */
   static hasPendingChanges(): boolean {
-    const pending = _ss.__POINT0_SSR_STORE_PENDING__.getWeak()
+    const pending = _ss.__POINT0_SSR_STORE_PENDING__.getOrUndefined()
     if (!pending) {
       return false
     }
@@ -76,7 +76,7 @@ export class SsrStore {
 
   /** Apply every staged value to its committed value, then clear the staging area. Server-only. */
   static commitPending(): void {
-    const pending = _ss.__POINT0_SSR_STORE_PENDING__.getWeak()
+    const pending = _ss.__POINT0_SSR_STORE_PENDING__.getOrUndefined()
     if (!pending) {
       return
     }

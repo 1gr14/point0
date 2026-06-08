@@ -414,10 +414,10 @@ describe('provider', () => {
     // value helpers are still here on the short notation (it is `point.X` decorated with them)
     expect(typeof App.useValue).toBe('function')
     expect(typeof App.getValue).toBe('function')
-    expect(typeof App.getValueWeak).toBe('function')
+    expect(typeof App.getValueOrUndefined).toBe('function')
     expectTypeOf(App.useValue).toBeFunction()
     expectTypeOf(App.getValue).toBeFunction()
-    expectTypeOf(App.getValueWeak).toBeFunction()
+    expectTypeOf(App.getValueOrUndefined).toBeFunction()
     // and the explicit `.X` / `.Provider` accessors are still reachable too
     expect(typeof App.X).toBe('function')
     expect(typeof App.Provider).toBe('function')

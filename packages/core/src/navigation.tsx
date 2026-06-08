@@ -258,7 +258,7 @@ const initialNavigationPageState: NavigationPageStateContextValue = {
 }
 const navigationPageStateListeners = singletonize('NavigationPageStateListeners', new Set<() => void>())
 const getNavigationPageStateSnapshot = (): NavigationPageStateContextValue =>
-  _ss.__POINT0_NAVIGATION_PAGE_STATE__.getWeak() ?? initialNavigationPageState
+  _ss.__POINT0_NAVIGATION_PAGE_STATE__.getOrUndefined() ?? initialNavigationPageState
 const subscribeNavigationPageState = (listener: () => void): (() => void) => {
   navigationPageStateListeners.add(listener)
   return () => {
@@ -373,7 +373,7 @@ export const useNavigationHelpers = (): NavigationHelpersContextValue => {
   return ctx
 }
 export const getNavigationHelpers = (): NavigationHelpersContextValue => {
-  const navigationHelpers = _ss.__POINT0_NAVIGATION_HELPERS__.getWeak()
+  const navigationHelpers = _ss.__POINT0_NAVIGATION_HELPERS__.getOrUndefined()
   if (navigationHelpers) {
     return navigationHelpers
   }
@@ -397,7 +397,7 @@ export const useNavigationTransitionState = (): NavigationTransitionStateContext
   return ctx
 }
 export const getNavigationTransitionState = (): NavigationTransitionStateContextValue => {
-  const navigationTransitionState = _ss.__POINT0_NAVIGATION_TRANSITION_STATE__.getWeak()
+  const navigationTransitionState = _ss.__POINT0_NAVIGATION_TRANSITION_STATE__.getOrUndefined()
   if (navigationTransitionState) {
     return navigationTransitionState
   }
@@ -535,7 +535,7 @@ export function useLocation<TRouteDefinition extends AnyRouteOrDefinition = AnyR
 export const getLocation = <TRouteDefinition extends AnyRouteOrDefinition = AnyRouteOrDefinition>():
   | ExactLocation<TRouteDefinition>
   | UnknownLocation => {
-  const location = _ss.__POINT0_CURRENT_LOCATION__.getWeak()
+  const location = _ss.__POINT0_CURRENT_LOCATION__.getOrUndefined()
   if (!location) {
     throw new Error('Current location is not yet initialized')
   }
@@ -951,7 +951,7 @@ export async function navigateWithTransitions<
   helpers.setNextLocation(location)
   helpers.setTransitionStatus('preparing')
   try {
-    const queryClient = _ss.__POINT0_QUERY_CLIENT__.getWeak()
+    const queryClient = _ss.__POINT0_QUERY_CLIENT__.getOrUndefined()
     const tryTriggerRedirect = () => {
       const redirectTask = queryClient ? findRedirectTaskInQueryClientCache(queryClient, to) : undefined
       if (redirectTask && queryClient) {

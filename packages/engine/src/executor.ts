@@ -109,7 +109,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       // in case of recursive server response we want preserve query client to keep state
       __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: undefined,
       __POINT0_QUERY_CLIENT__:
-        _ss.__POINT0_QUERY_CLIENT_FROM_PARENT_RUN__.getWeak() || _ss.__POINT0_QUERY_CLIENT__.config.init(),
+        _ss.__POINT0_QUERY_CLIENT_FROM_PARENT_RUN__.getOrUndefined() || _ss.__POINT0_QUERY_CLIENT__.config.init(),
       __POINT0_SSR_LOCATION__: undefined,
       __POINT0_SSR_REDIRECT_TASK__: undefined,
       __POINT0_IS_SSR_IN_PROGRESS__: false,

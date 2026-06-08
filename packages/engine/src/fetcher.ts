@@ -1183,8 +1183,8 @@ export class Fetcher<TError extends ErrorPoint0> {
 
     const serverStorageState = _getSsItemsWithRestErrors(
       {
-        __POINT0_SSR_STORE_PENDING__: _ss.__POINT0_SSR_STORE_PENDING__.getWeak() || new Map(),
-        __POINT0_COOKIE_STORE_PENDING__: _ss.__POINT0_COOKIE_STORE_PENDING__.getWeak() || new Map(),
+        __POINT0_SSR_STORE_PENDING__: _ss.__POINT0_SSR_STORE_PENDING__.getOrUndefined() || new Map(),
+        __POINT0_COOKIE_STORE_PENDING__: _ss.__POINT0_COOKIE_STORE_PENDING__.getOrUndefined() || new Map(),
         __POINT0_SERVER_PORT__: this.server.port,
         __POINT0_FAKE_CLIENT__: undefined,
         __POINT0_IS_SSR_IN_PROGRESS__: false,
@@ -1192,7 +1192,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         __POINT0_REQUEST0__: prepareFetchResult.request,
         __POINT0_EFFECTS__: prepareFetchResult.effects,
         // in case of recursive server response we want preserve query client to keep state
-        __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: _ss.__POINT0_QUERY_CLIENT__.getWeak(),
+        __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: _ss.__POINT0_QUERY_CLIENT__.getOrUndefined(),
       },
       'Value "%s" not exists in middleware call, this value accessible only in loader, ctx, components etc',
     )

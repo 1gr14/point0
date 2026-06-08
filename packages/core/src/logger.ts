@@ -65,11 +65,13 @@ export const _ssServerLog = superstore.define<LogFn>(
   'serverOnlyGlobal',
 )
 export const log: LogFn = (options) => {
-  const _log = (_point0_env.side.is.client ? _ssClientLog.getWeak() : _ssServerLog.getWeak()) ?? _defaultLogFn
+  const _log =
+    (_point0_env.side.is.client ? _ssClientLog.getOrUndefined() : _ssServerLog.getOrUndefined()) ?? _defaultLogFn
   _log(options)
 }
 
-/** Use when you have a point in context: prefers point/root logger, else global logger. Keeps global suitable to current context. */
+/** Use when you have a point in context: prefers point/root logger, else global logger. Keeps global suitable to current
+context. */
 export const getLogFnForPoint = (point: { _getLogFn?: () => LogFn | undefined } | undefined): LogFn => {
   const fromPoint = point?._getLogFn?.()
   return fromPoint ?? log

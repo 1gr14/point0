@@ -3745,7 +3745,7 @@ export type NiceLayoutReadyPoint<
     | 'lets'
     | 'useValue'
     | 'getValue'
-    | 'getValueWeak'
+    | 'getValueOrUndefined'
     | 'Infer'
     | 'Layout'
     | 'X'
@@ -4068,7 +4068,7 @@ export type NiceProviderReadyPoint<
   WithQueryIfSuitable<
     TServerLoaderOutput,
     TQueryResultType,
-    'id' | 'point' | 'tags' | 'type' | 'useValue' | 'getValue' | 'getValueWeak' | 'Provider' | 'X' | 'Infer'
+    'id' | 'point' | 'tags' | 'type' | 'useValue' | 'getValue' | 'getValueOrUndefined' | 'Provider' | 'X' | 'Infer'
   >
 >
 

@@ -13,7 +13,7 @@ export const setStatus = (status: number): void => {
   if (!_point0_env.side.is.server) {
     return
   }
-  getEffectsWeak()?.set.status(status)
+  getEffectsOrUndefined()?.set.status(status)
 }
 
 export const useSetStatus = setStatus
@@ -28,7 +28,7 @@ export const getFetch = ({ scope }: { scope?: string | string[] } = {}): RichFet
     ) {
       return nativeFetch
     }
-    const __POINT0_FETCH_FN__ = superstore.getItem('__POINT0_FETCH_FN__')?.getWeak() as RichFetchFn | undefined
+    const __POINT0_FETCH_FN__ = superstore.getItem('__POINT0_FETCH_FN__')?.getOrUndefined() as RichFetchFn | undefined
     if (!__POINT0_FETCH_FN__) {
       throw new Error(
         `Fetch function in server available only inside loaders, components, etc, do not use it in top level. Or use FakeClient. Or Use engine.withFetch(() => your fetch fn)`,
@@ -39,7 +39,7 @@ export const getFetch = ({ scope }: { scope?: string | string[] } = {}): RichFet
   return superstore.getFakeClient()?.fetch ?? nativeFetch
 }
 
-export const getFetchWeak = ({ scope }: { scope?: string | string[] } = {}): RichFetchFn | undefined => {
+export const getFetchOrUndefined = ({ scope }: { scope?: string | string[] } = {}): RichFetchFn | undefined => {
   try {
     return getFetch({ scope })
   } catch {
@@ -48,9 +48,8 @@ export const getFetchWeak = ({ scope }: { scope?: string | string[] } = {}): Ric
 }
 
 /**
- * `useLayoutEffect` on the client; on the server runs `effect()` synchronously
- * during render (layout effects never fire during SSR). Deps are ignored on the
- * server. Use it when a layout side effect must also apply while server
+ * `useLayoutEffect` on the client; on the server runs `effect()` synchronously during render (layout effects never fire
+ * during SSR). Deps are ignored on the server. Use it when a layout side effect must also apply while server
  * rendering.
  */
 export const useLayoutEffectSsr: typeof useLayoutEffect = (effect, deps) => {
@@ -62,15 +61,14 @@ export const useLayoutEffectSsr: typeof useLayoutEffect = (effect, deps) => {
 }
 
 /**
- * `useEffect` on the client; on the server runs `effect()` synchronously during
- * render (normal effects never fire during SSR). Deps are ignored on the server.
+ * `useEffect` on the client; on the server runs `effect()` synchronously during render (normal effects never fire
+ * during SSR). Deps are ignored on the server.
  *
- * This is the hook to use when a side effect must also happen during SSR — e.g.
- * writing to an `SsrStore` or cookie item from a page so the value lands in the
- * SSR output. The SSR prefetch loop re-renders until those stores stop changing.
+ * This is the hook to use when a side effect must also happen during SSR — e.g. writing to an `SsrStore` or cookie item
+ * from a page so the value lands in the SSR output. The SSR prefetch loop re-renders until those stores stop changing.
  *
- * If you instead want the effect to have already run before the first paint on
- * the client (no flash), use {@link useEffectAsap}.
+ * If you instead want the effect to have already run before the first paint on the client (no flash), use
+ * {@link useEffectAsap}.
  */
 export const useEffectSsr: typeof useEffect = (effect, deps) => {
   if (_point0_env.side.is.server) {
@@ -81,13 +79,11 @@ export const useEffectSsr: typeof useEffect = (effect, deps) => {
 }
 
 /**
- * Runs `effect()` synchronously on the very first render (before commit/paint)
- * and then behaves like a normal `useEffect` for subsequent updates. Works the
- * same on server and client.
+ * Runs `effect()` synchronously on the very first render (before commit/paint) and then behaves like a normal
+ * `useEffect` for subsequent updates. Works the same on server and client.
  *
- * Use it when the effect must have run by the time the JSX is committed (to
- * avoid a flash of pre-effect state), while still getting normal effect + deps
- * behavior on updates. For an effect that only needs to run during SSR, prefer
+ * Use it when the effect must have run by the time the JSX is committed (to avoid a flash of pre-effect state), while
+ * still getting normal effect + deps behavior on updates. For an effect that only needs to run during SSR, prefer
  * {@link useEffectSsr}.
  */
 export const useEffectAsap: typeof useEffect = (effect, deps) => {
@@ -154,9 +150,9 @@ export const getEffects = (): Effects => {
   return __POINT0_EFFECTS__.get()
 }
 
-export const getEffectsWeak = (): Effects | undefined => {
+export const getEffectsOrUndefined = (): Effects | undefined => {
   const __POINT0_EFFECTS__ = superstore.getItem('__POINT0_EFFECTS__') as (typeof _ss)['__POINT0_EFFECTS__']
-  return __POINT0_EFFECTS__.getWeak()
+  return __POINT0_EFFECTS__.getOrUndefined()
 }
 
 export const getRequest = (): Request0 => {
@@ -164,9 +160,9 @@ export const getRequest = (): Request0 => {
   return __POINT0_REQUEST0__.get()
 }
 
-export const getRequestWeak = (): Request0 | undefined => {
+export const getRequestOrUndefined = (): Request0 | undefined => {
   const __POINT0_REQUEST0__ = superstore.getItem('__POINT0_REQUEST0__') as (typeof _ss)['__POINT0_REQUEST0__']
-  return __POINT0_REQUEST0__.getWeak()
+  return __POINT0_REQUEST0__.getOrUndefined()
 }
 
 export const getClientPoints = <TError extends ErrorPoint0>(): ClientPoints<TError> => {
@@ -174,7 +170,7 @@ export const getClientPoints = <TError extends ErrorPoint0>(): ClientPoints<TErr
   const __POINT0_CLIENT_POINTS__ = superstore.getItem(
     '__POINT0_CLIENT_POINTS__',
   ) as (typeof _ss)['__POINT0_CLIENT_POINTS__']
-  const clientPoints = fakeClient ? fakeClient.points : __POINT0_CLIENT_POINTS__.getWeak()
+  const clientPoints = fakeClient ? fakeClient.points : __POINT0_CLIENT_POINTS__.getOrUndefined()
   if (!clientPoints) {
     if (_point0_env.side.is.server) {
       throw new Error(

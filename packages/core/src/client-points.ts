@@ -450,7 +450,7 @@ export class ClientPoints<TError extends ErrorPoint0> {
     if (!suitable) {
       return undefined
     }
-    const loadPagePromises = _ss.__POINT0_LOAD_PAGE_COMPONENT_PROMISES__.getWeak()
+    const loadPagePromises = _ss.__POINT0_LOAD_PAGE_COMPONENT_PROMISES__.getOrUndefined()
     const hash = suitable.name
     const exPromise = loadPagePromises?.get(hash)
     if (exPromise) {

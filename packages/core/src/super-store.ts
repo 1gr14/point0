@@ -434,7 +434,7 @@ export class SuperStore {
     return undefined
   }
 
-  getValueWeak<TValue = unknown>(name: string, policy: SuperStoreItemPolicy): TValue | undefined {
+  getValueOrUndefined<TValue = unknown>(name: string, policy: SuperStoreItemPolicy): TValue | undefined {
     try {
       return this.getValue(name, policy)
     } catch {
@@ -585,8 +585,8 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
     return this.superstore.getValue(this.name, this.policy) as TValue
   }
 
-  getWeak = (): TValue | undefined => {
-    return this.superstore.getValueWeak(this.name, this.policy)
+  getOrUndefined = (): TValue | undefined => {
+    return this.superstore.getValueOrUndefined(this.name, this.policy)
   }
 
   set = (value: TValue): void => {
@@ -721,22 +721,22 @@ export type SuperStoreItemPolicyPermission = 'redefine' | 'readonlyRedefine' | '
 
 export type NiceSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
-  'get' | 'getWeak' | 'set' | 'config' | 'proxy'
+  'get' | 'getOrUndefined' | 'set' | 'config' | 'proxy'
 >
 
 export type NiceRedefinableSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
-  'get' | 'getWeak' | 'set' | 'config' | 'redefine' | 'proxy'
+  'get' | 'getOrUndefined' | 'set' | 'config' | 'redefine' | 'proxy'
 >
 
 export type NiceReadonlyRedefinableSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
-  'get' | 'getWeak' | 'redefine' | 'config' | 'proxy'
+  'get' | 'getOrUndefined' | 'redefine' | 'config' | 'proxy'
 >
 
 export type NiceReadonlySuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
-  'get' | 'getWeak' | 'config' | 'proxy'
+  'get' | 'getOrUndefined' | 'config' | 'proxy'
 >
 
 export type NiceSuperStoreItemByPermission<
