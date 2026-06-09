@@ -119,6 +119,7 @@ import {
   deserializeErrorsInDehydratedState,
   forceFreshDehydratedState,
   removeRedirectsFromQueryClientCache,
+  toLiveDehydratedState,
 } from './query-client.js'
 import type { PopularRequestMethod, WideRequestMethod } from './request0.js'
 import { extractKeysBySchemasHelpers } from './schema/utils.js'
@@ -10849,6 +10850,10 @@ export class Point0<
     })) as any
     if (data?.dehydratedState) {
       hydrate(queryClient, data.dehydratedState)
+      // The store now owns these queries; swap the cached snapshot for a live view so the next
+      // prefetch re-hydrate (while this query is still fresh) reads the current store instead of
+      // resurrecting removed queries — missing ones simply re-fetch on demand.
+      data.dehydratedState = toLiveDehydratedState(data.dehydratedState, queryClient)
     }
   }
 

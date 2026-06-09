@@ -8,6 +8,39 @@ import { superstore } from './super-store.js'
 import type { QueryKey } from './types.js'
 import { parseQueryKey } from './utils.js'
 
+const LIVE_DEHYDRATED_STATE = Symbol('point0.liveDehydratedState')
+
+/**
+ * Return a live view of a page's dehydrated-state snapshot: reading `.queries` re-dehydrates the _current_ store
+ * (limited to the queries the snapshot carried) instead of the frozen values.
+ *
+ * So when a page is prefetched again from its still-fresh `queryClientDehydratedState` cache, re-hydrating no longer
+ * resurrects a query the user removed in the meantime (e.g. `getMe` after sign-out) — it is simply gone and re-fetched
+ * on demand, while surviving queries keep their current data.
+ *
+ * Idempotent, and meant to replace the snapshot only _after_ its first hydrate, so the store stays the single source of
+ * truth.
+ */
+export const toLiveDehydratedState = (snapshot: DehydratedState, queryClient: QueryClient): DehydratedState => {
+  if (Reflect.get(snapshot, LIVE_DEHYDRATED_STATE)) {
+    return snapshot
+  }
+  const snapshotQueryHashes = new Set(snapshot.queries.map((query) => query.queryHash))
+  return new Proxy(snapshot, {
+    get(target, prop, receiver) {
+      if (prop === LIVE_DEHYDRATED_STATE) {
+        return true
+      }
+      if (prop === 'queries') {
+        return dehydrate(queryClient, {
+          shouldDehydrateQuery: (query) => snapshotQueryHashes.has(query.queryHash),
+        }).queries
+      }
+      return Reflect.get(target, prop, receiver)
+    },
+  })
+}
+
 export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, DehydratedState, 'readonlyRedefine'>(
   '__POINT0_QUERY_CLIENT__',
   () => new QueryClient(),
@@ -47,6 +80,12 @@ export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, Dehydrated
       const relatedQueriesDehydratedState = (prefetchPageQuery.state.data as { dehydratedState: DehydratedState })
         .dehydratedState
       hydrate(queryClient, relatedQueriesDehydratedState)
+      // The store now owns these queries; swap the cached snapshot for a live view so a later
+      // prefetch re-hydrate reads the current store instead of resurrecting removed queries.
+      ;(prefetchPageQuery.state.data as { dehydratedState: DehydratedState }).dehydratedState = toLiveDehydratedState(
+        relatedQueriesDehydratedState,
+        queryClient,
+      )
 
       return queryClient
     },
