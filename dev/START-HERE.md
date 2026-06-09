@@ -16,9 +16,8 @@ launch**. Everything you need is in this `dev/` folder. Read these, in order:
 
 ## Where you are
 
-- Worktree: `/Users/iserdmi/cc/worktrees/point0/dev-docs-plan` (branch
-  `dev-docs-plan`). Work here, not in the main checkout. Nothing is committed
-  yet.
+- Work happens on the `dev` branch in the main checkout
+  (`~/cc/opensource/1gr14/point0`). There is no separate worktree.
 - Public docs live in `docs/<category>/<slug>.md`. One real draft exists:
   `docs/intro/overview.md`.
 - **The code was refactored after this plan was drafted.** Sources, titles, and

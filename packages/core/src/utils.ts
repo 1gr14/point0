@@ -12,7 +12,7 @@ import type {
   FetchServerOutputType,
   MiddlewareFn,
   MutationKey,
-  NormalizedEndpoindOpenapiSchema,
+  NormalizedEndpointOpenapiSchema,
   PointName,
   PointsScope,
   PointType,
@@ -382,9 +382,9 @@ export const isErrorCode = (code: number): boolean => {
 }
 
 export const mergeEndpointOpenapiSchemas = (
-  prevSchema: NormalizedEndpoindOpenapiSchema | undefined,
-  nextSchema: NormalizedEndpoindOpenapiSchema | undefined,
-): NormalizedEndpoindOpenapiSchema | undefined => {
+  prevSchema: NormalizedEndpointOpenapiSchema | undefined,
+  nextSchema: NormalizedEndpointOpenapiSchema | undefined,
+): NormalizedEndpointOpenapiSchema | undefined => {
   if (!prevSchema) {
     return nextSchema
   }

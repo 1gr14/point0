@@ -888,7 +888,7 @@ export type ComponentSuccessComponentType<
 >
 export type UndefinedComponentSuccessComponent = undefined
 
-export type MuntableSuccessComponentType<
+export type MountableSuccessComponentType<
   TPointType extends PointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TParamsSchema extends InputSchema | UndefinedInputSchema,

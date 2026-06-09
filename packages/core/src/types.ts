@@ -24,7 +24,7 @@ import type { ErrorPoint0 } from './error.js'
 import type {
   EmptyProps,
   MountableSuccessComponentProps,
-  MuntableSuccessComponentType,
+  MountableSuccessComponentType,
   Props,
   QueriesDefinitions,
 } from './mountable.js'
@@ -232,7 +232,7 @@ export type Infer<
   ClientQueryData: QueriedData<TQueryResultType, TClientLoaderOutput>
   QueriedData: FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
   ServerExecuteResult: ServerExecuteResult<TCtx, TServerLoaderOutput, TError>
-  EdgeComponent: MuntableSuccessComponentType<
+  EdgeComponent: MountableSuccessComponentType<
     FirstReadyPointTypeOrNever<TLetsReadyPointType, TPointType>,
     TRouteDefinition,
     TParamsSchema,
@@ -778,7 +778,7 @@ export type NormalizedResponseSchema = {
     >
   }
 }
-export type NormalizedEndpoindOpenapiSchema = Omit<
+export type NormalizedEndpointOpenapiSchema = Omit<
   OpenAPIV3.OperationObject,
   'parameters' | 'requestBody' | 'responses'
 >

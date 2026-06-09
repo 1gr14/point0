@@ -12,18 +12,18 @@ import {
 import * as v from 'valibot'
 import * as yup from 'yup'
 import { z } from 'zod'
-import { arktypeSchemaHelper } from './arktype.js'
-import { superstructSchemaHelper } from './superstruct.js'
-import { typeboxSchemaHelper } from './typebox.js'
+import { arktypeSchemaHelper } from '../src/schema/arktype.js'
+import { superstructSchemaHelper } from '../src/schema/superstruct.js'
+import { typeboxSchemaHelper } from '../src/schema/typebox.js'
 import {
   extractJsonSchemaBySchemasHelpers,
   extractKeysBySchemasHelpers,
   hasFileOrBlobBySchemasHelpers,
   isAllItemsOptionalBySchemasHelpers,
-} from './utils.js'
-import { valibotSchemaHelper } from './valibot.js'
-import { yupSchemaHelper } from './yup.js'
-import { zodSchemaHelper } from './zod.js'
+} from '../src/schema/utils.js'
+import { valibotSchemaHelper } from '../src/schema/valibot.js'
+import { yupSchemaHelper } from '../src/schema/yup.js'
+import { zodSchemaHelper } from '../src/schema/zod.js'
 
 const mixedSchemaHelpers = [
   zodSchemaHelper(),

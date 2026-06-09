@@ -4,6 +4,10 @@ import type { IsAny } from './types.js'
 
 export type * from './env.types.js'
 
+/**
+ * The NODE_ENV values Point0 treats as already-normal. Inputs are expected to be one of these as-is — Point0 does not
+ * coerce or normalize toward them; the name marks "these must arrive normal", not "these get normalized".
+ */
 export const normalNodeEnvs: NormalizedNodeEnv[] = ['production', 'development', 'test']
 
 // vars

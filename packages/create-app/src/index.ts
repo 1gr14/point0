@@ -36,7 +36,7 @@ const DEFAULT_APP_NAME = 'my-app'
 const program = new Command()
 
 program
-  .name('point0-create-app')
+  .name('create-point0-app')
   .description('Scaffold a new point0 app')
   .argument('[name]', 'Directory name for the new app')
   .option('--vite', 'Use Vite for client bundling')
@@ -47,7 +47,7 @@ program
   .option('--no-override', 'Do not override existing files if the target directory is not empty')
   .option('-I, --no-interactive', 'Disable interactive prompts')
   .action(async (name: string | undefined, options: CliOptions) => {
-    intro('point0-create-app')
+    intro('create-point0-app')
     const interactive = options.interactive !== false
     const appName = await resolveAppName(name, interactive)
     if (!appName) {

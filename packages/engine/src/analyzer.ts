@@ -118,7 +118,7 @@ export const analyzerPointsFilterSchemaShape = {
   valid: z.boolean().optional().describe('Filter by point validity.'),
   ssr: z.boolean().optional().describe('Filter by SSR flag.'),
   file: z.string().optional().describe('Exact source file path match from point.pos.file.'),
-  parendId: z.string().optional().describe("Filter by parent id. Kept with analyzer's current property spelling."),
+  parentId: z.string().optional().describe('Filter by parent id.'),
   layoutId: z.string().optional().describe('Filter by layout id.'),
 }
 
@@ -268,7 +268,7 @@ export class Analyzer {
           if (filter.ssr !== undefined && point.ssr !== filter.ssr) {
             return false
           }
-          if (filter.parendId && point.parents.every((parent) => parent.id !== filter.parendId)) {
+          if (filter.parentId && point.parents.every((parent) => parent.id !== filter.parentId)) {
             return false
           }
           if (filter.layoutId && point.layouts.every((layout) => layout.id !== filter.layoutId)) {
@@ -318,7 +318,7 @@ export const buildPointsFilter = (input: AnalyzerPointSelectOptions): AnalyzerPo
     valid: input.valid,
     ssr: input.ssr,
     file: input.file,
-    parendId: input.parendId,
+    parentId: input.parentId,
     layoutId: input.layoutId,
   }
 }

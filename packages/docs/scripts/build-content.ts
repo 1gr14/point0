@@ -1,8 +1,7 @@
 /**
- * Build step for @point0/docs: read the framework docs, split them into sections,
- * embed every section locally, and write a single prebuilt `content/docs.json` that
- * ships inside the package. At runtime we only embed the search query — doc vectors
- * are already computed here, so indexing needs no model.
+ * Build step for @point0/docs: read the framework docs, split them into sections, embed every section locally, and
+ * write a single prebuilt `content/docs.json` that ships inside the package. At runtime we only embed the search query
+ * — doc vectors are already computed here, so indexing needs no model.
  *
  * Run with: `bun ./scripts/build-content.ts`
  */
@@ -94,7 +93,9 @@ const build = async () => {
   const data: DocsData = { model: EMBED_MODEL, dim: EMBED_DIM, categories, docs, sections }
   mkdirSync(outDir, { recursive: true })
   writeFileSync(outFile, JSON.stringify(data), 'utf8')
-  console.log(`[point0/docs] built ${docs.length} docs, ${sections.length} sections → ${path.relative(packageDir, outFile)}`)
+  console.info(
+    `[point0/docs] built ${docs.length} docs, ${sections.length} sections → ${path.relative(packageDir, outFile)}`,
+  )
 }
 
 await build()

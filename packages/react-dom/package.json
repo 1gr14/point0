@@ -24,9 +24,6 @@
       ],
       "router": [
         "./dist/router.d.ts"
-      ],
-      "testing": [
-        "./dist/testing.d.ts"
       ]
     }
   },
@@ -38,10 +35,6 @@
     "./router": {
       "types": "./dist/router.d.ts",
       "import": "./dist/router.js"
-    },
-    "./testing": {
-      "types": "./dist/testing.d.ts",
-      "import": "./dist/testing.js"
     }
   },
   "files": [

@@ -91,9 +91,9 @@ packages/
   react-dom/    React/DOM bindings on top of core.
   openapi/      OpenAPI generation from points.
   basic-auth/   basic-auth helper points.
-  cookie-store/ cookie-backed store integration.
   cors/         CORS helper.
   create-app/   scaffolding CLI (`create-point0-app`-style).
+  docs/         docs content + search/embeddings; owns the `point0-docs-mcp` bin (@point0/docs). (Note: distinct from the top-level docs/ content folder below.)
 examples/
   basic/        canonical reference app (Prisma + tailwind + wouter). Use this when you need to see how a real app wires things up.
   better-auth/ capacitor/ expo/ vite/   integration variants.

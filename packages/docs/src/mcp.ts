@@ -3,7 +3,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
-import { getDoc, listDocs, searchDocs } from './search.js'
+import { getDocOrUndefined, listDocs, searchDocs } from './search.js'
 
 const server = new McpServer(
   {
@@ -41,7 +41,8 @@ server.registerTool(
   'search_docs',
   {
     title: 'Search Point0 docs',
-    description: 'Hybrid (keyword + semantic) search across Point0 documentation. Returns matching sections with snippets.',
+    description:
+      'Hybrid (keyword + semantic) search across Point0 documentation. Returns matching sections with snippets.',
     inputSchema: {
       query: z.string().describe('Natural-language search query.'),
       limit: z.number().int().nonnegative().optional().describe('Max number of results (default 8).'),
@@ -61,13 +62,14 @@ server.registerTool(
   'get_doc',
   {
     title: 'Get Point0 doc',
-    description: 'Get the full markdown content of a single Point0 documentation page by its slug (the file name, e.g. "overview").',
+    description:
+      'Get the full markdown content of a single Point0 documentation page by its slug (the file name, e.g. "overview").',
     inputSchema: {
       slug: z.string().describe('Doc slug — the file name, e.g. "overview".'),
     },
   },
   async ({ slug }) => {
-    const doc = getDoc(slug)
+    const doc = getDocOrUndefined(slug)
     if (!doc) {
       return {
         content: [{ type: 'text', text: `No doc found for slug "${slug}".` }],

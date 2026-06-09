@@ -40,14 +40,11 @@ const makeSnippet = (content: string, max = 280): string => {
 }
 
 /**
- * List all docs as a table of contents, ordered by category then frontmatter index.
- * The list is small, so pagination is optional — `limit`/`offset` default to "return all" —
- * but `total` is always reported to match the paginated shape of the other tools.
+ * List all docs as a table of contents, ordered by category then frontmatter index. The list is small, so pagination is
+ * optional — `limit`/`offset` default to "return all" — but `total` is always reported to match the paginated shape of
+ * the other tools.
  */
-export const listDocs = ({
-  limit,
-  offset = 0,
-}: { limit?: number; offset?: number } = {}): {
+export const listDocs = ({ limit, offset = 0 }: { limit?: number; offset?: number } = {}): {
   docs: DocSummary[]
   total: number
   hasMore: boolean
@@ -98,6 +95,6 @@ export const searchDocs = async (
 }
 
 /** Get the full markdown of a single doc by its slug (the file name, e.g. `overview`). */
-export const getDoc = (slug: string): Doc | undefined => {
+export const getDocOrUndefined = (slug: string): Doc | undefined => {
   return loadDocsData().docs.find((doc) => doc.slug === slug)
 }

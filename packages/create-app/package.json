@@ -18,7 +18,7 @@
   "type": "module",
   "sideEffects": false,
   "bin": {
-    "point0-create-app": "./dist/index.js"
+    "create-point0-app": "./dist/index.js"
   },
   "types": "./dist/index.d.ts",
   "typesVersions": {

@@ -1,6 +1,6 @@
 import { env } from '@point0/core'
 import type { MiddlewareFn, MiddlewareFnOptionsBase } from '@point0/core'
-import type { RequestMethod } from '@point0/core/request0'
+import type { WideRequestMethod } from '@point0/core/request0'
 
 // inspired by https://github.com/elysiajs/elysia-cors/tree/main
 // thanks a lot, SaltyAom https://saltyaom.com/
@@ -8,11 +8,9 @@ import type { RequestMethod } from '@point0/core/request0'
 type CorsOriginCheck = (context: MiddlewareFnOptionsBase<any>) => boolean | undefined | Promise<boolean | undefined>
 type CorsOriginValue = string | RegExp | CorsOriginCheck
 
-export type HTTPMethod = RequestMethod | (string & {})
-
 export type CorsOptions = {
   origin?: boolean | CorsOriginValue | CorsOriginValue[]
-  methods?: boolean | undefined | null | '' | '*' | HTTPMethod | HTTPMethod[]
+  methods?: boolean | undefined | null | '' | '*' | WideRequestMethod | WideRequestMethod[]
   allowedHeaders?: true | string | string[] | null | undefined
   exposeHeaders?: true | string | string[] | null | undefined
   credentials?: boolean

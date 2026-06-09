@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsdown'
 
 export default defineConfig({
-  entry: ['src/mount.ts', 'src/router.tsx', 'src/testing.ts'],
+  entry: ['src/mount.ts', 'src/router.tsx'],
   format: 'esm',
   platform: 'node',
   target: 'es2022',

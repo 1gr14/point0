@@ -5,8 +5,6 @@ import type { BuildConfig, BunPlugin } from 'bun'
 import { plugin } from 'bun'
 import * as nodeFsSync from 'node:fs'
 import * as nodePath from 'node:path'
-import type { Options as RetryOptions } from 'p-retry'
-import pRetry from 'p-retry'
 import type { Plugin, ViteDevServer } from 'vite'
 import type {
   EngineOptionsEnvParsed,

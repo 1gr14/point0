@@ -35,7 +35,6 @@ import type {
   FilesGeneratorSimpleGeneralConfig,
   FilesGeneratorSimpleServerConfig,
   FilesGeneratorTask,
-  FilesGeneratorTaskMeta,
 } from './generator.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { toAbsPath, toJsExtension } from './utils.js'
@@ -224,7 +223,6 @@ export type LoggerOptionsInput = LoggerConfig | (() => LoggerConfig | Promise<Lo
 
 export type EngineGeneralOptions = {
   file: string
-  generte?: Array<Omit<FilesGeneratorTaskMeta, 'scopes'>>
   logger?: LoggerOptionsInput
   generate?: FilesGeneratorSimpleGeneralConfig | FilesGeneratorTask[]
   itWasBuilt?: boolean

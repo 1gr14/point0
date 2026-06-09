@@ -77,7 +77,7 @@ describe('Analyzer', () => {
 
     const byUrl = analyzer.getPoint({ filter: { url: '/page' } })
     const byEndpointUrl = analyzer.getPoint({ filter: { endpointUrl: '/api/items' } })
-    const byParent = analyzer.getPoint({ filter: { parendId: 'root' } })
+    const byParent = analyzer.getPoint({ filter: { parentId: 'root' } })
     const byLayout = analyzer.getPoint({ filter: { layoutId: 'layout.main' } })
 
     expect(byUrl?.id).toBe('point.page')

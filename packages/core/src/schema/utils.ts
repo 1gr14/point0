@@ -14,7 +14,7 @@ export const getSchemaVendor = (schema: unknown): string | undefined => {
   return vendor as string | undefined
 }
 
-export const getSutableSchemaHelper = (
+export const getSuitableSchemaHelper = (
   schema: unknown,
   schemaHelpers: SchemaHelper[] | undefined,
 ): SchemaHelper | undefined => {
@@ -38,7 +38,7 @@ export const extractKeysBySchemasHelpers = (
   schema: unknown,
   schemaHelpers: SchemaHelper[] | undefined,
 ): string[] | undefined => {
-  const schemaHelper = getSutableSchemaHelper(schema, schemaHelpers)
+  const schemaHelper = getSuitableSchemaHelper(schema, schemaHelpers)
   return schemaHelper?.extractKeys?.(schema)
 }
 
@@ -46,7 +46,7 @@ export const extractJsonSchemaBySchemasHelpers = (
   schema: unknown,
   schemaHelpers: SchemaHelper[] | undefined,
 ): object | undefined => {
-  const schemaHelper = getSutableSchemaHelper(schema, schemaHelpers)
+  const schemaHelper = getSuitableSchemaHelper(schema, schemaHelpers)
   if (schemaHelper?.toJson) {
     return schemaHelper.toJson(schema)
   } else {
@@ -60,7 +60,7 @@ export const extractJsonSchemaBySchemasHelpers = (
 
 export const hasFileOrBlobBySchemasHelpers = (schema: unknown, schemaHelpers: SchemaHelper[] | undefined): boolean => {
   try {
-    const schemaHelper = getSutableSchemaHelper(schema, schemaHelpers)
+    const schemaHelper = getSuitableSchemaHelper(schema, schemaHelpers)
     return schemaHelper?.hasFileOrBlob?.(schema) ?? false
   } catch {
     return false
@@ -72,7 +72,7 @@ export const isAllItemsOptionalBySchemasHelpers = (
   schemaHelpers: SchemaHelper[] | undefined,
 ): boolean => {
   try {
-    const schemaHelper = getSutableSchemaHelper(schema, schemaHelpers)
+    const schemaHelper = getSuitableSchemaHelper(schema, schemaHelpers)
     return schemaHelper?.isAllItemsOptional?.(schema) ?? false
   } catch {
     return false

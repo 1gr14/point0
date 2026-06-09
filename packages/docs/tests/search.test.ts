@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { getDoc, listDocs, searchDocs } from '../src/index.js'
+import { getDocOrUndefined, listDocs, searchDocs } from '../src/index.js'
 
 describe('@point0/docs', () => {
   it('lists docs as a table of contents', () => {
@@ -20,14 +20,14 @@ describe('@point0/docs', () => {
   })
 
   it('gets the full content of a doc by slug', () => {
-    const doc = getDoc('overview')
+    const doc = getDocOrUndefined('overview')
     expect(doc).toBeDefined()
     expect(doc?.title).toBe('Overview')
     expect(doc?.content.length).toBeGreaterThan(0)
   })
 
   it('returns undefined for an unknown slug', () => {
-    expect(getDoc('nope')).toBeUndefined()
+    expect(getDocOrUndefined('nope')).toBeUndefined()
   })
 
   it('finds a relevant doc via hybrid semantic search', async () => {

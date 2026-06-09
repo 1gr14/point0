@@ -97,7 +97,7 @@ const mergeJsonSchemas = (
   }
 }
 
-const appendJsonShemaByValidatorSchema = ({
+const appendJsonSchemaByValidatorSchema = ({
   jsonSchema,
   validatorSchema,
   schemasHelpers,
@@ -209,7 +209,7 @@ const getJsonSchemasFromPoint = (
     if (action.type === 'input') {
       schemas.inputHasFileOrBlob ||= hasFileOrBlobBySchemasHelpers(action.schema, schemasHelpers)
       schemas.inputAllItemsOptional &&= isAllItemsOptionalBySchemasHelpers(action.schema, schemasHelpers)
-      schemas.input = appendJsonShemaByValidatorSchema({
+      schemas.input = appendJsonSchemaByValidatorSchema({
         jsonSchema: schemas.input,
         validatorSchema: action.schema,
         schemasHelpers,
@@ -218,35 +218,35 @@ const getJsonSchemasFromPoint = (
     if (action.type === 'body') {
       schemas.bodyHasFileOrBlob ||= hasFileOrBlobBySchemasHelpers(action.schema, schemasHelpers)
       schemas.bodyAllItemsOptional &&= isAllItemsOptionalBySchemasHelpers(action.schema, schemasHelpers)
-      schemas.body = appendJsonShemaByValidatorSchema({
+      schemas.body = appendJsonSchemaByValidatorSchema({
         jsonSchema: schemas.body,
         validatorSchema: action.schema,
         schemasHelpers,
       })
     }
     if (action.type === 'headers') {
-      schemas.headers = appendJsonShemaByValidatorSchema({
+      schemas.headers = appendJsonSchemaByValidatorSchema({
         jsonSchema: schemas.headers,
         validatorSchema: action.schema,
         schemasHelpers,
       })
     }
     if (action.type === 'cookies') {
-      schemas.cookies = appendJsonShemaByValidatorSchema({
+      schemas.cookies = appendJsonSchemaByValidatorSchema({
         jsonSchema: schemas.cookies,
         validatorSchema: action.schema,
         schemasHelpers,
       })
     }
     if (action.type === 'params') {
-      schemas.params = appendJsonShemaByValidatorSchema({
+      schemas.params = appendJsonSchemaByValidatorSchema({
         jsonSchema: schemas.params,
         validatorSchema: action.schema,
         schemasHelpers,
       })
     }
     if (action.type === 'search') {
-      schemas.search = appendJsonShemaByValidatorSchema({
+      schemas.search = appendJsonSchemaByValidatorSchema({
         jsonSchema: schemas.search,
         validatorSchema: action.schema,
         schemasHelpers,
@@ -401,7 +401,7 @@ const getOpenapiSchemaFromPoint = (
 
 const getModelsSchemasFromPoints = (points: Array<ReadyPoint | { point: ReadyPoint }>): Record<string, InputSchema> => {
   return points.reduce<Record<string, InputSchema>>((acc, point) => {
-    return { ...acc, ...(point.point._modelsShemas ?? {}) }
+    return { ...acc, ...(point.point._modelsSchemas ?? {}) }
   }, {})
 }
 

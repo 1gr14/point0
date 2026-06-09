@@ -9,6 +9,10 @@ import type { Request0 } from './request0.js'
 import { superstore } from './super-store.js'
 import type { RichFetchFn } from './types.js'
 
+/**
+ * Set the HTTP response status for the current request. Takes effect only during SSR — on the client it is a no-op (the
+ * response status was already sent), which is why it is safe to call unconditionally from a component.
+ */
 export const setStatus = (status: number): void => {
   if (!_point0_env.side.is.server) {
     return
@@ -16,6 +20,11 @@ export const setStatus = (status: number): void => {
   getEffectsOrUndefined()?.set.status(status)
 }
 
+/**
+ * Alias of {@link setStatus} carrying a `use*` name. `setStatus` is typically called inside a component during render;
+ * the hook-shaped name keeps React's rules-of-hooks / `use`-prefix lint quiet so it can be called from a component
+ * without warnings. It is NOT a real hook — same function, no extra behavior.
+ */
 export const useSetStatus = setStatus
 
 export const nativeFetch: RichFetchFn = async (...args) => await fetch(...args)

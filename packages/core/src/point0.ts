@@ -212,7 +212,7 @@ import type {
   NiceRootReadyPoint,
   NiceRootStagePoint,
   NiceStagePoint,
-  NormalizedEndpoindOpenapiSchema,
+  NormalizedEndpointOpenapiSchema,
   // NormalizeQueryResultType,
   NormalizedPrefetchPagePolicy,
   NormalizedResponseSchema,
@@ -427,9 +427,9 @@ export class Point0<
     unknown
   >
   readonly _queryResultType: TQueryResultType
-  readonly _modelsShemas: Record<string, InputSchema> | undefined
+  readonly _modelsSchemas: Record<string, InputSchema> | undefined
   readonly _responseSchema: NormalizedResponseSchema | undefined
-  readonly _openapiSchema: NormalizedEndpoindOpenapiSchema | undefined
+  readonly _openapiSchema: NormalizedEndpointOpenapiSchema | undefined
   readonly _serverExecuteActions: ServerExecuteAction[]
   private readonly _clientExecuteActions: ClientExecuteAction[]
   private readonly _mountActions: MountAction[]
@@ -629,8 +629,8 @@ export class Point0<
       | undefined
     _queryResultType?: TQueryResultType
     // _asFormData?: boolean | undefined
-    _modelsShemas?: Record<string, InputSchema> | undefined
-    _openapiSchema?: NormalizedEndpoindOpenapiSchema | undefined
+    _modelsSchemas?: Record<string, InputSchema> | undefined
+    _openapiSchema?: NormalizedEndpointOpenapiSchema | undefined
     _responseSchema?: NormalizedResponseSchema | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
@@ -701,7 +701,7 @@ export class Point0<
     this._infiniteQueryOptions = options._infiniteQueryOptions ?? ({} as never)
     this._queryResultType = (options._queryResultType ?? undefined) as TQueryResultType
     // this._asFormData = options._asFormData
-    this._modelsShemas = options._modelsShemas ?? undefined
+    this._modelsSchemas = options._modelsSchemas ?? undefined
     this._openapiSchema = options._openapiSchema ?? undefined
     this._responseSchema = options._responseSchema ?? undefined
     this._serverExecuteActions = options._serverExecuteActions ?? []
@@ -813,8 +813,8 @@ export class Point0<
       | undefined
     _queryResultType?: TQueryResultType
     // _asFormData?: boolean | undefined
-    _modelsShemas?: Record<string, InputSchema> | undefined
-    _openapiSchema?: NormalizedEndpoindOpenapiSchema | undefined
+    _modelsSchemas?: Record<string, InputSchema> | undefined
+    _openapiSchema?: NormalizedEndpointOpenapiSchema | undefined
     _responseSchema?: NormalizedResponseSchema | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
@@ -939,7 +939,7 @@ export class Point0<
       _infiniteQueryOptions: set('_infiniteQueryOptions'),
       _queryResultType: set('_queryResultType'),
       // _asFormData: overrides._asFormData ?? this._asFormData,
-      _modelsShemas: set('_modelsShemas'),
+      _modelsSchemas: set('_modelsSchemas'),
       _openapiSchema: set('_openapiSchema'),
       _responseSchema: set('_responseSchema'),
       _serverExecuteActions: set('_serverExecuteActions'),
@@ -3705,8 +3705,8 @@ export class Point0<
                 | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
             ]
         : [] // The result is the same point, advanced one stage. Every type arg below is this point's current
-    // state passed through UNCHANGED — only the last two (inner props, queries) are recomputed, since
-  ) // `with` is the only thing that can add props or queries. They're the two interesting positions.
+    // `with` is the only thing that can add props or queries. They're the two interesting positions.
+  ) // state passed through UNCHANGED — only the last two (inner props, queries) are recomputed, since
   : NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -6539,7 +6539,7 @@ export class Point0<
   }
 
   openapi(
-    endpointSchema: NormalizedEndpoindOpenapiSchema,
+    endpointSchema: NormalizedEndpointOpenapiSchema,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -6594,8 +6594,8 @@ export class Point0<
     TQueriesDefinitions
   > {
     return this._continue({
-      _modelsShemas: {
-        ...(this._modelsShemas ?? {}),
+      _modelsSchemas: {
+        ...(this._modelsSchemas ?? {}),
         ...modelsSchemas,
       },
     }) as never

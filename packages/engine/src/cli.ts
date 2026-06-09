@@ -30,8 +30,8 @@ program
   .allowExcessArguments() // allow args after --
   .option('-G, --no-generate', dictionary.noGenerate)
   .option('--side <side>', "Serve only one side: 'server' or 'client'")
-  .option('--scope <scope>', 'Server only one scope')
-  .option('-W, --no-watch', 'Prevent watch file changes, restrat server, regenrate files')
+  .option('--scope <scope>', 'Serve only one scope')
+  .option('-W, --no-watch', 'Disable file watching: do not restart the server or regenerate files on change')
   .option(
     '-w, --watch [glob]',
     'Watch files and rebuild on changes (no value = default devWatchGlob glob from server engine config, comma-separated or repeated values supported)',
@@ -236,7 +236,7 @@ program
   .option('-w, --watch', 'Watch for changes and regenerate')
   .option('--engine <path>', dictionary.enginePath)
   .action(async (options) => {
-    const { engine } = await Engine.findAndImportSelf(options.engine)
+    const { engine } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd: process.cwd() })
     if (options.watch) {
       await engine.generateWatch()
     } else {
@@ -444,7 +444,7 @@ pointsCommand
   .option('--valid <boolean>', 'Point validity filter (true|false)', parseBooleanOption)
   .option('--ssr <boolean>', 'Point SSR filter (true|false)', parseBooleanOption)
   .option('--file <path>', 'Point source file path')
-  .option('--parend-id <id>', "Filter by parent id (kept as 'parendId' for compatibility)")
+  .option('--parent-id <id>', 'Filter by parent id')
   .option('--layout-id <id>', 'Filter by layout id')
   .option('--fields <fields>', 'Comma-separated fields to return', parseCommaSeparatedOption)
   .option('--limit <number>', 'Maximum number of points', parseNonNegativeIntegerOption('limit'))
@@ -489,7 +489,7 @@ pointsCommand
   .option('--valid <boolean>', 'Point validity filter (true|false)', parseBooleanOption)
   .option('--ssr <boolean>', 'Point SSR filter (true|false)', parseBooleanOption)
   .option('--file <path>', 'Point source file path')
-  .option('--parend-id <id>', "Filter by parent id (kept as 'parendId' for compatibility)")
+  .option('--parent-id <id>', 'Filter by parent id')
   .option('--layout-id <id>', 'Filter by layout id')
   .option('--fields <fields>', 'Comma-separated fields to return', parseCommaSeparatedOption)
   .action(async (options: AnalyzerPointSelectOptions & { meta?: string[]; fields?: string[] }) => {
@@ -546,7 +546,7 @@ docsCommand
   .description('Get the full markdown of a doc by its slug (the file name)')
   .action(async (slug: string) => {
     const docs = await loadDocs()
-    const doc = docs.getDoc(slug)
+    const doc = docs.getDocOrUndefined(slug)
     if (!doc) {
       throw new Error(`No doc found for slug "${slug}".`)
     }
