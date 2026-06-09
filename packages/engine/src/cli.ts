@@ -156,6 +156,10 @@ program
   .option('-C, --no-clean', 'Do not clean build')
   .option('-P, --no-publicdir', 'Do not build publicdir')
   .option(
+    '-k, --keep-alive',
+    'Do not exit after the build: wait for Ctrl+C so long-lived build plugins (e.g. a bundle-analyzer server) keep running',
+  )
+  .option(
     '--env <name_eq_value>',
     'Environment variables to define, name=value (--env name1=value1 --env name2=value2 ...)',
     (value, previous: string[] = []) => {
@@ -173,6 +177,7 @@ program
       generate?: boolean
       clean?: boolean
       publicdir?: boolean
+      keepAlive?: boolean
       env?: string[]
     }) => {
       process.env.NODE_ENV ??= 'production'
@@ -204,7 +209,23 @@ program
         })
       } else {
         await engine.build(buildOptions)
-        process.exit(0)
+        if (options.keepAlive) {
+          // --keep-alive: don't exit. Long-lived build plugins (e.g. a bundle-analyzer server on
+          // :8888) stay reachable until the user stops the process. A pending promise / signal
+          // listener does NOT keep Bun's event loop alive on its own, so hold it open with a ref'd
+          // timer; clear it and exit cleanly on Ctrl+C.
+          const keepAlive = setInterval(() => {}, 1 << 30)
+          await new Promise<void>((resolve) => {
+            process.once('SIGINT', resolve)
+            process.once('SIGTERM', resolve)
+          })
+          clearInterval(keepAlive)
+          process.exit(0)
+        }
+        // Let the process exit naturally so build plugins can finish flushing (reports, telemetry,
+        // streams) and output isn't truncated by an abrupt exit. Safety net: if some plugin leaves a
+        // dangling handle, don't hang forever (e.g. in CI) — force-exit after a short grace period.
+        setTimeout(() => process.exit(0), 5000).unref()
       }
     },
   )
