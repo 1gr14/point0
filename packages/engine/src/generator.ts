@@ -1048,7 +1048,10 @@ export class FilesGenerator {
     if (pagePoints.length > 0) {
       lines.push(`export const routes = Routes.create({`)
       for (const p of pagePoints) {
-        lines.push(`  '${p.name}': '${p.route}',`)
+        // Mirror Prettier's `quoteProps: 'as-needed'`: quote the key only when it is not a
+        // valid JS identifier, so freshly generated output is already format-clean.
+        const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(p.name) ? p.name : `'${p.name}'`
+        lines.push(`  ${key}: '${p.route}',`)
       }
       lines.push(`}${originSuffix})`)
     } else {

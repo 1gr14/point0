@@ -387,7 +387,47 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
-            'mypage': '/news',
+            mypage: '/news',
+          })
+          "
+        `)
+      }),
+    )
+
+    it(
+      // Mirrors Prettier's `quoteProps: 'as-needed'`: a route name that is not a valid JS
+      // identifier (e.g. contains a dash) must stay quoted, while valid identifiers do not.
+      'quotes the route key when the name is not a valid identifier',
+      helper(async ({ dir, files: [rootFile, routesFile], fixPaths, log: log }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const valid = root.lets('page', 'mypage', '/news').page(() => <div>Hello</div>)
+export const dashed = root.lets('page', 'my-page', '/news/dashed').page(() => <div>Hello</div>)
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [
+            {
+              scope: 'myroot',
+              what: 'routes',
+              outfile: routesFile.path,
+            },
+          ],
+          log,
+          routes: {},
+        })
+
+        await generator.sync()
+
+        const content = fixPaths(await routesFile.text())
+        expect(content).toMatchInlineSnapshot(`
+          "import { Routes } from '@1gr14/route0'
+
+          export const routes = Routes.create({
+            mypage: '/news',
+            'my-page': '/news/dashed',
           })
           "
         `)
@@ -426,7 +466,7 @@ export const page = root.lets('page', 'mypage', '/news').search(z.object({ q: z.
           "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
-            'mypage': '/news',
+            mypage: '/news',
           })
           "
         `)
@@ -467,8 +507,8 @@ export const list = root.lets('page', 'list', '/list').search(z.object({ page: z
           "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
-            'home': '/',
-            'list': '/list',
+            home: '/',
+            list: '/list',
           }, { origin: 'https://example.com' })
           "
         `)
@@ -508,7 +548,7 @@ export const page = layout.lets('page', 'mypage', '/news').page(() => <div>Hello
           "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
-            'mypage': '/news',
+            mypage: '/news',
           })
           "
         `)
@@ -545,7 +585,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
-            'mypage': '/news',
+            mypage: '/news',
           }, { origin: 'https://example.com' })
           "
         `)
@@ -582,7 +622,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
-            'mypage': '/my/path/news',
+            mypage: '/my/path/news',
           }, { origin: 'https://example.com' })
           "
         `)
@@ -619,7 +659,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
-            'mypage': '/my/path/news',
+            mypage: '/my/path/news',
           }, { origin: 'https://example.com' })
           "
         `)
@@ -656,7 +696,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
-            'mypage': '/my/path/extra/path/news',
+            mypage: '/my/path/extra/path/news',
           }, { origin: 'https://example.com' })
           "
         `)
@@ -693,7 +733,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
-            'mypage': '/news',
+            mypage: '/news',
           }, { origin: process.env.BASE_URL })
           "
         `)
@@ -730,7 +770,7 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
-            'mypage': '/extra/path/news',
+            mypage: '/extra/path/news',
           }, { origin: process.env.BASE_URL })
           "
         `)
@@ -813,7 +853,7 @@ export const layout = root.lets('layout', 'mylayout', '/layout').loader(() => ({
           "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
-            'mypage': '/news',
+            mypage: '/news',
           })
           "
         `)
