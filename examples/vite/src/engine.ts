@@ -1,6 +1,7 @@
 import { Engine } from '@point0/engine'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { analyzer } from 'vite-bundle-analyzer'
 import { clientEnvKeys } from '@/lib/env/client-shape'
 
 export const engine = Engine.create({
@@ -8,7 +9,7 @@ export const engine = Engine.create({
   ssr: true,
   pointsGlob: '**/*.{ts,tsx,mdx}',
   generate: { meta: './generated/point0/meta.ts', assetsTypes: './generated/point0/assets.d.ts' },
-  viteConfig: ({ plugins }) => {
+  viteConfig: ({ plugins, side }) => {
     return {
       resolve: {
         tsconfigPaths: true,
@@ -18,7 +19,9 @@ export const engine = Engine.create({
         ...plugins,
         react({ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }),
         tailwindcss(),
-        // options.side === 'client' ? analyzer() : null,
+        // Static report → `dist/client/stats.html` after a normal `point0 build`.
+        // For the live server on :8888 instead, use `analyzer()` and run `point0 build --keep-alive`.
+        side === 'client' ? analyzer({ analyzerMode: 'static', openAnalyzer: false }) : null,
       ],
     }
   },
