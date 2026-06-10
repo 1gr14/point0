@@ -6,7 +6,7 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import type * as React from 'react'
-import type { ResolvableHead } from 'unhead/types'
+import type { HeadObject } from './head.js'
 import type { ErrorPoint0 } from './error.js'
 import type { NavigationPageState, RedirectTask, SetSearchHelper } from './navigation.js'
 import type {
@@ -700,7 +700,7 @@ export type HeadFn<
     TMapperOutput,
     TError
   >,
-) => ResolvableHead | string
+) => HeadObject | string
 
 export type GlobalHeadFnOptions<
   TStatus extends 'loading' | 'error' | 'success' | 'initial',
@@ -709,7 +709,7 @@ export type GlobalHeadFnOptions<
 export type GlobalHeadFn<
   TStatus extends 'loading' | 'error' | 'success' | 'initial' = any,
   TLocation extends AnyLocation = any,
-> = (options: GlobalHeadFnOptions<TStatus, TLocation>) => ResolvableHead | string
+> = (options: GlobalHeadFnOptions<TStatus, TLocation>) => HeadObject | string
 
 // `setSearch` is handed to pages/layouts (which own a URL `search`) next to the
 // parsed `search` prop. Typed by the point's search schema's INPUT side (what you

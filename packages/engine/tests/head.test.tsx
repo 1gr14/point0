@@ -318,6 +318,88 @@ describe('head', () => {
       retry: 3,
     },
   )
+
+  it(
+    'flat seo meta and canonical',
+    async () => {
+      const page = root
+        .lets('page', 'home', '/')
+        .head({
+          title: 'Home',
+          description: 'My description',
+          ogTitle: 'OG Home',
+          canonical: 'https://example.com/home',
+        })
+        .page(() => <div id="page" />)
+
+      const { render, fetchView } = await createTestThings({ ssr: true, points: [root, page] })
+      await render(page.route(), async ({ waitContent, document }) => {
+        await waitContent('#page')
+        expect(document.head.querySelector('meta[name="description"]')?.getAttribute('content')).toBe('My description')
+        expect(document.head.querySelector('meta[property="og:title"]')?.getAttribute('content')).toBe('OG Home')
+        expect(document.head.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
+          'https://example.com/home',
+        )
+      })
+      const view = await fetchView(page)
+      expect(view.html).toContain('<meta name="description" content="My description"')
+      expect(view.html).toContain('<meta property="og:title" content="OG Home"')
+      expect(view.html).toContain('<link rel="canonical" href="https://example.com/home"')
+    },
+    {
+      retry: 3,
+    },
+  )
+
+  it(
+    'flat seo meta wins over meta array',
+    async () => {
+      const page = root
+        .lets('page', 'home', '/')
+        .head({
+          description: 'Flat',
+          meta: [{ name: 'description', content: 'From array' }],
+        })
+        .page(() => <div id="page" />)
+
+      const { render, fetchView } = await createTestThings({ ssr: true, points: [root, page] })
+      await render(page.route(), async ({ waitContent, document }) => {
+        await waitContent('#page')
+        const descriptions = document.head.querySelectorAll('meta[name="description"]')
+        expect(descriptions.length).toBe(1)
+        expect(descriptions[0].getAttribute('content')).toBe('Flat')
+      })
+      const view = await fetchView(page)
+      expect(view.html).toContain('<meta name="description" content="Flat"')
+      expect(view.html).not.toContain('From array')
+    },
+    {
+      retry: 3,
+    },
+  )
+
+  it(
+    'flat seo meta from head fn with loader data',
+    async () => {
+      const page = root
+        .lets('page', 'home', '/')
+        .loader(async () => await waitReturn({ x: 1 }))
+        .head(({ data }) => ({ title: `x=${data.x}`, description: `desc x=${data.x}` }))
+        .page(() => <div id="page" />)
+
+      const { render, fetchView } = await createTestThings({ ssr: true, points: [root, page] })
+      await render(page.route(), async ({ waitContent, document }) => {
+        await waitContent('#page')
+        await waitReturn(100)
+        expect(document.head.querySelector('meta[name="description"]')?.getAttribute('content')).toBe('desc x=1')
+      })
+      const view = await fetchView(page)
+      expect(view.html).toContain('<meta name="description" content="desc x=1"')
+    },
+    {
+      retry: 3,
+    },
+  )
 })
 
 // USE HEAD keep array and call all AGAIN in loading or error or usccess component of page

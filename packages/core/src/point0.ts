@@ -31,10 +31,9 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import { hydrate, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
-import { useHead } from '@unhead/react'
+import { useHead, useSeoMeta } from '@unhead/react'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
-import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import { _point0_env } from './env.js'
@@ -54,6 +53,8 @@ import type {
   UniqEventerErrorEventName,
 } from './eventer.js'
 import { uniqEventerErrorEventNames } from './eventer.js'
+import type { HeadObject } from './head.js'
+import { _splitHead } from './head.js'
 import { ClientOnly, getFetch, setStatus } from './helpers.js'
 import { _getFakeClient, _ss } from './internals.js'
 import { log, type LogFn } from './logger.js'
@@ -3561,6 +3562,10 @@ export class Point0<
    *
    * Everything below branches on what `arg0` is: a function (with-fn / with-query-fn) vs a query point. Three type
    * params are inferred: `TArg` (arg0), and the two halves of `resolve` (see below).
+   *
+   * RETURN: the same point, advanced one stage. Every type arg of the returned NiceStagePoint is this point's current
+   * state passed through UNCHANGED — only the last two (inner props, queries) are recomputed, since `with` is the only
+   * thing that can add props or queries. They're the two interesting positions.
    */
   with<
     // arg0 is exactly one of three things. The union is also the constraint, so passing anything
@@ -3705,10 +3710,8 @@ export class Point0<
                 | TResolveBool
                 | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
             ]
-        : [] // The result is the same point, advanced one stage. Every type arg below is this point's current
-    // `with` is the only thing that can add props or queries. They're the two interesting positions.
-  ) // state passed through UNCHANGED — only the last two (inner props, queries) are recomputed, since
-  : NiceStagePoint<
+        : []
+  ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
       : StagePointTypeOrNever<TPointType>,
@@ -5126,7 +5129,7 @@ export class Point0<
           TMapperOutput,
           TError
         >
-      | ResolvableHead
+      | HeadObject
       | string,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
@@ -5163,9 +5166,7 @@ export class Point0<
   head<TStatus extends 'loading' | 'error' | 'success' | 'universal' | 'global'>(
     status: TStatus,
     head: TStatus extends 'global'
-      ?
-          | GlobalHeadFn<any, LocationOrAnyLocation<MountableLocation<TLetsReadyPointType, TRouteDefinition>>>
-          | ResolvableHead
+      ? GlobalHeadFn<any, LocationOrAnyLocation<MountableLocation<TLetsReadyPointType, TRouteDefinition>>> | HeadObject
       :
           | HeadFn<
               TStatus extends 'loading' | 'error' | 'success' ? TStatus : any,
@@ -5185,7 +5186,7 @@ export class Point0<
               TMapperOutput,
               TError
             >
-          | ResolvableHead
+          | HeadObject
           | string,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
@@ -5235,7 +5236,7 @@ export class Point0<
                 TMapperOutput,
                 ErrorPoint0
               >
-            | ResolvableHead
+            | HeadObject
             | string,
         ]
       | [
@@ -5251,7 +5252,7 @@ export class Point0<
                 TMapperOutput,
                 ErrorPoint0
               >
-            | ResolvableHead
+            | HeadObject
             | string,
         ]
     const [providedStatus, providedHead] = (() => {
@@ -11138,8 +11139,9 @@ export class Point0<
       switch (action.type) {
         case 'head': {
           const headFnResult = action.fn(state)
-          const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
-          useHead(headFnResultResolvable)
+          const { head, seoMeta } = _splitHead(headFnResult)
+          useHead(head)
+          useSeoMeta(seoMeta)
           continue
         }
         case 'globalHead': {
@@ -11150,8 +11152,9 @@ export class Point0<
             )
           }
           const headFnResult = action.fn({ ...pageState, location })
-          const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
-          useHead(skipPageStateRelated ? {} : headFnResultResolvable)
+          const { head, seoMeta } = _splitHead(headFnResult)
+          useHead(skipPageStateRelated ? {} : head)
+          useSeoMeta(skipPageStateRelated ? {} : seoMeta)
           continue
         }
       }
