@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 /**
- * End-to-end tests for `@point0/create-app`.
+ * End-to-end tests for `create-point0-app`.
  *
  * Each test scaffolds a real app from the template (one Bun-bundled, one Vite-bundled), generates its artifacts and
  * asserts `tsc` passes on it, then runs `point0 dev` and opens the home page in a real (headless) Chromium via
