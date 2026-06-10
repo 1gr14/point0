@@ -27,6 +27,13 @@ export type EventerEvent<TSide extends EventerSide, TName extends string, TData 
   /** The raw event payload — rich, but not always pleasant to serialize/log. */
   data: TData
   /**
+   * The event's error, hoisted to the envelope so handlers (especially `.on('error')`) can take it directly. Always
+   * present: the error instance on error events, `undefined` on the rest. The same object also stays at `data.error`
+   * wherever the raw payload carries one. (The conditional lives on the field, not the event object — making the whole
+   * event distributive breaks `Extract<..., { name }>` while `TError` is still an unresolved generic.)
+   */
+  error: TData extends { error: infer TEventError } ? TEventError : undefined
+  /**
    * A log-friendly projection of `data`, assembled explicitly at each emit site: points become ids, requests become `{
    * method, path }`, errors/redirects are serialized, binaries in the input are replaced with placeholders. Can be
    * nested. Safe to dump into any logger as-is.
@@ -94,7 +101,9 @@ export type EventerEventPointFetchServerSettled<TError extends ErrorPoint0> = Ev
 export type EventerEventPointFetchServerSuccess = EventerEvent<
   'client' | 'server',
   'pointFetchServerSuccess',
-  Extract<FetchServerDetailedOutput<any, any>, { error: undefined }> & {
+  // `ErrorPoint0` (not `any`) on purpose: with `any` the `Extract` keeps the `error: any` branch (any is assignable to
+  // `undefined`), so the "success" payload would leak an error member and untype the envelope `error` to `any`.
+  Extract<FetchServerDetailedOutput<any, ErrorPoint0>, { error: undefined }> & {
     input: InputRaw
     point: AnyNiceReadyPoint
   }

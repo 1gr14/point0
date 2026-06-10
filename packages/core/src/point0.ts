@@ -47,6 +47,7 @@ import type {
   ClientEventerEventName,
   ClientEventerSubscriptionCallback,
   EventerEventMeta,
+  EventerEventPointFetchServerSuccess,
   EventerSubscription,
   ServerEventerEventName,
   ServerEventerSubscriptionCallback,
@@ -8901,10 +8902,12 @@ export class Point0<
           redirect: undefined,
           output: res,
         } as Extract<FetchServerDetailedOutput<TServerLoaderOutput, TError>, { error: undefined }>
+        // The cast resolves the generic `Extract` above for the emit — TS can't reduce it while TServerLoaderOutput
+        // and TError are unresolved.
         const eventData = {
           ..._eventData,
           ...result,
-        }
+        } as EventerEventPointFetchServerSuccess['data']
         this._emit('pointFetchServerSettled', eventData, meta)
         this._emit('pointFetchServerSuccess', eventData, meta)
         return result
@@ -8960,10 +8963,11 @@ export class Point0<
                 output: data,
               }),
         } as Extract<FetchServerDetailedOutput<TServerLoaderOutput, TError>, { error: undefined }>
+        // Same as above: resolve the generic `Extract` for the emit.
         const eventData = {
           ..._eventData,
           ...result,
-        }
+        } as EventerEventPointFetchServerSuccess['data']
         const successMeta = result.redirect ? { ...meta, redirect: result.redirect.serialize() } : meta
         this._emit('pointFetchServerSettled', eventData, successMeta)
         this._emit('pointFetchServerSuccess', eventData, successMeta)
@@ -12349,6 +12353,8 @@ export class Point0<
     const event = {
       name,
       data,
+      // Hoist the payload's error (when there is one) to the envelope — see `EventerEvent`.
+      error: (data as { error?: TError }).error,
       meta,
       side: _point0_env.side.name,
     } as AnyEventerEvent<TError>

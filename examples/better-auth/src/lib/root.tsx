@@ -23,8 +23,8 @@ export const root = Point0.lets
     refetchIntervalInBackground: false,
     staleTime: 10 * 1000, // 10 seconds
   })
-  .on('error', ({ side, name, data, meta }) => {
-    console.error({ ...meta, side, name, error: data.error })
+  .on('error', ({ side, name, error, meta }) => {
+    console.error({ ...meta, side, name, error })
   })
   .head('global', ({ loading, error }) => {
     return {

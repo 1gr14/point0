@@ -72,6 +72,10 @@ describe('on', () => {
       const successEvent = events.find((e) => e.name === 'engineFetchSuccess')
       expect(successEvent?.meta.result).toBeUndefined()
       expect(successEvent?.meta.response).toBeUndefined()
+
+      // the envelope `error` is present on every event and stays `undefined` outside error events
+      expect(events.every((e) => 'error' in e)).toBe(true)
+      expect(events.every((e) => e.error === undefined)).toBe(true)
     })
   })
 
@@ -185,6 +189,10 @@ describe('on', () => {
       const thrownError = queryErrorEvent?.data.error as ErrorPoint0 | undefined
       expect(thrownError).toBeInstanceOf(ErrorPoint0)
       expect(thrownError?.meta).toBeUndefined()
+
+      // the error is also hoisted to the event envelope — same instance as `data.error`
+      expect(queryErrorEvent?.error).toBeInstanceOf(ErrorPoint0)
+      expect(queryErrorEvent?.error).toBe(thrownError as ErrorPoint0)
     })
   })
 })

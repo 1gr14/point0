@@ -1,5 +1,24 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, expectTypeOf, it } from 'bun:test'
+import type { AnyEventerEvent, UniqEventerErrorEventName } from '../src/eventer.js'
+import type { ErrorPoint0 } from '../src/error.js'
 import { sanitizeForLog } from '../src/utils.js'
+
+describe('eventer event envelope types', () => {
+  it('hoists `error` to the envelope with exact per-event narrowing', () => {
+    type AnyEvent = AnyEventerEvent<ErrorPoint0>
+    // every event carries the envelope `error`
+    expectTypeOf<AnyEvent['error']>().toEqualTypeOf<ErrorPoint0 | undefined>()
+    // error events: the envelope error is the error instance, no undefined
+    type ErrorEvent = Extract<AnyEvent, { name: UniqEventerErrorEventName }>
+    expectTypeOf<ErrorEvent['error']>().toEqualTypeOf<ErrorPoint0>()
+    // start events: the envelope error is undefined
+    type StartEvent = Extract<AnyEvent, { name: 'pointQueryStart' }>
+    expectTypeOf<StartEvent['error']>().toEqualTypeOf<undefined>()
+    // settled events: the envelope error mirrors the payload's error branch
+    type SettledEvent = Extract<AnyEvent, { name: 'pointQuerySettled' }>
+    expectTypeOf<SettledEvent['error']>().toEqualTypeOf<ErrorPoint0 | undefined>()
+  })
+})
 
 describe('sanitizeForLog (event meta input projection)', () => {
   it('keeps plain, log-friendly values untouched and multi-level', () => {
