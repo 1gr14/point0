@@ -1,15 +1,36 @@
 import { _point0_env } from './env.js'
 import { superstore } from './super-store.js'
 
+// Ordered by severity — the order drives the `POINT0_LOG_LEVEL` filtering below.
+const logLevelsBySeverity = ['debug', 'info', 'warn', 'error'] as const
+export type LogLevel = (typeof logLevelsBySeverity)[number]
+
 export type LogOptions = {
-  level: 'info' | 'error' | 'warn' | 'debug'
+  level: LogLevel
   category: string[]
   message: string
   error?: unknown
   meta?: Record<string, unknown>
 }
 export type LogFn = (options: LogOptions) => void
+
+/**
+ * Whether entries of this level pass the `POINT0_LOG_LEVEL` threshold. Unset or invalid env → `debug`, i.e. everything
+ * passes. The default log fn checks it on every entry; a custom log fn receives all entries regardless — call this
+ * helper inside your receiver to honor the same env var.
+ */
+export const isLogLevelEnabled = (level: LogLevel): boolean => {
+  const minLevel =
+    process.env.POINT0_LOG_LEVEL && logLevelsBySeverity.includes(process.env.POINT0_LOG_LEVEL as LogLevel)
+      ? (process.env.POINT0_LOG_LEVEL as LogLevel)
+      : 'debug'
+  return logLevelsBySeverity.indexOf(level) >= logLevelsBySeverity.indexOf(minLevel)
+}
+
 export const _defaultLogFn: LogFn = (options: LogOptions) => {
+  if (!isLogLevelEnabled(options.level)) {
+    return
+  }
   const valideModes = ['json', 'pretty'] as const
   type ValidMode = (typeof valideModes)[number]
   const modeByProcessEnv =
@@ -70,8 +91,10 @@ export const log: LogFn = (options) => {
   _log(options)
 }
 
-/** Use when you have a point in context: prefers point/root logger, else global logger. Keeps global suitable to current
-context. */
+/**
+ * Use when you have a point in context: prefers point/root logger, else global logger. Keeps global suitable to current
+ * context.
+ */
 export const getLogFnForPoint = (point: { _getLogFn?: () => LogFn | undefined } | undefined): LogFn => {
   const fromPoint = point?._getLogFn?.()
   return fromPoint ?? log
