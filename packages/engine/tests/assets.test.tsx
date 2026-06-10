@@ -247,6 +247,20 @@ describe('assets plugin (unit)', () => {
     expect(result.url as string).toMatch(/^\/_point0\/asset\/[a-f0-9]{16}\.svg$/)
   })
 
+  it('react.svg?react → still a renderable component (derived name does not collide with the React import)', async () => {
+    // The classic runtime injects `import * as React from 'react'`; a naive PascalCase of `react.svg` is also `React`,
+    // so the generated `const React = …` would redeclare it and fail the whole bundle's parse. The name is guarded.
+    const { result } = await buildAndRun({
+      files: {
+        'react.svg': SVG,
+        'entry.ts': `import ReactIcon from './react.svg?react'\nexport const result = { ReactIcon }`,
+      },
+    })
+    expect(typeof result.ReactIcon).toBe('function')
+    const html = renderToStaticMarkup(React.createElement(result.ReactIcon as React.FC))
+    expect(html).toContain('<svg')
+  })
+
   it('?react on a non-svg throws (svg only)', async () => {
     await expect(
       buildAndRun({

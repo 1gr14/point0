@@ -1,6 +1,6 @@
 // import '@testing-library/jest-dom'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
-import { Point0 } from '@point0/core'
+import { ErrorPoint0, Point0 } from '@point0/core'
 // import { PlaywrightBrowser } from './utils/playwright.js'
 // import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.one-client.js'
 // import { TestProjectFactory } from './utils/project.one-client.js'
@@ -199,6 +199,32 @@ describe('midleware', () => {
     expect(response.status).toBe(500)
     expect(response.headers.get('y')).toBe('3')
     expect(await response.text()).toContain('custom error')
+  })
+
+  it.concurrent('throws error with status code', async () => {
+    const root = Point0.lets('root', 'root')
+      .middleware(async ({ set, next }) => {
+        set.headers('y', '3')
+        return await next()
+      })
+      .middleware(async () => {
+        throw new ErrorPoint0('restricted error', { status: 403 })
+      })
+
+      .root()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(({ set }) => ({ x: 1, y: set.inspect.headers.y, z: set.inspect.headers.z }))
+      .page(({ data }) => (
+        <div id="page">
+          x={data.x},y={data.y},z={data.z}
+        </div>
+      ))
+    const { fetch } = await createTestThings({ ssr: true, points: [root, page] })
+    const response = await fetch(page.route.get({}, { origin: 'http://localhost' }))
+    expect(response.status).toBe(403)
+    expect(response.headers.get('y')).toBe('3')
+    expect(await response.text()).toContain('restricted error')
   })
 
   it.concurrent('override final response', async () => {

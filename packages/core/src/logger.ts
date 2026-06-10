@@ -41,11 +41,19 @@ export const _defaultLogFn: LogFn = (options: LogOptions) => {
   if (mode === 'json') {
     const serializedError = (() => {
       try {
+        // An error with its own `toJSON` (e.g. ErrorPoint0) owns its serialization. A foreign error keeps its real
+        // name, message, and stack verbatim — dropping them makes an uncaught exception undiagnosable from json logs.
         return !options.error
           ? undefined
           : typeof options.error === 'object' && 'toJSON' in options.error && typeof options.error.toJSON === 'function'
             ? options.error.toJSON()
-            : { message: options.error instanceof Error ? options.error.message : String(options.error) }
+            : options.error instanceof Error
+              ? {
+                  name: options.error.name,
+                  message: options.error.message,
+                  ...(options.error.stack ? { stack: options.error.stack } : {}),
+                }
+              : { message: String(options.error) }
       } catch (error) {
         return {
           message: error instanceof Error ? error.message : String(error),

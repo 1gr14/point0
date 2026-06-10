@@ -1,0 +1,75 @@
+# Error logging loses stacks / prints "[ undefined ]" — incident + remaining work
+
+**Status:** partially fixed (fixes uncommitted) · **Area:** core logger / error0 / app loggers (start0, site) ·
+**Origin:** 2026-06-10, the 1gr14 site crashed at boot and the log was useless for diagnosis.
+
+## What happened
+
+better-auth 1.6.16's `deviceAuthorization` plugin threw a zod v4 `ZodError` during `betterAuth(...)` init
+(their options schema requires `schema` — upstream bug, worked around in the site with `schema: {}`).
+The app printed:
+
+    [err] shutdown: Uncaught exception, shutting down gracefully
+    Error: [
+      undefined
+    ]
+     {
+      message: "[ ...the zod issues JSON... ]",
+      expected: false,
+    }
+
+No stack, mangled message, no error name in props. Diagnosing required bisecting plugins with a probe
+script instead of reading one stack line. Three SEPARATE mechanisms produced this:
+
+1. **Bun + zod v4 wipe the stack at throw time.** zod's `.parse()` calls
+   `Error.captureStackTrace(e, inst.parse)` (`zod/v4/core/parse.js:12`, callee bound at
+   `zod/v4/classic/schemas.js:39`). Under Bun this removes ALL frames — the error arrives with a
+   header-only `.stack`. Verified: Node keeps frames for the same parse; Bun's `safeParse` (no callee)
+   keeps frames; Bun's `.parse()` loses everything. Nothing downstream can print what was never recorded.
+   Affects every zod `.parse()` in every Bun app today.
+
+2. **LogTape message templates.** The start0-lineage app logger (`src/lib/logger.ts` in start0 AND the
+   site) passed `message + "\n" + stack` as LogTape's FIRST argument — which LogTape parses as a template,
+   so `{ "code": ... }` chunks from the zod JSON were treated as placeholders and rendered as literal
+   `undefined`.
+
+3. **Serialization drops identity.** Two layers:
+   - point0 `_defaultLogFn` json branch (production default): a foreign error (no `toJSON`) was serialized
+     as `{ message }` only — no `name`, no `stack`.
+   - the app logger builds props via `AppError.serialize(error, isProd)` (error0): no `name` emitted, stack
+     stripped by publicity gating; `expected: false` is error0's expectedPlugin default leaking into logs.
+
+## Already fixed (landed in each repo's dev, 2026-06-10)
+
+- **point0** `packages/core/src/logger.ts` — `_defaultLogFn` json mode now logs a foreign Error's real
+  `name` / `message` (verbatim) / `stack`; Error0-native (`toJSON`) path untouched; pretty mode untouched.
+  Tests added in `packages/core/tests/logger.test.ts` (8/8 pass; typesgo + eslint clean).
+  NOTE: reaches consuming apps only after the point0-npm tarballs are rebuilt.
+- **start0** + **site** `src/lib/logger.ts` — `escapeLogTapeTemplate` doubles braces before the string is
+  used as a LogTape template; untrusted text now renders verbatim. Verified live. Both repos' checks green.
+
+## Remaining work
+
+- [ ] **error0 — the real design item.** `Error0.serialize` / `ErrorPoint0.toJSON` conflates the WIRE
+      format (what a client may see; stack/meta gated by `isPublic`/`isStacktracePublic`) with the LOG
+      format (what the operator needs; must ALWAYS carry name + message + full stack + cause chain + meta).
+      Consequences today: Error0-native errors in production json logs have no stack; app-logger props lose
+      `name`; `expected: false` noise. Direction: a dedicated log serialization in error0 (e.g.
+      `serializeForLog()` / a `log` plugin) that ignores publicity gating, and point0's logger + the
+      start0/site app loggers switch to it for the log path while keeping public serialize for responses.
+      error0 lives at `~/cc/opensource/1gr14/error0`, it's RELEASED (0.2.0) — additive API, no breaking.
+- [ ] **Report the Bun issue** — `Error.captureStackTrace(err, callee)` wipes all frames (Node doesn't).
+      Minimal repro = zod v4 `.parse()` failure under Bun vs Node. Until fixed, frameless ZodErrors are a
+      Bun fact of life; consider also nudging zod to skip the callee arg when `process.isBun`.
+- [ ] **Rebuild the point0-npm tarballs** so the consuming apps pick up the core-logger json-mode fix
+      (verify the site/start0 tarballs carry it; their gates already run the middleware-status fix).
+- [ ] (low) `point0 dev` headline showed `Error:` where direct run showed `ZodError:` — couldn't reproduce
+      afterwards; revisit only if seen again.
+- [ ] (low) Audit other LogTape sinks/formatters for the same template hazard if any new logger is added to
+      the boilerplate; the rule: never feed untrusted text into a LogTape template, escape `{` `}`.
+
+## Debugging rule of thumb (from this incident)
+
+A frameless error in a Bun app usually never HAD frames (zod `.parse()` / captureStackTrace) — suspect the
+throw site, not the logger. And `undefined` inside logged braces means something fed raw text into a
+LogTape template.

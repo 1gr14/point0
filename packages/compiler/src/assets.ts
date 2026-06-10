@@ -134,7 +134,41 @@ const ASSET_NAMESPACE = 'point0-asset'
 
 const hashContent = (buffer: Buffer): string => crypto.createHash('sha256').update(buffer).digest('hex').slice(0, 16)
 
-/** Derive a valid PascalCase component name from a file path for SVGR (`logo.svg` → `Logo`; fallback `SvgComponent`). */
+// Names the derived component must never take: SVGR's classic runtime injects `import * as React from 'react'` next to
+// `const <componentName> = …`, so `componentName === 'React'` (any `react.svg`) declares `React` twice and breaks the
+// whole bundle's parse — plus JS reserved words can't be binding names. Any hit is prefixed with `Svg` (→ `SvgReact`,
+// always a valid, non-reserved identifier distinct from the React import).
+const SVG_NAME_RESERVED = new Set([
+  'React',
+  // reserved words / literals that can survive PascalCasing as a single token
+  'Await',
+  'Class',
+  'Const',
+  'Default',
+  'Delete',
+  'Enum',
+  'Export',
+  'Extends',
+  'False',
+  'Function',
+  'Import',
+  'Null',
+  'Return',
+  'Static',
+  'Super',
+  'Switch',
+  'True',
+  'Typeof',
+  'Void',
+  'Yield',
+])
+
+/**
+ * Derive a valid PascalCase component name from a file path for SVGR (`logo.svg` → `Logo`; fallback `SvgComponent`).
+ * The name is internal (cosmetic — SVGR default-exports it and the consumer names its own binding), so the only hard
+ * requirement is that it's a valid identifier that can't collide with the classic-runtime `React` import or a reserved
+ * word; collisions and non-letter starts are prefixed with `Svg` (`react.svg` → `SvgReact`).
+ */
 const svgComponentName = (filePath: string): string => {
   const base = nodePath.basename(filePath, nodePath.extname(filePath))
   const pascal = base
@@ -144,7 +178,7 @@ const svgComponentName = (filePath: string): string => {
     .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join('')
-  const safe = /^[A-Za-z]/.test(pascal) ? pascal : `Svg${pascal}`
+  const safe = /^[A-Za-z]/.test(pascal) && !SVG_NAME_RESERVED.has(pascal) ? pascal : `Svg${pascal}`
   return safe || 'SvgComponent'
 }
 

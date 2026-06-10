@@ -50,3 +50,58 @@ describe('isLogLevelEnabled (POINT0_LOG_LEVEL)', () => {
     }
   })
 })
+
+describe('_defaultLogFn json mode error serialization', () => {
+  const originalLogMode = process.env.LOG_MODE
+  beforeEach(() => {
+    process.env.LOG_MODE = 'json'
+  })
+  afterEach(() => {
+    if (originalLogMode === undefined) {
+      delete process.env.LOG_MODE
+    } else {
+      process.env.LOG_MODE = originalLogMode
+    }
+  })
+
+  const logAndParse = (error: unknown): Record<string, any> => {
+    const errorSpy = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      _defaultLogFn({ level: 'error', category: ['test'], message: 'boom', error })
+      expect(errorSpy).toHaveBeenCalledTimes(1)
+      return JSON.parse(errorSpy.mock.calls[0]?.[0] as string)
+    } finally {
+      errorSpy.mockRestore()
+    }
+  }
+
+  it('a foreign error keeps its real name, message, and stack verbatim', () => {
+    const error = new Error('[\n  {"code": "invalid_type"}\n]')
+    error.name = 'ZodError'
+    const payload = logAndParse(error)
+    expect(payload.error).toMatchObject({
+      name: 'ZodError',
+      message: '[\n  {"code": "invalid_type"}\n]',
+      stack: error.stack,
+    })
+  })
+
+  it('a foreign error without a stack still logs name and message', () => {
+    const error = new Error('no stack')
+    error.stack = undefined
+    const payload = logAndParse(error)
+    expect(payload.error).toEqual({ name: 'Error', message: 'no stack' })
+  })
+
+  it('an error with its own toJSON keeps owning its serialization', () => {
+    const error = new Error('native')
+    ;(error as any).toJSON = () => ({ message: 'native', code: 'NATIVE' })
+    const payload = logAndParse(error)
+    expect(payload.error).toEqual({ message: 'native', code: 'NATIVE' })
+  })
+
+  it('a non-error value logs as its string form', () => {
+    const payload = logAndParse('plain failure')
+    expect(payload.error).toEqual({ message: 'plain failure' })
+  })
+})

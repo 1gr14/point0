@@ -999,12 +999,14 @@ export class Fetcher<TError extends ErrorPoint0> {
       return {
         request: baseOptions.request,
         scope: baseOptions.scope,
-        response: this.toJsonErrorResponse({
-          ErrorClass,
-          error: error0,
-          status: 500,
-          transformer,
-        }),
+        response:
+          error0.response ??
+          this.toJsonErrorResponse({
+            ErrorClass,
+            error: error0,
+            status: error0.status,
+            transformer,
+          }),
         variant: isMiddleware ? { type: 'middleware' } : { type: 'error', error: error0 },
         error: error0,
       } as FetcherFetchDetailedResultMiddleware<TError> | FetcherFetchDetailedResultError<TError>
