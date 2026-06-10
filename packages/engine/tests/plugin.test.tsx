@@ -1,7 +1,7 @@
 import { Point0 } from '@point0/core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { z } from 'zod'
-import { createTestThings, ymlify, ymlifyline } from './utils/internal-testing.js'
+import { createTestThings, waitReturn, ymlify, ymlifyline } from './utils/internal-testing.js'
 
 describe('plugin', () => {
   const createRoot = () =>
@@ -509,6 +509,58 @@ describe('plugin', () => {
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "
       query.test (client) < {"path":"/home"}
+      "
+    `)
+  })
+
+  // Regression for a Rules-of-Hooks break (and data corruption) in `_Mountable`.
+  //
+  // Setup mirrors a real app page: a plugin contributing props via `.with(({ resolve }) => resolve(useQuery()))`
+  // followed by the page's own related query. While the plugin section is being processed, `_Mountable` keeps
+  // a layer per consumer (plugin layer + page layer) and used to MUTATE the sibling page layer's
+  // `prev.nextMountActions` / `prev.prevMountActions` arrays in place — arrays living inside React props.
+  // The mount render consumed them once (correct), but when the related query resolved, React re-rendered
+  // that middle `_Mountable` element alone with the SAME props, the actions got shifted a second time, and
+  // the page's query action was lost: the render fell through to the final head/pageState block, so the
+  // hook sequence changed (useQuery's `useContext, useContext, ...` → `useContext, useEffect`), React crashed
+  // with "Cannot read properties of undefined (reading 'length')", and the page rendered with empty data.
+  it('keeps renders idempotent when a query resolves after a plugin section (no hook-order break)', async () => {
+    const root = createRoot()
+    const meQuery = root
+      .lets('query', 'me')
+      .loader(async () => await waitReturn({ me: 'u1' }, 10))
+      .query()
+    const ideaQuery = root
+      .lets('query', 'idea')
+      .input(z.object({ sn: z.number() }))
+      .loader(async ({ input }) => await waitReturn({ idea: `idea-${input.sn}` }, 150))
+      .query()
+    const mePlugin = Point0.lets('plugin', 'me-plugin')
+      .with(({ resolve }) => resolve(meQuery.useQuery(), ({ data }) => ({ me: data.me })))
+      .plugin()
+    const page = root
+      .lets('page', 'idea', '/ideas/:sn')
+      .params(z.object({ sn: z.string() }))
+      .use(mePlugin)
+      .with(ideaQuery, ({ params }) => ({ sn: +params.sn }))
+      .page(({ data, props }) => <div id="page">{ymlifyline({ idea: data.idea, me: props.me })}</div>)
+
+    const { render, fetchesTale } = await createTestThings({ points: [root, page, meQuery, ideaQuery] })
+    await render('/ideas/100', async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /ideas/100
+          #loading: ...
+
+          #page: idea: idea-100, me: u1
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      query.me (client) < {}
+      query.idea (client) < {"sn":100}
       "
     `)
   })

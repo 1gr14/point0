@@ -11309,6 +11309,29 @@ export class Point0<
     }, children)
   }
 
+  // _Mountable is the render-time interpreter of the point's static `_mountActions` list.
+  // How it runs, and why hooks stay stable:
+  //
+  // - The list is interpreted with a loop. "Inline" actions (selfProps/mapper/errorComponent/
+  //   loadingComponent/head) are consumed with `continue`; "wrapping" actions (selfQuery/
+  //   relatedQuery/with/input/params/search/clientOnly) call their hooks (e.g. useQuery) and then
+  //   `return` a NEW `React.createElement(this._Mountable, …)` element carrying the remaining
+  //   actions in `layers[i].prev.nextMountActions`. So one page render produces a CHAIN of
+  //   `_Mountable` element instances, each owning a fixed slice of the action list.
+  // - `pluginStart`/`pluginEnd` recurse by DIRECT call (`this._Mountable({...})`), not via
+  //   createElement — hooks of the recursion accrue to the same React instance.
+  // - Rules of Hooks hold because the action list is static per point and each element instance
+  //   always re-consumes exactly its own slice: same actions → same hooks in the same order. That
+  //   guarantee only works while a render is PURE — re-rendering an instance with the same props
+  //   must consume the same actions again. Hence the sibling-layer cloning below.
+  //
+  // Layers (plugin isolation): outside a plugin section there is a single layer. `pluginStart`
+  // pushes a fresh layer (empty props/queries) on top so the plugin's own actions see ONLY what
+  // the plugin declared; `pluginEnd` pops it (slice(1)) and the outer layer resumes. While the
+  // plugin layer is current, the outer ("sibling") layers must track the same action stream —
+  // every consumed action is appended to their `prev.prevMountActions` and shifted off their
+  // `prev.nextMountActions` — so that after `pluginEnd` the outer layer continues from the right
+  // position with its own (un-leaked) props/queries.
   private readonly _Mountable = (props: {
     mountComponent:
       | LayoutSuccessComponentType<any, any, any, any, any, any, any>
@@ -11341,7 +11364,27 @@ export class Point0<
     }>
   }): Exclude<React.ReactNode, Promise<any>> => {
     const { mountComponent, extraProps, location, layers } = props
-    const [currentLayer, ...siblingLayers] = layers
+    const [currentLayer, ...rawSiblingLayers] = layers
+    // Clone the sibling layers' action arrays so this render never mutates `props`. The action
+    // loop below advances siblings in place (push to prevMountActions / shift nextMountActions),
+    // and these arrays live inside React props shared with the element that re-renders. Without
+    // the clone, a lone re-render of a mid-chain `_Mountable` (e.g. its useQuery flipping
+    // pending → success) would shift the shared arrays a SECOND time: actions get lost, the hook
+    // sequence changes between renders (a Rules-of-Hooks crash), and the page renders with wrong
+    // data. The current layer needs no clone — its arrays are only ever copied, never mutated.
+    // `queries`/`innerProps` need no clone either: the wrapping returns rebuild them with spreads.
+    const siblingLayers = rawSiblingLayers.map((layer) =>
+      layer.prev
+        ? {
+            ...layer,
+            prev: {
+              ...layer.prev,
+              prevMountActions: [...layer.prev.prevMountActions],
+              nextMountActions: [...layer.prev.nextMountActions],
+            },
+          }
+        : layer,
+    )
 
     const componentVariant = this._getDestinationComponentVariant() ?? 'page'
     const isLayout = this.type === 'layout'
@@ -11458,6 +11501,12 @@ export class Point0<
       input: prevInputParsed,
     } as MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
     let nextMappedData = prevMappedData
+    // The `??` around React.useCallback LOOKS like a conditional hook, but it is deterministic
+    // per React instance: continuation elements always have `currentLayer.prev` (so the hook is
+    // always skipped), while the initial direct call from Page/Component/Layout/X never does (so
+    // the hook always runs, accruing to the caller's instance). The same applies to the
+    // createBound*Component() calls in the action loop — whether they run is fixed by the static
+    // action slice this instance consumes.
     let ErrorComponent =
       PrevErrorComponent ??
       React.useCallback(
@@ -11563,6 +11612,9 @@ export class Point0<
       const actionState = { action, state: mountState }
       prevMountActions.push(actionState)
       currentMountActions.shift()
+      // Advance the sibling layers past this action too, so the outer layer resumes at the right
+      // position after `pluginEnd`. Mutating here is safe ONLY because these are this render's
+      // local clones (see the cloning at the top) — never the arrays from `props`.
       siblingLayers.forEach((layer) => {
         if (!layer.prev) {
           return
@@ -11573,7 +11625,12 @@ export class Point0<
 
       // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
       switch (action.type) {
+        // Plugin boundaries recurse by DIRECT call (not createElement): hooks inside the plugin
+        // section keep accruing to the current React instance, and the layer stack changes
+        // synchronously within this same render.
         case 'pluginStart': {
+          // Push an isolated layer for the plugin's own actions: empty props/queries, so the
+          // plugin sees only what it declared itself (no leakage from the consumer).
           const { _nextPrev, _nextLayers, _nextMountableProps } = getNextProps()
           return this._Mountable({
             ..._nextMountableProps,
@@ -11596,6 +11653,8 @@ export class Point0<
           })
         }
         case 'pluginEnd': {
+          // Pop the plugin layer; the outer layer (kept in step by the sibling advancement
+          // above) resumes with its own props/queries.
           const { _nextLayers, _nextMountableProps } = getNextProps()
           return this._Mountable({
             ..._nextMountableProps,
