@@ -451,7 +451,7 @@ export class Engine<
     const reaped = await reapDevTree({ cwd, ports, log: this.log, excludePid: process.pid })
     if (reaped.stopped) {
       this.log({
-        level: 'info',
+        level: 'debug',
         category: ['dev'],
         message: `Reaped a previous dev tree on these ports before starting${reaped.pid ? ` (was pid ${reaped.pid})` : ''}.`,
       })
