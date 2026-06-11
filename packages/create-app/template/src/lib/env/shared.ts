@@ -8,6 +8,7 @@ import { z } from 'zod'
  */
 export const sharedEnvShape = {
   SERVER_URL: z.string().min(1),
+  CLIENT_URL: z.string().min(1),
 }
 
 const result = z.object(sharedEnvShape).safeParse(process.env)

@@ -61,10 +61,10 @@ Proof: the live `point0 dev` run (page edit → `store v2`, no `Server started`;
 `prisma.ts` edit → `Server restarting` + a new `Server started`) + the automated
 suite in `packages/engine/tests/dev.test.ts` →
 `describe('server hot reload (bun-native, --hot)')` (plus the pure-unit
-`server-hot-store.unit.test.ts` for the SCC primitive): a point edit keeps the
-server `process.pid` (hot-swap, no restart) while a `@point0/core/cold` edit
-changes it (restart). The full bun + vite `dev.test.ts` suite stays green (no
-regression to the default restart-based dev).
+`server-hot-store.test.ts` for the SCC primitive): a point edit keeps the server
+`process.pid` (hot-swap, no restart) while a `@point0/core/cold` edit changes it
+(restart). The full bun + vite `dev.test.ts` suite stays green (no regression to
+the default restart-based dev).
 
 The suite covers: a page edit (hot-swap, pid stable), a `@point0/core/cold`
 marker edit (restart), a config-glob cold file (restart), cold/boot syntax-error

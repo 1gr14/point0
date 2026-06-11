@@ -345,11 +345,11 @@ export class ServerHotStore {
     this.cleaned = true
     this.hotNodes = new Set(result.order)
     const d = result.diagnostics
-    // DEBUG, not info: these are hot-store internals (store stats, the auto-cold set, per-rebuild confirmation) — noise
-    // in a normal `--hot` session. The per-action feedback the developer wants — `Server hot reloading...` on a hot-swap,
-    // `Server restarting...` on a cold-file change — is emitted by the watcher in server.ts, in the right context.
-    // (Demoting "hot reloaded" to debug is also what keeps it from showing as info after a cold-file RESTART, where the
-    // watcher re-`rebuild()`s the store only for bookkeeping.)
+    // DEBUG, not info: these are hot-store internals (store stats, the auto-cold set) — noise in a normal `--hot`
+    // session. The per-action feedback the developer wants — `Server hot reloading...` / `Server hot reloaded` on a
+    // hot-swap, `Server restarting...` on a cold-file change — is emitted by the watcher in server.ts, in the right
+    // context (rebuild() also runs after a cold-file RESTART for mere bookkeeping, so a completion log here would
+    // misreport a restart as a hot reload).
     if (this.version === 1) {
       this.log({
         level: 'debug',
@@ -366,8 +366,6 @@ export class ServerHotStore {
           message: `Server hot-reload: ${d.autoExternalized.length} file(s) can't be flattened, running cold (edit => restart): ${shown}${more}`,
         })
       }
-    } else {
-      this.log({ level: 'debug', category: ['server'], message: `Server hot reloaded` })
     }
   }
 

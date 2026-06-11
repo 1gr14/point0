@@ -29,8 +29,8 @@ const layoutNavTsx = (polh: string | boolean, pon: string | boolean, ssr: boolea
   return `import { root } from '../lib/root.js'
 import { Link, NavLink } from '../lib/navigate.js'
 export const layout = root.lets('layout', 'layout_${toMark(polh, pon)}', '/${toMark(polh, pon)}')
-  .prefetchPageOnLinkHover(${stringify2(polh === true ? (ssr ? 'ssrDehydratedStateAndClientQuery' : 'serverAndClientQuery') : polh)})
-  .prefetchPageOnNavigate(${stringify2(pon === true ? (ssr ? 'ssrDehydratedStateAndClientQuery' : 'serverAndClientQuery') : pon)})
+  .prefetchPageOnLinkHover(${stringify2(polh === true ? (ssr ? 'pageDehydratedStateAndClientQuery' : 'serverAndClientQuery') : polh)})
+  .prefetchPageOnNavigate(${stringify2(pon === true ? (ssr ? 'pageDehydratedStateAndClientQuery' : 'serverAndClientQuery') : pon)})
   .layout(({ children }) => (
     <>
       <nav>

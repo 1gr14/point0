@@ -72,7 +72,7 @@ Each bug was survivable alone; together they amplified into a teardown:
 
 ## How to re-verify (stress recipe)
 
-Unit: `bun test packages/engine/tests/watcher.unit.test.ts`. Integration: the
+Unit: `bun test packages/engine/tests/watcher.test.ts`. Integration: the
 bun-native half of `packages/engine/tests/dev.test.ts` (the `--hot` suite
 asserts hot-swap keeps the child pid). Real-world: run an app (start0) with
 `bun dev --hot`, then script agent-style bursts — 2–4 edits per burst, 30–150 ms

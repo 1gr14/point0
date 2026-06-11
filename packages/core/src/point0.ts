@@ -388,6 +388,7 @@ export class Point0<
   readonly _Error: ClassLikeError0<TError>
   readonly _middlewares: MiddlewareFn<TError, any>[]
   _serverUrl: string | undefined
+  _clientUrl: string | undefined
   readonly _hasServerLoader: boolean | undefined
   readonly _schemasHelpers: SchemaHelper[] | undefined
   readonly _searchSchemaKeys: string[] | true | undefined
@@ -589,6 +590,7 @@ export class Point0<
     _Error?: ClassLikeError0<TError>
     _middlewares?: MiddlewareFn<TError, any>[] | undefined
     _serverUrl?: string | undefined
+    _clientUrl?: string | undefined
     _hasServerLoader?: boolean | undefined
     _schemasHelpers?: SchemaHelper[] | undefined
     _searchSchemaKeys?: string[] | true | undefined
@@ -680,6 +682,7 @@ export class Point0<
     this._ssr = options._ssr ?? undefined
     this._eventerSubscriptions = options._eventerSubscriptions ?? []
     this._serverUrl = options._serverUrl ?? undefined
+    this._clientUrl = options._clientUrl ?? undefined
     this._hasServerLoader = options._hasServerLoader ?? undefined
     this._schemasHelpers = options._schemasHelpers ?? undefined
     this._searchSchemaKeys = options._searchSchemaKeys
@@ -775,6 +778,7 @@ export class Point0<
     _Error?: ClassLikeError0<TError> | undefined
     _middlewares?: MiddlewareFn<TError, any>[]
     _serverUrl?: string | undefined
+    _clientUrl?: string | undefined
     _hasServerLoader?: boolean | undefined
     _schemasHelpers?: SchemaHelper[] | undefined
     _searchSchemaKeys?: string[] | true | undefined
@@ -917,6 +921,7 @@ export class Point0<
       _letsReadyPointType: set('_letsReadyPointType') as TLetsReadyPointType,
       _middlewares: set('_middlewares', [...this._middlewares]),
       _serverUrl: set('_serverUrl'),
+      _clientUrl: set('_clientUrl'),
       _hasServerLoader: set('_hasServerLoader'),
       _schemasHelpers: set('_schemasHelpers'),
       _searchSchemaKeys: set('_searchSchemaKeys'),
@@ -1159,31 +1164,48 @@ export class Point0<
     const isPage = letsReadyPointType === 'page'
 
     const prevRoute = this.route
+    // the point's public route must resolve absolute urls (route.abs()) against the root's urls — without them
+    // route0 only has its location fallback, which does not exist on the server. The origin is picked by route kind,
+    // not by runtime side (a side-dependent origin would hydration-mismatch every ssr-rendered href): actions are api
+    // endpoints living on the server → serverUrl; pages and layouts are web pages → clientUrl, falling back to
+    // serverUrl. Routes built here from strings take that origin outright (it outranks the location fallback, same
+    // priority as getServerUrl); routes received as objects or extended from one keep an origin they already carry —
+    // only a missing one is filled in
+    const routeOriginUrl = isAction ? this._serverUrl : (this._clientUrl ?? this._serverUrl)
+    const routeOriginConfig = routeOriginUrl ? { origin: routeOriginUrl } : undefined
+    const fillRouteOrigin = <TRoute extends AnyRoute>(routeToFill: TRoute): TRoute => {
+      if (!routeOriginUrl || (routeToFill as unknown as { _origin?: string })._origin) {
+        return routeToFill
+      }
+      return routeToFill.clone({ origin: routeOriginUrl }) as never
+    }
     const newRoute = (() => {
       if (isPage) {
         if (!route) {
           return undefined // error will be thrown below (it is in case of action was defined without name)
         }
         if (typeof route === 'string') {
-          return prevRoute ? prevRoute.extend(route) : Route0.create(route)
+          return prevRoute ? fillRouteOrigin(prevRoute.extend(route)) : Route0.create(route, routeOriginConfig)
         }
-        return route
+        return fillRouteOrigin(route)
       }
       if (isLayout) {
         if (typeof route === 'string' || !route) {
           const routeNormalized = route ?? '/'
-          return prevRoute ? prevRoute.extend(routeNormalized) : Route0.create(routeNormalized)
+          return prevRoute
+            ? fillRouteOrigin(prevRoute.extend(routeNormalized))
+            : Route0.create(routeNormalized, routeOriginConfig)
         }
-        return route
+        return fillRouteOrigin(route)
       }
       if (isAction) {
         if (!route) {
           return undefined // error will be thrown below
         }
         if (typeof route === 'string') {
-          return prevRoute ? prevRoute.extend(route) : Route0.create(route)
+          return prevRoute ? fillRouteOrigin(prevRoute.extend(route)) : Route0.create(route, routeOriginConfig)
         }
-        return route
+        return fillRouteOrigin(route)
       }
       return prevRoute
     })()
@@ -1240,8 +1262,11 @@ export class Point0<
         const scopeKebab = toKebabCase(this.scope)
         const typeKebab = letsReadyPointType === 'infiniteQuery' ? 'infinite-query' : letsReadyPointType
         const nameKebab = toKebabCase(normalizedPointName)
+        // the endpoint route is always served by the server, so unlike the point's public route (clientUrl for
+        // pages/layouts) its origin is serverUrl regardless of point kind; extend below inherits it
         const routeGeneral = Route0.create(
           `/${this._endpointPrefix || '_point0'}/${scopeKebab}/${typeKebab}/${nameKebab}`,
+          this._serverUrl ? { origin: this._serverUrl } : undefined,
         )
         if (isPage || isLayout) {
           if (!newRoute || !newRouteTokens) {
@@ -1346,6 +1371,7 @@ export class Point0<
       _useValue: undefined,
       _layouts: this.type === 'layout' ? [...this._layouts, this as unknown as LayoutPoint] : [...this._layouts],
       _serverUrl: this._base?._serverUrl,
+      _clientUrl: this._base?._clientUrl,
       _hasServerLoader: undefined,
       _basePath: this._base?._basePath,
       _defaultMutationOptions: this._base?._defaultMutationOptions,
@@ -2333,6 +2359,41 @@ export class Point0<
   > {
     return this._continue({
       _serverUrl: serverUrl,
+    }) as never
+  }
+
+  /**
+   * The public web origin pages live on, when it differs from serverUrl (dev split ports, native shells, a CDN front).
+   * Page and layout routes resolve route.abs() against it; action routes always use serverUrl — the API lives on the
+   * server. Without it pages fall back to serverUrl.
+   */
+  clientUrl(
+    clientUrl: string,
+  ): NiceRootStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    'root',
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions
+  > {
+    return this._continue({
+      _clientUrl: clientUrl,
     }) as never
   }
 
@@ -10913,7 +10974,7 @@ export class Point0<
     )
 
     const queryClientDehydratedStateWasPrefetched = await (async () => {
-      if (policy === 'ssrDehydratedState' || policy === 'ssrDehydratedStateAndClientQuery') {
+      if (policy === 'pageDehydratedState' || policy === 'pageDehydratedStateAndClientQuery') {
         if (!this._root?._getSsr()) {
           throw new Error(
             `Query client dehydrated state can be prefetched only when ssr is enabled on point ${this.toStringWithLocation()}`,
@@ -10930,7 +10991,7 @@ export class Point0<
       return false
     })()
 
-    if (policy === 'ssrDehydratedState') {
+    if (policy === 'pageDehydratedState') {
       this._emit('pointPrefetchPageSuccess', eventData, meta)
       this._emit('pointPrefetchPageSettled', eventData, meta)
       return
@@ -10956,7 +11017,7 @@ export class Point0<
           return []
         }
         if (
-          policy === 'ssrDehydratedStateAndClientQuery' &&
+          policy === 'pageDehydratedStateAndClientQuery' &&
           !p._hasClientLoader() &&
           queryClientDehydratedStateWasPrefetched
         ) {
@@ -10968,7 +11029,7 @@ export class Point0<
         // the policy decides which related points to prefetch by loader type; each point has a
         // single loader, so the prefetch itself resolves which query (server/client) to run.
         const mode =
-          policy === 'ssrDehydratedStateAndClientQuery'
+          policy === 'pageDehydratedStateAndClientQuery'
             ? // server queries were prefetched on the prefetchPageQueryClientDehydratedState step
               queryClientDehydratedStateWasPrefetched
               ? 'client'
@@ -11013,7 +11074,7 @@ export class Point0<
           return []
         }
         if (
-          policy === 'ssrDehydratedStateAndClientQuery' &&
+          policy === 'pageDehydratedStateAndClientQuery' &&
           !p._hasClientLoader() &&
           queryClientDehydratedStateWasPrefetched
         ) {
@@ -11027,7 +11088,7 @@ export class Point0<
         // the policy decides which related points to prefetch by loader type; each point has a
         // single loader, so the prefetch itself resolves which query (server/client) to run.
         const mode =
-          policy === 'ssrDehydratedStateAndClientQuery'
+          policy === 'pageDehydratedStateAndClientQuery'
             ? // server queries were prefetched on the prefetchPageQueryClientDehydratedState step
               queryClientDehydratedStateWasPrefetched
               ? 'client'

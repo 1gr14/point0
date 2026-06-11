@@ -116,7 +116,7 @@ describe('prefetch-page-rehydrate', () => {
         // state instead of refetching — that is exactly the bug condition.
         const prefetchOptions = {
           location,
-          policy: 'ssrDehydratedState',
+          policy: 'pageDehydratedState',
           queryClient,
           pageDehydratedStateQueryOptions: { staleTime: Infinity },
         }

@@ -21,7 +21,10 @@ export const engine = Engine.create({
     indexHtml: './index.html',
     app: async () => await import('./app.client'),
     points: async () => await import('./generated/point0/points.client'),
-    generate: { points: './generated/point0/points.client.ts', routes: './generated/point0/routes.ts' },
+    generate: {
+      points: './generated/point0/points.client.ts',
+      routes: { outfile: './generated/point0/routes.ts', origin: 'process.env.CLIENT_URL' },
+    },
     bunPlugins: ['bun-plugin-tailwind'],
     env: { vars: clientEnvKeys },
     publicdir: {

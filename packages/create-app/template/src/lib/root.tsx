@@ -5,14 +5,17 @@ import { openapi } from '@point0/openapi'
 import superjson from 'superjson'
 import { AppError } from '@/lib/error.js'
 import { serverEnv } from '@/lib/env/server.js'
+import { sharedEnv } from '@/lib/env/shared.js'
 
 export const root = Point0.lets
   .root()
+  .serverUrl(sharedEnv.SERVER_URL)
+  .clientUrl(sharedEnv.CLIENT_URL)
   .transformer(superjson)
   .schemaHelper(zodSchemaHelper())
   .errorClass(AppError)
-  .prefetchPageOnNavigate('ssrDehydratedStateAndClientQuery')
-  .prefetchPageOnLinkHover('ssrDehydratedStateAndClientQuery')
+  .prefetchPageOnNavigate('pageDehydratedStateAndClientQuery')
+  .prefetchPageOnLinkHover('pageDehydratedStateAndClientQuery')
   .queryOptions({
     retry: false,
     retryOnMount: false,

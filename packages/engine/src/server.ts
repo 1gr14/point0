@@ -1093,6 +1093,11 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
             })
             try {
               hotStore.rebuild()
+              // the completion matching "Server hot reloading..." — only when no restart follows (a restarting child
+              // announces "Server started" itself, and rebuild() after a cold restart is mere bookkeeping)
+              if (!willRestart) {
+                this.log({ level: 'info', category: ['server'], message: `Server hot reloaded` })
+              }
             } catch (error) {
               this.log({
                 level: 'error',
