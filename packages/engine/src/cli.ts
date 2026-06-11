@@ -17,7 +17,6 @@ import type { AnalyzerPointSelectOptions } from './analyzer.js'
 import { stopAllDevTrees } from './devlock.js'
 import { Engine } from './engine.js'
 import { applyEnvMode } from './env-files.js'
-import type { ApplyEnvModeResult } from './env-files.js'
 
 const program = new Command()
 
@@ -55,12 +54,6 @@ const resolveModeFlag = (options: ModeFlagOptions): 'production' | 'development'
     throw new Error(`Invalid --mode: ${mode}. Allowed values: production, development, test`)
   }
   return mode
-}
-
-const reportEnvMode = (result: ApplyEnvModeResult): void => {
-  const filesPart = result.files.length > 0 ? ` · env files: ${result.files.join(', ')}` : ''
-  const unloadedPart = result.unloadedFiles.length > 0 ? ` · unloaded: ${result.unloadedFiles.join(', ')}` : ''
-  console.info(`point0: NODE_ENV=${result.mode}${filesPart}${unloadedPart}`)
 }
 
 program
@@ -114,9 +107,7 @@ program
       const cwd = process.cwd()
       // Load the right-mode .env cascade BEFORE the user's engine file is imported — it reads
       // process.env at module scope.
-      reportEnvMode(
-        applyEnvMode({ cwd, flagMode: resolveModeFlag(options), envPairs: options.env, defaultMode: 'development' }),
-      )
+      applyEnvMode({ cwd, flagMode: resolveModeFlag(options), envPairs: options.env, defaultMode: 'development' })
       const { engine } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd })
       const dashDashIndex = process.argv.indexOf('--')
       const bunRunArgs = dashDashIndex === -1 ? [] : process.argv.slice(dashDashIndex + 1)
@@ -227,14 +218,12 @@ program
       process.env.LOG_MODE = 'pretty'
       // Load the right-mode .env cascade (production by default for build) BEFORE the user's
       // engine file is imported — it reads process.env at module scope.
-      reportEnvMode(
-        applyEnvMode({
-          cwd: process.cwd(),
-          flagMode: resolveModeFlag(options),
-          envPairs: options.env,
-          defaultMode: 'production',
-        }),
-      )
+      applyEnvMode({
+        cwd: process.cwd(),
+        flagMode: resolveModeFlag(options),
+        envPairs: options.env,
+        defaultMode: 'production',
+      })
       const { engine } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd: process.cwd() })
       const watch = Array.isArray(options.watch)
         ? options.watch.length === 0

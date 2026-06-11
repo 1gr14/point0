@@ -42,6 +42,7 @@ import {
   normalizeAndValidateNodeEnv,
 } from './utils.js'
 import { installDevShutdown, reapDevTree, writeDevLock } from './devlock.js'
+import { POINT0_ENV_MODE_LOG } from './env-files.js'
 import { collectImportGraphPatterns, FilesWatcher } from './watcher.js'
 
 export class Engine<
@@ -243,6 +244,20 @@ export class Engine<
   }
 
   /**
+   * One debug line about the env-mode decision the CLI made (which NODE_ENV, which .env files). applyEnvMode stores it
+   * in a hidden env var — the logger is not configured yet at env-resolution time — and this logs it once the app
+   * logger is applied, consuming the var so child processes don't repeat it.
+   */
+  private _logEnvModeDebug(): void {
+    const message = process.env[POINT0_ENV_MODE_LOG]
+    if (message === undefined) {
+      return
+    }
+    delete process.env[POINT0_ENV_MODE_LOG]
+    this.log({ level: 'debug', category: ['env'], message })
+  }
+
+  /**
    * Server-dev hot reload (CHILD side). When the stable dev child was spawned with `POINT0_DEV_STORE_DIR`, bind the
    * server + each client to the content-addressed point store: their `readPoints` then re-imports the matching
    * aggregator from the store (per request, gated by the manifest hash) instead of `pointsProvided`. The aggregator abs
@@ -427,6 +442,7 @@ export class Engine<
     // The CLI no longer runs the app preload (no ambient bunfig preload since the explicit-preload
     // convention), so the app's logger config is applied here for the orchestrator's own logs.
     await this.applyLogger()
+    this._logEnvModeDebug()
     const {
       generateFiles = true,
       side,
@@ -758,6 +774,7 @@ export class Engine<
     server: { server: string[] | null; publicdir: string[] | null }
   }> {
     await this.applyLogger()
+    this._logEnvModeDebug()
     const startedAt = performance.now()
     this.log({
       level: 'info',
@@ -849,6 +866,7 @@ export class Engine<
     cwd?: string
   }): Promise<void> {
     await this.applyLogger()
+    this._logEnvModeDebug()
     const { watch, cwd = this.cwd, ...buildOptions } = options ?? {}
     // `build --watch` watches the IMPORT GRAPH of the build entries (the same model the dev orchestrator uses), so a
     // change anywhere in the graph rebuilds — no glob required. The server's entries are explicit; each client's entry
@@ -1027,6 +1045,7 @@ export class Engine<
     silent?: boolean
   } = {}): Promise<FileGeneratorProcessResult> {
     await this.applyLogger()
+    this._logEnvModeDebug()
     return await this.generator.sync({ logOnNotWritten, silent })
   }
 
@@ -1038,6 +1057,7 @@ export class Engine<
     sync?: boolean
   } = {}): Promise<void> {
     await this.applyLogger()
+    this._logEnvModeDebug()
     if (sync) {
       void this.generator.sync({ logOnNotWritten }).catch((error: unknown) => {
         this.log({

@@ -19,12 +19,21 @@ export type EnvFileMode = NormalizedNodeEnv
 
 const validModes: NormalizedNodeEnv[] = ['production', 'development', 'test']
 
+/**
+ * Hidden env var where applyEnvMode stores its one-line summary of the env-mode decision. The CLI has no configured
+ * logger at env-resolution time (the user engine isn't even imported yet), so the engine logs it later at debug level,
+ * once the app logger is applied (Engine._logEnvModeDebug), and consumes the var so children don't repeat it.
+ */
+export const POINT0_ENV_MODE_LOG = 'POINT0_ENV_MODE_LOG'
+
 /** The file-cascade mode Bun derives from a NODE_ENV value: anything but production/test is development. */
 export const bunEnvFileModeFor = (nodeEnv: string | undefined): EnvFileMode =>
   nodeEnv === 'production' || nodeEnv === 'test' ? nodeEnv : 'development'
 
-/** The files Bun auto-loads for a mode, in load order (later files override earlier ones). Bun skips .env.local in test
-mode. */
+/**
+ * The files Bun auto-loads for a mode, in load order (later files override earlier ones). Bun skips .env.local in test
+ * mode.
+ */
 export const bunEnvCascadeFileNames = (mode: EnvFileMode): string[] => [
   '.env',
   `.env.${mode}`,
@@ -120,8 +129,10 @@ export type ApplyEnvModeOptions = {
   cwd: string
   /** Mode forced by CLI flags (--mode / -p / -d / -t). Wins over everything. */
   flagMode?: NormalizedNodeEnv | undefined
-  /** Raw `NAME=value` strings from --env. Applied last, overriding file values; a NODE_ENV pair also feeds mode
-resolution. */
+  /**
+   * Raw `NAME=value` strings from --env. Applied last, overriding file values; a NODE_ENV pair also feeds mode
+   * resolution.
+   */
   envPairs?: string[] | undefined
   /** The command's mode when nothing else decides: production for build, development for everything else. */
   defaultMode: NormalizedNodeEnv
@@ -202,5 +213,8 @@ export const applyEnvMode = ({
   process.env.NODE_ENV = mode
 
   const unloadedFiles = startupFiles.filter((fileName) => !files.includes(fileName))
+  const filesPart = files.length > 0 ? ` · env files: ${files.join(', ')}` : ''
+  const unloadedPart = unloadedFiles.length > 0 ? ` · unloaded: ${unloadedFiles.join(', ')}` : ''
+  process.env[POINT0_ENV_MODE_LOG] = `NODE_ENV=${mode}${filesPart}${unloadedPart}`
   return { mode, files, unloadedFiles, cleanStart }
 }

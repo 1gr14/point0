@@ -21,7 +21,7 @@
     "prisma:generate": "cross-env NODE_ENV=development prisma generate",
     "prisma:migrate:dev": "cross-env NODE_ENV=development prisma migrate dev",
     "prisma:migrate:deploy": "cross-env NODE_ENV=development prisma migrate deploy",
-    "seed": "cross-env NODE_ENV=development bun run ./src/lib/seed.ts",
+    "seed": "cross-env NODE_ENV=development bun --preload ./src/preload.ts ./src/lib/seed.ts",
     "setup": "bun run prisma:migrate:deploy && bun run prisma:generate && point0 generate && bun run seed"
   },
   "dependencies": {
