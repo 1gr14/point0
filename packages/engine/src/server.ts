@@ -637,13 +637,55 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       },
     }
 
+    // Dev port acquisition. The old behavior — unconditionally SIGKILL whatever holds the port, then bind — is exactly
+    // how a dev tree murders itself: under rapid edits a freshly spawned server killed its own predecessor (or a
+    // sibling) mid-handover, the survivor then failed to bind, and the whole dev tree tore down. Instead, bind with
+    // patient retries:
+    //  - under the dev orchestrator (POINT0_DEV_CHILD): the orchestrator serializes respawns, so a conflict is always a
+    //    short handover (the predecessor draining its shutdown hooks) — wait it out; only if it persists past
+    //    `killAfterMs` is the holder a zombie from a dead session, and only then take the port.
+    //  - standalone non-production runs keep the "a new run takes the port over" convenience, just reactively: the
+    //    first conflict frees the port, the retry binds.
+    // Production binds once and throws — taking over a port is a dev convenience, never a prod behavior.
     if (!_point0_env.mode.is.production) {
-      await killPort([this.port, this.hmrPort].filter(Boolean) as number[], {
-        force: true,
-        category: ['server'],
-      })
+      const isDevChild = process.env.POINT0_DEV_CHILD === 'true'
+      const bindTimeoutMs = Number(process.env.POINT0_DEV_BIND_TIMEOUT_MS ?? 10000)
+      const killAfterMs = isDevChild ? Math.min(2000, bindTimeoutMs) : 0
+      const startedAt = Date.now()
+      let portFreed = false
+      let loggedBusy = false
+      for (;;) {
+        try {
+          this.bunServer = Bun.serve(serveConfig)
+          break
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          const isPortConflict =
+            (error as { code?: string } | null)?.code === 'EADDRINUSE' || /port .* in use|EADDRINUSE/i.test(message)
+          if (!isPortConflict || Date.now() - startedAt >= bindTimeoutMs) {
+            throw error
+          }
+          if (!loggedBusy) {
+            loggedBusy = true
+            this.log({
+              level: 'debug',
+              category: ['server'],
+              message: `Port ${this.port} is busy — waiting for it to free...`,
+            })
+          }
+          if (!portFreed && Date.now() - startedAt >= killAfterMs) {
+            portFreed = true
+            await killPort([this.port, this.hmrPort].filter(Boolean) as number[], {
+              force: true,
+              category: ['server'],
+            })
+          }
+          await new Promise((resolve) => setTimeout(resolve, 150))
+        }
+      }
+    } else {
+      this.bunServer = Bun.serve(serveConfig)
     }
-    this.bunServer = Bun.serve(serveConfig)
     registerOnProcessExit(() => {
       void this.bunServer?.stop()
     })
@@ -785,6 +827,18 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     // 200 (a brief restart roughly every 200 edits); `POINT0_DEV_SERVER_HOT_RESTART_EVERY=0` disables it.
     const HOT_RESTART_EVERY = Number(process.env.POINT0_DEV_SERVER_HOT_RESTART_EVERY ?? 200)
     let hotReloadsSinceRespawn = 0
+    // Restart pacing. SETTLE: a freshly requested restart waits this long so the rest of the same save burst (an agent
+    // edits 3 files in 200ms) collapses into ONE respawn. GRACE: the old child first gets a catchable SIGTERM and this
+    // window to run the app's own shutdown hooks (close the DB pool, drain a job queue) before SIGKILL — a dev restart
+    // should not sever resources mid-flight on every save.
+    const RESTART_SETTLE_MS = Number(process.env.POINT0_DEV_RESTART_SETTLE_MS ?? 120)
+    const RESTART_GRACE_MS = Number(process.env.POINT0_DEV_RESTART_GRACE_MS ?? 1500)
+
+    const isChildAlive = (child: Bun.Subprocess<'ignore', 'pipe', 'pipe'>): boolean =>
+      child.exitCode === null && child.signalCode === null
+
+    // Per-entry watcher registry, so the boot detector (below) can narrow an entry's watch set the moment it boots.
+    const watcherByEntry = new Map<string, FilesWatcher>()
 
     const spawnEntry = (entryFile: string): Bun.Subprocess<'ignore', 'pipe', 'pipe'> => {
       bootedByEntry.set(entryFile, false)
@@ -792,6 +846,10 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         cmd: ['bun', 'run', '--no-orphans', ...(watch ? ['--watch'] : []), ...bunRunArgs, entryFile],
         env: {
           ...process.env,
+          // Tells the child's own `serve()` it runs under this orchestrator: bind with patient retries and NEVER
+          // force-kill the port's holder (under serialized respawns a transient conflict is always a handover, and the
+          // holder may be the predecessor still draining — killing it is how dev trees used to murder themselves).
+          POINT0_DEV_CHILD: 'true',
           ...(hotStore ? { POINT0_DEV_STORE_DIR: hotStore.dir } : {}),
         },
         stdin: 'ignore',
@@ -803,12 +861,23 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         if (intentionalKills.delete(child) || isDevShuttingDown()) {
           return
         }
+        // A superseded child (no longer the entry's tracked child) must not decide the tree's fate — its replacement
+        // is already running or spawning. Without this guard a late exit from a replaced child (e.g. it lost a port
+        // race) tears down a perfectly healthy dev tree.
+        if (childByEntry.get(entryFile) !== child) {
+          this.log({
+            level: 'debug',
+            category: ['server'],
+            message: `Superseded server dev process exited (entry "${nodePath.relative(cwd, entryFile)}", code ${String(code)}) — ignoring.`,
+          })
+          return
+        }
         // Hot mode: a child that exits WITHOUT ever having booted (it never logged that it bound the port) crashed
         // DURING boot — almost always importing a store built from a file that was broken at `--hot` startup. That's a
         // fixable code error, not a dead tree: don't tear down. Drop the corpse and leave the watcher to respawn it on
-        // the fix (its hot-node branch sees `bootedByEntry=false` and restarts). The `=== child` guard ignores a stale
-        // exit from an already-replaced child. (A child that HAD booted and then died IS a real crash → tear down.)
-        if (hotStore && bootedByEntry.get(entryFile) === false && childByEntry.get(entryFile) === child) {
+        // the fix (its hot-node branch sees the child is gone and restarts). (A child that HAD booted and then died IS
+        // a real crash → tear down.)
+        if (hotStore && bootedByEntry.get(entryFile) === false) {
           childByEntry.delete(entryFile)
           this.log({
             level: 'error',
@@ -828,7 +897,15 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         stream: child.stdout,
         target: process.stdout,
         onChunk: (raw) => {
-          if (!bootedByEntry.get(entryFile) && raw.includes(SERVER_STARTED_MARKER)) bootedByEntry.set(entryFile, true)
+          if (!bootedByEntry.get(entryFile) && raw.includes(SERVER_STARTED_MARKER)) {
+            bootedByEntry.set(entryFile, true)
+            // Now that the server is confirmed up, narrow this entry's watch set from the broad app-src tree back to
+            // the precise import graph (don't wait for the next event — until then ANY src file would restart it).
+            const entryWatcher = watcherByEntry.get(entryFile)
+            if (entryWatcher) {
+              void entryWatcher.restart({ cwd, patterns: watchPatterns(entryFile) }).catch(() => undefined)
+            }
+          }
         },
       })
       pipeStreamStripped({ stream: child.stderr, target: process.stderr })
@@ -837,6 +914,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
 
     const childByEntry = new Map<string, Bun.Subprocess<'ignore', 'pipe', 'pipe'>>()
     const spawnAll = (): void => {
+      if (isDevShuttingDown()) return
       // Idempotent: skip an entry that already has a live child (so a cross-watcher race during recovery can't double-spawn).
       for (const entryFile of activeEntries) {
         if (!childByEntry.has(entryFile)) childByEntry.set(entryFile, spawnEntry(entryFile))
@@ -880,21 +958,80 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       await nodeFs.writeFile(entryFile, original)
     }
 
-    const respawnEntry = async (entryFile: string): Promise<void> => {
-      const old = childByEntry.get(entryFile)
-      if (old) {
+    // Stop a child the way the tree-wide teardown does: catchable SIGTERM first, a grace window for the app's own
+    // shutdown hooks, SIGKILL only for a straggler. The exit is marked intentional BEFORE the signal so it can never
+    // race the unexpected-exit handler.
+    const killChild = async (child: Bun.Subprocess<'ignore', 'pipe', 'pipe'>): Promise<void> => {
+      if (!isChildAlive(child)) {
+        return
+      }
+      intentionalKills.add(child)
+      try {
+        child.kill('SIGTERM')
+      } catch {
+        // Already dead or detached.
+      }
+      await Promise.race([child.exited, new Promise((resolve) => setTimeout(resolve, RESTART_GRACE_MS))])
+      if (isChildAlive(child)) {
         try {
-          intentionalKills.add(old)
-          old.kill('SIGKILL')
-          await old.exited
+          child.kill('SIGKILL')
         } catch {
           // Already dead or detached.
         }
+        await child.exited
+      }
+    }
+
+    const respawnEntry = async (entryFile: string): Promise<void> => {
+      const old = childByEntry.get(entryFile)
+      if (old) {
+        await killChild(old)
+      }
+      if (isDevShuttingDown()) {
+        // The tree began tearing down while we were stopping the old child — never spawn into a dying tree (such a
+        // child would outlive the orchestrator's kill sweep and linger orphaned).
+        childByEntry.delete(entryFile)
+        return
       }
       childByEntry.set(entryFile, spawnEntry(entryFile))
     }
 
     const restartEntry = useTouch ? touchEntry : respawnEntry
+
+    // Per-entry restart scheduler: at most ONE restart queued at a time, executed strictly one after another. A burst
+    // of save events (an agent editing many files back-to-back) requests many restarts; the first waits SETTLE ms (so
+    // the burst's tail joins it) and the rest coalesce into it — the entry restarts ONCE per burst, never N times, and
+    // never concurrently (concurrent respawns are how multiple children used to race one port and kill each other).
+    const restartStateByEntry = new Map<string, { queued: boolean; chain: Promise<void> }>()
+    const scheduleRestart = (entryFile: string): void => {
+      let state = restartStateByEntry.get(entryFile)
+      if (!state) {
+        state = { queued: false, chain: Promise.resolve() }
+        restartStateByEntry.set(entryFile, state)
+      }
+      if (state.queued) {
+        return
+      }
+      state.queued = true
+      const scheduledState = state
+      state.chain = state.chain.then(async () => {
+        await new Promise((resolve) => setTimeout(resolve, RESTART_SETTLE_MS))
+        scheduledState.queued = false
+        if (isDevShuttingDown()) {
+          return
+        }
+        try {
+          await restartEntry(entryFile)
+        } catch (error) {
+          this.log({
+            level: 'error',
+            category: ['server'],
+            message: `Failed to restart entry ${nodePath.relative(this.cwd, entryFile)}`,
+            error,
+          })
+        }
+      })
+    }
 
     for (const entryFile of activeEntries) {
       const initialPatterns = watchPatterns(entryFile)
@@ -902,6 +1039,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         continue
       }
       const watcher = FilesWatcher.create({ cwd, patterns: initialPatterns })
+      watcherByEntry.set(entryFile, watcher)
       await watcher.start({
         onEvent: async (event) => {
           const changed = event.path.split('?', 1)[0] as string
@@ -930,22 +1068,24 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
             return
           }
           // Hot swap: the changed file is a hot store node. Rebuild the store; normally the stable child re-imports the
-          // fresh aggregator on its next request — no restart. BUT if that child never finished booting (it crashed
-          // importing a then-broken store at `--hot` startup), a hot-swap revives nothing: RESPAWN it so it re-boots
-          // against the now-rebuilt store. This closes the "started --hot on a broken hot file → server silently dead"
-          // gap while keeping a true zero-restart hot-swap for the normal (already-booted) case.
+          // fresh aggregator on its next request — no restart. A child that is ALIVE but still BOOTING needs no restart
+          // either: it reads the manifest per request, so once it finishes booting it serves the rebuilt store — killing
+          // it mid-boot would only start the boot over (under a steady stream of agent edits that loop literally never
+          // converges — each respawn re-arms before the previous boot finishes, and the server stays down for minutes).
+          // Only a child that is GONE (crashed importing a then-broken store at `--hot` startup — the unexpected-exit
+          // handler dropped it) needs a respawn: that's the real failed-boot recovery.
           if (hotStore?.isHotNode(changed)) {
-            const booted = bootedByEntry.get(entryFile) ?? false
+            const child = childByEntry.get(entryFile)
+            const childAlive = child !== undefined && isChildAlive(child)
+            const booted = childAlive && bootedByEntry.get(entryFile) === true
             if (booted) hotReloadsSinceRespawn++
-            // Restart instead of hot-swapping when EITHER the child never booted (failed-boot recovery — a hot-swap
-            // can't revive a server that never came up) OR we've hit the periodic memory-GC threshold.
             const gcRestart = booted && HOT_RESTART_EVERY > 0 && hotReloadsSinceRespawn >= HOT_RESTART_EVERY
             if (gcRestart) hotReloadsSinceRespawn = 0
-            const willRestart = !booted || gcRestart
+            const willRestart = !childAlive || gcRestart
             this.log({
               level: 'info',
               category: ['server'],
-              message: !booted
+              message: !childAlive
                 ? `Server recovering a failed boot — restarting... (changed: ${nodePath.relative(this.cwd, changed)})`
                 : gcRestart
                   ? `Server hot reload: periodic restart to release the module cache (every ${HOT_RESTART_EVERY} reloads)`
@@ -961,41 +1101,21 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
                 error,
               })
             }
-            if (willRestart) {
-              try {
-                await restartEntry(entryFile)
-              } catch (error) {
-                this.log({
-                  level: 'error',
-                  category: ['server'],
-                  message: `Failed to restart entry ${nodePath.relative(this.cwd, entryFile)}`,
-                  error,
-                })
-              }
-            }
+            if (willRestart) scheduleRestart(entryFile)
             await watcher.restart({ cwd, patterns: watchPatterns(entryFile) })
             return
           }
-          // Full restart: cold-marker subtree, the boot entry, or any file not in the hot store.
+          // Full restart: cold-marker subtree, the boot entry, or any file not in the hot store. Coalesced + serialized
+          // by the scheduler: a burst of saves lands as ONE respawn, and respawns never overlap.
           this.log({
             level: 'info',
             category: ['server'],
             message: `Server restarting... (changed: ${nodePath.relative(this.cwd, changed)})`,
           })
-          try {
-            await restartEntry(entryFile)
-          } catch (error) {
-            this.log({
-              level: 'error',
-              category: ['server'],
-              message: `Failed to restart entry ${nodePath.relative(this.cwd, entryFile)}`,
-              error,
-            })
-          }
+          scheduleRestart(entryFile)
           if (hotStore) {
             // Boot/cold deps may have shifted the hot/cold classification — rebuild so the watcher stays accurate.
-            // Separate try/catch: a rebuild failure here (e.g. a transient broken aggregator) must not be misreported
-            // as a restart failure, and the child has already restarted, so the dev tree stays alive regardless.
+            // A rebuild failure must not block the restart (already scheduled); the dev tree stays alive regardless.
             try {
               hotStore.rebuild()
             } catch (error) {
