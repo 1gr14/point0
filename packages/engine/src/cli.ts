@@ -1,4 +1,12 @@
-#!/usr/bin/env bun
+#!/usr/bin/env -S bun --no-env-file --config=/dev/null
+
+// ^ The shebang (bun >= 1.3.3; `env -S` splits it into arguments on macOS and Linux) makes the CLI
+// hermetic: `--no-env-file` stops Bun from auto-loading .env files before any CLI code runs (with
+// NODE_ENV unset it would assume development and load .env.development), and `--config=/dev/null`
+// keeps the app's bunfig out of this process. Each command resolves its mode from flags and calls
+// applyEnvMode (env-files.ts) to load the right-mode cascade BEFORE the user's engine file is
+// imported. Invocations that bypass the shebang (Windows shims, `bun .../cli.js` directly) are
+// detected via process.execArgv and handled by the env-files.ts legacy fallback.
 
 import { Compiler } from '@point0/compiler'
 import type { PointsScope } from '@point0/core'
@@ -8,7 +16,8 @@ import { Analyzer, buildPointsFilter, ensureMetaPaths, resolveMetaImportPaths } 
 import type { AnalyzerPointSelectOptions } from './analyzer.js'
 import { stopAllDevTrees } from './devlock.js'
 import { Engine } from './engine.js'
-import { normalizeAndValidateNodeEnv } from './utils.js'
+import { applyEnvMode } from './env-files.js'
+import type { ApplyEnvModeResult } from './env-files.js'
 
 const program = new Command()
 
@@ -17,10 +26,41 @@ program.name('point0').description('Point0 CLI').version('0.1.0').enablePosition
 const dictionary = {
   noGenerate: 'Skip files generation',
   enginePath: 'Path to engine file (absolute or relative to cwd)',
+  mode: "NODE_ENV mode: 'production' | 'development' | 'test'. Decides which .env files apply (.env, .env.<mode>, .env.local, .env.<mode>.local) — values Bun pre-loaded for another mode are unloaded",
+  modeProduction: 'Shorthand for --mode production',
+  modeDevelopment: 'Shorthand for --mode development',
+  modeTest: 'Shorthand for --mode test',
+  env: 'Environment variables to define, name=value (--env name1=value1 --env name2=value2 ...); they override .env file values',
 }
 const parseCommaSeparatedOption = (value: string, previous: string[] = []): string[] => {
   previous.push(...value.split(','))
   return previous
+}
+
+type ModeFlagOptions = { mode?: string; production?: boolean; development?: boolean; test?: boolean }
+
+// Resolve the mode flags (shorthand > --mode), same precedence the compile command always had.
+const resolveModeFlag = (options: ModeFlagOptions): 'production' | 'development' | 'test' | undefined => {
+  const mode = options.production
+    ? 'production'
+    : options.development
+      ? 'development'
+      : options.test
+        ? 'test'
+        : options.mode
+  if (mode === undefined) {
+    return undefined
+  }
+  if (mode !== 'production' && mode !== 'development' && mode !== 'test') {
+    throw new Error(`Invalid --mode: ${mode}. Allowed values: production, development, test`)
+  }
+  return mode
+}
+
+const reportEnvMode = (result: ApplyEnvModeResult): void => {
+  const filesPart = result.files.length > 0 ? ` · env files: ${result.files.join(', ')}` : ''
+  const unloadedPart = result.unloadedFiles.length > 0 ? ` · unloaded: ${result.unloadedFiles.join(', ')}` : ''
+  console.info(`point0: NODE_ENV=${result.mode}${filesPart}${unloadedPart}`)
 }
 
 program
@@ -51,13 +91,14 @@ program
   )
   .option(
     '--env <name_eq_value>',
-    'Environment variables to define, name=value (--env name1=value1 --env name2=value2 ...)',
+    dictionary.env,
     (value, previous: string[] = []) => {
       previous.push(value)
       return previous
     },
     [],
   )
+  .option('--mode <mode>', dictionary.mode)
   .action(
     async (options: {
       engine?: string
@@ -68,9 +109,14 @@ program
       generate?: boolean
       watch?: boolean | string[]
       hot?: boolean
+      mode?: string
     }) => {
-      // const { engine, engineFile } = await Engine.findAndImportSelf(options.engine)
       const cwd = process.cwd()
+      // Load the right-mode .env cascade BEFORE the user's engine file is imported — it reads
+      // process.env at module scope.
+      reportEnvMode(
+        applyEnvMode({ cwd, flagMode: resolveModeFlag(options), envPairs: options.env, defaultMode: 'development' }),
+      )
       const { engine } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd })
       const dashDashIndex = process.argv.indexOf('--')
       const bunRunArgs = dashDashIndex === -1 ? [] : process.argv.slice(dashDashIndex + 1)
@@ -81,11 +127,6 @@ program
           : options.watch.map((w) => nodePath.resolve(cwd, w))
         : options.watch
       const entries = options.entry
-      for (const env of options.env ?? []) {
-        const [name, ...valueParts] = env.split('=')
-        const value = valueParts.join('=')
-        process.env[name] = value
-      }
       const side = options.side as string | undefined
       const scope = options.scope as string | boolean | undefined
       if (side && side !== 'server' && side !== 'client') {
@@ -112,6 +153,7 @@ program
   .command('prune')
   .description('Prune temporary directories')
   .action(async () => {
+    applyEnvMode({ cwd: process.cwd(), defaultMode: 'development' })
     const { engine } = await Engine.findAndImportSelf({ cwd: process.cwd() })
     await engine.prune()
   })
@@ -161,13 +203,14 @@ program
   )
   .option(
     '--env <name_eq_value>',
-    'Environment variables to define, name=value (--env name1=value1 --env name2=value2 ...)',
+    dictionary.env,
     (value, previous: string[] = []) => {
       previous.push(value)
       return previous
     },
     [],
   )
+  .option('--mode <mode>', dictionary.mode)
   .action(
     async (options: {
       engine?: string
@@ -179,15 +222,20 @@ program
       publicdir?: boolean
       keepAlive?: boolean
       env?: string[]
+      mode?: string
     }) => {
-      process.env.NODE_ENV ??= 'production'
       process.env.LOG_MODE = 'pretty'
+      // Load the right-mode .env cascade (production by default for build) BEFORE the user's
+      // engine file is imported — it reads process.env at module scope.
+      reportEnvMode(
+        applyEnvMode({
+          cwd: process.cwd(),
+          flagMode: resolveModeFlag(options),
+          envPairs: options.env,
+          defaultMode: 'production',
+        }),
+      )
       const { engine } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd: process.cwd() })
-      for (const env of options.env ?? []) {
-        const [name, ...valueParts] = env.split('=')
-        const value = valueParts.join('=')
-        process.env[name] = value
-      }
       const watch = Array.isArray(options.watch)
         ? options.watch.length === 0
           ? undefined
@@ -236,6 +284,7 @@ program
   .option('-w, --watch', 'Watch for changes and regenerate')
   .option('--engine <path>', dictionary.enginePath)
   .action(async (options) => {
+    applyEnvMode({ cwd: process.cwd(), defaultMode: 'development' })
     const { engine } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd: process.cwd() })
     if (options.watch) {
       await engine.generateWatch()
@@ -254,11 +303,11 @@ program
   .option('-c, --client', 'Shorthand for --side client')
   .option('-s, --server', 'Shorthand for --side server')
   .option('--scope <scope>', 'Compile scope (optional, inferred from side when omitted)')
-  .option('--mode <mode>', "NODE_ENV mode: 'production' | 'development' | 'test' (else current NODE_ENV)")
+  .option('--mode <mode>', dictionary.mode)
   .option('-b, --built', `Treat the engine as built (else POINT0_BUILT === 'true')`)
-  .option('-p, --production', 'Shorthand for --mode production')
-  .option('-d, --development', 'Shorthand for --mode development')
-  .option('-t, --test', 'Shorthand for --mode test')
+  .option('-p, --production', dictionary.modeProduction)
+  .option('-d, --development', dictionary.modeDevelopment)
+  .option('-t, --test', dictionary.modeTest)
   .option('-B, --no-babel', 'Strip babel plugins from compiler options')
   // Paired --hmr / --no-hmr: separate shorts, same key. If neither flag is passed, the value
   // is left unset and we inherit the engine-config hmrFix.
@@ -285,19 +334,9 @@ program
       },
     ) => {
       const cwd = process.cwd()
-      // Resolve --mode (shorthand > --mode > current NODE_ENV). Set NODE_ENV before the engine
-      // module loads, since downstream code reads it at evaluation time.
-      const resolvedMode = options.production
-        ? 'production'
-        : options.development
-          ? 'development'
-          : options.test
-            ? 'test'
-            : options.mode
-      if (resolvedMode) {
-        process.env.NODE_ENV = resolvedMode
-      }
-      normalizeAndValidateNodeEnv('development')
+      // Load the right-mode .env cascade before the engine module loads — downstream code reads it
+      // at evaluation time. No reportEnvMode here: compile's stdout is the compiled code, keep it clean.
+      applyEnvMode({ cwd, flagMode: resolveModeFlag(options), defaultMode: 'development' })
       const { engine } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd })
       // Resolve side: -c / -s shorthand wins over --side.
       const sideArg = options.client ? 'client' : options.server ? 'server' : options.side
@@ -355,7 +394,7 @@ program
       },
     ) => {
       const cwd = process.cwd()
-      normalizeAndValidateNodeEnv('development')
+      applyEnvMode({ cwd, defaultMode: 'development' })
       const { engine, engineFile } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd })
       const normalizedCwd = options.cwd ? path.resolve(cwd, options.cwd) : nodePath.dirname(engineFile)
       const { side: traceSide, scope: traceScope } = engine.guessSideAndScope({

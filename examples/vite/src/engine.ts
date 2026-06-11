@@ -28,7 +28,7 @@ export const engine = Engine.create({
   server: {
     scope: 'root',
     port: process.env.SERVER_PORT || process.env.PORT,
-    entry: { main: './app.server.ts' },
+    entry: { main: './index.server.ts' },
     points: async () => await import('./generated/point0/points.server'),
     generate: { points: './generated/point0/points.server.ts' },
     outdir: '../dist/server',

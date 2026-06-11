@@ -508,7 +508,10 @@ import { fetchRetryingConnectionRefused, registerOnProcessExit } from '@point0/e
 import { env } from '@point0/core';
 const { engine } = await Engine.findAndImportSelf({ engineFile: '${this.engineFile}' });
 try {
-  await engine.preload({ preventSetEnvVars: true });
+  // No engine.preload() here: this child's html/static pipeline gets its plugins from the generated
+  // bunfig's [serve.static] (resolved by @point0/compiler/plugin/bun-static), and nothing in this
+  // script imports app sources at runtime. Only the app logger config is applied.
+  await engine.applyLogger();
   if (!env.mode.is.production) {
     await killPort([${this.port}, ${this.hmrPort}].filter(Boolean), { force: true, category: ['client'] })
   }

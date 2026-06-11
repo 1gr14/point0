@@ -1,4 +1,2 @@
-preload = ["./src/preload.ts"]
-
 [run]
 noOrphans = true

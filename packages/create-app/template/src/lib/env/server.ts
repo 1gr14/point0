@@ -1,4 +1,4 @@
-import { sharedEnvShape } from '@/lib/env/shared'
+import { sharedEnvShape } from '@/lib/env/shared-shape'
 import '@point0/core/server-only'
 import { z } from 'zod'
 

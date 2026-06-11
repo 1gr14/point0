@@ -4,6 +4,7 @@ import {
   __POINT0_QUERY_CLIENT__,
   _defaultLogFn,
   _getSsItemsWithRestErrors,
+  _point0_env,
   _ssRunWithServerStorageState,
   _ssServerLog,
   type AnyNiceReadyPoint,
@@ -190,6 +191,13 @@ export class Engine<
     preventLoadBunPlugins?: boolean
     prepare?: TPrepare
   } = {}): Promise<TPrepare extends true ? Engine<TRequiredCtx, TError, true> : typeof this> {
+    // App preload.ts calls this unconditionally (the server entry, test setups and direct script
+    // runs import preload.ts explicitly). In a process running built artifacts the work is already
+    // baked in — plugins would be dead weight and the env fallback could flip a production server
+    // to development — so preload is a no-op there.
+    if (_point0_env.build.was) {
+      return this as TPrepare extends true ? Engine<TRequiredCtx, TError, true> : typeof this
+    }
     await this.server.preload({ preventSetEnvVars, nodeEnvFallback, preventLoadBunPlugins })
     await this.applyLogger()
     if (prepare) {
@@ -416,6 +424,9 @@ export class Engine<
      */
     serverHot?: boolean
   }): Promise<void> {
+    // The CLI no longer runs the app preload (no ambient bunfig preload since the explicit-preload
+    // convention), so the app's logger config is applied here for the orchestrator's own logs.
+    await this.applyLogger()
     const {
       generateFiles = true,
       side,
@@ -746,6 +757,7 @@ export class Engine<
     }>
     server: { server: string[] | null; publicdir: string[] | null }
   }> {
+    await this.applyLogger()
     const startedAt = performance.now()
     this.log({
       level: 'info',
@@ -836,6 +848,7 @@ export class Engine<
     file?: string
     cwd?: string
   }): Promise<void> {
+    await this.applyLogger()
     const { watch, cwd = this.cwd, ...buildOptions } = options ?? {}
     // `build --watch` watches the IMPORT GRAPH of the build entries (the same model the dev orchestrator uses), so a
     // change anywhere in the graph rebuilds — no glob required. The server's entries are explicit; each client's entry
@@ -1013,6 +1026,7 @@ export class Engine<
     logOnNotWritten?: boolean
     silent?: boolean
   } = {}): Promise<FileGeneratorProcessResult> {
+    await this.applyLogger()
     return await this.generator.sync({ logOnNotWritten, silent })
   }
 
@@ -1023,6 +1037,7 @@ export class Engine<
     logOnNotWritten?: boolean
     sync?: boolean
   } = {}): Promise<void> {
+    await this.applyLogger()
     if (sync) {
       void this.generator.sync({ logOnNotWritten }).catch((error: unknown) => {
         this.log({

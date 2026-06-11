@@ -1,3 +1,3 @@
-import { engine } from '@/engine'
+import { engine } from './engine.js'
 
 await engine.preload({ nodeEnvFallback: 'development' })

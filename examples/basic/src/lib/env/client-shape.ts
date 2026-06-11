@@ -1,4 +1,4 @@
-import { sharedEnvShape } from '@/lib/env/shared'
+import { sharedEnvShape } from '@/lib/env/shared-shape'
 
 /**
  * Zod shape for variables exposed to the browser bundle. Add client-only keys here.

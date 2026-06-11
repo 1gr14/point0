@@ -9,7 +9,7 @@
     "mcp:project": "point0-project-mcp --meta ./src/generated/point0/meta.ts",
     "mcp:docs": "point0-docs-mcp",
     "build": "point0 build",
-    "start": "cross-env NODE_ENV=production bun run ./dist/server/app.server.js",
+    "start": "cross-env NODE_ENV=production bun run ./dist/server/index.server.js",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down",
