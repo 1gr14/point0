@@ -127,7 +127,7 @@ Apps do NOT have a main `preload = [...]` in bunfig anymore (only `[test]`).
 ### Who actually needs the compiler plugins (and who registers them)
 
 `engine.preload()` does exactly two things via `server.preload`: `setEnvVars`
-(NODE*ENV normalize + POINT0*\* + env consts into process.env) and
+(`NODE_ENV` normalize + `POINT0_*` + env consts into `process.env`) and
 `loadBunPlugins` (process-wide `Bun.plugin` with the point0 compiler — its
 default filter matches every ts/js/md/mdx outside node_modules anywhere on disk,
 which is why it must never run in foreign processes). Per process:
