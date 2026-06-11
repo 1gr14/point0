@@ -1,9 +1,14 @@
-import { beforeAll, describe, expect, it } from 'bun:test'
+import { beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { Compiler } from '../src/compiler.js'
 import { parseVirtualModulePath } from '../src/importer.js'
 import { toText } from './utils.js'
+
+// The whole file runs ~1s alone, but under the parallel runner (test-parallel.ts saturates every core) a single
+// compile-heavy test can be starved past bun's 5s default — the babel-backed desugar tests were flaking on exactly
+// that. Generous budget; the tests are fast, the machine under `testf`/`testa` is not.
+setDefaultTimeout(30000)
 
 type TestFile = Bun.BunFile & { path: string; basename: string; importpath: string }
 

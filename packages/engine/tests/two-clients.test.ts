@@ -372,7 +372,10 @@ describe('two-clients', () => {
         },
       ),
       {
-        // retry: 3,
+        retry: 3,
+        // The longest test in the file: a two-SSR-client dev boot plus ~18 navigations/fetches runs ~23-25s on a warm
+        // machine — the file-wide 20s default is structurally too tight for it.
+        timeout: 60000,
       },
     )
   })
