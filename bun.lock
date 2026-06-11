@@ -603,7 +603,7 @@
     "zod": "^4.4.3",
   },
   "catalog": {
-    "@1gr14/error0": "^0.1.0",
+    "@1gr14/error0": "^0.4.0",
     "@1gr14/flat": "^0.1.0",
     "@1gr14/route0": "^0.1.0",
     "@huggingface/transformers": "^4.2.0",
@@ -647,7 +647,7 @@
     "zod": "^4.4.3",
   },
   "packages": {
-    "@1gr14/error0": ["@1gr14/error0@0.1.0", "", {}, "sha512-sDErcOmQD9zGaD731gGB8sX0XfknQICstsFr4zwM5x576OF8q1sx5XWkWmTzYS25r+m+btOmSe1AbjKBiBvJPQ=="],
+    "@1gr14/error0": ["@1gr14/error0@0.4.0", "", {}, "sha512-HM8+CJ6+nmlcl1fjozRmVmeABGdl1DRDEpgkHuSkEXl4u3xLVc886hJYmMxfaEiRc3f1KNna4BbEIk/xTE0Lmg=="],
 
     "@1gr14/flat": ["@1gr14/flat@0.1.0", "", {}, "sha512-cAjBwz5cH0DzRLKBgRJyNKt6GFHr4x2WvVqABqC61XicXk05c8sQr0OfSMjPjdd2VORwqSP+dWZ5s1AaN5qZEg=="],
 

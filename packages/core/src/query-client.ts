@@ -1,6 +1,7 @@
 import { dehydrate, hydrate, QueryClient } from '@tanstack/react-query'
 import type { DehydratedState, QueryState } from '@tanstack/react-query'
 import type { ClassLikeError0, ErrorPoint0 } from './error.js'
+import { _point0_env } from './env.js'
 // import { getClientPoints } from './helpers.js'
 import { getClientPoints } from './helpers.js'
 import { RedirectTask } from './redirect.js'
@@ -112,6 +113,13 @@ export const createQueryClient = (init?: () => QueryClient) => {
   return __POINT0_QUERY_CLIENT__.proxy
 }
 
+// Errors in the dehydrated state travel to the browser: public projection in production,
+// private in dev (the developer is the audience there).
+const serializeStateError = (ErrorClass: ClassLikeError0<ErrorPoint0>, error: unknown): Record<string, unknown> => {
+  const error0 = ErrorClass.from(error)
+  return _point0_env.mode.is.production ? ErrorClass.serializePublic(error0) : ErrorClass.serializePrivate(error0)
+}
+
 export const serializeErrorsInDehydratedState = (
   dehydratedState: DehydratedState,
   ErrorClass: ClassLikeError0<ErrorPoint0>,
@@ -135,9 +143,9 @@ export const serializeErrorsInDehydratedState = (
         ...q,
         state: {
           ...q.state,
-          error: q.state.error ? (ErrorClass.serialize(q.state.error) as never as null) : q.state.error,
+          error: q.state.error ? (serializeStateError(ErrorClass, q.state.error) as never as null) : q.state.error,
           fetchFailureReason: q.state.fetchFailureReason
-            ? (ErrorClass.serialize(q.state.fetchFailureReason) as never as null)
+            ? (serializeStateError(ErrorClass, q.state.fetchFailureReason) as never as null)
             : q.state.error,
         },
       }
@@ -146,9 +154,9 @@ export const serializeErrorsInDehydratedState = (
       ...m,
       state: {
         ...m.state,
-        error: m.state.error ? (ErrorClass.serialize(m.state.error) as never as null) : m.state.error,
+        error: m.state.error ? (serializeStateError(ErrorClass, m.state.error) as never as null) : m.state.error,
         failureReason: m.state.failureReason
-          ? (ErrorClass.serialize(m.state.failureReason) as never as null)
+          ? (serializeStateError(ErrorClass, m.state.failureReason) as never as null)
           : m.state.failureReason,
       },
     })),

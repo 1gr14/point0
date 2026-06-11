@@ -7,9 +7,9 @@ import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { createTestThings } from './utils/internal-testing.js'
 
 describe('error', () => {
-  const AppError = Error0.use(statusPlugin({ isPublic: true }))
-    .use(codePlugin({ isPublic: true }))
-    .use(metaPlugin({ isPublic: true }))
+  const AppError = Error0.use(statusPlugin({ transport: 'public' }))
+    .use(codePlugin({ transport: 'public' }))
+    .use(metaPlugin({ transport: 'public' }))
   type AppError = InstanceType<typeof AppError>
   const createRoot = () =>
     Point0.lets('root', 'root')

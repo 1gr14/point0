@@ -499,7 +499,9 @@ export class Point0<
   private readonly _ProviderReactContext: Context<MountableSuccessData<TQueriesDefinitions, TMapperOutput>> | undefined
   private readonly _errorComponent: ErrorComponentType<DestinationComponentVariant, TError> | undefined
   private readonly DefaultErrorComponent: ErrorComponentType<any, TError> = ({ error }) => {
-    const { stack, ...json } = this._Error.serialize(error)
+    const { stack, ...json } = _point0_env.mode.is.production
+      ? this._Error.serializePublic(error)
+      : this._Error.serializePrivate(error)
     // const isHydrated = useIsHydrated()
     // return React.createElement(
     //   React.Fragment,

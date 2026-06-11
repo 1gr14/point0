@@ -1296,7 +1296,11 @@ export class Fetcher<TError extends ErrorPoint0> {
       if (error0.status !== status) {
         error0.status = status
       }
-      const serialized = ErrorClass.serialize(error0)
+      // Public projection for an untrusted client in production; the full private one in dev,
+      // so the developer sees the stack right in the browser.
+      const serialized = _point0_env.mode.is.production
+        ? ErrorClass.serializePublic(error0)
+        : ErrorClass.serializePrivate(error0)
       const stringified = transformer ? transformer.stringify(serialized) : JSON.stringify(serialized)
       if (!stringified) {
         throw new ErrorClass('Failed to stringify error', {

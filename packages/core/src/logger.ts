@@ -27,6 +27,21 @@ export const isLogLevelEnabled = (level: LogLevel): boolean => {
   return logLevelsBySeverity.indexOf(level) >= logLevelsBySeverity.indexOf(minLevel)
 }
 
+// A foreign Error for the json log: identity and stack verbatim, plus the cause chain (with
+// cycle and depth guards) — nothing the operator needs is dropped.
+const _serializeErrorForLog = (error: Error, seen = new Set<unknown>(), depth = 0): Record<string, unknown> => {
+  seen.add(error)
+  const record: Record<string, unknown> = { name: error.name, message: error.message }
+  if (error.stack) {
+    record.stack = error.stack
+  }
+  const cause = (error as { cause?: unknown }).cause
+  if (cause instanceof Error && !seen.has(cause) && depth < 99) {
+    record.cause = _serializeErrorForLog(cause, seen, depth + 1)
+  }
+  return record
+}
+
 export const _defaultLogFn: LogFn = (options: LogOptions) => {
   if (!isLogLevelEnabled(options.level)) {
     return
@@ -41,19 +56,32 @@ export const _defaultLogFn: LogFn = (options: LogOptions) => {
   if (mode === 'json') {
     const serializedError = (() => {
       try {
-        // An error with its own `toJSON` (e.g. ErrorPoint0) owns its serialization. A foreign error keeps its real
-        // name, message, and stack verbatim — dropping them makes an uncaught exception undiagnosable from json logs.
-        return !options.error
-          ? undefined
-          : typeof options.error === 'object' && 'toJSON' in options.error && typeof options.error.toJSON === 'function'
-            ? options.error.toJSON()
-            : options.error instanceof Error
-              ? {
-                  name: options.error.name,
-                  message: options.error.message,
-                  ...(options.error.stack ? { stack: options.error.stack } : {}),
-                }
-              : { message: String(options.error) }
+        if (!options.error) {
+          return undefined
+        }
+        const error = options.error
+        // The log contract is serializePrivate() (ErrorPoint0, error0, any custom class) — never
+        // toJSON, which is the public wire projection and strips exactly what an operator needs.
+        // Identity fields are backfilled so a misconfigured serializer can't produce an
+        // anonymous log line. A foreign error keeps its real name, message, stack, and cause
+        // chain verbatim — dropping them makes an uncaught exception undiagnosable from json logs.
+        const record =
+          typeof error === 'object' &&
+          'serializePrivate' in error &&
+          typeof (error as { serializePrivate: unknown }).serializePrivate === 'function'
+            ? ((error as { serializePrivate: () => unknown }).serializePrivate() as Record<string, unknown>)
+            : undefined
+        if (record && typeof record === 'object') {
+          if (error instanceof Error) {
+            record.name ??= error.name
+            record.message ??= error.message
+            if (record.stack === undefined && error.stack) {
+              record.stack = error.stack
+            }
+          }
+          return record
+        }
+        return error instanceof Error ? _serializeErrorForLog(error) : { message: String(error) }
       } catch (error) {
         return {
           message: error instanceof Error ? error.message : String(error),

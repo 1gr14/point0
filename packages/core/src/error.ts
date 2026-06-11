@@ -63,8 +63,10 @@ export class ErrorPoint0 extends Error {
       this.meta = options.meta
     }
     this.name = 'ErrorPoint0'
+    // Safety net for accidental JSON.stringify of a payload carrying the error: only the
+    // public projection may leak implicitly. Logs use serializePrivate explicitly.
     Object.defineProperty(this, 'toJSON', {
-      value: () => ErrorPoint0.serialize(this),
+      value: () => (this.constructor as typeof ErrorPoint0).serializePublic(this),
       writable: false,
       enumerable: false,
       configurable: false,
@@ -118,12 +120,21 @@ export class ErrorPoint0 extends Error {
     return error0
   }
 
-  static serialize(error: ErrorPoint0): Record<string, unknown> {
+  // The two audiences, named. Public — what an untrusted client may see: never a stack, never
+  // meta, regardless of env (the caller picks the projection per env, not the serializer).
+  static serializePublic(error: ErrorPoint0): Record<string, unknown> {
+    return {
+      name: error.name,
+      message: error.message,
+      ...(error.code ? { code: error.code } : {}),
+      ...(error.redirect ? { redirect: error.redirect.serialize() } : {}),
+    }
+  }
+
+  // Private — the full operator view (logs, dev tooling): identity, stack, meta, cause chain.
+  static serializePrivate(error: ErrorPoint0): Record<string, unknown> {
     const meta = (() => {
       if (!error.meta) {
-        return undefined
-      }
-      if (process.env.NODE_ENV === 'production') {
         return undefined
       }
       try {
@@ -132,15 +143,52 @@ export class ErrorPoint0 extends Error {
         return undefined
       }
     })()
-    const isStacktracePublic = process.env.NODE_ENV !== 'production'
+    const cause = serializeCauseChainForLog((error as { cause?: unknown }).cause)
     return {
+      name: error.name,
       message: error.message,
       ...(error.code ? { code: error.code } : {}),
+      ...(error.status ? { status: error.status } : {}),
       ...(meta ? { meta } : {}),
-      ...(!isStacktracePublic || !error.stack ? {} : { stack: error.stack }),
+      ...(error.stack ? { stack: error.stack } : {}),
       ...(error.redirect ? { redirect: error.redirect.serialize() } : {}),
+      ...(cause ? { cause } : {}),
     }
   }
+
+  serializePublic(): Record<string, unknown> {
+    return (this.constructor as typeof ErrorPoint0).serializePublic(this)
+  }
+
+  serializePrivate(): Record<string, unknown> {
+    return (this.constructor as typeof ErrorPoint0).serializePrivate(this)
+  }
+}
+
+// Serialize an error's cause chain for the private/log projection: identity and stack of every
+// link, verbatim, with cycle and depth guards.
+export const serializeCauseChainForLog = (
+  cause: unknown,
+  seen = new Set<unknown>(),
+  depth = 0,
+): Record<string, unknown> | undefined => {
+  if (!(cause instanceof Error) || seen.has(cause) || depth > 99) {
+    return undefined
+  }
+  seen.add(cause)
+  const record: Record<string, unknown> = { name: cause.name, message: cause.message }
+  const code = (cause as { code?: unknown }).code
+  if (typeof code === 'string') {
+    record.code = code
+  }
+  if (cause.stack) {
+    record.stack = cause.stack
+  }
+  const nested = serializeCauseChainForLog((cause as { cause?: unknown }).cause, seen, depth + 1)
+  if (nested) {
+    record.cause = nested
+  }
+  return record
 }
 
 export type ClassLikeError0<T extends ErrorPoint0 = ErrorPoint0> = {
@@ -157,7 +205,8 @@ export type ClassLikeError0<T extends ErrorPoint0 = ErrorPoint0> = {
     },
   ): T
   from(error: unknown): T
-  serialize(error: T): Record<string, unknown>
+  serializePublic(error: T): Record<string, unknown>
+  serializePrivate(error: T): Record<string, unknown>
 }
 
 /**
