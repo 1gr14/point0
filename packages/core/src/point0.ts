@@ -2332,31 +2332,8 @@ export class Point0<
     }) as never
   }
 
-  serverUrl(
-    serverUrl: string,
-  ): NiceRootStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    'root',
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  serverUrl<TSelf>(this: TSelf, serverUrl: string): TSelf
+  serverUrl(serverUrl: string) {
     return this._continue({
       _serverUrl: serverUrl,
     }) as never
@@ -2367,31 +2344,8 @@ export class Point0<
    * Page and layout routes resolve route.abs() against it; action routes always use serverUrl — the API lives on the
    * server. Without it pages fall back to serverUrl.
    */
-  clientUrl(
-    clientUrl: string,
-  ): NiceRootStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    'root',
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  clientUrl<TSelf>(this: TSelf, clientUrl: string): TSelf
+  clientUrl(clientUrl: string) {
     return this._continue({
       _clientUrl: clientUrl,
     }) as never
@@ -2399,116 +2353,23 @@ export class Point0<
 
   // general settings
 
-  tag(
-    ...tags: [string, ...string[]]
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  tag<TSelf>(this: TSelf, ...tags: [string, ...string[]]): TSelf
+  tag(...tags: [string, ...string[]]) {
     return this._continue({
       tags: [...new Set([...this.tags, ...tags])],
     }) as never
   }
 
-  description(
-    description: string,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  description(
-    description?: string,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  description<TSelf>(this: TSelf, description: string): TSelf
+  description<TSelf>(this: TSelf, description?: string): TSelf
+  description(description?: string) {
     return this._continue({
       _description: description ? [this._description, description].filter(Boolean).join('\n\n') : this._description,
     }) as never
   }
 
-  schemaHelper(
-    schemaHelper: SchemaHelper | undefined | false | null,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  schemaHelper<TSelf>(this: TSelf, schemaHelper: SchemaHelper | undefined | false | null): TSelf
+  schemaHelper(schemaHelper: SchemaHelper | undefined | false | null) {
     const newSchemasHelpers = schemaHelper ? [...(this._schemasHelpers ?? []), schemaHelper] : this._schemasHelpers
     return this._continue({
       _schemasHelpers: newSchemasHelpers,
@@ -2568,84 +2429,21 @@ export class Point0<
   //   }) as never
   // }
 
-  on<TEventName extends AnyEventerEventName | '*'>(
+  on<TSelf, TEventName extends AnyEventerEventName | '*'>(
+    this: TSelf,
     name: TEventName,
     callback: AnyEventerSubscriptionCallback<TEventName, TError>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  on(
+  ): TSelf
+  on<TSelf>(
+    this: TSelf,
     name: 'error',
     callback: AnyEventerSubscriptionCallback<UniqEventerErrorEventName, TError>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  on<TEventNames extends Array<AnyEventerEventName>>(
+  ): TSelf
+  on<TSelf, TEventNames extends Array<AnyEventerEventName>>(
+    this: TSelf,
     names: TEventNames,
     callback: AnyEventerSubscriptionCallback<TEventNames[number], TError>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  ): TSelf
   on(
     name: AnyEventerEventName | 'error' | '*' | Array<AnyEventerEventName>,
     callback: AnyEventerSubscriptionCallback<any, TError> | undefined = () => {},
@@ -2657,84 +2455,21 @@ export class Point0<
     }) as never
   }
 
-  serverOn<TEventName extends ServerEventerEventName | '*'>(
+  serverOn<TSelf, TEventName extends ServerEventerEventName | '*'>(
+    this: TSelf,
     name: TEventName,
     callback: ServerEventerSubscriptionCallback<TEventName, TError>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  serverOn(
+  ): TSelf
+  serverOn<TSelf>(
+    this: TSelf,
     name: 'error',
     callback: ServerEventerSubscriptionCallback<UniqEventerErrorEventName, TError>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  serverOn<TEventNames extends Array<ServerEventerEventName>>(
+  ): TSelf
+  serverOn<TSelf, TEventNames extends Array<ServerEventerEventName>>(
+    this: TSelf,
     names: TEventNames,
     callback: ServerEventerSubscriptionCallback<TEventNames[number], TError>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  ): TSelf
   serverOn(
     ...args:
       | [
@@ -2752,84 +2487,21 @@ export class Point0<
     return this._continue({ _eventerSubscriptions: [...this._eventerSubscriptions, ...subscriptions] }) as never
   }
 
-  clientOn<TEventName extends ClientEventerEventName | '*'>(
+  clientOn<TSelf, TEventName extends ClientEventerEventName | '*'>(
+    this: TSelf,
     name: TEventName,
     callback: ClientEventerSubscriptionCallback<TEventName, TError>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  clientOn(
+  ): TSelf
+  clientOn<TSelf>(
+    this: TSelf,
     name: 'error',
     callback: ClientEventerSubscriptionCallback<UniqEventerErrorEventName, TError>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  clientOn<TEventNames extends Array<ClientEventerEventName>>(
+  ): TSelf
+  clientOn<TSelf, TEventNames extends Array<ClientEventerEventName>>(
+    this: TSelf,
     names: TEventNames,
     callback: ClientEventerSubscriptionCallback<TEventNames[number], TError>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  ): TSelf
   clientOn(
     ...args:
       | [
@@ -2849,6 +2521,26 @@ export class Point0<
     }) as never
   }
 
+  clientOnly<TSelf>(
+    this: TSelf,
+    Fallback?: ClientOnlyFallbackComponentType<
+      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+      TParamsSchema,
+      TSearchSchema,
+      TClientInputSchema,
+      TInnerProps,
+      WithSelfQueryIfShouldBeFinalized<
+        TPointType,
+        TLetsReadyPointType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TQueriesDefinitions,
+        TError
+      >,
+      TMapperOutput,
+      TError
+    >,
+  ): TSelf
   clientOnly(
     Fallback?: ClientOnlyFallbackComponentType<
       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
@@ -2867,29 +2559,7 @@ export class Point0<
       TMapperOutput,
       TError
     >,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  ) {
     const mountActions = (() => {
       if (!this._getSsr()) {
         return this._mountActions
@@ -2902,92 +2572,21 @@ export class Point0<
     }) as never
   }
 
-  mutationOptions(
-    mutationOptions: ExtraUseMutationOptions,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  mutationOptions<TSelf>(this: TSelf, mutationOptions: ExtraUseMutationOptions): TSelf
+  mutationOptions(mutationOptions: ExtraUseMutationOptions) {
     return this._continue({
       _defaultMutationOptions: mergeMutationOptions(this._defaultMutationOptions, mutationOptions),
     }) as never
   }
 
-  queryOptions(
-    queryOptions: ExtraUseQueryOptions,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  queryOptions<TSelf>(this: TSelf, queryOptions: ExtraUseQueryOptions): TSelf
   queryOptions(queryOptions: ExtraUseQueryOptions | undefined = {}) {
     return this._continue({
       _defaultQueryOptions: mergeQueryOptions(this._defaultQueryOptions, queryOptions),
     }) as never
   }
 
-  infiniteQueryOptions(
-    infiniteQueryOptions: PartialUseInfiniteQueryOptions,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  infiniteQueryOptions<TSelf>(this: TSelf, infiniteQueryOptions: PartialUseInfiniteQueryOptions): TSelf
   infiniteQueryOptions(infiniteQueryOptions: PartialUseInfiniteQueryOptions | undefined = {}) {
     return this._continue({
       _defaultInfiniteQueryOptions: mergeInfiniteQueryOptions(
@@ -2997,31 +2596,8 @@ export class Point0<
     }) as never
   }
 
-  pageDehydratedStateQueryOptions(
-    pageDehydratedStateQueryOptions: ExtraUseQueryOptions,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  pageDehydratedStateQueryOptions<TSelf>(this: TSelf, pageDehydratedStateQueryOptions: ExtraUseQueryOptions): TSelf
+  pageDehydratedStateQueryOptions(pageDehydratedStateQueryOptions: ExtraUseQueryOptions) {
     return this._continue({
       _pageDehydratedStateQueryOptions: mergeQueryOptions(
         this._pageDehydratedStateQueryOptions,
@@ -3030,151 +2606,36 @@ export class Point0<
     }) as never
   }
 
-  pageQueryOptions(
-    pageQueryOptions: ExtraUseQueryOptions,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  pageQueryOptions<TSelf>(this: TSelf, pageQueryOptions: ExtraUseQueryOptions): TSelf
+  pageQueryOptions(pageQueryOptions: ExtraUseQueryOptions) {
     return this._continue({
       _defaultPageQueryOptions: mergeQueryOptions(this._defaultPageQueryOptions, pageQueryOptions),
     }) as never
   }
 
-  componentQueryOptions(
-    componentQueryOptions: ExtraUseQueryOptions,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  componentQueryOptions<TSelf>(this: TSelf, componentQueryOptions: ExtraUseQueryOptions): TSelf
+  componentQueryOptions(componentQueryOptions: ExtraUseQueryOptions) {
     return this._continue({
       _defaultComponentQueryOptions: mergeQueryOptions(this._defaultComponentQueryOptions, componentQueryOptions),
     }) as never
   }
 
-  providerQueryOptions(
-    providerQueryOptions: ExtraUseQueryOptions,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  providerQueryOptions<TSelf>(this: TSelf, providerQueryOptions: ExtraUseQueryOptions): TSelf
+  providerQueryOptions(providerQueryOptions: ExtraUseQueryOptions) {
     return this._continue({
       _defaultProviderQueryOptions: mergeQueryOptions(this._defaultProviderQueryOptions, providerQueryOptions),
     }) as never
   }
 
-  layoutQueryOptions(
-    layoutQueryOptions: ExtraUseQueryOptions,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  layoutQueryOptions<TSelf>(this: TSelf, layoutQueryOptions: ExtraUseQueryOptions): TSelf
+  layoutQueryOptions(layoutQueryOptions: ExtraUseQueryOptions) {
     return this._continue({
       _defaultLayoutQueryOptions: mergeQueryOptions(this._defaultLayoutQueryOptions, layoutQueryOptions),
     }) as never
   }
 
-  fetchOptions(
-    fetchOptionsOrFn: FetchOptionsOrFn,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  fetchOptions<TSelf>(this: TSelf, fetchOptionsOrFn: FetchOptionsOrFn): TSelf
+  fetchOptions(fetchOptionsOrFn: FetchOptionsOrFn) {
     const newFetchOptionsFn: FetchOptionsFn = () => {
       const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
       const newFetchOptions: FetchOptions =
@@ -3270,31 +2731,7 @@ export class Point0<
     }) as never
   }
 
-  layoutError(
-    layoutErrorComponent: ErrorComponentType<'layout', TError>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  layoutError<TSelf>(this: TSelf, layoutErrorComponent: ErrorComponentType<'layout', TError>): TSelf
   layoutError(layoutErrorComponent: ErrorComponentType<'layout', TError> | undefined) {
     return this._continue({
       _layoutErrorComponent: layoutErrorComponent,
@@ -3304,31 +2741,7 @@ export class Point0<
     }) as never
   }
 
-  pageError(
-    pageErrorComponent: ErrorComponentType<'page', TError>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  pageError<TSelf>(this: TSelf, pageErrorComponent: ErrorComponentType<'page', TError>): TSelf
   pageError(pageErrorComponent: ErrorComponentType<any, TError> | undefined) {
     // this._applyComponentDisplayName(pageErrorComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'PageError',
@@ -3338,31 +2751,7 @@ export class Point0<
     }) as never
   }
 
-  componentError(
-    componentErrorComponent: ErrorComponentType<'component', TError>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  componentError<TSelf>(this: TSelf, componentErrorComponent: ErrorComponentType<'component', TError>): TSelf
   componentError(componentErrorComponent: ErrorComponentType<'component', TError> | undefined) {
     return this._continue({
       _componentErrorComponent: componentErrorComponent,
@@ -3372,31 +2761,7 @@ export class Point0<
     }) as never
   }
 
-  layoutLoading(
-    layoutLoadingComponent: LoadingComponentType<'layout'>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  layoutLoading<TSelf>(this: TSelf, layoutLoadingComponent: LoadingComponentType<'layout'>): TSelf
   layoutLoading(layoutLoadingComponent: LoadingComponentType<any> | undefined) {
     return this._continue({
       _layoutLoadingComponent: layoutLoadingComponent,
@@ -3406,31 +2771,7 @@ export class Point0<
     }) as never
   }
 
-  pageLoading(
-    pageLoadingComponent: LoadingComponentType<'page'>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  pageLoading<TSelf>(this: TSelf, pageLoadingComponent: LoadingComponentType<'page'>): TSelf
   pageLoading(pageLoadingComponent: LoadingComponentType<'page'> | undefined) {
     // this._applyComponentDisplayName(pageLoadingComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsReadyPointType || 'unknown') + 'PageLoading',
@@ -3440,31 +2781,7 @@ export class Point0<
     }) as never
   }
 
-  componentLoading(
-    componentLoadingComponent: LoadingComponentType<'component'>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  componentLoading<TSelf>(this: TSelf, componentLoadingComponent: LoadingComponentType<'component'>): TSelf
   componentLoading(componentLoadingComponent: LoadingComponentType<any> | undefined) {
     return this._continue({
       _componentLoadingComponent: componentLoadingComponent,
@@ -4099,82 +3416,9 @@ export class Point0<
 
   // scroll restoration
 
-  scrollPosition(
-    documentElementGetter: () => HTMLElement | null,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  scrollPosition(
-    selector: string,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  scrollPosition(
-    getter: ScrollPositionGetter,
-    setter: ScrollPositionSetter,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  scrollPosition<TSelf>(this: TSelf, documentElementGetter: () => HTMLElement | null): TSelf
+  scrollPosition<TSelf>(this: TSelf, selector: string): TSelf
+  scrollPosition<TSelf>(this: TSelf, getter: ScrollPositionGetter, setter: ScrollPositionSetter): TSelf
   scrollPosition(...args: [() => HTMLElement | null] | [string] | [ScrollPositionGetter, ScrollPositionSetter] | []) {
     // [] in case if it was shaked for serverNoSsr
     const { getter, setter } = (() => {
@@ -4225,32 +3469,15 @@ export class Point0<
     }) as never
   }
 
+  scrollRestore<TSelf>(
+    this: TSelf,
+    // true - restore, false - do not restore, null - set {x: 0, y: 0}
+    policy: ScrollPositionRestorePolicy | boolean | null | undefined, // undefined in case if it was shaked for serverNoSsr
+  ): TSelf
   scrollRestore(
     // true - restore, false - do not restore, null - set {x: 0, y: 0}
     policy: ScrollPositionRestorePolicy | boolean | null | undefined, // undefined in case if it was shaked for serverNoSsr
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  ) {
     return this._continue<
       TPointType,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -4279,149 +3506,44 @@ export class Point0<
 
   // middlewares
 
-  middleware(
+  middleware<TSelf>(
+    this: TSelf,
     ...middlewares: [MiddlewareFn<TError, undefined>, ...MiddlewareFn<TError, undefined>[]]
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  middleware<TProvidedRoute extends RouteDefinition>(
+  ): TSelf
+  middleware<TSelf, TProvidedRoute extends RouteDefinition>(
+    this: TSelf,
     route: TProvidedRoute,
     ...middlewares: [
       MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
       ...MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>[],
     ]
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  middleware<TProvidedRoute extends AnyRoute>(
+  ): TSelf
+  middleware<TSelf, TProvidedRoute extends AnyRoute>(
+    this: TSelf,
     route: TProvidedRoute,
     ...middlewares: [
       MiddlewareFn<TError, TProvidedRoute['definition']>,
       ...MiddlewareFn<TError, TProvidedRoute['definition']>[],
     ]
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  middleware<TProvidedRoute extends RouteDefinition>(
+  ): TSelf
+  middleware<TSelf, TProvidedRoute extends RouteDefinition>(
+    this: TSelf,
     method: WideRequestMethod | WideRequestMethod[],
     route: TProvidedRoute,
     ...middlewares: [
       MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
       ...MiddlewareFn<TError, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>[],
     ]
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  middleware<TProvidedRoute extends AnyRoute>(
+  ): TSelf
+  middleware<TSelf, TProvidedRoute extends AnyRoute>(
+    this: TSelf,
     method: WideRequestMethod | WideRequestMethod[],
     route: TProvidedRoute,
     ...middlewares: [
       MiddlewareFn<TError, TProvidedRoute['definition']>,
       ...MiddlewareFn<TError, TProvidedRoute['definition']>[],
     ]
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  ): TSelf
   middleware(
     ...args:
       | [...middlewares: [MiddlewareFn<TError, any>, ...MiddlewareFn<TError, any>[]]]
@@ -4497,35 +3619,21 @@ export class Point0<
 
   // prefetch mode
 
+  onPrefetchPage<TSelf>(
+    this: TSelf,
+    fn: TLetsReadyPointType extends 'page'
+      ? OnPrefetchMountableFn<PageLocation<TRouteDefinition>, TOuterProps>
+      : TLetsReadyPointType extends 'layout'
+        ? OnPrefetchMountableFn<LayoutLocation<TRouteDefinition>, TOuterProps>
+        : OnPrefetchMountableFn<AnyLocation, TOuterProps>,
+  ): TSelf
   onPrefetchPage(
     fn: TLetsReadyPointType extends 'page'
       ? OnPrefetchMountableFn<PageLocation<TRouteDefinition>, TOuterProps>
       : TLetsReadyPointType extends 'layout'
         ? OnPrefetchMountableFn<LayoutLocation<TRouteDefinition>, TOuterProps>
         : OnPrefetchMountableFn<AnyLocation, TOuterProps>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  ) {
     return this._continue<
       TPointType,
       ReadyPointTypeOrNever<TLetsReadyPointType>,
@@ -4553,32 +3661,7 @@ export class Point0<
     }) as never
   }
 
-  prefetchPageOnLinkHover(
-    policy: PrefetchPagePolicy,
-    duration?: number,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  prefetchPageOnLinkHover<TSelf>(this: TSelf, policy: PrefetchPagePolicy, duration?: number): TSelf
   prefetchPageOnLinkHover(
     policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
     duration?: number,
@@ -4589,31 +3672,7 @@ export class Point0<
     }) as never
   }
 
-  prefetchPageOnNavigate(
-    policy: PrefetchPagePolicy,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  prefetchPageOnNavigate<TSelf>(this: TSelf, policy: PrefetchPagePolicy): TSelf
   prefetchPageOnNavigate(
     policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
   ) {
@@ -4622,32 +3681,7 @@ export class Point0<
     }) as never
   }
 
-  prefetchPagePolicy(
-    policy: PrefetchPagePolicy,
-    duration?: number,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  prefetchPagePolicy<TSelf>(this: TSelf, policy: PrefetchPagePolicy, duration?: number): TSelf
   prefetchPagePolicy(
     policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
     duration?: number,
@@ -4661,31 +3695,8 @@ export class Point0<
 
   // transformer
 
-  transformer(
-    transformer: DataTransformer,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  transformer<TSelf>(this: TSelf, transformer: DataTransformer): TSelf
+  transformer(transformer: DataTransformer) {
     return this._continue({
       _transformer: toExtendedTransformer(transformer),
     }) as never
@@ -6483,81 +5494,9 @@ export class Point0<
     }) as never
   }
 
-  response(
-    responseSchema: InputSchema,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  response(
-    responseSchemas: Record<number, InputSchema>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
-  response(
-    responseSchemas: NormalizedResponseSchema,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  >
+  response<TSelf>(this: TSelf, responseSchema: InputSchema): TSelf
+  response<TSelf>(this: TSelf, responseSchemas: Record<number, InputSchema>): TSelf
+  response<TSelf>(this: TSelf, responseSchemas: NormalizedResponseSchema): TSelf
   response(schemas: InputSchema | Record<number, InputSchema> | NormalizedResponseSchema | undefined) {
     if (!schemas) {
       return this._continue({}) as never
@@ -6601,61 +5540,15 @@ export class Point0<
     }) as never
   }
 
-  openapi(
-    endpointSchema: NormalizedEndpointOpenapiSchema,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  openapi<TSelf>(this: TSelf, endpointSchema: NormalizedEndpointOpenapiSchema): TSelf
+  openapi(endpointSchema: NormalizedEndpointOpenapiSchema) {
     return this._continue({
       _openapiSchema: mergeEndpointOpenapiSchemas(this._openapiSchema, endpointSchema),
     }) as never
   }
 
-  models(
-    modelsSchemas: Record<string, InputSchema>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    ReadyPointTypeOrNever<TLetsReadyPointType>,
-    TRequiredCtx,
-    TError,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TParamsSchema,
-    TSearchSchema,
-    TBodySchema,
-    THeadersSchema,
-    TCookiesSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueriesDefinitions
-  > {
+  models<TSelf>(this: TSelf, modelsSchemas: Record<string, InputSchema>): TSelf
+  models(modelsSchemas: Record<string, InputSchema>) {
     return this._continue({
       _modelsSchemas: {
         ...(this._modelsSchemas ?? {}),
