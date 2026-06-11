@@ -84,9 +84,8 @@ restart, zero `Failed to start server` / `Tearing down dev` / `*.tmp.*`
 mentions, no `[xN]` duplicate growth; after SIGTERM — zero
 `bun run --no-orphans` leftovers, ports free.
 
-Caveat for `dev.test.ts`'s vite half: it saturates the machine (fresh project
-
-- cold compile + vite + Playwright per test) and starts timing out en masse
-  (`Timeout waiting for output: started http://…`) regardless of code under test
-  — compare against a paired baseline run in the same conditions before
-  believing a regression.
+Caveat for `dev.test.ts`'s vite half: it saturates the machine (every test gets
+a fresh project, a cold compile, vite, and Playwright) and starts timing out en
+masse (`Timeout waiting for output: started http://…`) regardless of code under
+test — compare against a paired baseline run in the same conditions before
+believing a regression.
