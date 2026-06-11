@@ -67,11 +67,17 @@ describe('on', () => {
       const fetchEvent = events.find((e) => e.name === 'engineFetchStart')
       expect(fetchEvent?.meta.request).toMatchObject({ method: expect.any(String), path: expect.any(String) })
       expect(fetchEvent?.meta.scope).toBeDefined()
+      // the start event predates rendering, so its meta has no renders count yet
+      expect(fetchEvent?.meta.request).not.toHaveProperty('renders')
 
       // heavy payloads (the HTTP response / fetch result) are dropped from meta
       const successEvent = events.find((e) => e.name === 'engineFetchSuccess')
       expect(successEvent?.meta.result).toBeUndefined()
       expect(successEvent?.meta.response).toBeUndefined()
+      // settled-family meta carries request.renders only when the SSR loop actually ran;
+      // this engineFetch served the query endpoint (no SSR), so the key is absent — the
+      // rendered case is covered in ssr-store.test.tsx
+      expect(successEvent?.meta.request).not.toHaveProperty('renders')
 
       // the envelope `error` is present on every event and stays `undefined` outside error events
       expect(events.every((e) => 'error' in e)).toBe(true)

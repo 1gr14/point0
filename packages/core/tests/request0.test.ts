@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { Request0 } from '../src/request0.js'
+import { REQUEST0_RENDERS_CACHE_KEY, Request0 } from '../src/request0.js'
 
 const from = (init?: RequestInit) => Request0.create(new Request('https://example.com/x', init)).from
 
@@ -55,5 +55,25 @@ describe('Request0.create — optional options', () => {
     expect(typeof request0.id).toBe('string')
     expect(request0.id.length).toBeGreaterThan(0)
     expect(request0.from.server).toBe(false)
+  })
+})
+
+describe('Request0.renders', () => {
+  it('defaults to 0, mirrors the engine-written cache slot, and has no setter', () => {
+    const request0 = Request0.create(new Request('https://example.com/p'))
+    expect(request0.renders).toBe(0)
+    request0.cache[REQUEST0_RENDERS_CACHE_KEY] = 3
+    expect(request0.renders).toBe(3)
+    expect(() => {
+      ;(request0 as { renders: number }).renders = 9
+    }).toThrow()
+    expect(request0.renders).toBe(3)
+  })
+
+  it('is shared along the request chain — the chain shares one cache', () => {
+    const first = Request0.create(new Request('https://example.com/a'))
+    first.cache[REQUEST0_RENDERS_CACHE_KEY] = 2
+    const next = Request0.create(new Request('https://example.com/b'), { prev: first })
+    expect(next.renders).toBe(2)
   })
 })

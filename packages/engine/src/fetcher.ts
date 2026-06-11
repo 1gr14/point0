@@ -1225,11 +1225,18 @@ export class Fetcher<TError extends ErrorPoint0> {
           response,
         } as FetcherFetchDetailedResult<TError>
         const error = (result as { error?: TError }).error
-        emit?.('engineFetchSettled', { ..._eventData, error, result: finalResult }, meta)
+        // The settled-family meta carries the SSR render-pass total — known only now (`meta`
+        // was built before anything rendered and is reused by `engineFetchStart` as is) and
+        // only when the SSR loop actually ran (page HTML / data-only page fetches), so plain
+        // endpoint lines stay clean. In `data` the count is not duplicated: it travels on the
+        // request itself — `data.request.renders`, the same object as `data.result.request`.
+        const renders = prepareFetchResult.request.renders
+        const settledMeta = renders > 0 ? { ...meta, request: { ...meta.request, renders } } : meta
+        emit?.('engineFetchSettled', { ..._eventData, error, result: finalResult }, settledMeta)
         if (error) {
-          emit?.('engineFetchError', { ..._eventData, error, result: finalResult }, meta)
+          emit?.('engineFetchError', { ..._eventData, error, result: finalResult }, settledMeta)
         } else {
-          emit?.('engineFetchSuccess', { ..._eventData, error: undefined, result: finalResult }, meta)
+          emit?.('engineFetchSuccess', { ..._eventData, error: undefined, result: finalResult }, settledMeta)
         }
         return finalResult
       } catch (error) {
@@ -1250,8 +1257,10 @@ export class Fetcher<TError extends ErrorPoint0> {
           variant: { type: 'error' as const, error: error0 },
           error: error0,
         }
-        emit?.('engineFetchSettled', { ..._eventData, error: error0, result: finalResult }, meta)
-        emit?.('engineFetchError', { ..._eventData, error: error0, result: finalResult }, meta)
+        const renders = prepareFetchResult.request.renders
+        const settledMeta = renders > 0 ? { ...meta, request: { ...meta.request, renders } } : meta
+        emit?.('engineFetchSettled', { ..._eventData, error: error0, result: finalResult }, settledMeta)
+        emit?.('engineFetchError', { ..._eventData, error: error0, result: finalResult }, settledMeta)
         return finalResult
       }
     })

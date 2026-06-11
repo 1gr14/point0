@@ -45,7 +45,7 @@ import {
 import { CookieStore } from '@point0/core/cookie-store'
 import { Effects } from '@point0/core/effects'
 import { RedirectTask } from '@point0/core/navigation'
-import type { Request0 } from '@point0/core/request0'
+import { REQUEST0_RENDERS_CACHE_KEY, type Request0 } from '@point0/core/request0'
 import { SsrStore } from '@point0/core/ssr-store'
 import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
 import { dehydrate } from '@tanstack/react-query'
@@ -844,6 +844,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       this.serverStorageState.__POINT0_SSR_REDIRECT_TASK__ = undefined
     }
     return await this.withServerGlobalState(async () => {
+      // Live render-pass counter on the request: while pass N is in flight `request.renders`
+      // reads N (in loaders, ctx, middlewares), and once the loop ends it equals the final
+      // total — the same number the dev-only X-Point0-Renders-Count header reports. Backed
+      // by the request cache, so the whole prev/first request chain sees one counter.
+      this.request.cache[REQUEST0_RENDERS_CACHE_KEY] = rendersCount + 1
+
       // Apply any values staged by the PREVIOUS render pass before we render again. On the
       // server `set()` only stages a `nextValue`; reads (`get()`/`use()`) return the
       // committed value. Committing here — at the start of every pass — means this render,

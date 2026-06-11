@@ -4,6 +4,13 @@ import type { ErrorPoint0 } from './error.js'
 import type { IsAny, PagePoint, RequestableReadyPoint } from './types.js'
 import { generateId } from './utils.js'
 
+/**
+ * Request-cache key backing `Request0.renders`. The engine's SSR loop writes the current render-pass number here at the
+ * start of every pass; the cache is shared along the request chain, so the count is visible wherever the request
+ * travels.
+ */
+export const REQUEST0_RENDERS_CACHE_KEY = '__POINT0_RENDERS_COUNT__'
+
 const decodeCookieValue = (value: string): string => {
   const unquoted = value.startsWith('"') ? value.slice(1, -1) : value
   try {
@@ -201,6 +208,17 @@ export class Request0<
     }
     this._cookies = cookies
     return this._cookies
+  }
+
+  /**
+   * How many SSR render passes the engine has run for this request. Live during SSR (the pass currently in flight — a
+   * loader prefetched on the first pass reads `1`), the final total once the request settles (the same number the
+   * dev-only `X-Point0-Renders-Count` header reports). `0` when nothing was SSR-rendered (plain endpoint requests).
+   * Read-only from the outside: backed by `cache[REQUEST0_RENDERS_CACHE_KEY]` and written only by the engine.
+   */
+  get renders(): number {
+    const value = this.cache[REQUEST0_RENDERS_CACHE_KEY]
+    return typeof value === 'number' ? value : 0
   }
 
   private _headers: RequestHeaders | undefined

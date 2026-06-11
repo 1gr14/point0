@@ -106,6 +106,53 @@ describe('ssr-store', () => {
     expect(result.rendersCount).toBe(4) // initial, layout, page, ssr-store
   })
 
+  it('request.renders is readable everywhere: live in a loader, final in the engineFetchSettled event data and meta', async () => {
+    const title = SsrStore.define('ssr-store.test.renders', () => 'default title')
+    const settledRenders: Array<{ path: string; variant: string; data: number; meta: number | undefined }> = []
+    const root = Point0.lets('root', 'root')
+      .on('engineFetchSettled', (event) => {
+        settledRenders.push({
+          path: event.data.request.location.pathname,
+          variant: event.data.request.variant.type,
+          data: event.data.request.renders,
+          meta: (event.meta.request as { renders?: number }).renders,
+        })
+      })
+      .root()
+    const layout = root.lets('layout', 'app').layout(({ children }) => (
+      <div id="layout">
+        <div id="title">{title.use()}</div>
+        {children}
+      </div>
+    ))
+    const page = layout
+      .lets('page', 'home', '/')
+      .loader(({ request }) => ({ loaderSawRenders: request.renders }))
+      .page(({ data }) => {
+        useEffectSsr(() => {
+          title.set('overridden title')
+        }, [])
+        return <div id="page">loader saw {data.loaderSawRenders}</div>
+      })
+
+    const { fetchSsr } = await createTestThings({ ssr: true, points: [root, layout, page] })
+    const result = await fetchSsr(page)
+
+    expect(result.rendersCount).toBe(3) // initial, page, ssr-store
+    // The loader was prefetched during the FIRST pass — request.renders is live mid-SSR.
+    expect(result.preview).toContain('loader saw 1')
+    // In data the count always travels on the request itself (`data.request.renders`, the same
+    // object as `data.result.request`); meta gets a `renders` key only when the SSR loop actually
+    // ran. The dev-client middleware probe rendered nothing (data 0, no meta key); the nested
+    // in-SSR query fetch shares the page request's cache through the request chain, so it reports
+    // the live mid-SSR value; the page request itself reports the final total.
+    expect(settledRenders).toEqual([
+      { path: '/', variant: 'page', data: 0, meta: undefined },
+      { path: '/_point0/root/page/home', variant: 'endpoint', data: 1, meta: 1 },
+      { path: '/', variant: 'page', data: 3, meta: 3 },
+    ])
+  })
+
   it('allowedRerendersCount stops the loop quietly (no error) before the hard cap', async () => {
     let setCount = 0
     const title = SsrStore.define('ssr-store.test.allowed-one', () => 'init')
