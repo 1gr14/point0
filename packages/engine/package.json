@@ -18,7 +18,7 @@
   "type": "module",
   "sideEffects": false,
   "engines": {
-    "bun": ">=1.3.3"
+    "bun": ">=1.3.14"
   },
   "bin": {
     "point0": "./dist/cli.js",

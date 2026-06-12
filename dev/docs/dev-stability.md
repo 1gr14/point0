@@ -7,7 +7,10 @@ it within a minute. This note records what actually broke, the invariants that
 now hold, and how to re-verify them. The per-mechanism "why" lives in code
 comments ([watcher.ts](../../packages/engine/src/watcher.ts),
 [server.ts](../../packages/engine/src/server.ts) `startBunDevProcess`/`serve`);
-this is the cross-component story you can't reconstruct from any single one.
+this is the cross-component story you can't reconstruct from any single one. The
+teardown half of the story — why a tree dies with its parent (`--no-orphans`)
+and why point0 never kills a port holder — lives in
+[dev-lifecycle](./dev-lifecycle.md).
 
 ## Anatomy of the storm (four bugs, one death)
 
@@ -61,11 +64,12 @@ Each bug was survivable alone; together they amplified into a teardown:
 - **Children die politely.** Respawn sends SIGTERM, waits
   `POINT0_DEV_RESTART_GRACE_MS` (1.5 s) for the app's own shutdown hooks
   (Prisma/pg-boss in start0), then SIGKILLs stragglers.
-- **No pre-emptive port murder.** `serve()` binds with retries
-  (`POINT0_DEV_BIND_TIMEOUT_MS`, 10 s). Under the orchestrator
-  (`POINT0_DEV_CHILD=true`) a conflict is treated as a handover — wait, then
-  free a persistent zombie after ~2 s; standalone keeps "a new run takes the
-  port over", just reactively. Production binds once and throws.
+- **No port murder, ever.** Under the orchestrator (`POINT0_DEV_CHILD=true`)
+  `serve()` binds with retries (`POINT0_DEV_BIND_TIMEOUT_MS`, 10 s) — a conflict
+  is a restart handover, waited out. A conflict that persists (or any conflict
+  outside the orchestrator) fails with an error naming the holder; nothing is
+  killed. Production binds once and throws. See
+  [dev-lifecycle](./dev-lifecycle.md).
 - **A superseded child can't kill the tree.** The unexpected-exit handler
   ignores any child that is no longer the entry's tracked one, and nothing
   spawns into a tree that began tearing down.

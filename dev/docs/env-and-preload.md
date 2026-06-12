@@ -33,12 +33,14 @@ wrong values before any CLI code could fix anything.
 The `point0` bin (`packages/engine/src/cli.ts`) starts with:
 
 ```
-#!/usr/bin/env -S bun --no-env-file --config=/dev/null
+#!/usr/bin/env -S bun --no-orphans --no-env-file --config=/dev/null
 ```
 
-- `--no-env-file` (bun >= 1.3.3 — hence the `engines` field in
-  `@point0/engine`): no .env auto-loading; process.env is the genuine shell
-  environment.
+- `--no-orphans` (bun >= 1.3.14 — hence the `engines` field in
+  `@point0/engine`): ties the CLI's process tree to its parent — out of scope
+  here, see [dev-lifecycle](./dev-lifecycle.md).
+- `--no-env-file` (bun >= 1.3.3): no .env auto-loading; process.env is the
+  genuine shell environment.
 - `--config=/dev/null`: the app's bunfig (and so its preload) never runs in the
   CLI process. The CLI does not need it — see "who needs plugins" below.
 - `env -S` splits the shebang into arguments (macOS, Linux). Windows shims and

@@ -5,8 +5,7 @@ import { log, type LogFn } from '@point0/core'
 const platform = process.platform
 
 /**
- * Mutably remove a PID from an array
- * Modifies the original array in place
+ * Mutably remove a PID from an array Modifies the original array in place
  */
 const excludePidFromArray = (array: Array<number | string>, pid: number | string): void => {
   const pidStr = String(pid)
@@ -117,24 +116,25 @@ export async function isPortBinded(
 
 /**
  * Kill process(es) using the specified port
+ *
+ * @example
+ *   ;```ts
+ *   import { kill } from './kill.js'
+ *
+ *   // Kill process on port 3000
+ *   await kill(3000)
+ *
+ *   // Kill process silently
+ *   await kill(8080, { silent: true })
+ *
+ *   ```
+ *
  * @param port - The port number to kill processes on
  * @param options - Optional configuration
  * @param options.silent - If true, suppresses console output (default: false)
  * @param options.excludePids - Set of PIDs to exclude from killing (e.g., other concurrent test processes)
  * @returns Promise that resolves when process(es) are killed
  * @throws Error if the platform is not supported
- *
- * @example
- * ```ts
- * import { kill } from './kill.js'
- *
- * // Kill process on port 3000
- * await kill(3000)
- *
- * // Kill process silently
- * await kill(8080, { silent: true })
- *
- * ```
  */
 export async function killPort(
   ports: number[] | number,
@@ -181,4 +181,36 @@ export async function killPort(
       }
     }),
   )
+}
+
+/**
+ * Best-effort, read-only description of who holds the given port(s) — `pid 123 (bun src/index.server.ts)` — for
+ * port-conflict error messages. point0 never kills a port holder (the holder is a live process someone owns — see
+ * dev/docs/dev-lifecycle.md); it names the holder so the developer can decide. Empty string when nothing is found or
+ * the platform offers no lookup.
+ */
+export async function describePortHolders(ports: number[]): Promise<string> {
+  const listPids = getPidsByPort[platform]
+  if (!listPids) {
+    return ''
+  }
+  try {
+    const pids = new Set<string>()
+    for (const port of ports) {
+      for (const pid of await listPids(port, true)) {
+        pids.add(pid)
+      }
+    }
+    const parts: string[] = []
+    for (const pid of pids) {
+      const command =
+        platform === 'win32'
+          ? ''
+          : ((await Bun.$`ps -p ${pid} -o command=`.nothrow().quiet()).text().trim().split('\n')[0] ?? '')
+      parts.push(command ? `pid ${pid} (${command})` : `pid ${pid}`)
+    }
+    return parts.join(', ')
+  } catch {
+    return ''
+  }
 }

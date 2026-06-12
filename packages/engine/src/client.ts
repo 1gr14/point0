@@ -31,8 +31,7 @@ import type {
   SsrOptionsResolved,
 } from './config.js'
 import type { Executor } from './executor.js'
-import { isDevShuttingDown, registerDevChild, requestDevShutdown } from './devlock.js'
-import { killPort } from './port.js'
+import { isDevShuttingDown, registerDevChild, requestDevShutdown } from './dev-shutdown.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
 import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
@@ -503,7 +502,6 @@ plugins = [${combinedPluginsStrings.map((p) => `"${p}"`).join(', ')}]
     const scriptContent = `
 import indexHtml from '${this.indexHtml}';
 import { Engine } from '@point0/engine';
-import { killPort } from '@point0/engine/port';
 import { fetchRetryingConnectionRefused, registerOnProcessExit } from '@point0/engine/utils';
 import { env } from '@point0/core';
 const { engine } = await Engine.findAndImportSelf({ engineFile: '${this.engineFile}' });
@@ -512,9 +510,8 @@ try {
   // bunfig's [serve.static] (resolved by @point0/compiler/plugin/bun-static), and nothing in this
   // script imports app sources at runtime. Only the app logger config is applied.
   await engine.applyLogger();
-  if (!env.mode.is.production) {
-    await killPort([${this.port}, ${this.hmrPort}].filter(Boolean), { force: true, category: ['client'] })
-  }
+  // No port takeover here: the orchestrator serializes client respawns (the old child is awaited before a new one
+  // spawns), so a conflict means a genuinely foreign holder — let Bun.serve fail and the orchestrator surface it.
   const bunServer = Bun.serve({
     port: ${this.port},
     routes: {
@@ -666,7 +663,7 @@ try {
       pipeFilteredLogs({ stream: child.stderr, target: process.stderr })
       registerDevChild(child)
       void child.exited.then((code) => {
-        // `restarting` covers our own restart-on-new-file kill; isDevShuttingDown covers Ctrl-C / point0 stop.
+        // `restarting` covers our own restart-on-new-file kill; isDevShuttingDown covers Ctrl-C / SIGTERM teardown.
         if (restarting || isDevShuttingDown()) {
           return
         }
@@ -738,9 +735,8 @@ try {
       throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
     }
     const srcIndexHtmlContent = await Bun.file(this.indexHtml).text()
-    if (!_point0_env.mode.is.production) {
-      await killPort([this.port, this.hmrPort].filter(Boolean) as number[], { force: true, category: ['client'] })
-    }
+    // No port takeover: a conflict means a live foreign holder (point0 trees cannot leave orphans — `--no-orphans`),
+    // so Bun.serve's own EADDRINUSE is the honest outcome.
     const bunViteDevServer = Bun.serve({
       port: this.port,
       development: {

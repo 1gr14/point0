@@ -41,7 +41,7 @@ import {
   killSubprocessOnExit,
   normalizeAndValidateNodeEnv,
 } from './utils.js'
-import { installDevShutdown, reapDevTree, writeDevLock } from './devlock.js'
+import { installDevShutdown } from './dev-shutdown.js'
 import { POINT0_ENV_MODE_LOG } from './env-files.js'
 import { collectImportGraphPatterns, FilesWatcher } from './watcher.js'
 
@@ -468,29 +468,12 @@ export class Engine<
 
     normalizeAndValidateNodeEnv('development')
 
-    // Dev process-tree lifecycle. The dev tree (this orchestrator + server child + client children) must behave as one
-    // unit. The lock is keyed by cwd + ports, so we only reap a *previous instance of this exact config* (a restart, or
-    // its leftover zombie) — a second `point0 dev` in the same folder on other ports coexists untouched. We claim the
-    // lock before spawning (so its presence always implies "children may exist"), then `installDevShutdown` owns the
-    // orchestrator's signal handling: on any teardown (Ctrl-C, `point0 stop`'s SIGTERM, an unexpected child death) it
-    // gives every child a graceful SIGTERM + grace window — so a developer's own shutdown handlers run — before SIGKILL.
-    const ports = this.collectDevPorts()
-    const reaped = await reapDevTree({ cwd, ports, log: this.log, excludePid: process.pid })
-    if (reaped.stopped) {
-      this.log({
-        level: 'debug',
-        category: ['dev'],
-        message: `Reaped a previous dev tree on these ports before starting${reaped.pid ? ` (was pid ${reaped.pid})` : ''}.`,
-      })
-    }
-    await writeDevLock({
-      pid: process.pid,
-      ppid: process.ppid,
-      cwd,
-      ports,
-      startedAt: new Date().toISOString(),
-    })
-    installDevShutdown({ cwd, ports, log: this.log })
+    // Dev process-tree lifecycle: the tree (this orchestrator + server child + client children) lives and dies as one
+    // unit. `--no-orphans` (CLI shebang, inherited by every bun child) ties the tree to its parent at the kernel level
+    // — no PID bookkeeping needed; `installDevShutdown` owns the orchestrator's signal handling so a teardown (Ctrl-C,
+    // SIGTERM, an unexpected child death) gives every child a graceful SIGTERM + grace window — a developer's own
+    // shutdown handlers run — before SIGKILL. See dev/docs/dev-lifecycle.md.
+    installDevShutdown({ log: this.log })
 
     const isSideServer = !side || side === 'server'
     const isSideClient = !side || side === 'client'
@@ -536,28 +519,6 @@ export class Engine<
     } else {
       await Promise.all([generatorWatchProcess, this.prepare(), clientsDevServers])
     }
-  }
-
-  /**
-   * Every port the dev tree may bind — server + every client, including their hmr ports — recorded in the dev lockfile
-   * so `point0 stop` can free them as a fallback if a child outlives its parent. Ports may arrive as strings from env
-   * (e.g. `port: process.env.SERVER_PORT`), so they are coerced and de-duplicated here.
-   */
-  private collectDevPorts(): number[] {
-    const ports: number[] = []
-    const add = (value: unknown): void => {
-      const port = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN
-      if (Number.isFinite(port) && port > 0) {
-        ports.push(port)
-      }
-    }
-    add(this.server.port)
-    add(this.server.hmrPort)
-    for (const client of this.clients) {
-      add(client.port)
-      add(client.hmrPort)
-    }
-    return [...new Set(ports)]
   }
 
   /**

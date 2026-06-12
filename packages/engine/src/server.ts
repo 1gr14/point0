@@ -22,8 +22,8 @@ import type {
 } from './config.js'
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
-import { isDevShuttingDown, registerDevChild, requestDevShutdown } from './devlock.js'
-import { killPort } from './port.js'
+import { isDevShuttingDown, registerDevChild, requestDevShutdown } from './dev-shutdown.js'
+import { describePortHolders } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
 import { ServerHotStore } from './server-hot-store.js'
@@ -637,22 +637,17 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       },
     }
 
-    // Dev port acquisition. The old behavior — unconditionally SIGKILL whatever holds the port, then bind — is exactly
-    // how a dev tree murders itself: under rapid edits a freshly spawned server killed its own predecessor (or a
-    // sibling) mid-handover, the survivor then failed to bind, and the whole dev tree tore down. Instead, bind with
-    // patient retries:
-    //  - under the dev orchestrator (POINT0_DEV_CHILD): the orchestrator serializes respawns, so a conflict is always a
-    //    short handover (the predecessor draining its shutdown hooks) — wait it out; only if it persists past
-    //    `killAfterMs` is the holder a zombie from a dead session, and only then take the port.
-    //  - standalone non-production runs keep the "a new run takes the port over" convenience, just reactively: the
-    //    first conflict frees the port, the retry binds.
-    // Production binds once and throws — taking over a port is a dev convenience, never a prod behavior.
+    // Dev port acquisition — point0 NEVER kills a port holder (a holder is a live process someone owns; with
+    // `--no-orphans` on the whole tree, dead trees cannot leave one behind — see dev/docs/dev-lifecycle.md):
+    //  - under the dev orchestrator (POINT0_DEV_CHILD): the orchestrator serializes respawns, so a conflict is a short
+    //    handover (the predecessor draining its shutdown hooks) — bind with patient retries up to
+    //    `POINT0_DEV_BIND_TIMEOUT_MS`. A conflict that outlives the timeout is a genuinely foreign holder (another dev
+    //    instance, some other server) → fail with an error that names it; the developer decides.
+    //  - any other run binds once and fails the same way — no retries to wait out, nothing legitimate to hand over.
     if (!_point0_env.mode.is.production) {
       const isDevChild = process.env.POINT0_DEV_CHILD === 'true'
-      const bindTimeoutMs = Number(process.env.POINT0_DEV_BIND_TIMEOUT_MS ?? 10000)
-      const killAfterMs = isDevChild ? Math.min(2000, bindTimeoutMs) : 0
+      const bindTimeoutMs = isDevChild ? Number(process.env.POINT0_DEV_BIND_TIMEOUT_MS ?? 10000) : 0
       const startedAt = Date.now()
-      let portFreed = false
       let loggedBusy = false
       for (;;) {
         try {
@@ -662,8 +657,16 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
           const message = error instanceof Error ? error.message : String(error)
           const isPortConflict =
             (error as { code?: string } | null)?.code === 'EADDRINUSE' || /port .* in use|EADDRINUSE/i.test(message)
-          if (!isPortConflict || Date.now() - startedAt >= bindTimeoutMs) {
+          if (!isPortConflict) {
             throw error
+          }
+          if (Date.now() - startedAt >= bindTimeoutMs) {
+            const holders = await describePortHolders([this.port, this.hmrPort].filter(Boolean) as number[])
+            throw new Error(
+              `Port ${this.port} is already in use${holders ? ` by ${holders}` : ''}. ` +
+                `Stop that process or change the port.`,
+              { cause: error },
+            )
           }
           if (!loggedBusy) {
             loggedBusy = true
@@ -671,13 +674,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
               level: 'debug',
               category: ['server'],
               message: `Port ${this.port} is busy — waiting for it to free...`,
-            })
-          }
-          if (!portFreed && Date.now() - startedAt >= killAfterMs) {
-            portFreed = true
-            await killPort([this.port, this.hmrPort].filter(Boolean) as number[], {
-              force: true,
-              category: ['server'],
             })
           }
           await new Promise((resolve) => setTimeout(resolve, 150))

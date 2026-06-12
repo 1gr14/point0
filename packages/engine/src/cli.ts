@@ -1,12 +1,19 @@
-#!/usr/bin/env -S bun --no-env-file --config=/dev/null
+#!/usr/bin/env -S bun --no-orphans --no-env-file --config=/dev/null
 
-// ^ The shebang (bun >= 1.3.3; `env -S` splits it into arguments on macOS and Linux) makes the CLI
-// hermetic: `--no-env-file` stops Bun from auto-loading .env files before any CLI code runs (with
-// NODE_ENV unset it would assume development and load .env.development), and `--config=/dev/null`
-// keeps the app's bunfig out of this process. Each command resolves its mode from flags and calls
-// applyEnvMode (env-files.ts) to load the right-mode cascade BEFORE the user's engine file is
-// imported. Invocations that bypass the shebang (Windows shims, `bun .../cli.js` directly) are
-// detected via process.execArgv and handled by the env-files.ts legacy fallback.
+// ^ The shebang (bun >= 1.3.14; `env -S` splits it into arguments on macOS and Linux) makes the CLI
+// hermetic and leak-proof: `--no-env-file` stops Bun from auto-loading .env files before any CLI code
+// runs (with NODE_ENV unset it would assume development and load .env.development), `--config=/dev/null`
+// keeps the app's bunfig out of this process, and `--no-orphans` (bun >= 1.3.14, no-op on Windows) ties
+// the whole process tree to its parent: the CLI exits when whatever launched it dies — even by SIGKILL —
+// and on exit SIGKILLs every descendant it spawned (Bun re-verifies each descendant's parentage before
+// killing, so recycled PIDs are safe). The flag is inherited by nested bun processes, so dev children and
+// `build --watch`'s spawned builds are covered without repeating it (they still pass it explicitly for
+// invocations that bypass the shebang). Ctrl-C stays graceful: `bun run` waits for its child after
+// forwarding the signal, so the orchestrator finishes its SIGTERM + grace teardown before the wrapper
+// exits. Each command resolves its mode from flags and calls applyEnvMode (env-files.ts) to load the
+// right-mode cascade BEFORE the user's engine file is imported. Invocations that bypass the shebang
+// (Windows shims, `bun .../cli.js` directly) are detected via process.execArgv and handled by the
+// env-files.ts legacy fallback.
 
 import { Compiler } from '@point0/compiler'
 import type { PointsScope } from '@point0/core'
@@ -14,7 +21,6 @@ import { Command } from 'commander'
 import { default as nodePath, default as path } from 'node:path'
 import { Analyzer, buildPointsFilter, ensureMetaPaths, resolveMetaImportPaths } from './analyzer.js'
 import type { AnalyzerPointSelectOptions } from './analyzer.js'
-import { stopAllDevTrees } from './devlock.js'
 import { Engine } from './engine.js'
 import { applyEnvMode } from './env-files.js'
 
@@ -147,31 +153,6 @@ program
     applyEnvMode({ cwd: process.cwd(), defaultMode: 'development' })
     const { engine } = await Engine.findAndImportSelf({ cwd: process.cwd() })
     await engine.prune()
-  })
-
-program
-  .command('stop')
-  .description('Stop the running dev tree for this project (server + clients), via the dev lockfile')
-  .action(async () => {
-    // Runs against the current working directory — same anchor as `point0 dev`. Stops every dev tree of this folder
-    // (there can be more than one, on different ports). Deliberately does not import the engine: stopping must work
-    // even when the app's engine throws on import.
-    const stopped = (await stopAllDevTrees({ cwd: process.cwd() })).filter((result) => result.stopped)
-    if (stopped.length === 0) {
-      console.info('point0: no running dev server found for this project.')
-      return
-    }
-    if (stopped.length === 1) {
-      const [only] = stopped
-      const pidPart = only.pid ? ` (pid ${only.pid})` : ''
-      const portsPart = only.ports.length > 0 ? `, freed ports ${only.ports.join(', ')}` : ''
-      console.info(`point0: dev stopped${pidPart}${portsPart}.`)
-      return
-    }
-    console.info(`point0: stopped ${stopped.length} dev trees:`)
-    for (const tree of stopped) {
-      console.info(`  - pid ${tree.pid ?? '?'}${tree.ports.length > 0 ? `, ports ${tree.ports.join(', ')}` : ''}`)
-    }
   })
 
 program
