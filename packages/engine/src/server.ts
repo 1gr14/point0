@@ -22,7 +22,7 @@ import type {
 } from './config.js'
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
-import { isDevShuttingDown, registerDevChild, requestDevShutdown } from './devlock.js'
+import { devProcessCommandMarkers, isDevShuttingDown, registerDevChild, requestDevShutdown } from './devlock.js'
 import { killPort } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
@@ -646,6 +646,9 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     //    `killAfterMs` is the holder a zombie from a dead session, and only then take the port.
     //  - standalone non-production runs keep the "a new run takes the port over" convenience, just reactively: the
     //    first conflict frees the port, the retry binds.
+    // Either way the takeover is VERIFIED: only a holder whose command line ties it to this project (or to a point0
+    // CLI) is killed — a port squatted by something unrelated is never touched; the bind keeps retrying and the
+    // timeout surfaces the real conflict as an error instead of a silent murder.
     // Production binds once and throws — taking over a port is a dev convenience, never a prod behavior.
     if (!_point0_env.mode.is.production) {
       const isDevChild = process.env.POINT0_DEV_CHILD === 'true'
@@ -678,6 +681,8 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
             await killPort([this.port, this.hmrPort].filter(Boolean) as number[], {
               force: true,
               category: ['server'],
+              verifyCommandMarkers: devProcessCommandMarkers({ cwd: this.cwd, includeGenericCliMarker: true }),
+              graceMs: 1500,
             })
           }
           await new Promise((resolve) => setTimeout(resolve, 150))

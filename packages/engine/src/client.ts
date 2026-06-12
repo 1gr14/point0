@@ -31,7 +31,7 @@ import type {
   SsrOptionsResolved,
 } from './config.js'
 import type { Executor } from './executor.js'
-import { isDevShuttingDown, registerDevChild, requestDevShutdown } from './devlock.js'
+import { devProcessCommandMarkers, isDevShuttingDown, registerDevChild, requestDevShutdown } from './devlock.js'
 import { killPort } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
@@ -513,7 +513,14 @@ try {
   // script imports app sources at runtime. Only the app logger config is applied.
   await engine.applyLogger();
   if (!env.mode.is.production) {
-    await killPort([${this.port}, ${this.hmrPort}].filter(Boolean), { force: true, category: ['client'] })
+    // Verified takeover: only a previous client child of this project (its command carries this temp dir or the
+    // project cwd) is killed off the port — an unrelated process squatting it is left alone.
+    await killPort([${this.port}, ${this.hmrPort}].filter(Boolean), {
+      force: true,
+      category: ['client'],
+      verifyCommandMarkers: ${JSON.stringify([tempDir, this.cwd])},
+      graceMs: 1500,
+    })
   }
   const bunServer = Bun.serve({
     port: ${this.port},
@@ -739,7 +746,14 @@ try {
     }
     const srcIndexHtmlContent = await Bun.file(this.indexHtml).text()
     if (!_point0_env.mode.is.production) {
-      await killPort([this.port, this.hmrPort].filter(Boolean) as number[], { force: true, category: ['client'] })
+      // Verified takeover: this runs in the orchestrator right after reap, so the only legitimate holder is a point0
+      // leftover (a previous orchestrator's in-process vite client, or a client child of this project).
+      await killPort([this.port, this.hmrPort].filter(Boolean) as number[], {
+        force: true,
+        category: ['client'],
+        verifyCommandMarkers: devProcessCommandMarkers({ cwd: this.cwd, includeGenericCliMarker: true }),
+        graceMs: 1500,
+      })
     }
     const bunViteDevServer = Bun.serve({
       port: this.port,

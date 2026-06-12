@@ -476,21 +476,36 @@ export class Engine<
     // gives every child a graceful SIGTERM + grace window — so a developer's own shutdown handlers run — before SIGKILL.
     const ports = this.collectDevPorts()
     const reaped = await reapDevTree({ cwd, ports, log: this.log, excludePid: process.pid })
-    if (reaped.stopped) {
+    if (reaped.orchestratorStopped) {
       this.log({
         level: 'debug',
         category: ['dev'],
-        message: `Reaped a previous dev tree on these ports before starting${reaped.pid ? ` (was pid ${reaped.pid})` : ''}.`,
+        message: `Stopped a previous dev tree on these ports before starting${reaped.pid ? ` (was pid ${reaped.pid})` : ''}.`,
+      })
+    } else if (reaped.orphansKilled.length > 0) {
+      this.log({
+        level: 'debug',
+        category: ['dev'],
+        message: `Cleaned up orphaned dev processes on these ports before starting (pids ${reaped.orphansKilled.join(', ')}).`,
+      })
+    } else if (reaped.staleLockRemoved) {
+      this.log({
+        level: 'debug',
+        category: ['dev'],
+        message: `Removed a stale dev lockfile — the previous tree was already gone.`,
       })
     }
-    await writeDevLock({
+    const lockPath = await writeDevLock({
       pid: process.pid,
       ppid: process.ppid,
       cwd,
       ports,
       startedAt: new Date().toISOString(),
+      // Identity facts for the stop/reap side: only a live process that still matches these gets signaled later.
+      pidStartedAt: new Date(Date.now() - process.uptime() * 1000).toISOString(),
+      cli: process.argv[1],
     })
-    installDevShutdown({ cwd, ports, log: this.log })
+    installDevShutdown({ lockPath, log: this.log })
 
     const isSideServer = !side || side === 'server'
     const isSideClient = !side || side === 'client'

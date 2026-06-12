@@ -1,12 +1,19 @@
-#!/usr/bin/env -S bun --no-env-file --config=/dev/null
+#!/usr/bin/env -S bun --no-orphans --no-env-file --config=/dev/null
 
-// ^ The shebang (bun >= 1.3.3; `env -S` splits it into arguments on macOS and Linux) makes the CLI
-// hermetic: `--no-env-file` stops Bun from auto-loading .env files before any CLI code runs (with
-// NODE_ENV unset it would assume development and load .env.development), and `--config=/dev/null`
-// keeps the app's bunfig out of this process. Each command resolves its mode from flags and calls
-// applyEnvMode (env-files.ts) to load the right-mode cascade BEFORE the user's engine file is
-// imported. Invocations that bypass the shebang (Windows shims, `bun .../cli.js` directly) are
-// detected via process.execArgv and handled by the env-files.ts legacy fallback.
+// ^ The shebang (bun >= 1.3.14; `env -S` splits it into arguments on macOS and Linux) makes the CLI
+// hermetic and leak-proof: `--no-env-file` stops Bun from auto-loading .env files before any CLI code
+// runs (with NODE_ENV unset it would assume development and load .env.development), `--config=/dev/null`
+// keeps the app's bunfig out of this process, and `--no-orphans` (bun >= 1.3.14, no-op on Windows) ties
+// the whole process tree to its parent: the CLI exits when whatever launched it dies — even by SIGKILL —
+// and on exit SIGKILLs every descendant it spawned (Bun re-verifies each descendant's parentage before
+// killing, so recycled PIDs are safe). The flag is inherited by nested bun processes, so dev children and
+// `build --watch`'s spawned builds are covered without repeating it (they still pass it explicitly for
+// invocations that bypass the shebang). Ctrl-C stays graceful: `bun run` waits for its child after
+// forwarding the signal, so the orchestrator finishes its SIGTERM + grace teardown before the wrapper
+// exits. Each command resolves its mode from flags and calls applyEnvMode (env-files.ts) to load the
+// right-mode cascade BEFORE the user's engine file is imported. Invocations that bypass the shebang
+// (Windows shims, `bun .../cli.js` directly) are detected via process.execArgv and handled by the
+// env-files.ts legacy fallback.
 
 import { Compiler } from '@point0/compiler'
 import type { PointsScope } from '@point0/core'
@@ -155,22 +162,34 @@ program
   .action(async () => {
     // Runs against the current working directory — same anchor as `point0 dev`. Stops every dev tree of this folder
     // (there can be more than one, on different ports). Deliberately does not import the engine: stopping must work
-    // even when the app's engine throws on import.
-    const stopped = (await stopAllDevTrees({ cwd: process.cwd() })).filter((result) => result.stopped)
+    // even when the app's engine throws on import. Reports what actually happened: a lockfile is a claim, not proof —
+    // a stale one (dead tree, reused PID, ports now held by someone else's process) is removed without killing
+    // anything, and saying "stopped" for it would be a lie.
+    const results = await stopAllDevTrees({ cwd: process.cwd() })
+    const stopped = results.filter((result) => result.stopped)
+    const staleCount = results.filter((result) => result.staleLockRemoved).length
+    const staleNote = staleCount > 0 ? ` Removed ${staleCount} stale dev lockfile${staleCount === 1 ? '' : 's'}.` : ''
     if (stopped.length === 0) {
-      console.info('point0: no running dev server found for this project.')
+      console.info(`point0: no running dev server found for this project.${staleNote}`)
       return
+    }
+    const describe = (tree: (typeof stopped)[number]): string => {
+      if (tree.orchestratorStopped) {
+        const pidPart = tree.pid ? ` (pid ${tree.pid})` : ''
+        const orphansPart =
+          tree.orphansKilled.length > 0 ? `, also killed orphaned pids ${tree.orphansKilled.join(', ')}` : ''
+        return `dev stopped${pidPart}${orphansPart}.`
+      }
+      // No live orchestrator — only its leftover children were found on the recorded ports and cleaned up.
+      return `cleaned up ${tree.orphansKilled.length} orphaned dev process${tree.orphansKilled.length === 1 ? '' : 'es'} (pids ${tree.orphansKilled.join(', ')}) on ports ${tree.ports.join(', ')}.`
     }
     if (stopped.length === 1) {
-      const [only] = stopped
-      const pidPart = only.pid ? ` (pid ${only.pid})` : ''
-      const portsPart = only.ports.length > 0 ? `, freed ports ${only.ports.join(', ')}` : ''
-      console.info(`point0: dev stopped${pidPart}${portsPart}.`)
+      console.info(`point0: ${describe(stopped[0])}${staleNote}`)
       return
     }
-    console.info(`point0: stopped ${stopped.length} dev trees:`)
+    console.info(`point0: stopped ${stopped.length} dev trees:${staleNote}`)
     for (const tree of stopped) {
-      console.info(`  - pid ${tree.pid ?? '?'}${tree.ports.length > 0 ? `, ports ${tree.ports.join(', ')}` : ''}`)
+      console.info(`  - ${describe(tree)}`)
     }
   })
 

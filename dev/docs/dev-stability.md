@@ -7,7 +7,10 @@ it within a minute. This note records what actually broke, the invariants that
 now hold, and how to re-verify them. The per-mechanism "why" lives in code
 comments ([watcher.ts](../../packages/engine/src/watcher.ts),
 [server.ts](../../packages/engine/src/server.ts) `startBunDevProcess`/`serve`);
-this is the cross-component story you can't reconstruct from any single one.
+this is the cross-component story you can't reconstruct from any single one. The
+teardown half of the story — the dev lockfile, `point0 stop`, orphan cleanup and
+why every kill is identity-verified — lives in
+[dev-lifecycle](./dev-lifecycle.md).
 
 ## Anatomy of the storm (four bugs, one death)
 
