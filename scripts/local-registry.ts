@@ -26,7 +26,7 @@ const skipBuild = process.argv.includes('--skip-build')
 const PORT = 4873
 const REGISTRY = `http://localhost:${PORT}`
 
-// The publishable packages — matches the pkgRoots in .releaserc.mjs.
+// The packages to serve locally (all 9, incl create-app + docs — locally they can all be used).
 const PACKAGES = ['core', 'compiler', 'engine', 'react-dom', 'cors', 'openapi', 'basic-auth', 'create-app', 'docs']
 
 const workDir = join(tmpdir(), 'point0-local-registry')

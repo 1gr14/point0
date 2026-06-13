@@ -5,8 +5,20 @@ record of the versioning + local-install refactor done in prep. Cross-repo:
 point0 (`~/cc/opensource/1gr14/point0`), игрич (`~/cc/projects/1gr14`), start0
 (`~/cc/projects/start0`).
 
-**Sequencing:** point0 → npm (private week, via `next`) → игрич on Railway →
-point0 public → start0 first release.
+**Sequencing:** point0 → npm (private week) → игрич on Railway → point0 public →
+start0 first release.
+
+> **⚠️ Release tooling — UPDATED.** We dropped semantic-release **and**
+> changesets: both fight a lockstep + 0.x + caret-peer-deps monorepo (they
+> force-bump to 1.0.0 — changesets via fixed-group escalation and via "peer dep
+> out of range → major"). We now use two tiny scripts:
+> `bun run release <patch|minor|x.y.z>` (local: bumps all packages lockstep,
+> fixes ranges, promotes the CHANGELOG; can never reach 1.0 by accident) and
+> `bun run publish:packages` (CI: idempotent npm publish). The canonical flow
+> lives in [dev/docs/releasing.md](../dev/docs/releasing.md). The
+> semantic-release mechanics described below are **historical** — the launch
+> _sequence_ (private→public, provenance, scope ownership, create-app exclusion)
+> still holds; the _tooling_ does not.
 
 ---
 
@@ -169,6 +181,21 @@ compiler so the published `.d.ts` resolves for consumers.
 - `main` from `dev`, make default, tag `v0.1.0` (ritual in start0
   `dev/AGENTS.md`).
 - Update the start0 landing on 1gr14.dev to "available".
+
+## After point0 ships & the release flow proves itself
+
+Only once point0 has actually been released a few times and we're **fully
+happy** with the custom release flow (`scripts/release.ts` +
+`scripts/publish.ts`):
+
+- **Migrate the other 1gr14 libs off semantic-release** — `error0`, `route0`,
+  `flat`, `blank0` (boilerplate), … Drop semantic-release + `.releaserc` and add
+  this same release script (adapt: most are single-package, not a lockstep
+  monorepo). Per-lib, verify each.
+- **Then fix the release docs in the `agents` repo** —
+  `~/cc/agents/docs/1gr14/release.md` (and `new.md`) describe the
+  semantic-release flow; rewrite them for the custom-script flow. The
+  `1gr14-release` / `1gr14-new` skills point at those docs.
 
 ---
 

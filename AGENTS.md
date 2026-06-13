@@ -59,12 +59,18 @@ installing, run `bun install` once more to (re)link the bin, then
   when Serena cannot resolve the symbol.
 - **Do not create README files.** Docs live under [docs/](docs/) and are managed
   separately.
-- Use catalog deps. Match versions via the root `workspaces.catalog` in
-  [package.json](package.json) — don't pin per-package.
+- Shared external dep versions live in the root `workspaces.catalog`
+  [package.json](package.json) as a **data table**; each package carries the
+  real version (materialized — no `catalog:` / `workspace:*`). Don't hand-edit a
+  repeated version per package — change the catalog, then
+  `bun run versions:write`. CI/pre-commit run `bun run versions:check`. Internal
+  `@point0/*` ranges + the version are bumped by `bun run release` (see
+  [dev/docs/releasing.md](dev/docs/releasing.md)).
 - **Never commit, push, publish, tag, or release on your own.** No `git commit`,
-  `git push`, `npm publish`, `bun publish`, `pack:dist`, semantic-release, or
-  any other state-changing remote/registry action unless the user explicitly
-  asks for it in the current chat. A prior approval does not carry over.
+  `git push`, `npm publish`, `bun publish`, `bun run release`,
+  `bun run publish:packages`, or any other state-changing remote/registry action
+  unless the user explicitly asks for it in the current chat. A prior approval
+  does not carry over.
 - **Never run the full test suite.** The repo's full `bun test` /
   `bun run testa` is slow (integration-heavy). Default to a focused run:
   `bun test path/to/file.test.ts` or `bun --filter '@point0/<pkg>' test`. Only

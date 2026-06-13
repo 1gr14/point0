@@ -112,17 +112,13 @@ jobs:
         if: github.ref == 'refs/heads/main' || vars.SKIP_TESTS_ON_NEXT != 'true'
         run: bun test
 
-  release:
+  publish:
     needs: test
     runs-on: ubuntu-latest
-    if: >
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/next') &&
-      !contains(github.event.head_commit.message, '--skip-ci')
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/next'
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0 # semantic-release requires full history
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -145,12 +141,12 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Release
+      # Idempotent: publishes only packages whose current version isn't on npm yet
+      # (version bumps happen locally via `bun run release`). Access comes from each
+      # package's publishConfig; unscoped/private create-app is skipped.
+      # Private week: granular NPM_TOKEN (read+write on @point0), restricted, no provenance.
+      # At public launch: flip publishConfig to public, remove the token → OIDC + provenance.
+      - name: Publish packages
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Private week: granular access token (repo secret NPM_TOKEN, read+write on the
-          # @point0 scope) → token auth, restricted publish, no provenance. At public launch,
-          # remove NPM_TOKEN to fall back to OIDC Trusted Publisher + provenance (needs the
-          # repo public + Node 24). The token is revoked after release.
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npx semantic-release
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: bun run publish:packages
