@@ -11,14 +11,34 @@ start0 first release.
 > **⚠️ Release tooling — UPDATED.** We dropped semantic-release **and**
 > changesets: both fight a lockstep + 0.x + caret-peer-deps monorepo (they
 > force-bump to 1.0.0 — changesets via fixed-group escalation and via "peer dep
-> out of range → major"). We now use two tiny scripts:
-> `bun run release <patch|minor|x.y.z>` (local: bumps all packages lockstep,
-> fixes ranges, promotes the CHANGELOG; can never reach 1.0 by accident) and
-> `bun run publish:packages` (CI: idempotent npm publish). The canonical flow
-> lives in [dev/docs/releasing.md](../dev/docs/releasing.md). The
-> semantic-release mechanics described below are **historical** — the launch
+> out of range → major"). We now use small scripts:
+> `bun run release <patch|minor|prerelease|stable|x.y.z>` (local: bumps all
+> packages lockstep, fixes ranges, promotes the CHANGELOG on a stable cut; can
+> never reach 1.0 by accident), `bun run publish:packages` (CI: idempotent npm
+> publish, dist-tag from the version) and `bun run check:channel` (the guard).
+> The canonical flow lives in [dev/docs/releasing.md](../dev/docs/releasing.md).
+> The semantic-release mechanics described below are **historical** — the launch
 > _sequence_ (private→public, provenance, scope ownership, create-app exclusion)
 > still holds; the _tooling_ does not.
+
+> **⚠️ Channel model (private week vs launch).** Two channels, hard branch ↔
+> version invariant (`scripts/check-channel.ts`, enforced in CI + pre-push +
+> `publish.ts`): **`next` → prerelease `x.y.z-next.N`, dist-tag `next`, token
+> auth**; **`main` → stable `x.y.z`, dist-tag `latest`, OIDC + provenance**.
+> Private week: publish ONLY from `next` (publish job is `next`-only) so the
+> stable `0.1.0` can never be burned early; игрич/start0 install via the `next`
+> dist-tag. Launch: cut stable from `main` (`bun run release stable`), switch
+> the publish job to `main` + OIDC. A `-next` build physically cannot reach
+> `latest`.
+
+> **🧪 TODO (later, not blocking launch): get the test suite green on Linux.**
+> The CI `test` job has never passed on Linux — naive `bun test` runs everything
+> in one process (1010 pass / 294 fail), and even the proper fast runner needs
+> Playwright browsers + env-specific fixes (e.g. `port.test.ts` times out). For
+> now the gate is muted via repo var `SKIP_TESTS=true`. Task: run the full suite
+> in a Linux/Docker env, fix the offending tests/code (Playwright install step,
+> env-specific tests, isolation), switch CI off naive `bun test` → the repo
+> runner, then unset `SKIP_TESTS` to restore the real gate on `next`/`main`.
 
 ---
 

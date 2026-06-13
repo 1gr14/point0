@@ -5,6 +5,4 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
-## 0.1.0 — 2026-06-13
-
-- Initial private release.
+- Initial release.
