@@ -47,35 +47,32 @@
     "build:watch": "tsdown --watch",
     "test": "bun test ./tests",
     "test:watch": "bun test --watch ./tests",
-    "types": "tsc --noEmit -p tsconfig.build.json",
-    "typesgo": "tsgo --noEmit -p tsconfig.build.json",
+    "types": "tsgo --noEmit -p tsconfig.build.json",
+    "types:6": "tsc --noEmit -p tsconfig.build.json",
     "lint": "eslint .",
-    "format": "prettier --write .",
-    "pack:dist": "rimraf ../../packages-dist-npm && bun ../../scripts/transform-package-for-publish.ts && mkdir -p ../../packages-dist-npm/react-dom && npm pack --pack-destination ../../packages-dist-npm/react-dom --silent && (cd ../../packages-dist-npm/react-dom && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz) && bun ../../scripts/restore-package.ts",
-    "prepublishOnly": "bun ../../scripts/transform-package-for-publish.ts",
-    "postpublish": "bun ../../scripts/restore-package.ts"
+    "format": "prettier --write ."
   },
   "peerDependencies": {
-    "@1gr14/route0": "catalog:",
-    "@point0/core": "workspace:*",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "wouter": "catalog:"
+    "@1gr14/route0": "^0.1.0",
+    "@point0/core": "^0.1.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "@types/react": "^19.2.16",
+    "@types/react-dom": "^19.2.3",
+    "wouter": "^3.10.0"
   },
   "devDependencies": {
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "@1gr14/route0": "catalog:",
-    "@point0/core": "workspace:*",
-    "wouter": "catalog:",
-    "@types/bun": "catalog:",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "@types/react": "^19.2.16",
+    "@types/react-dom": "^19.2.3",
+    "@1gr14/route0": "^0.1.0",
+    "@point0/core": "^0.1.0",
+    "wouter": "^3.10.0",
+    "@types/bun": "^1.3.14",
     "@types/node": "^20.0.0",
-    "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "tsdown": "^0.22.2",
+    "typescript": "^6.0.3"
   },
   "publishConfig": {
     "access": "restricted"

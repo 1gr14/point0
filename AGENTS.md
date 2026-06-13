@@ -26,10 +26,10 @@ bun run setup    # generate the Prisma client in examples + the create-app templ
   phantom `TS2307 Cannot find module '@point0/…'` errors and
   `point0: command not found`. This is the one case the "don't rebuild manually"
   golden rule below does **not** cover.
-- **`bun run setup` (root) is codegen-only — needed before `bun run typesgo` /
-  `types`.** The example apps + the create-app template
+- **`bun run setup` (root) is codegen-only — needed before `bun run types`
+  (tsgo) / `bun run types:6` (tsc).** The example apps + the create-app template
   (`packages/create-app/template`, package `my-app`) are workspace packages, so
-  `bun --filter '**' typesgo` typechecks them, but their Prisma client
+  `bun --filter '**' types` typechecks them, but their Prisma client
   (`src/generated/prisma`) is gitignored. The root `setup` (`scripts/setup.ts`)
   copies `env.example`→`.env` for any app missing one (the template) and runs
   `prisma generate` across the workspace — no DB / migrate / seed. (Distinct

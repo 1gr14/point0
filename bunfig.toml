@@ -1,5 +1,9 @@
 [install]
 linker = "hoisted"
+# Link a workspace package whenever the local version satisfies the dependency range,
+# even without the `workspace:*` protocol. We materialize real ranges (no `catalog:` /
+# `workspace:*`), so this is what keeps examples running against local @point0/* code.
+linkWorkspacePackages = true
 
 [run]
 noOrphans = true

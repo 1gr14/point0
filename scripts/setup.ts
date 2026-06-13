@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-// One-time codegen setup so `bun run typesgo` / `bun run types` pass on the example apps + the create-app template.
-// Those are workspace packages, so `bun --filter '**' typesgo` typechecks them — but their Prisma client
+// One-time codegen setup so `bun run types` (tsgo) / `bun run types:6` (tsc) pass on the example apps + the create-app template.
+// Those are workspace packages, so `bun --filter '**' types` typechecks them — but their Prisma client
 // (`src/generated/prisma`) is gitignored, and the template (`packages/create-app/template`, package name `my-app`)
 // ships only `env.example` (its own `.env` is gitignored). On a fresh checkout / git worktree / CI runner the client
 // is therefore missing and typecheck fails with `Cannot find module '@/generated/prisma/client'`.

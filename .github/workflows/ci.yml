@@ -17,12 +17,12 @@ jobs:
       !contains(github.event.head_commit.message, '--skip-ci')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v5
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Setup Bun latest
         uses: oven-sh/setup-bun@v2
@@ -31,6 +31,9 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Check dependency versions are in sync with the catalog table
+        run: bun run versions:check
 
       # Build must precede typecheck: examples/template resolve `@point0/*` via their built `dist/` (exports.types),
       # and `setup` (Prisma client + template `.env`) is required or example/template typecheck fails on the gitignored
@@ -42,16 +45,16 @@ jobs:
         run: bun run setup
 
       - name: Type check (tsgo)
-        run: bun run typesgo
+        run: bun run types
 
       - name: Type check (tsc)
-        run: bun run types
+        run: bun run types:6
 
       - name: Lint (eslint)
         run: bun run lint:base
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-files
           path: |
@@ -75,12 +78,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v5
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Setup Bun ${{ matrix.bun }}
         uses: oven-sh/setup-bun@v2
@@ -88,7 +91,7 @@ jobs:
           bun-version: ${{ matrix.bun }}
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: build-files
           path: .
@@ -96,8 +99,18 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # Tests gate the release. On `main` they ALWAYS run — publication never bypasses them.
+      # On `next` they can be skipped during the early phase by setting the repository variable
+      # SKIP_TESTS_ON_NEXT=true (repo → Settings → Secrets and variables → Actions → Variables).
+      # The steps skip but the job still succeeds, so `needs: test` lets the prerelease publish
+      # proceed. Run sequentially via bun's native runner.
+      - name: Setup (Prisma client + template env for tests)
+        if: github.ref == 'refs/heads/main' || vars.SKIP_TESTS_ON_NEXT != 'true'
+        run: bun run setup
+
       - name: Run tests
-        run: bun run test
+        if: github.ref == 'refs/heads/main' || vars.SKIP_TESTS_ON_NEXT != 'true'
+        run: bun test
 
   release:
     needs: test
@@ -107,14 +120,14 @@ jobs:
       !contains(github.event.head_commit.message, '--skip-ci')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # semantic-release requires full history
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           registry-url: https://registry.npmjs.org
           scope: '@point0'
 
@@ -124,7 +137,7 @@ jobs:
           bun-version: latest
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: build-files
           path: .
@@ -135,4 +148,9 @@ jobs:
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Private week: granular access token (repo secret NPM_TOKEN, read+write on the
+          # @point0 scope) → token auth, restricted publish, no provenance. At public launch,
+          # remove NPM_TOKEN to fall back to OIDC Trusted Publisher + provenance (needs the
+          # repo public + Node 24). The token is revoked after release.
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
