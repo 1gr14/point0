@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main, next]
+  workflow_dispatch: # manual re-trigger (publish is idempotent)
 
 permissions:
   contents: write # <-- allows pushing tags/commits
