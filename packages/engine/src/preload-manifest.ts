@@ -28,8 +28,33 @@ export type PreloadManifest = {
 
 export const PRELOAD_MANIFEST_BASENAME = '__point0_preload__.json'
 
-/** A bundler-agnostic view of the emitted chunk graph. Keys and import paths are CLIENT PUBLIC paths (e.g.
-`/chunk-x.js`). */
+/**
+ * Global env kill switch for per-page modulepreload: `POINT0_MODULE_PRELOAD=false` (also `0`/`off`) disables the
+ * feature entirely — it stops BOTH manifest emission at build time and `<link rel=modulepreload>` injection at serve
+ * time. Default on (any other / unset value). Pure so the policy is unit-testable without env or a booted engine.
+ */
+export const isModulePreloadDisabledByEnv = (envFlag: string | undefined): boolean =>
+  envFlag === 'false' || envFlag === '0' || envFlag === 'off'
+
+/**
+ * Whether the server should inject per-page modulepreload links for a request. PRODUCTION-BUILD-ONLY: `buildWas`
+ * (point0's `_point0_env.build.was`) is true ONLY in the built, prod-serve runtime — in dev nothing is bundled (there
+ * are no `/chunk-*.js` to point at) and a stale `dist` manifest from an earlier `point0 build` must never leak into the
+ * dev-served HTML. The env flag disables it even in prod. Pure decision helper — exactly the case the dev regression
+ * slipped through, now lockable in a unit test.
+ */
+export const shouldServeModulePreload = ({
+  buildWas,
+  envFlag,
+}: {
+  buildWas: boolean
+  envFlag: string | undefined
+}): boolean => buildWas && !isModulePreloadDisabledByEnv(envFlag)
+
+/**
+ * A bundler-agnostic view of the emitted chunk graph. Keys and import paths are CLIENT PUBLIC paths (e.g.
+ * `/chunk-x.js`).
+ */
 export type ChunkGraph = {
   /** Public path of the bootstrap entry chunk, or null if it could not be determined. */
   entryFile: string | null
@@ -139,8 +164,10 @@ export type RollupChunkLike = {
   modules?: Record<string, unknown>
 }
 
-/** Build a {@link ChunkGraph} from Rollup/Rolldown output chunks (vite build). Rollup separates `imports` (static) from
-`dynamicImports`. */
+/**
+ * Build a {@link ChunkGraph} from Rollup/Rolldown output chunks (vite build). Rollup separates `imports` (static) from
+ * `dynamicImports`.
+ */
 export function chunkGraphFromRollup({ chunks }: { chunks: RollupChunkLike[] }): ChunkGraph {
   const graphChunks: ChunkGraph['chunks'] = {}
   let entryFile: string | null = null
@@ -255,8 +282,10 @@ export function buildPreloadManifest({
   return { entry, entryPreload, byPoint }
 }
 
-/** The chunks to preload for a given page point: the entry's shared closure plus that page's extras (deduped, entry
-excluded). */
+/**
+ * The chunks to preload for a given page point: the entry's shared closure plus that page's extras (deduped, entry
+ * excluded).
+ */
 export function resolvePreloadsForPoint(manifest: PreloadManifest, pointName: string | undefined): string[] {
   const out: string[] = []
   const seen = new Set<string>()

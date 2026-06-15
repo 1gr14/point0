@@ -38,9 +38,11 @@ import {
   buildPreloadManifest,
   chunkGraphFromBunMetafile,
   chunkGraphFromRollup,
+  isModulePreloadDisabledByEnv,
   parseAggregatorPoints,
   PRELOAD_MANIFEST_BASENAME,
   resolvePreloadsForPoint,
+  shouldServeModulePreload,
   type PagePreloadSources,
   type PreloadManifest,
   type RollupChunkLike,
@@ -1369,8 +1371,10 @@ try {
     return { client, publicdir: publicdirBuildOutput }
   }
 
-  /** Cached read of the build-time preload manifest. `undefined` = not yet read, `null` = absent (dev / pre-feature
-build). */
+  /**
+   * Cached read of the build-time preload manifest. `undefined` = not yet read, `null` = absent (dev / pre-feature
+   * build).
+   */
   private _preloadManifest: PreloadManifest | null | undefined = undefined
 
   /**
@@ -1431,7 +1435,7 @@ build). */
     graph: Parameters<typeof buildPreloadManifest>[0]['graph']
   }): Promise<void> {
     try {
-      if (!graph.entryFile) {
+      if (isModulePreloadDisabledByEnv(process.env.POINT0_MODULE_PRELOAD) || !graph.entryFile) {
         return
       }
       const manifest = buildPreloadManifest({ graph, pages: await this.getPreloadPageSources() })
@@ -1463,6 +1467,12 @@ build). */
 
   /** Public-path chunks to `<link rel=modulepreload>` for a page point (entry shared closure + that page's extras). */
   private async resolvePreloads(pointName: string | undefined): Promise<string[]> {
+    // PRODUCTION-BUILD-ONLY, and fully inert until then: in dev nothing is bundled and a stale `dist` manifest from an
+    // earlier `point0 build` must never leak into the dev-served HTML (see {@link shouldServeModulePreload}). Gate first,
+    // before touching the manifest, so in dev (and in the builder process) we read nothing and inject nothing.
+    if (!shouldServeModulePreload({ buildWas: _point0_env.build.was, envFlag: process.env.POINT0_MODULE_PRELOAD })) {
+      return []
+    }
     const manifest = await this.getPreloadManifest()
     if (!manifest) {
       return []

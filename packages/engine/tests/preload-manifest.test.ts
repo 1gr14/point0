@@ -4,9 +4,11 @@ import {
   buildPreloadManifest,
   chunkGraphFromBunMetafile,
   chunkGraphFromRollup,
+  isModulePreloadDisabledByEnv,
   parseAggregatorPoints,
   renderModulePreloadLinks,
   resolvePreloadsForPoint,
+  shouldServeModulePreload,
   staticClosure,
   type ChunkGraph,
 } from '../src/preload-manifest.js'
@@ -206,5 +208,27 @@ export default [
     expect(staticPage?.importSpec).toBeUndefined()
     // the next entry keeps its own import (no cross-entry bleed)
     expect(points.find((p) => p.name === 'about')?.importSpec).toBe('../../pages/about.js')
+  })
+})
+
+describe('modulepreload gating policy', () => {
+  it('isModulePreloadDisabledByEnv: only false/0/off disable; default on', () => {
+    for (const off of ['false', '0', 'off']) {
+      expect(isModulePreloadDisabledByEnv(off)).toBe(true)
+    }
+    for (const on of [undefined, '', 'true', '1', 'on', 'yes', 'whatever']) {
+      expect(isModulePreloadDisabledByEnv(on)).toBe(false)
+    }
+  })
+
+  it('shouldServeModulePreload: PROD-build-only — never serves until built, even with a stale manifest', () => {
+    // The dev regression: build.was=false (dev / builder process) must NEVER inject, regardless of the env flag or a
+    // leftover dist manifest.
+    expect(shouldServeModulePreload({ buildWas: false, envFlag: undefined })).toBe(false)
+    expect(shouldServeModulePreload({ buildWas: false, envFlag: 'true' })).toBe(false)
+    // built prod runtime: on by default, off only via the kill switch.
+    expect(shouldServeModulePreload({ buildWas: true, envFlag: undefined })).toBe(true)
+    expect(shouldServeModulePreload({ buildWas: true, envFlag: 'false' })).toBe(false)
+    expect(shouldServeModulePreload({ buildWas: true, envFlag: 'off' })).toBe(false)
   })
 })

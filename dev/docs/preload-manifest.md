@@ -118,14 +118,42 @@ through
 `renderAppAsReadableStream → renderReadableStream → overrideDocumentHtml`, which
 prepends the `<link rel="modulepreload" crossorigin>` tags to `<head>`.
 
+### Gating — production-build-only, with a kill switch
+
+`resolvePreloads` short-circuits to `[]` **before touching the manifest** unless
+[`shouldServeModulePreload({ buildWas, envFlag })`](../../packages/engine/src/preload-manifest.ts)
+returns true. Two reasons it might not:
+
+- **Dev (and the builder process).** `buildWas` is `_point0_env.build.was`, true
+  _only_ in the built, prod-serve runtime — the same signal the dev servers gate
+  on. In dev nothing is bundled (there are no `/chunk-*.js` to point at), so the
+  feature must be inert. Crucially this holds **even when a stale
+  `dist/client/__point0_preload__.json` is present** (e.g. the user ran
+  `point0 build` once, then `point0 dev`): without the gate that leftover
+  manifest would leak hashed prod chunk links into dev-served HTML — the exact
+  regression this gate prevents.
+- **The env kill switch.** `POINT0_MODULE_PRELOAD=false` (also `0` / `off`)
+  disables the feature entirely, in prod too. It's checked in **both**
+  directions: serve-time injection here, and manifest emission at build time
+  (`writePreloadManifest` skips writing when the flag is set), so nothing is
+  even produced. Default is on (any other / unset value).
+
+The decision lives in two **pure** helpers (`shouldServeModulePreload`,
+`isModulePreloadDisabledByEnv`) so the policy — including the dev guard that the
+regression slipped through — is locked by unit tests, not just integration ones.
+
 ## Maintenance notes
 
 - **Best-effort, never fatal.** Manifest emission is wrapped in try/catch — a
-  preload glitch must never fail a build. A missing/old manifest (dev, or a
-  build from before this feature) → `getPreloadManifest` returns null → no
-  links, normal serving. Preload is a pure perf hint.
-- **Dev has no manifest.** It's written only by the bun/vite production builds;
-  dev serving is unchanged.
+  preload glitch must never fail a build. And even past the gate, a missing
+  manifest (a build from before this feature) → `getPreloadManifest` returns
+  null → no links, normal serving. Preload is a pure perf hint.
+- **Prod-build-only, gated — not "dev has no manifest".** The feature is off in
+  dev because of the `shouldServeModulePreload` gate above, **not** because the
+  file is absent: a `dist` from an earlier `point0 build` does leave a manifest
+  behind, and dev would happily read it without the gate. Never relax the
+  `buildWas` check to "manifest exists" — that's the regression. See the Gating
+  section.
 - **Load-bearing bundler facts:** the bun metafile `imports[].kind` distinction
   (static vs dynamic) and rollup's `imports` vs `dynamicImports`. If a bun
   upgrade changes the metafile shape, `chunkGraphFromBunMetafile` is where to
@@ -143,7 +171,9 @@ prepends the `<link rel="modulepreload" crossorigin>` tags to `<head>`.
 ## Files & tests
 
 - [`preload-manifest.ts`](../../packages/engine/src/preload-manifest.ts) — graph
-  normalization, closure, manifest assembly, aggregator parse, link rendering.
+  normalization, closure, manifest assembly, aggregator parse, link rendering,
+  and the pure gating policy (`shouldServeModulePreload`,
+  `isModulePreloadDisabledByEnv`).
 - [`client.ts`](../../packages/engine/src/client.ts) — emits the manifest after
   each build; resolves page sources + reads the manifest at serve time.
 - [`render.ts`](../../packages/engine/src/render.ts) — injects the links.
