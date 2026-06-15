@@ -1,6 +1,6 @@
 {
   "name": "@point0/compiler",
-  "version": "0.1.0-next.1",
+  "version": "0.1.0-next.2",
   "license": "MIT",
   "author": {
     "name": "Sergei Dmitriev",
@@ -95,13 +95,13 @@
   },
   "peerDependencies": {
     "@1gr14/route0": "^0.1.0",
-    "@point0/core": "^0.1.0-next.1",
+    "@point0/core": "^0.1.0-next.2",
     "@1gr14/flat": "^0.1.0",
     "typescript": "^6.0.3"
   },
   "devDependencies": {
     "@1gr14/flat": "^0.1.0",
-    "@point0/engine": "^0.1.0-next.1",
+    "@point0/engine": "^0.1.0-next.2",
     "@types/babel__core": "^7.20.5",
     "@types/babel__generator": "^7.27.0",
     "@types/babel__traverse": "^7.28.0",
