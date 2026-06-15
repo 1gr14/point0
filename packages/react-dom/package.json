@@ -1,6 +1,6 @@
 {
   "name": "@point0/react-dom",
-  "version": "0.1.0-next.0",
+  "version": "0.1.0-next.1",
   "license": "MIT",
   "author": {
     "name": "Sergei Dmitriev",
@@ -54,7 +54,7 @@
   },
   "peerDependencies": {
     "@1gr14/route0": "^0.1.0",
-    "@point0/core": "^0.1.0-next.0",
+    "@point0/core": "^0.1.0-next.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "@types/react": "^19.2.16",
@@ -67,7 +67,7 @@
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
     "@1gr14/route0": "^0.1.0",
-    "@point0/core": "^0.1.0-next.0",
+    "@point0/core": "^0.1.0-next.1",
     "wouter": "^3.10.0",
     "@types/bun": "^1.3.14",
     "@types/node": "^20.0.0",
