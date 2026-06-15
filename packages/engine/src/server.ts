@@ -839,7 +839,14 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     const spawnEntry = (entryFile: string): Bun.Subprocess<'ignore', 'pipe', 'pipe'> => {
       bootedByEntry.set(entryFile, false)
       const child = Bun.spawn({
-        cmd: ['bun', 'run', '--no-orphans', ...(watch ? ['--watch'] : []), ...bunRunArgs, entryFile],
+        // The child runs as a plain `bun run` (NEVER `bun --watch`): point0's own orchestrator (below) is the sole
+        // watcher and owns every restart — hot-swap, respawn on a cold/boot change, and failed-boot recovery. A child
+        // under `bun --watch` STAYS ALIVE after crashing on a boot-time import (e.g. `--hot` started while a hot file
+        // had a syntax error) instead of exiting, so `isChildAlive` would never go false and the never-booted-respawn
+        // branch (which keys on the child being gone) would never fire — the server stays silently dead and the fix
+        // save only ever hot-swaps a corpse. A plain run exits on that crash, so the unexpected-exit handler drops the
+        // corpse and the next save deterministically respawns it (the recovery the hot-node branch is written for).
+        cmd: ['bun', 'run', '--no-orphans', ...bunRunArgs, entryFile],
         env: {
           ...process.env,
           // Tells the child's own `serve()` it runs under this orchestrator: bind with patient retries and NEVER
