@@ -116,9 +116,12 @@ process.on('SIGTERM', () => shutdown(0))
 
 try {
   await waitForUp()
-  log('publishing packages…')
+  log('publishing packages (under the `next` dist-tag, so consumers on `@point0/*: "next"` resolve them)…')
   for (const pkg of PACKAGES) {
-    await run(['npm', 'publish', '--registry', REGISTRY, '--userconfig', npmrcPath], join(rootDir, 'packages', pkg))
+    await run(
+      ['npm', 'publish', '--tag', 'next', '--registry', REGISTRY, '--userconfig', npmrcPath],
+      join(rootDir, 'packages', pkg),
+    )
   }
   log(
     `serving ${PACKAGES.length} packages on ${REGISTRY}\n` +
