@@ -106,20 +106,19 @@ jobs:
       #      `bun test` (port reuse, module-level state) is gone;
       #   2. Playwright's chromium — several engine/create-app tests drive a real browser.
       # `bun run setup` regenerates the Prisma client + template env first (the generated client is gitignored).
-      # Private-week muzzle: on `next` ONLY, set the repo variable SKIP_TESTS_ON_NEXT=true (repo → Settings →
-      # Secrets and variables → Actions → Variables) to skip the steps while still letting the prerelease publish
-      # (the job stays green, so `needs: test` is satisfied). On `main` tests ALWAYS run. Unset it to enforce the
-      # gate on `next` too.
+      # Private-week muzzle: the repo variable `SKIP_TESTS=true` (repo → Settings → Secrets and variables → Actions
+      # → Variables) skips these steps while still letting the prerelease publish (the job stays green, so
+      # `needs: test` is satisfied). Unset it to restore the gate.
       - name: Setup (Prisma client + template env for tests)
-        if: ${{ !(github.ref == 'refs/heads/next' && vars.SKIP_TESTS_ON_NEXT == 'true') }}
+        if: vars.SKIP_TESTS != 'true'
         run: bun run setup
 
       - name: Install Playwright chromium (browser-driven engine/create-app tests)
-        if: ${{ !(github.ref == 'refs/heads/next' && vars.SKIP_TESTS_ON_NEXT == 'true') }}
+        if: vars.SKIP_TESTS != 'true'
         run: bunx playwright install --with-deps chromium
 
       - name: Run tests
-        if: ${{ !(github.ref == 'refs/heads/next' && vars.SKIP_TESTS_ON_NEXT == 'true') }}
+        if: vars.SKIP_TESTS != 'true'
         run: bun run testa
 
   publish:

@@ -8,6 +8,7 @@ import { renderToReadableStream } from 'react-dom/server'
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
 import type { SsrOptionsResolved } from './config.js'
 import type { Executor } from './executor.js'
+import { renderModulePreloadLinks } from './preload-manifest.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
 export type ReadableStreamRenderer = (
@@ -263,6 +264,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   envConsts,
   domRootElementId,
   clientBundlePath,
+  modulePreloads,
 }: {
   originalIndexHtml: string
   content?: TContent
@@ -271,6 +273,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   envConsts?: Record<string, string | number | boolean | undefined>
   domRootElementId?: string
   clientBundlePath?: string
+  modulePreloads?: string[]
 }): Promise<DocumentHtmlResult<TContent>> {
   let html = originalIndexHtml
 
@@ -294,6 +297,11 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
     domRootElementId,
   })
   html = addEnvToDocumentHtml({ html, envVars, envConsts })
+  if (modulePreloads && modulePreloads.length > 0) {
+    // Per-request preload hints: turn the entry's import waterfall (and, later, the matched page's lazy chunk) into one
+    // parallel fetch straight from the document. Prepended to <head> so the browser sees them before the entry script.
+    html = prependHeadElement({ content: renderModulePreloadLinks(modulePreloads), html })
+  }
   html = prependHeadElement({
     content: '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
     html,
@@ -381,6 +389,7 @@ export async function renderReadableStream({
   waitForAllReady,
   originalIndexHtml,
   domRootElementId,
+  modulePreloads,
   executor,
 }: {
   App: AppComponent
@@ -392,6 +401,7 @@ export async function renderReadableStream({
   clientBundlePath?: string
   originalIndexHtml: string
   domRootElementId?: string
+  modulePreloads?: string[]
   executor: Executor
 }): Promise<ReadableStream> {
   const { prefix, suffix } = await overrideDocumentHtml({
@@ -400,6 +410,7 @@ export async function renderReadableStream({
     envVars,
     envConsts,
     domRootElementId,
+    modulePreloads,
   })
   return await getReadableStreamWithWrapper({
     App,
@@ -435,6 +446,7 @@ export async function renderAppAsReadableStream({
   clientBundlePath?: string
   originalIndexHtml: string
   domRootElementId?: string
+  modulePreloads?: string[]
   redirectPolicy: 'continue' | 'throw'
   waitForAllReady?: boolean
   ssrOptions: SsrOptionsResolved

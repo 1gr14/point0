@@ -34,8 +34,19 @@ import type { Executor } from './executor.js'
 import { isDevShuttingDown, registerDevChild, requestDevShutdown } from './dev-shutdown.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
+import {
+  buildPreloadManifest,
+  chunkGraphFromBunMetafile,
+  chunkGraphFromRollup,
+  parseAggregatorPoints,
+  PRELOAD_MANIFEST_BASENAME,
+  resolvePreloadsForPoint,
+  type PagePreloadSources,
+  type PreloadManifest,
+  type RollupChunkLike,
+} from './preload-manifest.js'
 import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
-import type { ServerHotStore } from './server-hot-store.js'
+import { resolvePointsAggregatorAbs, type ServerHotStore } from './server-hot-store.js'
 import { chainBundledSourceMaps } from './sourcemap-chain.js'
 import type { EngineServer } from './server.js'
 import type {
@@ -1119,6 +1130,14 @@ try {
         distOutdir: buildPaths.outdir,
         buildOutput,
       })
+      await this.writePreloadManifest({
+        outdir: buildPaths.outdir,
+        graph: chunkGraphFromBunMetafile({
+          metafile: buildOutput.metafile,
+          outdir: buildPaths.outdir,
+          indexHtmlKey: nodePath.relative(process.cwd(), buildPaths.indexHtml).replaceAll('\\', '/'),
+        }),
+      })
       // Bun's bundler does not chain the inline maps our compiler plugin emits (Bun #6173), so the emitted maps point at
       // our transformed intermediate, not the original source. Re-chain them (any NODE_ENV — if we built with our
       // compiler, the maps need fixing regardless of environment) so browser stacks / error monitoring resolve to the
@@ -1265,16 +1284,19 @@ try {
 
       const rollupOutputs = Array.isArray(buildResult) ? buildResult : [buildResult]
       const outputFiles: string[] = []
+      const allChunks: RollupChunkLike[] = []
       for (const rollupOutput of rollupOutputs) {
         if ('output' in rollupOutput) {
           const chunks = Array.isArray(rollupOutput.output) ? rollupOutput.output : []
           for (const chunk of chunks) {
             if ('fileName' in chunk && typeof chunk.fileName === 'string') {
               outputFiles.push(nodePath.resolve(buildPaths.outdir, chunk.fileName))
+              allChunks.push(chunk as RollupChunkLike)
             }
           }
         }
       }
+      await this.writePreloadManifest({ outdir: buildPaths.outdir, graph: chunkGraphFromRollup({ chunks: allChunks }) })
       return outputFiles
     }
   }
@@ -1347,6 +1369,107 @@ try {
     return { client, publicdir: publicdirBuildOutput }
   }
 
+  /** Cached read of the build-time preload manifest. `undefined` = not yet read, `null` = absent (dev / pre-feature
+build). */
+  private _preloadManifest: PreloadManifest | null | undefined = undefined
+
+  /**
+   * Per page point: the source files (its module + its layouts' modules) whose chunks should be preloaded for it.
+   * Derived from the points aggregator the engine ACTUALLY imports (`pointsProvided`, resolved via the same
+   * importer-body parse + FileResolver the hot store uses — never from a hardcoded `generate` path), so it works
+   * whether or not `point0 generate` ran and regardless of where the app keeps its points. Statically-imported points
+   * yield no `import('…')` and are skipped (they're bundled into the entry → already covered by `entryPreload`).
+   */
+  private async getPreloadPageSources(): Promise<PagePreloadSources[]> {
+    try {
+      const aggregatorAbs = resolvePointsAggregatorAbs({ source: this.pointsProvided, engineFile: this.engineFile })
+      if (!aggregatorAbs) {
+        return [] // inline points array / non-resolvable importer → fall back to entry-closure preload only
+      }
+      const content = await Bun.file(aggregatorAbs).text()
+      const parsed = parseAggregatorPoints(content)
+      const importSpecByName = new Map(parsed.map((point) => [point.name, point.importSpec]))
+      const resolveSpec = (spec: string | undefined): string | null => {
+        if (!spec) {
+          return null
+        }
+        const resolved = FileResolver.resolveFilePath({ path: spec, importer: aggregatorAbs })
+        return resolved && !resolved.includes('/node_modules/') ? resolved : null
+      }
+      const pages: PagePreloadSources[] = []
+      for (const point of parsed) {
+        if (point.type !== 'page') {
+          continue
+        }
+        const sourceFiles: string[] = []
+        const pageSource = resolveSpec(point.importSpec)
+        if (pageSource) {
+          sourceFiles.push(pageSource)
+        }
+        for (const layoutName of point.layoutNames) {
+          const layoutSource = resolveSpec(importSpecByName.get(layoutName))
+          if (layoutSource) {
+            sourceFiles.push(layoutSource)
+          }
+        }
+        if (sourceFiles.length > 0) {
+          pages.push({ name: point.name, sourceFiles })
+        }
+      }
+      return pages
+    } catch {
+      return [] // per-page preload is best-effort; never fail the build over it
+    }
+  }
+
+  /** Build + write the per-client preload manifest (`<outdir>/__point0_preload__.json`) from the emitted chunk graph. */
+  private async writePreloadManifest({
+    outdir,
+    graph,
+  }: {
+    outdir: string
+    graph: Parameters<typeof buildPreloadManifest>[0]['graph']
+  }): Promise<void> {
+    try {
+      if (!graph.entryFile) {
+        return
+      }
+      const manifest = buildPreloadManifest({ graph, pages: await this.getPreloadPageSources() })
+      await Bun.write(nodePath.join(outdir, PRELOAD_MANIFEST_BASENAME), JSON.stringify(manifest))
+    } catch {
+      // Preload is a pure perf hint — never let manifest emission fail an otherwise-good build.
+    }
+  }
+
+  /** Lazily read the preload manifest emitted at build time. Cached; null when missing. */
+  private async getPreloadManifest(): Promise<PreloadManifest | null> {
+    if (this._preloadManifest !== undefined) {
+      return this._preloadManifest
+    }
+    this._preloadManifest = null
+    try {
+      const outdir = this.getBuildPaths().outdir
+      if (outdir) {
+        const file = Bun.file(nodePath.join(outdir, PRELOAD_MANIFEST_BASENAME))
+        if (await file.exists()) {
+          this._preloadManifest = JSON.parse(await file.text()) as PreloadManifest
+        }
+      }
+    } catch {
+      this._preloadManifest = null
+    }
+    return this._preloadManifest
+  }
+
+  /** Public-path chunks to `<link rel=modulepreload>` for a page point (entry shared closure + that page's extras). */
+  private async resolvePreloads(pointName: string | undefined): Promise<string[]> {
+    const manifest = await this.getPreloadManifest()
+    if (!manifest) {
+      return []
+    }
+    return resolvePreloadsForPoint(manifest, pointName)
+  }
+
   async renderAsReadableStream({
     executor,
     pagePoint,
@@ -1373,6 +1496,8 @@ try {
       clientPoints: this.points,
       originalIndexHtml: await this.getOriginalIndexHtml(pageLocation.href ?? pageLocation.hrefRel),
       domRootElementId: this.domRootElementId,
+      // Preload the entry's shared closure (every page) + THIS page's own lazy chunk/layouts (keyed by point name).
+      modulePreloads: await this.resolvePreloads(pagePoint?.name),
       redirectPolicy,
       waitForAllReady,
       ssrOptions: this.ssrOptions,
