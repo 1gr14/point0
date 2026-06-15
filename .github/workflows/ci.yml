@@ -100,20 +100,27 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # Tests gate publish. They currently DON'T pass on Linux CI (the suite has never run here —
-      # see backlog/launch-plan.md): naive `bun test` runs everything in one process, and even the
-      # proper fast runner needs Playwright browsers + env-specific fixes. For the private week the
-      # gate is muted via the repo variable SKIP_TESTS=true (repo → Settings → Secrets and variables
-      # → Actions → Variables): the steps skip, the job still succeeds, and `needs: test` lets
-      # publish proceed. Unset SKIP_TESTS to restore the gate once the Linux test run is fixed (and
-      # switch `bun test` → the repo runner, e.g. `bun run testa`).
+      # Tests gate publish and pass on Linux. Two things make them green here:
+      #   1. the per-file runner (`bun run testa`) — each test file runs in its OWN `bun test` process (slow
+      #      integration files strictly one-per-process), so the cross-file interference of a naive single-process
+      #      `bun test` (port reuse, module-level state) is gone;
+      #   2. Playwright's chromium — several engine/create-app tests drive a real browser.
+      # `bun run setup` regenerates the Prisma client + template env first (the generated client is gitignored).
+      # Private-week muzzle: on `next` ONLY, set the repo variable SKIP_TESTS_ON_NEXT=true (repo → Settings →
+      # Secrets and variables → Actions → Variables) to skip the steps while still letting the prerelease publish
+      # (the job stays green, so `needs: test` is satisfied). On `main` tests ALWAYS run. Unset it to enforce the
+      # gate on `next` too.
       - name: Setup (Prisma client + template env for tests)
-        if: vars.SKIP_TESTS != 'true'
+        if: ${{ !(github.ref == 'refs/heads/next' && vars.SKIP_TESTS_ON_NEXT == 'true') }}
         run: bun run setup
 
+      - name: Install Playwright chromium (browser-driven engine/create-app tests)
+        if: ${{ !(github.ref == 'refs/heads/next' && vars.SKIP_TESTS_ON_NEXT == 'true') }}
+        run: bunx playwright install --with-deps chromium
+
       - name: Run tests
-        if: vars.SKIP_TESTS != 'true'
-        run: bun test
+        if: ${{ !(github.ref == 'refs/heads/next' && vars.SKIP_TESTS_ON_NEXT == 'true') }}
+        run: bun run testa
 
   publish:
     needs: test

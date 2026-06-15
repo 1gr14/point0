@@ -114,6 +114,7 @@ async function writeAppEnv(appDir: string, mode: Mode): Promise<void> {
       `SERVER_PORT=${mode.serverPort}`,
       `CLIENT_PORT=${mode.clientPort}`,
       `SERVER_URL=http://localhost:${mode.serverPort}`,
+      `CLIENT_URL=http://localhost:${mode.clientPort}`,
       'DATABASE_URL=file:./dev.db',
       'OPENAPI_CREDENTIALS=admin:admin',
       '',
@@ -164,10 +165,11 @@ describe('create-app e2e', () => {
         const engineSrc = await Bun.file(resolve(appDir, 'src/engine.ts')).text()
         expect(engineSrc.includes('viteConfig: ({ plugins })')).toBe(mode.id === 'vite')
         expect(engineSrc.includes('bunPlugins:')).toBe(mode.id === 'bun')
-        // Both keep the new bootstrap from the template.
+        // Both keep the new bootstrap from the template: the `index.server.ts` entry preloads the
+        // compiler plugins (preload.ts) before serving (app.server.ts).
         expect(await Bun.file(resolve(appDir, 'bunfig.toml')).exists()).toBe(true)
         expect(await Bun.file(resolve(appDir, 'src/preload.ts')).exists()).toBe(true)
-        expect(await Bun.file(resolve(appDir, 'src/index.server.ts')).exists()).toBe(false)
+        expect(await Bun.file(resolve(appDir, 'src/index.server.ts')).exists()).toBe(true)
 
         await writeAppEnv(appDir, mode)
 

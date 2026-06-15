@@ -214,16 +214,24 @@ if (failed) {
 }
 
 if (pendingSlowFiles.length > 0) {
-  const relativeSlowFiles = pendingSlowFiles.map((file) => nodePath.relative(cwd, file))
-  const command = ['bun', 'test', ...relativeSlowFiles]
-  console.info(command.join(' '))
-  const process = Bun.spawn({
-    cmd: command,
-    cwd,
-    stdout: 'inherit',
-    stderr: 'inherit',
-  })
-  await process.exited
+  // Slow integration tests run STRICTLY one file per process, sequentially — never a single combined `bun test`.
+  // Each boots a full dev/build tree, so sharing one process lets module-level state and ports bleed across files
+  // (the same cross-file interference the parallel phase isolates away). One process per file keeps them honest, and
+  // each file's exit code gates the run — a slow failure must fail the whole script, not be silently swallowed.
+  for (const slowFile of pendingSlowFiles) {
+    const relativeSlowFile = nodePath.relative(cwd, slowFile)
+    console.info(`bun test ${relativeSlowFile}`)
+    const proc = Bun.spawn({
+      cmd: ['bun', 'test', relativeSlowFile],
+      cwd,
+      stdout: 'inherit',
+      stderr: 'inherit',
+    })
+    const code = await proc.exited
+    if (code !== 0) {
+      failed = 1
+    }
+  }
 }
 
 final()
