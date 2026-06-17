@@ -1,4 +1,12 @@
+import { env } from '@point0/core'
 import { z } from 'zod'
+
+// In dev we proxy all client→server requests through the client origin to avoid CORS;
+// in prod the URLs already match.
+// If you not use SSR, remove this code, and use cors plugin instead.
+if (env.side.is.client) {
+  process.env.SERVER_URL = process.env.CLIENT_URL
+}
 
 /**
  * Zod shape for env variables available on BOTH server and client. Each side re-parses with its own shape

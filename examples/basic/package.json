@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "point0 dev",
+    "dev": "point0 dev --hot",
     "generate": "point0 generate",
     "build": "point0 build",
     "start": "cross-env NODE_ENV=production bun run ./dist/server/index.server.js",

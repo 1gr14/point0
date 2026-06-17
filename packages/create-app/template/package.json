@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "point0 dev",
+    "dev": "point0 dev --hot",
     "generate": "point0 generate",
     "mcp:project": "point0-project-mcp --meta ./src/generated/point0/meta.ts",
     "mcp:docs": "point0-docs-mcp",

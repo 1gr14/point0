@@ -51,15 +51,16 @@ export const ideaNewsPage = ideaLayout.lets
     initialPageParam: 0,
     pageParamFromInput: '?.page',
   })
-  .mapper(({ data }) => {
+  .with(() => ({ idea: ideaLayout.useValue('idea') }))
+  .mapper(({ data, props }) => {
     return {
       newsPosts: data.pages.flatMap((page) => page.newsPosts),
       total: data.pages[0]?.newsCount ?? 0,
+      idea: props.idea,
     }
   })
-  .with(() => ({ idea: ideaLayout.useValue('idea') }))
-  .head(({ data: { total }, props: { idea } }) => `${total} news for idea "${idea.title}"`)
-  .page(({ data: { newsPosts, total }, props: { idea }, queries: [query] }) => {
+  .head(({ data: { total, idea } }) => `${total} news for idea "${idea.title}"`)
+  .page(({ data: { newsPosts, total, idea }, queries: [query] }) => {
     return (
       <div className="space-y-5">
         <h3 className="text-2xl font-semibold text-slate-900">News (total: {total})</h3>

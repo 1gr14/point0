@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "point0 dev",
+    "dev": "point0 dev --hot",
     "generate": "point0 generate",
     "prisma:generate": "bunx prisma generate",
     "prisma:push": "bunx prisma db push",
