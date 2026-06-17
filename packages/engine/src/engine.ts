@@ -27,6 +27,7 @@ import type { EngineOptions, LoggerOptionsInput } from './config.js'
 import { parseEngineOptions } from './config.js'
 import type { FileGeneratorProcessResult } from './generator.js'
 import { FilesGenerator } from './generator.js'
+import { isModulePreloadDisabledByEnv } from './preload-manifest.js'
 import type { Publicdir } from './publicdir.js'
 import {
   resolvePointsAggregatorAbs,
@@ -720,7 +721,6 @@ export class Engine<
   }
 
   async build(options?: {
-    generate?: boolean
     side?: 'server' | 'client' | undefined
     scope?: PointsScope
     clean?: boolean
@@ -742,7 +742,7 @@ export class Engine<
       category: ['build'],
       message: 'Build...',
     })
-    const { generate = true, side, scope, clean = true, publicdir } = options ?? {}
+    const { side, scope, clean = true, publicdir } = options ?? {}
     normalizeAndValidateNodeEnv('production')
     if (process.env.NODE_ENV !== 'production') {
       this.log({
@@ -752,8 +752,30 @@ export class Engine<
       })
     }
 
-    if (generate) {
-      await this.generator.sync({ logOnNotWritten: true })
+    // Always generate before building — there is no "build without generate". Skipping it would leave a stale points
+    // aggregator on disk (the bundler imports it → wrong/missing pages) and an empty in-memory point set (→ no per-page
+    // preload). `sync` also parses the points we read below, so this is the single source of truth for the build.
+    await this.generator.sync({ logOnNotWritten: true })
+
+    // Feed each client its page points (name → source file) for per-page modulepreload, straight from the in-memory
+    // compiler points the generator already holds — no aggregator-text parsing. Best-effort: a glitch here may only
+    // cost the per-page preload hint, never the build (the manifest writer degrades to entry-closure-only).
+    try {
+      if (!isModulePreloadDisabledByEnv(process.env.POINT0_MODULE_PRELOAD)) {
+        const pagePoints = this.generator.getPagePoints()
+        for (const client of this.clients) {
+          client.preloadPageSources = pagePoints
+            .filter((page) => page.scope === client.scope)
+            .map((page) => ({ name: page.name, sourceFiles: [page.file] }))
+        }
+      }
+    } catch (error) {
+      this.log({
+        level: 'warn',
+        category: ['build', 'preload'],
+        message: 'Failed to resolve per-page preload sources; build continues without per-page modulepreload',
+        error,
+      })
     }
 
     const isSideServer = side === 'server' || !side
@@ -817,7 +839,6 @@ export class Engine<
   }
 
   async buildWatch(options?: {
-    generate?: boolean
     watch?: string | string[] | true | undefined
     side?: 'server' | 'client' | undefined
     scope?: PointsScope
@@ -865,12 +886,10 @@ export class Engine<
       }
       return [...patterns]
     }
-    // Generate first (when enabled) so the points aggregators on disk are current before we walk their import graph —
-    // otherwise the initial watch list could miss freshly-added points/pages. Mirrors dev, which generates before
-    // watching. The spawned `point0 build` regenerates too; this parent pass is only to seed an accurate watch list.
-    if (buildOptions.generate !== false) {
-      await this.generate({ silent: true })
-    }
+    // Generate first so the points aggregators on disk are current before we walk their import graph — otherwise the
+    // initial watch list could miss freshly-added points/pages. Mirrors dev, which generates before watching. The
+    // spawned `point0 build` regenerates too; this parent pass is only to seed an accurate watch list.
+    await this.generate({ silent: true })
     const globs = collectPatterns()
     if (globs.length === 0) {
       throw new Error(
@@ -886,9 +905,6 @@ export class Engine<
       }
       if (buildOptions.side) {
         args.push('--side', buildOptions.side)
-      }
-      if (buildOptions.generate === false) {
-        args.push('--no-generate')
       }
       if (buildOptions.clean === false) {
         args.push('--no-clean')

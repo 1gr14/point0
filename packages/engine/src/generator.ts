@@ -306,6 +306,27 @@ export class FilesGenerator {
     return [...this.files].some((f) => f.startsWith(fileOrDirAbs))
   }
 
+  /**
+   * Valid page points with their source file (absolute `pos.file`) and scope — the typed source for per-page module
+   * preloading. The engine maps these into each client's `preloadPageSources` before building, so the preload manifest
+   * is built from the same in-memory compiler points the generator already holds (no aggregator-text parsing). Only
+   * pages: a page statically imports its layouts, so a layout's chunk is already in the page chunk's static closure.
+   */
+  getPagePoints(): Array<{ scope: PointsScope; name: string; file: string }> {
+    const pages: Array<{ scope: PointsScope; name: string; file: string }> = []
+    for (const point of this.safePoints) {
+      if (point.type !== 'page' || !point.scope) {
+        continue
+      }
+      const file = point.pos?.file
+      if (!file) {
+        continue
+      }
+      pages.push({ scope: point.scope, name: point.name, file })
+    }
+    return pages
+  }
+
   actualizePointsByPaths(points: CompilerPoint[]): void {
     this.pointsByPaths.clear()
     for (const point of points) {

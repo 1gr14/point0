@@ -39,7 +39,6 @@ import {
   chunkGraphFromBunMetafile,
   chunkGraphFromRollup,
   isModulePreloadDisabledByEnv,
-  parseAggregatorPoints,
   PRELOAD_MANIFEST_BASENAME,
   resolvePreloadsForPoint,
   shouldServeModulePreload,
@@ -48,7 +47,7 @@ import {
   type RollupChunkLike,
 } from './preload-manifest.js'
 import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
-import { resolvePointsAggregatorAbs, type ServerHotStore } from './server-hot-store.js'
+import { type ServerHotStore } from './server-hot-store.js'
 import { chainBundledSourceMaps } from './sourcemap-chain.js'
 import type { EngineServer } from './server.js'
 import type {
@@ -1378,53 +1377,15 @@ try {
   private _preloadManifest: PreloadManifest | null | undefined = undefined
 
   /**
-   * Per page point: the source files (its module + its layouts' modules) whose chunks should be preloaded for it.
-   * Derived from the points aggregator the engine ACTUALLY imports (`pointsProvided`, resolved via the same
-   * importer-body parse + FileResolver the hot store uses — never from a hardcoded `generate` path), so it works
-   * whether or not `point0 generate` ran and regardless of where the app keeps its points. Statically-imported points
-   * yield no `import('…')` and are skipped (they're bundled into the entry → already covered by `entryPreload`).
+   * Per page point: the source file(s) whose chunks should be preloaded for that page. Build-time input, set by the
+   * engine right before the build from the in-memory compiler points ({@link import('./engine.js').Engine} →
+   * `FilesGenerator.getPagePoints`), so it carries the page module's `pos.file` straight from the typed point — no
+   * aggregator-text regex, no `import('…')` reverse-engineering. Defaults to `[]` (any build path that doesn't go
+   * through `engine.build` → entry-closure preload only). Layouts are deliberately NOT listed here: a page statically
+   * imports its layouts (`generalLayout.lets('page', …)`), so a layout's chunk is already in the page chunk's static
+   * closure that {@link buildPreloadManifest} walks.
    */
-  private async getPreloadPageSources(): Promise<PagePreloadSources[]> {
-    try {
-      const aggregatorAbs = resolvePointsAggregatorAbs({ source: this.pointsProvided, engineFile: this.engineFile })
-      if (!aggregatorAbs) {
-        return [] // inline points array / non-resolvable importer → fall back to entry-closure preload only
-      }
-      const content = await Bun.file(aggregatorAbs).text()
-      const parsed = parseAggregatorPoints(content)
-      const importSpecByName = new Map(parsed.map((point) => [point.name, point.importSpec]))
-      const resolveSpec = (spec: string | undefined): string | null => {
-        if (!spec) {
-          return null
-        }
-        const resolved = FileResolver.resolveFilePath({ path: spec, importer: aggregatorAbs })
-        return resolved && !resolved.includes('/node_modules/') ? resolved : null
-      }
-      const pages: PagePreloadSources[] = []
-      for (const point of parsed) {
-        if (point.type !== 'page') {
-          continue
-        }
-        const sourceFiles: string[] = []
-        const pageSource = resolveSpec(point.importSpec)
-        if (pageSource) {
-          sourceFiles.push(pageSource)
-        }
-        for (const layoutName of point.layoutNames) {
-          const layoutSource = resolveSpec(importSpecByName.get(layoutName))
-          if (layoutSource) {
-            sourceFiles.push(layoutSource)
-          }
-        }
-        if (sourceFiles.length > 0) {
-          pages.push({ name: point.name, sourceFiles })
-        }
-      }
-      return pages
-    } catch {
-      return [] // per-page preload is best-effort; never fail the build over it
-    }
-  }
+  preloadPageSources: PagePreloadSources[] = []
 
   /** Build + write the per-client preload manifest (`<outdir>/__point0_preload__.json`) from the emitted chunk graph. */
   private async writePreloadManifest({
@@ -1438,10 +1399,16 @@ try {
       if (isModulePreloadDisabledByEnv(process.env.POINT0_MODULE_PRELOAD) || !graph.entryFile) {
         return
       }
-      const manifest = buildPreloadManifest({ graph, pages: await this.getPreloadPageSources() })
+      const manifest = buildPreloadManifest({ graph, pages: this.preloadPageSources })
       await Bun.write(nodePath.join(outdir, PRELOAD_MANIFEST_BASENAME), JSON.stringify(manifest))
-    } catch {
-      // Preload is a pure perf hint — never let manifest emission fail an otherwise-good build.
+    } catch (error) {
+      // Preload is a pure perf hint — never let manifest emission fail an otherwise-good build. Warn, then carry on.
+      this.log({
+        level: 'warn',
+        category: ['client', 'preload'],
+        message: `Failed to write the preload manifest for client "${this.scope}" (serving continues without per-page modulepreload)`,
+        error,
+      })
     }
   }
 

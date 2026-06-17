@@ -11,6 +11,7 @@ const slowTests =
     ? []
     : [
         'engine/tests/build.test.ts',
+        'engine/tests/module-preload-serve.test.ts',
         'engine/tests/cli.test.tsx',
         'engine/tests/mcp.test.ts',
         'engine/tests/dev.test.ts',

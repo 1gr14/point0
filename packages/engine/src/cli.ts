@@ -166,7 +166,6 @@ program
   )
   .option('--side <side>', 'Build only one side: server or client')
   .option('--scope <scope>', 'Scope to build')
-  .option('-G, --no-generate', dictionary.noGenerate)
   .option('-C, --no-clean', 'Do not clean build')
   .option('-P, --no-publicdir', 'Do not build publicdir')
   .option(
@@ -189,7 +188,6 @@ program
       watch?: boolean | string[]
       side?: 'server' | 'client'
       scope?: string
-      generate?: boolean
       clean?: boolean
       publicdir?: boolean
       keepAlive?: boolean
@@ -213,7 +211,6 @@ program
         : options.watch
 
       const buildOptions = {
-        generate: options.generate !== false,
         side: options.side as 'server' | 'client' | undefined,
         scope: options.scope as PointsScope,
         clean: options.clean !== false,

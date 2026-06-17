@@ -10,10 +10,11 @@ import * as nodePath from 'node:path'
  *   every page; preloading it turns the browser's "load entry → parse → discover its imports → load those → …"
  *   waterfall into one parallel fetch straight from the HTML.
  * - `byPoint`: per page POINT (keyed by the point's `name`, which is stable and present on the runtime point at serve
- *   time), that page's own lazy chunk + its layouts' chunks (and their static closures), minus whatever is already in
- *   `entryPreload`. So a hard request to a page preloads that page's JS with the document instead of discovering it
- *   client-side after hydration. (Keyed by name, not route pattern, so concrete vs parameterized URLs don't matter and
- *   we never have to stringify a Route0.)
+ *   time), that page's own lazy chunk plus its static-import closure — which already covers the layouts the page
+ *   statically imports (`generalLayout.lets('page', …)`), so layouts need no separate tracking — minus whatever is
+ *   already in `entryPreload`. So a hard request to a page preloads that page's JS with the document instead of
+ *   discovering it client-side after hydration. (Keyed by name, not route pattern, so concrete vs parameterized URLs
+ *   don't matter and we never have to stringify a Route0.)
  *
  * Public paths (leading `/`) so they drop straight into `href`.
  */
@@ -22,7 +23,7 @@ export type PreloadManifest = {
   entry: string | null
   /** The entry's transitive static-import closure (excluding the entry itself). */
   entryPreload: string[]
-  /** page point name → extra chunks to preload for that page (page + layouts closures, minus `entryPreload`). */
+  /** page point name → extra chunks to preload for that page (the page chunk's static closure, minus `entryPreload`). */
   byPoint: Record<string, string[]>
 }
 
@@ -239,7 +240,12 @@ function findChunkForSourceFile(graph: ChunkGraph, sourceFileVariants: string[])
   return null
 }
 
-/** A page point (by `name`) → the source files (the page module + its layout modules) whose chunks to preload for it. */
+/**
+ * A page point (by `name`) → its source file(s) whose chunks to preload for it. Normally a single entry — the page
+ * module's own source file; the array leaves room for a page that resolves to more than one source variant.
+ * `findChunkForSourceFile` accepts the variants. Layouts are NOT listed: the page statically imports them, so their
+ * chunks ride along in the page chunk's static closure.
+ */
 export type PagePreloadSources = { name: string; sourceFiles: string[] }
 
 /**
@@ -310,44 +316,6 @@ export function resolvePreloadsForPoint(manifest: PreloadManifest, pointName: st
 /** Render `<link rel="modulepreload">` tags for a list of chunk public paths. `crossorigin` matches the module script. */
 export function renderModulePreloadLinks(files: string[]): string {
   return files.map((href) => `<link rel="modulepreload" crossorigin href="${href}">`).join('')
-}
-
-/** One point entry parsed out of a points-aggregator module (the `points` source the engine actually imports). */
-export type ParsedAggregatorPoint = {
-  type: string
-  name: string
-  /** Layout point names this point composes (from its `layouts: [...]`). */
-  layoutNames: string[]
-  /** The lazy `import('…')` specifier of the point's module, or undefined for a statically-imported point. */
-  importSpec: string | undefined
-}
-
-/**
- * Best-effort parse of a points-aggregator module's text into per-point `{ type, name, layoutNames, importSpec }`.
- *
- * Targets the canonical generated lazy aggregator (`{ type, name, route, layouts, point: () => import('…') }`). Each
- * entry's body is bounded to the span up to the NEXT `type: '…', name: '…'` so a statically-imported point (no
- * `import('…')` in its body) yields `importSpec: undefined` instead of grabbing a neighbour's import — i.e. non-lazy
- * points degrade to "no per-point preload" rather than mis-mapping. A hand-written aggregator that doesn't match this
- * shape simply yields fewer/no entries (the feature falls back to the entry closure only). Consistent with how
- * {@link import('./server-hot-store.js').resolvePointsAggregatorAbs} parses the importer body by regex.
- */
-export function parseAggregatorPoints(content: string): ParsedAggregatorPoint[] {
-  const entryRe = /type:\s*'(\w+)'\s*,\s*name:\s*'([^']+)'\s*,([\s\S]*?)(?=type:\s*'\w+'\s*,\s*name:|$)/g
-  const layoutsRe = /layouts:\s*\[([^\]]*)\]/
-  const importRe = /import\(\s*['"]([^'"]+)['"]\s*\)/
-  const out: ParsedAggregatorPoint[] = []
-  for (const match of content.matchAll(entryRe)) {
-    const [, type, name, body = ''] = match
-    if (!type || !name) {
-      continue
-    }
-    const layoutsRaw = layoutsRe.exec(body)?.[1] ?? ''
-    const layoutNames = [...layoutsRaw.matchAll(/'([^']+)'/g)].map((m) => m[1]!).filter(Boolean)
-    const importSpec = importRe.exec(body)?.[1]
-    out.push({ type, name, layoutNames, importSpec })
-  }
-  return out
 }
 
 function toBunMetafileOrNull(value: unknown): BunMetafile | null {

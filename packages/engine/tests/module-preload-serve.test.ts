@@ -58,6 +58,20 @@ describe('preload', () => {
           `import { root } from './lib/root.js'
           export const otherPage = root.lets('page', 'other', '/other').page(() => <div id="probe">OTHER PAGE ONLY HERE</div>)`,
         )
+        // A layout used by exactly one page, and the page built ON it (the page module statically imports the layout —
+        // that's how a page is authored). The layout is its own lazy point (own chunk), but the page's STATIC import of
+        // it means the layout's code rides the page chunk's static closure — so it lands in byPoint WITHOUT us ever
+        // resolving the layout's source file. This is the case that justifies dropping explicit layout tracking.
+        await tp.write(
+          'src/special-layout.tsx',
+          `import { root } from './lib/root.js'
+          export const specialLayout = root.lets('layout', 'specialLayout').layout(({ children }) => <div id="special-layout-probe">{children}</div>)`,
+        )
+        await tp.write(
+          'src/withlayout.tsx',
+          `import { specialLayout } from './special-layout.js'
+          export const withLayoutPage = specialLayout.lets('page', 'withLayout', '/withlayout').page(() => <div id="probe">WITH LAYOUT PAGE</div>)`,
+        )
         await tp.generate()
         const bp = tp.spawn(['bun', 'run', 'build'])
         await bp.exited
@@ -77,7 +91,14 @@ describe('preload', () => {
         // 2) each lazy page got its own per-point preload set (its lazy chunk, which is never in the entry closure)
         expect(manifest.byPoint['home'].length).toBeGreaterThan(0)
         expect(manifest.byPoint['other'].length).toBeGreaterThan(0)
-        for (const chunk of [...manifest.entryPreload, ...manifest.byPoint['home']!, ...manifest.byPoint['other']!]) {
+        // the page with its own layout got a per-point set too (built from the page's source file alone)
+        expect(manifest.byPoint['withLayout'].length).toBeGreaterThan(0)
+        for (const chunk of [
+          ...manifest.entryPreload,
+          ...manifest.byPoint['home']!,
+          ...manifest.byPoint['other']!,
+          ...manifest.byPoint['withLayout']!,
+        ]) {
           expect(chunk).toMatch(/^\/.*\.js$/)
         }
         // chunks unique to /other (not shared with home or the entry closure) — must preload ONLY on /other
@@ -109,6 +130,18 @@ describe('preload', () => {
           expect(otherHtml).toContain(`<link rel="modulepreload" crossorigin href="${chunk}">`)
         }
         expect((otherHtml.match(/rel="modulepreload"/g) ?? []).length).toBe(expectedOther.length)
+
+        // 5) the layout's code is actually in the page's preload set — even though we never resolved the layout's
+        // source file. We feed buildPreloadManifest only the page's own file; the layout rides the page chunk's static
+        // closure. Whether the bundler keeps the layout as its own chunk or inlines it into the page chunk, its code
+        // ends up in byPoint['withLayout']. And it must NOT be in a page that doesn't use it.
+        const readChunks = async (chunks: string[]): Promise<string> =>
+          (await Promise.all(chunks.map(async (c) => (await tp.fetchServer(c)).text()))).join('\n')
+        const withLayoutHtml = await tp.fetchServerHtml('/withlayout')
+        expect(withLayoutHtml).toContain('WITH LAYOUT PAGE')
+        expect(withLayoutHtml).toContain('special-layout-probe') // SSR proves the layout is wired to the page
+        expect(await readChunks(manifest.byPoint['withLayout']!)).toContain('special-layout-probe')
+        expect(await readChunks(manifest.byPoint['home']!)).not.toContain('special-layout-probe')
       }),
       { timeout: 120000 },
     )

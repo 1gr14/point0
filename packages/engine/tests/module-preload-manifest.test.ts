@@ -5,7 +5,6 @@ import {
   chunkGraphFromBunMetafile,
   chunkGraphFromRollup,
   isModulePreloadDisabledByEnv,
-  parseAggregatorPoints,
   renderModulePreloadLinks,
   resolvePreloadsForPoint,
   shouldServeModulePreload,
@@ -153,61 +152,36 @@ describe('preload-manifest: helpers', () => {
   })
 })
 
-describe('preload-manifest: parseAggregatorPoints', () => {
-  // Mirrors the canonical generated lazy aggregator, plus a statically-imported point and a bare identifier entry.
-  const aggregator = `import type { PointsDefinition } from '@point0/core'
-import { root as root_0 } from '../../lib/root.js'
-import { staticPage } from '../../pages/static.js'
-export default [
-  root_0,
-  {
-    type: 'layout',
-    name: 'general',
-    route: undefined,
-    polh: false,
-    layouts: [],
-    point: async () => (await import('../../layouts/general.js')).generalLayout,
-  },
-  {
-    type: 'page',
-    name: 'home',
-    route: '/',
-    polh: false,
-    layouts: ['general'],
-    point: async () => (await import('../../pages/home.js')).homePage,
-  },
-  {
-    type: 'page',
-    name: 'staticPage',
-    route: '/s',
-    polh: false,
-    layouts: ['general'],
-    point: staticPage,
-  },
-  {
-    type: 'page',
-    name: 'about',
-    route: '/about',
-    polh: false,
-    layouts: [],
-    point: async () => (await import('../../pages/about.js')).aboutPage,
-  },
-]`
-
-  it('extracts type/name/layouts/importSpec for lazy points', () => {
-    const points = parseAggregatorPoints(aggregator)
-    const home = points.find((p) => p.name === 'home')
-    expect(home).toEqual({ type: 'page', name: 'home', layoutNames: ['general'], importSpec: '../../pages/home.js' })
-    const general = points.find((p) => p.name === 'general')
-    expect(general?.importSpec).toBe('../../layouts/general.js')
-  })
-
-  it('a statically-imported point yields importSpec undefined and does NOT grab a neighbour entry import', () => {
-    const points = parseAggregatorPoints(aggregator)
-    const staticPage = points.find((p) => p.name === 'staticPage')
-    expect(staticPage?.importSpec).toBeUndefined()
-    // the next entry keeps its own import (no cross-entry bleed)
-    expect(points.find((p) => p.name === 'about')?.importSpec).toBe('../../pages/about.js')
+describe('preload-manifest: layouts ride the page static closure (no explicit layout tracking)', () => {
+  it("a page that statically imports a separately-chunked layout preloads the layout chunk via the page's closure", () => {
+    // Mirrors the real shape: the layout is its OWN chunk (it's a dynamic-import entry from the aggregator), AND the
+    // page chunk STATICALLY imports it (a page is authored as `generalLayout.lets('page', …)`, so it imports the
+    // layout module). That static edge means staticClosure(pageChunk) already contains the layout chunk — so we feed
+    // buildPreloadManifest ONLY the page's source file and still get the layout chunk in byPoint. This is why
+    // PagePreloadSources carries no layout files.
+    const graph: ChunkGraph = {
+      entryFile: '/entry.js',
+      chunks: {
+        '/entry.js': { staticImports: [], dynamicImports: ['/page-home.js', '/layout-general.js'], inputs: [] },
+        '/page-home.js': {
+          staticImports: ['/layout-general.js'],
+          dynamicImports: [],
+          entryPoint: '/abs/src/pages/home.tsx',
+          inputs: ['/abs/src/pages/home.tsx'],
+        },
+        '/layout-general.js': {
+          staticImports: [],
+          dynamicImports: [],
+          entryPoint: '/abs/src/layouts/general.tsx',
+          inputs: ['/abs/src/layouts/general.tsx'],
+        },
+      },
+    }
+    const manifest = buildPreloadManifest({
+      graph,
+      pages: [{ name: 'home', sourceFiles: ['/abs/src/pages/home.tsx'] }],
+    })
+    expect(manifest.byPoint['home']!.sort()).toEqual(['/layout-general.js', '/page-home.js'])
   })
 })
 
