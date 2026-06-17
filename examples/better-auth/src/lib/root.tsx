@@ -1,5 +1,6 @@
 import { authServer } from '@/lib/auth/server'
-import { AppError, ErrorComponent } from '@/lib/error'
+import { AppError } from '@/lib/error'
+import { ErrorComponent } from '@/ui/error'
 import { basicAuth } from '@point0/basic-auth'
 import { Point0 } from '@point0/core'
 import { zodSchemaHelper } from '@point0/core/schema/zod'
