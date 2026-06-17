@@ -1,6 +1,5 @@
 node_modules/
 dist/
-src/generated/prisma
-src/generated/point0/meta.ts
+src/generated
 dev.db
 .DS_Store

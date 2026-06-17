@@ -29,12 +29,16 @@ bun run setup    # generate the Prisma client in examples + the create-app templ
 - **`bun run setup` (root) is codegen-only — needed before `bun run types`
   (tsgo) / `bun run types:6` (tsc).** The example apps + the create-app template
   (`packages/create-app/template`, package `my-app`) are workspace packages, so
-  `bun --filter '**' types` typechecks them, but their Prisma client
-  (`src/generated/prisma`) is gitignored. The root `setup` (`scripts/setup.ts`)
-  copies `env.example`→`.env` for any app missing one (the template) and runs
-  `prisma generate` across the workspace — no DB / migrate / seed. (Distinct
-  from each app's own `setup` script, which does the full migrate + seed to
-  actually _run_ it.) CI runs it after `build`, before typecheck.
+  `bun --filter '**' types` typechecks them, but their whole `src/generated` is
+  gitignored — the Prisma client (`src/generated/prisma`) **and** point0's
+  generated points/routes/assets (`src/generated/point0`). The root `setup`
+  (`scripts/setup.ts`) copies `env.example`→`.env` for any app missing one (the
+  template) and runs **both** `prisma generate` and `point0 generate`
+  (`bun --filter '**' generate`) across the workspace — no DB / migrate / seed.
+  (Distinct from each app's own `setup` script, which does the full migrate +
+  seed to actually _run_ it.) CI runs it after `build`, before typecheck. (The
+  one exception is `examples/expo`, which has no `generate` script and keeps its
+  `points.server.ts` committed.)
 
 After this first build, keep `bun run build:watch` running and follow the normal
 golden-rule workflow (no manual rebuilds _in the main checkout_ — in a worktree
