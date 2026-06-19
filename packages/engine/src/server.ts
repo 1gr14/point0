@@ -577,6 +577,9 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     requiredCtx,
     ..._providedServeConfig
   }: { requiredCtx?: RequiredCtx } & Partial<Serve.Options<any, any>> = {}): Promise<void> {
+    // Captured at the very top so a re-serve (vite HMR re-runs the app entry → serve() again in the SAME process) can
+    // report just THIS (re)start's cost rather than the whole process uptime. See the duration calc after Bun.serve.
+    const serveStartedAt = performance.now()
     if (!this.isPrepared()) {
       throw new Error('Server is not prepared')
     }
@@ -685,23 +688,35 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     registerOnProcessExit(() => {
       void this.bunServer?.stop()
     })
-    const inMessage = !process.env.POINT0_SERVER_REGISTERED_PROCESS_UPTIME
-      ? ` in ${Math.ceil(process.uptime() * 1000)}ms`
-      : ''
+    // Startup duration. `performance.now()` is process-relative (origin = process start), so the FIRST serve in a process
+    // already measures the full boot — bun startup + imports + prepare + bind — the meaningful number for a freshly
+    // spawned server (the bun-native dev child is respawned per restart; `point0 start` runs once). The vite dev server
+    // is the exception: it re-runs the app entry (and thus this serve()) IN THE SAME long-lived process on every HMR
+    // (the entry self-accepts via import.meta.hot — see loadViteDevEntry), so process-relative time would keep growing
+    // from the orchestrator's start — the old `process.uptime()` bug, which the removed env flag merely HID by dropping
+    // the suffix on re-serves. Once we've served at least once in this process, switch to the per-call anchor and report
+    // only this (re)start's cost. The flag is process-global (env, not an instance field) because each HMR re-execution
+    // builds a fresh Engine — an instance field would reset to "first" on every reload.
+    const isFirstServeInProcess = process.env.POINT0_SERVER_STARTED_IN_PROCESS !== 'true'
+    process.env.POINT0_SERVER_STARTED_IN_PROCESS = 'true'
+    const startedInMs = Math.ceil(isFirstServeInProcess ? performance.now() : performance.now() - serveStartedAt)
     this.log({
       level: 'info',
       category: ['server'],
-      message: `Server started http://localhost:${this.port}${inMessage}`,
+      message: `Server started http://localhost:${this.port} in ${startedInMs}ms`,
     })
-    if (!process.env.POINT0_SERVER_REGISTERED_PROCESS_UPTIME) {
-      process.env.POINT0_SERVER_REGISTERED_PROCESS_UPTIME = process.uptime().toString()
-    }
   }
 
   async dispose(options?: { closeViteDevServer?: boolean }): Promise<void> {
     const { closeViteDevServer = false } = options ?? {}
     if (this.bunServer) {
       await this.bunServer.stop()
+      // Clear the reference so a following serve() re-binds. The vite dev server re-runs the app entry in-process on
+      // every HMR (import.meta.hot.dispose → engine.dispose() → here, then the re-run calls engine.serve() again); if we
+      // left `bunServer` set, that serve() would hit its `if (this.bunServer) return` guard and the server would stay
+      // stopped (the client's proxy then 502s forever). The proxy already retries connection-refused quietly across the
+      // brief re-bind gap (see fetchRetryingConnectionRefused).
+      this.bunServer = undefined
     }
     if (closeViteDevServer && this.viteDevServer) {
       // we do not close it by default, becouse it should alway persist for hot reloads

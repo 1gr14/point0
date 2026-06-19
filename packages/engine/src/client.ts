@@ -559,7 +559,7 @@ try {
   engine.log({
     level: 'info',
     category: ['client'],
-    message: \`Client started http://localhost:${this.port} in \${Math.ceil(process.uptime() * 1000)}ms\`,
+    message: \`Client started http://localhost:${this.port} in \${Math.ceil(performance.now())}ms\`,
   })
 } catch (error) {
   engine.log({
@@ -726,7 +726,10 @@ try {
     if (!this.viteConfig) {
       throw new Error(`Vite config not found for client "${this.scope}"`)
     }
-    const startingAt = new Date().getTime().toString()
+    // Per-call anchor (NOT process-relative): the vite client shares this long-lived process with the vite server, which
+    // already reports the full process boot in its own "Server started in …ms". Measuring from here reports just the
+    // client's own incremental start (createViteDevServer + bind) instead of double-counting the shared boot.
+    const startingAt = performance.now()
     this.log({
       level: 'info',
       category: ['client'],
@@ -797,12 +800,11 @@ try {
     registerOnProcessExit(() => {
       void bunViteDevServer.stop()
     })
-    const startingDurationMs = Math.round(new Date().getTime() - parseInt(startingAt))
-    const startingDurationMsMessage = ` in ${startingDurationMs}ms`
+    const startingDurationMs = Math.ceil(performance.now() - startingAt)
     this.log({
       level: 'info',
       category: ['client'],
-      message: `Client started http://localhost:${this.port}${startingDurationMsMessage}`,
+      message: `Client started http://localhost:${this.port} in ${startingDurationMs}ms`,
     })
     return { bunViteDevServer, viteDevServer }
   }

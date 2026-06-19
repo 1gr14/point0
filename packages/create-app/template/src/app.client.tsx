@@ -15,7 +15,7 @@ export default function App() {
           {/* Any other global head tags go here. You can also set them per page via `.head(...)` on each point. */}
         </Head>
         <Router>
-          {/* <RouterRoutes /> alone is enough. If you need router context, wrap it with providers or add other components here. */}
+          {/* <Router /> alone is enough. If you need router context, wrap it with providers or add other components here. */}
           <RouterRoutes />
         </Router>
       </UnheadProvider>
