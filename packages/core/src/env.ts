@@ -652,7 +652,16 @@ type BuildDefineWithHelpers = {
   <TBefore, TAfter>(options: { before: TBefore; after: TAfter }): TBefore | TAfter
 }
 
-const getBuildWas = (): boolean => false
+// `build.was` is the one env flag that isn't derivable from the runtime on its own: the source default is `false`, and
+// the app's build makes it `true` by having the compiler statically rewrite every `_point0_env.build.was` access (and
+// `env.build.define(...)`) to a literal. The default server build bundles `@point0/*`, so the compiler reaches this and
+// the rewrite happens — in a bundled build this getter is dead code.
+//
+// But if a consumer leaves `@point0/*` EXTERNAL (e.g. `bunBuildConfig: { packages: 'external' }`), the framework's own
+// `build.was` accesses are never compiled, so this getter is what runs. Falling back to a runtime read of
+// `POINT0_BUILT` (the built server's entry banner sets it) keeps an externalized engine working — otherwise `build.was`
+// stays `false`, the engine assumes it's un-built, loads points from source at runtime, and serves nothing.
+const getBuildWas = (): boolean => process.env.POINT0_BUILT === 'true'
 
 const buildDefine = (<TBefore, TAfter>(options: { before?: TBefore; after?: TAfter }) => {
   if (getBuildWas()) {

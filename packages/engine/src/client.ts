@@ -698,7 +698,7 @@ try {
       this.log({
         level: 'info',
         category: ['client'],
-        message: `New file "${nodePath.relative(this.cwd, resolvedFile)}" detected — restarting client...`,
+        message: `New file "${nodePath.relative(this.cwd, resolvedFile)}" detected, restarting client...`,
       })
       try {
         oldChild.kill()
