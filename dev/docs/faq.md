@@ -8,7 +8,7 @@ them. These are deliberate, not accidents — don't "fix" them in a refactor.
 Because it reads as **"let's build one"** — and `.lets` returns a **builder**,
 not a finished thing.
 
-You start with `.lets` ("давай сделаем…"), chain the builder methods, and finish
+You start with `.lets` ("let's make…"), chain the builder methods, and finish
 with the kind you're making: `.page()`, `.query()`, `.component()`, … So the
 call literally narrates the act of building: _let's_ make → … → _made_ a page.
 The verb you open with (`lets`) is mirrored by the kind you close with.

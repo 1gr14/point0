@@ -101,7 +101,7 @@ Apps do NOT have a main `preload = [...]` in bunfig anymore (only `[test]`).
   export {} // only dynamic imports here — the order matters; this marks the file as a module for TS
   ```
 
-- `src/preload.ts` — no guards, no conditions ("вызвали — значит вызвали"):
+- `src/preload.ts` — no guards, no conditions ("called means called"):
 
   ```ts
   import { engine } from './engine'

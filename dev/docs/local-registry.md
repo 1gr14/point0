@@ -1,10 +1,10 @@
 # Local registry — running unpublished point0 in another project
 
-To use a local point0 build in a real project (the игрич site, start0, a scratch
-app) before the packages are on npm, point0 serves its `@point0/*` packages from
-a throwaway local npm registry (Verdaccio). The consumer installs them exactly
-like the real thing — real version ranges, real install path, peer deps resolved
-from the consumer (no symlinked second React).
+To use a local point0 build in a real project (the igrich site, start0, a
+scratch app) before the packages are on npm, point0 serves its `@point0/*`
+packages from a throwaway local npm registry (Verdaccio). The consumer installs
+them exactly like the real thing — real version ranges, real install path, peer
+deps resolved from the consumer (no symlinked second React).
 
 This works because every `@point0/*` `package.json` carries **materialized**
 real versions (no `catalog:` / `workspace:*`), so what Verdaccio serves is
@@ -44,7 +44,7 @@ and depend on the packages with normal ranges (not `file:`):
 then `bun install`. Only `@point0/*` is routed to localhost; every other dep
 still comes from the real npm registry.
 
-> In **игрич** and **start0** this is automated by `bun install-point0.js` — it
+> In **igrich** and **start0** this is automated by `bun install-point0.js` — it
 > writes the gitignored `.npmrc`, force-reinstalls `@point0/*`, and restores the
 > gitignored worktree bits (`.env*`, Prisma client). Run
 > `bun run local-registry` in point0 first.

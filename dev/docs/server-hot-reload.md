@@ -392,7 +392,7 @@ propagated from cold roots along static-import edges and halted at lazy
   `--hot` working on a real app (Prisma client + engine config externalize
   themselves) without forcing the user to hand-mark every generated/infra file.
   An explicit `@point0/core/cold` marker still works and is preferred when you
-  _want_ a subtree cold deliberately. **Proven in exp9 + the игрич site:**
+  _want_ a subtree cold deliberately. **Proven in exp9 + the igrich site:**
   Prisma's client externalizes (whether marked or auto) → store builds with **0
   misses**.
 - **Client dev is unaffected** — separate path; this is server-only.

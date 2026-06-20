@@ -28,7 +28,7 @@ Scope of the breakage — it is specific to the **two-hosts vite topology**:
 - vite bundler, two clients on the **same host with basePaths**
   (`serve two ssr clients on same host but different basePaths`): **passes**;
 - vite bundler, two **hosts**: hangs, deterministically (all 4 retry attempts,
-  репродуцируется и в изоляции).
+  reproduces in isolation too).
 
 ## What was verified (2026-06-11)
 

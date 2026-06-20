@@ -1,12 +1,12 @@
 # point0 — launch plan & versioning/local-install design
 
-The plan to take point0 public and stand игрич + start0 on top of it, plus the
+The plan to take point0 public and stand igrich + start0 on top of it, plus the
 record of the versioning + local-install refactor done in prep. Cross-repo:
-point0 (`~/cc/opensource/1gr14/point0`), игрич (`~/cc/projects/1gr14`), start0
+point0 (`~/cc/opensource/1gr14/point0`), igrich (`~/cc/projects/1gr14`), start0
 (`~/cc/projects/start0`).
 
-**Sequencing:** point0 → npm (private week) → игрич on Railway → point0 public →
-start0 first release.
+**Sequencing:** point0 → npm (private week) → igrich on Railway → point0 public
+→ start0 first release.
 
 > **⚠️ Release tooling — UPDATED.** We dropped semantic-release **and**
 > changesets: both fight a lockstep + 0.x + caret-peer-deps monorepo (they
@@ -26,7 +26,7 @@ start0 first release.
 > `publish.ts`): **`next` → prerelease `x.y.z-next.N`, dist-tag `next`, token
 > auth**; **`main` → stable `x.y.z`, dist-tag `latest`, OIDC + provenance**.
 > Private week: publish ONLY from `next` (publish job is `next`-only) so the
-> stable `0.1.0` can never be burned early; игрич/start0 install via the `next`
+> stable `0.1.0` can never be burned early; igrich/start0 install via the `next`
 > dist-tag. Launch: cut stable from `main` (`bun run release stable`), switch
 > the publish job to `main` + OIDC. A `-next` build physically cannot reach
 > `latest`.
@@ -99,7 +99,7 @@ start0 first release.
 - **`bunfig.toml`** — `linkWorkspacePackages = true`.
 - **`scripts/local-registry.ts`** + `bun run local-registry` — Verdaccio on
   :4873, wiped temp storage, builds, publishes all 8, keeps serving.
-- **Consumers (игрич + start0)** — `@point0/*` swapped from `file:` tarballs to
+- **Consumers (igrich + start0)** — `@point0/*` swapped from `file:` tarballs to
   `^0.1.0`; `install-point0.js` rewritten for the Verdaccio flow (writes
   gitignored `.npmrc`, force-reinstalls `@point0/*`, keeps env/prisma bits, no
   build/pack); `.npmrc` gitignored in both.
@@ -178,7 +178,7 @@ compiler so the published `.d.ts` resolves for consumers.
 - Buy npm Pro ($7) on the `@point0` owner.
 - Publish all 8 privately via the `next` prerelease channel (don't burn stable
   versions): classic token, provenance off → `x.y.z-next.N`.
-- игрич: depend on the published private versions; on Railway add a granular
+- igrich: depend on the published private versions; on Railway add a granular
   **read-only** npm token (env + `.npmrc`). Deploy.
 - start0: same, or stay on the local registry until launch.
 
@@ -192,7 +192,7 @@ compiler so the published `.d.ts` resolves for consumers.
   provenance (flipping already-published private versions to public would lack
   provenance — it's attached at publish time).
 - Open all 8 at once (a private dep under a public package breaks installs).
-- игрич: repoint to the stable range, drop the Railway read-token, redeploy.
+- igrich: repoint to the stable range, drop the Railway read-token, redeploy.
 
 ### After — start0 first release (gated on public point0)
 
