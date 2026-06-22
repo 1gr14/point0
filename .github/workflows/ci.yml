@@ -38,9 +38,15 @@ jobs:
 
       # Build must precede typecheck: examples/template resolve `@point0/*` via their built `dist/` (exports.types),
       # and `setup` (Prisma client + template `.env`) is required or example/template typecheck fails on the gitignored
-      # generated client. Minimal ordering fix — to be refined later.
+      # generated client.
       - name: Build
         run: bun run build
+
+      # Re-link workspace bins now that `@point0/engine/dist/cli.js` exists. On a fresh install the `point0` bin target
+      # is gitignored/unbuilt, so bun skips the `.bin/point0` symlink entirely — `setup`'s `point0 generate` then fails
+      # with "point0: command not found". A second frozen install changes no deps; it just creates the now-resolvable bin.
+      - name: Link freshly built workspace bins
+        run: bun install --frozen-lockfile
 
       - name: Setup (Prisma client + template env for typecheck)
         run: bun run setup
