@@ -509,11 +509,15 @@ export class Point0<
     //   React.createElement('pre', null, !isHydrated ? null : JSON.stringify(json, null, 2)),
     //   React.createElement('pre', null, !isHydrated ? null : (stack as string | undefined) || error.stack || ''),
     // )
+    // Show the stack to the developer in dev only. Never fall back to the live `error.stack` in production — the public
+    // projection above omits it on purpose, and rendering it would bake the server stack into the SSR HTML the client
+    // receives. No stack to show → render nothing rather than an empty <pre>.
+    const stackToShow = _point0_env.mode.is.production ? undefined : (stack as string | undefined) || error.stack
     return React.createElement(
       React.Fragment,
       null,
       React.createElement('pre', null, JSON.stringify(json, null, 2)),
-      React.createElement('pre', null, (stack as string | undefined) || error.stack || ''),
+      stackToShow ? React.createElement('pre', null, stackToShow) : null,
     )
   }
   private readonly _layoutErrorComponent: ErrorComponentType<any, TError> | undefined
