@@ -122,7 +122,7 @@ Inside an example: `bun run dev | build | start | generate`.
   declaring a task done (and before any commit), check whether the change
   affected anything the user-facing docs cover — a method, an option, a CLI
   command, an endpoint, observable behavior, the compiler's strip categories. If
-  so, update the matching `docs/<category>/<slug>.md` page **and** its JSDoc (they
-  must stay in sync), and re-check the `<!-- TODO(...) -->` markers. How the docs
-  are structured and written: [dev/docs/docs.md](dev/docs/docs.md); the open
-  backlog: [dev/backlog/docs-todo.md](dev/backlog/docs-todo.md).
+  so, update the matching `docs/<category>/<slug>.md` page **and** its JSDoc
+  (they must stay in sync), and re-check the `<!-- TODO(...) -->` markers. How
+  the docs are structured and written: [dev/docs/docs.md](dev/docs/docs.md); the
+  open backlog: [dev/backlog/docs-todo.md](dev/backlog/docs-todo.md).

@@ -26,7 +26,7 @@ describe('PointsManager', () => {
     })
 
     it('throws PointsSourceNotReadyError when the module namespace has no default yet', async () => {
-      const source = async () => ({} as never)
+      const source = async () => ({}) as never
       await expect(PointsManager.createFromSource(source)).rejects.toBeInstanceOf(PointsSourceNotReadyError)
     })
   })

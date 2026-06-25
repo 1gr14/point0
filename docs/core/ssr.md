@@ -1,15 +1,17 @@
 ---
 index: 200
 title: SSR
-description: Server-render a page by fetching its queries on the server, then ship the HTML with the data already in the cache.
+description:
+  Server-render a page by fetching its queries on the server, then ship the HTML
+  with the data already in the cache.
 ---
 
 With SSR on, a page is rendered on the server with its data already loaded, so
-the browser gets real HTML on the first response — not an empty shell that fetches
-afterward. Point0 does this without you marking anything: it renders the page,
-finds the queries it tried to run, fetches them on the server, and re-renders
-until nothing is left pending. Then it ships the HTML plus a dehydrated query
-cache, and the page hydrates into the normal SPA.
+the browser gets real HTML on the first response — not an empty shell that
+fetches afterward. Point0 does this without you marking anything: it renders the
+page, finds the queries it tried to run, fetches them on the server, and
+re-renders until nothing is left pending. Then it ships the HTML plus a
+dehydrated query cache, and the page hydrates into the normal SPA.
 
 ```ts
 // engine.ts
@@ -17,7 +19,9 @@ import { Engine } from '@point0/engine'
 
 export const engine = Engine.create({
   ssr: true, // server-render pages; off unless you turn it on
-  clients: [/* ... */],
+  clients: [
+    /* ... */
+  ],
 })
 ```
 
@@ -35,7 +39,7 @@ needs" — Point0 learns it by rendering:
    the render started but couldn't resolve synchronously.
 3. Fetch those queries on the server (their loaders run here, with your server
    code).
-4. Render again. Now those queries resolve from cache, which may reveal *new*
+4. Render again. Now those queries resolve from cache, which may reveal _new_
    pending queries deeper in the tree.
 5. Repeat until a render adds no new pending queries.
 
@@ -56,11 +60,11 @@ data dependencies up front.
 
 And if you don't want to pay it, you don't have to. The re-renders are a
 convenience, not a tax: tell Point0 up front what a page needs — with
-[`.onPrefetchPage`](#onprefetchpage) or `prefetchBeforePageRender` (both below) —
-and the first render already has the data, so the loop settles in a single pass.
-So there are two comfortable modes: **convenient but with re-renders** (write
-nothing, let the loop discover), or **a little extra work and zero re-renders**
-(declare the data once). Pick per page.
+[`.onPrefetchPage`](#onprefetchpage) or `prefetchBeforePageRender` (both below)
+— and the first render already has the data, so the loop settles in a single
+pass. So there are two comfortable modes: **convenient but with re-renders**
+(write nothing, let the loop discover), or **a little extra work and zero
+re-renders** (declare the data once). Pick per page.
 
 Two things the loop deliberately does **not** do:
 
@@ -79,13 +83,13 @@ prepares that dehydrated superstore — which carries the query cache — then c
 React's `hydrateRoot` over the existing markup. From there the page is a normal
 SPA — navigations no longer hit the server for HTML.
 
-A page that started life as a bare `index.html` and fetched on the client ends up
-identical to its SSR'd version. SSR changes *when* the data arrives (with the
+A page that started life as a bare `index.html` and fetched on the client ends
+up identical to its SSR'd version. SSR changes _when_ the data arrives (with the
 HTML vs. after a client fetch), not the final result.
 
-When the server render throws (anything that isn't a [redirect](navigation)), the
-engine falls back to serving the bare `index.html` with the error attached — the
-page still loads as an SPA instead of 500-ing.
+When the server render throws (anything that isn't a [redirect](navigation)),
+the engine falls back to serving the bare `index.html` with the error attached —
+the page still loads as an SPA instead of 500-ing.
 
 > **Security:** server-only code (loader bodies, secrets, DB calls) is cut from
 > the client bundle — its body and the imports it uses are removed at compile
@@ -104,18 +108,18 @@ client (the classic SPA):
 export const engine = Engine.create({ ssr: false })
 ```
 
-With `ssr: false` the **server-ssr-and-client** render methods
-(`.page` / `.layout` / `.component` / `.provider`, the `.loading` and `.error`
-families, `.wrapper`, `.with`, `.mapper`, `.head`) are cut from the server bundle
-— their bodies and the imports they use are removed from the server build, since
-there's no server render to keep them around for; they stay in the client build.
-(Of the four strip categories, only this one tracks the SSR flag: server-only and
+With `ssr: false` the **server-ssr-and-client** render methods (`.page` /
+`.layout` / `.component` / `.provider`, the `.loading` and `.error` families,
+`.wrapper`, `.with`, `.mapper`, `.head`) are cut from the server bundle — their
+bodies and the imports they use are removed from the server build, since there's
+no server render to keep them around for; they stay in the client build. (Of the
+four strip categories, only this one tracks the SSR flag: server-only and
 client-only code is cut the same way with SSR on or off, and server-and-client
 code is never stripped.)
 
 You can also opt **one point** out while SSR is globally on, with
-[`.clientOnly`](mountable) — it forces that point to client-only render and shows
-an optional fallback during SSR:
+[`.clientOnly`](mountable) — it forces that point to client-only render and
+shows an optional fallback during SSR:
 
 ```tsx
 export const ChartPage = root.lets
@@ -137,33 +141,33 @@ export const ChartPage = root.lets
 `.clientOnly()` makes the rest of the point's chain client-only — exactly as if
 `ssr: false` applied to this one point. It targets one of the four strip
 categories: the **server-ssr-and-client** render methods. After `.clientOnly()`
-(or globally, with `ssr: false`) those are **cut from the server bundle** — their
-bodies and the imports they use are removed from the server build, kept in the
-client build always and in the server build only when SSR is on. So a browser-only
-library you reach for in them never lands in the server build, and never executes
-during SSR. The full set: `.page` / `.layout` / `.component` / `.provider`;
-`.loading` (and `.pageLoading` / `.layoutLoading` / `.componentLoading`); `.error`
-(and `.pageError` / `.layoutError` / `.componentError`); `.wrapper`; `.with`;
-`.mapper`; `.head`.
+(or globally, with `ssr: false`) those are **cut from the server bundle** —
+their bodies and the imports they use are removed from the server build, kept in
+the client build always and in the server build only when SSR is on. So a
+browser-only library you reach for in them never lands in the server build, and
+never executes during SSR. The full set: `.page` / `.layout` / `.component` /
+`.provider`; `.loading` (and `.pageLoading` / `.layoutLoading` /
+`.componentLoading`); `.error` (and `.pageError` / `.layoutError` /
+`.componentError`); `.wrapper`; `.with`; `.mapper`; `.head`.
 
 The other three categories are unaffected by `.clientOnly()` / `ssr: false`.
 **server-only** methods before it (`.ctx`, a server `.loader`, `.input`, …) stay
-cut from the client bundle either way — their bodies and imports never ship to the
-browser (they run on the server as usual); **client-only** methods
-(`.clientLoader`, `.onPrefetchPage`, …) stay cut from the server bundle —
-body and imports removed regardless of SSR; and **server-and-client** methods
+cut from the client bundle either way — their bodies and imports never ship to
+the browser (they run on the server as usual); **client-only** methods
+(`.clientLoader`, `.onPrefetchPage`, …) stay cut from the server bundle — body
+and imports removed regardless of SSR; and **server-and-client** methods
 (closers like `.query`, the `*QueryOptions` setters, `.relatedQuery`, …) are cut
 from neither bundle — kept in both (isomorphic). `.clientOnly()` only
-client-restricts what *renders*, not what loads.
+client-restricts what _renders_, not what loads.
 
 ## Tuning the loop
 
-The discover loop is comfortable, but every re-render is a render you paid for. If
-a page's data is predictable, you can tell Point0 what it needs **before** the
-first render and collapse the loop to a single pass.
+The discover loop is comfortable, but every re-render is a render you paid for.
+If a page's data is predictable, you can tell Point0 what it needs **before**
+the first render and collapse the loop to a single pass.
 
-The escape hatch is [`.onPrefetchPage`](#onprefetchpage): a hook where you warm up
-the cache yourself. Take a page that loads a query the loop would otherwise
+The escape hatch is [`.onPrefetchPage`](#onprefetchpage): a hook where you warm
+up the cache yourself. Take a page that loads a query the loop would otherwise
 discover on a second pass — declare it in `.onPrefetchPage` instead:
 
 ```tsx
@@ -183,22 +187,23 @@ round-trip.
 
 Two things make this hook pull its weight:
 
-- **It runs on both sides.** The same `.onPrefetchPage` runs on the server (during
-  SSR) and on the client (when you navigate to the page). You write the prefetch
-  once and it covers the first load and every client-side navigation.
-- **On the client it doesn't cost an HTTP round-trip just to "be on the client".**
-  A `prefetchQuery`/`fetchQuery` on a point's loader goes over the network on the
-  client only because the loader is server code; that's expected. But there's no
-  duplicate hop on the server — during SSR the same call resolves **in-process
-  through `engine.fetch()`**, not by Point0 making an HTTP request back to itself.
-  The point's `fetch` is wired straight into the engine.
+- **It runs on both sides.** The same `.onPrefetchPage` runs on the server
+  (during SSR) and on the client (when you navigate to the page). You write the
+  prefetch once and it covers the first load and every client-side navigation.
+- **On the client it doesn't cost an HTTP round-trip just to "be on the
+  client".** A `prefetchQuery`/`fetchQuery` on a point's loader goes over the
+  network on the client only because the loader is server code; that's expected.
+  But there's no duplicate hop on the server — during SSR the same call resolves
+  **in-process through `engine.fetch()`**, not by Point0 making an HTTP request
+  back to itself. The point's `fetch` is wired straight into the engine.
 
-Warming the queries this way is what removes the data-discovery passes. A separate
-source of re-renders is store/cookie stabilization, which you cap independently
-with `allowedRerendersCount` (below) — set it to `0` to also stop those.
+Warming the queries this way is what removes the data-discovery passes. A
+separate source of re-renders is store/cookie stabilization, which you cap
+independently with `allowedRerendersCount` (below) — set it to `0` to also stop
+those.
 
-Pass an object instead of a boolean to tune the re-render loop. The object form is
-**SSR on** unless you set `enabled: false`:
+Pass an object instead of a boolean to tune the re-render loop. The object form
+is **SSR on** unless you set `enabled: false`:
 
 ```ts
 export const engine = Engine.create({
@@ -212,7 +217,7 @@ export const engine = Engine.create({
 
 ### prefetchBeforePageRender
 
-By default the loop *discovers* queries by rendering. With
+By default the loop _discovers_ queries by rendering. With
 `prefetchBeforePageRender: true`, Point0 first prefetches the page and its
 layouts declaratively — running their [`.onPrefetchPage`](#onprefetchpage) hooks
 and server queries, with inputs derived from the route — **before** the first
@@ -231,13 +236,15 @@ Default `false`.
 ### allowedRerendersCount (soft cap)
 
 A budget on the SsrStore/cookie **stabilization** re-renders. Once this many of
-those passes happen, the loop **stops quietly** — no error, it just uses the last
-render. Default `Infinity` (re-render until stable). Set it to `0` or `1` to opt
-out of the stabilization re-renders that an [SsrStore](ssr-store) or cookie write
-would otherwise trigger:
+those passes happen, the loop **stops quietly** — no error, it just uses the
+last render. Default `Infinity` (re-render until stable). Set it to `0` or `1`
+to opt out of the stabilization re-renders that an [SsrStore](ssr-store) or
+cookie write would otherwise trigger:
 
 ```ts
-ssr: { allowedRerendersCount: 0 } // never re-render just to settle a store/cookie
+ssr: {
+  allowedRerendersCount: 0
+} // never re-render just to settle a store/cookie
 ```
 
 When the soft cap is hit, any staged `SsrStore` change from the last render is
@@ -261,15 +268,15 @@ If both caps are set, the hard cap is checked first.
 > with the final pass count, so you can eyeball how many re-renders a page took
 > straight from the network tab. It's not set in production.
 >
-> For anything beyond eyeballing, read the count in code: [`request.renders`](request)
-> holds the pass count for the current request, in dev **and** production. From a
-> [middleware](middleware) you can log it, alert on pages that re-render too much,
-> or feed it into metrics — it's a real number on every request, not just a
-> debug header.
+> For anything beyond eyeballing, read the count in code:
+> [`request.renders`](request) holds the pass count for the current request, in
+> dev **and** production. From a [middleware](middleware) you can log it, alert
+> on pages that re-render too much, or feed it into metrics — it's a real number
+> on every request, not just a debug header.
 
 ## Prefetch policies
 
-The loop above is the *first* load. Once the SPA is running, **navigations** no
+The loop above is the _first_ load. Once the SPA is running, **navigations** no
 longer ask the server for HTML — instead Point0 prefetches the next page's data
 before it swaps the view, so the page appears already filled in. The **policy**
 decides what "prefetch its data" means, and the policies differ in one key way:
@@ -278,16 +285,17 @@ decides what "prefetch its data" means, and the policies differ in one key way:
 That distinction is where the old framing goes wrong, so be precise about it:
 
 - With **`pageDehydratedStateAndClientQuery`** (and `pageDehydratedState`) the
-  server *does* render the page — in memory, to discover and resolve its queries.
-  It just doesn't send back HTML; it sends back the **dehydrated query cache**,
-  which the client drops into its own cache. A real server render happens, it's
-  the most thorough policy, and it's the most expensive one.
-- With **`serverAndClientQuery`** there is **no server render at all**. The client
-  looks at the queries declared on the target page and its layouts and calls them
-  directly. Cheaper, but it only sees queries that are visible without rendering.
+  server _does_ render the page — in memory, to discover and resolve its
+  queries. It just doesn't send back HTML; it sends back the **dehydrated query
+  cache**, which the client drops into its own cache. A real server render
+  happens, it's the most thorough policy, and it's the most expensive one.
+- With **`serverAndClientQuery`** there is **no server render at all**. The
+  client looks at the queries declared on the target page and its layouts and
+  calls them directly. Cheaper, but it only sees queries that are visible
+  without rendering.
 
-Policies are a [navigation](navigation) topic; here is the SSR-relevant gist. Set
-a policy on the [root](root) (the usual place) for both triggers, or per
+Policies are a [navigation](navigation) topic; here is the SSR-relevant gist.
+Set a policy on the [root](root) (the usual place) for both triggers, or per
 [`<Link>`](navigation) / [`navigate`](navigation):
 
 ```tsx
@@ -299,15 +307,15 @@ export const root = Point0.lets
 
 The policy values, cheapest to most thorough:
 
-| Policy                                | What it does                                                  |
-| ------------------------------------- | ------------------------------------------------------------ |
-| `'none'` / `false`                    | no prefetch — the page loads its data after navigation       |
-| `'onPrefetchOnly'`                    | run only the `.onPrefetchPage` hooks                         |
-| `'serverQuery'`                       | prefetch the page/layout **server** queries it can see       |
-| `'clientQuery'`                       | prefetch the page/layout **client** queries                  |
-| `'serverAndClientQuery'`              | prefetch whichever loader each point has — **no render**     |
-| `'pageDehydratedState'`               | server **renders** the page in memory, returns the cache     |
-| `'pageDehydratedStateAndClientQuery'` | the above, plus the client loaders                           |
+| Policy                                | What it does                                             |
+| ------------------------------------- | -------------------------------------------------------- |
+| `'none'` / `false`                    | no prefetch — the page loads its data after navigation   |
+| `'onPrefetchOnly'`                    | run only the `.onPrefetchPage` hooks                     |
+| `'serverQuery'`                       | prefetch the page/layout **server** queries it can see   |
+| `'clientQuery'`                       | prefetch the page/layout **client** queries              |
+| `'serverAndClientQuery'`              | prefetch whichever loader each point has — **no render** |
+| `'pageDehydratedState'`               | server **renders** the page in memory, returns the cache |
+| `'pageDehydratedStateAndClientQuery'` | the above, plus the client loaders                       |
 
 ### The three approaches worth knowing
 
@@ -316,10 +324,10 @@ They trade **how much code you write** against **how many server renders you pay
 for** against **what the user sees on navigation**.
 
 **1. `pageDehydratedStateAndClientQuery` — least code, server renders.** Set it
-once on the root and forget it. Every navigation triggers a full in-memory server
-render of the target page, so *every* query is found — even ones declared inside
-deep components — and the page lands fully loaded. You write nothing extra; you
-pay a server render per navigation.
+once on the root and forget it. Every navigation triggers a full in-memory
+server render of the target page, so _every_ query is found — even ones declared
+inside deep components — and the page lands fully loaded. You write nothing
+extra; you pay a server render per navigation.
 
 ```tsx
 export const root = Point0.lets
@@ -330,12 +338,12 @@ export const root = Point0.lets
 ```
 
 **2. `serverAndClientQuery` + `onPrefetchPage` — a little code, no server render
-on navigation.** The client calls the page's declared queries directly, no server
-render. Queries buried inside components aren't seen this way, so you make up the
-difference with [`.onPrefetchPage`](#onprefetchpage), warming exactly what the page
-needs — and that same hook keeps the first SSR load single-pass. Add
-`allowedRerendersCount: 0` if you also want to forbid store/cookie stabilization
-re-renders.
+on navigation.** The client calls the page's declared queries directly, no
+server render. Queries buried inside components aren't seen this way, so you
+make up the difference with [`.onPrefetchPage`](#onprefetchpage), warming
+exactly what the page needs — and that same hook keeps the first SSR load
+single-pass. Add `allowedRerendersCount: 0` if you also want to forbid
+store/cookie stabilization re-renders.
 
 ```tsx
 export const ProfilePage = root.lets
@@ -353,10 +361,10 @@ export const root = Point0.lets
   .root()
 ```
 
-**3. `none` — no prefetch, loading states do the work.** Don't prefetch anything.
-On navigation the page mounts, its queries start, and your `.loading()` components
-show until the data arrives. The simplest model, and perfectly fine when a brief
-loading state is acceptable.
+**3. `none` — no prefetch, loading states do the work.** Don't prefetch
+anything. On navigation the page mounts, its queries start, and your
+`.loading()` components show until the data arrives. The simplest model, and
+perfectly fine when a brief loading state is acceptable.
 
 ```tsx
 export const root = Point0.lets
@@ -374,9 +382,9 @@ The two ends of the trade-off, spelled out:
 .prefetchPageOnLinkHover('serverAndClientQuery')
 ```
 
-`serverAndClientQuery` renders nothing, so it can only see queries declared on the
-points themselves (`.loader`, `.with` on the page/layout). A query declared
-*inside* a component isn't discovered — it shows its loading state after
+`serverAndClientQuery` renders nothing, so it can only see queries declared on
+the points themselves (`.loader`, `.with` on the page/layout). A query declared
+_inside_ a component isn't discovered — it shows its loading state after
 navigation. Cheap to run, looser coverage; close the gap with `.onPrefetchPage`.
 
 ```tsx
@@ -384,11 +392,11 @@ navigation. Cheap to run, looser coverage; close the gap with `.onPrefetchPage`.
 .prefetchPageOnNavigate('pageDehydratedStateAndClientQuery')
 ```
 
-`pageDehydratedState*` asks the server to **render the page in memory** and return
-only its dehydrated query cache (the page's HTML is thrown away). It runs the same
-render-to-discover loop, so it finds *every* query, including the ones inside
-components — best coverage, no per-page work, but you pay a full server render per
-prefetch.
+`pageDehydratedState*` asks the server to **render the page in memory** and
+return only its dehydrated query cache (the page's HTML is thrown away). It runs
+the same render-to-discover loop, so it finds _every_ query, including the ones
+inside components — best coverage, no per-page work, but you pay a full server
+render per prefetch.
 
 These two **require SSR**. With `ssr: false` they throw:
 
@@ -404,8 +412,8 @@ expensive one only where coverage matters more than load.
 ## .onPrefetchPage
 
 The escape hatch for what a cheap policy misses. `.onPrefetchPage` registers a
-callback that runs during prefetch (and during `prefetchBeforePageRender`), where
-you can warm up data the policy wouldn't otherwise discover. It's on
+callback that runs during prefetch (and during `prefetchBeforePageRender`),
+where you can warm up data the policy wouldn't otherwise discover. It's on
 [base](base), [page](page), [layout](layout), and [plugin](plugin); calls
 accumulate.
 
@@ -423,28 +431,28 @@ It receives `{ location, props }`. It runs **only via prefetch** — never in th
 normal render-to-discover loop, never for the `'none'` policy, and never for the
 server-only `'pageDehydratedState'` policy (which returns right after the
 in-memory render, before the hooks fire; `pageDehydratedStateAndClientQuery`
-still runs them). As shown in
-[Tuning the loop](#tuning-the-loop), it runs on **both sides**: on the server
-during SSR (and `prefetchBeforePageRender`) and on the client when you navigate to
-the page — so the same warm-up code covers the first load and every navigation.
+still runs them). As shown in [Tuning the loop](#tuning-the-loop), it runs on
+**both sides**: on the server during SSR (and `prefetchBeforePageRender`) and on
+the client when you navigate to the page — so the same warm-up code covers the
+first load and every navigation.
 
 ## The dehydrated-state endpoint
 
-The `pageDehydratedState*` policies are powered by a third output type a page can
-serve, alongside its HTML and its data. A page endpoint can be asked for
+The `pageDehydratedState*` policies are powered by a third output type a page
+can serve, alongside its HTML and its data. A page endpoint can be asked for
 `queryClientDehydratedState` — the engine runs the full SSR loop in memory and
-returns just the serialized query cache (pending queries filtered out), which the
-client hydrates and then swaps for live queries.
+returns just the serialized query cache (pending queries filtered out), which
+the client hydrates and then swaps for live queries.
 
 You don't call this endpoint directly; the prefetch policy does. Two things are
 worth knowing:
 
-- **Pages always keep an endpoint** so this can be requested — even a page with no
-  server loader stays addressable for its dehydrated state.
+- **Pages always keep an endpoint** so this can be requested — even a page with
+  no server loader stays addressable for its dehydrated state.
 - Tune the prefetch query itself with
   [`.pageDehydratedStateQueryOptions(...)`](stage-methods) on the root, base, or
-  page. This is the dehydrated-state fetch's own query options, separate from your
-  page queries — and a **longer `staleTime`** here usually pays off:
+  page. This is the dehydrated-state fetch's own query options, separate from
+  your page queries — and a **longer `staleTime`** here usually pays off:
 
   ```tsx
   export const root = Point0.lets
@@ -453,11 +461,11 @@ worth knowing:
     .root()
   ```
 
-  It matters most when you prefetch on **link hover**: a hover fires every time the
-  cursor crosses a link, and without a stale window each pass would re-fetch the
-  whole dehydrated state. A longer `staleTime` lets one hover's result satisfy the
-  navigation that follows (and repeat hovers), instead of asking the server to
-  re-render the page again and again.
+  It matters most when you prefetch on **link hover**: a hover fires every time
+  the cursor crosses a link, and without a stale window each pass would re-fetch
+  the whole dehydrated state. A longer `staleTime` lets one hover's result
+  satisfy the navigation that follows (and repeat hovers), instead of asking the
+  server to re-render the page again and again.
 
 ## SsrStore: state that survives the loop
 
@@ -469,7 +477,10 @@ re-renders — belongs in an [SsrStore](ssr-store), written through
 import { useEffectSsr } from '@point0/core'
 import { SsrStore } from '@point0/core/ssr-store'
 
-export const $breadcrumb = SsrStore.define<BreadcrumbItem[]>('breadcrumb', () => [])
+export const $breadcrumb = SsrStore.define<BreadcrumbItem[]>(
+  'breadcrumb',
+  () => [],
+)
 
 export const useBreadcrumb = (...items: BreadcrumbItem[]) => {
   useEffectSsr(() => {
@@ -480,10 +491,10 @@ export const useBreadcrumb = (...items: BreadcrumbItem[]) => {
 ```
 
 On the server a `set()` **stages** the value; the loop commits it between passes
-and re-renders so ancestors reading the store see the new value. This is what the
-soft/hard caps protect: a store that never settles would re-render forever.
-Cookies behave similarly but are **always** committed, even on the final pass — a
-dropped cookie is worse than a re-render. Full mechanics on
+and re-renders so ancestors reading the store see the new value. This is what
+the soft/hard caps protect: a store that never settles would re-render forever.
+Cookies behave similarly but are **always** committed, even on the final pass —
+a dropped cookie is worse than a re-render. Full mechanics on
 [SsrStore](ssr-store) and [CookieStore](cookie-store).
 
 ## Reference
@@ -492,26 +503,30 @@ dropped cookie is worse than a re-render. Full mechanics on
 
 ```ts
 type SsrOptions = {
-  enabled?: boolean                   // default true when an object is given
-  allowedRerendersCount?: number      // soft cap; default Infinity
-  forbiddenRerendersCount?: number    // hard cap (+ logs an error); default 25
-  prefetchBeforePageRender?: boolean  // prefetch before first render; default false
+  enabled?: boolean // default true when an object is given
+  allowedRerendersCount?: number // soft cap; default Infinity
+  forbiddenRerendersCount?: number // hard cap (+ logs an error); default 25
+  prefetchBeforePageRender?: boolean // prefetch before first render; default false
 }
 
 // engine config accepts: boolean | SsrOptions
-ssr: true                                 // on, all loop defaults
-ssr: false                                // off — bare index.html, client-side fetch
+ssr: true // on, all loop defaults
+ssr: false // off — bare index.html, client-side fetch
 // (omitting `ssr` entirely)             // off — same as `ssr: false`
-ssr: { enabled: false }                   // off (object form, explicitly disabled)
-ssr: { allowedRerendersCount: 0 }         // on, no stabilization re-renders
+ssr: {
+  enabled: false
+} // off (object form, explicitly disabled)
+ssr: {
+  allowedRerendersCount: 0
+} // on, no stabilization re-renders
 ```
 
 SSR is **off** unless you turn it on — omitting `ssr` resolves the same as
 `ssr: false`. Turn it on with `ssr: true` or an object (the `enabled: true`
-default applies only to the object form: `ssr: {}` is on). A boolean turns SSR on
-or off with every loop default; an object overrides only the keys you set,
-keeping the default for anything left out. Per-point,
-[`.clientOnly`](mountable) forces that one point off.
+default applies only to the object form: `ssr: {}` is on). A boolean turns SSR
+on or off with every loop default; an object overrides only the keys you set,
+keeping the default for anything left out. Per-point, [`.clientOnly`](mountable)
+forces that one point off.
 
 ### Prefetch policy values
 
@@ -519,10 +534,9 @@ keeping the default for anything left out. Per-point,
 `'serverAndClientQuery'` · `'pageDehydratedState'` ·
 `'pageDehydratedStateAndClientQuery'`. Set via `.prefetchPagePolicy` (both
 triggers), `.prefetchPageOnNavigate`, `.prefetchPageOnLinkHover` (optional hover
-delay, default 30ms), or per `<Link>` / `navigate`. When you set none of them, the
-policy is `'none'` — no prefetch. The `pageDehydratedState*` ones require SSR.
-Resolution and link wiring are on [navigation](navigation); the setter gist is in
-[stage-methods](stage-methods).
+delay, default 30ms), or per `<Link>` / `navigate`. When you set none of them,
+the policy is `'none'` — no prefetch. The `pageDehydratedState*` ones require
+SSR. Resolution and link wiring are on [navigation](navigation); the setter gist
+is in [stage-methods](stage-methods).
 
 <!-- TODO(low): Point0 waits for the full tree (`stream.allReady`) before shipping HTML — no progressive / Suspense-boundary streaming, and RSC is unsupported. Document the non-streaming model once it's confirmed as an intentional, stable guarantee. -->
-

@@ -13,8 +13,8 @@ export const getBasicAuthHeader = (username: string, password: string): string =
   `Basic ${Buffer.from(`${username}:${password}`, 'utf8').toString('base64')}`
 
 /**
- * The shapes `users` accepts for the built-in credential table, all normalized to a `{ username: password }` record:
- * a record, a single `"user:pass"` string, or a list of `"user:pass"` strings. A string splits on the FIRST `:`, so
+ * The shapes `users` accepts for the built-in credential table, all normalized to a `{ username: password }` record: a
+ * record, a single `"user:pass"` string, or a list of `"user:pass"` strings. A string splits on the FIRST `:`, so
  * passwords may contain colons; an empty username or password throws at config time.
  *
  * Full reference: https://1gr14.dev/point0/latest/basic-auth
@@ -54,9 +54,9 @@ type ValidatorFn = ({
 /**
  * Options for `basicAuth(...)` / `BasicAuth.create(...)`. Exactly one of `users` (built-in table) or `validator`
  * (custom async check) is required — they're a discriminated union, so passing both or neither is a type error.
- * Everything else is optional: `challenge` toggles the `WWW-Authenticate` browser dialog; `limitPerUser` /
- * `limitPerIp` / `staleTimeMs` / `memorySize` tune brute-force throttling; the `on*` hooks fire on each failure path
- * for logging (they can't change the response).
+ * Everything else is optional: `challenge` toggles the `WWW-Authenticate` browser dialog; `limitPerUser` / `limitPerIp`
+ * / `staleTimeMs` / `memorySize` tune brute-force throttling; the `on*` hooks fire on each failure path for logging
+ * (they can't change the response).
  *
  *     basicAuth({ users: { admin: 'secret' }, limitPerIp: 50, challenge: false })
  *
@@ -137,10 +137,10 @@ const normalizeUsers = (users: BasicAuthOptionsInputUsers): BasicAuthUsers => {
 }
 
 /**
- * The class behind `basicAuth(...)` — the lower-level surface, used in tests but not in any example. The constructor
- * is private; build one with `BasicAuth.create(options)`. Its `.middleware` getter is exactly what `basicAuth()`
- * returns. Reach for it when you want to gate by hand: `validateRequest(request)` returns the full
- * `BasicAuthValidationResult`, and `getFailureResponse(request)` returns the failure `Response` or `undefined`.
+ * The class behind `basicAuth(...)` — the lower-level surface, used in tests but not in any example. The constructor is
+ * private; build one with `BasicAuth.create(options)`. Its `.middleware` getter is exactly what `basicAuth()` returns.
+ * Reach for it when you want to gate by hand: `validateRequest(request)` returns the full `BasicAuthValidationResult`,
+ * and `getFailureResponse(request)` returns the failure `Response` or `undefined`.
  *
  *     const auth = BasicAuth.create({ users: { admin: 'secret' } })
  *     const failure = await auth.getFailureResponse(request) // Response | undefined

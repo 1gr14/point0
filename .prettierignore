@@ -4,6 +4,8 @@ CHANGELOG.md
 **/points.ready.ts
 todo.md
 todo.txt
+ios/
+android/
 
 # structured tracker, hand-formatted — keep prettier off it
 dev/docs.md

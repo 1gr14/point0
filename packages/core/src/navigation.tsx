@@ -528,8 +528,8 @@ export const useNavigationLocationContext = (): NavigationLocationContextValue =
  *
  *     const location = useLocation()
  *     location.pathname // "/ideas/123"
- *     location.search   // parsed query object
- *     location.params   // parsed route params
+ *     location.search // parsed query object
+ *     location.params // parsed route params
  *
  * For an imperative read outside React, use `getLocation()` (throws if the router hasn't mounted yet).
  *
@@ -828,9 +828,9 @@ const isSameNavigationLocation = (left: AnyLocation, right: AnyLocation) => {
 }
 
 /**
- * Runs `fn` when a navigation **starts**; the cleanup it returns runs when that navigation settles. The right hook for a
- * progress bar or a "navigating" spinner. It skips the very first page load and fires at navigation start, not when the
- * new page paints — for first-load page-view analytics, read `useLocation()` in an effect instead.
+ * Runs `fn` when a navigation **starts**; the cleanup it returns runs when that navigation settles. The right hook for
+ * a progress bar or a "navigating" spinner. It skips the very first page load and fires at navigation start, not when
+ * the new page paints — for first-load page-view analytics, read `useLocation()` in an effect instead.
  *
  *     useOnNavigate(() => {
  *       nprogress.start()

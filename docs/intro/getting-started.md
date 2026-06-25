@@ -4,8 +4,8 @@ title: Getting Started
 description: Scaffold a Point0 app with one command, then run it.
 ---
 
-The fastest way into Point0 is the scaffolder. One command writes a complete
-app — SSR, Prisma + SQLite, Tailwind, type-safe routing — installs it, and runs
+The fastest way into Point0 is the scaffolder. One command writes a complete app
+— SSR, Prisma + SQLite, Tailwind, type-safe routing — installs it, and runs
 codegen, so you can go straight to the dev server.
 
 ```sh
@@ -37,13 +37,13 @@ empty, the run stops unless you pass `--override` (or confirm the prompt).
 
 ### Flags
 
-| Flag                       | Default        | What it does                                          |
-| -------------------------- | -------------- | ----------------------------------------------------- |
-| `[name]`                   | `my-app`       | Directory name for the new app                        |
-| `--vite` / `--no-vite`     | `--no-vite` (Bun) | Bundle the client with Vite instead of Bun         |
-| `--install` / `--no-install` | `--install`  | Run `bun install` + `bun run setup` after scaffolding |
-| `-O, --override`           | off            | Allow writing into a non-empty target directory       |
-| `-I, --no-interactive`     | off            | Skip every prompt and use the defaults above          |
+| Flag                         | Default           | What it does                                          |
+| ---------------------------- | ----------------- | ----------------------------------------------------- |
+| `[name]`                     | `my-app`          | Directory name for the new app                        |
+| `--vite` / `--no-vite`       | `--no-vite` (Bun) | Bundle the client with Vite instead of Bun            |
+| `--install` / `--no-install` | `--install`       | Run `bun install` + `bun run setup` after scaffolding |
+| `-O, --override`             | off               | Allow writing into a non-empty target directory       |
+| `-I, --no-interactive`       | off               | Skip every prompt and use the defaults above          |
 
 Interactively, the same four choices come as prompts: project name, bundler
 (`Bun` or `Vite`, default `Bun`), install now (default yes), and override (only
@@ -66,7 +66,7 @@ The `--vite` choice changes which files you get. The two are mutually exclusive:
   a `vite.config.ts`; CSS is linked from `index.html`; `preload.ts` gets
   `preventLoadBunPlugins: true`.
 
-You can't have both — `engine.ts` carries `viteConfig` *or* `bunPlugins`, never
+You can't have both — `engine.ts` carries `viteConfig` _or_ `bunPlugins`, never
 both. The trade-offs are in [bun-vs-vite](bun-vs-vite); the Vite walkthrough is
 [vite](example-vite).
 
@@ -98,10 +98,9 @@ Without it, typecheck fails and the app won't run:
 "setup": "bun run prisma:migrate:deploy && bun run prisma:generate && point0 generate && bun run seed"
 ```
 
-> **Why `setup`, not `prepare`?** A `prepare` script runs on every
-> `bun install` — which breaks installs where no database exists yet (CI, a
-> monorepo). So the codegen + DB step is named `setup` and run explicitly, not on
-> install.
+> **Why `setup`, not `prepare`?** A `prepare` script runs on every `bun install`
+> — which breaks installs where no database exists yet (CI, a monorepo). So the
+> codegen + DB step is named `setup` and run explicitly, not on install.
 
 For production you build and start:
 
@@ -124,8 +123,8 @@ directly to the `point0` CLI:
     "dev": "point0 dev --hot", //   dev server + clients, server hot reload
     "generate": "point0 generate", // write src/generated/point0/* from your points
     "build": "point0 build", //     build server + clients into dist/
-    "start": "cross-env NODE_ENV=production bun run ./dist/server/index.server.js"
-  }
+    "start": "cross-env NODE_ENV=production bun run ./dist/server/index.server.js",
+  },
 }
 ```
 
@@ -144,8 +143,8 @@ typecheck:
     "seed": "cross-env NODE_ENV=development bun --preload ./src/preload.ts ./src/lib/seed.ts",
     "prisma:generate": "cross-env NODE_ENV=development prisma generate",
     "prisma:migrate:deploy": "cross-env NODE_ENV=development prisma migrate deploy",
-    "types": "tsgo --noEmit"
-  }
+    "types": "tsgo --noEmit",
+  },
 }
 ```
 
@@ -194,12 +193,18 @@ export const engine = Engine.create({
     points: async () => await import('./generated/point0/points.client'),
     generate: {
       points: './generated/point0/points.client.ts',
-      routes: { outfile: './generated/point0/routes.ts', origin: 'process.env.CLIENT_URL' },
+      routes: {
+        outfile: './generated/point0/routes.ts',
+        origin: 'process.env.CLIENT_URL',
+      },
     },
     bunPlugins: ['bun-plugin-tailwind'], // Vite mode replaces this with `viteConfig`
     env: { vars: clientEnvKeys }, // which env keys are bundled into the client
     publicdir: {
-      source: ['../public', { 'robots.txt': () => 'User-agent: *\nDisallow: /' }],
+      source: [
+        '../public',
+        { 'robots.txt': () => 'User-agent: *\nDisallow: /' },
+      ],
       outdir: '../dist/client',
     },
     outdir: '../dist/client',
@@ -208,8 +213,9 @@ export const engine = Engine.create({
 ```
 
 Every option here has a page: the full schema is [engine-config](engine-config),
-the codegen keys are [generator](generator), `publicdir` is [publicdir](publicdir),
-and `env.vars` is [env](env). The `examples/basic` engine adds one extra block —
+the codegen keys are [generator](generator), `publicdir` is
+[publicdir](publicdir), and `env.vars` is [env](env). The `examples/basic`
+engine adds one extra block —
 `client.compiler.babel: ['babel-plugin-react-compiler']` — which the template
 omits.
 
@@ -300,32 +306,32 @@ The four entry files above are the wiring; the rest of the template is the
 working example built on top of them:
 
 - **`src/lib/root.tsx`** — the [root](root) point (`Point0.lets.root()...`),
-  where you set the transformer, schema helper, error class, prefetch policy, and
-  global middleware like [openapi](openapi). Every page and query grows from here.
+  where you set the transformer, schema helper, error class, prefetch policy,
+  and global middleware like [openapi](openapi). Every page and query grows from
+  here.
 - **`src/lib/navigation.ts`** — the router wiring (`createNavigation` over
   wouter), exporting `Link`, `navigate`, `Router`, `RouterRoutes`, etc. See
   [navigation](navigation).
 - **`src/lib/query-client.ts`**, **`src/lib/prisma.ts`**, **`src/lib/error.ts`**
-  (a custom `AppError` class wired in via `.errorClass(...)` — the template builds
-  it with [error0](error-handling), but any compatible class works, and the
-  default is `ErrorPoint0`), and the four-file
-  **`src/lib/env/*`** system (shared / client / server [env](env) shapes and
-  validators).
+  (a custom `AppError` class wired in via `.errorClass(...)` — the template
+  builds it with [error0](error-handling), but any compatible class works, and
+  the default is `ErrorPoint0`), and the four-file **`src/lib/env/*`** system
+  (shared / client / server [env](env) shapes and validators).
 - **Example points**: `src/layouts/general.tsx` (a [layout](layout)),
-  `src/pages/home.tsx` (a [page](page)), `src/pages/about.mdx` (an
-  [mdx](mdx) page).
+  `src/pages/home.tsx` (a [page](page)), `src/pages/about.mdx` (an [mdx](mdx)
+  page).
 - **`src/generated/`** — never hand-edited; produced by `point0 generate` and
   `prisma generate`, and gitignored. See [generator](generator).
 
 Plus project-level files: `package.json`, `tsconfig.json` (with the `@/*` →
-`./src/*` path alias), `bunfig.toml`, `prisma.config.ts` + `prisma/schema.prisma`,
-`env.example`, a `Dockerfile`, and `.gitignore`.
+`./src/*` path alias), `bunfig.toml`, `prisma.config.ts` +
+`prisma/schema.prisma`, `env.example`, a `Dockerfile`, and `.gitignore`.
 
 > **Gotcha — the template `docker-compose.yml` points at the monorepo.** It
-> references `examples/basic` (build context `../..`), a stale artifact that does
-> not work in a standalone generated app. Don't rely on `docker compose` from the
-> scaffolded app until you rewrite it — see [deploy](deploy) for the real deploy
-> path.
+> references `examples/basic` (build context `../..`), a stale artifact that
+> does not work in a standalone generated app. Don't rely on `docker compose`
+> from the scaffolded app until you rewrite it — see [deploy](deploy) for the
+> real deploy path.
 
 ## No leaked dev servers
 
@@ -341,32 +347,32 @@ all its children) exits with it — no orphaned servers holding ports.
 
 ### Scaffolder defaults (`-I` non-interactive)
 
-| Choice    | Default    |
-| --------- | ---------- |
-| name      | `my-app`   |
-| bundler   | Bun        |
-| install   | yes        |
-| override  | no         |
+| Choice   | Default  |
+| -------- | -------- |
+| name     | `my-app` |
+| bundler  | Bun      |
+| install  | yes      |
+| override | no       |
 
 ### Scripts the CLI backs
 
-| Script     | Command                                          | CLI page              |
-| ---------- | ------------------------------------------------ | --------------------- |
-| `dev`      | `point0 dev --hot`                               | [dev](dev)            |
-| `build`    | `point0 build`                                   | [build](build)        |
-| `generate` | `point0 generate`                                | [generator](generator) |
-| `start`    | `bun run ./dist/server/index.server.js` (prod)   | [deploy](deploy)      |
-| `setup`    | prisma migrate + generate + `point0 generate` + seed | —                 |
+| Script     | Command                                              | CLI page               |
+| ---------- | ---------------------------------------------------- | ---------------------- |
+| `dev`      | `point0 dev --hot`                                   | [dev](dev)             |
+| `build`    | `point0 build`                                       | [build](build)         |
+| `generate` | `point0 generate`                                    | [generator](generator) |
+| `start`    | `bun run ./dist/server/index.server.js` (prod)       | [deploy](deploy)       |
+| `setup`    | prisma migrate + generate + `point0 generate` + seed | —                      |
 
 ### Entry files
 
-| File                    | Role                                                      |
-| ----------------------- | --------------------------------------------------------- |
-| `src/engine.ts`         | `Engine.create(...)` — the whole app config               |
-| `src/preload.ts`        | registers compiler plugins + env consts (`engine.preload`) |
-| `src/index.server.ts`   | server entry; preload, then `app.server` (`engine.serve`) |
-| `src/app.client.tsx`    | React app shell (providers + router), default export      |
-| `src/index.client.tsx`  | browser entry; `mount(<App/>, points)`                    |
-| `src/index.html`        | HTML template with `#root` + the client `<script>`        |
+| File                   | Role                                                       |
+| ---------------------- | ---------------------------------------------------------- |
+| `src/engine.ts`        | `Engine.create(...)` — the whole app config                |
+| `src/preload.ts`       | registers compiler plugins + env consts (`engine.preload`) |
+| `src/index.server.ts`  | server entry; preload, then `app.server` (`engine.serve`)  |
+| `src/app.client.tsx`   | React app shell (providers + router), default export       |
+| `src/index.client.tsx` | browser entry; `mount(<App/>, points)`                     |
+| `src/index.html`       | HTML template with `#root` + the client `<script>`         |
 
 <!-- TODO(low): only `bun create point0-app` is documented. `npx` / `pnpm dlx` / `yarn create` would technically resolve the bin, but the scaffolder and the generated app both require Bun, so list alternatives only if we decide to support them. -->

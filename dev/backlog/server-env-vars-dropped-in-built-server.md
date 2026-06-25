@@ -13,7 +13,12 @@ Declaring server vars in the engine config:
 Engine.create({
   server: {
     // …
-    env: { vars: { SOURCE_VERSION: process.env.SOURCE_VERSION || process.env.RAILWAY_GIT_COMMIT_SHA } },
+    env: {
+      vars: {
+        SOURCE_VERSION:
+          process.env.SOURCE_VERSION || process.env.RAILWAY_GIT_COMMIT_SHA,
+      },
+    },
   },
 })
 ```
@@ -24,11 +29,11 @@ it was (empty), even though the runtime config evaluated the expression
 correctly and `engine.server.envVars` holds the right value.
 
 Real-world hit: the 1gr14 site used `server.env.vars` to resolve
-`SOURCE_VERSION` from Railway's runtime-injected `RAILWAY_GIT_COMMIT_SHA`. In the
-deployed (built) server the release tag came out empty; the same config works in
-dev. The site had to work around it with a direct `process.env.SOURCE_VERSION =
-process.env.RAILWAY_GIT_COMMIT_SHA` assignment in its `index.server.ts` before
-`preload()`.
+`SOURCE_VERSION` from Railway's runtime-injected `RAILWAY_GIT_COMMIT_SHA`. In
+the deployed (built) server the release tag came out empty; the same config
+works in dev. The site had to work around it with a direct
+`process.env.SOURCE_VERSION = process.env.RAILWAY_GIT_COMMIT_SHA` assignment in
+its `index.server.ts` before `preload()`.
 
 ## Root cause
 
@@ -49,10 +54,11 @@ await this.server.preload({ preventSetEnvVars, nodeEnvFallback, preventLoadBunPl
 
 `_point0_env.build.was` = `process.env.POINT0_BUILT === 'true'`
 (`packages/core/src/env.ts`), and the built server's banner sets
-`POINT0_BUILT="true"` on its first line — so in prod the early `return` fires and
-`Server.preload()` is never called.
+`POINT0_BUILT="true"` on its first line — so in prod the early `return` fires
+and `Server.preload()` is never called.
 
-`Server.preload()` (`packages/engine/src/server.ts:323`) is what applies the vars:
+`Server.preload()` (`packages/engine/src/server.ts:323`) is what applies the
+vars:
 
 ```ts
 if (!preventSetEnvVars) {
@@ -66,7 +72,8 @@ and `setEnvVars` (`packages/engine/src/server.ts:281`) writes both sets to
 ```ts
 if (assignToProcessEnv && !this.envVarsApplied) {
   this.envVarsApplied = true
-  for (const [k, v] of Object.entries({ ...this.envVars, ...this.envConsts })) process.env[k] = v
+  for (const [k, v] of Object.entries({ ...this.envVars, ...this.envConsts }))
+    process.env[k] = v
 }
 ```
 
@@ -90,12 +97,12 @@ Net: `env.vars` are effectively a **dev-only** feature.
 ## Proposed fix (the real one)
 
 Apply server `env.vars` to `process.env` in built mode too. The value must be
-**re-evaluated at runtime** (confirmed: the built bundle keeps
-`env.vars` as live `process.env.…` expressions and `Engine.create` re-runs at
-import, so `this.envVars` already holds the correct runtime value) — so the fix
-is to run the assignment, **not** to bake `env.vars` into the banner (baking
-would freeze runtime-dependent values like `RAILWAY_GIT_COMMIT_SHA` to their
-empty build-time state). Options to explore:
+**re-evaluated at runtime** (confirmed: the built bundle keeps `env.vars` as
+live `process.env.…` expressions and `Engine.create` re-runs at import, so
+`this.envVars` already holds the correct runtime value) — so the fix is to run
+the assignment, **not** to bake `env.vars` into the banner (baking would freeze
+runtime-dependent values like `RAILWAY_GIT_COMMIT_SHA` to their empty build-time
+state). Options to explore:
 
 1. In `Engine.preload`, before the `build.was` early-return, still call
    `this.server.setEnvVars({ assignToProcessEnv: true, nodeEnvFallback })` —

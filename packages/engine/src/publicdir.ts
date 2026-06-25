@@ -161,8 +161,8 @@ export class Publicdir<TPrepared extends boolean, TError extends ErrorPoint0> {
   }
 
   /**
-   * Walk every configured source directory and build the in-memory route→file index.
-   * Run lazily on first request and explicitly via `engine.preparePublicdirs()`. Idempotent.
+   * Walk every configured source directory and build the in-memory route→file index. Run lazily on first request and
+   * explicitly via `engine.preparePublicdirs()`. Idempotent.
    */
   async prepare(): Promise<Publicdir<true, TError>> {
     if (this.isPrepared()) {

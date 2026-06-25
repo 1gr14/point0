@@ -12,21 +12,23 @@ type BunMetafile = {
 /**
  * Why this helper exists:
  *
- * Bun's HTML bundling can occasionally produce `dist/index.html` that points to
- * a *valid* JS chunk that is not the intended client bootstrap module
- * (for example, a route/layout chunk instead of `index.client.tsx` output).
+ * Bun's HTML bundling can occasionally produce `dist/index.html` that points to a _valid_ JS chunk that is not the
+ * intended client bootstrap module (for example, a route/layout chunk instead of `index.client.tsx` output).
  *
  * Result in browser:
+ *
  * - SSR HTML is visible (server output is correct)
  * - JS files are loaded (200 OK, no syntax/runtime error)
  * - hydration never starts because bootstrap code is not executed
  *
  * This helper makes the output deterministic after build:
- * 1) Read source `index.html` and collect its `<script type="module" src="...">` entries.
- * 2) Use Bun metafile outputs to find which emitted JS chunk actually includes each source module input.
- * 3) Rewrite corresponding module script src values in `dist/index.html`.
+ *
+ * 1. Read source `index.html` and collect its `<script type="module" src="...">` entries.
+ * 2. Use Bun metafile outputs to find which emitted JS chunk actually includes each source module input.
+ * 3. Rewrite corresponding module script src values in `dist/index.html`.
  *
  * Important design constraints:
+ *
  * - It is post-build and non-invasive: we do not change app code or compiler transforms.
  * - It is safe to no-op: if mapping cannot be resolved, original dist HTML is preserved.
  * - It handles hashed filenames and code splitting naturally via metafile graph.

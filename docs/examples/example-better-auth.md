@@ -1,7 +1,9 @@
 ---
 index: 300
 title: Better Auth Example
-description: The basic ideas board plus authentication — a Better Auth middleware mount, an auth plugin that resolves the user, and gated pages and mutations.
+description:
+  The basic ideas board plus authentication — a Better Auth middleware mount, an
+  auth plugin that resolves the user, and gated pages and mutations.
 label: Better Auth
 example: examples/better-auth
 ---
@@ -28,14 +30,17 @@ on both sides:
 
 ```tsx
 // examples/better-auth/src/lib/auth/plugins.ts
-export const authorizedOnlyPlugin = Point0.lets.plugin('authorizedOnly')
+export const authorizedOnlyPlugin = Point0.lets
+  .plugin('authorizedOnly')
   .use(mePlugin) // puts the resolved user into ctx + props
   .ctx(({ ctx: { me } }) => {
-    if (!me) throw new AppError('Only for authorized users', { code: 'UNAUTHORIZED' })
+    if (!me)
+      throw new AppError('Only for authorized users', { code: 'UNAUTHORIZED' })
     return { me } // narrowed to non-null
   })
   .with(({ props: { me } }) => {
-    if (!me) return new AppError('Only for authorized users', { code: 'UNAUTHORIZED' }) // return, don't throw
+    if (!me)
+      return new AppError('Only for authorized users', { code: 'UNAUTHORIZED' }) // return, don't throw
     return { me }
   })
   .plugin()
@@ -47,8 +52,8 @@ ships four such plugins — `mePlugin` (read the user), `authorizedOnlyPlugin` a
 `redirectUnauthorizedPlugin` (gate anonymous visitors by error or redirect), and
 `redirectAuthorizedPlugin` (keep signed-in users off the sign-in page). Gating a
 point is then one `.use(authorizedOnlyPlugin)`; a protected mutation reads
-`ctx.me` and enforces ownership server-side, while the matching page re-checks on
-the client for UX.
+`ctx.me` and enforces ownership server-side, while the matching page re-checks
+on the client for UX.
 
 The error class adds a `code` field (here via [error0](error-handling)'s code
 plugin, marked public so it survives serialization), and the error component
@@ -61,9 +66,9 @@ message. See [`.middleware`](middleware), [`.with`](with), [Plugin](plugin),
 ## Running it
 
 Identical to [basic](example-basic) — `bun install && bun run build` at the repo
-root, then `bun run setup && bun run dev` inside `examples/better-auth`. The seed
-creates a user **through Better Auth itself** (`authServer.api.signUpEmail` with
-`x@example.com` / `12345678`) and prefills the sign-in form with those
+root, then `bun run setup && bun run dev` inside `examples/better-auth`. The
+seed creates a user **through Better Auth itself** (`authServer.api.signUpEmail`
+with `x@example.com` / `12345678`) and prefills the sign-in form with those
 credentials. See [getting-started](getting-started).
 
 ## For a real app
@@ -75,10 +80,10 @@ providers and more, alongside admin, forms, CRUD, email, and deploy
 
 ## What this example adds over basic
 
-| Area            | basic                              | better-auth                                           |
-| --------------- | ---------------------------------- | ----------------------------------------------------- |
-| Root middleware | OpenAPI only                       | `/api/auth/*` Better Auth handler **+** OpenAPI       |
-| `src/lib/auth/` | —                                  | `server.ts`, `client.ts`, `api.ts`, `plugins.ts`      |
-| Prisma models   | `Idea`, `IdeaNewsPost`             | adds `User`, `Session`, `Account`, `Verification`     |
-| Create / update | one open `idea-create-update.tsx`  | split `idea-create.tsx` + `idea-update.tsx`, gated    |
-| Errors          | generic                            | `UNAUTHORIZED` / `FORBIDDEN` codes drive the error UI |
+| Area            | basic                             | better-auth                                           |
+| --------------- | --------------------------------- | ----------------------------------------------------- |
+| Root middleware | OpenAPI only                      | `/api/auth/*` Better Auth handler **+** OpenAPI       |
+| `src/lib/auth/` | —                                 | `server.ts`, `client.ts`, `api.ts`, `plugins.ts`      |
+| Prisma models   | `Idea`, `IdeaNewsPost`            | adds `User`, `Session`, `Account`, `Verification`     |
+| Create / update | one open `idea-create-update.tsx` | split `idea-create.tsx` + `idea-update.tsx`, gated    |
+| Errors          | generic                           | `UNAUTHORIZED` / `FORBIDDEN` codes drive the error UI |

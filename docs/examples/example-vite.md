@@ -13,7 +13,7 @@ of Bun's native bundler. The app code is identical; only a handful of wiring
 files differ. The buttons above and below open the full source.
 
 The switch is a single engine option. Add `viteConfig`, drop `client.bunPlugins`
-— there is no `useVite` flag, the *presence* of `viteConfig` is the switch:
+— there is no `useVite` flag, the _presence_ of `viteConfig` is the switch:
 
 ```ts
 // examples/vite/src/engine.ts
@@ -47,8 +47,8 @@ passes `preventLoadBunPlugins: true`, `index.html` uses an absolute script src
 plus an explicit stylesheet `<link>`, `app.server.ts` self-accepts Vite's SSR
 entry via `import.meta.hot`, and there is a thin `vite.config.ts` so external
 tooling (vitest, the IDE) sees a normal Vite project. Two behavioral notes:
-`--hot` is a no-op under Vite (Bun-native feature), and the build is `vite build`
-for both client and server.
+`--hot` is a no-op under Vite (Bun-native feature), and the build is
+`vite build` for both client and server.
 
 For why you'd pick one bundler over the other and how each pipeline works, see
 [bun-vs-vite](bun-vs-vite) — that page owns the full Vite story.
@@ -65,4 +65,5 @@ key, where Bun names it by source basename; always read the example's own
 
 This example shows the Vite path in isolation. For a real product, start from
 **[start0](https://1gr14.dev/start0)** — the SaaS boilerplate with auth, admin,
-forms, CRUD, email, and deploy already wired together (`bun create start0 my-app`).
+forms, CRUD, email, and deploy already wired together
+(`bun create start0 my-app`).

@@ -1,14 +1,16 @@
 ---
 index: 400
 title: Points
-description: Everything you build in Point0 is a point — one class, one builder, eleven types.
+description:
+  Everything you build in Point0 is a point — one class, one builder, eleven
+  types.
 ---
 
 A point is the one building block in Point0. A page is a point; so is a query, a
 mutation, a layout, the root itself. They're all instances of a single `Point0`
-class, composed with the same builder — you open a point, configure it, and close
-it. The word **points** is the umbrella term: pages, layouts, queries, mutations,
-and the rest *are* points.
+class, composed with the same builder — you open a point, configure it, and
+close it. The word **points** is the umbrella term: pages, layouts, queries,
+mutations, and the rest _are_ points.
 
 ```tsx
 export const ideaQuery = root.lets
@@ -46,8 +48,8 @@ Page, layout, component, and provider share one method-injection model — see
 
 **Data and endpoints — they move data, often over HTTP.**
 
-- [query](query) — an input schema plus a server loader: a real HTTP endpoint and
-  a TanStack Query in one.
+- [query](query) — an input schema plus a server loader: a real HTTP endpoint
+  and a TanStack Query in one.
 - [infinite-query](infinite-query) — a query that loads in pages (cursor or
   offset), with the full TanStack infinite cache.
 - [mutation](mutation) — an input schema plus a loader: a real HTTP `POST`
@@ -65,16 +67,16 @@ Page, layout, component, and provider share one method-injection model — see
   point's chain with `.use()`.
 
 A point is not always an HTTP endpoint. A query, mutation, or action always is
-(its own path, in the OpenAPI spec). A page or component is an endpoint only when
-it has a server loader (or SSR is on) — otherwise it's a pure mountable. Each
-point's own page says exactly when.
+(its own path, in the OpenAPI spec). A page or component is an endpoint only
+when it has a server loader (or SSR is on) — otherwise it's a pure mountable.
+Each point's own page says exactly when.
 
 ## The short `.lets` notation
 
 Every example in these docs opens a point with the short form —
-`root.lets.page('/ideas')`, `root.lets.query()`, `root.lets.mutation()`. It reads
-cleanly because the point's **type is the method name** and its **name is read
-from the variable**:
+`root.lets.page('/ideas')`, `root.lets.query()`, `root.lets.mutation()`. It
+reads cleanly because the point's **type is the method name** and its **name is
+read from the variable**:
 
 ```tsx
 export const ideaPage = root.lets.page('/ideas/:id').page(/* ... */)
@@ -96,17 +98,18 @@ runtime feature: without the compiler, `root.lets.page(...)` throws
 lets[type] notation can not work without compiler, please use compiler
 ```
 
-So short `.lets.<type>()` only works inside a Point0 app, where the compiler runs.
+So short `.lets.<type>()` only works inside a Point0 app, where the compiler
+runs.
 
 ## The full `.lets(type, name, …)` form
 
-The short form is sugar. The compiler rewrites every `.lets.<type>(...)` into one
-explicit `.lets(...)` call — type first, name second, then whatever arguments the
-short form took:
+The short form is sugar. The compiler rewrites every `.lets.<type>(...)` into
+one explicit `.lets(...)` call — type first, name second, then whatever
+arguments the short form took:
 
 ```tsx
-root.lets.page('/ideas')          // → root.lets('page', 'idea', '/ideas')
-root.lets.query()                 // → root.lets('query', 'idea')
+root.lets.page('/ideas') // → root.lets('page', 'idea', '/ideas')
+root.lets.query() // → root.lets('query', 'idea')
 root.lets.action('POST', '/save') // → root.lets('action', 'save', 'POST', '/save')
 ```
 
@@ -152,8 +155,8 @@ root.lets.query(/* ... */).input(/* ... */).loader(/* ... */).query()
 //        ▲ open                                              ▲ close
 ```
 
-The opener holds what comes *before* the point (a query's nothing, a page's
-route, an action's method and path); the closer holds what comes *at the end* (a
+The opener holds what comes _before_ the point (a query's nothing, a page's
+route, an action's method and path); the closer holds what comes _at the end_ (a
 mutation's react-query options, a page's component). Between them you add the
 point's methods. The closing call must match the type you opened — a page closes
 with `.page(...)`, a mutation with `.mutation(...)`. (An [action](action) is the
@@ -164,7 +167,7 @@ The two ends have names worth fixing now, so the rest of the docs stay
 consistent. Everything from the opener up to (and including) the closing call is
 a **stage-method** — the chain methods you call while the point is still being
 built (`.input`, `.loader`, `.with`, the closing `.page(...)`, …). What you get
-*after* the close is a **ready-method** — the surface on the finished point
+_after_ the close is a **ready-method** — the surface on the finished point
 (`useQuery`, `fetchMutation`, `.route`, `.id`, `.useValue`, …). The two states
 even have their own types in the code: a point under construction is a
 `StagePoint`, a closed one is a `ReadyPoint`.
@@ -191,27 +194,27 @@ export default [root, ideaScreenComponent, createIdeaMutation, ideaQuery] // Poi
 ```
 
 Each point carries a stable id of the form `scope:type:name` (e.g.
-`root:query:idea`). The engine wires this collection in; you never assemble it by
-hand. See [generator](generator) for how it's produced and [engine-config](engine-config)
-for how it's loaded.
+`root:query:idea`). The engine wires this collection in; you never assemble it
+by hand. See [generator](generator) for how it's produced and
+[engine-config](engine-config) for how it's loaded.
 
 ## Reference
 
 ### Point types at a glance
 
-| Type | Group | Opens off | Page |
-| --- | --- | --- | --- |
-| `page` | mountable | root / base / layout | [page](page) |
-| `layout` | mountable | root / base / layout | [layout](layout) |
-| `component` | mountable | root / base | [component](component) |
-| `provider` | mountable | root / base | [provider](provider) |
-| `query` | data/endpoint | root / base | [query](query) |
-| `infiniteQuery` | data/endpoint | root / base | [infinite-query](infinite-query) |
-| `mutation` | data/endpoint | root / base | [mutation](mutation) |
-| `action` | data/endpoint | root / base | [action](action) |
-| `root` | structure | `Point0` (static) / root | [root](root) |
-| `base` | structure | root / base | [base](base) |
-| `plugin` | structure | `Point0` (static) | [plugin](plugin) |
+| Type            | Group         | Opens off                | Page                             |
+| --------------- | ------------- | ------------------------ | -------------------------------- |
+| `page`          | mountable     | root / base / layout     | [page](page)                     |
+| `layout`        | mountable     | root / base / layout     | [layout](layout)                 |
+| `component`     | mountable     | root / base              | [component](component)           |
+| `provider`      | mountable     | root / base              | [provider](provider)             |
+| `query`         | data/endpoint | root / base              | [query](query)                   |
+| `infiniteQuery` | data/endpoint | root / base              | [infinite-query](infinite-query) |
+| `mutation`      | data/endpoint | root / base              | [mutation](mutation)             |
+| `action`        | data/endpoint | root / base              | [action](action)                 |
+| `root`          | structure     | `Point0` (static) / root | [root](root)                     |
+| `base`          | structure     | root / base              | [base](base)                     |
+| `plugin`        | structure     | `Point0` (static)        | [plugin](plugin)                 |
 
 `query`, `mutation`, and `action` are always HTTP endpoints; `page`, `layout`,
 `component`, and `provider` are endpoints only with a server loader or SSR;
@@ -219,11 +222,11 @@ for how it's loaded.
 
 ### Notation at a glance
 
-| | Short (`.lets.page`) | Full (`.lets('page', …)`) |
-| --- | --- | --- |
-| Needs the compiler | yes | no |
-| Point name | read from the variable | passed explicitly |
-| Runs at runtime as-is | no — rewritten | yes |
-| Used in these docs | yes (default) | only where a name is pinned |
+|                       | Short (`.lets.page`)   | Full (`.lets('page', …)`)   |
+| --------------------- | ---------------------- | --------------------------- |
+| Needs the compiler    | yes                    | no                          |
+| Point name            | read from the variable | passed explicitly           |
+| Runs at runtime as-is | no — rewritten         | yes                         |
+| Used in these docs    | yes (default)          | only where a name is pinned |
 
 <!-- TODO(low): the claim "everything is a point" covers every building block you author with `.lets`. Point0 also has non-point primitives (env, error, navigation, eventer, super-store) — scope the claim to the authored surface, not *literally* everything. -->

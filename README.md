@@ -2,7 +2,8 @@
 
 ![Point0](https://1gr14.dev/images/point0-card-dark@2x.png)
 
-> A fullstack TypeScript framework on Bun — your whole app, pages to endpoints, from one typed building block.
+> A fullstack TypeScript framework on Bun — your whole app, pages to endpoints,
+> from one typed building block.
 
 [![CI](https://github.com/1gr14/point0/actions/workflows/ci.yml/badge.svg)](https://github.com/1gr14/point0/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@point0/core.svg)](https://www.npmjs.com/package/@point0/core)
@@ -23,14 +24,15 @@ imposed by others, the clumsiness of the architecture, were simply a necessary
 evil I had to put up with.
 
 At some point a critical feeling built up inside me that things really should be
-completely different. And I thought: let me write some pseudocode on an imaginary
-framework that would suit me, without any regard at all for whether it could be
-implemented. I'll just write a project as if the ideal framework already existed.
+completely different. And I thought: let me write some pseudocode on an
+imaginary framework that would suit me, without any regard at all for whether it
+could be implemented. I'll just write a project as if the ideal framework
+already existed.
 
 And it turned out so well that I simply forgot about everything in the world and
-spent 10 months building the implementation of this framework, and 3 months ago I
-even quit my job to finish it off sooner. And now I've finished it, and I want to
-share it with you.
+spent 10 months building the implementation of this framework, and 3 months ago
+I even quit my job to finish it off sooner. And now I've finished it, and I want
+to share it with you.
 
 ## Introduction
 
@@ -97,20 +99,21 @@ the framework's design further:
   mind the existence of some configs in other files, or even other constructs in
   the same file. In this example we understand that everything concerning this
   page is described right in the code of the point itself, and also that it's
-  affected by a certain `root` that it grows out of. `root` is also a point, I'll
-  talk about those a bit later too.
+  affected by a certain `root` that it grows out of. `root` is also a point,
+  I'll talk about those a bit later too.
 - Points can form chains to reuse some settings. In particular, on this page you
   don't see what markup my loading and error states have, because they're
   included in `root`, which I haven't shown you yet. And this is done because
-  essentially I need to have the same look for loading and errors everywhere, and
-  I don't want to duplicate this in the point of every page. At the same time, I
-  can easily override them either for a single page or for a group of pages by
-  creating a separate parent point for them — it'll be called the `base` point,
-  but that's also later.
+  essentially I need to have the same look for loading and errors everywhere,
+  and I don't want to duplicate this in the point of every page. At the same
+  time, I can easily override them either for a single page or for a group of
+  pages by creating a separate parent point for them — it'll be called the
+  `base` point, but that's also later.
 - Every point begins with the `.lets` construct, which means "Let's make a
-  page/query/mutation/... with such-and-such name", then ideally it would have no
-  arguments, but some are still necessary in order to have typed things; in the
-  case of a page the required argument is its path, which is generally logical.
+  page/query/mutation/... with such-and-such name", then ideally it would have
+  no arguments, but some are still necessary in order to have typed things; in
+  the case of a page the required argument is its path, which is generally
+  logical.
 - Every point ends with what we designated in `.lets`. We said
   `.lets('page', ...)`, so at the end of the builder there will be `.page(...)`.
   We said `.lets('query', ...)`, so at the end there will be `.query(...)`.
@@ -227,7 +230,8 @@ The only difference is that the input is taken as the first argument here, and
 it's what forms the unique `mutationKey` for this specific request, as well as
 the body of the mutation function itself.
 
-Read more in the docs [about mutations](https://1gr14.dev/point0/latest/mutation).
+Read more in the docs
+[about mutations](https://1gr14.dev/point0/latest/mutation).
 
 ## Query
 
@@ -239,8 +243,8 @@ that the loader is in fact just react-query under the hood, which means we need
 this to be literally one query, with the same cache, so that no extra requests
 go to the server. There are pages where the loader is really one-of-a-kind for
 the whole project, and then it's convenient to declare the loader right on the
-page. But if the loader is reused, then it makes sense to move it into a separate
-query and reuse that query in the pages themselves.
+page. But if the loader is reused, then it makes sense to move it into a
+separate query and reuse that query in the pages themselves.
 
 ```tsx
 import { root } from '@/lib/root'
@@ -396,8 +400,8 @@ console.info(ideaViewQueryKey)
 
 In general, you yourself never work with this query key directly. I showed you
 this query key simply because soon in this article I'll be talking about some
-parts of the implementation where an understanding of what this query key is even
-made of will come in handy.
+parts of the implementation where an understanding of what this query key is
+even made of will come in handy.
 
 And before we go too far, a reminder that the loader we declared in the pages
 themselves, like:
@@ -459,9 +463,9 @@ export const ideaEditPage = root
 ```
 
 And in fact, although this is weird, it kind of even seems cool. But there's a
-nuance here: it turns out that if we declare these pages in different files, then
-the client bundle file for the idea edit page will also include the code of the
-idea view page, while we only wanted the query. In general, if the pages are
+nuance here: it turns out that if we declare these pages in different files,
+then the client bundle file for the idea edit page will also include the code of
+the idea view page, while we only wanted the query. In general, if the pages are
 small then it's fine. There won't be code duplication, the bundler will
 distribute everything as needed — it's just a question of the size of the first
 loaded chunk on this page. With us all pages are loaded lazily (you can disable
@@ -876,11 +880,10 @@ When navigating between pages, if we turn off the
 then on navigating to the page we'll see the loading state, since we didn't load
 the data before the transition.
 
-If we turn on the
-`.prefetchPageOnNavigate('pageDehydratedStateAndClientQuery')` setting, then on
-clicking a link the data (not the html, but the data itself) and the js chunks
-of the new page will start loading first, and only then will the transition
-happen, and in that case we won't see our .loading() component.
+If we turn on the `.prefetchPageOnNavigate('pageDehydratedStateAndClientQuery')`
+setting, then on clicking a link the data (not the html, but the data itself)
+and the js chunks of the new page will start loading first, and only then will
+the transition happen, and in that case we won't see our .loading() component.
 
 To still give the user some sense that loading is happening when
 `.prefetchPageOnNavigate('pageDehydratedStateAndClientQuery')` is enabled, I
@@ -910,7 +913,8 @@ export const NProgress = () => {
 }
 ```
 
-Read more in the docs [about loading and errors](https://1gr14.dev/point0/latest/loading-error).
+Read more in the docs
+[about loading and errors](https://1gr14.dev/point0/latest/loading-error).
 
 ## Many Queries
 
@@ -984,7 +988,8 @@ export const ideaPage = root.lets
   )
 ```
 
-Read more in the docs [about .with()](https://1gr14.dev/point0/latest/with), [about the mapper](https://1gr14.dev/point0/latest/mapper).
+Read more in the docs [about .with()](https://1gr14.dev/point0/latest/with),
+[about the mapper](https://1gr14.dev/point0/latest/mapper).
 
 ## .with()
 
@@ -1130,7 +1135,9 @@ export const strangePage = root.lets
     // or just return nothing, which means we render the following methods
   })
   // we won't reach the render until all the .with() are resolved
-  .page(() => <h1>I was loading something, I don't know what, but I pulled it off</h1>)
+  .page(() => (
+    <h1>I was loading something, I don't know what, but I pulled it off</h1>
+  ))
 ```
 
 Let's go through one more example with a different notation that I like better:
@@ -1165,7 +1172,9 @@ export const strangePage = root.lets
     // return undefined
     // or just return nothing, which means we render the following methods
   })
-  .page(() => <h1>I was loading something, I don't know what, but I pulled it off</h1>)
+  .page(() => (
+    <h1>I was loading something, I don't know what, but I pulled it off</h1>
+  ))
 ```
 
 ### .with() as a props injector
@@ -1219,12 +1228,12 @@ export const ideaPage = root.lets
 
 ### .with() as an idea
 
-In short, I don't know how to put briefly what I wanted to do, so I'll show it in
-a few steps. At first it'll look like nonsense, but then it'll turn out nicely.
-This is what I arrived at in the process of building a real project on the
-framework, and it becomes convenient once you're writing not your first page, or
-using more complex real-world constructs, which especially come into their own
-once we get to plugins in the upcoming section.
+In short, I don't know how to put briefly what I wanted to do, so I'll show it
+in a few steps. At first it'll look like nonsense, but then it'll turn out
+nicely. This is what I arrived at in the process of building a real project on
+the framework, and it becomes convenient once you're writing not your first
+page, or using more complex real-world constructs, which especially come into
+their own once we get to plugins in the upcoming section.
 
 Let's now apply what we've learned to look at another way we can use `.with()`
 to use data from one query in the input of another query:
@@ -1297,8 +1306,8 @@ export const ideaPage = root.lets
 ```
 
 But again, it's clunky. And as practice has shown, resolving before continuing
-can be needed often, so an even shorter notation was added that bakes the resolve
-functionality right into the query injection itself:
+can be needed often, so an even shorter notation was added that bakes the
+resolve functionality right into the query injection itself:
 
 ```tsx
 export const ideaPage = root.lets
@@ -1392,10 +1401,10 @@ export const ideaPage = root.lets
 ```
 
 We could perfectly well call `await getMe(request)` right inside the loader body
-itself, but the idea is that you will most likely have this `.ctx()` somewhere in
-a parent point, or inject it through plugins (I'll talk about them in the next
-section). But for now let's imagine you have a `base` for points that require
-authorization, then it would look like this:
+itself, but the idea is that you will most likely have this `.ctx()` somewhere
+in a parent point, or inject it through plugins (I'll talk about them in the
+next section). But for now let's imagine you have a `base` for points that
+require authorization, then it would look like this:
 
 ```tsx
 import { getMe } from '@/lib/auth'
@@ -1430,14 +1439,15 @@ It's very important to note that `.ctx()` will only be called if the page has a
 `.loader()`. No `.loader()` means there's no request at all, so the code in
 `.ctx()` won't be called either.
 
-But as practice has shown, this `base` is not nearly as convenient as plugins, so
-let's study plugins.
+But as practice has shown, this `base` is not nearly as convenient as plugins,
+so let's study plugins.
 
 Read more in the docs [about context](https://1gr14.dev/point0/latest/ctx).
 
 ## Plugin
 
-A plugin lets you define a set of methods that we can inject into a point's chain.
+A plugin lets you define a set of methods that we can inject into a point's
+chain.
 
 ```tsx
 import { getMe } from '@/lib/auth'
@@ -1597,10 +1607,10 @@ export const ideaQuery = root.lets
 You can create as many plugins as you want, and insert as many `.use()`
 constructs as you want.
 
-Plugins can even be inserted into one another. For example, there's a plugin that
-adds the current user to the server context. But it doesn't check whether the user
-is authorized or not. And you can have another plugin that forbids unauthorized
-users from viewing a page, which uses the previous plugin:
+Plugins can even be inserted into one another. For example, there's a plugin
+that adds the current user to the server context. But it doesn't check whether
+the user is authorized or not. And you can have another plugin that forbids
+unauthorized users from viewing a page, which uses the previous plugin:
 
 ```tsx
 export const mePlugin = Point0.lets
@@ -1630,8 +1640,8 @@ So far we have talked only about pages and layouts as points that can render
 something. We also have components and providers. All four of these entities:
 `page`, `layout`, `component`, `provider` — are called mountables. That is, all
 of them can be mounted into the React tree. And `.loader()`, `.mapper()`,
-`.with()`, `.use()`, and so on apply to all of them, meaning they all work on the
-same principle, and once you understand how one of them works, you will
+`.with()`, `.use()`, and so on apply to all of them, meaning they all work on
+the same principle, and once you understand how one of them works, you will
 understand how the rest work too.
 
 The cardinal difference is that pages and layouts are quite easy to declare —
@@ -1642,14 +1652,16 @@ client and the server know about their existence (more on the generator later).
 Components and providers, however, once declared, we have to use somewhere
 ourselves. Let's study them.
 
-Read more in the docs [about mountables](https://1gr14.dev/point0/latest/mountable).
+Read more in the docs
+[about mountables](https://1gr14.dev/point0/latest/mountable).
 
 ## Component
 
-We have talked a lot about how to plug several queries into a single page. But in
-fact this isn't needed all that often. Most of the time different parts of a page
-need different data, and we don't need to try to gather all the data in the page
-itself — it's easier to let components load the data they need on their own.
+We have talked a lot about how to plug several queries into a single page. But
+in fact this isn't needed all that often. Most of the time different parts of a
+page need different data, and we don't need to try to gather all the data in the
+page itself — it's easier to let components load the data they need on their
+own.
 
 ```tsx
 export const ideaPage = root.lets
@@ -1686,10 +1698,10 @@ export const SimilarIdeas = root.lets
   ))
 ```
 
-As we can see, with a component, just like with an ordinary query, we can pass an
-input schema and a loader, and the component itself likewise becomes a query, so
-it still has the methods (just like a page or a layout that has declared its own
-loader):
+As we can see, with a component, just like with an ordinary query, we can pass
+an input schema and a loader, and the component itself likewise becomes a query,
+so it still has the methods (just like a page or a layout that has declared its
+own loader):
 
 ```tsx
 SimilarIdeas.useQuery(input, ...)
@@ -1710,15 +1722,15 @@ SimilarIdeas.removeQuery(...)
 SimilarIdeas.resetQuery(...)
 ```
 
-Like all mountables, in a component we can use `.with()`, and everything that was
-possible in pages and layouts can be done here too.
+Like all mountables, in a component we can use `.with()`, and everything that
+was possible in pages and layouts can be done here too.
 
 It should be noted that `.input()` is a construct for the server, and therefore
 inside the component's render we don't see the input, since it wasn't validated
 on the client, which means we can't guarantee that it's valid and that its type
 matches. For this you need to use either `.sharedInput()`, or, if you just want
-some props, then declare them as the component's input props. I'll tell you about
-`.sharedInput()` later, and about input props right now:
+some props, then declare them as the component's input props. I'll tell you
+about `.sharedInput()` later, and about input props right now:
 
 ```tsx
 export const ideaPage = root.lets
@@ -1752,15 +1764,16 @@ Absolutely the same code in terms of the result, but a different approach. Once
 again I'll note that it's actually more convenient to store queries separately
 rather than declaring loaders in the mountables themselves.
 
-Read more in the docs [about components](https://1gr14.dev/point0/latest/component).
+Read more in the docs
+[about components](https://1gr14.dev/point0/latest/component).
 
 ## Provider
 
 I used to like requesting the user in a separate provider, so that I could then
 get it anywhere in the app. And so I thought it would be good for us to have a
-provider in the framework right away, which, like all mountables, can request any
-data — either on its own or through a query — and then hand it out to all of its
-children.
+provider in the framework right away, which, like all mountables, can request
+any data — either on its own or through a query — and then hand it out to all of
+its children.
 
 ```tsx
 export const MeProvider = root.lets
@@ -1815,11 +1828,12 @@ export const UserInfo = () => {
 
 But honestly, I realized that all these providers aren't really that necessary,
 because, for example, it's easier to insert the user specifically through a
-plugin. Because all data are query results anyway, and queries are cached. And we
-don't get any extra re-renders. But nevertheless we do have providers, in case
-they come in handy.
+plugin. Because all data are query results anyway, and queries are cached. And
+we don't get any extra re-renders. But nevertheless we do have providers, in
+case they come in handy.
 
-Read more in the docs [about providers](https://1gr14.dev/point0/latest/provider).
+Read more in the docs
+[about providers](https://1gr14.dev/point0/latest/provider).
 
 ## Infinite Query
 
@@ -1896,10 +1910,10 @@ export const ideaListPage = generalLayout.lets
 ```
 
 We can also use `.infiniteQuery()` baked right into the page, using its loader.
-That is, the very same code could have been written in the following way as well.
-However, keep in mind that a page doesn't have an "input" — instead a page has
-the route `params`, and it can also have search params, which I'll show you right
-now:
+That is, the very same code could have been written in the following way as
+well. However, keep in mind that a page doesn't have an "input" — instead a page
+has the route `params`, and it can also have search params, which I'll show you
+right now:
 
 ```tsx
 export const ideaListPage = root.lets
@@ -1960,7 +1974,8 @@ export const ideaListPage = root.lets
   })
 ```
 
-Read more in the docs [about infinite queries](https://1gr14.dev/point0/latest/infinite-query).
+Read more in the docs
+[about infinite queries](https://1gr14.dev/point0/latest/infinite-query).
 
 ## clientLoader(), clientInput(), sharedInput()
 
@@ -2002,14 +2017,15 @@ export const ideaQuery = root.lets
   .query()
 ```
 
-Read more in the docs [about loaders](https://1gr14.dev/point0/latest/loader), [about validation](https://1gr14.dev/point0/latest/validation).
+Read more in the docs [about loaders](https://1gr14.dev/point0/latest/loader),
+[about validation](https://1gr14.dev/point0/latest/validation).
 
 ## Location
 
-Inside pages, layouts, and loaders we get a typed `location` object. In a loader,
-as we've already seen, most often we need not the whole `location`, but two of
-its typed parts — `params` (from the route path) and `search` (from the query
-string); however, you can also get the original `location` object there.
+Inside pages, layouts, and loaders we get a typed `location` object. In a
+loader, as we've already seen, most often we need not the whole `location`, but
+two of its typed parts — `params` (from the route path) and `search` (from the
+query string); however, you can also get the original `location` object there.
 
 `location.search` is stored unvalidated, and unlike the standard
 `location.search` it's an object, not a string, and the object may not even be
@@ -2056,7 +2072,8 @@ export const Breadcrumbs = () => {
 you need `location` outside React (in some helper), there's the imperative
 `getLocation()`.
 
-Read more in the docs [about navigation](https://1gr14.dev/point0/latest/navigation).
+Read more in the docs
+[about navigation](https://1gr14.dev/point0/latest/navigation).
 
 ## Route
 
@@ -2079,9 +2096,9 @@ export const routes = Routes.create({
 })
 ```
 
-This is handled by the [`@1gr14/route0`](https://1gr14.dev/route0) library, which
-is not a router — it's just a thing for managing string paths in an application.
-It can be used anywhere outside of Point0.
+This is handled by the [`@1gr14/route0`](https://1gr14.dev/route0) library,
+which is not a router — it's just a thing for managing string paths in an
+application. It can be used anywhere outside of Point0.
 
 With these routes we can work like this:
 
@@ -2091,10 +2108,11 @@ routes.ideaView.abs({ id: '123' }) // "https://example.com/ideas/123"
 ```
 
 The library itself can do a lot — it can validate parameters and so on — but
-that's used under the hood of Point0, and when building a project we just need it
-to derive paths.
+that's used under the hood of Point0, and when building a project we just need
+it to derive paths.
 
-Read more in the docs [about navigation](https://1gr14.dev/point0/latest/navigation).
+Read more in the docs
+[about navigation](https://1gr14.dev/point0/latest/navigation).
 
 ## Router and Navigation
 
@@ -2102,9 +2120,10 @@ What I wanted from navigation:
 
 - That I'd have an object with all the paths in the application, which I could
   maintain myself, or generate automatically
-- That I wouldn't have to declare all the pages myself inside app.tsx or wherever
-  else and combine them with layouts — after all, it's obvious even to a child
-  from the paths of the pages themselves how they should be laid out there
+- That I wouldn't have to declare all the pages myself inside app.tsx or
+  wherever else and combine them with layouts — after all, it's obvious even to
+  a child from the paths of the pages themselves how they should be laid out
+  there
 - That I could navigate not only by a concrete path, which would be agonizing to
   replace during refactoring, but by the name of a page-point, with typed
   parameters
@@ -2274,11 +2293,12 @@ export const generalLayout = root.lets.layout().layout(({ children }) => {
 })
 ```
 
-We also have an `index.client.ts` file, which is exactly what feeds in our points
-(it's just an array of our points with lazy import, which the generator assembled
-for us), thanks to which `RouterRoutes` itself knows about all existing points.
-And it can build the tree. It sorts by routes from more specific to less specific.
-That is, we can have a page '/ideas/new' and '/ideas/:id' and they won't conflict
+We also have an `index.client.ts` file, which is exactly what feeds in our
+points (it's just an array of our points with lazy import, which the generator
+assembled for us), thanks to which `RouterRoutes` itself knows about all
+existing points. And it can build the tree. It sorts by routes from more
+specific to less specific. That is, we can have a page '/ideas/new' and
+'/ideas/:id' and they won't conflict
 
 ```tsx
 import App from '@/app.client'
@@ -2295,12 +2315,13 @@ mount(
 )
 ```
 
-Read more in the docs [about navigation](https://1gr14.dev/point0/latest/navigation).
+Read more in the docs
+[about navigation](https://1gr14.dev/point0/latest/navigation).
 
 ## Redirect
 
-A redirect is a close relative of navigation, only we don't click ourselves —
-we redirect the user based on some condition. And there are two sides here: the
+A redirect is a close relative of navigation, only we don't click ourselves — we
+redirect the user based on some condition. And there are two sides here: the
 client and the server.
 
 On the client everything is obvious — it's just navigation based on a condition.
@@ -2363,8 +2384,8 @@ What is the foundation in other frameworks is an antipattern for us. For our
 points, middleware isn't needed — we have loaders and ctx. But there are
 situations where middleware is exactly what you need: CORS, third-party
 libraries, integrations. Usually we insert middleware into the root itself, then
-absolutely all requests to the server pass through them. In special cases you can
-insert it into the points themselves, then when requesting that point its
+absolutely all requests to the server pass through them. In special cases you
+can insert it into the points themselves, then when requesting that point its
 middleware will be added to the rest.
 
 They work the same way as middleware in Express and in other frameworks:
@@ -2411,7 +2432,8 @@ const root = Point0.lets
   .root()
 ```
 
-You can also pass a path as the first argument that the middleware will react to:
+You can also pass a path as the first argument that the middleware will react
+to:
 
 ```tsx
 export const root = Point0.lets
@@ -2454,13 +2476,14 @@ export const root = Point0.lets
   .root()
 ```
 
-Read more in the docs [about .middleware()](https://1gr14.dev/point0/latest/middleware).
+Read more in the docs
+[about .middleware()](https://1gr14.dev/point0/latest/middleware).
 
 ## Request
 
-Loaders, `.ctx()`, and middleware receive a `request` object — our wrapper around
-the native Fetch request. All fields on it are computed only when you access
-them, so creating such an object on every request is cheap.
+Loaders, `.ctx()`, and middleware receive a `request` object — our wrapper
+around the native Fetch request. All fields on it are computed only when you
+access them, so creating such an object on every request is cheap.
 
 ```tsx
 export const meQuery = root.lets
@@ -2525,9 +2548,9 @@ Read more in the docs [about Request](https://1gr14.dev/point0/latest/request).
 
 ## Response
 
-We control the response through the `set` helper, which arrives in the same place
-as `request` (in loaders, `.ctx()`, middleware). With it you can set headers,
-cookies, and status without assembling a `Response` by hand:
+We control the response through the `set` helper, which arrives in the same
+place as `request` (in loaders, `.ctx()`, middleware). With it you can set
+headers, cookies, and status without assembling a `Response` by hand:
 
 ```tsx
 export const loginMutation = root.lets
@@ -2557,11 +2580,11 @@ export const loginMutation = root.lets
 You delete a cookie by passing `undefined` instead of a value:
 `set.cookies('session', undefined)`. And if you need a fully custom response —
 bytes, a redirect to a file, anything at all — you can simply return a native
-`Response` from middleware or a loader, and all the effects set via `set` will be
-applied to it.
+`Response` from middleware or a loader, and all the effects set via `set` will
+be applied to it.
 
-For convenience when building your own helpers, you can grab the request's effects
-via `getEffects` or `getEffectsOrUndefined`:
+For convenience when building your own helpers, you can grab the request's
+effects via `getEffects` or `getEffectsOrUndefined`:
 
 ```tsx
 import { getEffects, getEffectsOrUndefined } from '@point0/core'
@@ -2577,13 +2600,15 @@ const effects2 = getEffectsOrUndefined()
 
 This information will come in handy to understand how the CookieStore works.
 
-Read more in the docs [about Response](https://1gr14.dev/point0/latest/response).
+Read more in the docs
+[about Response](https://1gr14.dev/point0/latest/response).
 
 ## File Upload
 
-A file is just part of the input — it's simply described as a file in the schema.
-On the client you put a `File` into the mutation's input, and on the server you
-receive it in the loader. The framework assembles the FormData itself.
+A file is just part of the input — it's simply described as a file in the
+schema. On the client you put a `File` into the mutation's input, and on the
+server you receive it in the loader. The framework assembles the FormData
+itself.
 
 ```tsx
 import { z } from 'zod'
@@ -2649,12 +2674,14 @@ export const ideaCreatePage = root.lets
   })
 ```
 
-Read more in the docs [about file upload](https://1gr14.dev/point0/latest/file-upload).
+Read more in the docs
+[about file upload](https://1gr14.dev/point0/latest/file-upload).
 
 ## Action
 
-For talking to the server we have queries and mutations. What's missing is proper
-endpoints. That's what actions are for — there we control the method and the path.
+For talking to the server we have queries and mutations. What's missing is
+proper endpoints. That's what actions are for — there we control the method and
+the path.
 
 ```tsx
 export const stripeWebhookAction = root.lets
@@ -2758,19 +2785,20 @@ export const ideaEditPage = root
 I also want to point out that our simple `mutation`, `query`, `infiniteQuery`,
 unlike trpc, don't send everything to a single endpoint — they have stable URLs
 too. Both queries and mutations send POST requests with the input in the body to
-their stable kebab-cased URLs of the form `/_point0/<scope>/<type>/<name-in-kebab-case>` — for
-example, `/_point0/root/query/query-name-kebab-cased` and
-`/_point0/root/mutation/mutation-name-kebab-cased`. And because of this we can get
-the full picture of our endpoints in an OpenAPI schema.
+their stable kebab-cased URLs of the form
+`/_point0/<scope>/<type>/<name-in-kebab-case>` — for example,
+`/_point0/root/query/query-name-kebab-cased` and
+`/_point0/root/mutation/mutation-name-kebab-cased`. And because of this we can
+get the full picture of our endpoints in an OpenAPI schema.
 
 Read more in the docs [about actions](https://1gr14.dev/point0/latest/action).
 
 ## OpenAPI
 
 Since all our queries, mutations, and actions have a typed input and work like
-real HTTP endpoints, we can serve an OpenAPI schema for them. The `@point0/openapi`
-package is responsible for this, and it's wired in with a single piece of
-middleware:
+real HTTP endpoints, we can serve an OpenAPI schema for them. The
+`@point0/openapi` package is responsible for this, and it's wired in with a
+single piece of middleware:
 
 ```tsx
 import { openapi } from '@point0/openapi'
@@ -2788,12 +2816,12 @@ export const root = Point0.lets
   .root()
 ```
 
-The schema is assembled automatically from your points' input schemas. The output
-type, however, I don't generate from the types yet (that's a plan for the future),
-so if you need the output type in the OpenAPI schema, you have to declare it
-yourself via `.response(schema)`. To fine-tune the OpenAPI output — add a
-description, tags, an `operationId`, or mark an endpoint as `deprecated` — a point
-has the `.openapi()` method:
+The schema is assembled automatically from your points' input schemas. The
+output type, however, I don't generate from the types yet (that's a plan for the
+future), so if you need the output type in the OpenAPI schema, you have to
+declare it yourself via `.response(schema)`. To fine-tune the OpenAPI output —
+add a description, tags, an `operationId`, or mark an endpoint as `deprecated` —
+a point has the `.openapi()` method:
 
 ```tsx
 export const ideaUpdateAction = root.lets
@@ -2865,7 +2893,8 @@ when you call `queryClient.anyMethod()` on the server, we grab the real
 you use it the way you're used to, and all the safety works automatically under
 the hood.
 
-Read more in the docs [about the Query Client](https://1gr14.dev/point0/latest/query-client).
+Read more in the docs
+[about the Query Client](https://1gr14.dev/point0/latest/query-client).
 
 ## Error Class
 
@@ -2896,8 +2925,8 @@ ErrorPoint0.serializePrivate(error) // serializes the error into a private forma
 
 You can swap out the error class for your own via `.errorClass()` on the root.
 There's one requirement: your class must have the same structure or wider than
-`ErrorPoint0`, and be `instanceof Error`. You can just look at the error's source
-in Point0, copy it, and add whatever constructs you need.
+`ErrorPoint0`, and be `instanceof Error`. You can just look at the error's
+source in Point0, copy it, and add whatever constructs you need.
 
 But I also have another library [`@1gr14/error0`](https://1gr14.dev/error0) for
 typed errors that are extensible with plugins. You can use it:
@@ -2944,13 +2973,14 @@ safe — name, message, code, redirect) and `serializePrivate` in dev mode
 goes to the logs. So in production the user won't see anything extra, while you
 see everything in the logs.
 
-Read more in the docs [about error handling](https://1gr14.dev/point0/latest/error-handling).
+Read more in the docs
+[about error handling](https://1gr14.dev/point0/latest/error-handling).
 
 ## Eventer
 
 To analyze what's happening in your points, there's the eventer. A single event
-bus that's convenient for hooking up logging and observability. You can subscribe
-to both sides (`.on`), or separately (`.serverOn` / `.clientOn`):
+bus that's convenient for hooking up logging and observability. You can
+subscribe to both sides (`.on`), or separately (`.serverOn` / `.clientOn`):
 
 ```tsx
 export const root = Point0.lets
@@ -3052,12 +3082,14 @@ await engine.serve()
 // start crons, validate env variables, and so on
 ```
 
-Read more in the docs [about the engine config](https://1gr14.dev/point0/latest/engine-config), [about the engine runtime](https://1gr14.dev/point0/latest/engine-runtime).
+Read more in the docs
+[about the engine config](https://1gr14.dev/point0/latest/engine-config),
+[about the engine runtime](https://1gr14.dev/point0/latest/engine-runtime).
 
 ## CLI
 
-The framework itself provides a `point0` binary, which drives everything based on
-your `src/engine.ts`:
+The framework itself provides a `point0` binary, which drives everything based
+on your `src/engine.ts`:
 
 ```sh
 point0 dev        # dev server (server + clients), watching, codegen on the fly
@@ -3122,13 +3154,15 @@ documentation (hybrid: keywords plus semantics). So that the agent answers
 questions about the framework from the up-to-date docs, and not from whatever it
 made up for itself.
 
-Read more in the docs [about the project MCP](https://1gr14.dev/point0/latest/mcp-project), [about the docs MCP](https://1gr14.dev/point0/latest/mcp-docs).
+Read more in the docs
+[about the project MCP](https://1gr14.dev/point0/latest/mcp-project),
+[about the docs MCP](https://1gr14.dev/point0/latest/mcp-docs).
 
 ## Publicdir
 
-Static files (favicon, images, fonts, `robots.txt`, `.well-known/...`) are served
-by publicdir. You specify a source directory, and you can also declare dynamic
-files right here with a function, or point to subdirectories:
+Static files (favicon, images, fonts, `robots.txt`, `.well-known/...`) are
+served by publicdir. You specify a source directory, and you can also declare
+dynamic files right here with a function, or point to subdirectories:
 
 ```tsx
 export const engine = Engine.create({
@@ -3175,7 +3209,8 @@ export const engine = Engine.create({
 })
 ```
 
-Read more in the docs [about publicdir](https://1gr14.dev/point0/latest/publicdir).
+Read more in the docs
+[about publicdir](https://1gr14.dev/point0/latest/publicdir).
 
 ## Generator
 
@@ -3188,9 +3223,9 @@ I'll also note that for generation our code doesn't even need to be valid,
 because everything is generated through static code analysis, and thanks to this
 it works fast and is almost unbreakable.
 
-Everything generated can safely go into `.gitignore`, because during the build we
-regenerate everything from scratch anyway, just to be sure. And during dev mode
-everything is generated on the fly.
+Everything generated can safely go into `.gitignore`, because during the build
+we regenerate everything from scratch anyway, just to be sure. And during dev
+mode everything is generated on the fly.
 
 ### points.server.ts
 
@@ -3521,7 +3556,8 @@ declare module '*.jpg?raw' {
 // other extensions
 ```
 
-Read more in the docs [about the generator](https://1gr14.dev/point0/latest/generator).
+Read more in the docs
+[about the generator](https://1gr14.dev/point0/latest/generator).
 
 ## Compiler
 
@@ -3610,10 +3646,11 @@ export const ideaPage = root
 
 And the code stayed fully working for the runtime environment. The client
 doesn't know the body of the loader, but it knows that it exists, and it also
-knows the name and the path of the point, so it has everything it needs to make a
-request to the server. And the server, since it has ssr turned off, only needs to
-know the body of the loader itself and, again, the name and path of the point, so
-that it knows what to respond to the client with when the client makes a request.
+knows the name and the path of the point, so it has everything it needs to make
+a request to the server. And the server, since it has ssr turned off, only needs
+to know the body of the loader itself and, again, the name and path of the
+point, so that it knows what to respond to the client with when the client makes
+a request.
 
 You can pass your own babel plugins into the compiler via:
 
@@ -3639,16 +3676,17 @@ You can clear the cache with the command:
 point0 prune
 ```
 
-Read more in the docs [about the compiler](https://1gr14.dev/point0/latest/compiler).
+Read more in the docs
+[about the compiler](https://1gr14.dev/point0/latest/compiler).
 
 ## HMR
 
 Since we're already talking about the compiler, I want to tell you how I tricked
-react and made HMR work when importing any points from a file. From a single file
-we can import a mutation, and a page, and a component, and a query. Essentially,
-from react's point of view, only the component among them is a component. But
-during dev mode, the compiler appends `._tail(() => null)` to the end of the
-point:
+react and made HMR work when importing any points from a file. From a single
+file we can import a mutation, and a page, and a component, and a query.
+Essentially, from react's point of view, only the component among them is a
+component. But during dev mode, the compiler appends `._tail(() => null)` to the
+end of the point:
 
 ```tsx
 export const ideaUpdateMutation = root
@@ -3683,9 +3721,10 @@ Read more in the docs [about dev mode](https://1gr14.dev/point0/latest/dev).
 I thought about letting assets work natively the way bun suggests they should
 work. But that's not possible, because during ssr, bun just returns an absolute
 path to the file on the server, while the client on the same bun really does
-return a link to the asset that will end up in the bundle. But it's impossible to
-synchronize this behavior with bun's native means. So I made the compiler handle
-all of this on its own, and while I was at it I also wired in SVGR right away.
+return a link to the asset that will end up in the bundle. But it's impossible
+to synchronize this behavior with bun's native means. So I made the compiler
+handle all of this on its own, and while I was at it I also wired in SVGR right
+away.
 
 ```tsx
 import logoUrl from '@/assets/logo.png' // by default — the url to the file
@@ -3922,19 +3961,20 @@ const myServerOnlyFn2 = env.side.define.unsafe.server((name: string) => {
 
 There are more helpers there, read more in the docs.
 
-Read more in the docs [about env variables](https://1gr14.dev/point0/latest/env).
+Read more in the docs
+[about env variables](https://1gr14.dev/point0/latest/env).
 
 ## Importer
 
 Given that the code is cut out by the compiler, it's fairly easy to mess
-something up and import server code into the client or vice versa. But most often
-we know in advance which modules are specifically server-side or specifically
-client-side, so we can protect ourselves.
+something up and import server code into the client or vice versa. But most
+often we know in advance which modules are specifically server-side or
+specifically client-side, so we can protect ourselves.
 
-Let's say we have a file `src/lib/prisma.ts` that definitely must never end up on
-the client — then you can simply add `import '@point0/core/server-only'` in the
-file. Now as soon as the compiler sees that we're importing `src/lib/prisma.ts`
-on the client, it will throw an error:
+Let's say we have a file `src/lib/prisma.ts` that definitely must never end up
+on the client — then you can simply add `import '@point0/core/server-only'` in
+the file. Now as soon as the compiler sees that we're importing
+`src/lib/prisma.ts` on the client, it will throw an error:
 
 ```ts
 import '@point0/core/server-only'
@@ -3959,13 +3999,13 @@ export const engine = Engine.create({
 })
 ```
 
-When I adapted Point0 to expo, it turned out that there's client code there which
-the server needs to be allowed to see, but the server must not run it. In
+When I adapted Point0 to expo, it turned out that there's client code there
+which the server needs to be allowed to see, but the server must not run it. In
 particular `const styles = StyleSheet.create({})`. Because we declare it in some
 page's file, and the page can have a component that has our loader for the
-server. And it turns out I can't just forbid importing from 'react-native' on the
-server. However, I don't want to run its code at all. So we can not forbid the
-module but mock it. After the mock, it can try to do whatever it wants, and
+server. And it turns out I can't just forbid importing from 'react-native' on
+the server. However, I don't want to run its code at all. So we can not forbid
+the module but mock it. After the mock, it can try to do whatever it wants, and
 nothing will happen.
 
 ```ts
@@ -3979,7 +4019,8 @@ export const engine = Engine.create({
 })
 ```
 
-Read more in the docs [about the importer](https://1gr14.dev/point0/latest/importer).
+Read more in the docs
+[about the importer](https://1gr14.dev/point0/latest/importer).
 
 ## Mdx
 
@@ -4181,7 +4222,8 @@ export default function App() {
 }
 ```
 
-Read more in the docs [about wiring](https://1gr14.dev/point0/latest/engine-runtime).
+Read more in the docs
+[about wiring](https://1gr14.dev/point0/latest/engine-runtime).
 
 ## SSR
 
@@ -4210,8 +4252,8 @@ render, and they are enabled, then, knowing their `queryKey`, which contains
 everything needed to understand which point the query belongs to, I simply fetch
 this query directly on the server, turning the status of this query either into
 success or into error, doesn't matter. Then I render the page again. And so on
-in a loop, until there are no unresolved queries left. In practice this comes out
-to 2–4 re-renders per request.
+in a loop, until there are no unresolved queries left. In practice this comes
+out to 2–4 re-renders per request.
 
 You have to understand that SSR actually only happens on the first request of a
 page; afterwards, when navigating, we no longer request html, we only download
@@ -4297,12 +4339,11 @@ get a result.
 
 This way you have to understand that the code declared in `.onPrefetchPage()`
 can be called both on the server and on the client. But there's no problem in
-still writing
-`ideaViewQuery.prefetchQuery({ id: location.params.id })` there; on the client
-the request will go to the server's address on the internet. And if it is called
-on the client, then the same request, bypassing the network, will go directly to
-`engine.fetch(request)` with all the headers, cookies, and so on from the
-original client request preserved.
+still writing `ideaViewQuery.prefetchQuery({ id: location.params.id })` there;
+on the client the request will go to the server's address on the internet. And
+if it is called on the client, then the same request, bypassing the network,
+will go directly to `engine.fetch(request)` with all the headers, cookies, and
+so on from the original client request preserved.
 
 But honestly, I like just re-rendering many times, it's very convenient. I think
 that if a project doesn't have a giant load, you won't even feel it. And if a
@@ -4450,7 +4491,8 @@ we use CookieStore.
 I'll also note that you don't have to use SsrStore at all; if you don't need it,
 it won't even make it into the client bundle.
 
-Read more in the docs [about SsrStore](https://1gr14.dev/point0/latest/ssr-store).
+Read more in the docs
+[about SsrStore](https://1gr14.dev/point0/latest/ssr-store).
 
 ## CookieStore
 
@@ -4489,9 +4531,10 @@ export const updateProfileMutation = root.lets
 ```
 
 And for authorization things, it seems like it even works fine this way, but it
-turns out we have to remember which key we wrote which cookie under. And besides,
-I usually do authorization through better-auth, where it manages all of this
-itself. Nevertheless, all of this could optionally be replaced with CookieStore.
+turns out we have to remember which key we wrote which cookie under. And
+besides, I usually do authorization through better-auth, where it manages all of
+this itself. Nevertheless, all of this could optionally be replaced with
+CookieStore.
 
 ```tsx
 const $token = CookieStore.define<string>({ name: 'token', httpOnly: true })
@@ -4530,8 +4573,8 @@ export const updateProfileMutation = root.lets
 Here you may notice that we don't pass the request itself into $token, which you
 would seemingly need in order to get the cookies. This happens because
 CookieStore can pull the request from the environment itself, since the request
-is stored in node async storage, which we use under the hood to wrap all the code
-before the request starts executing.
+is stored in node async storage, which we use under the hood to wrap all the
+code before the request starts executing.
 
 Let's look at how to use CookieStore for cookies that are also used on the
 client. For example, a dark or light theme.
@@ -4581,7 +4624,8 @@ as to apply a transformer like superjson to them. Read more in the docs.
 Like SsrStore, CookieStore is also an optional component, and if you don't use
 it, it won't be included in the client bundle.
 
-Read more in the docs [about CookieStore](https://1gr14.dev/point0/latest/cookie-store).
+Read more in the docs
+[about CookieStore](https://1gr14.dev/point0/latest/cookie-store).
 
 ## Testing
 
@@ -4640,8 +4684,8 @@ Read more in the docs [about testing](https://1gr14.dev/point0/latest/testing).
 
 ## For fullstack developers, backenders, and frontenders alike.
 
-Even though Point0 is a fullstack framework, nothing stops you from using it as a
-frontend-only framework, or as a backend-only framework.
+Even though Point0 is a fullstack framework, nothing stops you from using it as
+a frontend-only framework, or as a backend-only framework.
 
 Frontenders can use navigation and the `.with()` helpers to manage the state of
 their pages and components. They can write a BFF using ordinary
@@ -4656,13 +4700,13 @@ Read more in the docs [about points](https://1gr14.dev/point0/latest/points).
 
 ## Bun or Vite
 
-At first I wanted to make it specifically a Bun framework. And it was going well.
-Then problems of all kinds started, and I thought I should probably allow using
-Vite as an optional dependency. I hooked up Vite. Again there were problems, but
-in the end Vite started working better than pure Bun inside Point0. Then I
-gathered my strength and finished configuring Bun. And in the end Bun started
-working better than Vite inside Point0. Bun starts faster, HMR works better. How
-I fought with Bun and Vite is a topic for a separate post.
+At first I wanted to make it specifically a Bun framework. And it was going
+well. Then problems of all kinds started, and I thought I should probably allow
+using Vite as an optional dependency. I hooked up Vite. Again there were
+problems, but in the end Vite started working better than pure Bun inside
+Point0. Then I gathered my strength and finished configuring Bun. And in the end
+Bun started working better than Vite inside Point0. Bun starts faster, HMR works
+better. How I fought with Bun and Vite is a topic for a separate post.
 
 In the end the design turned out such that if one of the bundlers doesn't suit
 you, you can switch to the other by changing a couple of files, and the runtime
@@ -4727,7 +4771,8 @@ export const engine = Engine.create({
 })
 ```
 
-Read more in the docs [about Bun or Vite](https://1gr14.dev/point0/latest/bun-vs-vite).
+Read more in the docs
+[about Bun or Vite](https://1gr14.dev/point0/latest/bun-vs-vite).
 
 ## Deploy
 
@@ -5146,7 +5191,8 @@ export const myIdeaListPage = generalLayout.lets
   })
 ```
 
-Read more in the docs [about the basic example](https://1gr14.dev/point0/latest/example-basic).
+Read more in the docs
+[about the basic example](https://1gr14.dev/point0/latest/example-basic).
 
 ## Production
 
@@ -5200,15 +5246,14 @@ boilerplate.
 
 ## Plans
 
-Right now the focus is on stability. I will respond as quickly as possible to any
-[issue on GitHub](https://github.com/1gr14/point0).
+Right now the focus is on stability. I will respond as quickly as possible to
+any [issue on GitHub](https://github.com/1gr14/point0).
 
 I am going to write guide articles on Habr on a regular basis, and record videos
 on [YouTube](https://www.youtube.com/@s_1gr14) and
 [VK Video](https://vkvideo.ru/@s_1gr14). All announcements will be in the
-[community](https://1gr14.dev/community) on
-[Telegram](https://t.me/s_1gr14) (Russian) and
-[Discord](https://discord.gg/hWgtn58FVv) (English).
+[community](https://1gr14.dev/community) on [Telegram](https://t.me/s_1gr14)
+(Russian) and [Discord](https://discord.gg/hWgtn58FVv) (English).
 
 After that, I want to finish realtime points that work over WebSocket, in the
 same style as regular points. I also want to finish static site generation.
@@ -5240,4 +5285,5 @@ Issues and PRs welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) and the
 
 ---
 
-Made by [1gr14](https://1gr14.dev), driven by [community](https://1gr14.dev/#community)
+Made by [1gr14](https://1gr14.dev), driven by
+[community](https://1gr14.dev/#community)

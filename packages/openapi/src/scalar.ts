@@ -2,9 +2,9 @@ import type { ApiReferenceConfigurationWithSource } from '@scalar/types/api-refe
 import { serializeToJsLiteral } from './serialize.js'
 
 /**
- * Scalar UI configuration — the `@scalar/api-reference` config (e.g. `theme`, `url`, `onLoaded`). In the
- * {@link openapi} middleware you pass these (plus a `route`) under the `scalar` option; the spec `url` defaults to the
- * JSON route so you don't repeat it.
+ * Scalar UI configuration — the `@scalar/api-reference` config (e.g. `theme`, `url`, `onLoaded`). In the {@link openapi}
+ * middleware you pass these (plus a `route`) under the `scalar` option; the spec `url` defaults to the JSON route so
+ * you don't repeat it.
  *
  * Full reference: https://1gr14.dev/point0/latest/openapi
  */

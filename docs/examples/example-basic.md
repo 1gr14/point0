@@ -1,7 +1,9 @@
 ---
 index: 100
 title: Basic Example
-description: The canonical Point0 app — a collective ideas blog on Prisma, Tailwind, wouter, and a Bun-bundled client.
+description:
+  The canonical Point0 app — a collective ideas blog on Prisma, Tailwind,
+  wouter, and a Bun-bundled client.
 label: Basic
 example: examples/basic
 ---
@@ -22,7 +24,8 @@ What it puts together, in one app:
   the React Compiler
 - a client bundled by **Bun** (this is the distinctive choice — the
   [vite](example-vite) example bundles the same client with Vite instead)
-- a file upload, infinite-query pagination, and an OpenAPI spec behind basic auth
+- a file upload, infinite-query pagination, and an OpenAPI spec behind basic
+  auth
 
 Everything grows from the **root** — one builder chain that sets the
 serialization wire, the schema helper, the error class, the prefetch policy, the
@@ -37,10 +40,19 @@ export const root = Point0.lets
   .transformer(superjson) // Date/Map/etc survive the SSR wire
   .schemaHelper(zodSchemaHelper()) // teach Point0 to read zod schemas
   .errorClass(AppError) // your own error class (default is ErrorPoint0)
-  .head('global', () => ({ titleTemplate: '%s | IdeaNick', htmlAttrs: { lang: 'en' } }))
+  .head('global', () => ({
+    titleTemplate: '%s | IdeaNick',
+    htmlAttrs: { lang: 'en' },
+  }))
   .loading(() => <LoadingCard />) // shown while any point's data is pending
   .error(({ error }) => <ErrorCard error={error} />) // shown on a thrown error
-  .middleware(openapi({ route: '/openapi.json', filter: 'all', before: basicAuth({ users: { admin: 'admin' } }) }))
+  .middleware(
+    openapi({
+      route: '/openapi.json',
+      filter: 'all',
+      before: basicAuth({ users: { admin: 'admin' } }),
+    }),
+  )
   .root()
 ```
 
@@ -53,7 +65,9 @@ to the browser), then the closing call that picks its kind:
 export const ideaViewQuery = root.lets
   .query()
   .input(z.object({ id: z.number() }))
-  .loader(async ({ input }) => ({ idea: await prisma.idea.findUniqueOrThrow({ where: { id: input.id } }) }))
+  .loader(async ({ input }) => ({
+    idea: await prisma.idea.findUniqueOrThrow({ where: { id: input.id } }),
+  }))
   .query()
 ```
 
@@ -86,7 +100,8 @@ then `bun run start`. See [getting-started](getting-started), [CLI](cli), and
 
 This example shows Point0 in isolation. For a real product, start from
 **[start0](https://1gr14.dev/start0)** — the SaaS boilerplate with auth, admin,
-forms, CRUD, email, and deploy already wired together (`bun create start0 my-app`).
+forms, CRUD, email, and deploy already wired together
+(`bun create start0 my-app`).
 
 ## The other examples
 
@@ -94,5 +109,7 @@ The same blog appears in each, with one piece swapped:
 
 - [vite](example-vite) — same app, client bundled by Vite instead of Bun.
 - [better-auth](example-better-auth) — same app, plus Better Auth.
-- [capacitor](example-capacitor) — same app, wrapped in a native mobile shell. *Experimental.*
-- [expo](example-expo) — Point0's server and data layer behind a React Native client. *Experimental.*
+- [capacitor](example-capacitor) — same app, wrapped in a native mobile shell.
+  _Experimental._
+- [expo](example-expo) — Point0's server and data layer behind a React Native
+  client. _Experimental._

@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it } from 'bun:test'
 
 // `plugin/bun-static` builds a default plugin from env at import time, so seed a minimal options blob and import the
 // named resolver dynamically (after the env is set) to unit-test it in isolation.
-let resolveStaticCompilerOptions: typeof import('../src/plugin/bun-static.js')['resolveStaticCompilerOptions']
+let resolveStaticCompilerOptions: (typeof import('../src/plugin/bun-static.js'))['resolveStaticCompilerOptions']
 
 beforeAll(async () => {
   process.env.POINT0_STATIC_COMPILER_OPTIONS = JSON.stringify({ side: 'client', scope: 'root' })

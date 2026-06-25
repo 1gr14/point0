@@ -62,8 +62,10 @@ const JUNK_PATH_RES: RegExp[] = [
   /(^|\/)\.DS_Store$/,
 ]
 
-/** True for transient save artifacts (atomic-write temp files, editor swap/backup files) that must never drive watch
-events. */
+/**
+ * True for transient save artifacts (atomic-write temp files, editor swap/backup files) that must never drive watch
+ * events.
+ */
 export const isJunkPath = (path: string): boolean => JUNK_PATH_RES.some((re) => re.test(path))
 
 export type FilesWatcherCallbacks = {

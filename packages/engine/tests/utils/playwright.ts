@@ -571,8 +571,7 @@ export class PlaywrightPage {
   }
 
   /**
-   * Sets up the bridge from Browser -> Node.js
-   * This only needs to be called once when the page is first created.
+   * Sets up the bridge from Browser -> Node.js This only needs to be called once when the page is first created.
    * exposeFunction is persistent across navigations.
    */
   async setupBridge(): Promise<void> {
